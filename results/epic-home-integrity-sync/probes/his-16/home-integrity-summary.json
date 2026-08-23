@@ -1,8 +1,8 @@
-{"runId":"20260822-232933","status":"passed","traceId":"1d3776215ca3b923a04ca0cd654145b4","execution":{"mode":"full","graphName":"home-integrity","complete":true,"expectedNodeIds":["env.prepared","home.integrity.fixture","home.integrity.record.agrees.with.store","home.integrity.upstream.tracks.fetch","home.integrity.ack.is.stable","home.integrity.every.shim.resolves","home.integrity.lock.row.has.claimant","home.integrity.declared.cli.attributed","home.integrity.instance.template.installed","home.integrity.projection.decidable","home.integrity.bootstrap.projects.target","home.integrity.parent.survives.child.build","home.integrity.readers.agree.about.one.clone","home.integrity.sync.stays.inside.its.home","project.verb.stays.in.its.home","home.fixpoint.law","home.membership.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","home.integrity.ack.is.stable","home.integrity.bootstrap.projects.target","home.integrity.declared.cli.attributed","home.integrity.every.shim.resolves","home.integrity.fixture","home.integrity.instance.template.installed","home.integrity.lock.row.has.claimant","home.integrity.parent.survives.child.build","home.integrity.projection.decidable","home.integrity.readers.agree.about.one.clone","home.integrity.record.agrees.with.store","home.integrity.sync.stays.inside.its.home","home.integrity.upstream.tracks.fetch","home.membership.law","project.verb.stays.in.its.home"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","home.integrity.fixture","home.integrity.record.agrees.with.store","home.integrity.upstream.tracks.fetch","home.integrity.ack.is.stable","home.integrity.every.shim.resolves","home.integrity.lock.row.has.claimant","home.integrity.declared.cli.attributed","home.integrity.instance.template.installed","home.integrity.projection.decidable","home.integrity.bootstrap.projects.target","home.integrity.parent.survives.child.build","home.integrity.readers.agree.about.one.clone","home.integrity.sync.stays.inside.its.home","project.verb.stays.in.its.home","home.fixpoint.law","home.membership.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+{"runId":"20260823-010440","status":"passed","traceId":"01d91dbb2c38a351064f081ce4288fdf","execution":{"mode":"full","graphName":"home-integrity","complete":true,"expectedNodeIds":["env.prepared","home.integrity.fixture","home.integrity.record.agrees.with.store","home.integrity.upstream.tracks.fetch","home.integrity.ack.is.stable","home.integrity.every.shim.resolves","home.integrity.lock.row.has.claimant","home.integrity.declared.cli.attributed","home.integrity.instance.template.installed","home.integrity.projection.decidable","home.integrity.bootstrap.projects.target","home.integrity.parent.survives.child.build","home.integrity.readers.agree.about.one.clone","home.integrity.sync.stays.inside.its.home","project.verb.stays.in.its.home","home.fixpoint.law","home.membership.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","home.integrity.ack.is.stable","home.integrity.bootstrap.projects.target","home.integrity.declared.cli.attributed","home.integrity.every.shim.resolves","home.integrity.fixture","home.integrity.instance.template.installed","home.integrity.lock.row.has.claimant","home.integrity.parent.survives.child.build","home.integrity.projection.decidable","home.integrity.readers.agree.about.one.clone","home.integrity.record.agrees.with.store","home.integrity.sync.stays.inside.its.home","home.integrity.upstream.tracks.fetch","home.membership.law","project.verb.stays.in.its.home"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","home.integrity.fixture","home.integrity.record.agrees.with.store","home.integrity.upstream.tracks.fetch","home.integrity.ack.is.stable","home.integrity.every.shim.resolves","home.integrity.lock.row.has.claimant","home.integrity.declared.cli.attributed","home.integrity.instance.template.installed","home.integrity.projection.decidable","home.integrity.bootstrap.projects.target","home.integrity.parent.survives.child.build","home.integrity.readers.agree.about.one.clone","home.integrity.sync.stays.inside.its.home","project.verb.stays.in.its.home","home.fixpoint.law","home.membership.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
   "nodeId" : "env.prepared",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:29:33.950154Z",
-  "endedAt" : "2026-08-22T23:29:33.974977Z",
+  "startedAt" : "2026-08-23T01:04:41.497531Z",
+  "endedAt" : "2026-08-23T01:04:41.522736Z",
   "assertions" : [ {
     "name" : "home_created",
     "status" : "passed"
@@ -22,24 +22,24 @@
   "artifacts" : [ ],
   "processes" : [ ],
   "metrics" : {
-    "registryPort" : 50361,
-    "gatewayPort" : 50362,
-    "durationMs" : 24
+    "registryPort" : 52586,
+    "gatewayPort" : 52587,
+    "durationMs" : 25
   },
   "logs" : [ ],
   "published" : {
-    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236",
-    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/agent-home",
-    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/agent-home/.codex",
-    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/agent-home/.gemini",
-    "registryPort" : "50361",
-    "gatewayPort" : "50362"
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/agent-home/.gemini",
+    "registryPort" : "52586",
+    "gatewayPort" : "52587"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:29:33.302246Z","executorEndedAt":"2026-08-22T23:29:47.391975Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:04:40.819844Z","executorEndedAt":"2026-08-23T01:04:55.664190Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.fixpoint.law",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:34:15.433083Z",
-  "endedAt" : "2026-08-22T23:34:28.085393Z",
+  "startedAt" : "2026-08-23T01:09:22.884859Z",
+  "endedAt" : "2026-08-23T01:09:35.676351Z",
   "assertions" : [ {
     "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
     "status" : "passed"
@@ -50,18 +50,18 @@
     "homesChecked" : 5,
     "homesRepaired" : 0,
     "homesOutsideSandbox" : 0,
-    "durationMs" : 12652
+    "durationMs" : 12792
   },
-  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/victim-home/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/syncing-home/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/driver/home" ],
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home" ],
   "published" : {
-    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/victim-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/syncing-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/driver/home",
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home",
     "homesRepaired" : ""
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:34:14.783579Z","executorEndedAt":"2026-08-22T23:34:41.848241Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:09:22.231700Z","executorEndedAt":"2026-08-23T01:09:49.306983Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.ack.is.stable",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:30:48.449861Z",
-  "endedAt" : "2026-08-22T23:30:54.831834Z",
+  "startedAt" : "2026-08-23T01:05:55.854247Z",
+  "endedAt" : "2026-08-23T01:06:01.246255Z",
   "assertions" : [ {
     "name" : "a_content_change_pends_the_gate",
     "status" : "passed"
@@ -88,52 +88,52 @@
   "processes" : [ {
     "label" : "drift-baseline",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "drift", "--record" ],
-    "startedAt" : "2026-08-22T23:30:48.496472Z",
-    "endedAt" : "2026-08-22T23:30:50.828764Z",
+    "startedAt" : "2026-08-23T01:05:55.899702Z",
+    "endedAt" : "2026-08-23T01:05:57.207486Z",
     "exitCode" : 0,
-    "pid" : 45760,
+    "pid" : 12172,
     "log" : "node-logs/home.integrity.ack.is.stable.drift-baseline.log",
     "error" : null
   }, {
     "label" : "drift-record",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "drift", "--record" ],
-    "startedAt" : "2026-08-22T23:30:50.831207Z",
-    "endedAt" : "2026-08-22T23:30:52.145373Z",
+    "startedAt" : "2026-08-23T01:05:57.209969Z",
+    "endedAt" : "2026-08-23T01:05:58.534697Z",
     "exitCode" : 8,
-    "pid" : 45773,
+    "pid" : 12206,
     "log" : "node-logs/home.integrity.ack.is.stable.drift-record.log",
     "error" : null
   }, {
     "label" : "drift-ack",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "drift", "--ack" ],
-    "startedAt" : "2026-08-22T23:30:52.145600Z",
-    "endedAt" : "2026-08-22T23:30:53.417976Z",
+    "startedAt" : "2026-08-23T01:05:58.534933Z",
+    "endedAt" : "2026-08-23T01:05:59.814417Z",
     "exitCode" : 0,
-    "pid" : 45782,
+    "pid" : 12215,
     "log" : "node-logs/home.integrity.ack.is.stable.drift-ack.log",
     "error" : null
   }, {
     "label" : "drift-noop",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "drift", "--record" ],
-    "startedAt" : "2026-08-22T23:30:53.483918Z",
-    "endedAt" : "2026-08-22T23:30:54.780016Z",
+    "startedAt" : "2026-08-23T01:05:59.878676Z",
+    "endedAt" : "2026-08-23T01:06:01.195297Z",
     "exitCode" : 0,
-    "pid" : 45791,
+    "pid" : 12225,
     "log" : "node-logs/home.integrity.ack.is.stable.drift-noop.log",
     "error" : null
   } ],
   "metrics" : {
     "AckIsStable.examined" : 1,
     "AckIsStable.violations" : 0,
-    "durationMs" : 6382
+    "durationMs" : 5392
   },
   "logs" : [ "AckIsStable: holds over 1 subject(s)", "ack_of_a_baseline_left_behind: control=0/1 examined damaged=1/1 examined repaired=0 | AckIsStable [home.drift.json] the acknowledged baseline is 714c4772 but the home digest is 00000000 — the ack was stale on arrival and the next drift check will re-pend with no cause the operator can see" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:30:47.797253Z","executorEndedAt":"2026-08-22T23:31:10.421423Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.ack.is.stable.stdout.log","inputContextFile":"context/home.integrity.ack.is.stable.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:05:55.212325Z","executorEndedAt":"2026-08-23T01:06:16.498961Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.ack.is.stable.stdout.log","inputContextFile":"context/home.integrity.ack.is.stable.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.bootstrap.projects.target",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:32:21.306155Z",
-  "endedAt" : "2026-08-22T23:32:23.867447Z",
+  "startedAt" : "2026-08-23T01:07:27.554049Z",
+  "endedAt" : "2026-08-23T01:07:30.205972Z",
   "assertions" : [ {
     "name" : "the_home_carries_its_own_cli_entrypoint",
     "status" : "passed"
@@ -157,42 +157,42 @@
   "processes" : [ {
     "label" : "home-shims",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "shims" ],
-    "startedAt" : "2026-08-22T23:32:21.310436Z",
-    "endedAt" : "2026-08-22T23:32:22.588872Z",
+    "startedAt" : "2026-08-23T01:07:27.558770Z",
+    "endedAt" : "2026-08-23T01:07:28.914046Z",
     "exitCode" : 0,
-    "pid" : 46496,
+    "pid" : 12856,
     "log" : "node-logs/home.integrity.bootstrap.projects.target.home-shims.log",
     "error" : null
   }, {
     "label" : "shim-with-inherited-env",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home/bin/cli/skill-manager", "home", "describe" ],
-    "startedAt" : "2026-08-22T23:32:22.589417Z",
-    "endedAt" : "2026-08-22T23:32:22.797352Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home/bin/cli/skill-manager", "home", "describe" ],
+    "startedAt" : "2026-08-23T01:07:28.914629Z",
+    "endedAt" : "2026-08-23T01:07:29.118531Z",
     "exitCode" : 79,
-    "pid" : 46530,
+    "pid" : 12865,
     "log" : "node-logs/home.integrity.bootstrap.projects.target.shim-with-inherited-env.log",
     "error" : null
   }, {
     "label" : "shim-with-home-flag",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home/bin/cli/skill-manager", "home", "describe", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/bootstrap-target" ],
-    "startedAt" : "2026-08-22T23:32:22.799521Z",
-    "endedAt" : "2026-08-22T23:32:23.866598Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home/bin/cli/skill-manager", "home", "describe", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/bootstrap-target" ],
+    "startedAt" : "2026-08-23T01:07:29.120626Z",
+    "endedAt" : "2026-08-23T01:07:30.205146Z",
     "exitCode" : 2,
-    "pid" : 46539,
+    "pid" : 12874,
     "log" : "node-logs/home.integrity.bootstrap.projects.target.shim-with-home-flag.log",
     "error" : null
   } ],
   "metrics" : {
     "shimExitOnHomeMismatch" : 79,
-    "durationMs" : 2561
+    "durationMs" : 2651
   },
   "logs" : [ "Defect 10 is bootstrap-home.sh's `env SKILL_MANAGER_HOME=<target> \"$CLI\" sync` meeting a shim that binds its own home. Since HIS-9 that composition exits 79 with both homes named instead of syncing the wrong one in silence. The last two assertions are the remedy: pass --home instead. The one-line fix is in the git-issue-workflow leaf and cannot land from this repository." ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:32:20.636615Z","executorEndedAt":"2026-08-22T23:32:39.265541Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.bootstrap.projects.target.stdout.log","inputContextFile":"context/home.integrity.bootstrap.projects.target.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:07:26.861216Z","executorEndedAt":"2026-08-23T01:07:46.818880Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.bootstrap.projects.target.stdout.log","inputContextFile":"context/home.integrity.bootstrap.projects.target.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.declared.cli.attributed",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:31:39.415901Z",
-  "endedAt" : "2026-08-22T23:31:39.570882Z",
+  "startedAt" : "2026-08-23T01:06:45.998638Z",
+  "endedAt" : "2026-08-23T01:06:46.166624Z",
   "assertions" : [ {
     "name" : "every_declared_cli_dependency_is_satisfied",
     "status" : "passed"
@@ -214,15 +214,15 @@
   "metrics" : {
     "DeclaredCliIsSatisfied.examined" : 2,
     "DeclaredCliIsSatisfied.violations" : 0,
-    "durationMs" : 155
+    "durationMs" : 168
   },
   "logs" : [ "DeclaredCliIsSatisfied: holds over 2 subject(s)", "PINNED DEFECT #122: the install recorded a row for 'sh' naming a binary it never produced, and nothing in that row says the machine supplied it. This assertion reads the PRODUCT's row, so recording any of [install_scope, scope, external_path, provided_by, provided_outside_home, binary_scope] turns it red.", "DeclaredCliIsSatisfiedAndAttributed: 1 violation(s) over 2 subject(s)\n    DeclaredCliIsSatisfiedAndAttributed [sh] satisfied externally by /bin/sh and no lock row says so — 'declared and not materialized here' and 'satisfied by the machine' are indistinguishable in the ledger (#122)" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:31:38.725407Z","executorEndedAt":"2026-08-22T23:31:52.496992Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.declared.cli.attributed.stdout.log","inputContextFile":"context/home.integrity.declared.cli.attributed.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:06:45.322659Z","executorEndedAt":"2026-08-23T01:06:59.087545Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.declared.cli.attributed.stdout.log","inputContextFile":"context/home.integrity.declared.cli.attributed.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.every.shim.resolves",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:31:11.094544Z",
-  "endedAt" : "2026-08-22T23:31:11.308144Z",
+  "startedAt" : "2026-08-23T01:06:17.188418Z",
+  "endedAt" : "2026-08-23T01:06:17.398440Z",
   "assertions" : [ {
     "name" : "every_shim_in_a_fresh_home_resolves_to_an_executable",
     "status" : "passed"
@@ -247,15 +247,15 @@
   "metrics" : {
     "EveryShimResolves.examined" : 1,
     "EveryShimResolves.violations" : 0,
-    "durationMs" : 214
+    "durationMs" : 210
   },
-  "logs" : [ "EveryShimResolves: holds over 1 subject(s)", "dangling_shim: control=0/1 examined damaged=1/2 examined repaired=0 | EveryShimResolves [hi-venv-tool] dangles: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/dangling_shim/bin/cli/hi-venv-tool -> ../../venvs/hi-venv/bin/hi-venv-tool and the target is not there", "unexecutable_shim: control=0/1 examined damaged=1/1 examined repaired=0 | EveryShimResolves [hi-tool] resolves to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/unexecutable_shim/bin/cli/hi-tool but it is not executable", "shim_outside_the_home: control=0/1 examined damaged=0/2 examined repaired=0" ],
+  "logs" : [ "EveryShimResolves: holds over 1 subject(s)", "dangling_shim: control=0/1 examined damaged=1/2 examined repaired=0 | EveryShimResolves [hi-venv-tool] dangles: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/dangling_shim/bin/cli/hi-venv-tool -> ../../venvs/hi-venv/bin/hi-venv-tool and the target is not there", "unexecutable_shim: control=0/1 examined damaged=1/1 examined repaired=0 | EveryShimResolves [hi-tool] resolves to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/unexecutable_shim/bin/cli/hi-tool but it is not executable", "shim_outside_the_home: control=0/1 examined damaged=0/2 examined repaired=0" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:31:10.441031Z","executorEndedAt":"2026-08-22T23:31:24.463035Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.every.shim.resolves.stdout.log","inputContextFile":"context/home.integrity.every.shim.resolves.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:06:16.514129Z","executorEndedAt":"2026-08-23T01:06:30.780343Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.every.shim.resolves.stdout.log","inputContextFile":"context/home.integrity.every.shim.resolves.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.fixture",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:29:48.067065Z",
-  "endedAt" : "2026-08-22T23:29:59.537973Z",
+  "startedAt" : "2026-08-23T01:04:56.338473Z",
+  "endedAt" : "2026-08-23T01:05:06.381253Z",
   "assertions" : [ {
     "name" : "both_fixture_units_installed",
     "status" : "passed"
@@ -278,47 +278,47 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "install-a",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/units/hi-unit", "--yes" ],
-    "startedAt" : "2026-08-22T23:29:48.784947Z",
-    "endedAt" : "2026-08-22T23:29:53.654493Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/units/hi-unit", "--yes" ],
+    "startedAt" : "2026-08-23T01:04:57.063342Z",
+    "endedAt" : "2026-08-23T01:05:00.479467Z",
     "exitCode" : 0,
-    "pid" : 45093,
+    "pid" : 11591,
     "log" : "node-logs/home.integrity.fixture.install-a.log",
     "error" : null
   }, {
     "label" : "install-b",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/units/hi-unit-b", "--yes" ],
-    "startedAt" : "2026-08-22T23:29:53.654792Z",
-    "endedAt" : "2026-08-22T23:29:56.559320Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/units/hi-unit-b", "--yes" ],
+    "startedAt" : "2026-08-23T01:05:00.479749Z",
+    "endedAt" : "2026-08-23T01:05:03.277019Z",
     "exitCode" : 0,
-    "pid" : 45161,
+    "pid" : 11655,
     "log" : "node-logs/home.integrity.fixture.install-b.log",
     "error" : null
   }, {
     "label" : "install-c",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/units/hi-unit-external", "--yes" ],
-    "startedAt" : "2026-08-22T23:29:56.559691Z",
-    "endedAt" : "2026-08-22T23:29:59.292078Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/units/hi-unit-external", "--yes" ],
+    "startedAt" : "2026-08-23T01:05:03.277388Z",
+    "endedAt" : "2026-08-23T01:05:06.121690Z",
     "exitCode" : 0,
-    "pid" : 45190,
+    "pid" : 11688,
     "log" : "node-logs/home.integrity.fixture.install-c.log",
     "error" : null
   } ],
   "metrics" : {
     "unitsInstalled" : 3,
-    "durationMs" : 11470
+    "durationMs" : 10043
   },
   "logs" : [ "RecordAgreesWithStore: holds over 3 subject(s)\nUpstreamTracksWhatSyncFetched: holds over 3 subject(s)\nAckIsStable: holds over 0 subject(s)\nEveryShimResolves: holds over 1 subject(s)\nEveryLockRowHasAClaimant: holds over 2 subject(s)\nDeclaredCliIsSatisfied: holds over 2 subject(s)\nDeclaredCliIsSatisfiedAndAttributed: 1 violation(s) over 2 subject(s)\n    DeclaredCliIsSatisfiedAndAttributed [sh] satisfied externally by /bin/sh and no lock row says so — 'declared and not materialized here' and 'satisfied by the machine' are indistinguishable in the ledger (#122)\nInstanceTemplateInstalled: holds over 0 subject(s)\nProjectionSourceIsDecidable: holds over 9 subject(s)\n" ],
   "published" : {
-    "integrityHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home",
-    "unitsDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/units",
-    "scratchRoot" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch"
+    "integrityHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home",
+    "unitsDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/units",
+    "scratchRoot" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:29:47.414445Z","executorEndedAt":"2026-08-22T23:30:13.876858Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.fixture.stdout.log","inputContextFile":"context/home.integrity.fixture.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:04:55.687654Z","executorEndedAt":"2026-08-23T01:05:20.440042Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.fixture.stdout.log","inputContextFile":"context/home.integrity.fixture.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.instance.template.installed",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:31:53.181283Z",
-  "endedAt" : "2026-08-22T23:31:53.390843Z",
+  "startedAt" : "2026-08-23T01:06:59.778192Z",
+  "endedAt" : "2026-08-23T01:07:00.010451Z",
   "assertions" : [ {
     "name" : "an_instance_whose_template_is_installed_is_accepted",
     "status" : "passed"
@@ -340,15 +340,15 @@
   "metrics" : {
     "InstanceTemplateInstalled.examined" : 0,
     "InstanceTemplateInstalled.violations" : 0,
-    "durationMs" : 209
+    "durationMs" : 232
   },
   "logs" : [ "InstanceTemplateInstalled: holds over 0 subject(s)", "instance_of_an_uninstalled_template: control=0/0 examined damaged=1/1 examined repaired=0 | InstanceTemplateInstalled [hi-instance] references template 'hi-harness-that-is-gone', which is not installed — the instance cannot be re-fingerprinted in place", "instance_naming_no_template: control=0/0 examined damaged=1/1 examined repaired=0 | InstanceTemplateInstalled [hi-instance] instance record names no harnessName at all", "instance_of_a_live_template: control=0/0 examined damaged=0/1 examined repaired=0" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:31:52.510548Z","executorEndedAt":"2026-08-22T23:32:06.261147Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.instance.template.installed.stdout.log","inputContextFile":"context/home.integrity.instance.template.installed.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:06:59.102915Z","executorEndedAt":"2026-08-23T01:07:13.304644Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.instance.template.installed.stdout.log","inputContextFile":"context/home.integrity.instance.template.installed.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.lock.row.has.claimant",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:31:25.139008Z",
-  "endedAt" : "2026-08-22T23:31:25.372300Z",
+  "startedAt" : "2026-08-23T01:06:31.499212Z",
+  "endedAt" : "2026-08-23T01:06:31.728600Z",
   "assertions" : [ {
     "name" : "every_lock_row_in_a_fresh_home_is_declared_by_an_installed_unit",
     "status" : "passed"
@@ -373,28 +373,28 @@
   "metrics" : {
     "EveryLockRowHasAClaimant.examined" : 2,
     "EveryLockRowHasAClaimant.violations" : 0,
-    "durationMs" : 233
+    "durationMs" : 229
   },
   "logs" : [ "EveryLockRowHasAClaimant: holds over 2 subject(s)", "unclaimed_lock_row: control=0/2 examined damaged=1/3 examined repaired=0 | EveryLockRowHasAClaimant [npm:hi-orphan] spec npm:hi-orphan is declared by no installed unit (requested_by names history, not a current claim)", "orphan_by_rename: control=0/2 examined damaged=1/3 examined repaired=0 | EveryLockRowHasAClaimant [npm:hi-renamed] spec npm:hi-renamed is declared by no installed unit (requested_by names history, not a current claim)", "row_declared_by_a_plugin: control=0/2 examined damaged=0/3 examined repaired=0" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:31:24.478526Z","executorEndedAt":"2026-08-22T23:31:38.710301Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.lock.row.has.claimant.stdout.log","inputContextFile":"context/home.integrity.lock.row.has.claimant.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:06:30.802235Z","executorEndedAt":"2026-08-23T01:06:45.309050Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.lock.row.has.claimant.stdout.log","inputContextFile":"context/home.integrity.lock.row.has.claimant.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.parent.survives.child.build",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:32:39.939950Z",
-  "endedAt" : "2026-08-22T23:32:46.714308Z",
+  "startedAt" : "2026-08-23T01:07:47.506084Z",
+  "endedAt" : "2026-08-23T01:07:54.526575Z",
   "assertions" : [ ],
   "artifacts" : [ ],
   "processes" : [ ],
   "metrics" : {
-    "durationMs" : 6775
+    "durationMs" : 7020
   },
   "logs" : [ ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:32:39.279459Z","executorEndedAt":"2026-08-22T23:33:00.766213Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.parent.survives.child.build.stdout.log","inputContextFile":"context/home.integrity.parent.survives.child.build.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:07:46.833337Z","executorEndedAt":"2026-08-23T01:08:09.777992Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.parent.survives.child.build.stdout.log","inputContextFile":"context/home.integrity.parent.survives.child.build.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.projection.decidable",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:32:06.912388Z",
-  "endedAt" : "2026-08-22T23:32:07.174703Z",
+  "startedAt" : "2026-08-23T01:07:14.015239Z",
+  "endedAt" : "2026-08-23T01:07:14.289480Z",
   "assertions" : [ {
     "name" : "every_projection_in_a_fresh_home_resolves_inside_it",
     "status" : "passed"
@@ -419,15 +419,15 @@
   "metrics" : {
     "ProjectionSourceIsDecidable.examined" : 9,
     "ProjectionSourceIsDecidable.violations" : 0,
-    "durationMs" : 262
+    "durationMs" : 274
   },
-  "logs" : [ "ProjectionSourceIsDecidable: holds over 9 subject(s)", "vanished_projection: control=0/0 examined damaged=1/1 examined repaired=0 | ProjectionSourceIsDecidable [hi-planted] SYMLINK projection /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/vanished_projection/agent-projection/hi-planted is not there at all", "unregistered_foreign_home: control=0/0 examined damaged=1/1 examined repaired=0 | ProjectionSourceIsDecidable [hi-planted] symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/unregistered_foreign_home/agent-projection/hi-planted -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/hi-other-home-UNREGISTERED/skills/hi-planted leaves this home and lands in no child home this home registered — nothing here can say whose bytes those are", "registered_child_home: control=0/0 examined damaged=0/1 examined repaired=0" ],
+  "logs" : [ "ProjectionSourceIsDecidable: holds over 9 subject(s)", "vanished_projection: control=0/0 examined damaged=1/1 examined repaired=0 | ProjectionSourceIsDecidable [hi-planted] SYMLINK projection /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/vanished_projection/agent-projection/hi-planted is not there at all", "unregistered_foreign_home: control=0/0 examined damaged=1/1 examined repaired=0 | ProjectionSourceIsDecidable [hi-planted] symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/unregistered_foreign_home/agent-projection/hi-planted -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/hi-other-home-UNREGISTERED/skills/hi-planted leaves this home and lands in no child home this home registered — nothing here can say whose bytes those are", "registered_child_home: control=0/0 examined damaged=0/1 examined repaired=0" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:32:06.278170Z","executorEndedAt":"2026-08-22T23:32:20.618225Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.projection.decidable.stdout.log","inputContextFile":"context/home.integrity.projection.decidable.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:07:13.318799Z","executorEndedAt":"2026-08-23T01:07:26.843568Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.projection.decidable.stdout.log","inputContextFile":"context/home.integrity.projection.decidable.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.readers.agree.about.one.clone",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:33:01.445180Z",
-  "endedAt" : "2026-08-22T23:33:13.669037Z",
+  "startedAt" : "2026-08-23T01:08:10.465596Z",
+  "endedAt" : "2026-08-23T01:08:22.669016Z",
   "assertions" : [ {
     "name" : "all_four_readers_agree_about_one_cloned_home",
     "status" : "passed"
@@ -447,47 +447,47 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "his10-clone-middle",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his10/middle-home/.skill-manager" ],
-    "startedAt" : "2026-08-22T23:33:01.449644Z",
-    "endedAt" : "2026-08-22T23:33:03.910627Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his10/middle-home/.skill-manager" ],
+    "startedAt" : "2026-08-23T01:08:10.470226Z",
+    "endedAt" : "2026-08-23T01:08:12.946124Z",
     "exitCode" : 0,
-    "pid" : 47028,
+    "pid" : 13239,
     "log" : "node-logs/home.integrity.readers.agree.about.one.clone.his10-clone-middle.log",
     "error" : null
   }, {
     "label" : "his10-clone-leaf",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his10/middle-home/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his10/leaf-home/.skill-manager" ],
-    "startedAt" : "2026-08-22T23:33:03.913365Z",
-    "endedAt" : "2026-08-22T23:33:06.081684Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his10/middle-home/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his10/leaf-home/.skill-manager" ],
+    "startedAt" : "2026-08-23T01:08:12.951341Z",
+    "endedAt" : "2026-08-23T01:08:15.136254Z",
     "exitCode" : 0,
-    "pid" : 47113,
+    "pid" : 13303,
     "log" : "node-logs/home.integrity.readers.agree.about.one.clone.his10-clone-leaf.log",
     "error" : null
   }, {
     "label" : "his10-verify-bare",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his10/leaf-home/.skill-manager" ],
-    "startedAt" : "2026-08-22T23:33:06.082076Z",
-    "endedAt" : "2026-08-22T23:33:07.368385Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his10/leaf-home/.skill-manager" ],
+    "startedAt" : "2026-08-23T01:08:15.136628Z",
+    "endedAt" : "2026-08-23T01:08:16.444621Z",
     "exitCode" : 0,
-    "pid" : 47153,
+    "pid" : 13324,
     "log" : "node-logs/home.integrity.readers.agree.about.one.clone.his10-verify-bare.log",
     "error" : null
   }, {
     "label" : "his10-verify-against",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his10/leaf-home/.skill-manager", "--against", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his10/middle-home/.skill-manager" ],
-    "startedAt" : "2026-08-22T23:33:07.368669Z",
-    "endedAt" : "2026-08-22T23:33:08.655278Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his10/leaf-home/.skill-manager", "--against", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his10/middle-home/.skill-manager" ],
+    "startedAt" : "2026-08-23T01:08:16.444931Z",
+    "endedAt" : "2026-08-23T01:08:17.782950Z",
     "exitCode" : 0,
-    "pid" : 47168,
+    "pid" : 13365,
     "log" : "node-logs/home.integrity.readers.agree.about.one.clone.his10-verify-against.log",
     "error" : null
   }, {
     "label" : "his10-sync-leaf",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "sync", "hi-unit", "--yes" ],
-    "startedAt" : "2026-08-22T23:33:08.655768Z",
-    "endedAt" : "2026-08-22T23:33:12.370174Z",
+    "startedAt" : "2026-08-23T01:08:17.783433Z",
+    "endedAt" : "2026-08-23T01:08:21.326089Z",
     "exitCode" : 0,
-    "pid" : 47177,
+    "pid" : 13374,
     "log" : "node-logs/home.integrity.readers.agree.about.one.clone.his10-sync-leaf.log",
     "error" : null
   } ],
@@ -495,15 +495,15 @@
     "readers.agreeing" : 4,
     "readers.distinctVerdicts" : 1,
     "readers.sanctioning" : 4,
-    "durationMs" : 12224
+    "durationMs" : 12204
   },
   "logs" : [ "clone=0 verify=0 verify--against=0 sync=0 shim=inherited link kept | without home.provenance.json: home verify exited 1" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:33:00.783415Z","executorEndedAt":"2026-08-22T23:33:27.240059Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.readers.agree.about.one.clone.stdout.log","inputContextFile":"context/home.integrity.readers.agree.about.one.clone.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:08:09.793627Z","executorEndedAt":"2026-08-23T01:08:35.616504Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.readers.agree.about.one.clone.stdout.log","inputContextFile":"context/home.integrity.readers.agree.about.one.clone.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.record.agrees.with.store",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:30:14.806986Z",
-  "endedAt" : "2026-08-22T23:30:15.697254Z",
+  "startedAt" : "2026-08-23T01:05:21.137093Z",
+  "endedAt" : "2026-08-23T01:05:21.750957Z",
   "assertions" : [ {
     "name" : "every_record_in_a_fresh_home_describes_its_own_store",
     "status" : "passed"
@@ -522,15 +522,15 @@
   "metrics" : {
     "RecordAgreesWithStore.examined" : 3,
     "RecordAgreesWithStore.violations" : 0,
-    "durationMs" : 891
+    "durationMs" : 613
   },
-  "logs" : [ "RecordAgreesWithStore: holds over 3 subject(s)", "unexplained_hash_disagreement: control=0/3 examined damaged=1/3 examined repaired=0 | RecordAgreesWithStore [hi-unit] record says 00000000, store HEAD is 7183d1b1, and the record carries no error explaining the gap", "hash_disagreement_with_a_recorded_error: control=0/3 examined damaged=0/3 examined repaired=0" ],
+  "logs" : [ "RecordAgreesWithStore: holds over 3 subject(s)", "unexplained_hash_disagreement: control=0/3 examined damaged=1/3 examined repaired=0 | RecordAgreesWithStore [hi-unit] record says 00000000, store HEAD is 8198c191, and the record carries no error explaining the gap", "hash_disagreement_with_a_recorded_error: control=0/3 examined damaged=0/3 examined repaired=0" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:30:13.898588Z","executorEndedAt":"2026-08-22T23:30:28.836470Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.record.agrees.with.store.stdout.log","inputContextFile":"context/home.integrity.record.agrees.with.store.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:05:20.462957Z","executorEndedAt":"2026-08-23T01:05:35.596111Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.record.agrees.with.store.stdout.log","inputContextFile":"context/home.integrity.record.agrees.with.store.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.sync.stays.inside.its.home",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:33:27.917615Z",
-  "endedAt" : "2026-08-22T23:33:39.099070Z",
+  "startedAt" : "2026-08-23T01:08:36.333816Z",
+  "endedAt" : "2026-08-23T01:08:47.520500Z",
   "assertions" : [ {
     "name" : "a_sync_in_one_home_removes_nothing_from_another",
     "status" : "passed"
@@ -550,56 +550,56 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "his9-clone-victim",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/victim-home/.skill-manager" ],
-    "startedAt" : "2026-08-22T23:33:27.922004Z",
-    "endedAt" : "2026-08-22T23:33:30.380080Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager" ],
+    "startedAt" : "2026-08-23T01:08:36.338288Z",
+    "endedAt" : "2026-08-23T01:08:38.763492Z",
     "exitCode" : 0,
-    "pid" : 47413,
+    "pid" : 13549,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-clone-victim.log",
     "error" : null
   }, {
     "label" : "his9-clone-syncing",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/syncing-home/.skill-manager" ],
-    "startedAt" : "2026-08-22T23:33:30.380391Z",
-    "endedAt" : "2026-08-22T23:33:32.818471Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager" ],
+    "startedAt" : "2026-08-23T01:08:38.763799Z",
+    "endedAt" : "2026-08-23T01:08:41.223819Z",
     "exitCode" : 0,
-    "pid" : 47452,
+    "pid" : 13586,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-clone-syncing.log",
     "error" : null
   }, {
     "label" : "his9-sync-through-the-link",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "sync", "--skip-mcp", "--skip-agents", "--yes" ],
-    "startedAt" : "2026-08-22T23:33:32.821998Z",
-    "endedAt" : "2026-08-22T23:33:35.965886Z",
+    "startedAt" : "2026-08-23T01:08:41.227339Z",
+    "endedAt" : "2026-08-23T01:08:44.404733Z",
     "exitCode" : 1,
-    "pid" : 47515,
+    "pid" : 13647,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-sync-through-the-link.log",
     "error" : null
   }, {
     "label" : "his9-sync-without-the-link",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "sync", "--skip-mcp", "--skip-agents", "--yes" ],
-    "startedAt" : "2026-08-22T23:33:35.968502Z",
-    "endedAt" : "2026-08-22T23:33:39.098350Z",
+    "startedAt" : "2026-08-23T01:08:44.407201Z",
+    "endedAt" : "2026-08-23T01:08:47.519648Z",
     "exitCode" : 0,
-    "pid" : 47633,
+    "pid" : 13762,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-sync-without-the-link.log",
     "error" : null
   } ],
   "metrics" : {
     "victimEntriesBefore" : 2,
     "victimEntriesAfter" : 2,
-    "durationMs" : 11182
+    "durationMs" : 11187
   },
   "logs" : [ "DEF-007, measured 2026-08-21: this sync took the other home's bin/cli from 2 entries to 0 and exited 0. The prune decided every entry correctly, in the wrong home." ],
   "published" : {
-    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/victim-home/.skill-manager",
-    "syncingHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/syncing-home/.skill-manager"
+    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager",
+    "syncingHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:33:27.255738Z","executorEndedAt":"2026-08-22T23:33:52.167416Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.sync.stays.inside.its.home.stdout.log","inputContextFile":"context/home.integrity.sync.stays.inside.its.home.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:08:35.633549Z","executorEndedAt":"2026-08-23T01:09:00.649004Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.sync.stays.inside.its.home.stdout.log","inputContextFile":"context/home.integrity.sync.stays.inside.its.home.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.integrity.upstream.tracks.fetch",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:30:29.627099Z",
-  "endedAt" : "2026-08-22T23:30:30.917174Z",
+  "startedAt" : "2026-08-23T01:05:36.301832Z",
+  "endedAt" : "2026-08-23T01:05:37.572075Z",
   "assertions" : [ {
     "name" : "every_store_in_a_fresh_home_tracks_what_its_fetch_brought",
     "status" : "passed"
@@ -618,15 +618,15 @@
   "metrics" : {
     "UpstreamTracksWhatSyncFetched.examined" : 3,
     "UpstreamTracksWhatSyncFetched.violations" : 0,
-    "durationMs" : 1290
+    "durationMs" : 1271
   },
-  "logs" : [ "UpstreamTracksWhatSyncFetched: holds over 3 subject(s)", "tracking_ref_left_behind: control=0/3 examined damaged=1/3 examined repaired=0 | UpstreamTracksWhatSyncFetched [hi-unit] @{upstream} is 7183d1b1 but FETCH_HEAD is 14683ca7 — the fetch that advanced this store did not move the tracking ref, so every ahead/behind count read from it is phantom", "tracking_ref_ahead_of_fetch: control=0/3 examined damaged=0/3 examined repaired=0" ],
+  "logs" : [ "UpstreamTracksWhatSyncFetched: holds over 3 subject(s)", "tracking_ref_left_behind: control=0/3 examined damaged=1/3 examined repaired=0 | UpstreamTracksWhatSyncFetched [hi-unit] @{upstream} is 8198c191 but FETCH_HEAD is 57d2f6f8 — the fetch that advanced this store did not move the tracking ref, so every ahead/behind count read from it is phantom", "tracking_ref_ahead_of_fetch: control=0/3 examined damaged=0/3 examined repaired=0" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:30:28.850289Z","executorEndedAt":"2026-08-22T23:30:47.778064Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.upstream.tracks.fetch.stdout.log","inputContextFile":"context/home.integrity.upstream.tracks.fetch.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:05:35.615499Z","executorEndedAt":"2026-08-23T01:05:55.198347Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.upstream.tracks.fetch.stdout.log","inputContextFile":"context/home.integrity.upstream.tracks.fetch.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "home.membership.law",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:34:42.523Z",
-  "endedAt" : "2026-08-22T23:34:55.366353Z",
+  "startedAt" : "2026-08-23T01:09:49.982719Z",
+  "endedAt" : "2026-08-23T01:10:02.888146Z",
   "assertions" : [ {
     "name" : "every_home_holds_exactly_what_was_installed_into_it",
     "status" : "passed"
@@ -644,18 +644,20 @@
     "unitsObserved" : 12,
     "homesOutsideSandbox" : 0,
     "descriptorDrift" : 0,
-    "durationMs" : 12843
+    "homesWithMembership" : 5,
+    "durationMs" : 12906
   },
-  "logs" : [ "SELF-TEST (runs before any real home):\n  consistent home -> 0 violation(s)\n  gained a unit   -> 1 violation(s)\n  lost  a unit    -> 2 violation(s)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/victim-home/.skill-manager\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/syncing-home/.skill-manager\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/driver/home\n    disk    [his16-unit-claimed-later, his16-unit-kept]\n    records [his16-unit-claimed-later, his16-unit-kept]\n    lock    [his16-unit-claimed-later, his16-unit-kept]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager\n    disk    [his16-unit-claimed-later]\n    records [his16-unit-claimed-later]\n    lock    []" ],
+  "logs" : [ "SELF-TEST (runs before any real home):\n  consistent home -> 0 violation(s)\n  gained a unit   -> 1 violation(s)\n  lost  a unit    -> 2 violation(s)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager\n    disk    [his16-unit-claimed-later]\n    records [his16-unit-claimed-later]\n    lock    []\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home\n    disk    [his16-unit-claimed-later, his16-unit-kept]\n    records [his16-unit-claimed-later, his16-unit-kept]\n    lock    [his16-unit-claimed-later, his16-unit-kept]" ],
   "published" : {
-    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/victim-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/home-integrity/scratch/his9/syncing-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/driver/home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager",
+    "homesWithMembership" : "5",
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home",
     "unitsObserved" : "12"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:34:41.861447Z","executorEndedAt":"2026-08-22T23:35:08.376802Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.membership.law.stdout.log","inputContextFile":"context/home.membership.law.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:09:49.326417Z","executorEndedAt":"2026-08-23T01:10:16.126646Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.membership.law.stdout.log","inputContextFile":"context/home.membership.law.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"},{
   "nodeId" : "project.verb.stays.in.its.home",
   "status" : "passed",
-  "startedAt" : "2026-08-22T23:33:52.827389Z",
-  "endedAt" : "2026-08-22T23:33:57.814772Z",
+  "startedAt" : "2026-08-23T01:09:01.319813Z",
+  "endedAt" : "2026-08-23T01:09:07.549231Z",
   "assertions" : [ {
     "name" : "precondition_victim_home_holds_the_seeded_unit",
     "status" : "passed"
@@ -677,46 +679,59 @@
   }, {
     "name" : "the_control_reached_the_guard_it_removed",
     "status" : "passed"
+  }, {
+    "name" : "a_per_checkout_home_arms_the_guard_with_no_variable_set",
+    "status" : "passed"
   } ],
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "seed-victim",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim" ],
-    "startedAt" : "2026-08-22T23:33:52.836095Z",
-    "endedAt" : "2026-08-22T23:33:54.689649Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim" ],
+    "startedAt" : "2026-08-23T01:09:01.328999Z",
+    "endedAt" : "2026-08-23T01:09:03.205127Z",
     "exitCode" : 0,
-    "pid" : 47837,
+    "pid" : 13971,
     "log" : "node-logs/project.verb.stays.in.its.home.seed-victim.log",
     "error" : null
   }, {
     "label" : "confined-resolve-from-victim-cwd",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
-    "startedAt" : "2026-08-22T23:33:54.695274Z",
-    "endedAt" : "2026-08-22T23:33:55.941773Z",
+    "startedAt" : "2026-08-23T01:09:03.210378Z",
+    "endedAt" : "2026-08-23T01:09:04.481046Z",
     "exitCode" : 14,
-    "pid" : 47873,
+    "pid" : 13984,
     "log" : "node-logs/project.verb.stays.in.its.home.confined-resolve-from-victim-cwd.log",
     "error" : null
   }, {
     "label" : "control-unconfined-resolve-from-victim-cwd",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
-    "startedAt" : "2026-08-22T23:33:55.945112Z",
-    "endedAt" : "2026-08-22T23:33:57.813886Z",
+    "startedAt" : "2026-08-23T01:09:04.484252Z",
+    "endedAt" : "2026-08-23T01:09:06.387180Z",
     "exitCode" : 0,
-    "pid" : 47882,
+    "pid" : 13993,
     "log" : "node-logs/project.verb.stays.in.its.home.control-unconfined-resolve-from-victim-cwd.log",
+    "error" : null
+  }, {
+    "label" : "implicit-arming-from-per-checkout-home",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
+    "startedAt" : "2026-08-23T01:09:06.388430Z",
+    "endedAt" : "2026-08-23T01:09:07.548170Z",
+    "exitCode" : 14,
+    "pid" : 14029,
+    "log" : "node-logs/project.verb.stays.in.its.home.implicit-arming-from-per-checkout-home.log",
     "error" : null
   } ],
   "metrics" : {
     "confinedExitCode" : 14,
     "unconfinedExitCode" : 0,
+    "implicitlyArmedExitCode" : 14,
     "victimUnitsBefore" : 1,
     "victimUnitsAfterControl" : 1,
-    "durationMs" : 4987
+    "durationMs" : 6230
   },
-  "logs" : [ "FIXTURE  victim home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager -> [skills/his16-unit-kept] (seed exit 0)\nCLAIM    exit 14 (expected 14); victim [skills/his16-unit-kept]; driver [skills/his16-unit-kept]\nCONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reproduced\nThe control reddens: the_other_homes_unit_set_is_unchanged (victim [skills/his16-unit-kept] -> [skills/his16-unit-claimed-later])" ],
+  "logs" : [ "FIXTURE  victim home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager -> [skills/his16-unit-kept] (seed exit 0)\nCLAIM    exit 14 (expected 14); victim [skills/his16-unit-kept]; driver [skills/his16-unit-kept]\nARMING   exit 14 with NO confinement variable set (home is /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/armed-checkout/.skill-manager, cwd is the victim)  <- DEF-046's shape, refused by default\nCONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reproduced\nThe control reddens: the_other_homes_unit_set_is_unchanged (victim [skills/his16-unit-kept] -> [skills/his16-unit-claimed-later])" ],
   "published" : {
-    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager",
-    "driverHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/driver/home"
+    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager",
+    "driverHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:33:52.184495Z","executorEndedAt":"2026-08-22T23:34:14.770355Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.verb.stays.in.its.home.stdout.log","inputContextFile":"context/project.verb.stays.in.its.home.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"}]}
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:09:00.668770Z","executorEndedAt":"2026-08-23T01:09:22.217071Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.verb.stays.in.its.home.stdout.log","inputContextFile":"context/project.verb.stays.in.its.home.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"}]}

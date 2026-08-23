@@ -342,16 +342,23 @@ run, not chased.
 
 ### The two nodes that decide the ticket
 
-`project.verb.stays.in.its.home` — seven assertions, all passed, and its control
-is live:
+`project.verb.stays.in.its.home` — **eight** assertions, all passed. Its control
+is live, and since review of #241 the ARMING is asserted too rather than
+described:
 
 ```
 FIXTURE  victim home …/his16-confinement/victim/.skill-manager
              -> [skills/his16-unit-kept]   (seed exit 0)
 CLAIM    exit 14 (expected 14); victim [skills/his16-unit-kept];
                                 driver [skills/his16-unit-kept]
+ARMING   exit 14 with NO confinement variable set
+             (home is …/armed-checkout/.skill-manager, cwd is the victim)
+             <- DEF-046's shape, refused by default
 CONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reproduced
 ```
+
+The ARMING line is the one that answers H4. Without it the fix is a probe I ran
+once; with it, the graphs keep it true.
 
 `home.membership.law` — three assertions, and the numbers matter more than the
 verdict, because a green law that looked at nothing is the failure mode:
@@ -360,13 +367,13 @@ Re-run in full after review of #241, on `b71a253`:
 
 | graph | nodes | runId | homes | units | withMembership |
 | --- | --- | --- | --- | --- | --- |
-| `home-integrity` | 17 | 20260823-002554 | 5 | 12 | 5 |
+| `home-integrity` | 17 | 20260823-010440 | 5 | 12 | 5 |
 | `project-child-home` | 13 | 20260823-003147 | 2 | 8 | 2 |
 | `project-smoke` | 8 | 20260823-003554 | 3 | 9 | 3 |
 | `home-tripwire` | 8 | 20260823-003903 | 1 | 1 | 1 |
 | `project-manifest` | 4 | 20260823-004147 | 1 | **0** | **0** |
 | `project-resolve` | 4 | 20260823-004318 | 1 | 5 | 1 |
-| `smoke` | 53 | see `probes/his-16/graph-runs.txt` | 1 | 22 | 1 |
+| `smoke` | 53 | 20260823-004523 | 1 | 22 | 1 |
 
 Every one **ALL PASSED**.
 

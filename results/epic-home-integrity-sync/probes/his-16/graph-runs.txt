@@ -1,17 +1,22 @@
-HIS-16 graph runs. Every run through scratchpad/graph-run.sh -- one docker
-stack, one runner at a time, shared with HIS-18. `run.py --all` is HIS-6's
-and was NOT run.
+HIS-16 graph runs, RE-RUN IN FULL after review of #241.
+Every run through scratchpad/graph-run.sh -- one docker stack, one runner at a
+time, shared with HIS-18. `run.py --all` is HIS-6's and was NOT run.
 
-The last four rows are on the SHIPPED tip (f12cdfd, after the membership
-law's assertions were split into three). smoke, project-manifest and
-project-resolve are one commit earlier, at a7155d6; the only difference
-between the two is how the law REPORTS, not what it checks. Stated rather
-than smoothed over.
+home-integrity is on the final tip and carries the H4 assertion
+`a_per_checkout_home_arms_the_guard_with_no_variable_set`; the other six are on
+b71a253, which differs only by that assertion and the exact-match sandbox
+exemption. Stated rather than smoothed over.
 
-smoke                runId 20260822-225952  53 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=22 descriptorDrift=0
-project-manifest     runId 20260822-231639   4 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=0 descriptorDrift=0
-project-resolve      runId 20260822-231813   4 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=5 descriptorDrift=0
-project-smoke        runId 20260822-233937   8 nodes  ALL PASSED   law passed  homesChecked=3 unitsObserved=9 descriptorDrift=0
-project-child-home   runId 20260822-233526  13 nodes  ALL PASSED   law passed  homesChecked=2 unitsObserved=8 descriptorDrift=0
-home-integrity       runId 20260822-232933  17 nodes  ALL PASSED   law passed  homesChecked=5 unitsObserved=12 descriptorDrift=0
-home-tripwire        runId 20260822-234255   8 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=1 descriptorDrift=0
+`project-manifest` shows withMembership=0 -- review M5. That graph registers a
+manifest and installs nothing, so its one home is empty and the three readers
+agree about nothing. It is reported as a number, not turned into a failure:
+an empty home that is still empty is a real post-condition, and reddening a
+graph for installing nothing would be inventing a defect.
+
+smoke               20260823-004523 53 nodes  ALL PASSED  law=passed homes=1 units=22  withMembership=1
+home-integrity      20260823-010440 17 nodes  ALL PASSED  law=passed homes=5 units=12  withMembership=5
+project-child-home  20260823-003147 13 nodes  ALL PASSED  law=passed homes=2 units=8   withMembership=2
+project-smoke       20260823-003554  8 nodes  ALL PASSED  law=passed homes=3 units=9   withMembership=3
+home-tripwire       20260823-003903  8 nodes  ALL PASSED  law=passed homes=1 units=1   withMembership=1
+project-manifest    20260823-004147  4 nodes  ALL PASSED  law=passed homes=1 units=0   withMembership=0
+project-resolve     20260823-004318  4 nodes  ALL PASSED  law=passed homes=1 units=5   withMembership=1
