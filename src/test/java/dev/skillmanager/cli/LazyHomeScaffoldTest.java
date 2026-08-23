@@ -401,6 +401,11 @@ public final class LazyHomeScaffoldTest {
         m.put("project profiles list", new String[]{"project", "profiles", "list"});
         m.put("registry", new String[]{"registry"});
         m.put("registry status", new String[]{"registry", "status"});
+        // READ since #241's H1. The decoy probe is the point: `home describe`
+        // against a home that is not there must print a refusal and create
+        // NOTHING. It was WRITE, and tryReconcile ran ahead of it and wrote
+        // installed-unit records into whatever home it was pointed at.
+        m.put("home describe", new String[]{"home", "describe"});
         m.put("sandbox", new String[]{"sandbox"});
         m.put("sandbox status", new String[]{"sandbox", "status"});
         m.put("search", new String[]{"search", "no-such-unit"});

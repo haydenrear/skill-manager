@@ -175,7 +175,19 @@ public final class HomeBindsBothAxesTest {
 
             assertEquals(1, r.rc, "precondition: the planted dangling shim is refused");
             Map<String, String> binding = AgentHomes.binding(fx.namedStore);
-            assertEquals(4, binding.size(), "the binding is four variables");
+            // FIVE since #237: the store, the three agent dirs, and
+            // SKILL_MANAGER_CONFINE_ROOT. The confinement is declared HERE
+            // rather than by a caller for the reason this whole test exists --
+            // one answer, not two spellings. `--home <X>` says "this command is
+            // about X", and that is exactly the statement a confinement makes,
+            // so it belongs in the one map both the flag and the printed remedy
+            // render. Review of #241, H4: the guard shipped with nothing arming
+            // it, and this is the arming point the ticket plan's conflict_keys
+            // already named (`AgentHomes.binding`).
+            assertEquals(5, binding.size(), "the binding is five variables");
+            assertTrue(binding.containsKey(AgentHomes.CONFINE_ROOT),
+                    "and the fifth is the confinement root, so a process bound to a home is "
+                            + "confined to it: binding=" + binding);
             StringBuilder rendered = new StringBuilder("env");
             binding.forEach((k, v) -> rendered.append(' ').append(k).append('=')
                     .append(dev.skillmanager.store.HomeDescriptor.shellQuote(v)));

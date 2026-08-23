@@ -2,6 +2,8 @@ package dev.skillmanager.sandbox;
 
 import dev.skillmanager.agent.AgentHomes;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -67,7 +69,52 @@ import java.util.Map;
  * @see dev.skillmanager.project.ProjectRoot
  * @see ConfinementEscapeException
  */
-public record Confinement(Path root, List<Axis> axes) {
+public record Confinement(Path root, List<Axis> axes, Source source) {
+
+    /** Where this confinement's root came from. */
+    public enum Source {
+        /** Nothing declared one. */
+        NONE,
+        /** {@link #ROOT_ENV} was set — by an operator, a driver, or a binding. */
+        EXPLICIT,
+        /**
+         * DERIVED from a per-checkout home, because a home that lives INSIDE a
+         * checkout is a home ABOUT that checkout.
+         *
+         * <h2>Why an implicit source exists at all</h2>
+         *
+         * <p>Review of #241, H4: the guard shipped with nothing arming it.
+         * {@code grep} found three hits for {@link #ROOT_ENV} — the constant,
+         * the test-graph helper and the prose — so re-running DEF-046/DEF-047's
+         * shape with the guard merged still went straight through: a session
+         * pins {@code SKILL_MANAGER_HOME} to a worktree home, declares no
+         * confinement, runs {@code project resolve} from an unnamed checkout,
+         * and the home is re-realized at exit 0.
+         *
+         * <p>{@code <checkout>/.skill-manager} is the per-checkout layout this
+         * whole epic exists to produce, and its home root IS the checkout. So
+         * that shape needs no new variable to be armed; the boundary DEF-047
+         * crossed is already written down in the home's own path.
+         *
+         * <p><b>The ROOT tier is excluded</b>, and that exclusion is what keeps
+         * this from breaking the product: {@code ~/.skill-manager} would derive
+         * the operator's whole home directory, which is not a statement about
+         * any checkout, and would then refuse a perfectly ordinary
+         * {@code project resolve} in a repository kept outside {@code $HOME}.
+         *
+         * <p>An implicit confinement enforces the <b>CWD axis only</b> — the one
+         * defect measured — and never the home axes. Pinning
+         * {@code CLAUDE_CONFIG_DIR} outside a project home is a thing operators
+         * legitimately do; a rule inferred rather than declared has not earned
+         * the right to refuse it.
+         */
+        PER_CHECKOUT_HOME
+    }
+
+    /** The two-arg form, for callers that do not care where the root came from. */
+    public Confinement(Path root, List<Axis> axes) {
+        this(root, axes, root == null ? Source.NONE : Source.EXPLICIT);
+    }
 
     /**
      * The variable a process sets to declare "everything I touch lives under
@@ -76,7 +123,7 @@ public record Confinement(Path root, List<Axis> axes) {
      * {@link AgentHomes#setOverride(String, Path)} exactly as it pins the home
      * variables — one mechanism, not a sixth spelling.
      */
-    public static final String ROOT_ENV = "SKILL_MANAGER_CONFINE_ROOT";
+    public static final String ROOT_ENV = AgentHomes.CONFINE_ROOT;
 
     /** The name of the working-directory axis, which no variable can pin. */
     public static final String CWD = "cwd";
@@ -121,44 +168,106 @@ public record Confinement(Path root, List<Axis> axes) {
      * {@link #declared()} is false, so a caller can log the report either way.
      */
     public static Confinement current() {
-        Path root = AgentHomes.resolve(ROOT_ENV);
-        Path normalizedRoot = root == null ? null : normalize(root);
+        Path explicit = AgentHomes.resolve(ROOT_ENV);
+        Source source = explicit != null ? Source.EXPLICIT : Source.NONE;
+        Path root = explicit;
+        if (root == null) {
+            root = perCheckoutHomeRoot();
+            if (root != null) source = Source.PER_CHECKOUT_HOME;
+        }
+        Path normalizedRoot = root == null ? null : canonicalize(root);
         List<Axis> axes = new ArrayList<>();
         for (String key : VARIABLE_AXES) {
             Path value = AgentHomes.resolve(key);
             axes.add(axis(key, value, normalizedRoot));
         }
         axes.add(axis(CWD, workingDirectory(), normalizedRoot));
-        return new Confinement(normalizedRoot, List.copyOf(axes));
+        return new Confinement(normalizedRoot, List.copyOf(axes), source);
+    }
+
+    /**
+     * The checkout a per-checkout {@code SKILL_MANAGER_HOME} belongs to, or
+     * null. See {@link Source#PER_CHECKOUT_HOME} for why this exists and why
+     * the root tier is excluded.
+     */
+    private static Path perCheckoutHomeRoot() {
+        Path store = AgentHomes.resolve(AgentHomes.SKILL_MANAGER_HOME);
+        if (store == null) return null;
+        Path normalized = store.toAbsolutePath().normalize();
+        if (!AgentHomes.STORE_DIR_NAME.equals(String.valueOf(normalized.getFileName()))) return null;
+        Path checkout = normalized.getParent();
+        if (checkout == null) return null;
+        // The ROOT tier is not a statement about a checkout.
+        Path userHome = AgentHomes.userHome();
+        if (userHome != null
+                && canonicalize(userHome).equals(canonicalize(checkout))) return null;
+        return checkout;
     }
 
     /** The JVM's working directory — the axis nothing can override. */
     public static Path workingDirectory() {
         String dir = System.getProperty("user.dir");
-        return dir == null || dir.isBlank() ? null : normalize(Path.of(dir));
+        return dir == null || dir.isBlank() ? null : canonicalize(Path.of(dir));
     }
 
     private static Axis axis(String name, Path value, Path root) {
-        Path normalized = value == null ? null : normalize(value);
+        Path normalized = value == null ? null : canonicalize(value);
         boolean inside = root != null && normalized != null && normalized.startsWith(root);
         return new Axis(name, normalized, inside);
     }
 
     /**
-     * Absolute and normalized, but deliberately <b>not</b>
-     * {@code toRealPath()}: this must answer for paths that do not exist yet —
-     * a driver declares its root before laying the home out — and a
-     * non-existent path makes {@code toRealPath} throw.
+     * The canonical spelling of a path, whether or not it exists yet.
      *
-     * <p>The consequence is that confinement is a check over path
-     * <em>spellings</em>, and a symlink pointing out of the root would defeat
-     * it. That is not this ticket's claim to make: {@code GOAL-one-home-one-answer}
-     * clause 2 owns spelling-invariance, HIS-9 owns the effect boundary, and
-     * this is the axis check that neither of them performs. Stated so the gap
-     * is a decision rather than an omission.
+     * <h2>Why plain absolute-and-normalized was wrong, measured</h2>
+     *
+     * <p>This deliberately did not call {@code toRealPath()}, because a driver
+     * declares its root BEFORE laying the home out and {@code toRealPath}
+     * throws on a path that is not there. The consequence was a
+     * <b>false refusal</b>, not merely a missed catch: {@code ProjectRoot}
+     * takes {@code user.dir}, which the JVM reports PHYSICALLY, so a
+     * confinement declared as {@code /tmp/x} was compared against a working
+     * directory of {@code /private/tmp/x} — two spellings of one directory,
+     * each asserted to be outside the other:
+     *
+     * <pre>
+     *   target:            /private/tmp/his16-symlink-probe/proj
+     *   confinement root:  /tmp/his16-symlink-probe
+     *   EXIT=14
+     * </pre>
+     *
+     * <p>{@code /tmp} and {@code java.io.tmpdir} ({@code /var/folders/…}) are
+     * BOTH symlinks on this platform, so any driver declaring the obvious root
+     * got a 100% refusal rate. Reported in review of #241.
+     *
+     * <p>So: resolve the deepest ANCESTOR that exists, and re-append the
+     * segments that do not exist yet. An existing path gets its real spelling;
+     * a path that will be created gets the real spelling of the directory it
+     * will be created under. Both ends of every comparison go through here, so
+     * the two are always compared in the same alphabet.
+     *
+     * <p>This also closes the false-NEGATIVE half of DEF-051 for any component
+     * that already exists — a symlink inside the root pointing out of it now
+     * resolves before the prefix test. What it still cannot see is a link
+     * created after the check, which no in-JVM check can.
      */
-    private static Path normalize(Path p) {
-        return p.toAbsolutePath().normalize();
+    static Path canonicalize(Path p) {
+        Path abs = p.toAbsolutePath().normalize();
+        Path existing = abs;
+        int climbed = 0;
+        while (existing != null && !Files.exists(existing)) {
+            existing = existing.getParent();
+            climbed++;
+        }
+        if (existing == null) return abs;
+        try {
+            Path real = existing.toRealPath();
+            int total = abs.getNameCount();
+            for (int i = total - climbed; i < total; i++) real = real.resolve(abs.getName(i));
+            return real;
+        } catch (IOException | RuntimeException e) {
+            return abs;
+        }
     }
 
     // ------------------------------------------------------------- questions
@@ -193,6 +302,91 @@ public record Confinement(Path root, List<Axis> axes) {
     }
 
     /**
+     * The escaping axes a process CAN do something about — every axis except
+     * {@link #CWD}.
+     *
+     * <h2>Why this split is the difference between a report and a guard</h2>
+     *
+     * <p>Review of #241: {@link #confined()} and {@link #escapes()} were
+     * computed and never enforced. The only enforcement in the tree consulted
+     * the project root alone, so the same process, back to back, could be told
+     * it was not confined and then act anyway:
+     *
+     * <pre>
+     *   sandbox status --json   →  "confined": false, "escaped": ["CODEX_HOME"]   EXIT=14
+     *   project resolve --json  →  {"name":"revproj", …}                          EXIT=0
+     * </pre>
+     *
+     * <p>Worse, with every home axis UNSET under a declared confinement,
+     * {@code project resolve} exited 0 and scaffolded {@code $HOME/.skill-manager}
+     * — the operator's real home, the failure mode this class's own comment
+     * calls the one this epic keeps paying for. The report said so and nothing
+     * acted on it.
+     *
+     * <p>These axes are enforced centrally by
+     * {@code SkillManagerCli}: a confined process whose STORE or AGENT roots
+     * resolve outside its declared root is refused before any command runs.
+     * {@link #CWD} is deliberately excluded, because a JVM cannot change its
+     * own working directory — that axis is enforced where it is USED, by
+     * {@link dev.skillmanager.project.ProjectRoot} refusing a CWD-derived
+     * target outside the root. Two axes, two enforcement points, one
+     * declaration.
+     */
+    public List<Axis> enforceableEscapes() {
+        List<Axis> out = new ArrayList<>();
+        for (Axis a : escapes()) {
+            if (CWD.equals(a.name())) continue;
+            // An IMPLICIT confinement enforces the CWD axis only -- see
+            // Source.PER_CHECKOUT_HOME. A rule inferred rather than declared
+            // has not earned the right to refuse an operator's own variables.
+            if (source != Source.EXPLICIT) continue;
+            if (AgentHomes.CLAUDE_HOME.equals(a.name()) && claudeConfigDirDecides()) continue;
+            out.add(a);
+        }
+        return out;
+    }
+
+    /**
+     * Whether {@code CLAUDE_CONFIG_DIR} is set, and therefore whether
+     * {@code CLAUDE_HOME} decides anything at all.
+     *
+     * <h2>Measured: enforcing it unconditionally was a false refusal</h2>
+     *
+     * <p>{@link AgentHomes#claude()} consults {@code CLAUDE_CONFIG_DIR}
+     * <b>first</b> and falls back to {@code CLAUDE_HOME} only when it is unset —
+     * that precedence is documented on {@code AgentHomes.claude()} and is the
+     * whole reason both variables exist. {@link AgentHomes#agentBinding} binds
+     * the config DIRS and leaves {@code CLAUDE_HOME} alone for the same reason.
+     *
+     * <p>So a correctly bound process has {@code CLAUDE_CONFIG_DIR} inside its
+     * home and whatever {@code CLAUDE_HOME} it was launched with, and treating
+     * the second as an independent axis refused it:
+     *
+     * <pre>
+     *   escaped axes:      CLAUDE_HOME
+     *   CLAUDE_CONFIG_DIR = …/h/.claude
+     *   CLAUDE_HOME       = …/ag           ← outside
+     * </pre>
+     *
+     * <p>That is this epic's own recurring shape — two answers to one question,
+     * and a checker that reads the one production does not. The axis is still
+     * REPORTED, because an operator debugging a leak wants to see it; it is
+     * enforced only where it is consulted. With both unset, both escape and the
+     * refusal stands, which is the case that matters.
+     */
+    private boolean claudeConfigDirDecides() {
+        Axis configDir = axis(AgentHomes.CLAUDE_CONFIG_DIR);
+        return configDir != null && configDir.value() != null;
+    }
+
+    /** The names of {@link #enforceableEscapes()}. */
+    public List<String> enforceableEscapedAxes() {
+        List<String> out = new ArrayList<>();
+        for (Axis a : enforceableEscapes()) out.add(a.name());
+        return out;
+    }
+
+    /**
      * Whether {@code path} is inside the declared root. Undeclared confinement
      * answers <b>true</b> for everything: with no declaration there is nothing
      * to escape, and this is what keeps the unconfined operator path unchanged.
@@ -200,7 +394,7 @@ public record Confinement(Path root, List<Axis> axes) {
     public boolean covers(Path path) {
         if (!declared()) return true;
         if (path == null) return false;
-        return normalize(path).startsWith(root);
+        return canonicalize(path).startsWith(root);
     }
 
     /** The axis by name, or null. */
@@ -236,6 +430,7 @@ public record Confinement(Path root, List<Axis> axes) {
     public Map<String, Object> toMap() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("declared", declared());
+        out.put("source", source.name());
         out.put("root", root == null ? null : root.toString());
         out.put("confined", confined());
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -248,6 +443,12 @@ public record Confinement(Path root, List<Axis> axes) {
         }
         out.put("axes", rows);
         out.put("escaped", escapedAxes());
+        out.put("enforceableEscaped", enforceableEscapedAxes());
+        // The TYPED code, so a driver branches on a discriminator rather than
+        // on a boolean it has to interpret — the same reason every other
+        // refusal in this CLI carries one. Omitted when the answer is "yes,
+        // confined": there is no error to name. Review of #241, M2.
+        if (declared() && !confined()) out.put("error", ConfinementEscapeException.ERROR_CODE);
         return out;
     }
 }

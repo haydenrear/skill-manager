@@ -207,6 +207,23 @@ public final class SkillManagerCli implements Runnable {
             // shape #235 is about, on a path that did not exist when #235 was
             // filed. Asserted by JsonContractTest's exit-13 case.
             if (refused != null) return completeExecution(root, pr, refused);
+            // THE CONFINEMENT, ENFORCED. Computed in one place and consulted in
+            // one place: a process that declared a confinement and whose store
+            // or agent roots resolve outside it is refused BEFORE anything
+            // reads or writes a home -- ahead of tryReconcile, which projects
+            // the ambient home's units into the ambient agent directories and
+            // is therefore itself one of the writes being confined.
+            //
+            // AFTER bindNamedHome deliberately: `--home X` rebinds every axis,
+            // so the state checked here is the state the command will actually
+            // run under rather than the one it was launched with.
+            //
+            // Review of #241, H2: `confined()` and `escapes()` were computed
+            // and never enforced. With every home axis unset under a declared
+            // confinement, `project resolve` exited 0 and scaffolded
+            // $HOME/.skill-manager -- the operator's real home.
+            Integer escaped = refuseIfConfinementEscapes(pr);
+            if (escaped != null) return completeExecution(root, pr, escaped);
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
@@ -474,6 +491,33 @@ public final class SkillManagerCli implements Runnable {
      *         default, i.e. the same non-zero the trace path produced. This
      *         changes what a refusal PRINTS, never what it returns.
      */
+    /**
+     * Refuse when this process declared a confinement its own axes escape.
+     *
+     * <p>{@code sandbox status} is exempt, and that exemption is the whole
+     * design rather than a carve-out: it is the command whose ANSWER is "you
+     * are not confined". A diagnostic that refuses to run in the state it
+     * exists to diagnose is useless, and an operator who cannot ask the
+     * question has no way to find out which axis is wrong. Help and version
+     * are exempt for the reason {@code CommandHomeAccess} exempts them.
+     *
+     * @return the exit code to return, or null to carry on
+     */
+    private static Integer refuseIfConfinementEscapes(CommandLine.ParseResult pr) {
+        String path = CliAgentContext.commandPath(pr);
+        if (path != null && path.startsWith("sandbox")) return null;
+        if (CommandHomeAccess.helpOrVersionRequested(pr)) return null;
+        dev.skillmanager.sandbox.Confinement confinement =
+                dev.skillmanager.sandbox.Confinement.current();
+        if (!confinement.declared() || confinement.enforceableEscapes().isEmpty()) return null;
+        dev.skillmanager.sandbox.ConfinementEscapeException refusal =
+                dev.skillmanager.sandbox.ConfinementEscapeException.forAxes(
+                        path == null || path.isBlank() ? "skill-manager" : path, confinement);
+        jsonErrorCode = dev.skillmanager.sandbox.ConfinementEscapeException.ERROR_CODE;
+        Log.error("%s", refusal.getMessage());
+        return dev.skillmanager.sandbox.ConfinementEscapeException.EXIT_CODE;
+    }
+
     /**
      * A stable machine-readable reason for an exception, or {@code null}.
      *

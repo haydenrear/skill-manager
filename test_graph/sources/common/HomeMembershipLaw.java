@@ -91,13 +91,34 @@ import java.util.stream.Stream;
  *       list that goes stale silently; graphs publish home paths under a dozen
  *       different keys.</li>
  *   <li>Only homes under the JVM temp root are touched. The onboarding graph's
- *       scan once surfaced one of the OPERATOR'S REAL HOMES. This law never
- *       changes a home's MEMBERSHIP — it runs {@code home describe}, which is
- *       classified {@code READ} and writes no descriptor without
- *       {@code --write} — but {@code READ} is not {@code NONE}
- *       ({@code store.init()} still ensures the layout), and "does not write"
- *       is one refactor away from not being true. The skipped ones are counted
- *       and NAMED rather than silently dropped.</li>
+ *       scan once surfaced one of the OPERATOR'S REAL HOMES.
+ *
+ *       <p><b>This javadoc previously claimed {@code home describe} was
+ *       classified {@code READ}. It was classified {@code WRITE}</b>, and the
+ *       consequence was not cosmetic — review of #241, H1. {@code WRITES_HOME}
+ *       let {@code SkillManagerCli.tryReconcile} run ahead of
+ *       {@code DescribeCmd.call()}, reaching {@code ReconcileUseCase} →
+ *       {@code OnboardUnit} → {@code writeSource}. Measured:
+ *
+ *       <pre>
+ *         BEFORE installed/: []
+ *         $ skill-manager home describe --home $H --json
+ *         AFTER  installed/: [intruder.json]
+ *       </pre>
+ *
+ *       <p>So the law's ONLY reader was <b>manufacturing the very records it
+ *       was about to audit</b>, microseconds before the comparison. The
+ *       {@code GAINED} direction — "a unit nobody installed" — was therefore
+ *       STRUCTURALLY UNREACHABLE against a real home and fired only in the
+ *       synthetic self-test below. And the law was a mutator across 24 graphs.
+ *
+ *       <p>{@code CommandHomeAccess} now classifies {@code home describe}
+ *       READ unless the invocation matched {@code --init}. Re-measured on the
+ *       same fixture: {@code installed/} stays {@code []}, the descriptor still
+ *       reports the unit, and the law reports
+ *       {@code GAINED [intruder] — present in the home, and no installed/
+ *       record names them}. The skipped homes are counted and NAMED rather
+ *       than silently dropped.</li>
  *   <li><b>A run that finds zero homes FAILS.</b> An instrument reporting
  *       success because it could not look is the failure mode this epic keeps
  *       paying for, and it is the one this law exists to close.</li>
@@ -179,6 +200,17 @@ public final class HomeMembershipLaw {
             List<String> checked = new ArrayList<>();
             int unitsObserved = 0;
             int descriptorDrift = 0;
+            // How many checked homes had ANYTHING for the three readers to
+            // disagree about. Review of #241, M5: `homesChecked=1,
+            // unitsObserved=0` satisfies the zero-homes guard and shipped
+            // green on `project-manifest`, whose home is genuinely empty. That
+            // is a WEAK run, not a wrong one -- an empty home that is still
+            // empty is a real post-condition, and the self-test is what carries
+            // the readers' sensitivity either way. It is reported as a number
+            // rather than turned into a failure, because reddening a graph for
+            // installing nothing would be inventing a defect. HIS-6 gets the
+            // number for the sweep.
+            int homesWithMembership = 0;
 
             for (Path home : candidates) {
                 Run described = describe(cli, home);
@@ -192,6 +224,9 @@ public final class HomeMembershipLaw {
 
                 Membership m = membership(home, described.out);
                 unitsObserved += m.disk().size();
+                if (!m.disk().isEmpty() || !m.records().isEmpty() || !m.lock().isEmpty()) {
+                    homesWithMembership++;
+                }
                 log.add(m.report(home));
                 violations.addAll(m.violations(home));
 
@@ -231,6 +266,8 @@ public final class HomeMembershipLaw {
                     .metric("unitsObserved", unitsObserved)
                     .metric("homesOutsideSandbox", outsideSandbox.size())
                     .metric("descriptorDrift", descriptorDrift)
+                    .metric("homesWithMembership", homesWithMembership)
+                    .publish("homesWithMembership", String.valueOf(homesWithMembership))
                     .publish("homesChecked", String.join(",", checked))
                     .publish("unitsObserved", String.valueOf(unitsObserved))
                     .log(String.join("\n", log)
@@ -482,7 +519,19 @@ public final class HomeMembershipLaw {
             throws IOException {
         for (String d : disk) Files.createDirectories(home.resolve("skills").resolve(d));
         Path installed = Files.createDirectories(home.resolve("installed"));
-        for (String r : records) Files.writeString(installed.resolve(r + ".json"), "{}");
+        for (String r : records) {
+            Files.writeString(installed.resolve(r + ".json"), "{}");
+            // AND the projections record beside it, because a LIVE unit has
+            // both. Review of #241, M3: without this the only
+            // .projections.json in the whole lane was the orphan the "lost"
+            // fixture plants -- the one file for which reading it under the
+            // wrong name still lands in the right bucket -- so V4a measured a
+            // fixture that could not express the defect it was probing. That
+            // is mechanism B occurring inside the instrument built to count
+            // mechanism B. A real home has one of these beside every live
+            // unit, and under V4a's mutation each becomes a spurious LOST.
+            Files.writeString(installed.resolve(r + ".projections.json"), "{}");
+        }
         StringBuilder toml = new StringBuilder("schema_version = 1\n");
         for (String l : lock) toml.append("\n[[units]]\nname = \"").append(l).append("\"\n");
         Files.writeString(home.resolve("units.lock.toml"), toml.toString());

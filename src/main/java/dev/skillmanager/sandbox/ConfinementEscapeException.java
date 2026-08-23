@@ -66,6 +66,43 @@ public final class ConfinementEscapeException extends IOException {
                 + Confinement.ROOT_ENV + " if this process is not meant to be confined";
     }
 
+    /**
+     * The refusal for a confined process whose STORE or AGENT roots resolve
+     * outside its declared root — as distinct from one whose TARGET does.
+     *
+     * <p>Its own factory rather than a fifth argument, because the two say
+     * different things to an operator: this one means "the environment you set
+     * does not match the confinement you declared", and the remedy is to fix a
+     * variable, not to pass {@code --project-dir}. Review of #241, H2.
+     */
+    public static ConfinementEscapeException forAxes(String verb, Confinement confinement) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(verb).append(" refused — this process declared a confinement and ")
+          .append(confinement.enforceableEscapes().size())
+          .append(" of the roots that decide where it writes resolve outside it.\n")
+          .append("  confinement root:  ").append(confinement.root()).append("\n")
+          .append("  escaped axes:      ")
+          .append(String.join(", ", confinement.enforceableEscapedAxes())).append("\n")
+          .append(confinement.describe()).append("\n")
+          .append("  point every axis above inside the confinement root, or clear $")
+          .append(Confinement.ROOT_ENV).append(" if this process is not meant to be confined");
+        // An UNSET axis is listed too, and that is the point: it resolves to
+        // the operator's real ~/.claude eventually. SmEnv's class comment
+        // records the cost the last time — five units projected into all three
+        // real agent homes, eighteen symlinks repaired by hand.
+        return new ConfinementEscapeException(sb.toString(), confinement);
+    }
+
+    private ConfinementEscapeException(String message, Confinement confinement) {
+        super(message);
+        this.target = null;
+        this.origin = FROM_AXES;
+        this.confinement = confinement;
+    }
+
+    /** {@link #origin()} for a refusal about the environment rather than a target. */
+    public static final String FROM_AXES = "the declared confinement's own axes";
+
     public Path target() { return target; }
 
     public String origin() { return origin; }

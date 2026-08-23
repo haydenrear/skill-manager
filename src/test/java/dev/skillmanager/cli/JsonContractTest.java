@@ -24,6 +24,7 @@ import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static dev.skillmanager._lib.test.Tests.assertContains;
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
 import static dev.skillmanager._lib.test.Tests.assertTrue;
@@ -102,6 +103,20 @@ public final class JsonContractTest {
 
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("JsonContractTest");
+
+        // The typed discriminator, asserted rather than assumed. Review of
+        // #241, M1: `confinement_escape` was reachable, documented and
+        // asserted NOWHERE, so a change that dropped the classify() row would
+        // have left every consumer branching on an English sentence with every
+        // existing test still green.
+        suite.test("a confinement escape carries its typed code on stdout", () -> {
+            Path sandbox = Files.createTempDirectory("json-confinement-");
+            Invocation run = invokeIn(sandbox, List.of("project", "resolve", "--skip-gateway"));
+            assertEquals(14, run.exitCode(), "the confinement escape's own exit code");
+            assertContains(run.stdout(), "\"error\"", "a --json failure emits a document");
+            assertContains(run.stdout(), "confinement_escape",
+                    "and the document names the TYPE, not a sentence");
+        });
 
         // ---------------------------------------------- the enumeration itself
         suite.test("every --json command is covered by this guard's table", () -> {
@@ -583,9 +598,11 @@ public final class JsonContractTest {
         // caused the incident.
         expect("skill-manager project register", Mode.FAILS,
                 "a confined process refuses a project root taken from a CWD outside it");
+        // NO positional. With a name, RemoveCmd takes the by-registry branch and
+        // never calls ProjectRoot at all, so the row passed without reaching
+        // the guard it claims to cover -- review of #241, M1.
         expect("skill-manager project remove", Mode.FAILS,
-                "a confined process refuses a project root taken from a CWD outside it",
-                "no-such-project");
+                "a confined process refuses a project root taken from a CWD outside it");
         expect("skill-manager project resolve", Mode.FAILS,
                 "a confined process refuses a project root taken from a CWD outside it",
                 "--skip-gateway");
