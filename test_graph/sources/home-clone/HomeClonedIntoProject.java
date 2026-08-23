@@ -195,6 +195,68 @@ public class HomeClonedIntoProject {
             }
             boolean theDecoyIsGone = HomeIsolation.decoyIsGone(cloneStore);
 
+            // --- THE CONTROL FOR THE BRANCH THAT WAS ACTUALLY WIDENED -------
+            //
+            // Review of #242. The decoy above is a SYMLINK, and verifyRoots
+            // decides that branch before the regular-file walk runs and without
+            // consulting descent records or byte accounting -- plantDecoy's own
+            // javadoc says so, and that is what makes it a clean gate control.
+            // But the exemption this node added is on the REGULAR-FILE branch.
+            // One branch widened, an oracle added for a different one, and the
+            // descent-record accounting exercised in NEITHER direction.
+            //
+            // What got through: loosen mentionsOnlyRecordedDescent to a
+            // filename check -- the same shape the graph itself first wrote --
+            // and a record carrying one extra unaccounted path passes the walk,
+            // passes the clean verdict, passes the symlink decoy and passes
+            // home clone's own report. Four readers, one wrong answer.
+            //
+            // So the record is tampered the way production's own javadoc names
+            // ("a path smuggled into a timestamp"), BOTH readers are required to
+            // refuse it, and the bytes are restored and the restoration
+            // asserted. clonedAt is free text and usable() checks only the
+            // schema version, so the record stays valid and BELIEVED -- a
+            // malformed one would be refused for being unreadable, which is a
+            // control passing on the wrong branch again.
+            boolean theWalkRefusesAnUnaccountedDescentRecord = false;
+            boolean productionRefusesAnUnaccountedDescentRecord = false;
+            byte[] recordBytes = null;
+            try {
+                recordBytes = HomeIsolation.tamperDescentRecord(cloneStore, fixture);
+                List<String> tamperedRefs = HomeCloneSupport.referencesTo(cloneStore, fixture);
+                theWalkRefusesAnUnaccountedDescentRecord = tamperedRefs.stream()
+                        .anyMatch(r -> r.endsWith(" " + HomeIsolation.DESCENT_RECORD)
+                                && !r.startsWith(descentPrefix));
+                ProcessRecord verifyTampered = HomeCloneSupport.sm(ctx, "home-verify-tampered",
+                        cloneStoreRaw, "home", "verify", "--home", cloneStoreRaw,
+                        "--against", fixture);
+                productionRefusesAnUnaccountedDescentRecord = verifyTampered.exitCode() != 0
+                        && HomeIsolation.verdictRefusesNaming(
+                                HomeCloneSupport.log(ctx, "home-verify-tampered"),
+                                HomeIsolation.DESCENT_RECORD);
+            } finally {
+                HomeIsolation.restoreDescentRecord(cloneStore, recordBytes);
+            }
+            boolean theDescentRecordIsRestored =
+                    HomeIsolation.descentRecordMatches(cloneStore, recordBytes);
+
+            // --- and the two readers must AGREE, which is what makes the
+            // --- independent walk's assertion able to move at all ------------
+            //
+            // V1 of the vacuity probes measured that
+            // independent_scan_finds_no_owned_surface_naming_the_source CANNOT
+            // redden when production's exemption is removed: the clone still
+            // writes the record, this walk still exempts it, the bytes are
+            // identical either way. That is this ticket's own defect, and it
+            // left the acceptance criterion satisfied only at NODE level.
+            //
+            // This assertion converts it to a per-assertion one. Under V1 the
+            // walk says clean and production says leak, so the equality is
+            // false and THIS reddens -- naming the disagreement rather than
+            // deducing it from two separate reds.
+            boolean theTwoReadersAgreeAboutThisClone =
+                    leaks.isEmpty() == productionAgreesNoPathNamesTheSource;
+
             // --- the source home is untouched by the clone -----------------
             String afterDigest = HomeCloneSupport.treeDigest(fixtureHome);
             boolean sourceUnchangedByCloning = afterDigest.equals(sourceDigest);
@@ -203,6 +265,9 @@ public class HomeClonedIntoProject {
                     && theCloneRecordsItsDescentAndTheScanCountsIt
                     && productionAgreesNoPathNamesTheSource
                     && productionRefusesAPlantedPathIntoTheSource && theDecoyIsGone
+                    && theWalkRefusesAnUnaccountedDescentRecord
+                    && productionRefusesAnUnaccountedDescentRecord
+                    && theDescentRecordIsRestored && theTwoReadersAgreeAboutThisClone
                     && authoredSurvivedByteForByte && toleratedReferencesAreCounted
                     && ledgerIsTokenizedNotSubstituted && inHomeLinksAreRelative && relativeLinksResolveInsideTheClone
                     && sourceUnchangedByCloning;
@@ -225,7 +290,14 @@ public class HomeClonedIntoProject {
                                     + productionAgreesNoPathNamesTheSource
                                     + " productionRefusesAPlantedPathIntoTheSource="
                                     + productionRefusesAPlantedPathIntoTheSource
-                                    + " theDecoyIsGone=" + theDecoyIsGone))
+                                    + " theDecoyIsGone=" + theDecoyIsGone
+                                    + " theWalkRefusesAnUnaccountedDescentRecord="
+                                    + theWalkRefusesAnUnaccountedDescentRecord
+                                    + " productionRefusesAnUnaccountedDescentRecord="
+                                    + productionRefusesAnUnaccountedDescentRecord
+                                    + " theDescentRecordIsRestored=" + theDescentRecordIsRestored
+                                    + " theTwoReadersAgreeAboutThisClone="
+                                    + theTwoReadersAgreeAboutThisClone))
                     .process(clone).process(verify)
                     .assertion("home_clone_exits_zero", cloneSucceeded)
                     .assertion("home_clone_reports_clean", cloneReportsClean)
@@ -238,6 +310,13 @@ public class HomeClonedIntoProject {
                     .assertion("production_still_refuses_a_planted_path_into_the_source",
                             productionRefusesAPlantedPathIntoTheSource)
                     .assertion("the_planted_decoy_is_removed_from_the_clone", theDecoyIsGone)
+                    .assertion("the_walk_refuses_a_descent_record_carrying_an_unaccounted_path",
+                            theWalkRefusesAnUnaccountedDescentRecord)
+                    .assertion("production_refuses_a_descent_record_carrying_an_unaccounted_path",
+                            productionRefusesAnUnaccountedDescentRecord)
+                    .assertion("the_tampered_descent_record_is_restored", theDescentRecordIsRestored)
+                    .assertion("the_walk_and_production_agree_about_this_clone",
+                            theTwoReadersAgreeAboutThisClone)
                     .assertion("authored_content_survives_the_clone_byte_for_byte",
                             authoredSurvivedByteForByte)
                     .assertion("tolerated_content_references_are_counted_in_the_report",

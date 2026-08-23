@@ -368,7 +368,7 @@ final class HomeCloneSupport {
         try {
             if (Files.size(current) > 4L * 1024 * 1024) return;
             String text = new String(Files.readAllBytes(current), StandardCharsets.UTF_8);
-            if (text.contains(needle)) hits.add(classOf(rel) + " " + rel);
+            if (text.contains(needle)) hits.add(classOf(rel, current, needle) + " " + rel);
         } catch (IOException ignored) {
             // unreadable file; nothing to assert about its bytes
         }
@@ -379,13 +379,31 @@ final class HomeCloneSupport {
      * descent record AT THE SCANNED ROOT is reported as {@link #DESCENT_SURFACE}
      * rather than as the {@code STATE} file it otherwise is.
      *
-     * <p>Root-relative depth is the whole of the test — {@code rel} has exactly
-     * one name component. A record nested anywhere below falls through to
-     * {@link #surfaceOf} and stays a leak.
+     * <h2>Two conditions, and the second one was missing</h2>
+     *
+     * <p><b>Path.</b> Root-relative depth is half the test — {@code rel} must be
+     * exactly the record's name, one component deep. A record nested anywhere
+     * below falls through to {@link #surfaceOf} and stays a leak.
+     *
+     * <p><b>Accounting.</b> The first version of this shipped with the path test
+     * ALONE, deferring the byte accounting to production on the grounds that the
+     * caller's cross-check carried it. Review of #242 measured that it did not:
+     * the cross-check is a SYMLINK decoy, and {@code verifyRoots} decides that
+     * branch before the regular-file walk runs and without consulting descent at
+     * all. So the widened branch had no oracle in either direction, and a record
+     * carrying one extra unaccounted path would have passed every reader.
+     *
+     * <p>{@link HomeIsolation#mentionsOnlyRecordedDescent} is therefore asked
+     * here too. It is the graph's OWN derivation of the rule, not production's
+     * imported — see that method for why a second implementation is correct in
+     * this one place — and the caller asserts the two AGREE on every run.
      */
-    static String classOf(String rel) {
+    static String classOf(String rel, Path file, String needle) {
         String n = rel.replace('\\', '/');
-        if (HomeIsolation.DESCENT_RECORD.equals(n)) return DESCENT_SURFACE;
+        if (HomeIsolation.DESCENT_RECORD.equals(n)
+                && HomeIsolation.mentionsOnlyRecordedDescent(file, needle)) {
+            return DESCENT_SURFACE;
+        }
         return surfaceOf(rel);
     }
 

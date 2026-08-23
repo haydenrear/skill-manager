@@ -53,11 +53,37 @@ import java.util.List;
  *
  * <p>So {@code verify} finds nothing to report, prints no {@code complete it
  * with:} line, and the two assertions became mutually exclusive: the one this
- * node was written to fail on can only pass while the other one fails. The
- * claim itself is not dropped — it moved with the behaviour, to
+ * node was written to fail on can only pass while the other one fails.
+ *
+ * <h2>How far that goes, stated narrowly</h2>
+ *
+ * <p>Review of #242 was right that the first version of this paragraph
+ * over-generalised. It is <b>NOT</b> true that {@code home verify} has stopped
+ * refusing lazy clones. It is true <b>of this fixture</b>: every unresolved
+ * reference here belongs to a cold shim, ARTI-07 replaced those with
+ * self-describing {@code skill-manager:cold-artifact} stubs, and
+ * {@code partitionDeclared} moves what is left out of the failure lists. A lazy
+ * clone whose unresolved reference is <em>not</em> a declared artifact's output
+ * still gets the refusal and still gets the remedy — and two live unit tests
+ * depend on exactly that general case:
+ * {@code ChildHomeShimIsolationTest:349} parses the remedy and runs it, and
+ * {@code ArtifactBuildTest:252} asserts the {@code complete it with:} line.
+ *
+ * <p>The remedy claim is therefore not dropped from the tree. It survives in
+ * four places: those two unit tests, {@code common/HomeFixpointLaw.java:224}
+ * (which parses and RUNS the remedy over every home in 24 graphs), and
+ * {@code onboarding/OnboardingDocsAndScriptsStatic.java:297}. And the claim
+ * about a COLD ARTIFACT specifically moved with the behaviour, to
  * {@code cold.artifact.refusal.names.build}, which EXECUTES a cold shim and
  * requires its refusal to name both the artifact id and the {@code build}
- * command. That node was written red for the same ticket and is in this graph.
+ * command — written red for the same ticket, in this graph, and green now.
+ *
+ * <p><b>Declared, because it is a real loss:</b> this GRAPH's own remedy-text
+ * coverage is now <b>zero</b>. Nothing in {@code artifact-dag} asserts the
+ * {@code complete it with:} string any more. That is acceptable only because
+ * `HomeFixpointLaw` runs in this graph too and would fail if a remedy it pasted
+ * back stopped working — but it is coverage moved out of the graph that owns
+ * the artifact DAG, and a reviewer should decide that rather than discover it.
  *
  * <p><b>Recorded as HIS-17's, and it is not HIS-17's defect.</b> Issue #238
  * predicted this node was red from a verify-TEXT drift caused by HIS-12/HIS-14's
@@ -129,29 +155,39 @@ public class LazyCloneDeclaresWithoutBuilding {
             List<String> cloneTrees = ArtifactDagSupport.cacheTrees(clone);
             boolean the_clone_carries_no_built_cache_tree = cloneTrees.isEmpty();
 
-            // --against, so that the SOURCE-REFERENCE half of the check runs.
+            // TWO verify runs, because they answer two different questions and
+            // one exit code cannot carry both.
             //
-            // HIS-17. Without it production prints "NOT CHECKED: whether a
-            // reference back to the home this one was copied from survives" and
-            // skips exactly the half every clone in this repository now
-            // exercises: HIS-10 (#227) made `home clone` record its descent in
-            // <clone>/home.provenance.json, which names the source home on
-            // purpose, and exempts that one file from the isolation rule under
-            // byte accounting. This node clones a home on every run and was
-            // asking production the weaker question.
-            ProcessRecord verify = ArtifactDagSupport.sm(ctx, "home-verify-clone", clone,
-                    "home", "verify", "--home", clone.toString(),
-                    "--against", store.toString());
-            String verifyOut = ArtifactDagSupport.log(ctx, verify);
+            // The BARE run is ARTI-07's, unchanged: does a home that declares
+            // artifacts it has not built verify as NORMAL? Its subject is the
+            // provisioning half. Review of #242 caught the first version of
+            // this node folding `--against` into that single call, so ARTI-07's
+            // exit-code assertion would have started carrying isolation
+            // findings -- the exact misattribution this ticket refuses two
+            // files away, where the home-clone cross-check deliberately does
+            // NOT read the exit code for the mirror-image reason.
+            ProcessRecord verifyBare = ArtifactDagSupport.sm(ctx, "home-verify-clone", clone,
+                    "home", "verify", "--home", clone.toString());
 
             // SHIPPED, and now measurably so: ARTI-07's stated outcome. A home
             // that DECLARES artifacts it has not built verifies as normal
-            // rather than as damage.
-            //
-            // This assertion was red on purpose and is green. See the class
-            // javadoc for what that cost the assertion below it.
+            // rather than as damage. Red on purpose when written; green now.
+            // See the class javadoc for what that cost the assertion beside it.
             boolean home_verify_accepts_a_declared_but_unbuilt_home_as_normal =
-                    verify.exitCode() == 0;
+                    verifyBare.exitCode() == 0;
+
+            // The --against run is HIS-17's, and its subject is ISOLATION.
+            // Without the flag production prints "NOT CHECKED: whether a
+            // reference back to the home this one was copied from survives" and
+            // skips exactly the half every clone in this repository now
+            // exercises: HIS-10 (#227) made `home clone` record its descent in
+            // <clone>/home.provenance.json, which names the source on purpose.
+            // This node clones a home on every run and was asking the weaker
+            // question.
+            ProcessRecord verify = ArtifactDagSupport.sm(ctx, "home-verify-isolation", clone,
+                    "home", "verify", "--home", clone.toString(),
+                    "--against", store.toString());
+            String verifyOut = ArtifactDagSupport.log(ctx, verify);
 
             // --- PRODUCTION'S ISOLATION VERDICT, and the control for it -----
             //
@@ -230,7 +266,8 @@ public class LazyCloneDeclaresWithoutBuilding {
                                     + home_verify_accepts_a_declared_but_unbuilt_home_as_normal
                                     + " | cloneExit=" + cloned.exitCode()
                                     + " listExit=" + list.exitCode()
-                                    + " verifyExit=" + verify.exitCode()
+                                    + " verifyBareExit=" + verifyBare.exitCode()
+                                    + " verifyAgainstExit=" + verify.exitCode()
                                     + " the_clone_records_the_descent_that_makes_it_a_clone="
                                     + the_clone_records_the_descent_that_makes_it_a_clone
                                     + " production_agrees_no_path_in_the_clone_names_the_source="
@@ -243,7 +280,7 @@ public class LazyCloneDeclaresWithoutBuilding {
                                     + " declaredIds=" + ids);
             return result
                     .process(installA).process(installB).process(cloned)
-                    .process(list).process(verify)
+                    .process(list).process(verifyBare).process(verify)
                     .assertion("both_fixtures_installed", both_fixtures_installed)
                     .assertion("the_source_home_holds_built_cache_trees",
                             the_source_home_holds_built_cache_trees)
@@ -268,7 +305,8 @@ public class LazyCloneDeclaresWithoutBuilding {
                             the_planted_decoy_is_removed_from_the_clone)
                     .metric("declaredArtifacts", ids.size())
                     .metric("cloneCacheTrees", cloneTrees.size())
-                    .metric("verifyExitCode", verify.exitCode())
+                    .metric("verifyBareExitCode", verifyBare.exitCode())
+                    .metric("verifyAgainstExitCode", verify.exitCode())
                     .publish("home", store.toString())
                     .publish("cloneHome", clone.toString());
         });

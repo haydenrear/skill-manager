@@ -1320,13 +1320,25 @@ validationGraph {
      * interesting edge runs between. See ArtifactDagSupport's javadoc for what
      * that costs in coverage, stated rather than hidden.
      *
-     * RUNNING IT WHILE IT IS RED. Three assertions describe ARTI-07 (#108) and
-     * ARTI-08 (#109), which are not merged into this branch: a lazy clone still
-     * refuses `home verify`, a cold shim still fails with a raw shell error
-     * naming no build, and an uninstall still leaves the removed unit's cache
-     * tree on disk. Each is measured, documented in its node's javadoc, and
-     * left asserted — a graph that dropped them would report those tickets
-     * done. A plain run therefore stops at the first one; for the whole sweep:
+     * RUNNING IT WHILE IT IS RED. This paragraph used to say three assertions
+     * describe ARTI-07 (#108) and ARTI-08 (#109) and that neither is merged.
+     * Re-measured 2026-08-23 (HIS-17 / #238), that is STALE — which is worth
+     * noticing in the comment block of the ticket whose thesis is that text
+     * pinned to another component goes stale silently:
+     *
+     *   ARTI-07 HAS LANDED. `home verify` exits 0 on a lazy clone and prints
+     *   "every reference resolves"; a cold shim is a self-describing stub that
+     *   names `build <id>` and exits 86. Both nodes are GREEN
+     *   (lazy.clone.declares.without.building, cold.artifact.refusal.names.build).
+     *
+     *   ARTI-08 HAS PARTLY LANDED. The removed unit's cache tree IS pruned now.
+     *   What remains red in uninstall.prunes.the.subgraph is the census still
+     *   naming six of the removed unit's artifact ids, and artifacts.lock.toml
+     *   not returning to its pre-install bytes. DEF-066.
+     *
+     * The surviving red is measured, documented in its node's javadoc, and left
+     * asserted — a graph that dropped it would report that ticket done. A plain
+     * run therefore stops at it; for the whole sweep:
      *
      *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 \
      *     python3 skills/test_graph/scripts/run.py artifact-dag

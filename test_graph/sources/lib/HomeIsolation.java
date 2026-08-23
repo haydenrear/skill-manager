@@ -2,6 +2,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The ONE place a test-graph node asks <em>"does anything in this home name
@@ -50,6 +52,43 @@ import java.nio.file.Path;
  * it, and removes it again. If the sentence in {@link #ISOLATION_VERDICT} ever
  * moves, that assertion goes red the same day rather than the clean half going
  * quietly green forever.
+ *
+ * <h2>TWO controls, because one of them covers the wrong branch</h2>
+ *
+ * <p>The symlink decoy alone was shipped first and <b>was not enough</b>, which
+ * review of #242 caught. The walk's exemption widened the REGULAR-FILE branch —
+ * "this filename at this depth is not a leak" — and the symlink decoy is
+ * deliberately on a branch {@code verifyRoots} decides <em>before</em> the
+ * regular-file walk runs and <em>without</em> consulting descent records or byte
+ * accounting. One branch widened, an oracle added for a different one, and the
+ * descent-record accounting exercised in neither direction.
+ *
+ * <p>The scenario that gets through: {@code mentionsOnlyRecordedDescent} is
+ * loosened to a filename check — <em>the same shape the graph itself wrote</em> —
+ * and a record carrying one extra unaccounted path passes the walk, passes the
+ * clean verdict, passes the symlink decoy, and passes {@code home clone}'s own
+ * report. Four readers, one wrong answer.
+ *
+ * <p>{@link #tamperDescentRecord} closes it. Every run also smuggles the other
+ * home's path into the record's timestamp — production's own documented failure
+ * case, "a path smuggled into a timestamp" — and requires BOTH readers to refuse
+ * it, then restores the record byte-for-byte and asserts the restoration.
+ *
+ * <h2>What happens if a plant ever survives: the law LAUNDERS it</h2>
+ *
+ * <p>Stated because "removal is asserted" is not the whole story, and a reader
+ * should not have to discover this the hard way. If a decoy ever outlived a
+ * crashed node, {@code common/HomeFixpointLaw.java} would not report it. Bare
+ * {@code home verify} refuses the link as {@code FOREIGN_HOME} and prints
+ * {@code complete it with: … sync --force-scripts}; the law PARSES that remedy
+ * and RUNS it; {@code CliShimPruner} deletes the decoy; re-verify exits 0; the
+ * law records {@code homesRepaired} and PASSES.
+ *
+ * <p>So the epic's own post-condition would silently delete the evidence — and
+ * re-provision the clone's toolchains inside the graph while doing it, which is
+ * the ~90 s pruner behaviour {@code GOAL-one-home-one-answer}'s clause 3 exists
+ * to stop. That is why removal is asserted in the planting node itself, in a
+ * {@code finally}, rather than left to anything downstream to notice.
  *
  * <h2>Why not the exit code</h2>
  *
@@ -194,4 +233,162 @@ final class HomeIsolation {
             return false;
         }
     }
+
+    /**
+     * The graph's OWN byte accounting for the descent record — production's
+     * {@code HomeProvenance.mentionsOnlyRecordedDescent} rule, re-derived here.
+     *
+     * <h2>Why a second implementation is right here and wrong elsewhere</h2>
+     *
+     * <p>This ticket exists because one rule had four spellings. Adding a fifth
+     * needs an argument, and it is the same argument
+     * {@code HomeCloneSupport.surfaceOf} already makes for re-deriving
+     * {@code HomeCloner.classify}: <b>the graph has to be able to disagree.</b>
+     * Importing production's answer would make the walk agree with production by
+     * construction, and a walk that cannot disagree cannot catch production
+     * being wrong — which is the entire reason the private walks were kept
+     * rather than deleted.
+     *
+     * <p>What keeps the two from drifting apart silently is not that there is
+     * one of them. It is that the caller asserts they AGREE, on every run, over
+     * the same tree, in both directions. A divergence is a red on the day it
+     * appears.
+     *
+     * <p>The rule: every raw occurrence of {@code needle} in the record's bytes
+     * must be accounted for by the parsed {@code clonedFrom} and
+     * {@code parentStores} values. One occurrence anywhere else — a field a
+     * future version adds, a path smuggled into a timestamp — and this is false
+     * and the record is a leak like any other file.
+     *
+     * @return false when the record is absent, unreadable, or mentions
+     *         {@code needle} anywhere the recorded descent does not account for
+     */
+    static boolean mentionsOnlyRecordedDescent(Path record, String needle) {
+        if (record == null || needle == null || needle.isBlank()) return false;
+        String text;
+        try {
+            text = Files.readString(record);
+        } catch (IOException unreadable) {
+            return false;
+        }
+        int total = countOccurrences(text, needle);
+        if (total == 0) return false;
+        int accounted = countOccurrences(jsonStringField(text, "clonedFrom"), needle);
+        for (String store : jsonStringArrayField(text, "parentStores")) {
+            accounted += countOccurrences(store, needle);
+        }
+        return accounted == total;
+    }
+
+    static int countOccurrences(String haystack, String needle) {
+        if (haystack == null || haystack.isEmpty()) return 0;
+        int count = 0;
+        for (int at = haystack.indexOf(needle); at >= 0;
+             at = haystack.indexOf(needle, at + needle.length())) {
+            count++;
+        }
+        return count;
+    }
+
+    /** {@code "key" : "value"} out of a flat JSON object, tolerating spacing. */
+    static String jsonStringField(String json, String key) {
+        int at = json.indexOf('"' + key + '"');
+        if (at < 0) return "";
+        int colon = json.indexOf(':', at);
+        if (colon < 0) return "";
+        int open = json.indexOf('"', colon);
+        if (open < 0) return "";
+        return unescapeUntilQuote(json, open + 1);
+    }
+
+    /** {@code "key" : [ "a", "b" ]} out of a flat JSON object. */
+    static List<String> jsonStringArrayField(String json, String key) {
+        List<String> out = new ArrayList<>();
+        int at = json.indexOf('"' + key + '"');
+        if (at < 0) return out;
+        int open = json.indexOf('[', at);
+        int close = json.indexOf(']', open + 1);
+        if (open < 0 || close < 0) return out;
+        String body = json.substring(open + 1, close);
+        for (int i = body.indexOf('"'); i >= 0; i = body.indexOf('"', i + 1)) {
+            String value = unescapeUntilQuote(body, i + 1);
+            out.add(value);
+            i += value.length() + 1;
+        }
+        return out;
+    }
+
+    private static String unescapeUntilQuote(String s, int from) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = from; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) { sb.append(s.charAt(++i)); continue; }
+            if (c == '"') break;
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Smuggle {@code needle} into the descent record's TIMESTAMP, and return the
+     * original bytes so the caller can put them back.
+     *
+     * <h2>Why the timestamp, and not a new field</h2>
+     *
+     * <p>Production names this exact case in its own javadoc — "a field a future
+     * version adds, <b>a path smuggled into a timestamp</b>" — so it is the case
+     * the rule was written for rather than one invented for a test.
+     *
+     * <p>It is also the only tamper that leaves the record fully VALID:
+     * {@code clonedAt} is a free {@code String}, {@code Descent.usable()} checks
+     * only the schema version, so the record still parses and is still believed.
+     * An unknown extra field, or malformed JSON, would make
+     * {@code HomeProvenance.read} return null and production would refuse for
+     * being unreadable rather than for being unaccounted — a control that passes
+     * on the wrong branch, which is the failure this whole class is about.
+     *
+     * @throws IOException if the record is absent, or if the tamper did not
+     *         raise the occurrence count — a control that changed nothing must
+     *         fail loudly rather than be asserted around
+     */
+    static byte[] tamperDescentRecord(Path homeRoot, String needle) throws IOException {
+        Path record = homeRoot.resolve(DESCENT_RECORD);
+        byte[] original = Files.readAllBytes(record);
+        String text = new String(original, java.nio.charset.StandardCharsets.UTF_8);
+        int before = countOccurrences(text, needle);
+        int at = text.indexOf('"' + CLONED_AT + '"');
+        if (at < 0) {
+            throw new IOException("no " + CLONED_AT + " field to tamper with in " + record);
+        }
+        int open = text.indexOf('"', text.indexOf(':', at));
+        int close = text.indexOf('"', open + 1);
+        if (open < 0 || close < 0) throw new IOException("malformed " + CLONED_AT + " in " + record);
+        String tampered = text.substring(0, close) + " " + needle + text.substring(close);
+        if (countOccurrences(tampered, needle) != before + 1) {
+            throw new IOException("the tamper did not add an occurrence of the needle; the "
+                    + "control would test nothing: " + record);
+        }
+        Files.writeString(record, tampered);
+        return original;
+    }
+
+    /** Put the record back exactly as it was. Call from a {@code finally}. */
+    static void restoreDescentRecord(Path homeRoot, byte[] original) throws IOException {
+        if (original == null) return;
+        Files.write(homeRoot.resolve(DESCENT_RECORD), original);
+    }
+
+    /** True when the record is byte-for-byte what {@code original} held. */
+    static boolean descentRecordMatches(Path homeRoot, byte[] original) {
+        if (original == null) return false;
+        try {
+            return java.util.Arrays.equals(
+                    Files.readAllBytes(homeRoot.resolve(DESCENT_RECORD)), original);
+        } catch (IOException unreadable) {
+            return false;
+        }
+    }
+
+    /** The record's timestamp field — the one free-text field a tamper can hide in. */
+    private static final String CLONED_AT = "clonedAt";
 }
