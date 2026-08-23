@@ -115,19 +115,27 @@ public final class GitIgnoreRules {
     /**
      * The rules declared by the unit rooted at {@code unitRoot}.
      *
-     * <p>A directory that is not a git repository at all still gets its
-     * {@code .gitignore} honoured, with an empty tracked set: nothing is
-     * committed there, so nothing can be un-ignored by being committed. A
-     * directory with a {@code .git} whose index will not parse gets
-     * {@link #NONE}.
+     * <p><b>NO READABLE INDEX MEANS NOTHING IS IGNORED.</b> One rule for three
+     * cases — no {@code .git} at all, a {@code .git} with no {@code index} yet,
+     * and an {@code index} that will not parse — because they are one situation:
+     * the index is what rescues a path the declaration would hide, and without
+     * it there is no rescue to apply. Reading the declaration anyway would hide
+     * committed content on the evidence of a file that is not there, which is
+     * the opposite of failing towards visibility.
+     *
+     * <p>Measured before choosing it: the only units in the operator's root
+     * store with a {@code .gitignore} and no repository are {@code slm-agent}
+     * and {@code tracer-agent}, whose declarations name {@code __pycache__/},
+     * {@code *.pyc}, {@code .pytest_cache/} — all of them already
+     * {@link Rederivable}'s — and {@code .DS_Store}. The rule costs one
+     * {@code .DS_Store} across the whole store, and buys a sentence with no
+     * exceptions in it.
      */
     public static GitIgnoreRules forUnit(Path unitRoot) {
         if (unitRoot == null || !Files.isDirectory(unitRoot, LinkOption.NOFOLLOW_LINKS)) {
             return NONE;
         }
-        Path gitDir = gitDirOf(unitRoot);
-        if (gitDir == null) return new GitIgnoreRules(unitRoot, new TreeSet<>());
-        TreeSet<String> tracked = readIndex(gitDir);
+        TreeSet<String> tracked = readIndex(gitDirOf(unitRoot));
         if (tracked == null) return NONE;
         return new GitIgnoreRules(unitRoot, tracked);
     }
@@ -274,9 +282,13 @@ public final class GitIgnoreRules {
      * be its own defect.
      */
     private static TreeSet<String> readIndex(Path gitDir) {
+        if (gitDir == null) return null;
         Path index = gitDir.resolve("index");
-        // A repository with no index yet (freshly `git init`ed) tracks nothing.
-        if (!Files.isRegularFile(index)) return new TreeSet<>();
+        // NOT an empty set. A repository with no index yet tracks nothing YET,
+        // and treating that as "nothing is tracked" makes the declaration
+        // authoritative on the strength of a missing file: measured, a
+        // committed file became IGNORED after `rm .git/index`.
+        if (!Files.isRegularFile(index)) return null;
         try {
             DirCache cache = DirCache.read(index.toFile(), FS.DETECTED);
             TreeSet<String> paths = new TreeSet<>();

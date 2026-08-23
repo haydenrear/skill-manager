@@ -110,9 +110,17 @@ public final class ScaffoldedTreeIsNotContentTest {
                         // precondition made this case redden on it instead of
                         // on the digest -- vacuity mechanism A, caught by
                         // probe V1 on the first run and moved out.
-                        assertEquals(ChildHomeMaterializer.treeDigest(f.sourceUnit),
-                                ChildHomeMaterializer.treeDigest(f.childUnit),
-                                "the child copy's digest matches the store's across the "
+                        // Asked at the DRIFT REPORT's own scope -- entryDigests
+                        // with .git excluded -- because that is the record this
+                        // ticket exists to shrink, and because a whole-tree
+                        // digest over two freshly copied .git directories would
+                        // be asserting git's bookkeeping instead of the claim.
+                        assertEquals(
+                                ChildHomeMaterializer.entryDigests(f.sourceUnit,
+                                        java.util.Set.of(".git")),
+                                ChildHomeMaterializer.entryDigests(f.childUnit,
+                                        java.util.Set.of(".git")),
+                                "the child copy's per-entry digests match the store's across the "
                                         + "dereference, so nothing downstream reports drift");
                     }
                 })
@@ -190,8 +198,10 @@ public final class ScaffoldedTreeIsNotContentTest {
                             assertTrue(Files.isRegularFile(materialized.resolve("generated.txt")),
                                     "with its bytes: a global name list would have hidden these");
                         }
-                        assertFalse(ChildHomeMaterializer.treeDigest(f.sourceUnit)
-                                        .equals(ChildHomeMaterializer.treeDigest(f.childUnit)),
+                        assertFalse(ChildHomeMaterializer.entryDigests(f.sourceUnit,
+                                        java.util.Set.of(".git"))
+                                        .equals(ChildHomeMaterializer.entryDigests(f.childUnit,
+                                                java.util.Set.of(".git"))),
                                 "and the digests DIVERGE — which is what the exclusion prevents "
                                         + "in the case above, so that case is not passing over a "
                                         + "fixture whose digest never moved");
@@ -373,6 +383,41 @@ public final class ScaffoldedTreeIsNotContentTest {
                                 "and the edit is still there");
                     }
                 })
+
+                // ------------------------------------------- no index, no ignoring
+                // Review of #240, MED-3. `readIndex` returned an EMPTY set for a
+                // MISSING index, so the class's own "fails towards visibility"
+                // was true for a corrupt index and false for an absent one: the
+                // declaration became authoritative on the strength of a file
+                // that is not there. Measured in the review — a committed file
+                // became IGNORED after `rm .git/index`.
+                .test("no readable index means NOTHING is ignored — one rule for all three ways "
+                        + "of not having one", () -> {
+                    try (Fixture f = Fixture.declaring("results/\n")) {
+                        Path generated = f.sourceUnit.resolve("results/generated.txt");
+                        Fs.ensureDir(generated.getParent());
+                        Files.writeString(generated, "REGENERATED\n");
+                        assertFalse(ChildHomeMaterializer.entryDigests(f.sourceUnit,
+                                        java.util.Set.of(".git"))
+                                        .containsKey("results/generated.txt"),
+                                "precondition: with an index, the declaration is honoured");
+
+                        Files.delete(f.sourceUnit.resolve(".git/index"));
+                        assertTrue(ChildHomeMaterializer.entryDigests(f.sourceUnit,
+                                        java.util.Set.of(".git"))
+                                        .containsKey("results/generated.txt"),
+                                "with the index gone there is nothing that could rescue a "
+                                        + "committed path from the declaration, so the "
+                                        + "declaration is not read at all");
+
+                        Fs.deleteRecursive(f.sourceUnit.resolve(".git"));
+                        assertTrue(ChildHomeMaterializer.entryDigests(f.sourceUnit,
+                                        java.util.Set.of(".git"))
+                                        .containsKey("results/generated.txt"),
+                                "and a unit with no repository at all is the same situation, not "
+                                        + "a different one");
+                    }
+                })
                 .runAll();
     }
 
@@ -455,8 +500,8 @@ public final class ScaffoldedTreeIsNotContentTest {
                         "regenerated by the scaffolder: " + name + "\n");
                 Files.createSymbolicLink(graph.resolve(name), target.toAbsolutePath());
             }
+            initRepo(consumerUnit);
             if (commit) {
-                git(consumerUnit, "init", "-b", "main", "--quiet");
                 // -f, because the generated block already covers all three and
                 // the real units carry them TRACKED from before the
                 // managed-bindings migration — the measured index stages.
@@ -515,6 +560,7 @@ public final class ScaffoldedTreeIsNotContentTest {
             Files.writeString(unit.resolve("SKILL.md"), "STORE v1\n");
             Files.writeString(graph.resolve(".gitignore"), "sdk/\n");
             Files.createSymbolicLink(graph.resolve("sdk"), target.toAbsolutePath());
+            initRepo(unit);
             return new Fixture(base, parent, child, List.of("sdk"));
         }
 
@@ -532,6 +578,7 @@ public final class ScaffoldedTreeIsNotContentTest {
             Fs.ensureDir(unit);
             Files.writeString(unit.resolve("SKILL.md"), "STORE v1\n");
             Files.writeString(unit.resolve(".gitignore"), unitGitignore);
+            initRepo(unit);
             return new Fixture(base, parent, child, List.of());
         }
 
@@ -558,6 +605,7 @@ public final class ScaffoldedTreeIsNotContentTest {
             Files.writeString(unit.resolve("SKILL.md"), "STORE v1\n");
             Files.writeString(graph.resolve(".gitignore"), "sdk/\n");
             Files.createSymbolicLink(graph.resolve("sdk"), target.toAbsolutePath());
+            initRepo(unit);
             return new Fixture(base, parent, child, List.of("sdk"));
         }
 
@@ -631,6 +679,22 @@ public final class ScaffoldedTreeIsNotContentTest {
     }
 
     // ------------------------------------------------------------------- git
+
+    /**
+     * Give a fixture unit an index, because {@link GitIgnoreRules} refuses to
+     * read a declaration without one — no readable index means nothing is
+     * ignored, deliberately, so a fixture with no repository would test nothing.
+     *
+     * <p>Only {@code SKILL.md} is added. Nothing under {@code test_graph/} or
+     * {@code results/} is tracked in any fixture here except
+     * {@link Fixture#committedLinks}, so every case below turns on the
+     * DECLARATION rather than on what happens to be in the index — which is
+     * what those cases claim to be about.
+     */
+    private static void initRepo(Path unit) throws Exception {
+        git(unit, "init", "-b", "main", "--quiet");
+        git(unit, "add", "SKILL.md");
+    }
 
     private static void git(Path dir, String... args) throws Exception {
         List<String> argv = new ArrayList<>();
