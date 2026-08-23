@@ -3179,3 +3179,124 @@ findings:
       authoritative is the owner's call, not a ticket agent's.
     candidate_owner: HIS-6
     status: open
+
+  - id: DEF-063
+    found_by: HIS-17 (#238), sweeping for private copies of the isolation rule
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      HomeCloneSupport.surfaceOf mirrors HomeCloner.classify but omits its
+      PROVISIONED_SEGMENTS (.venv, node_modules, site-packages, __pycache__),
+      so a provisioned subtree under skills/ classifies CONTENT in the graph
+      and PROVISIONED in production.
+    detail: >
+      Two readers of one classification, which is the same shape as the defect
+      HIS-17 fixed one level up. Today it is latent: home-clone's fixture plants
+      no such path, so the two never disagree and nothing asserts that they
+      agree. A fixture that ever installs a unit carrying a .venv would make the
+      graph tolerate (CONTENT) a reference production refuses (PROVISIONED).
+    what_was_done: >
+      Recorded, not changed. The node now cross-checks production's isolation
+      VERDICT on every run, so a disagreement about a real path would surface
+      as production refusing while the scan reports clean -- which is the
+      failure this ticket's cross-check exists to make loud.
+    why_deferred: >
+      Fixing it properly means the graph importing production's segment list,
+      and the walk is deliberately an INDEPENDENT opinion -- importing it is how
+      a mutation to classify makes the graph agree with itself. The right fix is
+      an assertion that the two classifications agree over a fixture that has
+      such a path, which is a fixture change in a graph this ticket did not own.
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-064
+    found_by: HIS-17 (#238)
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      HomeFixpointLaw runs `home verify --home <h>` over every home in 24 of 29
+      graphs but passes no --against, so the SOURCE-REFERENCE half of
+      production's check is never run by the law -- production prints
+      "NOT CHECKED" for exactly that half.
+    detail: >
+      This is why HIS-10's contract change could not be caught by the law and
+      had to be caught, four waves late, by three private walks going red one
+      graph at a time. Every graph that clones a home is exercising the
+      unchecked half on every run.
+    what_was_done: >
+      The two nodes HIS-17 touched pass --against explicitly, and artifact-dag's
+      lazy-clone node -- which clones on every run and was asking the weaker
+      question -- now does too.
+    why_deferred: >
+      The law discovers candidate homes structurally and has no notion of which
+      home each one was copied FROM, so --against needs a source per candidate.
+      Deriving it from home.provenance.json is possible and is precisely the
+      record whose contract is under change in this epic; wiring the law to it
+      from a test-graph ticket would make the law depend on the thing it is
+      meant to check independently.
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-065
+    found_by: HIS-17 (#238), the fourth red in #238's sweep
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      Three `onboard` nodes carry a 10s budget that is BELOW the graph's fixed
+      per-node process cost (~13.3-14.7s measured). They cannot pass whatever
+      they do. onboard.skills.installed does 41ms of useful work and pays 14.49s
+      of jbang/JVM/SDK/OTel startup; six nodes skip behind it, both laws included.
+    detail: >
+      Measured, not inferred -- probes/his-17/onboard-budget.md.
+      jbang startup alone on an idle machine with a warm cache is 5.68s (3 runs,
+      identical). HomeLock contention, #238's stated suspect, is ELIMINATED: the
+      node spawns no skill-manager process and takes no lock, and its two `git
+      remote get-url` calls are 0.01s each. Not caused by this epic either -- the
+      10s was set 2026-04-28 in 860ca0d. refresh-flow's ShortAccessTokenTtl sits
+      at 5s in the same position, unmet because that graph is excluded from every
+      automatic set. The OTLP exporter fails on every node of every graph
+      (Connection refused localhost:4318) with retries and a shutdown flush
+      inside the budget.
+    what_was_done: >
+      Cause established and remedy VERIFIED: with the three budgets at 120s,
+      `onboard` is BUILD SUCCESSFUL in 4m45s, 15/15 nodes, run 20260823-165545.
+      Reverted rather than shipped.
+    why_deferred: >
+      Raising three numbers makes one graph green and hides the number that
+      matters: ~14s of fixed cost per node, at ~15 nodes x 29 graphs, is where a
+      ~7-minute sweep goes. That is the "widen it until it stops saying
+      anything" move this ticket refused twice elsewhere. Which to pay -- three
+      budgets, or the 13s floor -- belongs to the ticket that owns the terminal
+      sweep and the runtime number the goal is read against.
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-066
+    found_by: HIS-17 (#238), revealed by fixing the node in front of it
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      artifact-dag's uninstall.prunes.the.subgraph fails on two assertions:
+      the_census_names_nothing_the_removed_unit_owned and
+      the_home_is_byte_comparable_to_before_the_install (onlyAfter=[F
+      artifacts.lock.toml 3745]). It had been SKIPPED behind
+      lazy.clone.declares.without.building and so was unmeasured.
+    detail: >
+      Not caused by HIS-17 -- the node dependsOn env.prepared only and uses its
+      own `teardown` workspace. It is ARTI-08 (#109) territory and its javadoc
+      declares both assertions red on purpose. Part of ARTI-08 HAS since landed:
+      the_provisioned_tree_the_removed_unit_produced_is_gone, red when the node
+      was written, now passes. What remains is six artifact ids surviving the
+      census after uninstall, and artifacts.lock.toml not returning to its
+      pre-install bytes.
+    what_was_done: >
+      Measured and recorded. artifact-dag is already out of CORE until #108/#109
+      land (08f9934), so the graph staying red is the pre-existing condition and
+      not a regression; home.fixpoint.law and home.membership.law remain skipped
+      behind it in that graph only.
+    why_deferred: >
+      It is ARTI-08's acceptance criterion, deliberately asserted red, and
+      quietly repairing another ticket's declared red from a test-graph ticket
+      is how a graph comes to report a ticket done.
+    candidate_owner: HIS-6
+    status: open
