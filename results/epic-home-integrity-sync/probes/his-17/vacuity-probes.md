@@ -138,6 +138,13 @@ which is the agreement `GOAL-one-home-one-answer` asks for.
 
 ## V5 — the failure the first version of this PR would NOT have caught
 
+**This is the worked example for the vacuity ledger's mechanism D**, *the probe
+exercises a different branch than the change*, which HIS-17 added because rows
+1–10 gave it no name. It is the mechanism that hides best: the mutation
+compiles and runs (not C), the fixture expresses the defect fine (not B), and
+the claim genuinely reddens (not A). All three existing checks pass and the
+change is still untested.
+
 Review of #242's HIGH-1: the walk was widened on the **regular-file** branch and
 the only oracle added was a **symlink** decoy, which `verifyRoots` decides
 *before* the regular-file walk runs and *without* consulting descent or byte

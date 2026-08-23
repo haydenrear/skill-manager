@@ -10,6 +10,44 @@ become one reading plus three cross-checks against it."*
 
 ---
 
+## The rule this ticket ended up being about
+
+Written first because it is the part a future reader most needs and the part
+most likely to be undone by someone tidying up:
+
+> **An independent reading is only worth having if its disagreement is asserted.
+> Otherwise delete it and use production's answer.**
+
+#238 opened with a sharper-sounding thesis — *four readings of one rule is the
+defect* — and that thesis is wrong, which took the whole ticket to find out.
+Plurality was never the problem. `HomeFixpointLaw` and the bespoke walks
+coexisted for two years and hurt nothing. **The problem is silent divergence:**
+N readings with no relationship between them and nothing that fails on the day
+one of them moves. `ticket-lifecycle` did not break because it kept its own copy.
+It broke because its copy could drift from production's for a wave with nothing
+saying so, and then it broke again in two more graphs for the same reason.
+
+So this ticket ships **five** spellings of the rule where it found four, and that
+is not a regression. `HomeIsolation.mentionsOnlyRecordedDescent` is a second
+implementation of production's byte accounting, deliberately — because
+`the_walk_and_production_agree_about_this_clone` fails the moment the two stop
+agreeing. A redundancy with an alarm on it is the opposite of the defect; it is
+the fix. **V5 and V6 are the proof: each implementation reddens alone while the
+other is still correct**, which one shared implementation could not do, and the
+agreement assertion is what converts a divergence from a wave of silence into a
+same-day failure.
+
+**The consolidation trap, named so nobody walks into it.** A future reader
+counting spellings will see five, reach for "there should be one", delete the
+graph's copy in favour of importing production's — and the tree will look tidier
+while quietly losing the ability to catch production being wrong at all. **What
+makes plurality safe is not the count. It is that the count is watched.** Before
+deleting any reading here, check whether something asserts it against the others.
+If nothing does, that reading is the defect and should go. If something does, it
+is load-bearing and deleting it removes an alarm, not a duplicate.
+
+---
+
 ## 0. What this ticket does NOT deliver, up front
 
 **Read this before §1.**
@@ -296,9 +334,18 @@ event replayed. Under it the private walk stays green — the failure mode that
 cost four waves is fully reproduced — and the node reddens anyway, through the
 assertion added here.
 
+**And the goal's own statement is sharpened by this, not just served by it.**
+"One answer" was always the wrong target for the instruments — the target is
+*one answer, or a disagreement that fails loudly*. Production owns the verdict;
+the graphs keep the right to disagree with it; the disagreement is an assertion.
+That is the rule stated above §0, and it is what a reader should carry forward
+instead of a count.
+
 **What it is not.** It is one reading fewer than the expected effect promised
 (§0), it leaves `HomeFixpointLaw` asking the weaker question in 24 graphs
-(DEF-064), and it leaves one classification still spelled twice (DEF-063).
+(DEF-064), and it leaves one classification still spelled twice (DEF-063) —
+that last one **without** an agreement assertion, which by the rule above makes
+it the kind of duplicate that should be deleted rather than kept.
 
 ## 7. Deferred
 
@@ -308,7 +355,7 @@ assertion added here.
 | DEF-064 | minor | `HomeFixpointLaw` never passes `--against`, so the source-reference half is unchecked in 24 graphs | HIS-6 |
 | DEF-065 | major | the ~14 s fixed per-node cost itself, and the OTLP `Connection refused` retries inside every budget. **The four budgets are FIXED in this PR**; this stays open on the floor | HIS-6 |
 | DEF-066 | minor | `artifact-dag`'s `uninstall.prunes.the.subgraph` — ARTI-08's declared red, revealed by unblocking the node in front of it | HIS-6 |
-| DEF-067 | minor | `HomeFixpointLaw` would **launder** a surviving decoy rather than report it — it parses the `FOREIGN_HOME` remedy, runs it, and the pruner deletes the evidence | HIS-6 |
+| DEF-067 | **major** | **A self-healing instrument.** `HomeFixpointLaw` parses a refusal's remedy and *runs* it, so it can repair the condition it was checking, mutate 24 graphs' homes mid-run, and pass — destroying the evidence, re-provisioning toolchains, and able to green a real regression of this epic's founding defect | HIS-6 |
 
 Budget was 5; **five used** — DEF-067 came from review of #242.
 
@@ -345,11 +392,14 @@ fixing the plan.
    revert had also left the fourth budget — `onboard.seeded.by.server`, 15 s
    with `retries(2)`, which my own table mis-recorded as 60 s — in place, and
    that is the one that fails *intermittently*.
-5. **Whether a second implementation of the byte accounting is right.** V5 and
-   V6 justify it — each side reddens alone while the other is correct, which a
-   shared implementation could not do — but it is a fifth spelling of a rule in
-   the ticket about spellings, and the defence rests entirely on the agreement
-   assertion holding them together.
+5. **~~Whether a second implementation of the byte accounting is right.~~
+   Answered at review, and the answer became the ticket's thesis** — see the
+   section above §0. It is a fifth spelling and it is not the defect: the defect
+   is divergence nobody asserts, and this one's disagreement reddens by name on
+   the day it appears. What I remain unsure of is narrower and worth saying:
+   **the defence is only as good as the agreement assertion**, and nothing
+   outside this node enforces that a future reading gets one. That is the gap
+   the ledger's new mechanism-D work-list rows record and nothing mechanises.
 6. **The decoy and the tamper both mutate a live fixture.** Removal is in a `finally` and
    asserted, and it has never survived across five runs — but a node that
    crashes between plant and revert would leave a symlink for eight downstream

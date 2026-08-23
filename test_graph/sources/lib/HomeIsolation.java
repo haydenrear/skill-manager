@@ -254,6 +254,34 @@ final class HomeIsolation {
      * the same tree, in both directions. A divergence is a red on the day it
      * appears.
      *
+     * <h2>BEFORE YOU CONSOLIDATE THIS AWAY</h2>
+     *
+     * <p>Counting spellings of a rule and deleting the extras is the obvious
+     * tidy-up here, and it is the one thing that breaks this file. The rule
+     * HIS-17 arrived at, stated so it survives the next reader:
+     *
+     * <p><b>An independent reading is only worth having if its disagreement is
+     * asserted. Otherwise delete it and use production's answer.</b>
+     *
+     * <p>Plurality was never the defect — {@code HomeFixpointLaw} and the
+     * bespoke walks coexisted for two years and hurt nothing. SILENT DIVERGENCE
+     * is: N readings, no relationship between them, and nothing that fails on
+     * the day one moves. {@code ticket-lifecycle} did not break for having its
+     * own copy; it broke because that copy could drift for a wave with nothing
+     * saying so, and then two more graphs broke the same way.
+     *
+     * <p>So this method is a redundancy WITH AN ALARM ON IT.
+     * {@code the_walk_and_production_agree_about_this_clone} fails the moment
+     * the two stop agreeing, and the probe record measures that each side
+     * reddens ALONE while the other is still correct — which one shared
+     * implementation could not do. Deleting this in favour of importing
+     * production's answer would remove the alarm, not a duplicate, and would
+     * cost the walk its ability to catch production being wrong at all.
+     *
+     * <p>Before deleting any reading here: check whether something asserts it
+     * against the others. If nothing does, that reading IS the defect and
+     * should go. If something does, it is load-bearing.
+     *
      * <p>The rule: every raw occurrence of {@code needle} in the record's bytes
      * must be accounted for by the parsed {@code clonedFrom} and
      * {@code parentStores} values. One occurrence anywhere else — a field a
