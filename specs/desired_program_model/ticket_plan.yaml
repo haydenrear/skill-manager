@@ -4270,7 +4270,8 @@ tickets:
   - id: HIS-17
     title: "four graphs each keep their own copy of \"nothing in a clone names its source\", and HIS-10 moved the rule"
     phase: HIS
-    status: planned
+    status: delivered
+    delivered_in: "PR #242, merged into epic/home-integrity-sync as d548f62; docs follow-up PR #243 as e35e4a5"
     epic: home-integrity-sync
     github_issue: 238
     added_in_schedule_revision: 7
