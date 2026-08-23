@@ -13,6 +13,62 @@ is about."*
 
 ---
 
+## 0. What the first version of this document claimed, and did not deliver
+
+**Read this before the rest.** Review of #241 returned four blockers, and the
+first unmade the headline deliverable. Everything below §1 has been re-measured
+against the fixes; this section is what the reader is owed up front.
+
+**The membership law did not catch its own stated claim.** Its sentence is *"no
+home gains a unit nobody installed into it; none loses one nobody removed."* The
+GAINED half was **structurally unreachable against a real home**, because the
+law's only reader — `home describe` — was classified `WRITE`, so
+`tryReconcile` ran ahead of it and *manufactured the missing installed-unit
+record microseconds before the comparison*. It fired only in the synthetic
+self-test. §9 of the first version said a reader "could reasonably believe it
+catches more than it does". That was right and badly understated: it did not
+catch the headline claim either.
+
+**And on the only home in the entire evidence set that was actually damaged, the
+law returned PASS.** From the shipped envelope, the victim home after the graph
+node's own control reproduced the escape for real:
+
+```
+PASS  …/victim/.skill-manager
+   disk    [his16-unit-claimed-later]      ← seeded as his16-unit-kept
+   records [his16-unit-claimed-later]
+   lock    []
+```
+
+0-for-1 against real damage; 3-for-3 against its own fixtures. The escaping
+resolve rewrote the records to match what it had done, so the home was
+internally consistent about a membership nobody asked for — which is DEF-047's
+own lesson, arriving through my instrument instead of being caught by it.
+
+**Three further claims in the first version were true of the report and false of
+the product:**
+
+| claimed | actually |
+| --- | --- |
+| *"An UNSET axis is an ESCAPE, not a pass"*, with V3 attached | `confined()` and `escapes()` were **computed and never enforced**. With every home axis unset under a declared confinement, `project resolve` exited 0 and scaffolded `$HOME/.skill-manager`. |
+| the guard protects an operator | **nothing armed it.** `grep SKILL_MANAGER_CONFINE_ROOT` returned three hits: the constant, the test-graph helper, and this document. DEF-046's shape re-run with the diff merged still went through at exit 0. |
+| DEF-051 defers a symlink gap | it deferred the false-*negative*. The false-*positive* was live: `/tmp` and `java.io.tmpdir` are both symlinks, so any driver declaring the obvious root got a **100% refusal rate**. |
+
+All four are fixed and re-measured — `probes/his-16/review-241-blockers.txt`
+carries the before/after for each. What the law catches **now**, against a real
+home, is the GAINED direction and the residue form of LOST. It still does not
+see a clean re-realization, and **DEF-054** records that its one reachable LOST
+mode depends on a separate bug HIS-13 is pointed at: fix that and the mode
+disappears.
+
+The reviewer also measured the cost the first version did not: **~8–15 s per
+graph, ~4–9 minutes on a ~7-minute sweep** (DEF-055). That is not worth paying
+for a law that only fires in its own fixtures. It is worth paying now that
+GAINED reaches a real home, and it roughly halves if the two laws share one
+pass instead of paying 2× JVM starts per candidate.
+
+---
+
 ## 1. Half the slice already existed, and that changed what the ticket is
 
 The slice reads: *either the `project` verbs accept an explicit project root, or
@@ -62,11 +118,16 @@ uses for the other five — one mechanism, not a sixth spelling.
 
 Two properties are load-bearing and both are asserted:
 
-- **An UNSET axis is an ESCAPE, not a pass.** An unset agent root resolves,
-  eventually, to the operator's real `~/.claude`; `SmEnv`'s class comment records
-  what that cost the last time — five units projected into all three real agent
-  homes, eighteen symlinks repaired by hand. "I could not look" is never reported
-  as "I looked and it was fine". **V3.**
+- **An UNSET axis is an ESCAPE, not a pass** — and, since review of #241, that
+  is now true of the **product** and not only of the report. An unset agent root
+  resolves, eventually, to the operator's real `~/.claude`; `SmEnv`'s class
+  comment records what that cost the last time — five units projected into all
+  three real agent homes, eighteen symlinks repaired by hand. **V3** covers the
+  report; `SkillManagerCli.refuseIfConfinementEscapes` is what makes the product
+  refuse, measured in `probes/his-16/review-241-blockers.txt` under H2.
+  `CLAUDE_HOME` is reported but enforced only when `CLAUDE_CONFIG_DIR` is unset,
+  because `AgentHomes.claude()` consults the config dir first — enforcing it
+  unconditionally was itself a false refusal, found while fixing H2.
 - **`cwd` is expected to escape, and that is the point.** A JVM cannot change
   its own working directory, so an in-process driver can never be *fully*
   confined. `escapedAxes()` names it instead of hiding it, and the honest
@@ -90,6 +151,16 @@ from, the confinement root, the escaped axes and the remedy.
 **Nothing changes for an unconfined process.** `Confinement.covers` answers true
 for everything when nothing is declared. That property has its own test, because
 it is the one that keeps the product working.
+
+**And something does declare one.** The first version shipped a guard nobody
+armed — review of #241, H4. Two mechanisms now do it, and both were needed:
+`AgentHomes.binding` carries the confinement root, so every consumer of the one
+binding (`--home`, `exec`, `env run`, the printed remedy prefix, and
+`home.runtime.json`'s `env` block that the epic's bootstrap and `skt` read) is
+confined by construction; and a per-checkout home *implies* a confinement to its
+own checkout, enforcing the **CWD axis only**, with the root tier excluded so an
+ordinary resolve in a repository outside `$HOME` is untouched. DEF-046's exact
+shape now exits 14 with no variable set anywhere.
 
 An explicit `--project-dir` outside the root is refused too — a confinement is a
 statement about what may be *touched*, not about how the path was *spelled* —
@@ -285,21 +356,28 @@ CONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reprod
 `home.membership.law` — three assertions, and the numbers matter more than the
 verdict, because a green law that looked at nothing is the failure mode:
 
-| graph | nodes | runId | homes checked | units observed |
-| --- | --- | --- | --- | --- |
-| `smoke` | 53 | 20260822-225952 | 1 | **22** |
-| `home-integrity` | 17 | 20260822-232933 | 5 | 12 |
-| `project-child-home` | 13 | 20260822-233526 | 2 | 8 |
-| `project-smoke` | 8 | 20260822-233937 | 3 | 9 |
-| `home-tripwire` | 8 | 20260822-234255 | 1 | 1 |
-| `project-resolve` | 4 | 20260822-231813 | 1 | 5 |
-| `project-manifest` | 4 | 20260822-231639 | 1 | **0** |
+Re-run in full after review of #241, on `b71a253`:
 
-Every one **ALL PASSED**. The four re-runs at the bottom of `probes/his-16/
-graph-runs.txt` are on the shipped tip `f12cdfd`; `smoke`, `project-manifest`
-and `project-resolve` are one commit earlier at `a7155d6`, where the only
-difference is how the law *reports* rather than what it checks. Stated rather
-than smoothed over.
+| graph | nodes | runId | homes | units | withMembership |
+| --- | --- | --- | --- | --- | --- |
+| `home-integrity` | 17 | 20260823-002554 | 5 | 12 | 5 |
+| `project-child-home` | 13 | 20260823-003147 | 2 | 8 | 2 |
+| `project-smoke` | 8 | 20260823-003554 | 3 | 9 | 3 |
+| `home-tripwire` | 8 | 20260823-003903 | 1 | 1 | 1 |
+| `project-manifest` | 4 | 20260823-004147 | 1 | **0** | **0** |
+| `project-resolve` | 4 | 20260823-004318 | 1 | 5 | 1 |
+| `smoke` | 53 | see `probes/his-16/graph-runs.txt` | 1 | 22 | 1 |
+
+Every one **ALL PASSED**.
+
+**`project-manifest` is a WEAK run and now says so.** `homesWithMembership = 0`
+is M5 from the review, made visible as a number: that graph registers a manifest
+and installs nothing, so its one home is empty and the three readers agree about
+nothing. I did **not** turn it into a failure — an empty home that is still empty
+is a real post-condition, and reddening a graph for installing nothing would be
+inventing a defect. What carries the readers' sensitivity on such a run is the
+self-test, which runs before every real home on every one of these runs. HIS-6
+gets the number for the sweep.
 
 `home-tripwire` carries **`sandbox.env.contract`**, the oracle that fails when
 any file except `sources/lib/SmEnv.java` writes a managed variable into a child
@@ -358,13 +436,18 @@ where it should not" one that missed DEF-047. And `home.membership.law` reported
 
 ## 9. What I am unsure about
 
-**The law does not see a clean re-realization, and that is a real gap, not a
-quibble.** §4 records the measurement: my own control reproduced the escape and
-the law called the resulting home clean. What the law adds over `HomeFixpointLaw`
-is real — it catches the residue form, which is the form DEF-047 took and the
-only form any instrument in this repository sees — but somebody reading "a
-membership law is wired into 24 graphs" could reasonably believe it catches more
-than it does. DEF-048 says what would.
+**The law does not see a clean re-realization** — see §0, which states the
+sharper version the reviewer measured: on the one home in this evidence set that
+was genuinely damaged, the law returned PASS. DEF-048 says what would fix it,
+and DEF-054 records that its one reachable LOST mode rests on a bug HIS-13 is
+pointed at.
+
+**I do not know whether the implicit per-checkout confinement is too clever.**
+It is inferred from a path shape rather than declared, it changes behaviour by
+default, and it is the piece of this diff I would most want a second opinion on.
+It enforces only the CWD axis and excludes the root tier for exactly that
+reason, and the two cases that must not break are measured — but "measured on
+the cases I thought of" is the sentence this epic keeps paying for.
 
 **The `LOCK` reader may be closer to noise than to signal.** It abstains when
 `units.lock.toml` is empty, which is every project child home. On the six runs

@@ -1,57 +1,65 @@
 HIS-16 (#237) — vacuity checks
 ==============================
 
-Produced by scratchpad/his16/vacuity.py, which is reproduced in full at the
-bottom of this file. Every mutation is applied to a COMMITTED tree and reverted
-from a byte copy taken by the harness — never `git checkout --`, which restores
-to HEAD and has eaten an agent's uncommitted work twice in this epic (DEF-035).
+Produced by scratchpad/his16/vacuity.py, reproduced in full at the bottom.
+Every mutation is applied to a COMMITTED tree and reverted from a byte copy
+taken by the harness — never `git checkout --`, which restores to HEAD and has
+eaten an agent's uncommitted work twice in this epic (DEF-035).
 
 The three mechanisms from results/epic-home-integrity-sync/validation/
 vacuity-ledger.md, and how each is answered:
 
   A  the probe reddens a PRECONDITION, not the claim
-     -> every row below names the assertion(s) that actually reddened, and the
+     -> every row names the assertion(s) that actually reddened, and the
         verdict line says whether that set is exactly the claim. A row that is
         not exactly the claim is printed as MISMATCH and kept.
 
   B  the FIXTURE cannot express the defect
-     -> ConfinementTest's refusal case asserts its own precondition first
-        ("PRECONDITION: the working directory is outside the confinement"),
-        and it is blind to the mutation under test: it reads
-        Confinement.covers, which V1 does not touch.
+     -> ConfinementTest's refusal case asserts its own precondition first and
+        is blind to the mutation under test: it reads Confinement.covers,
+        which V1 does not touch.
      -> the membership law's self-test plants DEF-047's exact residue — a unit
-        gone from the home with ONLY its .projections.json surviving — and
-        runs the production comparison over it, every run, before any real
-        home is read.
+        gone with ONLY its .projections.json surviving — AND, since review of
+        #241, a .projections.json beside every LIVE unit. The second half was
+        missing, and its absence is what made V4a's first diagnosis wrong.
 
   C  the mutation never REACHED the code
-     -> the harness asserts `s.count(old) == 1` before every mutation and
-        fails loudly otherwise.
-     -> V4a is the case that proves this matters: the mutation matched exactly
-        once, provably ran, and the outcome DID NOT MOVE. Kept as evidence.
+     -> the harness asserts `s.count(old) == 1` before every mutation.
 
 RUNNER: `jbang RunHis16.java` (ConfinementTest), plus the membership law run
-standalone with --result-out. RunHis16 deliberately EXCLUDES JsonContractTest —
-see below.
+standalone with --result-out.
 
 WHY JsonContractTest IS NOT IN THE MUTATION LANE
 ------------------------------------------------
-JsonContractTest now drives `project register|remove|resolve|sync` on their
-REAL execution paths, which is safe only because the confinement guard refuses
-them. Run that suite with the guard mutated away and it does not go red: it
-REPRODUCES DEF-047 against whatever checkout the JVM is standing in, which for
-a ticket agent is its own worktree home. That is the incident, not a probe of
-it. Its dependence on the guard is measured the other way round — it is
-asserted GREEN on the unmutated tree, where all four entries reach the refusal
-and get exit 14 with one JSON document.
+It drives `project register|remove|resolve|sync` on their REAL execution
+paths, which is safe only because the confinement guard refuses them. Run that
+suite with the guard mutated away and it does not go red: it REPRODUCES
+DEF-047 against whatever checkout the JVM is standing in. Its dependence on
+the guard is measured the other way round — asserted GREEN on the unmutated
+tree, where all four entries reach the refusal and get exit 14 with one JSON
+document carrying the typed code.
 
-The end-to-end escape IS reproduced, under control, by the graph node
-home-integrity/ProjectVerbStaysInItsHome, which owns a throwaway victim
-checkout and can afford to let it be damaged. Its control is part of the node
-and runs on every graph run:
+The end-to-end escape IS reproduced under control by the graph node
+home-integrity/ProjectVerbStaysInItsHome, which owns a throwaway victim.
 
-    CLAIM    exit 14; victim [skills/his16-unit-kept]
-    CONTROL  exit  0; victim [skills/his16-unit-claimed-later]   <- the escape
+CORRECTIONS AFTER REVIEW OF #241
+--------------------------------
+M3  V4a's DIAGNOSIS was wrong, and the reason is this ledger's own mechanism
+    B. The law lane runs with ZERO real homes, so the only .projections.json
+    in scope was the orphan the "lost" fixture plants — the single file for
+    which reading it under the mangled name still lands in the right bucket. A
+    real home has one beside every LIVE unit, and under V4a's mutation each
+    becomes a spurious LOST. It was never benign redundancy: it is a MASS
+    FALSE POSITIVE that would have reddened the claim on all five homes of
+    home-integrity. Mechanism B, occurring inside the instrument built to
+    count mechanism B. plant() now writes a .projections.json beside every
+    live unit; V4a re-measured below now reddens, and its self-test line shows
+    the false positive directly — "consistent home -> 2 violation(s)", a home
+    whose three readers agree being flagged.
+
+M4  V5's prose quoted an assertion that PASSES. The claim that carries "zero
+    homes fails" is at_least_one_home_was_actually_checked. Mechanism C,
+    inside the probe demonstrating mechanism C.
 
 RESULTS
 -------
@@ -82,13 +90,13 @@ V3  an UNSET axis treated as confined rather than as an escape
 V4a  the .projections.json BRANCH disabled (first attempt)
     mutation: HomeMembershipLaw.installedRecords: `if (n.endsWith(...))` -> `if (false)`
     expected to redden: ['the_detector_flags_a_planted_gain_and_a_planted_loss']
-    ACTUALLY reddened:  (nothing)
-    verdict: MISMATCH — read this before trusting the probe
-    EXPECTED MISMATCH, kept as evidence. The record is still read, by the `.json` sibling branch, under the mangled name 'deploy-helm.projections' -- so the loss is still flagged. The mutation reached the code and the outcome did not move.
+    ACTUALLY reddened:  ['the_detector_flags_a_planted_gain_and_a_planted_loss']
+    verdict: the claim reddened, and only the claim
+    Re-measured after M3 fixed the fixture. What this mutation really does to a REAL home is turn every live unit's .projections.json into a spurious LOST; the fixtures could not show that until plant() started writing one beside each live unit.
     self-test after the mutation:
       SELF-TEST (runs before any real home):
-        consistent home -> 0 violation(s)
-        gained a unit   -> 1 violation(s)
+        consistent home -> 2 violation(s)
+        gained a unit   -> 3 violation(s)
         lost  a unit    -> 2 violation(s)
 
 V4b  the membership law stops reading orphaned .projections.json records
@@ -105,15 +113,29 @@ V4b  the membership law stops reading orphaned .projections.json records
 
 V5  a run that finds ZERO homes FAILS — demonstrated without a mutation
     The law run standalone has no upstream context, so it discovers no
-    home. It reports FAILED, not PASSED:
-      every_home_holds_exactly_what_was_installed_into_it: passed
-    An instrument reporting success because it could not look is the
-    failure mode this law exists to close, so 'checked nothing' is red.
+    home. The claim that carries this is at_least_one_home_was_actually_
+    checked; the membership claim PASSES, vacuously, which is the whole
+    point of separating the three.
+      at_least_one_home_was_actually_checked:              failed   <- the claim
+      every_home_holds_exactly_what_was_installed_into_it: passed   (vacuously true)
+      the_detector_flags_a_planted_gain_and_a_planted_loss: passed
+    CORRECTED after review of #241, M4: this row previously quoted the
+    membership assertion, which PASSES here — mechanism C inside the
+    probe demonstrating mechanism C. The node's overall status is what
+    was really being read, and it is FAILED.
 
 RESTORED
     RunHis16 after every revert: rc=0, 8 cases, all PASS
 
-    git status --porcelain: (clean — every mutation reverted)
+    git status --porcelain: M src/main/java/dev/skillmanager/agent/AgentHomes.java
+ M src/main/java/dev/skillmanager/cli/CommandHomeAccess.java
+ M src/main/java/dev/skillmanager/cli/SkillManagerCli.java
+ M src/main/java/dev/skillmanager/sandbox/Confinement.java
+ M src/main/java/dev/skillmanager/sandbox/ConfinementEscapeException.java
+ M src/test/java/dev/skillmanager/cli/HomeBindsBothAxesTest.java
+ M src/test/java/dev/skillmanager/cli/JsonContractTest.java
+ M src/test/java/dev/skillmanager/cli/LazyHomeScaffoldTest.java
+ M test_graph/sources/common/HomeMembershipLaw.java
 
 
 THE HARNESS
@@ -275,12 +297,17 @@ def main():
                "five units projected into three real agent homes.")
 
     # ---- V4: the law stops counting orphaned .projections.json --------------
-    # FIRST ATTEMPT, recorded because it is itself a finding. Disabling the
-    # .projections.json branch with `if (false)` did NOT move the outcome: the
-    # file also ends in ".json", so the sibling branch caught it and reported
-    # the loss under the mangled name "deploy-helm.projections". The mutation
-    # matched exactly once and provably reached the code, and the result was
-    # green-equivalent anyway. See vacuity-checks.txt.
+    # FIRST ATTEMPT. Its DIAGNOSIS was wrong and is corrected here; review of
+    # #241, M3. The mutation reddened nothing, and the reason recorded was
+    # "benign redundancy -- the sibling .json branch catches it under a mangled
+    # name". That was true only because the fixtures had ONE .projections.json
+    # in the whole lane: the orphan the "lost" home plants, the single file for
+    # which the mangled name still lands in the right bucket. A real home has
+    # one beside every LIVE unit, and under this mutation each becomes a
+    # spurious LOST. So it is not benign -- it is a MASS FALSE POSITIVE, and the
+    # fixture could not express it. Mechanism B, occurring inside the instrument
+    # built to count mechanism B. plant() now writes a .projections.json beside
+    # every live unit, so this row re-measures against a fixture that can.
     with Mutation(
             "test_graph/sources/common/HomeMembershipLaw.java",
             '                if (n.endsWith(".projections.json")) {',
@@ -290,10 +317,10 @@ def main():
                "HomeMembershipLaw.installedRecords: `if (n.endsWith(...))` -> `if (false)`",
                ["the_detector_flags_a_planted_gain_and_a_planted_loss"],
                base_law, after,
-               "EXPECTED MISMATCH, kept as evidence. The record is still read, by "
-               "the `.json` sibling branch, under the mangled name "
-               "'deploy-helm.projections' -- so the loss is still flagged. The "
-               "mutation reached the code and the outcome did not move.\n"
+               "Re-measured after M3 fixed the fixture. What this mutation really "
+               "does to a REAL home is turn every live unit's .projections.json "
+               "into a spurious LOST; the fixtures could not show that until "
+               "plant() started writing one beside each live unit.\n"
                "    self-test after the mutation:\n      "
                + log.replace("\n", "\n      "))
 
@@ -322,11 +349,19 @@ def main():
     REPORT.append(
         "V5  a run that finds ZERO homes FAILS — demonstrated without a mutation\n"
         "    The law run standalone has no upstream context, so it discovers no\n"
-        "    home. It reports FAILED, not PASSED:\n"
-        "      every_home_holds_exactly_what_was_installed_into_it: %s\n"
-        "    An instrument reporting success because it could not look is the\n"
-        "    failure mode this law exists to close, so 'checked nothing' is red.\n"
-        % after.get("every_home_holds_exactly_what_was_installed_into_it"))
+        "    home. The claim that carries this is at_least_one_home_was_actually_\n"
+        "    checked; the membership claim PASSES, vacuously, which is the whole\n"
+        "    point of separating the three.\n"
+        "      at_least_one_home_was_actually_checked:              %s   <- the claim\n"
+        "      every_home_holds_exactly_what_was_installed_into_it: %s   (vacuously true)\n"
+        "      the_detector_flags_a_planted_gain_and_a_planted_loss: %s\n"
+        "    CORRECTED after review of #241, M4: this row previously quoted the\n"
+        "    membership assertion, which PASSES here — mechanism C inside the\n"
+        "    probe demonstrating mechanism C. The node's overall status is what\n"
+        "    was really being read, and it is FAILED.\n"
+        % (after.get("at_least_one_home_was_actually_checked"),
+           after.get("every_home_holds_exactly_what_was_installed_into_it"),
+           after.get("the_detector_flags_a_planted_gain_and_a_planted_loss")))
 
     # ---- restoration is asserted, not assumed ------------------------------
     rc, restored, _ = unit_lane()

@@ -1,0 +1,131 @@
+HIS-16 (#241) — the four review blockers, reproduced and then closed
+====================================================================
+
+Every command below was run against the branch tip. The BEFORE column is
+the shipped-at-review behaviour, reproduced by me rather than taken on
+trust; the AFTER column is the same command after the fix.
+
+
+H1 — `home describe` CREATED the records the law was about to audit
+-------------------------------------------------------------------
+CommandHomeAccess classified it WRITE, so tryReconcile ran ahead of
+DescribeCmd.call() and reached ReconcileUseCase -> OnboardUnit ->
+writeSource.
+
+  fixture: a home holding skills/intruder and an EMPTY installed/
+
+  BEFORE                                   AFTER
+  BEFORE installed/: []                    BEFORE installed/: []
+  $ home describe --home $H --json         $ home describe --home $H --json
+  AFTER  installed/: [intruder.json]       AFTER  installed/: []
+                                           units in descriptor: ['intruder']
+
+The consequence was not cosmetic. GAINED — "a unit nobody installed" —
+was STRUCTURALLY UNREACHABLE against a real home, because the only
+reader manufactured the missing record microseconds before comparing.
+Proof that the direction is restored, law run against a real home under
+java.io.tmpdir planted disk=[intruder,legit] records=[legit] lock=[legit]:
+
+  status: failed
+     every_home_holds_exactly_what_was_installed_into_it  failed
+     the_detector_flags_a_planted_gain_and_a_planted_loss passed
+     at_least_one_home_was_actually_checked               passed
+  …/his16-gained-probe GAINED [intruder] — present in the home, and no
+  installed/ record names them. A unit nobody installed.
+
+Fix: CommandHomeAccess.INIT_GATED — `home describe` is READ unless the
+invocation matched --init. `home policy` and `home shims` declare --init
+too and are deliberately left flat WRITE; see DEF-053.
+
+
+H2 — confined() and escapes() were computed and never enforced
+---------------------------------------------------------------
+BEFORE, same process state back to back:
+
+  sandbox status --json   →  "confined": false, "escaped": ["CODEX_HOME"]   EXIT=14
+  project resolve --json  →  {"name":"revproj", …}                          EXIT=0
+
+AFTER:
+
+  sandbox status --json   →  {'confined': False, 'escaped': ['CLAUDE_HOME','CODEX_HOME','cwd'],
+                              'enforceableEscaped': ['CODEX_HOME'],
+                              'error': 'confinement_escape'}
+  project resolve --json  →  EXIT=14, {"error":"confinement_escape", …}
+
+And the case the class comment calls the failure mode this epic keeps
+paying for — every home axis UNSET under a declared confinement:
+
+  BEFORE  exit 0, scaffolds $HOME/.skill-manager
+  AFTER   EXIT=14
+          fakehome/.skill-manager exists? no
+          escaped axes: SKILL_MANAGER_HOME, CLAUDE_HOME, CLAUDE_CONFIG_DIR,
+                        CODEX_HOME, GEMINI_HOME
+
+(Run with HOME and -Duser.home redirected to a scratch dir, so a
+regression could not have damaged the operator's real home either way.)
+
+CLAUDE_HOME is REPORTED but enforced only when CLAUDE_CONFIG_DIR is
+unset — enforcing it unconditionally was itself a false refusal, because
+AgentHomes.claude() consults the config dir first and agentBinding binds
+the dirs, not CLAUDE_HOME. Measured while fixing H2 and recorded rather
+than quietly worked around.
+
+
+H3 — a symlinked confinement root false-refused its own contents
+-----------------------------------------------------------------
+BEFORE, with cwd literally inside the declared root:
+
+  ✗ project register refused — its target came from the working directory …
+    target:            /private/tmp/his16-symlink-probe/proj
+    confinement root:  /tmp/his16-symlink-probe
+  EXIT=14
+
+AFTER:
+
+    project root: /private/tmp/his16-symlink-probe/proj
+    registry:     /tmp/his16-symlink-probe/h/projects/symprobe
+  EXIT=0
+
+/tmp AND java.io.tmpdir (/var/folders/…) are both symlinks here, so any
+driver declaring the obvious root got a 100% refusal rate. Fix:
+canonicalize() resolves the deepest EXISTING ancestor and re-appends the
+segments that do not exist yet, so a root declared before it is created
+still compares in the same alphabet as a physical user.dir.
+
+
+H4 — nothing declared a confinement in production
+--------------------------------------------------
+BEFORE: `grep SKILL_MANAGER_CONFINE_ROOT` returned three hits — the
+constant, the test-graph helper, and my own prose.
+
+DEF-046/047's exact shape, no variable set anywhere:
+  SKILL_MANAGER_HOME = <wt>/.skill-manager,  cwd = <another checkout>
+
+  BEFORE  exit 0, the home re-realized, nothing fires
+  AFTER   EXIT=14
+          {"error":"confinement_escape", …}
+          othercheckout/.skill-manager created? no
+
+Two mechanisms, both required:
+
+  (a) AgentHomes.binding now carries SKILL_MANAGER_CONFINE_ROOT. That is
+      the arming point the ticket plan's own conflict_keys already named,
+      and it means every consumer of the ONE binding — `--home`, `exec`,
+      `env run`, the printed remedy prefix, and home.runtime.json's `env`
+      block, which is what the epic's bootstrap and skt front doors read
+      — is confined by construction rather than by remembering to export.
+
+  (b) An IMPLICIT confinement derived from a per-checkout home, because
+      <checkout>/.skill-manager is a home ABOUT that checkout. It
+      enforces the CWD axis ONLY, never the home axes: a rule inferred
+      rather than declared has not earned the right to refuse an
+      operator's own variables.
+
+The two cases that must NOT break, checked:
+
+  same-checkout register (cwd == the home's own checkout)   EXIT=0
+  ROOT-tier home (~/.skill-manager)   source = NONE, declared = False
+
+The root tier is excluded deliberately: deriving the operator's whole
+home directory is not a statement about any checkout, and would refuse
+an ordinary resolve in a repository kept outside $HOME.

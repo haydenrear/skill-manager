@@ -505,7 +505,10 @@ public final class SkillManagerCli implements Runnable {
      */
     private static Integer refuseIfConfinementEscapes(CommandLine.ParseResult pr) {
         String path = CliAgentContext.commandPath(pr);
-        if (path != null && path.startsWith("sandbox")) return null;
+        // Exact paths, not a prefix: `startsWith("sandbox")` would also exempt
+        // a future `sandboxes` or `sandbox-anything`, and an exemption that
+        // grows by accident is how a guard stops guarding.
+        if ("sandbox".equals(path) || "sandbox status".equals(path)) return null;
         if (CommandHomeAccess.helpOrVersionRequested(pr)) return null;
         dev.skillmanager.sandbox.Confinement confinement =
                 dev.skillmanager.sandbox.Confinement.current();

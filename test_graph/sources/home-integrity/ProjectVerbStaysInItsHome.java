@@ -187,6 +187,32 @@ public final class ProjectVerbStaysInItsHome {
             procs.add(unconfined);
             Set<String> victimAfterControl = unitsIn(victimHome);
 
+            // ------------------------------ the ARMING, on the default path
+            // Everything above declares a confinement explicitly. Review of
+            // #241, H4: the guard shipped with NOTHING arming it, so
+            // DEF-046's actual shape -- a session that pins SKILL_MANAGER_HOME
+            // and declares no confinement at all -- still went through at exit
+            // 0. A per-checkout home now IMPLIES a confinement to its own
+            // checkout, and this is that claim, asserted rather than described.
+            //
+            // The home here is <armedCheckout>/.skill-manager, which is the
+            // per-checkout layout this epic exists to produce. No confinement
+            // variable is set on this run at all.
+            Path armedCheckout = root.resolve("armed-checkout");
+            Path armedHome = armedCheckout.resolve(".skill-manager");
+            Files.createDirectories(armedHome.resolve("skills"));
+            Files.createDirectories(armedHome.resolve("installed"));
+            ProcessRecord implicit = sm(ctx, "implicit-arming-from-per-checkout-home",
+                    armedHome, null, victim, "project", "resolve", "--skip-gateway");
+            procs.add(implicit);
+            Set<String> victimAfterImplicit = unitsIn(victimHome);
+            boolean implicitlyArmed = implicit.exitCode() == CONFINEMENT_ESCAPE
+                    && victimAfterImplicit.equals(victimAfterControl);
+            log.add("ARMING   exit " + implicit.exitCode() + " with NO confinement variable set"
+                    + " (home is " + armedHome + ", cwd is the victim)"
+                    + (implicitlyArmed ? "  <- DEF-046's shape, refused by default"
+                            : "  <- NOT ARMED: the guard is inert on the default path"));
+
             boolean controlEscaped = !victimAfterControl.equals(victimBefore);
             boolean controlReachedTheGuard = unconfined.exitCode() != confined.exitCode();
             log.add("CONTROL  exit " + unconfined.exitCode() + "; victim " + victimAfterControl
@@ -197,7 +223,8 @@ public final class ProjectVerbStaysInItsHome {
                     + " (victim " + victimBefore + " -> " + victimAfterControl + ")");
 
             boolean pass = fixtureReady && manifestRewritten && refused && otherHomeUnchanged
-                    && ownHomeUnchanged && controlEscaped && controlReachedTheGuard;
+                    && ownHomeUnchanged && controlEscaped && controlReachedTheGuard
+                    && implicitlyArmed;
 
             NodeResult result = pass
                     ? NodeResult.pass("project.verb.stays.in.its.home")
@@ -208,7 +235,8 @@ public final class ProjectVerbStaysInItsHome {
                                     + " otherHomeUnchanged=" + otherHomeUnchanged
                                     + " ownHomeUnchanged=" + ownHomeUnchanged
                                     + " controlEscaped=" + controlEscaped
-                                    + " controlReachedTheGuard=" + controlReachedTheGuard);
+                                    + " controlReachedTheGuard=" + controlReachedTheGuard
+                                    + " implicitlyArmed=" + implicitlyArmed);
             for (ProcessRecord p : procs) result = result.process(p);
             return result
                     // Preconditions, asserted separately from the claim and
@@ -223,8 +251,13 @@ public final class ProjectVerbStaysInItsHome {
                     // The control (mechanisms A and C).
                     .assertion("removing_the_confinement_reproduces_the_escape", controlEscaped)
                     .assertion("the_control_reached_the_guard_it_removed", controlReachedTheGuard)
+                    // H4: the guard is ARMED on the default path, with no
+                    // confinement variable set anywhere.
+                    .assertion("a_per_checkout_home_arms_the_guard_with_no_variable_set",
+                            implicitlyArmed)
                     .metric("confinedExitCode", confined.exitCode())
                     .metric("unconfinedExitCode", unconfined.exitCode())
+                    .metric("implicitlyArmedExitCode", implicit.exitCode())
                     .metric("victimUnitsBefore", victimBefore.size())
                     .metric("victimUnitsAfterControl", victimAfterControl.size())
                     .publish("victimHome", victimHome.toString())

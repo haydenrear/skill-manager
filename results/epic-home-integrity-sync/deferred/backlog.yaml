@@ -2873,6 +2873,18 @@ findings:
     found_by: HIS-16 (#237)
     found_at: "2026-08-22"
     severity: minor
+    status_note_2026_08_23: >
+      SUPERSEDED IN PART, and the framing was wrong. This entry deferred only
+      the false-NEGATIVE direction. Review of #241 (H3) found the false
+      POSITIVE, which was live on every platform this epic runs on: /tmp and
+      java.io.tmpdir are both symlinks, ProjectRoot reads user.dir physically,
+      so a confinement declared as /tmp/x refused a working directory of
+      /private/tmp/x -- two spellings of one directory, each asserted to be
+      outside the other, at a 100% refusal rate. Fixed by
+      Confinement.canonicalize, which resolves the deepest EXISTING ancestor
+      and re-appends the rest. That also closes the false negative for any
+      component that already exists. What remains open is only a link created
+      AFTER the check, which no in-JVM check can see.
     summary: >
       Confinement is a check over path SPELLINGS. `Confinement` deliberately
       does not call `toRealPath()`, so a symlink pointing out of the root
@@ -2928,4 +2940,91 @@ findings:
       this ticket has no other reason to touch, four of which are red or
       excluded on the epic tip for reasons that are not this ticket's.
     candidate_owner: HIS-6, alongside the terminal sweep that would measure the cost
+    status: open
+
+  - id: DEF-053
+    found_by: review of #241 (HIS-16)
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      `home policy` and `home shims` are still classified WRITES_HOME while
+      declaring `--init`, which is the same shape `home describe` was fixed for.
+    detail: >
+      #234's HIGH-2 narrowed `home verify` and `home close-out` to READ. Review
+      of #241 found the same defect had re-entered through `home describe`, the
+      one `home` subcommand nobody narrowed: WRITES_HOME let
+      SkillManagerCli.tryReconcile run ahead of it and write installed-unit
+      records into whatever home it was pointed at. Measured, then fixed with
+      CommandHomeAccess.INIT_GATED -- READ unless the invocation matched
+      `--init`.
+
+      `home policy` and `home shims` are the two remaining rows in the same
+      position: both declare `--init`, both are flat WRITE, and INIT_GATED is
+      now a one-line change for each. They are NOT changed here because neither
+      is on any path HIS-16 reads, and each needs its own measurement of what it
+      writes without the flag before its row is narrowed on that basis.
+    reproduction: >
+      Point either at a home holding a unit whose installed/ record is missing,
+      with an empty installed/, and compare the directory before and after --
+      the shape reproduced for `home describe` in
+      probes/his-16/review-241-blockers.txt.
+    why_deferred: >
+      Outside the slice, and narrowing a row without measuring what it writes is
+      how the wrong classification got there in the first place.
+    candidate_owner: HIS-13, or a follow-up on CommandHomeAccess
+    status: open
+
+  - id: DEF-054
+    found_by: review of #241 (HIS-16)
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      The membership law's one detection mode that reaches a real home depends
+      on a SEPARATE bug -- the removal path leaving an orphaned
+      `.projections.json`. Fix that bug and the detection disappears.
+    detail: >
+      With #241's H1 fixed, the law has two reachable directions against a real
+      home: GAINED (a unit on disk that no installed/ record names) and LOST (a
+      record naming a unit the home does not hold). LOST is the direction that
+      caught DEF-047, and it caught it because `deploy-helm` vanished from
+      skills/ while its `.projections.json` survived, orphaned.
+
+      That orphan is itself a defect, and HIS-13 is pointed at it. When it is
+      fixed, a removal will leave no record behind, and the LOST direction will
+      stop firing for that cause. GAINED remains, and so does the graph node's
+      before/after -- but the epic should know that closing one bug narrows an
+      instrument, rather than discovering it later from a law that quietly stops
+      finding anything.
+    why_deferred: >
+      It is a consequence of another ticket's fix, not a defect in this one, and
+      the right response is a decision about what replaces the coverage rather
+      than a change here.
+    candidate_owner: HIS-13, with HIS-6 to record the coverage change
+    status: open
+
+  - id: DEF-055
+    found_by: review of #241 (HIS-16)
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      The two laws pay 2x JVM starts per candidate home. Measured cost of the
+      membership law is ~8-15 s per graph, ~4-9 minutes on a ~7-minute sweep.
+    detail: >
+      HomeFixpointLaw runs `home verify` per candidate and HomeMembershipLaw
+      runs `home describe` per candidate, in separate nodes, each spawning its
+      own JVM per home. They discover the same candidates by the same
+      structural walk and skip on the same NotAHomeException exit code.
+
+      One pass that asks both questions per home would roughly halve it. It is
+      not done here because merging them is a change to HomeFixpointLaw, which
+      is wired into 24 graphs and is the instrument this ticket was told to
+      model itself on rather than modify.
+    reproduction: >
+      `durationMs` in any home.membership.law envelope beside the
+      home.fixpoint.law envelope from the same run.
+    why_deferred: >
+      Touching the epic's best instrument to save minutes, in a ticket already
+      carrying four blockers' worth of correction, is the wrong trade. HIS-6
+      owns the sweep and therefore owns whether the cost is worth paying.
+    candidate_owner: HIS-6
     status: open
