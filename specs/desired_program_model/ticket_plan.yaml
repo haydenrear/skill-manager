@@ -590,7 +590,7 @@ epic_goals:
       first version of HIS-18's goal contribution ran the two claims together
       and headlined the 86%; that is corrected at source.
 
-      DEF-053 does not cover this -- it corrects WHICH paths the 776 were, not
+      DEF-058 does not cover this -- it corrects WHICH paths the 776 were, not
       that they are gone.
     evaluation_ticket: HIS-6
     evidence_root: results/epic-home-integrity-sync/goals/GOAL-sync-quiet
