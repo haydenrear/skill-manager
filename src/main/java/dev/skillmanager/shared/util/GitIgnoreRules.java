@@ -80,6 +80,16 @@ import java.util.TreeSet;
  *       every machine that reads it; a record whose contents depend on the
  *       operator's personal global excludes is not comparable with the same
  *       home elsewhere, which is the whole point of recording it.</li>
+ *   <li>{@code core.ignoreCase}, which {@code git init} sets true on APFS and
+ *       jgit's matcher does not read. {@code CASE/} against a directory named
+ *       {@code case/} therefore diverges from {@code git check-ignore} on a
+ *       case-insensitive filesystem — in the direction of NOT ignoring, so the
+ *       path stays visible and stays copied. Honouring it would mean folding
+ *       case in the matcher, which changes what every rule means; the
+ *       divergence is recorded rather than guessed at. The cross-check against
+ *       {@code git check-ignore} that this class was validated with covers a
+ *       corpus with no case-mismatched pair in it, so it is evidence about that
+ *       corpus and not about this.</li>
  *   <li>{@code HomeCloner}. A clone has to hand over a home that WORKS, which
  *       is why it carries {@code node_modules/} and in-unit {@code .venv/} —
  *       both of which a unit routinely gitignores. Applying these rules there

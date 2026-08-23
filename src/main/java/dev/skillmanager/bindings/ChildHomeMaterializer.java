@@ -2982,7 +2982,19 @@ public final class ChildHomeMaterializer {
             Path to = staged.resolve(rel);
             try {
                 Files.createDirectories(to.getParent());
-                if (Files.exists(to, LinkOption.NOFOLLOW_LINKS)) continue;
+                if (Files.exists(to, LinkOption.NOFOLLOW_LINKS)) {
+                    // The staged tree already holds this path, so the
+                    // destination's own copy cannot be carried across and the
+                    // swap is about to destroy it. Reached when upstream STOPS
+                    // declaring a path generated and puts its own content
+                    // there. Reported rather than silent -- preserving it is
+                    // DEF-056, and a loss nobody is told about is the shape
+                    // this epic keeps finding.
+                    Log.warn("child home: %s in %s is being replaced by the source's own copy — "
+                            + "the source no longer treats it as generated, so this home's "
+                            + "version of it is not carried across the swap", rel, dest);
+                    continue;
+                }
                 Files.move(from, to);
             } catch (IOException move) {
                 Log.warn("child home: could not carry %s across the swap in %s (%s) — it is "

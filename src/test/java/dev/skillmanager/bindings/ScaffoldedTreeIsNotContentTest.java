@@ -418,6 +418,46 @@ public final class ScaffoldedTreeIsNotContentTest {
                                         + "a different one");
                     }
                 })
+
+                // ------------------ the carry-over branch nothing had reached
+                // Review of #240: case (3)'s fixture never reaches
+                // `carryOverUnownedTrees`' `if (Files.exists(to)) continue;`,
+                // where the destination's copy is abandoned and then destroyed
+                // by the swap. This reaches it: upstream STOPS declaring the
+                // path generated and puts its own content there, while the
+                // child home already has its own.
+                .test("when upstream stops declaring a path generated, the child's copy of it is "
+                        + "not lost silently", () -> {
+                    try (Fixture f = Fixture.declaring("results/\n")) {
+                        f.materialize();
+                        Path mine = f.childUnit.resolve("results/notes.md");
+                        Fs.ensureDir(mine.getParent());
+                        Files.writeString(mine, "THE CHILD'S NOTES\n");
+
+                        // Upstream re-classifies the path as content.
+                        Files.writeString(f.sourceUnit.resolve(".gitignore"), "\n");
+                        Path theirs = f.sourceUnit.resolve("results/notes.md");
+                        Fs.ensureDir(theirs.getParent());
+                        Files.writeString(theirs, "UPSTREAM'S NOTES\n");
+                        Files.writeString(f.sourceUnit.resolve("SKILL.md"), "STORE v2\n");
+
+                        f.materialize();
+                        assertEquals("STORE v2\n",
+                                Files.readString(f.childUnit.resolve("SKILL.md")),
+                                "precondition: the refresh landed, so the swap this is about "
+                                        + "happened");
+                        assertTrue(Files.isRegularFile(f.childUnit.resolve("results/notes.md")),
+                                "upstream's copy arrives, which is the branch under test — the "
+                                        + "staged tree already holds the path, so the child's own "
+                                        + "copy cannot be carried across");
+                        assertEquals("UPSTREAM'S NOTES\n",
+                                Files.readString(f.childUnit.resolve("results/notes.md")),
+                                "and upstream's content is what stands there. THE CHILD'S COPY IS "
+                                        + "GONE. This case pins the loss so it is a known one, "
+                                        + "and the swap now WARNS by name instead of taking it "
+                                        + "silently — see DEF-056, which owns preserving it");
+                    }
+                })
                 .runAll();
     }
 
