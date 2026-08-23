@@ -11,6 +11,27 @@
 #   id, found_by, found_at, severity (blocking|major|minor), summary,
 #   reproduction, why_deferred, candidate_owner, status (open|triaged|closed)
 
+# ---------------------------------------------------------------------------
+# RECONCILIATION NOTE, added 2026-08-23 at the epic PR. READ BEFORE COUNTING.
+#
+# `status` on these entries has NOT been reconciled against the tree. 51 of 64
+# are `open`, and some of them are already fixed -- nobody closed them, because
+# closing is a deliberate act nothing schedules and the file is append-only by
+# policy.
+#
+# The known case, stated so it is not counted twice:
+#   DEF-043 is `severity: blocking` and `status: open`. The graph it names,
+#   `ticket-lifecycle`, measured BUILD SUCCESSFUL in the wave-5 sweep on
+#   2026-08-22T20:50Z -- after HIS-15 (7437c72) landed the fix. The entry was
+#   never updated. It is almost certainly resolved; it has not been re-measured
+#   for the purpose of closing it, so it stays `open` here rather than being
+#   closed on inference.
+#
+# HIS-6 MUST re-measure before reporting a count. A scorecard computed over an
+# unreconciled ledger reports the wrong number in the alarming direction, which
+# is how ledgers stop being read.
+# ---------------------------------------------------------------------------
+
 version: 1
 findings:
   - id: DEF-001
