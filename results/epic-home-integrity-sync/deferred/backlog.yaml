@@ -3370,3 +3370,48 @@ findings:
       HomeCloner.Verification.
     candidate_owner: HIS-6
     status: open
+
+  - id: DEF-068
+    found_by: epic agent, bootstrapping the HIS-13 worktree on epic tip 6ee45b1
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      THE RELEASED CLI CANNOT BOOTSTRAP A WORKTREE HOME FOR THIS REPOSITORY.
+      `bootstrap-home.sh` picks a CLI off PATH before the checkout's own, so it
+      selected the root home's pinned shim -- skill-manager 0.24.0, the current
+      public release -- and the clone FAILED: "5 path(s) reach outside this copy",
+      FOREIGN_HOME on bin/cli/{computeq,helm-deploy,monitoring,tla-spec-dev,tlc2},
+      leaving `.skill-manager is not usable`.
+    detail: >
+      This is the GOAL-one-home-one-answer baseline reproducing verbatim on the
+      shipped artifact, and it is the first time in this epic that the baseline
+      has been observed BLOCKING a real operation rather than merely disagreeing
+      across readers. HIS-10's lazy-clone contract -- a clone keeps its inherited
+      shims on PATH and declares them in home.provenance.json -- is on the epic
+      branch and NOT in 0.24.0. Re-running the same bootstrap with
+      SKILL_MANAGER_CLI pointed at the checkout's own `./skill-manager` succeeded
+      on the first attempt with no other change.
+
+      TWO SEPARABLE FACTS, and only one of them is fixed by this epic:
+
+      (1) 0.24.0 in the field cannot clone a home whose parent supplies shims.
+          The epic fixes this the moment it merges to main and ships. Until then
+          any operator on 0.24.0 who runs `home clone` against such a home gets a
+          hard refusal. This belongs in the epic PR's deploy-risk section.
+
+      (2) `bootstrap-home.sh`'s pick_cli prefers PATH over the checkout's own
+          CLI, so a repository that is ITSELF skill-manager silently tests the
+          released binary rather than the branch under development. That is a
+          skill-side ordering bug, lives in a gitignored home, and reaches
+          nothing by being merged (rule 13's "architectural changes to the epic's
+          own machinery" category). It also means every worktree bootstrap in
+          this epic has been at the mercy of whatever version was last brewed --
+          which is exactly how DEF-012 got in.
+    consequence: >
+      An operator upgrading to 0.24.0 and then creating a linked worktree gets a
+      home that does not exist, with a refusal naming five shims and no remedy
+      that works. The workaround (SKILL_MANAGER_CLI) is undiscoverable from the
+      error text.
+    candidate_owner: HIS-6
+    also_relevant_to: [HIS-13, HIS-8]
+    status: open
