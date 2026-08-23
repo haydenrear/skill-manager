@@ -3477,15 +3477,30 @@ findings:
       valid YAML. `parse_simple_yaml` is a hand-rolled line-oriented reader that
       treats a continuation line as a dict key at unexpected indentation.
 
-      CONFIRMED CONSEQUENCE, and it is worse than "a command errored":
-      `specs/tickets/` holds ONE directory, `SMVENV-001`, and NOT ONE HIS
-      TICKET. No ticket in this epic ever ran its declared spec lifecycle. Every
-      assignment block printed the command; every agent that ran it got a
-      traceback; HIS-14 recorded the skip without a cause and the rest recorded
-      nothing. `skt status` reads the same `status:` field, so the one
-      instrument an agent uses to orient itself has said "not open" for
-      eighteen tickets, correctly, for a reason nobody diagnosed until ticket
-      seventeen of eighteen.
+      CORRECTED 2026-08-23 by the review of PR #244, and the correction is the
+      more interesting finding. DEF-069 claimed the parser had been broken "all
+      epic" and blamed it for HIS-14's skip and for `skt status`. The reviewer
+      measured otherwise; I re-measured, same parser, three commits:
+
+        ddca9be  2026-08-21 20:34   PARSES
+        65942a3  2026-08-22 11:18   FAILS
+        6ee45b1  2026-08-23 16:17   FAILS
+
+      Kickoff was 2026-08-20. So the parser broke ON 2026-08-22, at a backlog
+      hygiene commit, and waves 1 through 5 parsed fine. HIS-14's own document
+      gives a DIFFERENT reason for its skip -- the only `tla-spec-dev` on PATH
+      resolving through the ROOT home's CLI pin -- and `skt status` uses its own
+      regex reader, which the wrap does not affect. Three of DEF-069's clauses
+      are false and are withdrawn.
+
+      WHAT SURVIVES IS WORSE. `specs/tickets/` holds ONE directory,
+      `SMVENV-001`, and NOT ONE HIS TICKET -- measured, not inferred. The parser
+      explains waves 6 through 9. It does not explain waves 1 through 5, when
+      the file parsed and the lifecycle STILL was not run. So there is no single
+      cause: the spec lifecycle simply was not run, by anyone, for eighteen
+      tickets, for reasons that differed and that only ONE ticket (HIS-14) wrote
+      down at all. A step that every assignment block printed was skipped
+      wave after wave and the process noticed once.
     what_is_still_broken: >
       Half (b). A hand-rolled YAML reader in the toolchain that decides whether
       a spec ticket may be opened. It accepts a subset of YAML nobody has
@@ -3501,7 +3516,8 @@ findings:
     consequence_for_this_epic: >
       HIS-5 and HIS-6 both need the spec workflow. HIS-6 additionally cannot
       report "the workflow was closed" as evidence of anything, because it was
-      never opened. The finalization step in git-epic-workflow rule 8 -- "the
+      never opened. AND -- separately from the parser -- HIS-6 must answer why
+      it was not run in waves 1 to 5, when nothing was stopping it. The finalization step in git-epic-workflow rule 8 -- "the
       finalizer promotes the accepted model and closes the workflow" -- has no
       per-ticket close records to close over.
     candidate_owner: "HIS-6 to decide what it can still report; spec-double-compiler for (b)"
