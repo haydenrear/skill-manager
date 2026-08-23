@@ -108,6 +108,22 @@ epic_goals:
     unchanged, through --json / the detail surface. Collapsing is a default, not a deletion.
 
     '
+  measurement_caveat_added_2026_08_22: "TWO DIFFERENT NUMBERS, AND HIS-6 MUST NOT CONFLATE THEM. Established\
+    \ by HIS-18's adversarial review and reproduced independently by the ticket agent afterwards.\nRETRODICTION\
+    \ -- what the rule would have removed from the FROZEN baseline record, had it existed on 2026-08-19:\n\
+    \n  file lines            889 -> 124   (86.1%)\n  spec-double-compiler  776 ->  25\n  renderDetailed()\
+    \      896 / 88,309 -> 131 / 5,639   (93.6%)\n\nFORWARD-GOING -- what it removes from the operator's\
+    \ live store TODAY, measured over all 23 root-store units by running the predicate against each live\
+    \ tree:\n\n  acp-cdc-ai-python          8   (ACP session logs)\n  deploy-helm                7   (helm_deploy.egg-info/)\n\
+    \  hyper-experiments-finance  7   (.egg-info/)\n  everything else, INCLUDING spec-double-compiler\
+    \   0\n  WHOLE STORE               22 net-new exclusions\n\nspec-double-compiler is 87% of the retrodicted\
+    \ metric and its live entry count is UNCHANGED at 26,930, because the paths the baseline captured\
+    \ are in `removedFiles` precisely BECAUSE THEY WERE DELETED. A record generated today shrinks by single-digit\
+    \ lines.\nBoth numbers are real and neither is the other. The retrodiction shows the MECHANISM is\
+    \ real and not marginal over a record that captured those trees while they existed; it does not show\
+    \ that anything shrinks next week. The first version of HIS-18's goal contribution ran the two claims\
+    \ together and headlined the 86%; that is corrected at source.\nDEF-053 does not cover this -- it\
+    \ corrects WHICH paths the 776 were, not that they are gone.\n"
   evaluation_ticket: HIS-6
   evidence_root: results/epic-home-integrity-sync/goals/GOAL-sync-quiet
 - id: GOAL-gate-settles
@@ -1767,7 +1783,12 @@ tickets:
     production:
     - ProjectCommand
     - ProjectRoot.resolve
-    - AgentHomes.binding
+    - Confinement
+    - SandboxCommand
+    - EnvCommand
+    - SkillManagerCli
+    - CommandHomeAccess
+    - RunTests.java
     tla: []
     adapters: []
     test_graph:
@@ -1939,9 +1960,10 @@ tickets:
   conflict_keys:
     production:
     - ChildHomeMaterializer.digest
-    - Rederivable
-    - UnitDigest
+    - ChildHomeMaterializer.plainView
+    - ChildHomeMaterializer.isLocallyModified
     - GitIgnoreRules
+    - RunTests.java
     tla: []
     adapters: []
     test_graph:
