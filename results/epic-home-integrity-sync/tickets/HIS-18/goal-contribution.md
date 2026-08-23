@@ -280,7 +280,7 @@ and the bytes survive. Full `jbang RunTests.java` is green, including
 | `jbang RunTests.java` | **ALL PASSED** — 144 suites, **1350** cases, including the **14** `ScaffoldedTreeIsNotContentTest` cases |
 | `uv run pytest specs/` | **38 passed** in 1.83s |
 | `run.py sync-settles` | **RED then GREEN, on this change.** Red at runId `20260822-223718`, `BUILD FAILED in 59s` — the node's own vacuity guard, see below. Green at runId `20260822-224910`, `BUILD SUCCESSFUL in 1m 2s`. **Re-run after the review fixes: `BUILD SUCCESSFUL in 1m 38s`, runId `20260823-001706`** |
-| `run.py project-child-home` | **BUILD SUCCESSFUL in 3m 53s**, runId `20260822-232315` — 12 nodes, **73 of 73 assertions passed** |
+| `run.py project-child-home` | `BUILD SUCCESSFUL in 3m 53s`, runId `20260822-232315` — 12 nodes, 73/73. **Re-run after the review fixes: `BUILD SUCCESSFUL in 4m 1s`, runId `20260823-001855`, 12 nodes, 73/73** |
 | `tlc` | **N/A** per the assignment: this ticket states no new invariant, and HIS-5 carries the model work for the epic |
 
 ### `sync-settles` went red on this change, and that is the best thing in this ticket
@@ -314,8 +314,12 @@ fixtures exercise the sources I edited, named with its reason.
   about (`ChildHomeResolved` injects one, `ChildHomeSyncPreservesEdits` then
   syncs the result). It is also HIS-4's second set, for the same reason.
   **Run: `BUILD SUCCESSFUL in 3m 53s`, 12 nodes, 73/73 assertions** (runId
-  `20260822-232315`). It queued 22 minutes behind another wave-7 agent's lock,
-  which is the serialisation working, not a result.
+  `20260822-232315`), and **re-run on the head that carries the review fixes:
+  `BUILD SUCCESSFUL in 4m 1s`, 12 nodes, 73/73** (runId `20260823-001855`) —
+  because `isLocallyModified` changed, and that graph's prune and
+  edit-preservation nodes are what read it. It queued 22 minutes behind another
+  wave-7 agent's lock the first time, which is the serialisation working, not a
+  result.
 
 `run.py --all` was **not** run: it is multi-hour and belongs to HIS-6, which owns
 the one terminal sweep and the goal scorecard.
