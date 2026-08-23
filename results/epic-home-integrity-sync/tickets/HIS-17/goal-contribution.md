@@ -183,51 +183,53 @@ spelling-pair fixture asserts the two spellings are not substring-compatible"* �
 
 ## 5. Validation
 
-All on `5e4a3e2`, the tip of this branch, in worktree `wt-238-his-17`.
+All re-run on `9c36cb7` after review of #242, in worktree `wt-238-his-17`.
 
 ### Declared graphs
 
 ```
 python skills/test_graph/scripts/run.py home-clone
-  BUILD SUCCESSFUL in 5m 1s        run 20260823-170314
-  14 nodes, 96 assertions, ALL PASSED
-  home.cloned.into.project: leakCount=0  toleratedContentReferences=1
-                            sanctionedDescentRecords=1  verifyExitCode=1
+  BUILD SUCCESSFUL in 5m 13s       run 20260823-174248
+  14 nodes, 100 assertions, ALL PASSED
+  home.cloned.into.project now carries 17 assertions (was 13)
+    leakCount=0  toleratedContentReferences=1  sanctionedDescentRecords=1
+    verifyExitCode=1
+  the four added by review:
+    the_walk_refuses_a_descent_record_carrying_an_unaccounted_path      PASS
+    production_refuses_a_descent_record_carrying_an_unaccounted_path    PASS
+    the_tampered_descent_record_is_restored                             PASS
+    the_walk_and_production_agree_about_this_clone                      PASS
 
 python skills/test_graph/scripts/run.py artifact-dag
-  BUILD FAILED in 3m 16s           run 20260823-163904
-  lazy.clone.declares.without.building  PASSED  12/12 assertions
-  cold.artifact.refusal.names.build     PASSED  (was skipped behind it; ARTI-07's
-                                                 second half, written red, now green)
-  uninstall.prunes.the.subgraph         FAILED  <- DEF-066, ARTI-08's declared red,
-                                                   revealed by unblocking the node
-                                                   in front of it. Not mine.
+  BUILD FAILED in 3m 39s           run 20260823-180612
+  lazy.clone.declares.without.building  PASSED
+      verifyBareExitCode=0   <- ARTI-07's question, its own run
+      verifyAgainstExitCode=0 <- isolation, its own run; the split review asked for
+  cold.artifact.refusal.names.build     PASSED
+  uninstall.prunes.the.subgraph         FAILED  <- DEF-066, ARTI-08's declared
+                                                   red. Not mine, unchanged.
 ```
 
-`verifyExitCode=1` is expected and is the reason the cross-check does not read
-the exit code: it is the fixture's deliberate dangling shim, the provisioning
-half. See §2.
+`verifyExitCode=1` on `home-clone` is expected and is the reason the cross-check
+does not read the exit code: it is the fixture's deliberate dangling shim, the
+provisioning half. See §2.
 
 ### The second set, and why these graphs
 
 The assignment requires naming any graph whose fixtures exercise the sources
 edited, with the reason. `HomeClonedIntoProject.java` and `HomeCloneSupport.java`
-are listed by **`checkout-home`** as well as `home-clone` — the same node file,
-a second graph — and `onboard` was #238's fourth red:
+are listed by **`checkout-home`** as well as `home-clone` — the same node file, a
+second graph — and **`onboard`** was #238's fourth red and now carries four
+budget changes:
 
 ```
 python skills/test_graph/scripts/run.py checkout-home
-  BUILD SUCCESSFUL in 3m 3s        run 20260823-170813
-  8 nodes, 55 assertions, ALL PASSED
+  BUILD SUCCESSFUL in 3m 17s       run 20260823-180101
+  8 nodes, 59 assertions, ALL PASSED
 
 python skills/test_graph/scripts/run.py onboard
-  BUILD FAILED in 3m 28s           run 20260823-164343
-  onboard.skills.installed errored: timed out after 10s across 3 attempts
-                                    <- DEF-065, budget below the graph's own
-                                       fixed per-node cost. Not mine, not this
-                                       epic's, and not HomeLock.
-  with the three 10s budgets at 120s, reverted after measuring:
-  BUILD SUCCESSFUL in 4m 45s       run 20260823-165545     15/15 nodes
+  BUILD SUCCESSFUL in 5m 6s        run 20260823-175600
+  15 nodes, 45 assertions, ALL PASSED    (was: errored at node 9, 6 skipped)
 ```
 
 `--all` was NOT run: it belongs to HIS-6, which owns the one terminal sweep with
@@ -237,8 +239,13 @@ the goal scorecard.
 
 ```
 jbang RunTests.java              1363 passed, 0 failed        ALL PASSED
-uv run pytest specs/               38 passed in 1.80s
+uv run pytest specs/               38 passed in 1.61s
 ```
+
+**This branch changes no production code at all** — `git diff a978bb0..HEAD -- src/`
+is empty. The unit results are therefore unchanged by construction, and are
+re-run rather than carried forward because five probes mutated `HomeCloner` and
+`HomeProvenance` and the revert has to be provable.
 
 ### TLC
 
@@ -247,12 +254,15 @@ the model work plus every regression cfg.
 
 ### Before / after
 
-| | before (`a978bb0`) | after (`5e4a3e2`) |
+| | before (`a978bb0`) | after (`9c36cb7`) |
 | --- | --- | --- |
-| `home-clone` | **FAILED**, 1 node red, **9 skipped** | **14/14, 96 assertions** |
-| `checkout-home` | **FAILED**, same node | **8/8, 55 assertions** |
-| `artifact-dag` | FAILED at `lazy.clone…`, **4 skipped** | `lazy.clone…` **12/12**; `cold.artifact…` **green**; fails 2 nodes later on DEF-066 |
-| `onboard` | FAILED, 6 skipped | **15/15 green** — four budgets raised; DEF-065 open on the floor |
+| `home-clone` | **FAILED**, 1 node red, **9 skipped** | **14/14, 100 assertions** |
+| `checkout-home` | **FAILED**, same node | **8/8, 59 assertions** |
+| `onboard` | **FAILED**, errored at node 9, **6 skipped** | **15/15, 45 assertions** |
+| `artifact-dag` | FAILED at `lazy.clone…`, **4 skipped** | `lazy.clone…` **PASS**; `cold.artifact…` **PASS**; fails 2 nodes later on DEF-066 |
+
+Three of the four graphs #238 named are green; the fourth fails on a node that
+is ARTI-08's declared red and was never reachable before this ticket.
 
 ### Homes
 
@@ -263,8 +273,6 @@ Snapshotted before the first command and diffed after the last. `ROOT`
 this ticket wrote was a synthetic fixture under `$TMPDIR/sm-testgraph-*`, and
 those were deleted between runs — the machine was at 99% / 16 GB throughout and
 ended there.
-
-
 
 ## 6. Contribution to `GOAL-one-home-one-answer`
 
