@@ -1764,7 +1764,28 @@ tickets:
   title: a command that resolves its target from the working directory escapes every sandbox this repo
     has
   phase: HIS
-  status: planned
+  status: delivered
+  delivered_in: 'PR #241, merged into epic/home-integrity-sync as a527221'
+  status_note_delivered: 'DELIVERED after four blockers, each reproduced before it was fixed.
+
+    THE SLICE WAS HALF-SHIPPED and the re-diagnosis is the good part: --project-dir already existed on
+    all five project verbs and every graph node already passed it, so the escape was never "no way to
+    say which project" -- it was "NOTHING NOTICED THAT NOBODY HAD SAID".
+
+    THE MEMBERSHIP LAW''S OWN READER CREATED THE RECORDS IT AUDITED. `home describe` was classified WRITE,
+    so tryReconcile ran ahead of it and wrote installed/<name>.json for every unit lacking one -- making
+    the GAINED direction STRUCTURALLY UNREACHABLE against a real home, and making the law a mutator on
+    24 graphs. Fixed with INIT_GATED. Also: confined()/escapes() were computed and never enforced; a symlinked
+    confinement root false-refused its own contents on /tmp and java.io.tmpdir; and nothing armed it in
+    production. Now armed via AgentHomes.binding -- the arming point this plan''s own conflict_keys had
+    named and the epic agent then wrongly called over-declared.
+
+    THE LIMIT, STATED AT THE TOP OF THE GOAL CONTRIBUTION RATHER THAN THE BOTTOM: the law is 0-FOR-1 AGAINST
+    REAL DAMAGE and 3-for-3 against its own fixtures. On the only home in the evidence set genuinely damaged
+    -- by this ticket''s own control -- it returned PASS. It catches the residue form, and DEF-054 records
+    that this rests on a bug HIS-13 is pointed at.
+
+    '
   epic: home-integrity-sync
   github_issue: 237
   added_in_schedule_revision: 7
@@ -1942,7 +1963,29 @@ tickets:
 - id: HIS-18
   title: a scaffolded re-derivable tree is still hashed, so the drift report's input never shrank
   phase: HIS
-  status: planned
+  status: delivered
+  delivered_in: 'PR #240, merged into epic/home-integrity-sync as 3a4ce09'
+  status_note_delivered: 'DELIVERED. HIS-4''s undelivered slice (1), finished because that ticket corrected
+    itself: "''the plan was wrong'' invites amending the plan; ''a slice was not delivered'' invites finishing
+    the work."
+
+    TWO NUMBERS, AND THEY ARE NOT INTERCHANGEABLE -- see GOAL-sync-quiet''s measurement_caveat. Retrodiction
+    889 -> 124 file lines (86.1%); forward-going 22 net-new exclusions across 23 live units, with spec-double-compiler
+    -- 87% of the retrodicted metric -- UNCHANGED at 26,930.
+
+    REVIEW FOUND TWO BLOCKERS, both created by the diff. The exclusion made an AGENT''S AUTHORED FILE
+    DISPOSABLE: treeDigest became ignore-aware and isLocallyModified reads it, so a worktree agent''s
+    results/findings.md in a unit whose .gitignore has results/ would be skipped by sync, cleared by close-out
+    and deleted by wt close. And a trailing-slash rule over an in-unit symlink made the two walkers disagree
+    permanently -- verbatim the failure mode this ticket''s own case 7 message names. The fix went deeper
+    than the review''s diagnosis: the SHAPE differs across the dereference, so directory-ness is now read
+    as the materialized view will have it.
+
+    Also: the vacuity record written to answer DEF-035 was NOT REPRODUCIBLE FROM ITSELF, and project-child-home''s
+    green was re-run because HIS-16 had added a node to that graph -- the earlier 73/73 was a run of a
+    graph that no longer existed.
+
+    '
   epic: home-integrity-sync
   github_issue: 239
   added_in_schedule_revision: 8
