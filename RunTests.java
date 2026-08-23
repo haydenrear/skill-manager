@@ -304,6 +304,7 @@ public class RunTests {
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();
+        failures += dev.skillmanager.bindings.ScaffoldedTreeIsNotContentTest.run();
 
         System.out.println();
         if (failures == 0) {

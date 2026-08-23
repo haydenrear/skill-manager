@@ -3027,4 +3027,155 @@ findings:
       carrying four blockers' worth of correction, is the wrong trade. HIS-6
       owns the sweep and therefore owns whether the cost is worth paying.
     candidate_owner: HIS-6
+  - id: DEF-058
+    found_by: HIS-18 (#239), while measuring the baseline it was told to re-render
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      `baseline/root-home-drift.json`'s README attributes the 776 lines to the
+      wrong paths, and the plan, the issue and HIS-4's close-out all inherit the
+      attribution. The mechanism is approximately right; the paths named are
+      not.
+    detail: >
+      README.md says those 776 removed files "are the dereferenced in-unit
+      symlink trees (test_graph/build-logic, test_graph/sdk,
+      test_graph/standard-nodes) being read as deletions". MEASURED over the
+      committed record:
+
+        3 of the 776 contain any of those three names, and all three are inside
+          a NESTED example project
+          (examples/distributed_history/test_graph/build-logic/.kotlin,
+           .../test_graph/sdk/.DS_Store)
+        745 are examples/distributed_history/**
+         24 are specs/.history/**
+          rest are .DS_Store and one specs/program_model/states
+
+      All of it is UNTRACKED generated content the unit's own .gitignore covers:
+      749 of 776 confirmed ignored by `git check-ignore` reading paths as files,
+      772 reading them as directories, and independently by HIS-18's own
+      predicate with identical verdicts. NONE of the 776 is tracked, and none
+      has a tracked descendant (0 of 776).
+
+      So the epic reasoned from "a unit's re-derivable trees are hashed", which
+      is true and is what HIS-18 fixed. It also reasoned from "and those trees
+      are the scaffold bindings", which over this record is false.
+    reproduction: >
+      jbang results/epic-home-integrity-sync/probes/his-18/RenderBaseline.java \
+        ~/.skill-manager <project home>
+      and, for the git cross-check, copy the unit's .git/index to scratch and
+      run `GIT_INDEX_FILE=<copy> git -C <unit> check-ignore --stdin` over the
+      removed list.
+    why_deferred: >
+      It changed nothing about what to build, and the baseline file itself must
+      NOT be edited -- it is the "before" side of every comparison the terminal
+      evaluation makes, and a baseline quietly corrected after the fact is worth
+      nothing. The correction belongs in the reading, not in the record.
+    what_the_owner_must_decide: >
+      Whether the README gains a dated correction note (the same treatment the
+      "889 vs 896" superseded figure already got) or whether HIS-6 carries it.
+      HIS-6 MUST NOT read "the scaffold trees moved". What moved is the
+      untracked generated content.
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-059
+    found_by: HIS-18 (#239)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      #180 is still open and now has the matcher it asks for.
+      `MarkdownImportValidator.validateProject` still walks with five hard-coded
+      directory names and no git semantics, one tier away from
+      `GitIgnoreRules`.
+    detail: >
+      #180 ("Honor Git-ignored paths when validating project Markdown imports")
+      is the precedent the HIS-18 plan entry cites for honouring a unit's own
+      declaration, and it is unimplemented: a Go module-cache Hugo archetype
+      gets parsed as project YAML and makes `project resolve` exit 11.
+      `GitIgnoreRules` is exactly that instrument, per-directory, negation-aware,
+      index-aware, no subprocess.
+    why_deferred: >
+      A resolver surface with its own graph node (`onboarding`), its own
+      baseline and its own two-clause acceptance. Out of a digest ticket's
+      slice. Recorded so the second implementation nobody should write is not
+      written.
+    candidate_owner: "#180"
+    status: open
+
+  - id: DEF-060
+    found_by: HIS-18 (#239)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      `HomeCloner` deliberately does NOT consult the unit's declaration, and
+      nothing asserts that asymmetry. A future edit could route the cloner
+      through `GitIgnoreRules` and hand over a home with no `node_modules/`,
+      with no test failing.
+    detail: >
+      A clone must hand over a home that WORKS, which is why it carries
+      node_modules/ and in-unit .venv/ -- both of which a unit routinely
+      gitignores. The reason is documented in two javadocs
+      (Rederivable's two-scopes note and GitIgnoreRules' "what is deliberately
+      NOT consulted") and defended by nothing executable. `Rederivable` has the
+      identical undefended asymmetry between CACHES and OUTPUT_ROOTS today, so
+      this is ONE guard for both, not a new one for HIS-18's half.
+    why_deferred: >
+      Writing the guard means deciding what a clone is allowed to skip, which is
+      a `home clone` question with its own graph (`home-clone`, currently red on
+      the epic tip and HIS-17's).
+    candidate_owner: HIS-13
+    status: open
+
+  - id: DEF-061
+    found_by: review of PR #240 (HIS-18), reproduced by the HIS-18 agent
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      `carryOverUnownedTrees` abandons the destination's copy of an unowned path
+      when the staged tree already holds that path, and the swap then destroys
+      it. Reached when upstream STOPS declaring a path generated and puts its
+      own content there.
+    detail: >
+      The branch is `if (Files.exists(to, NOFOLLOW)) continue;`. HIS-4 wrote the
+      carry-over as best-effort, and the collision case had no test in any suite
+      and no report at all. The review of #240 named it; HIS-18 reproduced it:
+
+        child home writes results/notes.md under a `results/` rule
+        upstream removes the rule and commits its own results/notes.md
+        refresh -> upstream's copy stands, the child's is gone
+
+      The unit is NOT held back on the way there, because the child's copy was
+      excluded from the destination digest by the OLD rules, so `destUntouched`
+      is true and the tree reads as pristine.
+    what_was_done: >
+      HIS-18 made the branch WARN, naming the path and the reason, so the loss is
+      reported rather than silent, and pinned it with a unit case
+      (ScaffoldedTreeIsNotContentTest, "when upstream stops declaring a path
+      generated, the child's copy of it is not lost silently").
+    why_deferred: >
+      Preserving the bytes means escrowing them, and `MaterializationEscrow` is
+      HIS-4's surface with its own rollback semantics on the sync path. Wiring a
+      second escrow into the resolve path from a digest ticket is how one rule
+      gets two implementations, which is this epic's recurring defect.
+    candidate_owner: HIS-13
+    status: open
+
+  - id: DEF-062
+    found_by: review of PR #240 (HIS-18)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      The baseline README records 88,308 characters for the committed drift
+      record and today's renderer emits 88,309 over the same record.
+      HomeDriftGateTest asserts the README figure.
+    detail: >
+      One character. Neither number has been changed by HIS-18, deliberately: a
+      baseline edited after the fact is worth nothing, and a test quietly
+      re-pointed at a new number is worse. The README already carries one dated
+      correction (the superseded "889 lines / 87,208 characters" estimate), so
+      there is a precedent for how to record it.
+    why_deferred: >
+      It is the terminal evaluation's own instrument, and which of the two is
+      authoritative is the owner's call, not a ticket agent's.
+    candidate_owner: HIS-6
     status: open
