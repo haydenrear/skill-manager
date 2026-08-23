@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES HomeCloneSupport.java
+//SOURCES ../lib/HomeIsolation.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -59,10 +60,32 @@ public class HomeClonedIntoProject {
 
             // --- INDEPENDENT scan: nothing in the copy may name the source ---
             List<String> refs = HomeCloneSupport.referencesTo(cloneStore, fixture);
-            List<String> leaks = refs.stream().filter(r -> !r.startsWith("CONTENT ")).toList();
+            String descentPrefix = HomeCloneSupport.DESCENT_SURFACE + " ";
+            List<String> leaks = refs.stream()
+                    .filter(r -> !r.startsWith("CONTENT ") && !r.startsWith(descentPrefix))
+                    .toList();
             List<String> tolerated = refs.stream().filter(r -> r.startsWith("CONTENT ")).toList();
+            List<String> descent = refs.stream().filter(r -> r.startsWith(descentPrefix)).toList();
 
             boolean noOwnedSurfaceNamesTheSource = leaks.isEmpty();
+
+            // --- PRECONDITION: the record the scan exempts is actually there --
+            //
+            // Asserted, not hoped. Without it the exemption above is vacuous in
+            // the vacuity ledger's mechanism-B sense: a clone that recorded no
+            // descent at all also produces zero leaks, and "the exemption is
+            // narrow" then reads exactly like "there was nothing to exempt".
+            // Same argument the tolerated-content pair below already makes,
+            // applied to the file HIS-10 added.
+            //
+            // Deliberately blind to production's exemption — it reads the
+            // filesystem and this walk's own classification, so removing the
+            // exemption from HomeCloner cannot move it. A precondition that
+            // moves with the mutation under test is mechanism A, and this epic
+            // has three of those on the ledger already.
+            boolean theCloneRecordsItsDescentAndTheScanCountsIt =
+                    HomeIsolation.recordsDescentNaming(cloneStore, fixture)
+                            && descent.size() == 1;
 
             // --- the declared exception, both halves -----------------------
             // It must SURVIVE (byte-identical) and it must be COUNTED. Either
@@ -109,11 +132,77 @@ public class HomeClonedIntoProject {
             boolean relativeLinksResolveInsideTheClone =
                     resolvesInside(inUnitLink, cloneStore) && resolvesInside(linkShim, cloneStore);
 
+            // --- and PRODUCTION'S OWN VERDICT on the same question ---------
+            //
+            // The walk above is a SECOND SPELLING of a rule production already
+            // owns in HomeCloner.verifyRoots, and that is this epic's signature
+            // defect -- two readers of one rule -- with the epic's own
+            // instruments as the subject. It bit here exactly as it bit
+            // ticket-lifecycle: HIS-10 (#227) made a correct clone record its
+            // DESCENT, which names the source on purpose, production exempted
+            // that one file from its own isolation rule, and this walk did not
+            // follow. It went red the day HIS-10 merged and took nine skipped
+            // nodes with it, in TWO graphs, and nobody looked for a third copy
+            // of the rule after the first one was fixed.
+            //
+            // Exempting the record above fixes today. Asking PRODUCTION the
+            // same question is what stops the two drifting apart again.
+            //
+            // WHY NOT `verify` exit 0, the way ticket-lifecycle cross-checks:
+            // measured on this graph's own clone, `home verify --home <clone>
+            // --against <fixture>` exits 1 -- on bin/cli/hc-venv-tool, the
+            // DANGLING_SHIM this fixture plants on purpose so that "a skipped
+            // toolchain root is reported" has something to report. That is the
+            // provisioning half of the command, not the isolation half. Binding
+            // this cross-check to the exit code would make it red for a reason
+            // the node is not about, and the repair for that would be widening
+            // the fixture until it stopped saying anything. So the cross-check
+            // reads the ISOLATION VERDICT, which is the half the walk duplicates.
+            ProcessRecord verify = HomeCloneSupport.sm(ctx, "home-verify-clone", cloneStoreRaw,
+                    "home", "verify", "--home", cloneStoreRaw, "--against", fixture);
+            String verifyOut = HomeCloneSupport.log(ctx, "home-verify-clone");
+            boolean productionAgreesNoPathNamesTheSource =
+                    HomeIsolation.verdictIsClean(verifyOut, cloneStore);
+
+            // --- the control that gives the cross-check its polarity --------
+            //
+            // "Production reported no isolation failure" is also satisfied by a
+            // production that CANNOT report one: delete the leak collection
+            // from verifyRoots and the assertion above goes green. That is the
+            // vacuity ledger's mechanism C with the oracle itself as the
+            // subject. a4a95cb measured this control by hand, once, in a probe
+            // -- and measuring it by hand is exactly how the SECOND copy of the
+            // rule survived the first fix. So it runs on every run.
+            //
+            // Removed in a finally, and its removal ASSERTED: eight downstream
+            // nodes read this clone, and a decoy left behind would be a leak
+            // the graph itself created. The source digest below is taken after
+            // all of this, so both verify runs are also covered by "cloning
+            // does not write to the source home".
+            boolean productionRefusesAPlantedPathIntoTheSource = false;
+            try {
+                HomeIsolation.plantDecoy(cloneStore,
+                        HomeCloneSupport.shim(fixtureHome, HomeCloneSupport.GOOD_SHIM));
+                ProcessRecord verifyDecoy = HomeCloneSupport.sm(ctx, "home-verify-decoy",
+                        cloneStoreRaw, "home", "verify", "--home", cloneStoreRaw,
+                        "--against", fixture);
+                productionRefusesAPlantedPathIntoTheSource = verifyDecoy.exitCode() != 0
+                        && HomeIsolation.verdictRefusesNaming(
+                                HomeCloneSupport.log(ctx, "home-verify-decoy"),
+                                HomeIsolation.DECOY_LINK);
+            } finally {
+                HomeIsolation.removeDecoy(cloneStore);
+            }
+            boolean theDecoyIsGone = HomeIsolation.decoyIsGone(cloneStore);
+
             // --- the source home is untouched by the clone -----------------
             String afterDigest = HomeCloneSupport.treeDigest(fixtureHome);
             boolean sourceUnchangedByCloning = afterDigest.equals(sourceDigest);
 
             boolean pass = cloneSucceeded && cloneReportsClean && noOwnedSurfaceNamesTheSource
+                    && theCloneRecordsItsDescentAndTheScanCountsIt
+                    && productionAgreesNoPathNamesTheSource
+                    && productionRefusesAPlantedPathIntoTheSource && theDecoyIsGone
                     && authoredSurvivedByteForByte && toleratedReferencesAreCounted
                     && ledgerIsTokenizedNotSubstituted && inHomeLinksAreRelative && relativeLinksResolveInsideTheClone
                     && sourceUnchangedByCloning;
@@ -129,12 +218,26 @@ public class HomeClonedIntoProject {
                                     + " inUnitLink=" + HomeCloneSupport.linkTarget(inUnitLink)
                                     + " linkShim=" + HomeCloneSupport.linkTarget(linkShim)
                                     + " digestBefore=" + sourceDigest
-                                    + " digestAfter=" + afterDigest))
-                    .process(clone)
+                                    + " digestAfter=" + afterDigest
+                                    + " descent=" + descent
+                                    + " verifyExit=" + verify.exitCode()
+                                    + " productionAgreesNoPathNamesTheSource="
+                                    + productionAgreesNoPathNamesTheSource
+                                    + " productionRefusesAPlantedPathIntoTheSource="
+                                    + productionRefusesAPlantedPathIntoTheSource
+                                    + " theDecoyIsGone=" + theDecoyIsGone))
+                    .process(clone).process(verify)
                     .assertion("home_clone_exits_zero", cloneSucceeded)
                     .assertion("home_clone_reports_clean", cloneReportsClean)
                     .assertion("independent_scan_finds_no_owned_surface_naming_the_source",
                             noOwnedSurfaceNamesTheSource)
+                    .assertion("the_clone_records_its_descent_and_the_scan_counts_it",
+                            theCloneRecordsItsDescentAndTheScanCountsIt)
+                    .assertion("production_agrees_no_path_in_the_clone_names_the_source",
+                            productionAgreesNoPathNamesTheSource)
+                    .assertion("production_still_refuses_a_planted_path_into_the_source",
+                            productionRefusesAPlantedPathIntoTheSource)
+                    .assertion("the_planted_decoy_is_removed_from_the_clone", theDecoyIsGone)
                     .assertion("authored_content_survives_the_clone_byte_for_byte",
                             authoredSurvivedByteForByte)
                     .assertion("tolerated_content_references_are_counted_in_the_report",
@@ -148,6 +251,8 @@ public class HomeClonedIntoProject {
                     .metric("cloneExitCode", clone.exitCode())
                     .metric("leakCount", leaks.size())
                     .metric("toleratedContentReferences", tolerated.size())
+                    .metric("sanctionedDescentRecords", descent.size())
+                    .metric("verifyExitCode", verify.exitCode())
                     .publish("cloneJson", cloneJson);
         });
     }

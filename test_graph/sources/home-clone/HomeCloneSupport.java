@@ -1,4 +1,5 @@
 //SOURCES ../lib/SmEnv.java
+//SOURCES ../lib/HomeIsolation.java
 
 import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
@@ -293,12 +294,55 @@ final class HomeCloneSupport {
     }
 
     /**
+     * The sanctioned descent record, and the surface class this walk reports it
+     * under.
+     *
+     * <h2>Why the walk had to catch up with a contract that moved</h2>
+     *
+     * <p>This walk used to say "nothing skill-manager wrote in the copy names
+     * the original", full stop. HIS-10 (#227) changed that on purpose: a clone
+     * now records its DESCENT so the sanction for an inherited parent-store
+     * shim is a fact in the copy rather than a flag an operator types. The
+     * record names the source BY DESIGN, and production exempts exactly that
+     * path from its own isolation rule under byte accounting
+     * ({@code HomeProvenance.mentionsOnlyRecordedDescent}).
+     *
+     * <p>So this is not a loosening; it is the walk catching up. The FILENAME
+     * comes from {@link HomeIsolation#DESCENT_RECORD} rather than being spelled
+     * again here — spelling it a fifth time is the defect HIS-17 exists to
+     * stop — and the exemption is that single name at the SCANNED ROOT, never a
+     * pattern. A {@code home.provenance.json} anywhere below is still whatever
+     * {@link #surfaceOf} says it is, and still a leak.
+     *
+     * <h2>Reported, not dropped</h2>
+     *
+     * <p>The hit is RECLASSIFIED rather than skipped, so the caller can require
+     * that the exempted record was actually there. A {@code continue} would
+     * make "0 leaks" and "the clone recorded no descent at all" the same
+     * reading — the shape this node already refuses for tolerated content
+     * references ("either one alone is satisfiable by the wrong
+     * implementation").
+     *
+     * <p>The narrow half of production's rule — that every occurrence of the
+     * needle in the record is accounted for by the parsed {@code clonedFrom} /
+     * {@code parentStores} fields, so a path smuggled into a new field is still
+     * a leak — is deliberately NOT re-implemented here. That byte accounting is
+     * production's, and copying it would be one more spelling of the thing this
+     * ticket exists to remove. The caller's cross-check carries it instead.
+     */
+    static final String DESCENT_SURFACE = "DESCENT";
+
+    /**
      * Every path at or below {@code root} that still mentions {@code needle} in
      * its bytes or in a symlink target, with the surface class it falls under.
      *
      * <p>This is an INDEPENDENT scan, not a reading of the clone's own report.
      * The distinction is the whole point: `home clone` exiting 0 is a claim, and
      * the acceptance criterion for the clone is the filesystem, not the claim.
+     *
+     * <p>The sanctioned descent record comes back under
+     * {@link #DESCENT_SURFACE}; see that constant for why it is
+     * neither a leak nor silently dropped.
      */
     static List<String> referencesTo(Path root, String needle) throws IOException {
         List<String> hits = new ArrayList<>();
@@ -324,10 +368,25 @@ final class HomeCloneSupport {
         try {
             if (Files.size(current) > 4L * 1024 * 1024) return;
             String text = new String(Files.readAllBytes(current), StandardCharsets.UTF_8);
-            if (text.contains(needle)) hits.add(surfaceOf(rel) + " " + rel);
+            if (text.contains(needle)) hits.add(classOf(rel) + " " + rel);
         } catch (IOException ignored) {
             // unreadable file; nothing to assert about its bytes
         }
+    }
+
+    /**
+     * {@link #surfaceOf}, with the one sanctioned exception folded in: the
+     * descent record AT THE SCANNED ROOT is reported as {@link #DESCENT_SURFACE}
+     * rather than as the {@code STATE} file it otherwise is.
+     *
+     * <p>Root-relative depth is the whole of the test — {@code rel} has exactly
+     * one name component. A record nested anywhere below falls through to
+     * {@link #surfaceOf} and stays a leak.
+     */
+    static String classOf(String rel) {
+        String n = rel.replace('\\', '/');
+        if (HomeIsolation.DESCENT_RECORD.equals(n)) return DESCENT_SURFACE;
+        return surfaceOf(rel);
     }
 
     /**
