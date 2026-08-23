@@ -5,20 +5,44 @@ Issue #239. Branch `feature/239-his-18`, based on epic tip `28378e7`, worktree
 deliver and said so in its own words. The plan was not amended; the work was
 finished.
 
-## The headline
+## The headline, and the disclaimer that belongs on it
 
-**889 file lines in the committed baseline record become 124.** One unit —
-`spec-double-compiler`, which was 776 of the 889 — becomes 25. The rollup HIS-2
-bounded is unchanged in size (8 lines either way, 474 → 472 characters), which
-is exactly the shape the goal asked for: *the record's INPUT shrinks, so the
-rollup describes fewer real changes rather than the same changes more briefly.*
-`renderDetailed()` — the surface clause 2 promises is still reachable — goes
-**896 → 131 lines and 88,309 → 5,639 characters, a 93.6% reduction on the
-detail surface at unchanged information content**, because what left was never
-information.
+**Read the disclaimer first.** The review of PR #240 is right that I headlined a
+number without it, having applied exactly this disclaimer to the entry-count
+claim two paragraphs later.
 
-Both numbers are produced by running the committed record's own path lists
-through the **production** predicate and rebuilding a real `DriftReport`, not by
+> **`889 → 124` IS A RETRODICTION.** It scores the committed baseline record's
+> path lists — and those paths are in `removedFiles` *because they were
+> deleted*. Asked about trees that still exist today, the same predicate hides
+> **22 paths across the whole root store**: 8 ACP session logs in
+> `acp-cdc-ai-python` and two `.egg-info/` trees at 7 each. `spec-double-compiler`
+> — the unit that is 776 of the 889 — contributes **0**. **Not one of
+> `build-logic`, `sdk` or `standard-nodes` is excluded anywhere**, because those
+> bindings are gone from every consumer. A record generated today shrinks by
+> single-digit lines.
+>
+> **HIS-6 must not read 86% as forward-going.** I reproduced the reviewer's
+> figure independently rather than taking it: `RenderBaseline.java` now prints
+> both, and both are committed under `probes/his-18/`.
+>
+> What the retrodiction *does* establish is that the mechanism is real and its
+> size is not marginal: over a record that captured those trees while they
+> existed, the declaration removes 86% of it. What it does not establish is that
+> anything will shrink next Tuesday. Those are different claims and rev 1 ran
+> them together.
+
+With that stated, the measured figures:
+
+**The committed baseline record's 889 file lines become 124.**
+`spec-double-compiler`, which was 776 of the 889, becomes 25. The rollup HIS-2
+bounded is unchanged in size — 8 lines either way, 474 → 472 characters — which
+is the shape the goal asked for: *the record's INPUT shrinks, so the rollup
+describes fewer real changes rather than the same changes more briefly.*
+`renderDetailed()`, the surface clause 2 promises is still reachable, goes
+**896 → 131 lines and 88,309 → 5,639 characters (93.6%)**.
+
+Produced by running the committed record's own path lists through the
+**production** predicate and rebuilding a real `DriftReport` — not by
 regenerating a baseline the README forbids regenerating.
 
 ## What I changed
@@ -38,6 +62,76 @@ this ticket's name.
 
 **`Rederivable` is unchanged**, deliberately, and the reason is now asserted
 rather than argued — see V4 below.
+
+### What the review of PR #240 changed
+
+Two blockers, and both were real. Each was reproduced as a failing case on its
+own claim *before* being fixed, and each has its own probe.
+
+**BLOCKER 1 — the exclusion made an agent's authored file DISPOSABLE.**
+`treeDigest` applies the declaration, and `isLocallyModified` reads
+`treeDigest` — a predicate whose own javadoc calls it *"the predicate a prune, a
+teardown and a close-out consult before destroying it."* So a worktree agent
+writing `results/findings.md` into a unit whose `.gitignore` has `results/` got:
+`home sync` reporting UNCHANGED so it never went up, `home close-out` finding no
+blocker, and `wt close` deleting the child home outright with an empty preserve
+set. **`carryOverUnownedTrees` guards the swap; nothing guarded the teardown**,
+and the acceptance line that failed was this ticket's own — *invisible, not
+disposable*. Not hypothetical: `acp-cdc-ai-python/scripts/sources/logs/*.jsonl`
+are ACP session transcripts and are 8 of the 22 net-new exclusions.
+
+Fixed with `holdsUndeclaredWork`: does this copy hold anything under an excluded
+path that the source cannot be shown to have? It does not hold every unit back,
+because an excluded path is **not copied either** — a fresh child home has
+nothing there, so it fires only where the child home itself put something there.
+Cases (8) and (9) are the claim and its narrowness; V6 is the probe.
+
+**BLOCKER 2 — a trailing-slash rule made the two walkers disagree permanently.**
+My javadoc said *"Both walkers ask at the top, so the answer is the same on the
+source side and the destination side by construction."* **That was false.** The
+store holds `test_graph/sdk` as a LINK and the child holds it as a real
+DIRECTORY, so a directory-only rule (`sdk/`, `build/`, `dist/` — the dominant
+convention) matched one and not the other: one side hashing a path the other
+does not have, permanently, in every later drift report — verbatim the failure
+my own case (7) message names. My fixture could not express it because
+`ensure_provider_binding_ignores` emits `/build-logic` with **no** trailing
+slash.
+
+Fixed by making the question's answer **invariant under the dereference**:
+directory-ness is read as the materialized view will have it, following links. A
+narrow, one-directional divergence from `git check-ignore` — a symlink to a
+DIRECTORY under a directory-only rule; a symlink to a FILE is unaffected, and
+case (11) pins that. The double-ask across the dereference frame went with it.
+V7 is the probe.
+
+**MED-3 — "fails towards visibility" was half true.** `readIndex` returned an
+EMPTY set for a MISSING index, so the declaration became authoritative on the
+strength of a file that is not there; measured, a committed file became ignored
+after `rm .git/index`. Now one rule for all three ways of not having an index —
+no `.git`, no `index`, unparseable `index` — **no readable index means nothing
+is ignored**. Measured before choosing it: the only units in the root store with
+a `.gitignore` and no repository are `slm-agent` and `tracer-agent`, whose
+declarations name `__pycache__/`, `*.pyc`, `.pytest_cache/` — all already
+`Rederivable`'s — and `.DS_Store`. The rule costs one `.DS_Store` store-wide and
+buys a sentence with no exceptions in it. Case (13), probe V8. The fixtures are
+git-backed for it, which is what real units are; only `SKILL.md` is added, so
+every case still turns on the declaration rather than on the index.
+
+**MED-4 — `core.ignoreCase` is not read** by jgit's matcher, and `git init` sets
+it true on APFS. A case-mismatched directory-only rule therefore diverges from
+`git check-ignore`, in the direction of NOT ignoring. Recorded in the class
+javadoc, and my "identical verdicts" claim is downgraded accordingly: it is
+evidence about a corpus with no case-mismatched pair in it.
+
+**The carry-over branch nothing had reached.** Case (3) never reached
+`carryOverUnownedTrees`' `if (Files.exists(to)) continue;`, where the
+destination's copy is abandoned and destroyed by the swap. Case (14) reaches it —
+upstream stops declaring a path generated and puts its own content there — and
+the branch now **warns by name** instead of taking it silently. Preserving it is
+**DEF-056**.
+
+**GOAL-no-spurious-holdback clause 2 had no case at all.** It does now (case 12):
+a unit that genuinely differs is still held back, excluded paths or not.
 
 ### Why the unit's declaration and not a name list
 
@@ -138,12 +232,31 @@ the record, rebuilds a `DriftReport` from what survives, and renders it through
   the child copy's digest equals the store's across a dereference, on a fixture
   that genuinely dereferences — plus the projection above.
 
+### The forward-going number, which is the one HIS-6 should carry
+
+Same predicate, asked about trees that still exist in the root store today.
+Reproduced independently of the review, by `RenderBaseline.java`:
+
+| unit | entries digested | NET NEW exclusions |
+| --- | ---: | ---: |
+| acp-cdc-ai-python | 113 | **8** — ACP session logs (`*.jsonl`, `*.process.log`) |
+| deploy-helm | 2,509 | **7** — `src/helm_deploy.egg-info/` |
+| hyper-experiments-finance | 252 | **7** — `hyper_experiments_finance.egg-info/` |
+| every other unit, `spec-double-compiler` included | — | **0** |
+| **total, whole store** | | **22** |
+
+Not one of `build-logic`, `sdk` or `standard-nodes`. Those bindings are gone
+from every consumer, which is also **DEF-053**: the baseline's attribution of
+the 776 was wrong about *which* paths, and this table is the separate point that
+they are *gone*.
+
 ### Two caveats I will not bury
 
 1. The `.gitignore` files and indexes consulted are the ones in the root store
-   **today**, not those of 2026-08-19. A unit whose declaration changed since is
-   scored against the new one. Reconstructing seven units' historical ignore
-   files is not available, and inventing them would be worse.
+   **today**, not those of 2026-08-19. **The review checked this and it is a
+   non-issue**: every `.gitignore` in every one of the seven units was committed
+   before the record was taken. I was over-cautious; the caveat is kept only so
+   the check is on the record, not because it qualifies anything.
 2. The record carries paths and nothing else, so a **leaf** entry is genuinely
    ambiguous between a file and an originally-empty directory (`emitDirectory`
    keeps those). `specs/**/states/` is a directory-only rule, so the reading
@@ -164,9 +277,9 @@ and the bytes survive. Full `jbang RunTests.java` is green, including
 
 | gate | result |
 | --- | --- |
-| `jbang RunTests.java` | **ALL PASSED** — 144 suites, **1342** cases, including the 7 new `ScaffoldedTreeIsNotContentTest` cases |
+| `jbang RunTests.java` | **ALL PASSED** — 144 suites, **1350** cases, including the **14** `ScaffoldedTreeIsNotContentTest` cases |
 | `uv run pytest specs/` | **38 passed** in 1.83s |
-| `run.py sync-settles` | **RED then GREEN, on this change.** Red at runId `20260822-223718`, `BUILD FAILED in 59s` — the node's own vacuity guard, see below. Green at runId `20260822-224910`, **`BUILD SUCCESSFUL in 1m 2s`** |
+| `run.py sync-settles` | **RED then GREEN, on this change.** Red at runId `20260822-223718`, `BUILD FAILED in 59s` — the node's own vacuity guard, see below. Green at runId `20260822-224910`, `BUILD SUCCESSFUL in 1m 2s`. **Re-run after the review fixes: `BUILD SUCCESSFUL in 1m 38s`, runId `20260823-001706`** |
 | `run.py project-child-home` | **BUILD SUCCESSFUL in 3m 53s**, runId `20260822-232315` — 12 nodes, **73 of 73 assertions passed** |
 | `tlc` | **N/A** per the assignment: this ticket states no new invariant, and HIS-5 carries the model work for the epic |
 
@@ -209,17 +322,31 @@ the one terminal sweep and the goal scorecard.
 
 ## Vacuity checks
 
-`results/epic-home-integrity-sync/probes/his-18/vacuity-checks.txt`, five
-probes, each stating its file, its substitution, and **that the substitution
-matched exactly once**. Runner `jbang RunHis18.java`, shipped.
+`results/epic-home-integrity-sync/probes/his-18/vacuity-checks.txt`, **eight**
+probes, each printing its file, **its substitution verbatim**, and that the
+substitution matched exactly once. Runner `jbang RunHis18.java` and the probe
+driver `probes.sh` both ship.
 
-| probe | what was disabled | which case reddened, and its message |
+**MED-8, and the reviewer is right.** Rev 1's header claimed each probe stated
+its substitution and **it did not** — the transcripts carried `file:` and
+`matched: 1` and nothing else, so the reviewer had to reconstruct all three
+mutations from the code to check them. A probe record that cannot be re-run from
+the record is not a record, which is DEF-035's exact subject, in the file
+written to answer it. Rev 1's summary table also under-reported the collateral:
+V2 reddens (5) **and** (7), V4 reddens (4), (7) **and** the link-to-a-FILE case.
+The transcripts were honest and the table was not. Both fixed; every case each
+probe reddens is now listed.
+
+| probe | what was disabled | every case it reddens |
 | --- | --- | --- |
-| V1 | the declaration never consulted — the pre-HIS-18 world | (1) *not hashed* — ``expected <f7686970…> but was <c3ed26ba…>``; (2) *not copied*; (5) the tracked clause's narrow half |
-| V2 | "a tracked path is never ignored" | (5) — ``a committed file its own .gitignore matches still reaches the child home`` |
-| V3 | the carry-over back on `Rederivable` only — **the delivered sibling ALONE** | (3), and ONLY (3) — ``the excluded tree survives the wholesale replace — excluding a path makes it invisible, not disposable`` |
-| V4 | **the rejected design**: `sdk`, `standard-nodes`, `build-logic` added to `Rederivable.OUTPUT_ROOTS` | (4) — ``a unit that never declared build-logic generated keeps it, dereferenced into the child home as content`` |
-| V5 | the tracked-ANCESTOR clause | (7) — ``a link the unit's own history holds at mode 120000 is content`` |
+| V1 | the declaration never consulted — the pre-HIS-18 world | (1) not hashed, (2) not copied, (5), (10), (13) on their claims; (3) and (14) on a precondition |
+| V2 | "a tracked path is never ignored" | (5) ``a committed file its own .gitignore matches still reaches the child home``, and (7) |
+| V3 | the carry-over back on `Rederivable` only — **HIS-4's delivered sibling ALONE** | (3) ``the excluded tree survives the wholesale replace`` and (8). **Not (1) or (2)** — the digest half and the copy half are intact, so the sibling cannot mask the missing half |
+| V4 | **the rejected design**: the three names in `Rederivable.OUTPUT_ROOTS` | (4) ``a unit that never declared build-logic generated keeps it``, (7), and the link-to-a-FILE case |
+| V5 | the tracked-ANCESTOR clause | (7) alone — ``a link the unit's own history holds at mode 120000 is content`` |
+| **V6** | **review blocker 1** — the teardown guard | (8) alone — ``a file the child home wrote under an excluded path is work the parent store cannot be shown to have`` |
+| **V7** | **review blocker 2** — directory-ness read as git reads it | (10) alone — ``one side hashing a path the other does not have is a permanent entry in every later drift report`` |
+| **V8** | **review MED-3** — a missing index read as "nothing is tracked" | (13) alone — ``with the index gone there is nothing that could rescue a committed path from the declaration`` |
 
 **V3 is the one that justifies the three-case split.** It leaves HIS-4's
 delivered escrow doing exactly what it already did and disables only the
@@ -242,13 +369,13 @@ Both were found by running the probes, not by reasoning about them.
    Split into an existence assertion carrying the claim and a bytes assertion
    behind it.
 
-### One precondition is still where it reddens, and it is recorded as such
+### Two preconditions are still where they redden, and are recorded as such
 
-Under V1, case (3) fails on `precondition: the refresh really replaced the
-tree`. In the pre-HIS-18 world the child copy LOOKS edited — the dereferenced
-tree is hashed — so the unit is held back and no wholesale replace happens at
-all. The claim is unreachable in that world by construction. V3 is the probe
-that reddens case (3)'s claim, and it is the sharper one.
+Under V1, cases (3) and (14) fail on `precondition: the refresh really replaced
+the tree`. In the pre-HIS-18 world the child copy LOOKS edited — the
+dereferenced tree is hashed — so the unit is held back and no wholesale replace
+happens at all. Those claims are unreachable in that world by construction. V3
+is the probe that reddens case (3)'s claim, and it is the sharper one.
 
 ### Mechanism B — the fixture really does express the defect
 
@@ -312,6 +439,32 @@ edit could route the cloner through `GitIgnoreRules` and hand over a home whose
 undefended asymmetry today, so this is one guard for both, not a new one for
 mine.
 
+**DEF-056 — a carry-over collision destroys the child's copy, and now says so.**
+`carryOverUnownedTrees`' `if (Files.exists(to)) continue;` is reached when
+upstream STOPS declaring a path generated and puts its own content there: the
+staged tree already holds the path, the destination's copy cannot be carried
+across, and the swap destroys it. Nothing in this suite reached that branch
+before — the review found it. It now **warns by name**; preserving the bytes
+(escrow, as HIS-4 does on the sync path) is deferred, because `MaterializationEscrow`
+is HIS-4's surface and the fix belongs with whoever owns it. Case (14) pins the
+loss so it is a known one rather than a silent one.
+
+**DEF-057 — the baseline README says 88,308 characters and today's renderer
+emits 88,309 over the same record**, and `HomeDriftGateTest` asserts the README
+figure. One character, and I have deliberately changed neither: a baseline
+edited after the fact is worth nothing, and a test quietly re-pointed at a new
+number is worse. Flagged for the owner to decide which is authoritative before
+HIS-6 reads it.
+
+**Not deferred, but named: a path under an excluded declaration no longer syncs
+UP.** That is the other face of "not hashed", not a defect — but it is a real
+consequence. `home sync` reports such a unit UNCHANGED, so an agent's file under
+`results/` stays in the home that wrote it. It is not destroyed (that was
+blocker 1, fixed) and the teardown reports it, but nothing carries it onward. On
+the operator's store the affected set is the 22 paths in the table above. If the
+owner wants those carried, that is a `reconcile` question and a bigger surface
+than this ticket.
+
 ## What I am unsure about
 
 1. **The projection is a projection.** It applies today's declarations to a
@@ -319,7 +472,9 @@ mine.
    `889 → 124` within the stated bounds (102 under the other leaf reading), and
    I would not defend a single-figure precision. The bounds are reported for
    that reason.
-2. **Whether the tracked/untracked split is where the line belongs.** A unit
+2. **Whether the tracked/untracked split is where the line belongs.** The review
+   did not challenge it, and blocker 2's fix narrows what turns on it, but the
+   argument below is unchanged and I still hold it only moderately. A unit
    that COMMITTED its scaffold links still hashes them, and I argued that is
    HIS-4's case rather than mine. The alternative — excluding a tracked
    mode-`120000` link the unit also declares generated — is coherent, would fix
@@ -331,16 +486,25 @@ mine.
    measurement. If HIS-13 or HIS-6 disagrees, the change is one clause in
    `GitIgnoreRules` plus one in `DereferencedStoreLinks`, and case (7) is the
    test that would have to be inverted.
-3. **Cost.** `GitIgnoreRules.forUnit` reads the index through jgit on every
-   `plainView`. On a 22,807-entry repository that is milliseconds and no
-   subprocess, and the full suite's wall time did not move. I have not profiled
-   a home with many large units, and I did not add a cache, because a cache
-   keyed on a tree that a swap replaces mid-command is a defect waiting to
-   happen.
+3. ~~**Cost.**~~ **SETTLED, and my caution was unfounded.** The review measured
+   the largest unit in the store — 26,930 entries — at **1,620 ms with the
+   declaration against 1,596 ms without**, warm. Not adding a cache is the right
+   call and there is nothing here to worry about. Recorded as answered rather
+   than deleted, because I raised it.
 4. **jgit's ignore semantics are trusted, not re-implemented.** I cross-checked
    `GitIgnoreRules` against `git check-ignore` over all 776 baseline paths and
-   got **identical verdicts** (749 ignored as files, 772 as directories). That
-   is one corpus, not a proof.
-5. **I did not touch `specs/desired_program_model/ticket_plan.yaml`.** HIS-16
+   got identical verdicts (749 ignored as files, 772 as directories). **That is
+   evidence about a corpus with no case-mismatched pair in it**, and jgit does
+   not read `core.ignoreCase`, which `git init` sets true on APFS (MED-4). It is
+   also now knowingly not-git in one narrow place: a symlink to a directory
+   under a directory-only rule, which git keeps and this excludes, for the
+   reason blocker 2 forced.
+5. **The declared `conflict_keys` are wrong in both directions**, and the epic
+   owner is fixing them in the plan: `Rederivable`, `UnitDigest` and the
+   `sync-settles` node are over-declared (I did not change any of them —
+   `Rederivable` is byte-identical), while `RunTests.java` and
+   `deferred/backlog.yaml` are under-declared and **HIS-16 touches both**.
+   Recorded here so the promotion order is read with it.
+6. **I did not touch `specs/desired_program_model/ticket_plan.yaml`.** HIS-16
    and HIS-17 are in flight against the same file and I stop at PR open; marking
    HIS-18 delivered is the epic owner's step at merge, as it was for HIS-15.

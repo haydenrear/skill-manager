@@ -3125,3 +3125,57 @@ findings:
       the epic tip and HIS-17's).
     candidate_owner: HIS-13
     status: open
+
+  - id: DEF-056
+    found_by: review of PR #240 (HIS-18), reproduced by the HIS-18 agent
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      `carryOverUnownedTrees` abandons the destination's copy of an unowned path
+      when the staged tree already holds that path, and the swap then destroys
+      it. Reached when upstream STOPS declaring a path generated and puts its
+      own content there.
+    detail: >
+      The branch is `if (Files.exists(to, NOFOLLOW)) continue;`. HIS-4 wrote the
+      carry-over as best-effort, and the collision case had no test in any suite
+      and no report at all. The review of #240 named it; HIS-18 reproduced it:
+
+        child home writes results/notes.md under a `results/` rule
+        upstream removes the rule and commits its own results/notes.md
+        refresh -> upstream's copy stands, the child's is gone
+
+      The unit is NOT held back on the way there, because the child's copy was
+      excluded from the destination digest by the OLD rules, so `destUntouched`
+      is true and the tree reads as pristine.
+    what_was_done: >
+      HIS-18 made the branch WARN, naming the path and the reason, so the loss is
+      reported rather than silent, and pinned it with a unit case
+      (ScaffoldedTreeIsNotContentTest, "when upstream stops declaring a path
+      generated, the child's copy of it is not lost silently").
+    why_deferred: >
+      Preserving the bytes means escrowing them, and `MaterializationEscrow` is
+      HIS-4's surface with its own rollback semantics on the sync path. Wiring a
+      second escrow into the resolve path from a digest ticket is how one rule
+      gets two implementations, which is this epic's recurring defect.
+    candidate_owner: HIS-13
+    status: open
+
+  - id: DEF-057
+    found_by: review of PR #240 (HIS-18)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      The baseline README records 88,308 characters for the committed drift
+      record and today's renderer emits 88,309 over the same record.
+      HomeDriftGateTest asserts the README figure.
+    detail: >
+      One character. Neither number has been changed by HIS-18, deliberately: a
+      baseline edited after the fact is worth nothing, and a test quietly
+      re-pointed at a new number is worse. The README already carries one dated
+      correction (the superseded "889 lines / 87,208 characters" estimate), so
+      there is a precedent for how to record it.
+    why_deferred: >
+      It is the terminal evaluation's own instrument, and which of the two is
+      authoritative is the owner's call, not a ticket agent's.
+    candidate_owner: HIS-6
+    status: open
