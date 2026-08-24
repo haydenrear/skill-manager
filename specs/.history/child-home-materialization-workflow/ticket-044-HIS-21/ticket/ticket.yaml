@@ -1,0 +1,144 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket HIS-21",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "HomeIntegrityInternal.cfg",
+      "HomeIntegrityInternal.tla",
+      "HomeIntegrityInternal_guard_repairingobserver.cfg",
+      "HomeIntegrityInternal_probe_disposalreach.cfg",
+      "HomeIntegrityInternal_probe_reach.cfg",
+      "HomeIntegrityInternal_regression_blindobserver.cfg",
+      "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+      "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+      "HomeIntegrityInternal_regression_foreignprojection.cfg",
+      "HomeIntegrityInternal_regression_gaterefires.cfg",
+      "HomeIntegrityInternal_regression_halfboundhome.cfg",
+      "HomeIntegrityInternal_regression_narrowprojection.cfg",
+      "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+      "HomeIntegrityInternal_regression_repairingobserver.cfg",
+      "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+      "HomeIntegrityInternal_regression_selfrepend.cfg",
+      "HomeIntegrityInternal_regression_silentdrift.cfg",
+      "HomeIntegrityInternal_regression_staleack.cfg",
+      "HomeIntegrityInternal_regression_staleerror.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "generated/spec-unit/ClaimantRefreshInternal.dot",
+      "generated/spec-unit/claimant_refresh_cases/__init__.py",
+      "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+      "generated/spec-unit/claimant_refresh_cases/cases.py",
+      "generated/spec-unit/claimant_refresh_cases/docs.md",
+      "generated/spec-unit/claimant_refresh_cases/doubles.py",
+      "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+      "generated/spec-unit/claimant_refresh_cases/types.py",
+      "generated/spec-unit/claimant_refresh_cases/validators.py",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_claimant_refresh_program_model.py",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py",
+      "tests/test_tlc_expected_violations.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/wt-253-his-21/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/wt-253-his-21/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-253-his-21/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "DEF-104: verify and repair return the SAME verdict on a home with NO PARENT whose shim CONTENT names a foreign path. The regression node plants exactly that and fails when the widened check is removed.",
+        "DEF-105: the policy verb reports a legacy policy.toml sitting beside an absent home.policy.toml, rather than silently defaulting. A node plants the old filename and asserts the verb says so.",
+        "DEF-106: describe MARKS synthesised fields distinctly from recorded ones, and two homes never both report one gateway as owned.",
+        "DEF-102: --help for any verb performs no project scan, no home mutation, and exits 0.",
+        "Every new assertion is vacuity-checked in writing, naming the branch it exercises and the mutation that reddens it.",
+        "ROUND 2: the graphs these nodes live in are re-run after the fix, and the result is recorded in the regression ledger against round 1."
+      ]
+    },
+    "added_in_schedule_revision": 10,
+    "blocks": [
+      "HIS-6"
+    ],
+    "conflict_keys": {
+      "adapters": [],
+      "production": [
+        "HomeCommand.describe",
+        "HomeCommand.policy",
+        "HomeCloner.verifyRoots",
+        "HomePolicy",
+        "CliMetadata.help"
+      ],
+      "test_graph": [
+        "home-integrity/EveryShimResolves",
+        "common/HomeMembershipLaw"
+      ],
+      "tla": [],
+      "workflow_data": []
+    },
+    "depends_on": [
+      "HIS-13",
+      "HIS-19",
+      "HIS-20"
+    ],
+    "epic": "home-integrity-sync",
+    "found_by": "The manual sweep (instrument C) run by the epic agent on 2026-08-24, in preparation for HIS-6. Every one of these was missed by the 26-graph sweep, and the reason is the same in each case: no fixture exercises the condition.\n",
+    "github_issue": 253,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "verify and repair stop disagreeing about the root tier; describe stops inventing a fifth answer about which home owns what",
+        "goal": "GOAL-one-home-one-answer",
+        "local_signal": "python skills/test_graph/scripts/run.py home-integrity"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "a home whose damage verify cannot see is a home nobody repairs; closing the gap is what makes HIS-13's detector reachable from the ordinary verb",
+        "goal": "GOAL-no-destructive-recovery",
+        "local_signal": "jbang RunTests.java"
+      }
+    ],
+    "id": "HIS-21",
+    "phase": "HIS",
+    "promotion_order": 20,
+    "promotion_predecessor": "HIS-20",
+    "root_cause": "A DIAGNOSTIC THAT CANNOT BE TRUSTED IS WORSE THAN NO DIAGNOSTIC. Each of these four is a reader answering confidently about a state it did not check, and three of them are answering about the ROOT home -- the tier this epic's own record says was damaged twice and the tier every other reader is weakest at.\n",
+    "slice": "DEF-104 -- `home verify` reports the root home clean while three of its shims execute code inside the project home. `home repair` catches all five paths. Same home, same minute, two answers. Plausible mechanism, to be confirmed: verifyRoots frames its foreign-home question against a home's SOURCE, and the root home has no parent, so the branch never runs. DEF-105 -- the root home carries `policy.toml`, hand-written, headed \"guards against hostile skills\", and the product reads `home.policy.toml` and runs on defaults. `home policy` prints `live` whether the policy is absent or merely unread. This is vacuity-ledger row 8 on a real home. DEF-106 -- `home describe` prints a full descriptor for the project home, which holds no descriptor files at all, including a gateway marked (owned) that the root home also claims. `home policy` marks its defaults; `home describe` does not follow that convention. DEF-102 -- `skill-manager sync --help` runs project checks and prints a project-failure banner. Help output should be pure text. DEF-107 -- ADDED AFTER THE ROUND-1 SWEEP COMPLETED, and it is the same kind one layer down: HomeMembershipLaw flags DELIBERATE TEST STAGING as a product violation and reddens the CORE `home-sync` graph. The units it calls GAINED were written to disk on purpose by `HomeSyncSupport.mkUnit`, which is used in at least eight nodes to stage the precondition of a sync scenario. The law's own self-test passes in both directions first, so the instrument works and the RULE is wrong for this context. The deeper defect is that the law declares NO `dependsOn`, so it can run mid-scenario and call an intermediate state final. Do NOT fix it by dropping the GAINED direction -- that is the direction that caught DEF-047. NOT IN SCOPE: the promotion path itself (HIS-22), and repairing the operator's root home, which is the owner's call to make.\n",
+    "status": "planned",
+    "title": "four commands report something that is not so, and three of them about the operator's real root home",
+    "wave": 15
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-253-his-21/specs/tickets/HIS-21",
+  "ticket_id": "HIS-21",
+  "ticket_index": 44,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-253-his-21/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-253-his-21/specs/tickets"
+}

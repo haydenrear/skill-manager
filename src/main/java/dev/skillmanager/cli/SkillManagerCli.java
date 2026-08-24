@@ -611,7 +611,31 @@ public final class SkillManagerCli implements Runnable {
                     message == null ? "the command failed and said nothing" : message);
         }
         jsonErrorCode = null;
-        tryPrintOutstandingErrors();
+        // DEF-102. HELP IS TEXT, AND TEXT ONLY.
+        //
+        // `skill-manager sync --help` ran the closing report program: it
+        // resolved the AMBIENT home, called `store.init()`, walked every
+        // `installed/<unit>.json` and printed the outstanding-error banner
+        // under the usage text. Measured on a scratch home carrying one
+        // AGENT_SYNC_FAILED record: `--help`, `sync --help`, `install --help`
+        // and `home describe --help` each printed
+        // `! skills with outstanding errors (1)`.
+        //
+        // Three things are wrong with that and only the first is cosmetic.
+        // Someone reading `--help` did not ask about a home, so the banner is
+        // noise on the one output whose whole job is to be quotable. The read
+        // is not free -- it is a full walk of the home, on the command an
+        // agent runs when it does not yet know what the command does. And
+        // `store.init()` in there is a WRITE, held off today only by
+        // CommandHomeAccess.of classifying help as READ: a guard one
+        // classification away from `--help` creating a home nobody named.
+        //
+        // Asked of CommandHomeAccess.helpOrVersionRequested rather than
+        // re-derived here, for the reason that method exists -- the
+        // confinement gate and the scaffold gate already exempt exactly these
+        // invocations, and a third spelling of "was this help?" is the shape
+        // this epic keeps paying for.
+        if (!CommandHomeAccess.helpOrVersionRequested(pr)) tryPrintOutstandingErrors();
         String commandPath = CliAgentContext.commandPath(pr);
         CliObservability.completeCurrent(commandPath, rc);
         if (isAgentContextRequested(root)) {

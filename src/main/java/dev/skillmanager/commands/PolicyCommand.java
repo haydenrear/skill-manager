@@ -31,6 +31,30 @@ public final class PolicyCommand implements Runnable {
             System.out.println("allowed_registries:   " + (p.allowedRegistries().isEmpty() ? "(any)" : p.allowedRegistries()));
             System.out.println("allowed_docker_prefs: " + (p.allowedDockerPrefixes().isEmpty() ? "(any)" : p.allowedDockerPrefixes()));
             System.out.println("require_confirmation: " + p.requireConfirmation());
+            // DEF-105, THE OTHER DIRECTION. Review of PR #256, minor 2.
+            //
+            // The filed defect is that two files in one home are both called
+            // policy and NEITHER VERB NAMES THE OTHER. HIS-21 fixed one
+            // direction -- `home policy` now names this file -- and left this
+            // verb still never naming `home.policy.toml`, which is half a fix
+            // for a symmetric defect.
+            //
+            // The two govern different things and that is the sentence a reader
+            // needs: this file decides what an install here may RUN;
+            // home.policy.toml decides whether this home may be MUTATED at all.
+            // A frozen home refuses `sync` and `upgrade` no matter what is
+            // written above.
+            java.nio.file.Path homePolicy =
+                    store.root().resolve(dev.skillmanager.policy.HomePolicy.FILENAME);
+            boolean declared = Files.isRegularFile(homePolicy);
+            System.out.println("home policy file:     " + homePolicy
+                    + (declared
+                        ? "  (declared: "
+                                + dev.skillmanager.policy.HomePolicy.load(store).wire() + ")"
+                        : "  (absent — live by default)"));
+            System.out.println("                      a DIFFERENT policy from the file above: it "
+                    + "governs whether this home may be mutated, not what an install here may "
+                    + "run. Read it with `skill-manager home policy`.");
             return 0;
         }
     }

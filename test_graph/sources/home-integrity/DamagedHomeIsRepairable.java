@@ -174,6 +174,30 @@ public class DamagedHomeIsRepairable {
         boolean namesTheRepair = log1.contains("repair:")
                 && log1.contains("--fix");
 
+        // --- INVOCATION 2b/2c: THE OTHER READER, on the same bytes ----------
+        //
+        // HIS-21 / DEF-104. This node planted a regular-file wrapper naming
+        // another home at shape 2 and asked ONE reader about it. The other
+        // reader, on the operator's real root home in the same minute, called
+        // that home clean:
+        //
+        //   home verify --home ~/.skill-manager -> exit 0, "no path in it
+        //                                          reaches any other home"
+        //   home repair --home ~/.skill-manager -> 5 FOREIGN_PATH_IN_SHIM
+        //
+        // The fixture for it was already here; nobody had ever run
+        // `home verify` over it. The same subject now goes to both readers
+        // before the repair and again after, and the answers must agree.
+        //
+        // THE CONTROL is `verifyOther`: the undamaged copy, same command, must
+        // NOT name the kind. Without it, "verify names FOREIGN_PATH_IN_SHIM" is
+        // satisfied by a check that names it for every home — and that check
+        // would redden HomeFixpointLaw across 24 graphs.
+        ProcessRecord verifyBefore = HomeIntegritySupport.sm(ctx, "his21-verify-before", subject,
+                "home", "verify", "--home", subject.toString());
+        ProcessRecord verifyOther = HomeIntegritySupport.sm(ctx, "his21-verify-other", other,
+                "home", "verify", "--home", other.toString());
+
         // --- INVOCATION 3: the repair ---------------------------------------
         ProcessRecord repair = HomeIntegritySupport.sm(ctx, "his13-repair", subject,
                 "home", "repair", "--home", subject.toString(), "--fix");
@@ -191,8 +215,25 @@ public class DamagedHomeIsRepairable {
                 "home", "repair", "--home", subject.toString(), "--fix");
         List<String> afterSecondRepair = snapshot(subject.getParent());
 
+        // HIS-21 / DEF-104: the second reader, after the repair.
+        ProcessRecord verifyAfter = HomeIntegritySupport.sm(ctx, "his21-verify-after", subject,
+                "home", "verify", "--home", subject.toString());
+
         String log3 = readLog(ctx.reportDir(), detect3);
         boolean repairMadeDetectionClean = detect3.exitCode() == 0;
+
+        // Keyed on the SUBJECT as well as the kind. `log.contains("FOREIGN_
+        // PATH_IN_SHIM")` alone would be satisfied by a finding about any file
+        // in the home, including one a later ticket plants for another reason,
+        // and the claim here is about ONE wrapper.
+        String verifyBeforeLog = readLog(ctx.reportDir(), verifyBefore);
+        String verifyAfterLog = readLog(ctx.reportDir(), verifyAfter);
+        String verifyOtherLog = readLog(ctx.reportDir(), verifyOther);
+        String theWrapper = "FOREIGN_PATH_IN_SHIM bin/cli/" + WRAPPER;
+        boolean verifySawTheWrapper = verifyBeforeLog.contains(theWrapper)
+                && verifyBefore.exitCode() == 1;
+        boolean verifyAgreesAfterRepair = !verifyAfterLog.contains("FOREIGN_PATH_IN_SHIM");
+        boolean verifyIsNotAlwaysRed = !verifyOtherLog.contains("FOREIGN_PATH_IN_SHIM");
         boolean repairIsIdempotent = repairAgain.exitCode() == 0
                 && afterRepair.equals(afterSecondRepair);
         boolean projectionRepaired = Files.isSymbolicLink(projection)
@@ -245,6 +286,21 @@ public class DamagedHomeIsRepairable {
             failures.add("the agent directory the ENVIRONMENT names changed — the repair took "
                     + "the agent axis from CLAUDE_CONFIG_DIR instead of from the home");
         }
+        if (!verifyIsNotAlwaysRed) {
+            failures.add("DEF-104's CONTROL FAILED: `home verify` names FOREIGN_PATH_IN_SHIM on "
+                    + "the UNDAMAGED copy, so the finding on the damaged one says nothing. "
+                    + "This is the state that would redden HomeFixpointLaw across 24 graphs");
+        }
+        if (!verifySawTheWrapper) {
+            failures.add("DEF-104: `home repair` names " + theWrapper + " and `home verify` "
+                    + "exits " + verifyBefore.exitCode() + " without it — the two readers "
+                    + "disagree about one file in one home, which is the defect");
+        }
+        if (!verifyAgreesAfterRepair) {
+            failures.add("DEF-104: after the repair `home repair` is clean and `home verify` "
+                    + "still names a foreign path in a shim — the readers disagree in the "
+                    + "other direction");
+        }
 
         NodeResult result = failures.isEmpty()
                 ? NodeResult.pass(SPEC.id())
@@ -253,6 +309,7 @@ public class DamagedHomeIsRepairable {
         return result
                 .process(detect1).process(detect2).process(repair)
                 .process(detect3).process(repairAgain)
+                .process(verifyBefore).process(verifyOther).process(verifyAfter)
                 .assertion("the_planted_damage_resolves_and_is_therefore_the_right_shape",
                         damageResolves)
                 .assertion("bare_home_repair_refuses_a_damaged_home", detectionIsRed)
@@ -269,6 +326,11 @@ public class DamagedHomeIsRepairable {
                 .assertion("the_decoy_agent_dir_exists_and_has_content_to_be_changed",
                         sandboxIsReal)
                 .assertion("the_agent_dir_the_environment_names_is_untouched", sandboxUntouched)
+                .assertion("DEF104_home_verify_names_the_same_wrapper_home_repair_does",
+                        verifySawTheWrapper)
+                .assertion("DEF104_home_verify_is_clean_once_home_repair_is", verifyAgreesAfterRepair)
+                .assertion("DEF104_control_home_verify_is_silent_about_the_undamaged_copy",
+                        verifyIsNotAlwaysRed)
                 .log("detect=" + detect1.exitCode() + "," + detect2.exitCode()
                         + " repair=" + repair.exitCode()
                         + " detect-after=" + detect3.exitCode()

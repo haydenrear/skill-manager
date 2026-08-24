@@ -33,6 +33,34 @@ def test_program_model_help_model_has_production_help_hooks() -> None:
     assert 'description = "Refresh installed units and re-run install side effects."' in sync
     assert "Sync modes:" in sync
 
+    # HIS-21 / DEF-102. HELP IS TEXT.
+    #
+    # `skill-manager sync --help` printed the outstanding-error banner under its
+    # usage, because `completeExecution` ran the closing report program on every
+    # path -- resolving the ambient home, calling `store.init()`, and walking
+    # every `installed/<unit>.json`. Measured on a home carrying one
+    # AGENT_SYNC_FAILED record: `--help`, `sync --help`, `install --help` and
+    # `home describe --help` each printed it.
+    #
+    # Pinned here rather than only in HelpIsTextOnlyTest because the four
+    # assertions above are all about what help SAYS, and this is the one about
+    # what rendering it may DO. A model of "help" that says nothing about its
+    # side effects is a model of half of it.
+    # THE NEGATION MUST NOT MATCH. Review of PR #256, minor 7: the first
+    # spelling of this pin was `"helpOrVersionRequested(pr)) tryPrint…"`, which
+    # is a substring of BOTH the fix and its inversion (the same guard with the
+    # `!` dropped). A pin that cannot see its own negation reads as coverage and
+    # is not -- this ledger's own subject. The `if (!` is what discriminates,
+    # and the second assertion says so out loud rather than relying on it.
+    guarded = "if (!CommandHomeAccess.helpOrVersionRequested(pr)) tryPrintOutstandingErrors();"
+    inverted = "if (CommandHomeAccess.helpOrVersionRequested(pr)) tryPrintOutstandingErrors();"
+    assert guarded in cli, (
+        "the closing report must be skipped for help and version invocations"
+    )
+    assert inverted not in cli, (
+        "the guard must SKIP the report for help, not run it only for help"
+    )
+
     spec = importlib.util.spec_from_file_location(
         "program_model_production_adapters", MODEL / "production_adapters.py"
     )

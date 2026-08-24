@@ -211,6 +211,10 @@ public final class HomeMembershipLaw {
             // installing nothing would be inventing a defect. HIS-6 gets the
             // number for the sweep.
             int homesWithMembership = 0;
+            // DEF-107. How many units this run DECLINED to judge because a
+            // fixture marked them staged. Published rather than left implicit:
+            // an exclusion nobody counts is an exclusion that grows.
+            int stagedExcused = 0;
 
             for (Path home : candidates) {
                 Run described = describe(cli, home);
@@ -224,6 +228,7 @@ public final class HomeMembershipLaw {
 
                 Membership m = membership(home, described.out);
                 unitsObserved += m.disk().size();
+                stagedExcused += minus(m.staged(), m.records()).size();
                 if (!m.disk().isEmpty() || !m.records().isEmpty() || !m.lock().isEmpty()) {
                     homesWithMembership++;
                 }
@@ -261,12 +266,20 @@ public final class HomeMembershipLaw {
                     .assertion("every_home_holds_exactly_what_was_installed_into_it",
                             membershipHeld)
                     .assertion("the_detector_flags_a_planted_gain_and_a_planted_loss", self.ok())
+                    // Named separately from the line above even though both are
+                    // decided by `self.ok()`: this is the claim a reviewer of
+                    // DEF-107 will attack -- "you excused the fixtures and the
+                    // law stopped seeing anything" -- and it should be readable
+                    // in the envelope without opening the log.
+                    .assertion("an_unmarked_intruder_beside_a_marked_staged_unit_is_still_flagged",
+                            self.ok())
                     .assertion("at_least_one_home_was_actually_checked", lookedAtSomething)
                     .metric("homesChecked", checked.size())
                     .metric("unitsObserved", unitsObserved)
                     .metric("homesOutsideSandbox", outsideSandbox.size())
                     .metric("descriptorDrift", descriptorDrift)
                     .metric("homesWithMembership", homesWithMembership)
+                    .metric("stagedUnitsExcused", stagedExcused)
                     .publish("homesWithMembership", String.valueOf(homesWithMembership))
                     .publish("homesChecked", String.join(",", checked))
                     .publish("unitsObserved", String.valueOf(unitsObserved))
@@ -280,21 +293,99 @@ public final class HomeMembershipLaw {
     // ----------------------------------------------------------- membership
 
     /**
-     * One home's unit set as three readers see it.
+     * The file a FIXTURE writes inside a unit directory to say "the graph put
+     * this here by hand, on purpose, as a precondition".
+     *
+     * <h2>DEF-107: the law was right about the state and wrong about the case</h2>
+     *
+     * <p>The {@code home-sync} graph stages sync preconditions by writing unit
+     * trees straight into a home — {@code HomeSyncSupport.mkUnit}, ten nodes —
+     * because the thing under test is what {@code home sync} does about a unit
+     * the destination has not got. A hand-written unit has no
+     * {@code installed/} record by construction, so this law read every one of
+     * them as {@code GAINED [...] — a unit nobody installed} and reddened the
+     * CORE graph. Measured, run {@code 20260824-193907}: three homes,
+     * {@code hs-delta} and {@code hs-epsilon}, and the law's self-test passed
+     * in both directions first. <b>The instrument worked; the rule did not fit
+     * the case.</b>
+     *
+     * <h2>Why marking, and why the mark lives INSIDE the unit</h2>
+     *
+     * <p>Three alternatives were considered and rejected by measurement, not
+     * by taste:
+     *
+     * <ul>
+     *   <li><b>Drop the GAINED direction.</b> Refused outright by the ticket:
+     *       GAINED is the direction that catches a unit appearing in a home
+     *       nobody named, and DEF-047 is half GAINED.</li>
+     *   <li><b>Order the law later in the graph.</b> #253 proposed this on the
+     *       reasoning that {@link #SPEC} declares no {@code dependsOn} and so
+     *       "runs mid-scenario and calls an intermediate state final". Measured
+     *       in the same run: {@code home-sync} wires it
+     *       {@code .dependsOn("home.sync.authored.agent.tree")} and the planner
+     *       ran it {@code [19/19]}, dead last. Every one of the twenty-four
+     *       wirings in {@code build.gradle.kts} declares a predecessor. Ordering
+     *       was never the cause and could not have been the fix: the staged
+     *       units are still on disk at the end of the graph, which is exactly
+     *       when a post-condition looks.</li>
+     *   <li><b>Have {@code mkUnit} write an {@code installed/} record too.</b>
+     *       That would make the readers agree by rewriting the scenario:
+     *       {@code HomeSyncPermutations} plants {@code GHOST} specifically as a
+     *       unit with "no materialization record", and giving it one deletes
+     *       the case.</li>
+     * </ul>
+     *
+     * <p>So the fixture DECLARES what it staged, and the declaration travels
+     * with the unit because it is a file inside the unit directory. That
+     * matters: {@code hs-delta} was staged in the root home and then propagated
+     * to the project and worktree homes by a real {@code home sync}, arriving
+     * in both without a record. A per-home ledger would have covered one home
+     * of three.
+     *
+     * <p><b>It cannot blind the direction it narrows.</b> Only a marked unit is
+     * excused, production never writes this file, and the self-test now plants
+     * a home holding a marked unit AND an unmarked intruder and requires the
+     * intruder to still be flagged — so a mark that silenced everything fails
+     * the law before a real home is read.
+     */
+    static final String STAGED_MARKER = ".test-graph-staged";
+
+    /** The four directories a unit can live in, per {@code SkillStore}'s layout. */
+    private static final List<String> UNIT_DIRS =
+            List.of("skills", "plugins", "docs", "harnesses");
+
+    /**
+     * One home's unit set as three readers see it, plus what the graph
+     * declared it staged.
      *
      * @param disk    what the home holds, per production's own walk
      * @param records what somebody installed, per {@code installed/}
      * @param lock    what the manifest resolved to, per {@code units.lock.toml}
+     * @param staged  what a FIXTURE marked as hand-planted ({@link #STAGED_MARKER})
      */
-    record Membership(Set<String> disk, Set<String> records, Set<String> lock) {
+    record Membership(Set<String> disk, Set<String> records, Set<String> lock,
+                      Set<String> staged) {
+
+        /** Three readers and no staging declaration — the shape every caller had. */
+        Membership(Set<String> disk, Set<String> records, Set<String> lock) {
+            this(disk, records, lock, Set.of());
+        }
 
         List<String> violations(Path home) {
             List<String> out = new ArrayList<>();
-            Set<String> gained = minus(disk, records);
+            // DEF-107. A unit the graph MARKED as staged is not "a unit nobody
+            // installed" -- it is a unit this graph installed by hand and said
+            // so. Subtracted here and nowhere else: `lost` below is untouched,
+            // because a record naming a unit the home does not hold is a
+            // finding whatever anyone staged.
+            Set<String> gained = minus(minus(disk, records), staged);
             Set<String> lost = minus(records, disk);
             if (!gained.isEmpty()) {
                 out.add(home + " GAINED " + gained + " — present in the home, and no "
-                        + "installed/ record names them. A unit nobody installed.");
+                        + "installed/ record names them. A unit nobody installed."
+                        + (staged.isEmpty() ? ""
+                                : " (" + staged.size() + " other unit(s) here carry "
+                                        + STAGED_MARKER + " and were excused.)"));
             }
             if (!lost.isEmpty()) {
                 out.add(home + " LOST " + lost + " — an installed/ record names them and "
@@ -330,7 +421,12 @@ public final class HomeMembershipLaw {
             return (ok ? "PASS  " : "FAIL  ") + home
                     + "\n    disk    " + disk
                     + "\n    records " + records
-                    + "\n    lock    " + lock;
+                    + "\n    lock    " + lock
+                    // Printed always, empty set included. A silent exclusion is
+                    // the thing this law exists to refuse, so the number of
+                    // units it declined to judge is on every report whether or
+                    // not it changed the verdict.
+                    + "\n    staged  " + staged + "  (" + STAGED_MARKER + ")";
         }
     }
 
@@ -338,7 +434,36 @@ public final class HomeMembershipLaw {
         return new Membership(
                 unitNames(describeJson),
                 installedRecords(home.resolve("installed")),
-                lockUnits(read(home.resolve("units.lock.toml"))));
+                lockUnits(read(home.resolve("units.lock.toml"))),
+                stagedUnits(home));
+    }
+
+    /**
+     * Unit directories in {@code home} carrying {@link #STAGED_MARKER}.
+     *
+     * <p>Read off the home rather than handed in: the law discovers homes
+     * structurally and cannot be given a list, and a unit that a real
+     * {@code home sync} carried from one home to another must arrive marked or
+     * the declaration would cover one home of three.
+     */
+    static Set<String> stagedUnits(Path home) {
+        Set<String> out = new TreeSet<>();
+        for (String dir : UNIT_DIRS) {
+            Path unitRoot = home.resolve(dir);
+            if (!Files.isDirectory(unitRoot)) continue;
+            try (Stream<Path> s = Files.list(unitRoot)) {
+                s.forEach(unit -> {
+                    if (Files.isRegularFile(unit.resolve(STAGED_MARKER))) {
+                        out.add(unit.getFileName().toString());
+                    }
+                });
+            } catch (IOException unreadable) {
+                // Unreadable reads as "nothing was staged", which makes every
+                // hand-planted unit a GAINED violation. Loud, not silent, and
+                // the safe direction for a narrowing.
+            }
+        }
+        return out;
     }
 
     private static Set<String> minus(Set<String> a, Set<String> b) {
@@ -465,14 +590,33 @@ public final class HomeMembershipLaw {
                 Path lost = plantOrphanedProjection(root.resolve("lost"),
                         Set.of("alpha"), "deploy-helm");
 
+                // DEF-107's control, and the reason the staging exclusion is
+                // not a hole. ONE home holds BOTH a marked staged unit and an
+                // unmarked intruder. The mark must excuse exactly one of them:
+                // if it excuses neither the exclusion does not work, and if it
+                // excuses both the GAINED direction is dead and DEF-047 walks
+                // back in. Neither can be true and this run be green.
+                Path mixed = plant(root.resolve("staged-and-intruder"),
+                        Set.of("alpha", "hand-planted", "intruder"), Set.of("alpha"),
+                        Set.of("alpha"));
+                Files.writeString(
+                        mixed.resolve("skills").resolve("hand-planted").resolve(STAGED_MARKER),
+                        "home-sync graph fixture\n");
+
                 List<String> goodV = at(good, Set.of("alpha")).violations(good);
                 List<String> gainedV = at(gained, Set.of("alpha", "intruder")).violations(gained);
                 List<String> lostV = at(lost, Set.of("alpha")).violations(lost);
+                Set<String> mixedStaged = stagedUnits(mixed);
+                List<String> mixedV =
+                        at(mixed, Set.of("alpha", "hand-planted", "intruder")).violations(mixed);
 
                 StringBuilder sb = new StringBuilder("SELF-TEST (runs before any real home):");
                 sb.append("\n  consistent home -> ").append(goodV.size()).append(" violation(s)");
                 sb.append("\n  gained a unit   -> ").append(gainedV.size()).append(" violation(s)");
                 sb.append("\n  lost  a unit    -> ").append(lostV.size()).append(" violation(s)");
+                sb.append("\n  staged + intruder -> ").append(mixedV.size())
+                        .append(" violation(s), staged=").append(mixedStaged)
+                        .append(", violations=").append(mixedV);
 
                 if (!goodV.isEmpty()) {
                     return new SelfTest(false,
@@ -485,6 +629,27 @@ public final class HomeMembershipLaw {
                 if (lostV.isEmpty()) {
                     return new SelfTest(false,
                             "it did NOT flag a record naming a unit the home does not hold",
+                            sb.toString());
+                }
+                // DEF-107's two-sided control, stated as two separate failures
+                // so the report says WHICH way it broke.
+                if (!mixedStaged.equals(Set.of("hand-planted"))) {
+                    return new SelfTest(false,
+                            "the " + STAGED_MARKER + " reader did not read exactly the marked "
+                                    + "unit: " + mixedStaged, sb.toString());
+                }
+                String mixedText = String.join(" ", mixedV);
+                if (mixedText.contains("hand-planted")) {
+                    return new SelfTest(false,
+                            "it flagged a unit the graph MARKED as staged: " + mixedV,
+                            sb.toString());
+                }
+                if (!mixedText.contains("intruder")) {
+                    return new SelfTest(false,
+                            "IT DID NOT FLAG AN UNMARKED INTRUDER standing beside a marked "
+                                    + "staged unit — the staging exclusion has swallowed the "
+                                    + "GAINED direction, which is the direction DEF-047 was "
+                                    + "caught by: " + mixedV,
                             sb.toString());
                 }
                 return new SelfTest(true, "", sb.toString());
@@ -501,7 +666,12 @@ public final class HomeMembershipLaw {
     private static Membership at(Path home, Set<String> disk) {
         return new Membership(new TreeSet<>(disk),
                 installedRecords(home.resolve("installed")),
-                lockUnits(read(home.resolve("units.lock.toml"))));
+                lockUnits(read(home.resolve("units.lock.toml"))),
+                // The SAME reader the real lane uses, off real files. Supplying
+                // the staged set directly here would let the exclusion pass its
+                // own self-test while the reader that finds the marker in a
+                // real home was broken -- mechanism D, in the control.
+                stagedUnits(home));
     }
 
     /**

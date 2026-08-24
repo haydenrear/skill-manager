@@ -5671,10 +5671,13 @@ findings:
     the_deeper_defect_WITHDRAWN: >
       THIS PARAGRAPH WAS WRONG. It claimed the law declares no `dependsOn` and
       therefore ran mid-scenario. HIS-21 measured otherwise: `home-sync` wires
-      the law WITH a `dependsOn` and ran it [19/19] -- DEAD LAST -- and all 23
+      the law WITH a `dependsOn` and ran it [19/19] -- DEAD LAST -- and all 24
       wirings declare a predecessor. The entry's own quoted output contradicts
       its sentence: `hs-delta` reaches the PROJECT home only via a sync, so the
       law cannot have run before the syncs.
+
+      Measured on run 20260824-193907, branch feature/253-his-21: `home-sync`
+      wires the node `.dependsOn("home.sync.authored.agent.tree")`.
 
       A SPEC-level `dependsOn` is also unimplementable: the predecessor differs
       per graph.
@@ -5683,6 +5686,24 @@ findings:
       than from the wiring. The FINDING stands -- the law flags deliberate
       fixture staging -- but the mechanism was invented. Kept visible rather
       than rewritten.
+
+      HIS-21 ADDS TWO THINGS TO THIS WITHDRAWAL, from the same measurement.
+
+      (a) ORDERING COULD NOT HAVE BEEN THE FIX EITHER, whatever the schedule
+      had been. A hand-staged unit is still on disk at the END of the graph,
+      which is exactly when a post-condition looks. So the withdrawn mechanism
+      was not merely unproven, it was not fixable in the direction it pointed;
+      the fix had to be a way for the FIXTURE to declare what it staged.
+
+      (b) THE COUNT IS 24, NOT 23. Corrected at review of PR #256 by counting
+      `node("sources/common/HomeMembershipLaw.java")` in build.gradle.kts: 24
+      wirings, and 24 of 24 declare a `dependsOn`. The argument survives the
+      correction; the number did not, and it was wrong in HIS-21's own PR body
+      and javadoc as well as here.
+
+      What IS true is that `SPEC` declaring no `dependsOn` leaves a FUTURE graph
+      free to wire the law with no predecessor at all. That is a latent hazard,
+      it is not this defect, and it is filed separately as DEF-109.
     why_nothing_caught_it_until_now: >
       HIS-16 added the law in wave 7. The last `home-sync` run before today was
       the wave-5 sweep on 2026-08-22, which PREDATES the law. So the law has
@@ -5704,6 +5725,203 @@ findings:
     caught_by_instrument: A-graph-sweep
     missed_by: [C-manual]
     candidate_owner: HIS-21 (#253) -- a reader reporting something that is not so
+    status: fixed
+    fixed_in: HIS-21 (#253)
+    fixed_how: >
+      THE FIXTURE DECLARES WHAT IT STAGED; the law does not stop looking.
+      `HomeSyncSupport.mkUnit` writes a `.test-graph-staged` marker INSIDE the
+      unit directory, and `HomeMembershipLaw` subtracts marked names from the
+      GAINED direction only -- LOST is untouched, because a record naming a unit
+      the home does not hold is a finding whatever anyone staged.
+
+      The marker lives inside the unit rather than in a per-home ledger because
+      it has to TRAVEL: `hs-delta` is staged in the root home and then
+      propagated to the project and worktree homes by a real `home sync`,
+      arriving in both without a record. A per-home declaration would have
+      covered one home of three.
+
+      Rejected: writing an `installed/` record from `mkUnit`. That would make
+      the readers agree by rewriting the scenario -- `HomeSyncPermutations`
+      plants GHOST specifically as a unit with "no materialization record", and
+      giving it one deletes the case.
+    regression_check: >
+      `HomeMembershipLaw.selfTest` gains a FOURTH home holding a marked staged
+      unit AND an unmarked intruder, and requires the mark to excuse exactly
+      one of them. Two failure messages, so the report says which way it broke:
+      "it flagged a unit the graph MARKED as staged" and "IT DID NOT FLAG AN
+      UNMARKED INTRUDER ... the staging exclusion has swallowed the GAINED
+      direction, which is the direction DEF-047 was caught by". Published as the
+      assertion
+      `an_unmarked_intruder_beside_a_marked_staged_unit_is_still_flagged`, plus
+      a `stagedUnitsExcused` metric so an exclusion nobody counts cannot grow.
+
+  - id: DEF-109
+    found_by: HIS-21 (#253), while measuring DEF-107's stated mechanism
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "HomeMembershipLaw.SPEC declares no dependsOn, so a future graph can wire the law mid-scenario"
+    summary: >
+      Every one of the twenty-four current wirings of
+      `sources/common/HomeMembershipLaw.java` in `test_graph/build.gradle.kts`
+      declares a predecessor, so the law runs last today. Nothing ENFORCES that.
+      A graph added tomorrow with a bare `node("sources/common/HomeMembershipLaw.java")`
+      gets an unordered post-condition, and the failure mode is silent: it reads
+      as a product violation about an intermediate state.
+    detail: >
+      This is what DEF-107's `the_deeper_defect` paragraph claimed was already
+      happening. It was not (see that entry's correction), and the hazard it
+      describes is still real one graph from now.
+
+      A SPEC-level `dependsOn` cannot express it: the node has a different
+      predecessor in each graph. What would express it is a CHECK -- the same
+      shape as `select-graph-set.py`'s "fails if a name in CORE no longer
+      exists": a test over `build.gradle.kts` asserting that every
+      `HomeMembershipLaw` / `HomeFixpointLaw` node carries a `dependsOn`, so
+      forgetting one breaks the build rather than the verdict.
+    owed_check: >
+      A parser-level assertion over build.gradle.kts, or a
+      `NodeSpec.Kind.POST_CONDITION` the runner orders last by construction.
+      The second is the better fix and the larger one.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: HIS-6, or a follow-up on the membership law
+    status: open
+
+  - id: DEF-111
+    found_by: HIS-21 (#253) -- by `git status`, after running the sweep it was told to run
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "sweep.py --only OVERWRITES the epic's canonical sweep.json, destroying the round-1 record"
+    summary: >
+      `skills/test_graph/scripts/sweep.py` defaults `--out` to
+      `results/epic-home-integrity-sync/sweep` and writes `sweep.json` there
+      after EVERY graph. A five-graph `--only` run therefore replaced the
+      26-graph round-1 record in place:
+
+        graphs_selected: 26 -> 5
+        graphs_executed: 26 -> 5
+        graphs_passed:   23 -> 5
+        results: 26 entries -> 5
+
+      HIS-21's brief instructs `sweep.py --only <graphs>` for exactly this case,
+      so following the instruction destroys the evidence the instruction exists
+      to protect.
+    detail: >
+      Recovered here with `git show HEAD:<path> > <path>` -- possible only
+      because the round-1 record was committed. An agent that ran a partial
+      sweep between the sweep and its commit would have lost it with no copy
+      anywhere, and NOTHING WOULD HAVE SAID SO: the file is still valid JSON
+      with the same schema, and `graphs_executed: 5` reads as a completed run
+      rather than as a clobbered one.
+
+      This is the same family as vacuity-ledger row 19 one level out -- a
+      measurement artifact that is well-formed, plausible, and about something
+      other than what its reader thinks.
+    owed_check: >
+      Either (a) refuse to write the canonical path for a partial selection --
+      a `--only` run writes `sweep-partial-<timestamp>.json` unless `--out` is
+      given explicitly, or (b) merge into the existing record by graph name,
+      keeping every graph the run did not touch, or (c) at minimum record
+      `selection` in the file so a partial run cannot be read as a full one.
+      (a) is the smallest and the one this ticket would have wanted.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: HIS-6 -- it owns round 3 and reads this file
+    status: open
+
+  - id: DEF-112
+    found_by: review of PR #256 (MAJOR-3), reproduced and re-measured by HIS-21
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "an UNREPAIRABLE FOREIGN_PATH_IN_SHIM gives HomeFixpointLaw a remedy that cannot converge"
+    summary: >
+      `HomeFixpointLaw` parses the remedy out of a `home verify` refusal, RUNS
+      it, and re-verifies; "the remedy it printed did not clear it" is its
+      failure predicate. HIS-21 made `home verify` refuse a foreign path in a
+      shim's CONTENT. When that finding is UNREPAIRABLE -- no path under this
+      home stands where the foreign one does -- the loop cannot converge:
+
+        verify exit 1 -> remedy -> `repaired 0 of 1`, `1 cannot be repaired`
+                      -> verify exit 1 -> the law fails.
+
+      Before this PR `home verify` was blind to the condition, so the law
+      passed. The combined remedy `home repair --fix && sync --force-scripts`
+      short-circuits on the repair's non-zero exit precisely in the unfixable
+      case.
+    blast_radius_measured: >
+      24 graphs carry the law -- counted from build.gradle.kts, not estimated;
+      all 24 wirings declare a `dependsOn`. HIS-21's PR framed the risk around
+      "five clone-heavy graphs", which was the wrong frame and understated it.
+
+      RUN AND GREEN: 16. HIS-21 ran 7 (home-sync, home-integrity,
+      checkout-home, ticket-lifecycle, project-child-home, harness-smoke,
+      home-clone); the reviewer ran 9 more (onboarding 23/23, home-tripwire
+      8/8, project-smoke, doc-smoke, project-env, project-libs, project-resolve,
+      project-manifest, spec-conformance). No graph reddened and no home was
+      repaired by the law in any of the 16.
+
+      SKIP THE LAW via a pre-existing upstream failure, both red in round 1 on
+      the base: artifact-dag, git-latest-source-tracking.
+
+      UNRUN BY ANYONE, by name so HIS-6 does not rediscover them:
+        smoke, plugin-smoke, skill-dev-smoke, source-tracking, onboard,
+        project-profiles.
+    why_it_is_not_a_blocker: >
+      The condition needs a home whose shim names a foreign path for which THIS
+      home has no counterpart. Every fixture that plants one plants a
+      counterpart too, and the operator's own root home -- the only real
+      instance in this epic -- is FULLY REPAIRABLE: measured read-only, all
+      five findings print `repair: rewrite that path to <this home>/...`. So the
+      risk is structural and no instance has been observed in 16 graphs.
+    owed_check: >
+      Either (a) `home verify` prints a remedy only when the finding is
+      fixable, and says plainly that it is not otherwise -- the shape
+      `HomeRepair` already uses for its own unrepairable findings; or (b)
+      `HomeFixpointLaw` distinguishes "the remedy failed" from "the remedy said
+      this cannot be repaired by a command" and reports the second as a NAMED
+      unrepairable state rather than as a law failure. (b) is the better fix and
+      is the same DEF-067 boundary the law already lives on.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-110
+    found_by: HIS-21 (#253), while deciding whether DEF-104 needed a model change
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "HomeIntegrityInternal models ONE observer, so GOAL-one-home-one-answer's central property is not expressible in it"
+    summary: >
+      `ADamagedHomeIsNeverReportedClean` already exists in
+      `specs/current/HomeIntegrityInternal.tla`, with its own refutation cfg
+      (`_regression_blindobserver.cfg`). DEF-104 is an instance of exactly that
+      invariant -- and the model could not have caught it, because the model has
+      ONE `hi_observation` variable and production has at least four readers
+      (`home verify`, `home verify --against`, `home repair`, `home clone`).
+    detail: >
+      The invariant is right and the implementation was blind, which is the good
+      case for a model. But GOAL-one-home-one-answer is not "the observation is
+      correct", it is "the observations AGREE" -- and a single-observation state
+      variable cannot express disagreement at all. Every reader-agreement claim
+      in this epic therefore lives only in Java: `ClonedHomeDescentTest`,
+      `ReadersAgreeAboutOneClone`, and now
+      `DamagedHomeIsRepairableTest`'s DEF-104 pair.
+
+      NOT FIXED HERE deliberately. Making `hi_observation` a function from
+      READER to observation, with an invariant that the range is a singleton
+      for one home state, is a real model change with a TLC cost and an
+      expected-violation cfg of its own. HIS-21's declared validation says
+      "tlc: N/A unless the fix states a new invariant", and this fix states no
+      new invariant -- it makes production satisfy one the model already had.
+    owed_check: >
+      `hi_observation` as READER -> observation, plus
+      `AllReadersAgreeAboutOneHome`, plus a regression cfg that refutes IT
+      specifically rather than a neighbour (vacuity-ledger row 15's rule).
+      HIS-6 decides GOAL-one-home-one-answer and this is the only instrument
+      that could decide it at the model level.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: HIS-6
     status: open
 
   - id: DEF-108

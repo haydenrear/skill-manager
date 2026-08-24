@@ -1,0 +1,451 @@
+module: SkillManager
+package: skillmanager_program_cases
+
+# ---------------------------------------------------------------------------
+# What the accepted baseline IS
+#
+# Repaired by ARTI-02 (epic/artifact-dag, upstream issue #164). Between
+# e088e2c and that repair this file was a byte-identical copy of the ticket
+# `current/` manifest: it declared `package: current_program_cases`, carried
+# `active_ticket: 128-clear-stale-transitive-error`, pointed
+# `source_model.program_model_manifest` at itself, and named
+# ../program_model/Core.tla, Internal.tla and External.tla.
+#
+# The Core/Internal/External split was the false half of that contradiction:
+#
+#   1. `git ls-tree <commit> specs/program_model/` at every commit that has
+#      ever touched this directory (9fbd814, 95b7ef9, f538fd5, af08595,
+#      934ff72, 8a4e8a1, 8783cb8, e088e2c) lists exactly one .tla file,
+#      SkillManager.tla. The three-module split has never existed here.
+#   2. The last accepted manifest before the clobber (8783cb8, 233 lines)
+#      declared a single `program_model_module: ../program_model/SkillManager.tla`.
+#   3. README.md in this directory describes one module: "SkillManager.tla
+#      models the CLI command catalog, aliases, workflow links, root-help
+#      scope, command-help coverage, bundled skill documentation coverage,
+#      and opt-in agent-context coverage."
+#   4. The three keys are scaffold-template boilerplate emitted by
+#      spec-double-compiler's scripts/new_ticket_workflow.py (lines 656-659
+#      and 725-728) into every scaffolded ticket/current manifest. Both
+#      ../current/spec_manifest.yaml and ../desired_program_model/spec_manifest.yaml
+#      already carry explicit comments saying those keys were removed because
+#      "../program_model has no Core.tla / Internal.tla / External.tla". This
+#      file was the only one still carrying them.
+#   5. Core.tla / Internal.tla / External.tla do exist -- under
+#      ../desired_program_model/. They are the *desired* decomposition
+#      (ticket_plan.yaml phase MIG), not the accepted one.
+#
+# Mechanism of the clobber, for the record: the 128 workflow close promoted
+# the ticket `current/` model onto `program_model/` wholesale. The snapshot it
+# archived proves it --
+# specs/.history/desired-ticket-workflow/closed-snapshot-128-clear-stale-transitive-error/snapshots/current/spec_manifest.yaml
+# is byte-identical to the file that was left here.
+# ---------------------------------------------------------------------------
+
+model:
+  tla: SkillManager.tla
+  cfg: MC.cfg
+  promotion_cfg: MC_program_promotion.cfg
+  decomposition: single_module_monolith
+  module_files:
+    - SkillManager.tla
+
+status:
+  workflow: accepted
+  relation_to_program_model: accepted_whole_program_model
+  promoted_from_workflow: desired-ticket-workflow
+  updated: "2026-08-14"
+  repaired_by:
+    ticket: ARTI-02
+    epic: epic/artifact-dag
+    upstream_issue: 164
+    what: >-
+      Restored a manifest that describes the model actually on disk. No TLA+,
+      MC.cfg, adapter or production source was changed; only this manifest and
+      the two validation surfaces that had stopped executing.
+  closed_tickets:
+    - CLI-PROGDISC-001
+    - CLI-PROGDISC-002
+    - CLI-PROGDISC-003
+    - CLI-PROGDISC-004
+    - CLI-PROGDISC-005
+    - ISSUE-91
+    - 109-resolver-cycle
+    - 128-clear-stale-transitive-error
+  # Every commit that has promoted semantics into this accepted directory.
+  # Verifiable with `git log --oneline -- specs/program_model/`.
+  promotion_history:
+    - commit: 9fbd814
+      what: initial accepted program model (single SkillManager.tla)
+    - commit: 95b7ef9
+      what: Gemini target parity added to the agent projection surface
+    - commit: f538fd5
+      what: closed snapshot promotion
+    - commit: af08595
+      what: project child-home sync projections
+    - commit: 934ff72
+      what: ISSUE-91 force-scripts / CLI-dep cleanup workflow close
+    - commit: 8a4e8a1
+      what: progressive-disclosure CLI workflow close; MC.cfg bounded to CliDisclosureSpec
+    - commit: 8783cb8
+      what: 109-resolver-cycle; ResolverVisitsEachCoordAtMostOnce added to MC.cfg
+    - commit: e088e2c
+      what: >-
+        128-clear-stale-transitive-error; SyncUnit and SyncUnitForceScripts
+        clear the unit's persisted resolve error on a fully-resolving pass.
+        The TLA+ half of that promotion is sound and is kept; only the
+        manifest half was wrong.
+  open_workflow:
+    name: child-home-materialization-workflow
+    working_models:
+      - ../current
+      - ../desired_program_model
+    note: >-
+      Not yet promoted. ../current/spec_manifest.yaml carries active_ticket
+      ISSUE-168. Nothing from that workflow is claimed by this accepted model.
+
+source_model:
+  # The accepted model is the promotion TARGET, so it has no upstream
+  # program_model to reference; the previous file pointed this key at itself.
+  # These are this model's own sources plus the working models that promote
+  # INTO this directory. Every path below resolves from this directory.
+  module: SkillManager.tla
+  ticket_tlc_config: MC.cfg
+  promotion_tlc_config: MC_program_promotion.cfg
+  adapter_mapping: case_adapters.toml
+  production_adapters: production_adapters.py
+  current_model: ../current/spec_manifest.yaml
+  desired_model: ../desired_program_model/spec_manifest.yaml
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+source_surfaces:
+  specification:
+    - SkillManager.tla
+  cli_sources:
+    - src/main/java/dev/skillmanager/cli/SkillManagerCli.java
+    - src/main/java/dev/skillmanager/commands
+  # The bundled documentation surfaces ExpectedSkillDocCoverage abstracts.
+  # skill-publisher-skill became a plugin layout after the accepted manifest
+  # last named it, so its single SKILL.md is now two skill directories; the
+  # stale `skill-publisher-skill/SKILL.md` entry is corrected here.
+  skill_docs:
+    - skill-manager-skill/SKILL.md
+    - skill-manager-skill/references
+    - skill-publisher-skill/skills/skt/SKILL.md
+    - skill-publisher-skill/skills/unit-authoring/SKILL.md
+    - skill-publisher-skill/references
+    - skill-dev-skill/SKILL.md
+    - skill-dev-skill/README.md
+
+# Whole-program state: the 38 names in SkillManager.tla's VARIABLES block
+# (declared on line 18, names on lines 19-56); `vars` is their tuple.
+# project_model is a record whose
+# CLI-disclosure fields are enumerated under state_fields below.
+state_variables:
+  - cli_store_units
+  - cli_doc_repos
+  - cli_harness_templates
+  - cli_harness_instances
+  - cli_installed_records
+  - cli_lock_units
+  - cli_agent_projections
+  - cli_bindings
+  - cli_projection_rows
+  - cli_managed_copies
+  - cli_import_directives
+  - cli_projection_conflicts
+  - cli_tool_records
+  - cli_cli_lock
+  - cli_skill_scripts_run
+  - cli_errors
+  - cli_gateway_url_configured
+  - cli_registry_url_configured
+  - cli_gateway_mcp_snapshot
+  - effect_status
+  - effect_continuation
+  - program_halted
+  - always_after_ran
+  - rollback_journal
+  - gateway_catalog
+  - gateway_dynamic_servers
+  - gateway_global_deployments
+  - gateway_session_deployments
+  - gateway_tools
+  - gateway_disclosures
+  - gateway_errors
+  - gateway_last_init
+  - server_registry_units
+  - server_versions
+  - server_packages
+  - server_authenticated_users
+  - project_model
+  - result
+
+# Constant catalog operators. These are definitions, not state: Init seeds the
+# corresponding project_model fields from them (SkillManager.tla lines 359-366)
+# and the coverage invariants assert the seeded fields still equal them. They
+# are what makes the CLI-disclosure contract falsifiable -- drop a command from
+# CliCommandCatalog and CliCommandHelpCoversCatalog stops holding.
+catalogs:
+  CliRootCommand:
+    kind: constant_operator
+    tla_line: 127
+    description: the root command path, "skill-manager".
+  CliTopLevelCommands:
+    kind: constant_operator
+    tla_line: 129
+    description: every modeled top-level command; the exact scope of root help.
+  CliSubcommands:
+    kind: constant_operator
+    tla_line: 136
+    description: every modeled subcommand path.
+  CliCommandCatalog:
+    kind: constant_operator
+    tla_line: 154
+    definition: "{CliRootCommand} \\cup CliTopLevelCommands \\cup CliSubcommands"
+    seeds:
+      - project_model.cli_command_catalog
+      - project_model.cli_command_help_topics
+    description: >-
+      canonical CLI command and subcommand path catalog, including the root
+      command. Every catalog entry must have dedicated contextual help.
+  CliCommandAliases:
+    kind: constant_operator
+    tla_line: 151
+    seeds:
+      - project_model.cli_command_aliases
+    description: user-facing aliases that resolve to canonical command paths.
+  CliWorkflowCatalog:
+    kind: constant_operator
+    tla_line: 157
+    seeds:
+      - project_model.cli_workflow_catalog
+      - project_model.cli_agent_context_topics
+    description: >-
+      the canonical workflow ids covered by CLI help, bundled skill docs, and
+      agent context.
+  CliWorkflowCommandLinks:
+    kind: constant_operator
+    tla_line: 170
+    seeds:
+      - project_model.cli_workflow_command_links
+    description: >-
+      link from each workflow to at least one CLI command path that starts or
+      inspects it; the link targets must be a subset of CliCommandCatalog.
+  ExpectedSkillDocCoverage:
+    kind: constant_operator
+    tla_line: 229
+    seeds:
+      - project_model.cli_skill_doc_topics
+    description: bundled skill documentation coverage required per workflow.
+
+state_fields:
+  project_model.cli_command_catalog:
+    type: set[CommandPath]
+    seeded_from: CliCommandCatalog
+    description: canonical CLI command and subcommand path catalog, including the root command.
+  project_model.cli_command_aliases:
+    type: set[tuple[Alias, CommandPath]]
+    seeded_from: CliCommandAliases
+    description: user-facing aliases that resolve to canonical command paths.
+  project_model.cli_workflow_catalog:
+    type: set[WorkflowId]
+    seeded_from: CliWorkflowCatalog
+    description: canonical workflow ids covered by CLI help, agent context, and bundled skills.
+  project_model.cli_workflow_command_links:
+    type: set[tuple[WorkflowId, CommandPath]]
+    seeded_from: CliWorkflowCommandLinks
+    description: link from each workflow to at least one CLI command path that starts or inspects it.
+  project_model.cli_root_help_topics:
+    type: set[CommandPath]
+    seeded_from: CliTopLevelCommands
+    description: root help topics; deliberately limited to top-level commands for progressive disclosure.
+  project_model.cli_command_help_topics:
+    type: set[CommandPath]
+    seeded_from: CliCommandCatalog
+    description: command paths with dedicated contextual help.
+  project_model.cli_skill_doc_topics:
+    type: set[tuple[SkillDocSurface, WorkflowId]]
+    seeded_from: ExpectedSkillDocCoverage
+    description: bundled skill documentation coverage by workflow.
+  project_model.cli_agent_context_topics:
+    type: set[WorkflowId]
+    seeded_from: CliWorkflowCatalog
+    description: workflows that can emit agent-facing context while the CLI is being used.
+
+# The nine disjuncts of CliDisclosureNext (SkillManager.tla:1574). Each carries
+# an @command / @result / @port annotation in the module and has exactly one
+# row in case_adapters.toml.
+actions:
+  RenderProgressiveRootHelp:
+    port: SkillManagerCli.render_progressive_root_help
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliHelpAdapter
+    description: root CLI help renders the top-level command catalog only.
+  RenderInstallCommandHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliHelpAdapter
+    description: representative install command help transition.
+  RenderSyncCommandHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliHelpAdapter
+    description: representative sync command help transition.
+  RenderProjectProfilesListHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliHelpAdapter
+    description: representative nested command help transition.
+  ExposeInstallLocalUnitWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliSkillDocsAdapter
+    description: representative install workflow documentation transition.
+  ExposeSkillScriptsWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliSkillDocsAdapter
+    description: representative skill-script workflow documentation transition.
+  ExposeProjectEnvWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliSkillDocsAdapter
+    description: representative project-env workflow documentation transition.
+  EmitSyncOneUnitAgentContext:
+    port: SkillManagerCli.emit_agent_workflow_context
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliAgentContextAdapter
+    description: representative sync workflow agent-context transition.
+  EmitProjectEnvAgentContext:
+    port: SkillManagerCli.emit_agent_workflow_context
+    result: CliDisclosureResult
+    adapter: specs.program_model.production_adapters:CliAgentContextAdapter
+    description: representative project-env workflow agent-context transition.
+
+# The eight invariants MC.cfg checks under SPECIFICATION CliDisclosureSpec.
+# Each is defined in SkillManager.tla with an `@invariant` annotation.
+invariants:
+  - CliCommandCatalogCoversAllCommands
+  - CliRootHelpStaysProgressive
+  - CliCommandHelpCoversCatalog
+  - CliWorkflowCatalogCoversDesiredWorkflows
+  - CliWorkflowsReferenceCatalogCommands
+  - CliSkillDocsCoverWorkflowCatalog
+  - CliAgentContextCoversWorkflowCatalog
+  - ResolverVisitsEachCoordAtMostOnce
+
+# The whole-program promotion config checks 56 invariants -- the eight above
+# plus the store/lock/binding/projection/project/child-home/gateway/registry
+# families. They are deliberately NOT re-listed here: MC_program_promotion.cfg
+# is the single source of that list, and a hand-copied duplicate is exactly the
+# kind of drift this manifest is being repaired from.
+promotion_invariants:
+  config: MC_program_promotion.cfg
+  specification: Spec
+  count: 56
+  # Not a strict superset of `invariants` above: MC_program_promotion.cfg
+  # carries seven of the eight, and omits ResolverVisitsEachCoordAtMostOnce --
+  # the invariant 8783cb8 (109-resolver-cycle) added to MC.cfg and did not add
+  # here. So the resolver's termination bound is checked in the bounded ticket
+  # loop and NOT in the whole-program promotion run. Recorded rather than
+  # fixed: adding it means re-running the whole-program TLC, which is outside
+  # ARTI-02's slice. Do not "tidy" this key into a superset claim without
+  # editing the cfg and running that check.
+  omits:
+    - ResolverVisitsEachCoordAtMostOnce
+
+ports:
+  SkillManagerCli.render_progressive_root_help:
+    kind: cli_help
+    adapter_status: implemented
+    adapter: specs.program_model.production_adapters:CliHelpAdapter
+  SkillManagerCli.render_command_help:
+    kind: cli_help
+    adapter_status: implemented
+    adapter: specs.program_model.production_adapters:CliHelpAdapter
+  SkillManagerCli.expose_skill_workflow_docs:
+    kind: docs
+    adapter_status: implemented
+    adapter: specs.program_model.production_adapters:CliSkillDocsAdapter
+  SkillManagerCli.emit_agent_workflow_context:
+    kind: cli_context
+    adapter_status: implemented
+    adapter: specs.program_model.production_adapters:CliAgentContextAdapter
+
+adapters: case_adapters.toml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: passed
+  # Carried-forward evidence, not a fresh measurement. Case generation last ran
+  # at the progressive-disclosure workflow close (8a4e8a1) and the
+  # 109-resolver-cycle promotion (8783cb8): 9 transition cases from 1 state,
+  # 9/9 adapter mappings validated and executed. ARTI-02 repaired this manifest
+  # and did NOT re-run codegen; see validation.historical_evidence.
+  reverified_by_arti_02: false
+  cases: 9
+  reachable_states: 1
+
+validation:
+  # Measured on 2026-08-14 in the ARTI-02 worktree, against this commit.
+  tlc:
+    - command: bash run_tlc.sh SkillManager.tla MC.cfg
+      cwd: specs/program_model
+      status: passed
+      result: no invariant violations
+      states_generated: 10
+      distinct_states: 1
+      depth: 1
+      tlc_version: "2.19"
+      measured: "2026-08-14"
+    - command: bash run_tlc.sh SkillManager.tla MC_program_promotion.cfg
+      status: promotion_only
+      note: >-
+        Full whole-program TLC is intentionally not part of the ticket loop.
+        ARTI-02 did not run it.
+  unit:
+    - command: uv run --with pytest pytest specs/program_model/tests specs/current/tests -q
+      status: passed
+      result: 22 passed
+      measured: "2026-08-14"
+      note: >-
+        Was "1 failed, 21 passed" before this repair, and before ARTI-02 added
+        ../pytest.ini the two suites could not even be collected in one
+        invocation -- five same-named test modules across the two directories
+        raised pytest import-file-mismatch errors.
+    - command: jbang RunTests.java
+      status: passed
+      result: ALL PASSED
+      measured: "2026-08-14"
+  ci:
+    workflow: .github/workflows/ci.yml
+    job: unit-tests
+    step: Run spec-model suites
+    note: >-
+      Both spec suites now execute on every CI run of that job. They were in no
+      workflow before ARTI-02, which is how the accepted baseline's own contract
+      test stayed red across two releases.
+  historical_evidence:
+    - specs/.history/desired-ticket-workflow/closed-snapshot/
+    - specs/.history/desired-ticket-workflow/closed-snapshot-109-resolver-cycle/
+    - specs/.history/desired-ticket-workflow/closed-snapshot-128-clear-stale-transitive-error/
+    - specs/.history/issue-91-force-scripts-cli-dep-cleanup/closed-snapshot/
+    - specs/.history/gemini-target-parity/closed-snapshot/
+    - specs/.history/project-and-child-home-workflow/closed-snapshot/
+
+notes:
+  direction: >-
+    This manifest describes the accepted whole-program model that is on disk in
+    this directory. It is a promotion target: a ticket workflow scaffolds
+    ../current and ../desired_program_model, converges them, and promotes the
+    result here. Promotion must reconcile this manifest with the promoted
+    semantics -- copying the ticket's current/ manifest over it is what produced
+    upstream issue #164.
+  known_gap: >-
+    spec-double-compiler's scripts/extract_spec_manifest.py requires top-level
+    `state`, `commands` and `results` keys. This repository's three manifests
+    (program_model, current, desired_program_model) all use the
+    `state_fields`/`actions`/`invariants` vocabulary instead and all three fail
+    that validator identically. Reconciling the two vocabularies is a
+    repo-and-skill-wide change and is out of ARTI-02's slice; recorded here so
+    the next reader does not mistake it for damage this manifest introduced.

@@ -437,3 +437,78 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket HIS-21
+
+- close_scope: ticket
+- close_id: HIS-21
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T20:26:48+00:00
+- summary: >
+    Five diagnostics that reported something that is not so (DEF-102, DEF-104,
+    DEF-105, DEF-106, DEF-107). No TLA+ module, .cfg, adapter or spec double
+    changed; one spec adapter test gained a production pin for DEF-102. The
+    close was NOT refused for openness and needed no `--allow-open` -- it was
+    refused once by the complexity ledger, correctly, for an empty
+    `refinement:` and `narrative:`, and passed on the second attempt.
+- feedback_status: items-recorded
+
+### SF-004 — SF-003 recurred, unchanged, four tickets later
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs open|close ticket HIS-21`
+- detail: >
+    Not a new finding. SF-003 (HIS-20) is filed as
+    https://github.com/haydenrear/tla-spec-dev/issues/289 and describes exactly
+    this. It is recorded again because the file's own purpose is to count
+    occurrences, and because HIS-21 changed ONE spec file
+    (`tests/test_cli_help_program_model.py`) and still saw it:
+
+      $ git diff specs/current/run_tlc.sh
+      old mode 100755
+      new mode 100644
+
+    So the second occurrence confirms SF-003's corrected diagnosis rather than
+    its first one: the mode is lost regardless of what the ticket touched,
+    because open and close both copy content without mode.
+
+    The shape is worth naming beyond the one file, because it is this epic's
+    own subject: `diff -rq` reports the two trees IDENTICAL. The loss is
+    invisible to a content comparison, and `run_tlc.sh` is the script the model
+    checker is invoked through -- so a promotion that silently un-executes it
+    surfaces later as a TLC failure, which reads as a model problem.
+- forced_workaround: `chmod +x specs/current/run_tlc.sh` after the close, before committing
+- data_loss: no (mode only; recoverable and recovered)
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/289 (SF-003's ticket; this is the SECOND occurrence on it, not a new issue)
+- status: filed
+
+### SF-005 — the ticket workspace seeds a `current/` and a `desired/` that a no-model ticket can only keep equal by not touching them
+
+- root_cause: workflow
+- surface: `tla-spec-dev --spec-root specs open ticket HIS-21` (109 scaffolded files)
+- detail: >
+    Recorded as an OBSERVATION, not a complaint, because the alternative is
+    worse and the workflow's rule ("at close, current == desired") is right.
+
+    HIS-21 changes no model. The close requires `current/` and `desired/` to
+    match, so a ticket that wants to pin one production fact in a spec ADAPTER
+    test -- which HIS-21 did, for DEF-102 -- has to write the identical edit
+    into three places: `tickets/HIS-21/current/tests/...`,
+    `tickets/HIS-21/desired/tests/...`, and `specs/current/tests/...`. Get one
+    wrong and the close refuses with a diff, which is the good failure; but the
+    three-way hand edit is itself the kind of "N call sites, one rule" this
+    repository files findings about.
+
+    What would remove it: `open ticket` could offer `--no-model`, seeding the
+    ticket with a symlinked or omitted model pair so that a diagnostics ticket
+    edits adapters in ONE place and the close's equality check is trivially
+    satisfied. Small, and it would have saved two of the three edits here.
+- forced_workaround: applied the same patch to three paths by script rather than by hand
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (filed against the same close-out surface; if the maintainer prefers a separate ticket this should become one)
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.

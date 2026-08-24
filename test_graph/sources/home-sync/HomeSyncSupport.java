@@ -503,7 +503,41 @@ final class HomeSyncSupport {
         Files.createDirectories(home.resolve("installed"));
     }
 
-    /** A minimal installable skill unit, written straight into a home. */
+    /**
+     * The marker {@code HomeMembershipLaw} reads to tell a hand-staged unit
+     * from a unit that appeared in a home nobody named. Spelled here as a
+     * literal rather than imported: these are separate jbang node sources with
+     * no shared compilation unit, and the law's javadoc is the contract. The
+     * two spellings are held together by the law's own self-test, which fails
+     * loudly if the marker it writes is not the marker it reads.
+     */
+    static final String STAGED_MARKER = ".test-graph-staged";
+
+    /**
+     * A minimal installable skill unit, written straight into a home.
+     *
+     * <h2>Why it also writes {@link #STAGED_MARKER} — DEF-107</h2>
+     *
+     * <p>This method exists because the thing under test is what {@code home
+     * sync} does about a unit the destination has not got, so the precondition
+     * has to be a unit on disk that nothing installed. That is, byte for byte,
+     * the residue {@code HomeMembershipLaw} calls "a unit nobody installed" —
+     * so the law read ten nodes' deliberate preconditions as product
+     * violations and reddened the CORE {@code home-sync} graph
+     * ({@code GAINED [hs-delta, hs-epsilon]}, three homes, run
+     * {@code 20260824-193907}).
+     *
+     * <p>The fix is for the fixture to SAY what it staged rather than for the
+     * law to stop looking. The marker goes inside the unit directory, so it
+     * travels with the unit: {@code hs-delta} is staged in the root home and
+     * then propagated to the project and worktree homes by a real
+     * {@code home sync}, and it must arrive marked in all three.
+     *
+     * <p>It marks only what THIS method writes. A unit the product installs, or
+     * one a defect drops into a home, carries no marker and is still a
+     * violation — the law's self-test plants exactly that case beside a marked
+     * one and requires it to be flagged.
+     */
     static void mkUnit(Path home, String name, String body) throws IOException {
         mkHome(home);
         Path dir = unitDir(home, name);
@@ -521,6 +555,8 @@ final class HomeSyncSupport {
                 version = "0.1.0"
                 description = "home-sync graph fixture"
                 """.formatted(name));
+        Files.writeString(dir.resolve(STAGED_MARKER),
+                "staged by HomeSyncSupport.mkUnit — see HomeMembershipLaw.STAGED_MARKER\n");
     }
 
     /** A skill unit as an installable source directory (not inside a home). */

@@ -1,0 +1,242 @@
+# Complexity ledger input -- MF-019 standing objective.
+#
+# `close ticket` refuses until this is filled in. That refusal is the mechanism:
+# the standing objective is a required close-out step, not a stance.
+#
+# The delta is computed for you from `analyze complexity` and the TLC report.
+# What you supply is the part a tool cannot know: whether behavior was retained,
+# what the refinement search found, and why any increase is essential.
+
+# Validated-refactor basis -- CD-09 (owner-approved 2026-07-22). This is what
+# LICENSES a complexity DECREASE: TLC green on the model before AND after the
+# change, behavior tests green, and the before/after descriptor comparison
+# recorded. Absent, unknown, or degraded evidence REJECTS a decrease: an
+# unmeasured constraint cannot witness retention. (The fourth obligation, the
+# inspected transition-level diff, is `transition_diff:` below and is demanded
+# whenever the MF-020 red flag fires.)
+#
+#   tlc_before:            green | fail        -- TLC on the pre-change model
+#   tlc_after:             green | fail        -- TLC on the post-change model
+#   behavior_tests:        pass | fail         -- the repository behavior tests
+#   descriptor_comparison: recorded            -- before/after descriptor doc
+validated_refactor:
+  tlc_before:
+    status: "TODO"
+    evidence: "TODO -- path to the pre-change TLC output"
+  tlc_after:
+    status: "TODO"
+    evidence: "TODO -- path to the post-change TLC output"
+  behavior_tests:
+    status: "TODO"
+    evidence: "TODO -- path to the behavior-test output"
+  descriptor_comparison:
+    status: "TODO"
+    evidence: "TODO -- path to the before/after descriptor comparison"
+
+# Fuzzing-era retention members -- RECORDED at every close, non-gating since
+# CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs
+# floor 0.8, 0/9 content bugs caught). `not_run` is the honest value; fill in a
+# measured verdict only when one of them actually ran.
+#
+#   kill_rate:           pass | below_floor | incomplete_catalog | not_run   (MF-016)
+#   effect_conformance:  clean | gaps | dead_surface | unobservable | not_run (MF-013/MF-027)
+#   external_coverage:   pass | gaps | incomplete | not_run                  (MF-015)
+#
+# NOTE: `unobservable` IS NOT `clean`. MF-027 made the effect oracle refuse
+# targets it cannot see; the record keeps that distinction even though the
+# member no longer gates.
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+# Coverage audit -- MF-026. The completeness REVIEW, distinct from the three
+# retention members above, which are all FIDELITY measures bounded to what is
+# already modeled. Unmodeled surface is invisible to every one of them, and this
+# is the only sweep that looks at it.
+#
+#   status: pass | fail | incomplete | not_run
+#
+# RECORDED, NEVER REFUSING (2026-08-04, owner direction). It was a hard gate at
+# workflow close with no override; it is now an optional agent-run review whose
+# verdict is written down and read by a person. `incomplete` IS STILL NOT
+# `pass`, because a sweep that did not walk the surface says nothing about it --
+# what was withdrawn is the refusal, not the distinction.
+#
+# Procedure: prompts/coverage_audit.md   Doctrine: references/coverage_audit.md
+coverage_audit:
+  status: "not_run"
+  report: ""          # path to the filled templates/coverage_audit_report.md
+  in_scope_gaps: null # count; in-scope gaps are HARD -- model it or change the program
+  scope_source: ""    # plan file:lines the declared scope was READ from, never chosen
+
+# Required if complexity INCREASED. Name the new essential behavior the added
+# representation carries. This documents real behavior; it does not waive the
+# increase, which is recorded and reported either way.
+justification: ""
+
+# The recursive refinement loop -- REQUIRED at every close.
+# Either an approved recommendation with evidence, or "searched, found none".
+# Recommendations are advisory and user-approved, never auto-applied.
+refinement:
+  searched: true
+  outcome: "none"
+  detail: >
+    SEARCHED TWICE -- once in the model, once in the program -- and found no
+    refinement to apply. Recorded with what each search actually looked at, so a
+    reader can tell "searched, found none" from "did not search".
+
+    IN THE MODEL: HIS-21 changes no TLA+ module, no .cfg, no adapter and no spec
+    double. Its conflict keys declare `tla: []` and `adapters: []`, and the
+    assignment records `tlc: N/A unless the fix states a new invariant`. The
+    delta above is zero because the model is byte-identical before and after.
+
+    AND THE MODEL WAS ALREADY RIGHT, which is the interesting half.
+    `HomeIntegrityInternal.tla` carries
+    `ADamagedHomeIsNeverReportedClean`, with its own refutation cfg
+    (`_regression_blindobserver.cfg`, "the observer reports clean without
+    looking"). DEF-104 is an instance of exactly that invariant. The model did
+    not catch it and could not: the model has ONE `hi_observation` variable and
+    production has at least four readers (`home verify`, `home verify
+    --against`, `home repair`, `home clone`). GOAL-one-home-one-answer is not
+    "the observation is correct", it is "the observations AGREE", and a single
+    observation variable cannot express disagreement at all.
+
+    That IS a refinement recommendation -- `hi_observation` as READER ->
+    observation, plus `AllReadersAgreeAboutOneHome` and a cfg that refutes IT
+    rather than a neighbour (vacuity-ledger row 15's rule). It is NOT applied
+    here: it is a model change with a TLC cost and a new expected-violation cfg,
+    this ticket states no new invariant, and HIS-6 is the ticket that decides
+    GOAL-one-home-one-answer. Filed as DEF-110 with the owed check written out,
+    rather than half-built inside a diagnostics ticket.
+
+    IN THE PROGRAM: one refinement was found and APPLIED, and it removes
+    representation rather than adding it. `home repair` and `home verify` each
+    had their own answer to "does this shim's text name another home".
+    `HomeRepair.foreignPathsInShims` kept a token loop, a dedup set and a call
+    to `unsanctionedForeignHome`; `home verify` had nothing. Rather than write a
+    second one, the extraction AND the verdict moved into
+    `HomeCloner.foreignPathsInShimContent`, which both readers now call --
+    `HomeRepair`'s loop keeps only what is its own, the remedy text. One
+    scanner, one verdict, one scope. Two spellings of that question is what
+    DEF-104 WAS, so fixing it by adding a third would have been the defect
+    inside its own repair.
+
+    Also folded, for the same reason: `GatewayConfig.FILE` and
+    `GatewayConfig.URL_ENV` were private and `home describe` needed both to say
+    where its answer came from. Made public rather than re-spelled at the call
+    site.
+  measured: false      # no TLC run: the model is byte-identical before and after
+  applied: true
+  approved_by: "HIS-21 author; the model-side recommendation is DEFERRED as DEF-110 for HIS-6"
+
+# Required only if a generated-states drop at constant distinct states is
+# detected. That is a RED FLAG (deleted self-loop, MF-020), not a win -- record
+# the inspected transition-level diff here to accept it.
+transition_diff: ""
+
+# REQUIRED. The narrative ledger: reasoning, measured alternatives, findings the
+# machine-checked core above cannot express. Path to a document, or prose.
+narrative: >
+  HIS-21 (issue #253) fixes FIVE diagnostics that reported something that is not
+  so. The machine-checked core above is uninformative by construction -- the
+  model delta is zero because no model was touched. The full record is
+  results/epic-home-integrity-sync/tickets/HIS-21/goal-contribution.md and
+  results/epic-home-integrity-sync/probes/his-21/vacuity-checks.md; this is the
+  part the delta cannot express.
+
+  THREE OF THE FIVE WERE FILED WITH A MECHANISM THAT MEASUREMENT REFUTED, and
+  in two of the three the correction changed what the fix had to be. That is the
+  most useful thing in this entry, so it is first.
+
+  DEF-104, as filed: "verifyRoots frames its foreign-home question against a
+  home's SOURCE, and the root home has no parent, so the branch never runs" --
+  offered explicitly as "to be confirmed rather than assumed". CONFIRMED FALSE.
+  Two throwaway homes, A holding a regular-file wrapper execing a path inside B,
+  on the pre-fix tree: `home verify --home A` exit 0; `home verify --home A
+  --against C` ALSO exit 0, with a source supplied; `home repair --home A` one
+  finding; and the same target rewritten as a SYMLINK, `home verify` exit 1. The
+  blindness was about the SURFACE, not the tier and not `--against`: the
+  foreign-home question was asked only of symlinks. A wrapper naming a third
+  home was invisible at EVERY tier. This matters beyond the record -- the fix
+  the filed mechanism implies is "run the branch when srcRoot == null", and that
+  branch is the symlink branch, which already ran. A ticket that implemented the
+  stated mechanism would have shipped green tests and the defect. The regression
+  test therefore asserts the `--against` case explicitly.
+
+  DEF-105, as filed: "the root home carries a security policy the product does
+  not read". IT READS IT. `skill-manager policy show` on a home holding
+  allowed_backends = ["tar"], require_hash = true, allow_init_scripts = true
+  printed all three back, from `Policy.load`, which resolves
+  `<store>/policy.toml`. `policy.toml` is the INSTALL/SECURITY policy and
+  `home.policy.toml` is the LIVE/FROZEN policy: two live files, two jobs, two
+  verbs, neither legacy. The real defect is narrower and worse -- both are
+  called policy, both govern that home, and neither verb mentioned the other, so
+  an operator reading "home.policy.toml (absent -- live by default)" concludes
+  the home declares no policy with a live security policy permitting init
+  scripts beside it. `home policy` now names both.
+
+  DEF-107, as filed: "HomeMembershipLaw.SPEC declares no dependsOn, so it runs
+  mid-scenario and calls an intermediate state final". MEASURED FALSE, run
+  20260824-193907: home-sync wires the node
+  .dependsOn("home.sync.authored.agent.tree") and the planner ran it [19/19],
+  dead last; all 23 wirings declare a predecessor. The backlog entry's own
+  quoted output contradicts the sentence too -- the project home it shows holds
+  hs-delta, which is staged into the ROOT home and reaches the project home only
+  through a sync. Ordering could not have been the fix either: a staged unit is
+  still on disk at the end of the graph, which is exactly when a post-condition
+  looks. And a SPEC-level dependsOn is unimplementable as stated, because the
+  node has a different predecessor in each of the 23 graphs. Fixed instead by
+  letting the FIXTURE declare what it staged -- a marker inside the unit
+  directory, so it travels with the unit through a real `home sync`, which is
+  necessary because hs-delta is staged in one home and audited in three. The
+  latent hazard the sentence describes is real one graph from now and is filed
+  as DEF-109.
+
+  DEF-106 CARRIED AN OPEN QUESTION the ticket had to decide: is a project home
+  SUPPOSED to have a home.runtime.json? It is not, and this is decidable from
+  the code rather than from taste -- `LaunchEnv.of` reads one when present and
+  otherwise DERIVES the same block, and only `home clone` and `describe --write`
+  persist one. So the project home is not malformed and `describe` computing a
+  descriptor is correct. What was wrong is that it printed the computed answer
+  in the shape of a recorded one: `policy`, `cli` and `gateway` were all
+  defaults, and the gateway default is how the root home and the project home
+  both reported `(owned)` for one port with one listener. Each field now carries
+  its provenance. `--json` is deliberately unchanged, and `GatewayConfig.owned()`
+  still defaults to true -- the claim is about the REPORT, and widening it to the
+  resolution would change what `gateway up` does in every undeclared home with no
+  measurement behind it.
+
+  DEF-102 is the small one and the only one whose filed description was exact.
+  `--help` ran the closing report program: it resolved the ambient home, called
+  `store.init()`, and walked every installed record. Three things wrong and only
+  the first cosmetic -- noise on the one output whose job is to be quotable, a
+  full home walk on the command an agent runs when it does not know what a
+  command does, and a WRITE held off only by CommandHomeAccess classifying help
+  as READ.
+
+  VACUITY. Nine probes, every red observed rather than argued; the table is in
+  probes/his-21/vacuity-checks.md. Mechanism D bit once, and not where the brief
+  warned it would: HelpIsTextOnlyTest's `--version` case bound a home for two
+  invocations through a driver that clears the binding after each, so it ran
+  against the ambient home and was GREEN UNDER THE MUTATION. Caught by running
+  the mutation, not by reading the test; re-written per-invocation and re-run
+  red.
+
+  ONE FINDING THE TICKET CREATED RATHER THAN FOUND. Running the second graph set
+  the brief instructs (`sweep.py --only <graphs>`) OVERWROTE this epic's 26-graph
+  round-1 sweep.json, which sweep.py writes by default. Found by `git status`;
+  recovered from HEAD; filed as DEF-111. Nothing in the tooling would have said
+  so -- the clobbered file is valid JSON with the same schema and reads as a
+  completed small run.
+
+  DEFERRED: DEF-109 (SPEC has no dependsOn: latent, one graph from now),
+  DEF-110 (the model has ONE observer, so reader-agreement is inexpressible in
+  it), DEF-111 (sweep.py clobbers the canonical record). Three of a budget of
+  five.
