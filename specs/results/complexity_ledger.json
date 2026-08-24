@@ -1893,15 +1893,9 @@
     {
       "schema_version": 1,
       "scope": "ticket",
-<<<<<<< HEAD
       "scope_id": "HIS-21",
       "workflow": "child-home-materialization-workflow",
       "recorded_at_utc": "2026-08-24T20:25:28.514860+00:00",
-=======
-      "scope_id": "HIS-22",
-      "workflow": "child-home-materialization-workflow",
-      "recorded_at_utc": "2026-08-24T20:06:58.842720+00:00",
->>>>>>> origin/feature/254-his-22
       "metrics": {
         "variables": 38,
         "actions": 9,
@@ -2093,15 +2087,9 @@
     {
       "schema_version": 1,
       "scope": "ticket",
-<<<<<<< HEAD
       "scope_id": "HIS-21",
       "workflow": "child-home-materialization-workflow",
       "recorded_at_utc": "2026-08-24T20:26:48.357648+00:00",
-=======
-      "scope_id": "HIS-22",
-      "workflow": "child-home-materialization-workflow",
-      "recorded_at_utc": "2026-08-24T20:08:02.663298+00:00",
->>>>>>> origin/feature/254-his-22
       "metrics": {
         "variables": 38,
         "actions": 9,
@@ -2199,11 +2187,7 @@
         },
         "direction": "zero"
       },
-<<<<<<< HEAD
       "justification": "",
-=======
-      "justification": "No model complexity increase: the TLA+ tree is unchanged.\nPRODUCT complexity increased by one new exception type (ProjectVendoredDurabilityException), one new context fact (ProjectSyncSkippedNonDurable), one new reader class (ProjectManifestRealization) and one new record on an existing verdict (HomeCloseOut.SelfObtainable). Each carries essential behavior that the existing representation could not express:\n- The exception type exists because a bare IOException made \"this project's\n  declared paths do not survive a move\" indistinguishable from \"the unit sync\n  broke\". That conflation is DEF-103: it made the promotion direction the\n  owner asked to enforce unusable for every unit any broken project claims.\n  The alternative -- inspecting the message string -- is the shape #187 was\n  filed against and #229's review rejected at the neighbouring call site.\n\n- The fact type exists because the fix must not be silent. Reusing\n  ProjectSyncFailed would have made \"your project needs repairing\" and \"the\n  unit sync broke\" read identically again, which is the defect one layer out.\n\n- The reader class exists because DEF-096 and DEF-101 need the SAME question\n  answered -- \"what does this home's own manifest declare, and does the home\n  hold it\" -- on two different surfaces. Two spellings of one rule is how the\n  --json and human close-out paths diverged once already (HomeCloseOut's own\n  cliInvocation javadoc records that). It reuses\n  ProjectDependencyResolver.installedUnitName rather than re-deriving name\n  resolution, which is why that method was widened from private to\n  package-private and not copied.\n\n- The verdict component exists because \"nothing is at risk\" and \"nothing to\n  say\" are different answers, and a gate that silently stopped blocking would\n  be worse than the hold-back it removed.",
->>>>>>> origin/feature/254-his-22
       "retention": {
         "kill_rate": {
           "status": "not_run",
@@ -2231,7 +2215,6 @@
       ],
       "validated_refactor": {
         "tlc_before": {
-<<<<<<< HEAD
           "status": "",
           "classification": "unverified",
           "evidence": "TODO -- path to the pre-change TLC output",
@@ -2253,7 +2236,370 @@
           "status": "",
           "classification": "unverified",
           "evidence": "TODO -- path to the before/after descriptor comparison",
-=======
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": true,
+        "outcome": "none",
+        "detail": "SEARCHED TWICE -- once in the model, once in the program -- and found no refinement to apply. Recorded with what each search actually looked at, so a reader can tell \"searched, found none\" from \"did not search\". IN THE MODEL: HIS-21 changes no TLA+ module, no .cfg, no adapter and no spec double. Its conflict keys declare `tla: []` and `adapters: []`, and the assignment records `tlc: N/A unless the fix states a new invariant`. The delta above is zero because the model is byte-identical before and after. AND THE MODEL WAS ALREADY RIGHT, which is the interesting half. `HomeIntegrityInternal.tla` carries `ADamagedHomeIsNeverReportedClean`, with its own refutation cfg (`_regression_blindobserver.cfg`, \"the observer reports clean without looking\"). DEF-104 is an instance of exactly that invariant. The model did not catch it and could not: the model has ONE `hi_observation` variable and production has at least four readers (`home verify`, `home verify --against`, `home repair`, `home clone`). GOAL-one-home-one-answer is not \"the observation is correct\", it is \"the observations AGREE\", and a single observation variable cannot express disagreement at all. That IS a refinement recommendation -- `hi_observation` as READER -> observation, plus `AllReadersAgreeAboutOneHome` and a cfg that refutes IT rather than a neighbour (vacuity-ledger row 15's rule). It is NOT applied here: it is a model change with a TLC cost and a new expected-violation cfg, this ticket states no new invariant, and HIS-6 is the ticket that decides GOAL-one-home-one-answer. Filed as DEF-110 with the owed check written out, rather than half-built inside a diagnostics ticket. IN THE PROGRAM: one refinement was found and APPLIED, and it removes representation rather than adding it. `home repair` and `home verify` each had their own answer to \"does this shim's text name another home\". `HomeRepair.foreignPathsInShims` kept a token loop, a dedup set and a call to `unsanctionedForeignHome`; `home verify` had nothing. Rather than write a second one, the extraction AND the verdict moved into `HomeCloner.foreignPathsInShimContent`, which both readers now call -- `HomeRepair`'s loop keeps only what is its own, the remedy text. One scanner, one verdict, one scope. Two spellings of that question is what DEF-104 WAS, so fixing it by adding a third would have been the defect inside its own repair. Also folded, for the same reason: `GatewayConfig.FILE` and `GatewayConfig.URL_ENV` were private and `home describe` needed both to say where its answer came from. Made public rather than re-spelled at the call site.\n",
+        "measured": false,
+        "applied": true,
+        "approved_by": "HIS-21 author; the model-side recommendation is DEFERRED as DEF-110 for HIS-6"
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "HIS-21 (issue so. The machine-checked core above is uninformative by construction -- the model delta is zero because no model was touched. The full record is results/epic-home-integrity-sync/tickets/HIS-21/goal-contribution.md and results/epic-home-integrity-sync/probes/his-21/vacuity-checks.md; this is the part the delta cannot express. THREE OF THE FIVE WERE FILED WITH A MECHANISM THAT MEASUREMENT REFUTED, and in two of the three the correction changed what the fix had to be. That is the most useful thing in this entry, so it is first. DEF-104, as filed: \"verifyRoots frames its foreign-home question against a home's SOURCE, and the root home has no parent, so the branch never runs\" -- offered explicitly as \"to be confirmed rather than assumed\". CONFIRMED FALSE. Two throwaway homes, A holding a regular-file wrapper execing a path inside B, on the pre-fix tree: `home verify --home A` exit 0; `home verify --home A --against C` ALSO exit 0, with a source supplied; `home repair --home A` one finding; and the same target rewritten as a SYMLINK, `home verify` exit 1. The blindness was about the SURFACE, not the tier and not `--against`: the foreign-home question was asked only of symlinks. A wrapper naming a third home was invisible at EVERY tier. This matters beyond the record -- the fix the filed mechanism implies is \"run the branch when srcRoot == null\", and that branch is the symlink branch, which already ran. A ticket that implemented the stated mechanism would have shipped green tests and the defect. The regression test therefore asserts the `--against` case explicitly. DEF-105, as filed: \"the root home carries a security policy the product does not read\". IT READS IT. `skill-manager policy show` on a home holding allowed_backends = [\"tar\"], require_hash = true, allow_init_scripts = true printed all three back, from `Policy.load`, which resolves `<store>/policy.toml`. `policy.toml` is the INSTALL/SECURITY policy and `home.policy.toml` is the LIVE/FROZEN policy: two live files, two jobs, two verbs, neither legacy. The real defect is narrower and worse -- both are called policy, both govern that home, and neither verb mentioned the other, so an operator reading \"home.policy.toml (absent -- live by default)\" concludes the home declares no policy with a live security policy permitting init scripts beside it. `home policy` now names both. DEF-107, as filed: \"HomeMembershipLaw.SPEC declares no dependsOn, so it runs mid-scenario and calls an intermediate state final\". MEASURED FALSE, run 20260824-193907: home-sync wires the node .dependsOn(\"home.sync.authored.agent.tree\") and the planner ran it [19/19], dead last; all 23 wirings declare a predecessor. The backlog entry's own quoted output contradicts the sentence too -- the project home it shows holds hs-delta, which is staged into the ROOT home and reaches the project home only through a sync. Ordering could not have been the fix either: a staged unit is still on disk at the end of the graph, which is exactly when a post-condition looks. And a SPEC-level dependsOn is unimplementable as stated, because the node has a different predecessor in each of the 23 graphs. Fixed instead by letting the FIXTURE declare what it staged -- a marker inside the unit directory, so it travels with the unit through a real `home sync`, which is necessary because hs-delta is staged in one home and audited in three. The latent hazard the sentence describes is real one graph from now and is filed as DEF-109. DEF-106 CARRIED AN OPEN QUESTION the ticket had to decide: is a project home SUPPOSED to have a home.runtime.json? It is not, and this is decidable from the code rather than from taste -- `LaunchEnv.of` reads one when present and otherwise DERIVES the same block, and only `home clone` and `describe --write` persist one. So the project home is not malformed and `describe` computing a descriptor is correct. What was wrong is that it printed the computed answer in the shape of a recorded one: `policy`, `cli` and `gateway` were all defaults, and the gateway default is how the root home and the project home both reported `(owned)` for one port with one listener. Each field now carries its provenance. `--json` is deliberately unchanged, and `GatewayConfig.owned()` still defaults to true -- the claim is about the REPORT, and widening it to the resolution would change what `gateway up` does in every undeclared home with no measurement behind it. DEF-102 is the small one and the only one whose filed description was exact. `--help` ran the closing report program: it resolved the ambient home, called `store.init()`, and walked every installed record. Three things wrong and only the first cosmetic -- noise on the one output whose job is to be quotable, a full home walk on the command an agent runs when it does not know what a command does, and a WRITE held off only by CommandHomeAccess classifying help as READ. VACUITY. Nine probes, every red observed rather than argued; the table is in probes/his-21/vacuity-checks.md. Mechanism D bit once, and not where the brief warned it would: HelpIsTextOnlyTest's `--version` case bound a home for two invocations through a driver that clears the binding after each, so it ran against the ambient home and was GREEN UNDER THE MUTATION. Caught by running the mutation, not by reading the test; re-written per-invocation and re-run red. ONE FINDING THE TICKET CREATED RATHER THAN FOUND. Running the second graph set the brief instructs (`sweep.py --only <graphs>`) OVERWROTE this epic's 26-graph round-1 sweep.json, which sweep.py writes by default. Found by `git status`; recovered from HEAD; filed as DEF-111. Nothing in the tooling would have said so -- the clobbered file is valid JSON with the same schema and reads as a completed small run. DEFERRED: DEF-109 (SPEC has no dependsOn: latent, one graph from now), DEF-110 (the model has ONE observer, so reader-agreement is inexpressible in it), DEF-111 (sweep.py clobbers the canonical record). Three of a budget of five.",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [],
+      "verdict": "recorded"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-22",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T20:06:58.842720+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-20",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the pre-change TLC output",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the post-change TLC output",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the behavior-test output",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the before/after descriptor comparison",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": false,
+        "outcome": "",
+        "detail": "",
+        "measured": false,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [
+        "REJECTED -- no recursive refinement record. Every close carries either an approved recommendation with evidence, or an explicit 'searched, found none'. Set `refinement.searched: true` and record the outcome.",
+        "REJECTED -- no `narrative:` recorded. The ledger's machine-checked core is deliberately narrow; the narrative carries the reasoning, the measured alternatives, and any finding the core cannot express."
+      ],
+      "verdict": "rejected"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-22",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T20:08:02.663298+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-20",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "No model complexity increase: the TLA+ tree is unchanged.\nPRODUCT complexity increased by one new exception type (ProjectVendoredDurabilityException), one new context fact (ProjectSyncSkippedNonDurable), one new reader class (ProjectManifestRealization) and one new record on an existing verdict (HomeCloseOut.SelfObtainable). Each carries essential behavior that the existing representation could not express:\n- The exception type exists because a bare IOException made \"this project's\n  declared paths do not survive a move\" indistinguishable from \"the unit sync\n  broke\". That conflation is DEF-103: it made the promotion direction the\n  owner asked to enforce unusable for every unit any broken project claims.\n  The alternative -- inspecting the message string -- is the shape #187 was\n  filed against and #229's review rejected at the neighbouring call site.\n\n- The fact type exists because the fix must not be silent. Reusing\n  ProjectSyncFailed would have made \"your project needs repairing\" and \"the\n  unit sync broke\" read identically again, which is the defect one layer out.\n\n- The reader class exists because DEF-096 and DEF-101 need the SAME question\n  answered -- \"what does this home's own manifest declare, and does the home\n  hold it\" -- on two different surfaces. Two spellings of one rule is how the\n  --json and human close-out paths diverged once already (HomeCloseOut's own\n  cliInvocation javadoc records that). It reuses\n  ProjectDependencyResolver.installedUnitName rather than re-deriving name\n  resolution, which is why that method was widened from private to\n  package-private and not copied.\n\n- The verdict component exists because \"nothing is at risk\" and \"nothing to\n  say\" are different answers, and a gate that silently stopped blocking would\n  be worse than the hold-back it removed.",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
           "status": "not_run",
           "classification": "unverified",
           "evidence": "No TLA+ file, .cfg, generated case set or adapter changed in this ticket. `diff -rq specs/tickets/HIS-22/current specs/tickets/HIS-22/desired` is clean. A TLC run before and after an unchanged model would compare a file with itself, which is not evidence of anything -- recording `not_run` keeps that distinguishable from a run that happened and was green.\n",
@@ -2275,37 +2621,22 @@
           "status": "not_applicable",
           "classification": "unverified",
           "evidence": "A descriptor comparison witnesses behavior retention across a MODEL change. There is no model change. No complexity decrease is claimed, so nothing here is being licensed.\n",
->>>>>>> origin/feature/254-his-22
           "value": null
         }
       },
       "validated_refactor_summary": [
-<<<<<<< HEAD
-        "tlc_before=(absent) (UNVERIFIED)",
-        "tlc_after=(absent) (UNVERIFIED)",
-        "behavior_tests=(absent) (UNVERIFIED)",
-        "descriptor_comparison=(absent) (UNVERIFIED)"
-=======
         "tlc_before=not_run (UNVERIFIED)",
         "tlc_after=not_run (UNVERIFIED)",
         "behavior_tests=pass (retained)",
         "descriptor_comparison=not_applicable (UNVERIFIED)"
->>>>>>> origin/feature/254-his-22
       ],
       "refinement": {
         "searched": true,
         "outcome": "none",
-<<<<<<< HEAD
-        "detail": "SEARCHED TWICE -- once in the model, once in the program -- and found no refinement to apply. Recorded with what each search actually looked at, so a reader can tell \"searched, found none\" from \"did not search\". IN THE MODEL: HIS-21 changes no TLA+ module, no .cfg, no adapter and no spec double. Its conflict keys declare `tla: []` and `adapters: []`, and the assignment records `tlc: N/A unless the fix states a new invariant`. The delta above is zero because the model is byte-identical before and after. AND THE MODEL WAS ALREADY RIGHT, which is the interesting half. `HomeIntegrityInternal.tla` carries `ADamagedHomeIsNeverReportedClean`, with its own refutation cfg (`_regression_blindobserver.cfg`, \"the observer reports clean without looking\"). DEF-104 is an instance of exactly that invariant. The model did not catch it and could not: the model has ONE `hi_observation` variable and production has at least four readers (`home verify`, `home verify --against`, `home repair`, `home clone`). GOAL-one-home-one-answer is not \"the observation is correct\", it is \"the observations AGREE\", and a single observation variable cannot express disagreement at all. That IS a refinement recommendation -- `hi_observation` as READER -> observation, plus `AllReadersAgreeAboutOneHome` and a cfg that refutes IT rather than a neighbour (vacuity-ledger row 15's rule). It is NOT applied here: it is a model change with a TLC cost and a new expected-violation cfg, this ticket states no new invariant, and HIS-6 is the ticket that decides GOAL-one-home-one-answer. Filed as DEF-110 with the owed check written out, rather than half-built inside a diagnostics ticket. IN THE PROGRAM: one refinement was found and APPLIED, and it removes representation rather than adding it. `home repair` and `home verify` each had their own answer to \"does this shim's text name another home\". `HomeRepair.foreignPathsInShims` kept a token loop, a dedup set and a call to `unsanctionedForeignHome`; `home verify` had nothing. Rather than write a second one, the extraction AND the verdict moved into `HomeCloner.foreignPathsInShimContent`, which both readers now call -- `HomeRepair`'s loop keeps only what is its own, the remedy text. One scanner, one verdict, one scope. Two spellings of that question is what DEF-104 WAS, so fixing it by adding a third would have been the defect inside its own repair. Also folded, for the same reason: `GatewayConfig.FILE` and `GatewayConfig.URL_ENV` were private and `home describe` needed both to say where its answer came from. Made public rather than re-spelled at the call site.\n",
-        "measured": false,
-        "applied": true,
-        "approved_by": "HIS-21 author; the model-side recommendation is DEFERRED as DEF-110 for HIS-6"
-=======
         "detail": "Searched for a way to express DEF-103's scoping WITHOUT a new type. Three candidates, all rejected on evidence:\n(1) Match on the exception MESSAGE in syncClaimingProjects. Rejected: that is\n    exactly the loss-of-type #187 was filed about, and the branch immediately\n    above in the same method exists because #229's review refused it there.\n\n(2) Make ProjectVendoredResolver's finding non-fatal generally, i.e. flip\n    on_invalid's default. Rejected and PROVED wrong by probe V2: with the\n    check weakened, ProjectToRootPromotionTest CASE 2 goes red AND CASE 1\n    goes red, because CASE 1 asserts the project is still named. The brief's\n    instruction -- \"fix the blast radius, not the check\" -- is measurable,\n    and this is the measurement.\n\n(3) Pass a \"reconcile only\" flag down through\n    ProjectSyncUseCase -> ProjectDependencyResolver -> checkVendored so the\n    resolver knows who is asking. Rejected on the resolver's own documented\n    reasoning: checkVendored sits at ONE seam precisely so the rule cannot be\n    true of one command and not another, and a caller-identity parameter\n    re-introduces exactly that. The typed exception moves the decision to the\n    CALLER, where \"is this finding attributable to what I was asked to do\" is\n    answerable, and leaves the rule single-sited.\n\nAlso searched for a way to fold DEF-101 into the existing SyncStatus enum (a \"new-but-obtainable\" status). Rejected: SyncStatus is a verdict about two trees, and \"the destination's manifest declares this\" is a fact about neither tree. Putting it in the enum would make ChildHomeMaterializer -- which has no business reading project manifests -- the place the rule lives.\n",
         "measured": false,
         "applied": false,
         "approved_by": ""
->>>>>>> origin/feature/254-his-22
       },
       "coverage_audit": {
         "status": "not_run",
@@ -2315,11 +2646,7 @@
         "scope_source": ""
       },
       "transition_diff": "",
-<<<<<<< HEAD
-      "narrative": "HIS-21 (issue so. The machine-checked core above is uninformative by construction -- the model delta is zero because no model was touched. The full record is results/epic-home-integrity-sync/tickets/HIS-21/goal-contribution.md and results/epic-home-integrity-sync/probes/his-21/vacuity-checks.md; this is the part the delta cannot express. THREE OF THE FIVE WERE FILED WITH A MECHANISM THAT MEASUREMENT REFUTED, and in two of the three the correction changed what the fix had to be. That is the most useful thing in this entry, so it is first. DEF-104, as filed: \"verifyRoots frames its foreign-home question against a home's SOURCE, and the root home has no parent, so the branch never runs\" -- offered explicitly as \"to be confirmed rather than assumed\". CONFIRMED FALSE. Two throwaway homes, A holding a regular-file wrapper execing a path inside B, on the pre-fix tree: `home verify --home A` exit 0; `home verify --home A --against C` ALSO exit 0, with a source supplied; `home repair --home A` one finding; and the same target rewritten as a SYMLINK, `home verify` exit 1. The blindness was about the SURFACE, not the tier and not `--against`: the foreign-home question was asked only of symlinks. A wrapper naming a third home was invisible at EVERY tier. This matters beyond the record -- the fix the filed mechanism implies is \"run the branch when srcRoot == null\", and that branch is the symlink branch, which already ran. A ticket that implemented the stated mechanism would have shipped green tests and the defect. The regression test therefore asserts the `--against` case explicitly. DEF-105, as filed: \"the root home carries a security policy the product does not read\". IT READS IT. `skill-manager policy show` on a home holding allowed_backends = [\"tar\"], require_hash = true, allow_init_scripts = true printed all three back, from `Policy.load`, which resolves `<store>/policy.toml`. `policy.toml` is the INSTALL/SECURITY policy and `home.policy.toml` is the LIVE/FROZEN policy: two live files, two jobs, two verbs, neither legacy. The real defect is narrower and worse -- both are called policy, both govern that home, and neither verb mentioned the other, so an operator reading \"home.policy.toml (absent -- live by default)\" concludes the home declares no policy with a live security policy permitting init scripts beside it. `home policy` now names both. DEF-107, as filed: \"HomeMembershipLaw.SPEC declares no dependsOn, so it runs mid-scenario and calls an intermediate state final\". MEASURED FALSE, run 20260824-193907: home-sync wires the node .dependsOn(\"home.sync.authored.agent.tree\") and the planner ran it [19/19], dead last; all 23 wirings declare a predecessor. The backlog entry's own quoted output contradicts the sentence too -- the project home it shows holds hs-delta, which is staged into the ROOT home and reaches the project home only through a sync. Ordering could not have been the fix either: a staged unit is still on disk at the end of the graph, which is exactly when a post-condition looks. And a SPEC-level dependsOn is unimplementable as stated, because the node has a different predecessor in each of the 23 graphs. Fixed instead by letting the FIXTURE declare what it staged -- a marker inside the unit directory, so it travels with the unit through a real `home sync`, which is necessary because hs-delta is staged in one home and audited in three. The latent hazard the sentence describes is real one graph from now and is filed as DEF-109. DEF-106 CARRIED AN OPEN QUESTION the ticket had to decide: is a project home SUPPOSED to have a home.runtime.json? It is not, and this is decidable from the code rather than from taste -- `LaunchEnv.of` reads one when present and otherwise DERIVES the same block, and only `home clone` and `describe --write` persist one. So the project home is not malformed and `describe` computing a descriptor is correct. What was wrong is that it printed the computed answer in the shape of a recorded one: `policy`, `cli` and `gateway` were all defaults, and the gateway default is how the root home and the project home both reported `(owned)` for one port with one listener. Each field now carries its provenance. `--json` is deliberately unchanged, and `GatewayConfig.owned()` still defaults to true -- the claim is about the REPORT, and widening it to the resolution would change what `gateway up` does in every undeclared home with no measurement behind it. DEF-102 is the small one and the only one whose filed description was exact. `--help` ran the closing report program: it resolved the ambient home, called `store.init()`, and walked every installed record. Three things wrong and only the first cosmetic -- noise on the one output whose job is to be quotable, a full home walk on the command an agent runs when it does not know what a command does, and a WRITE held off only by CommandHomeAccess classifying help as READ. VACUITY. Nine probes, every red observed rather than argued; the table is in probes/his-21/vacuity-checks.md. Mechanism D bit once, and not where the brief warned it would: HelpIsTextOnlyTest's `--version` case bound a home for two invocations through a driver that clears the binding after each, so it ran against the ambient home and was GREEN UNDER THE MUTATION. Caught by running the mutation, not by reading the test; re-written per-invocation and re-run red. ONE FINDING THE TICKET CREATED RATHER THAN FOUND. Running the second graph set the brief instructs (`sweep.py --only <graphs>`) OVERWROTE this epic's 26-graph round-1 sweep.json, which sweep.py writes by default. Found by `git status`; recovered from HEAD; filed as DEF-111. Nothing in the tooling would have said so -- the clobbered file is valid JSON with the same schema and reads as a completed small run. DEFERRED: DEF-109 (SPEC has no dependsOn: latent, one graph from now), DEF-110 (the model has ONE observer, so reader-agreement is inexpressible in it), DEF-111 (sweep.py clobbers the canonical record). Three of a budget of five.",
-=======
       "narrative": "Full narrative: results/epic-home-integrity-sync/tickets/HIS-22/goal-contribution.md Vacuity record: results/epic-home-integrity-sync/probes/his-22/vacuity-checks.md\nTHE FINDING THIS TICKET CONSIDERS ITS MOST VALUABLE OUTPUT is that its own issue is wrong on two counts, both measured before implementation: (1) `meta-harness`, the project #254 calls \"unrelated\" to the four units that failed, CLAIMS ALL FOUR in its project-lock.toml; and (2) the fix #254 prescribes -- scoping the refusal to units the failing project claims -- SHIPPED IN #144 and is already guarded by a test. The acceptance node written to that prescription is green against the UNFIXED build; probe V1 reverts the whole fix and watches it stay green. It is kept as ProjectToRootPromotionTest CASE 3 and labelled a control, not evidence.\nThe real scope is KIND OF FAILURE, not units-per-project. A project's [[vendored]] durability finding is a fact about that project's checkout: true before the unit sync, true after, and no byte the sync moved can cause or cure it. It is now typed and handled by the post-sync child-home refresh as a named skip carrying its own repair command, while `project resolve` and `project sync` refuse on exactly the same condition with exactly the same message and exit code.\nDELIBERATELY NOT DONE, and filed rather than hidden: External.tla's CloseOutIsSafe still reads `SyncStatusOf(...) = \"unchanged\"`, and DEF-101 adds a second way for the gate to clear that the model cannot express without a new variable plus a constant in ~25 cfgs. The assignment reads `tlc: N/A unless the fix states a new invariant`, and this states a WEAKENING of an existing safety predicate. DEF-112 carries the exact model change and the regression cfg it owes, including the test_tlc_expected_violations.py row naming which invariant must fall -- vacuity-ledger row 15's countermeasure. DEF-110 and DEF-111 carry the two other things this ticket found and did not widen into.",
->>>>>>> origin/feature/254-his-22
       "tlc_findings": [
         {
           "level": "NOTE",

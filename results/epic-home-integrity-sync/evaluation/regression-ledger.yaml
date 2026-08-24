@@ -71,8 +71,12 @@ rounds:
   round_2:
     what: re-run after HIS-21 and HIS-22 land fixes AND regression assertions
     when: "2026-08-24"
-<<<<<<< HEAD
-    status: HIS-21's half COMPLETE; HIS-22's half pending
+    status: >
+      BOTH HALVES COMPLETE. HIS-21 (#256) and HIS-22 (#255) both landed their
+      fixes AND their regression assertions and were merged in promotion order
+      on 2026-08-24. Each half is recorded below exactly as its ticket measured
+      it, from its own branch, BEFORE the merge -- so neither is a number taken
+      on the other's word. The integrated tip is re-measured by round 3.
     his_21_result: >
       home-sync 19/19 GREEN (was 18/19, home.membership.law red).
       home-integrity 18/18 GREEN, including three new real-CLI DEF-104
@@ -95,8 +99,6 @@ rounds:
       tickets/HIS-21/second-graph-set.md + second-graph-set.json.
       NOTE: running them CLOBBERED this epic's round-1 sweep.json, which
       sweep.py writes by default. Recovered from HEAD; filed as DEF-111.
-=======
-    status: PARTIAL -- HIS-22's half only; HIS-21 files separately from the same base
     result: >
       HIS-22's declared set plus the second set its edits touch, run one graph at
       a time from feature/254-his-22 with the five home vars UNSET (DEF-074):
@@ -134,7 +136,6 @@ rounds:
         belongs to HIS-21 (#253). The other 19 of 20 home-sync nodes PASSED,
         including the new one. It is stated here so HIS-22's result is not read
         as clean when it is not, and not read as HIS-22's when it is not.
->>>>>>> origin/feature/254-his-22
   round_3:
     what: HIS-6 terminal sweep and goal scorecard
     when: pending
