@@ -3538,7 +3538,7 @@ tickets:
     phase: HIS
     status: planned
     epic: home-integrity-sync
-    github_issue: null
+    github_issue: 246
     added_in_schedule_revision: 9
     wave: 12
     depends_on: [HIS-12, HIS-13]
@@ -3594,7 +3594,7 @@ tickets:
     status: planned
     role: evaluation
     epic: home-integrity-sync
-    github_issue: null
+    github_issue: 247
     added_in_schedule_revision: 9
     wave: 13
     depends_on: [HIS-8, HIS-13, HIS-19]
