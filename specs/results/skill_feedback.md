@@ -353,3 +353,87 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket HIS-20
+
+- close_scope: ticket
+- close_id: HIS-20
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T12:44:03+00:00
+- summary: Progressive disclosure measured in both directions at all three tiers, before and after; gaps closed by linking, in two units published leaf-first
+- feedback_status: items-recorded
+
+### SF-002 (fourth occurrence, not re-filed)
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-20`
+- detail: >
+    NOT A NEW FINDING. `close ticket` refused with
+    `ERROR: ticket HIS-20 is not closed in ticket_plan.yaml: status=planned`,
+    which is SF-002 exactly. HIS-8 filed it, HIS-5 recorded taking `--allow-open`
+    for the same reason, HIS-19 recorded it as the third, and this is the FOURTH
+    consecutive epic ticket to hit it. Recorded rather than re-filed.
+
+    Two things worth adding to the run of four, because they change what the
+    upstream maintainer should conclude:
+
+    (a) It is now unanimous across the epic's implementation tickets, not a
+        pattern in a subset. Every ticket that stops at `pr_open` by rule 7 hits
+        it, because rule 7 and the close gate disagree about what "done" means:
+        the gate wants a terminal plan status, and the agent is forbidden from
+        reaching one.
+
+    (b) HIS-19 noted that the substantive gate is downstream of `--allow-open`
+        and did not yield. For HIS-20 the ledger gate DID yield on the first try,
+        because the ledger had already been filled before the close was
+        attempted. So the reassurance in HIS-19's note is conditional on the
+        order the agent happens to work in, not on the tool. Worth stating so the
+        run of four is not read as four identical data points.
+- forced_workaround: `--allow-open`, declared here, in the ticket's complexity-ledger narrative, and in the PR body, so the terminal evaluation reads the weaker claim (modeled state `CloseTicketWeakened`, not `CloseTicket`)
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002's ticket; this is the FOURTH occurrence on it, not a new issue)
+- status: filed
+
+### SF-003 — promotion drops the executable bit
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs open|close ticket HIS-20`
+- detail: >
+    CORRECTED AFTER CHECKING, and the correction matters for where the fix goes.
+    My first write-up blamed the promotion step. The ticket-local copy is already
+    `-rw-r--r--`:
+
+      $ ls -l specs/.history/.../ticket-043-HIS-20/ticket/desired/run_tlc.sh
+      -rw-r--r--  1 hayde  staff  968  run_tlc.sh
+
+    So the bit is lost at OPEN, when `current/` is seeded into the ticket
+    workspace, and promotion merely copies the already-broken mode back. Both
+    steps copy without preserving mode; open is where it starts.
+
+    Measured on this close, on a ticket whose `current/` and `desired/` were
+    byte-identical and which changed no spec file at all:
+
+      $ git diff specs/current/run_tlc.sh
+      old mode 100755
+      new mode 100644
+
+    Nothing else in the tree changed mode. `run_tlc.sh` is the script
+    `specs/program_model` invokes to run the model checker, so a promotion that
+    silently un-executes it breaks the next TLC run in a way that looks like a
+    model problem rather than a promotion problem. It is also invisible to a
+    content diff: `diff -rq` reports the two trees identical, because mode is not
+    content.
+
+    Worth flagging beyond the one file: this promotion carried ZERO content
+    changes and still produced a working-tree modification. Any ticket that runs
+    the close will see it, and the natural reading of `M specs/current/run_tlc.sh`
+    on a docs-only ticket is "something went wrong with my ticket".
+- forced_workaround: `chmod +x specs/current/run_tlc.sh` after the close, before committing
+- data_loss: no (mode only; recoverable and recovered)
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/289
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.

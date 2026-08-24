@@ -85,16 +85,11 @@ Use `skill-manager env sync <name>` to materialize project-local uv envs
 under `.skill-manager/envs/<name>/` and `skill-manager env run <name>`
 to execute through the generated env.
 
-Homes come in tiers — root `~/.skill-manager`, project
-`<project>/.skill-manager`, worktree `<worktree>/.skill-manager` — and each
-is a **real copy, not a symlink**, so that two agents in two checkouts
-cannot silently overwrite each other's units. Downward is a copy and needs
-nothing from you. Upward does: an edit made to a unit inside a home is in
-no diff, so it reaches the tier above only via `skill-manager home sync`
-and the unit's own repository only via `skill-manager unit publish`, and
-`skill-manager home close-out` refuses to let a home be discarded while it
-still holds such work. Never run `install`, `sync`, `bind`, `upgrade` or
-`project resolve` before the local home exists — they write into whatever
+Homes come in tiers — root, project, worktree — each a real copy of the one
+above it. **`references/projects.md` states that model and both upward paths;
+read it there rather than from a summary here.** The one thing to carry before
+you get there: never run `install`, `sync`, `bind`, `upgrade` or `project
+resolve` before the local home exists — they write into whatever
 `SKILL_MANAGER_HOME` names, which until then is the operator's global home.
 
 See `references/projects.md` for the project workflow, child-home
@@ -113,11 +108,15 @@ flows:
   harness, sync, publish, CLI tools, gateway-backed MCP tools, and the
   modeled CLI workflow coverage table.
 - `references/projects.md` - skill project manifests, project envs,
-  project `.skill-manager` child homes, and agent launch homes. Also the
-  **upward** path, which nothing else documents: the three home tiers and why
-  each is a copy, `[[vendored]]` declarations, `home sync` (edit → the tier
+  project `.skill-manager` child homes, and agent launch homes. Also this
+  unit's canonical statement of the **upward** path: the three home tiers and
+  why each is a copy, `[[vendored]]` declarations, `home sync` (edit → the tier
   above), `unit publish` (edit → the unit's own repo), `home close-out` (refuse
   to discard a home that still holds work), and the rest of the `home` family.
+  Go there for these symptoms too: *"publish says my unit is not a git
+  checkout"*; *"which GitHub repository does this unit publish to?"*; *"my
+  brief forbids writing the project home, so can I still publish?"*; *"a
+  `skill-manager` on my `PATH` refused to run instead of running"*.
 - `references/virtual-mcp-gateway.md` - the gateway architecture,
   virtual tool surface, deployment scopes, disclosure gate, and MCP
   troubleshooting.

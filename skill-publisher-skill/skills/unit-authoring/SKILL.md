@@ -208,7 +208,8 @@ Notes that trip agents up:
   `$SKILL_MANAGER_HOME/installed/<unit>.json` (or the SHA column of
   `skill-manager list`) matching your pushed `HEAD`.
 - **The unit name is not the repo name.** Sync takes the installed unit
-  name (`skill-manager sync skill-publisher`), while the remote is
+  name (`skill-manager sync skt` for the plugin published from
+  `github:haydenrear/skill-publisher-skill`), while the remote is
   `github:owner/<repo>` — often spelled differently. `skill-manager
   list` gives the unit names.
 - **Nested repos need two pushes.** When a unit repo lives inside a
@@ -219,8 +220,14 @@ Notes that trip agents up:
   `--git-latest` skips it and fetches the install-time `gitRef`
   directly, which is what you want for an unpublished edit. See the
   registry caution in `../../references/coords-and-distribution.md`.
-- **Never edit the store copy in place.** The next sync overwrites it,
-  and its provenance no longer matches `origin`.
+- **Never edit the store copy in place** *as a way of authoring*. The
+  next sync overwrites it, and its provenance no longer matches
+  `origin`. This is a rule about where work should START, not a claim
+  that an in-home edit is unrecoverable: an agent that improved a unit
+  mid-ticket has already made one, and `skt publish` — `home sync` one
+  tier up, then `unit publish` — exists precisely to rescue it. Author
+  from the unit's own checkout; rescue from the store when the edit is
+  already there.
 - **Sync re-projects the agent symlinks.** A successful sync reports
   `✓ claude: synced <unit>` per configured agent, which is how the new
   frontmatter reaches each agent's skill directory. Claude Code re-reads

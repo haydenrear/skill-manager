@@ -57,11 +57,32 @@ the unit or harness manifest.
 ## Onboarding-bundled units
 
 The units installed during onboarding — `skill-manager`, the `skt`
-plugin, and `skill-dev` — are always present in the store
-once a user has onboarded. A markdown `skill-imports` edge that points at
-one of them never needs a matching `skill_references` entry in the
-importing unit's TOML; the target is guaranteed installed. Reserve
-`skill_references` for units that must be fetched transitively.
+plugin, and `skill-dev` — are present in the store of a home **that was
+onboarded**. A markdown `skill-imports` edge that points at one of them
+needs no matching `skill_references` entry in the importing unit's TOML.
+Reserve `skill_references` for units that must be fetched transitively.
+
+**That is a property of the home, not of the units, and the tiers do not
+inherit it.** A project or worktree home holds exactly what its parent
+held when it was cloned — see `## Homes Come In Tiers, And Every Tier Is
+A Copy` in `references/projects.md`. A home cloned from one that never
+installed the bundled set holds none of it, and every import pointing at
+those units dangles there.
+
+Measured on this CLI's own repository, 2026-08-24, in the two homes the
+`skt` skill reports on: the `spec-double-compiler` installed in each
+declared imports at `skill-manager: references/cli.md` and `skt:
+references/skills.md`, and **neither target existed in either home**,
+though both existed in the operator's root home. An agent standing there
+is told by a frontmatter edge that an authority exists, and cannot open
+it — and nothing reports the dead edge (see Validation).
+
+So declaring an onboarding-bundled unit in a checkout's
+`skill-project.toml` is not redundant: it is what makes the import
+resolvable in that checkout's own home. `project resolve` refuses the
+whole resolve with "references missing unit" until an *imported* unit is
+declared — unit `skill_references` are followed automatically, markdown
+`skill-imports` are not.
 
 ## Validation
 
@@ -70,3 +91,11 @@ root. Validation checks that each target unit exists, each target path
 stays inside that unit directory, and the target file exists. Failures
 are explicit and actionable; there are no silent skips for malformed
 imports.
+
+**Those three verbs are the whole of it.** `home clone` — and so every
+project and worktree home produced from one — copies a unit whose
+imports were valid in the source home into a home where they may not be.
+Nothing re-checks them there, and the agent reading that frontmatter gets
+no signal that the edge is dead. A validated import is a statement about
+the home the unit was installed into, not about the home you are standing
+in.

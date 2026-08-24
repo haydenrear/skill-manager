@@ -1,0 +1,143 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket HIS-20",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "HomeIntegrityInternal.cfg",
+      "HomeIntegrityInternal.tla",
+      "HomeIntegrityInternal_guard_repairingobserver.cfg",
+      "HomeIntegrityInternal_probe_disposalreach.cfg",
+      "HomeIntegrityInternal_probe_reach.cfg",
+      "HomeIntegrityInternal_regression_blindobserver.cfg",
+      "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+      "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+      "HomeIntegrityInternal_regression_foreignprojection.cfg",
+      "HomeIntegrityInternal_regression_gaterefires.cfg",
+      "HomeIntegrityInternal_regression_halfboundhome.cfg",
+      "HomeIntegrityInternal_regression_narrowprojection.cfg",
+      "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+      "HomeIntegrityInternal_regression_repairingobserver.cfg",
+      "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+      "HomeIntegrityInternal_regression_selfrepend.cfg",
+      "HomeIntegrityInternal_regression_silentdrift.cfg",
+      "HomeIntegrityInternal_regression_staleack.cfg",
+      "HomeIntegrityInternal_regression_staleerror.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "generated/spec-unit/ClaimantRefreshInternal.dot",
+      "generated/spec-unit/claimant_refresh_cases/__init__.py",
+      "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+      "generated/spec-unit/claimant_refresh_cases/cases.py",
+      "generated/spec-unit/claimant_refresh_cases/docs.md",
+      "generated/spec-unit/claimant_refresh_cases/doubles.py",
+      "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+      "generated/spec-unit/claimant_refresh_cases/types.py",
+      "generated/spec-unit/claimant_refresh_cases/validators.py",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_claimant_refresh_program_model.py",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py",
+      "tests/test_tlc_expected_violations.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/wt-247-his-20/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/wt-247-his-20/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-247-his-20/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Before-transcripts for all six (tier x direction) reads are committed BEFORE any documentation change.",
+        "After-transcripts exist for the same six and the delta is reported per question, not in aggregate.",
+        "Every question answered only from source is named as a failure of its clause.",
+        "For every installed change-managed unit, the publish command and its tier are documented and an agent names both without source access.",
+        "Nothing is restated that another unit already states; links only, per GOAL-mechanism-documented clause 1."
+      ]
+    },
+    "added_in_schedule_revision": 9,
+    "blocks": [
+      "HIS-6"
+    ],
+    "conflict_keys": {
+      "adapters": [],
+      "production": [],
+      "test_graph": [],
+      "tla": [],
+      "workflow_data": [
+        "skt",
+        "skill-manager-skill",
+        "git-issue-workflow",
+        "git-epic-workflow",
+        "skill-publisher-skill"
+      ]
+    },
+    "depends_on": [
+      "HIS-8",
+      "HIS-13",
+      "HIS-19"
+    ],
+    "epic": "home-integrity-sync",
+    "found_by": "The owner, reading the epic PR: \"deploy a few small agents to make sure the progressive disclosure is good for root home -> project home -> worktree home, and then worktree home -> project home -> root home. Also for managing change in all skills with github.\"\n",
+    "github_issue": 247,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "unmeasured -> measured in both directions at all three tiers, with the gaps closed and re-measured",
+        "goal": "GOAL-progressive-disclosure",
+        "local_signal": "the six before/after judged reads under the goal's evidence root"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "must close gaps by LINKING to HIS-8's single statement, never by restating it in a second place",
+        "goal": "GOAL-mechanism-documented",
+        "local_signal": "uv run .github/scripts/check-docs-coverage.py"
+      }
+    ],
+    "id": "HIS-20",
+    "method_note": "A judged read of a handful of agents is not a statistic and must not be reported as one. Report per-question, name every question answered only by reading source as a FAILURE, and keep the before-transcripts even where the after-transcripts are better. An agent that guessed correctly is not a pass; ask it where it got the answer.\n",
+    "objective": "This epic spent eighteen tickets making the three tiers behave correctly and never once asked whether an agent standing in one can FIND OUT what it needs. The evidence says no: every ticket agent needed a hand-written brief carrying four facts no unit documents -- the two axes (HIS-14), the CLI pin (DEF-006/DEF-068), bootstrap's exit 79 (DEF-018), and a printed command that never worked (DEF-069/DEF-072). Those briefs came from the epic agent. Nothing in the product produces them.\n",
+    "phase": "HIS",
+    "promotion_order": 19,
+    "promotion_predecessor": "HIS-19",
+    "role": "implementation",
+    "role_note_revision_9": "Typed `evaluation` when first written and corrected to `implementation` before dispatch, by the plan validator. HIS-20 MEASURES and then CLOSES the gaps it finds -- that is contribution, not adjudication. HIS-6 decides GOAL-progressive-disclosure, as `evaluation_ticket` on the goal has said all along. An evaluation ticket that also fixes what it measures would be the DEF-067 hazard applied to a person: an observer that repairs is no longer an observer.\n",
+    "slice": "MEASURE FIRST, THEN FIX, AND RECORD BOTH. In that order, and the before-transcripts are committed before any documentation changes -- the same discipline HIS-4 was held to. (1) DOWNWARD -- root -> project -> worktree. One small agent per tier, home pinned, NO access to this repository's source. Ask: which tier am I in; what does it inherit from above; what may I change here; what must I not touch above me. (2) UPWARD -- worktree -> project -> root. One small agent per tier. Ask: how does my change reach the tier above; what does git carry and what does it NOT (the home is gitignored); what does close-out decide; what happens to a held-back or conflicted unit. (3) CHANGE MANAGEMENT THROUGH GITHUB. For every installed change-managed unit, can an agent name the command that publishes a local edit to that unit's GitHub repository, and the tier to run it from? Cover `skill-manager home sync`, `skt sync`, `unit publish` / `skt publish`, and what `skt check` compares. Then close the gaps the reads expose -- in the units that instruct agents, linking rather than restating, per GOAL-mechanism-documented's clause 1 -- and RE-RUN the reads with fresh agents. Both sets of transcripts ship.\n",
+    "status": "planned",
+    "title": "progressive disclosure has never been measured in either direction, and no tier says how a skill change reaches GitHub",
+    "wave": 13
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-247-his-20/specs/tickets/HIS-20",
+  "ticket_id": "HIS-20",
+  "ticket_index": 43,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-247-his-20/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-247-his-20/specs/tickets"
+}

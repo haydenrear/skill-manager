@@ -1698,6 +1698,197 @@
       ],
       "errors": [],
       "verdict": "recorded"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-20",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T12:44:03.011398+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-19",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the pre-change TLC output",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the post-change TLC output",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the behavior-test output",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the before/after descriptor comparison",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": true,
+        "outcome": "none",
+        "detail": "Searched, found none, and structurally rather than as a judgement call. HIS-20 changes no TLA+ module, no .cfg, no adapter and no spec double: its ticket `current/` and `desired/` are byte-identical (verified by `diff -rq`, zero output). The plan's validation block records `tlc: \"N/A: HIS-5 carries the model work for this epic\"` and empty `tla`/`adapters`/`production`/`test_graph` conflict keys. The whole slice is twelve judged reads and markdown in two units that live in two OTHER repositories, reached by pull request rather than by this branch. A refinement recommendation would have to be about a representation this ticket neither adds nor moves. Recording one would be inventing work to satisfy a field.\n",
+        "measured": false,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "HIS-20 (issue #247) is a MEASUREMENT-AND-DOCUMENTATION ticket with a zero-delta model, so the machine-checked core above is uninformative by construction. WHAT WAS MEASURED. Six judged reads before any documentation change and six after, twelve different agents, one per (tier, direction, phase). Each was sandboxed to a read-only copy of ONE home tier's unit markdown, forbidden to read source or run any skill-manager/skt command, and required to cite a file and a quoted sentence per answer or say NOT ANSWERABLE FROM THE CORPUS. Transcripts, per-question scoring and the change-management table: results/epic-home-integrity-sync/tickets/HIS-20/judged-read/. THE FINDING UNDERNEATH EVERY SCORE, and it is not a documentation finding. Two of the three home tiers put ZERO units in front of an agent that document the tier model. The project home and every worktree cloned from it held deploy-helm, spec-double-compiler, test-graph and tracing-observability, and no plugins -- not skt, not skill-manager, not git-issue-workflow. Every correct answer both lower-tier BEFORE readers gave about tiers traces to ~18 lines of spec-double-compiler/references/runtime_requirements.md, a consumer skill documenting the home system incidentally to explain where tlc2 comes from. And this repository's own skill-project.toml ALREADY DECLARED skt and skill-manager; the home had simply never been resolved against it, projects/ empty in both. One `project resolve` closed it and turned eleven PARTIAL/FAIL cells into PASS. So the lower-tier gap is PROVISIONING, not prose, and no documentation change this ticket could make would have closed it: this ticket owns no unit those homes held. Escalated as DEF-096. WHAT THE PROSE ACTUALLY CLOSED, separately from that. Exit 79 (\"refusing to run against a home you did not name\", DEF-018) appeared in ZERO of the four instructing units' markdown -- measured with a validated grep, 0 files against a control term matching 19 -- and the root BEFORE read answered the question confidently with exits 5 and 6 instead. It is now stated once. DEF-077's conflict between the documented publish route and every epic brief's containment rule is stated as a SPLIT rather than a block, and the AFTER worktree read walked it exactly, including the reporting obligation. And the unit-name-to-repository mapping, which no command prints, now names where it is recorded. THE READS CHANGED THE FIX, WHICH IS THE POINT OF RUNNING THEM. Two AFTER readers were invited to say the expansion went too far and both did, naming the same passages. One found that the measurement sentence this ticket had just added was true of the home BEFORE `project resolve` and false of the home the reader was standing in -- the epic's founding defect reproduced inside the fix for it, in under a day. Another found that the false half of the skt PATH claim lived inside the snippet skt tells you to paste into every project's AGENTS.md, so the correction stayed at root while the falsehood travelled. Both fixed. A third of the recent expansion was cut on their evidence, including a section of workflows.md that re-derived projects.md sentence for sentence while itself saying \"point there, do not re-derive it\". A SENTENCE THIS TICKET WROTE AND THEN MEASURED WRONG. Its first draft said the repository URL \"lives in units.lock.toml and in installed/<unit>.json\". Root records origin for 29 of 29 lock entries; a resolved worktree home for 4 of 6, the two missing being exactly the units `project resolve` installed. Corrected to name the per-unit record; the CLI gap filed as DEF-100. HONEST LIMITS. The doc-only sandbox is not airtight: every subagent's system prompt carries a ~40-skill listing in which skt's own description states the three-tier model verbatim. All six AFTER readers were asked to itemize that contamination and did. n = 1 per condition. Two of the three AFTER corpora exist nowhere on disk -- the root overlay is a sandbox until two leaf PRs merge and sync, and the project corpus is an explicitly labelled counterfactual. Four cells stay PARTIAL or FAIL after the fix and are named as failures. NOT DONE. Ticket current == desired, so promotion carries nothing. refinement.measured is false because the model is byte-identical before and after, and running TLC to reproduce a number that cannot have changed would be evidence theatre.",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [],
+      "verdict": "recorded"
     }
   ]
 }
