@@ -4083,7 +4083,46 @@ tickets:
   - id: HIS-21
     title: "four commands report something that is not so, and three of them about the operator's real root home"
     phase: HIS
-    status: closed
+    status: delivered
+    delivered_in: "PR #256, merged into epic/home-integrity-sync as a169188"
+    status_note: >
+      The ticket recorded `closed`, which is the SPEC-WORKFLOW vocabulary; this
+      plan's vocabulary is `delivered`. Corrected by the epic agent at merge.
+      Same class as DEF-080 -- two vocabularies for one state, and neither names
+      the other.
+    delivery_note: >
+      Five diagnostics fixed. THREE OF THE ISSUE'S OWN MECHANISMS WERE FALSE and
+      the ticket measured them false before building anything: DEF-104 is not
+      about the tier (the question was asked only of SYMLINKS -- a regular-file
+      wrapper was invisible at EVERY tier, and building to the epic agent's filed
+      mechanism would have shipped green tests and left the defect); DEF-105's
+      premise was false (the product DOES read policy.toml, so there was never an
+      unread security policy -- the real defect is two live files, two verbs,
+      neither naming the other); DEF-107 is not an ordering defect (the law
+      declares dependsOn and ran DEAD LAST, 19 of 19, across 24 wirings).
+
+      REVIEW THEN FOUND THE TICKET'S OWN HEADLINE A THIRD WRONG. "One extraction
+      rule, one verdict, ONE SCOPE" -- but SHIM_DIRS was declared twice in two
+      spellings that ENUMERATED differently (directory stream vs walkFileTree),
+      so verify and repair still disagreed one LINK down, and the falsifying case
+      printed the ticket's own V1 proof text. Fixed by making
+      HomeCloner.scanShimDirs the single enumerator and DELETING
+      HomeRepair.collectRegularFiles and shimDirLinkedOutOfHome rather than
+      leaving a second copy. The ticket graded itself harder than the reviewer
+      did: "clause 1 of GOAL-one-home-one-answer was not met, and I reported it
+      as met."
+
+      REVIEW ALSO FOUND AN UNDISCLOSED REGRESSION NOBODY HAD LOOKED FOR:
+      `home clone` now refuses, WITH NO REMEDY, from any home carrying a foreign
+      wrapper -- including the operator's root home -- leaving a populated
+      destination that fails its own verify. Fixed; the remedy names the SOURCE
+      first (re-anchoring rewrites only paths naming the source, and these name a
+      THIRD home, so repairing the copy alone leaves the next clone failing
+      identically) and it was RUN AS PRINTED: clone exit 1 -> remedy exit 0
+      "repaired 1 of 1" -> re-clone exit 0. The partial destination STAYS, by a
+      reasoned decision -- deleting it is #186's walk-back-that-destroys shape,
+      GOAL-no-destructive-recovery's founding instance. Silence about it was the
+      defect, not the file.
     epic: home-integrity-sync
     github_issue: 253
     added_in_schedule_revision: 10
