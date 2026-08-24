@@ -1889,6 +1889,391 @@
       ],
       "errors": [],
       "verdict": "recorded"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-22",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T20:06:58.842720+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-20",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the pre-change TLC output",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the post-change TLC output",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the behavior-test output",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the before/after descriptor comparison",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": false,
+        "outcome": "",
+        "detail": "",
+        "measured": false,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [
+        "REJECTED -- no recursive refinement record. Every close carries either an approved recommendation with evidence, or an explicit 'searched, found none'. Set `refinement.searched: true` and record the outcome.",
+        "REJECTED -- no `narrative:` recorded. The ledger's machine-checked core is deliberately narrow; the narrative carries the reasoning, the measured alternatives, and any finding the core cannot express."
+      ],
+      "verdict": "rejected"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-22",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T20:08:02.663298+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-20",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "No model complexity increase: the TLA+ tree is unchanged.\nPRODUCT complexity increased by one new exception type (ProjectVendoredDurabilityException), one new context fact (ProjectSyncSkippedNonDurable), one new reader class (ProjectManifestRealization) and one new record on an existing verdict (HomeCloseOut.SelfObtainable). Each carries essential behavior that the existing representation could not express:\n- The exception type exists because a bare IOException made \"this project's\n  declared paths do not survive a move\" indistinguishable from \"the unit sync\n  broke\". That conflation is DEF-103: it made the promotion direction the\n  owner asked to enforce unusable for every unit any broken project claims.\n  The alternative -- inspecting the message string -- is the shape #187 was\n  filed against and #229's review rejected at the neighbouring call site.\n\n- The fact type exists because the fix must not be silent. Reusing\n  ProjectSyncFailed would have made \"your project needs repairing\" and \"the\n  unit sync broke\" read identically again, which is the defect one layer out.\n\n- The reader class exists because DEF-096 and DEF-101 need the SAME question\n  answered -- \"what does this home's own manifest declare, and does the home\n  hold it\" -- on two different surfaces. Two spellings of one rule is how the\n  --json and human close-out paths diverged once already (HomeCloseOut's own\n  cliInvocation javadoc records that). It reuses\n  ProjectDependencyResolver.installedUnitName rather than re-deriving name\n  resolution, which is why that method was widened from private to\n  package-private and not copied.\n\n- The verdict component exists because \"nothing is at risk\" and \"nothing to\n  say\" are different answers, and a gate that silently stopped blocking would\n  be worse than the hold-back it removed.",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "No TLA+ file, .cfg, generated case set or adapter changed in this ticket. `diff -rq specs/tickets/HIS-22/current specs/tickets/HIS-22/desired` is clean. A TLC run before and after an unchanged model would compare a file with itself, which is not evidence of anything -- recording `not_run` keeps that distinguishable from a run that happened and was green.\n",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "as above -- the model is byte-identical before and after",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "pass",
+          "classification": "retained",
+          "evidence": "`env -u SKILL_MANAGER_HOME -u CLAUDE_CONFIG_DIR -u CLAUDE_HOME -u CODEX_HOME -u GEMINI_HOME jbang RunTests.java` -- 1408 passed, 0 failed, ALL PASSED, on feature/254-his-22. Includes the 11 new cases this ticket added across ProjectToRootPromotionTest, ProjectManifestRealizationTest and HomeCloseOutSelfObtainableTest. `uv run pytest specs/` -- 88 passed. Graphs: home-sync run 20260824-195838 (19/20 nodes green; the 20th is home.membership.law / DEF-107, which is HIS-21's inherited red), checkout-home run 20260824-200314 PASS, home-clone run 20260824-200433 PASS.\n",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "not_applicable",
+          "classification": "unverified",
+          "evidence": "A descriptor comparison witnesses behavior retention across a MODEL change. There is no model change. No complexity decrease is claimed, so nothing here is being licensed.\n",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=not_run (UNVERIFIED)",
+        "tlc_after=not_run (UNVERIFIED)",
+        "behavior_tests=pass (retained)",
+        "descriptor_comparison=not_applicable (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": true,
+        "outcome": "none",
+        "detail": "Searched for a way to express DEF-103's scoping WITHOUT a new type. Three candidates, all rejected on evidence:\n(1) Match on the exception MESSAGE in syncClaimingProjects. Rejected: that is\n    exactly the loss-of-type #187 was filed about, and the branch immediately\n    above in the same method exists because #229's review refused it there.\n\n(2) Make ProjectVendoredResolver's finding non-fatal generally, i.e. flip\n    on_invalid's default. Rejected and PROVED wrong by probe V2: with the\n    check weakened, ProjectToRootPromotionTest CASE 2 goes red AND CASE 1\n    goes red, because CASE 1 asserts the project is still named. The brief's\n    instruction -- \"fix the blast radius, not the check\" -- is measurable,\n    and this is the measurement.\n\n(3) Pass a \"reconcile only\" flag down through\n    ProjectSyncUseCase -> ProjectDependencyResolver -> checkVendored so the\n    resolver knows who is asking. Rejected on the resolver's own documented\n    reasoning: checkVendored sits at ONE seam precisely so the rule cannot be\n    true of one command and not another, and a caller-identity parameter\n    re-introduces exactly that. The typed exception moves the decision to the\n    CALLER, where \"is this finding attributable to what I was asked to do\" is\n    answerable, and leaves the rule single-sited.\n\nAlso searched for a way to fold DEF-101 into the existing SyncStatus enum (a \"new-but-obtainable\" status). Rejected: SyncStatus is a verdict about two trees, and \"the destination's manifest declares this\" is a fact about neither tree. Putting it in the enum would make ChildHomeMaterializer -- which has no business reading project manifests -- the place the rule lives.\n",
+        "measured": false,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "Full narrative: results/epic-home-integrity-sync/tickets/HIS-22/goal-contribution.md Vacuity record: results/epic-home-integrity-sync/probes/his-22/vacuity-checks.md\nTHE FINDING THIS TICKET CONSIDERS ITS MOST VALUABLE OUTPUT is that its own issue is wrong on two counts, both measured before implementation: (1) `meta-harness`, the project #254 calls \"unrelated\" to the four units that failed, CLAIMS ALL FOUR in its project-lock.toml; and (2) the fix #254 prescribes -- scoping the refusal to units the failing project claims -- SHIPPED IN #144 and is already guarded by a test. The acceptance node written to that prescription is green against the UNFIXED build; probe V1 reverts the whole fix and watches it stay green. It is kept as ProjectToRootPromotionTest CASE 3 and labelled a control, not evidence.\nThe real scope is KIND OF FAILURE, not units-per-project. A project's [[vendored]] durability finding is a fact about that project's checkout: true before the unit sync, true after, and no byte the sync moved can cause or cure it. It is now typed and handled by the post-sync child-home refresh as a named skip carrying its own repair command, while `project resolve` and `project sync` refuse on exactly the same condition with exactly the same message and exit code.\nDELIBERATELY NOT DONE, and filed rather than hidden: External.tla's CloseOutIsSafe still reads `SyncStatusOf(...) = \"unchanged\"`, and DEF-101 adds a second way for the gate to clear that the model cannot express without a new variable plus a constant in ~25 cfgs. The assignment reads `tlc: N/A unless the fix states a new invariant`, and this states a WEAKENING of an existing safety predicate. DEF-112 carries the exact model change and the regression cfg it owes, including the test_tlc_expected_violations.py row naming which invariant must fall -- vacuity-ledger row 15's countermeasure. DEF-110 and DEF-111 carry the two other things this ticket found and did not widen into.",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [],
+      "verdict": "recorded"
     }
   ]
 }

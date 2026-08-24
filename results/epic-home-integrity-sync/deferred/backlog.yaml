@@ -5729,3 +5729,154 @@ findings:
     missed_by: [C-manual]
     candidate_owner: HIS-6 to triage
     status: open
+
+  # -------------------------------------------------------------------------
+  # HIS-22 (#254). NUMBERING COLLISION EXPECTED AND DISCLOSED IN PLACE: the
+  # brief said the highest id was DEF-108 and to start at DEF-109, and that
+  # HIS-21 is filing concurrently from the same base. If DEF-109/110/111 appear
+  # twice at merge, these are HIS-22's; the epic agent adjudicates. They are
+  # NOT renumbered here, because renumbering by guess is how the epic's founding
+  # defect -- a pointer that is false and dangling -- gets reproduced.
+  - id: DEF-109
+    found_by: HIS-22 (#254), by its own tooling failing silently mid-ticket
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "the agent `grep` wrapper silently omits any source file containing a NUL byte"
+    summary: >
+      `grep` in a Claude Code shell is a function wrapping ugrep with `-I`
+      (skip binary). Two tracked Java sources in this repo contain a literal
+      NUL char used as a map-key separator, so `file` calls them "data" and the
+      wrapper returns NOTHING for them -- no match, no warning, exit 0. One of
+      them is `src/main/java/dev/skillmanager/project/ProjectVendoredResolver.java`,
+      which is the class at the centre of DEF-103.
+    detail: >
+      Reproduced during this ticket: `grep -n "enum Status" <that file>` returned
+      nothing while the enum is on line 86, and `grep -c "class" <that file>`
+      printed nothing at all rather than 0. `command grep` reports
+      "Binary file ... matches". The two files are
+      src/main/java/dev/skillmanager/project/ProjectVendoredResolver.java line 271
+      (a NUL used as the separator in `key(Entry)`) and
+      src/test/java/dev/skillmanager/artifacts/LazyArtifactHomeTest.java.
+      This is vacuity-ledger mechanism C in a fifth medium -- not a mutation, a
+      search pattern, a fixture or a measurement arm, but a CORPUS one file
+      smaller than the agent believes it is. Three of this ticket's early
+      "no matches" conclusions were false because of it, including one about the
+      exact durability wording issue #254 quotes.
+    owed_check: >
+      Either replace the two NUL separators with a multi-character sequence that
+      cannot occur in a path and keeps the files textual, or add a repo-level
+      check that no tracked source contains a NUL. The second is the durable one:
+      it fails loudly at the moment somebody adds the third such file, where the
+      first only holds until then. Note the DEF-035-shaped hazard underneath it:
+      an agent that greps and gets zero has no way to tell "absent" from
+      "unreadable", which is this epic's ninth instance of an output carrying no
+      way to detect its own invalidity.
+    caught_by_instrument: C-manual (an implausible result -- `grep -c` printing nothing)
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6, or a standalone tooling ticket
+    status: open
+
+  - id: DEF-110
+    found_by: HIS-22 (#254), while fixing DEF-103
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "sync's exit code still contradicts its own stated rule for project-sync failures"
+    summary: >
+      `SyncUseCase.report()` counts a PARTIAL `SyncClaimingProjects` receipt as
+      an error, so a failure in a downstream project child-home refresh sets
+      `sync <unit>`'s exit code. Thirty lines above, in the same method, the
+      rule is stated: "SYNC'S EXIT CODE DESCRIBES THE CONTENT SYNC. A gateway
+      must not roll a content refresh back, and by the same argument it must not
+      fail one either" -- the argument that removed `RegisterMcp` from the count.
+    detail: >
+      HIS-22 fixed the durability case by giving it a typed exception and a
+      warning path, so that cause never becomes PARTIAL. Every OTHER project
+      sync failure still does: a missing registration snapshot, a closure import
+      violation, a child-home path collision. Each of those is at least arguably
+      about the project rather than about the unit's bytes, and the same argument
+      that exempted the gateway applies to them. Not widened into this ticket
+      because the per-unit PROJECT_SYNC_FAILED record is the right place for a
+      genuinely attributable failure, and deciding which of the remaining causes
+      are attributable is a design call rather than a bug fix.
+    owed_check: >
+      Enumerate the causes `syncClaimingProjects` can produce, decide per cause
+      whether it belongs in the exit code or only in the record, and assert the
+      decision. The regression assertion already exists in shape:
+      ProjectToRootPromotionTest CASE 4 drives the real SyncCommand and reads the
+      exit code, and the graph node home.sync.project.to.root.change.management
+      reads it end to end.
+    caught_by_instrument: C-manual (reading the method while fixing DEF-103)
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6 to schedule
+    status: open
+
+  - id: DEF-111
+    found_by: HIS-22 (#254), while fixing DEF-096 and DEF-101
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "a home does not record its own project root, so two new readers derive it by convention"
+    summary: >
+      `ProjectManifestRealization` (DEF-096) and `HomeCloseOut`'s
+      self-obtainable rule (DEF-101) both need to know which project manifest is
+      this home's, and neither can ask. `home.provenance.json` records the CLONE
+      chain, not a project root; `projects/<name>/registration.toml` is written
+      only by `project register`, which on the home that motivated DEF-096 had
+      never run. Both therefore read `<home>/../skill-project.toml` by convention.
+    detail: >
+      The convention is the one the whole product is built on
+      (`<repoRoot>/.skill-manager`) and it is correct for every home in this
+      epic, so this is a durability finding rather than a live defect -- the same
+      shape as HIS-19's CLI pin: it resolves today. A home reached through a
+      symlink, or a home deliberately placed somewhere other than beside its
+      repo, gets the wrong answer or no answer, and the failure is quiet:
+      "no manifest found" and "manifest found and satisfied" both answer
+      `clean() == true`, which is exactly why `hasManifest()` exists and is
+      asserted separately in ProjectManifestRealizationTest CASE 3.
+    owed_check: >
+      Record the project root in the home when one is known -- at
+      `project resolve`, at `home clone --to <repo>/.skill-manager`, or in
+      `home.runtime.json` -- and have both readers prefer the recorded answer,
+      falling back to the convention. The regression assertion: a project home
+      MOVED away from its manifest must report the same verdict it reported
+      before the move, or say plainly that it cannot.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6 to schedule
+    status: open
+
+  - id: DEF-112
+    found_by: HIS-22 (#254), deciding what its own spec workflow owed
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "close-out's self-obtainable rule (DEF-101) is not expressible in External.tla as it stands"
+    summary: >
+      `CloseOutIsSafe` in specs/desired_program_model/External.tla is
+      `SyncStatusOf(WorktreeHome, ProjectHome, TRUE) = "unchanged"`. HIS-22 adds
+      a second way for the gate to clear -- status "new", the destination's own
+      manifest declares the unit, and the worktree's copy has a materialization
+      record and is not locally modified. The model has no notion of a
+      destination manifest, so the disjunct cannot be written without a new
+      variable and a new constant, and every one of the ~25 cfgs would have to
+      define it.
+    detail: >
+      HIS-22's assignment says `tlc: N/A unless the fix states a new invariant`,
+      and the fix states a WEAKENING of an existing safety predicate rather than
+      a new invariant, so the ticket did not change the model. That is a
+      deliberate, disclosed decision and not an oversight -- but it leaves the
+      model and the product disagreeing about one branch of the gate, which is
+      exactly the class of drift specs/ exists to prevent. The behaviour IS
+      asserted at two layers below the model: HomeCloseOutSelfObtainableTest
+      (4 cases, one fix and three guards) and, end to end, nothing yet at the
+      graph layer for the DEF-101 half specifically.
+    owed_check: >
+      Add `destination_declares` (or a CloseOutObtainableRule constant with an
+      OFF value that reproduces today's behaviour), extend `CloseOutIsSafe` with
+      the guarded disjunct, and add a regression cfg that turns the rule to
+      "CLEAR_UNCONDITIONALLY" and watches `NoWorkIsLost` fail -- with the
+      test_tlc_expected_violations.py row naming WHICH invariant, per
+      vacuity-ledger row 15. Also worth a graph node: the DEF-101 half currently
+      has no end-to-end coverage, only unit coverage.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6 to schedule
+    status: open

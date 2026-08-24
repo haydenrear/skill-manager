@@ -261,6 +261,61 @@ public class HomeClonedIntoProject {
             String afterDigest = HomeCloneSupport.treeDigest(fixtureHome);
             boolean sourceUnchangedByCloning = afterDigest.equals(sourceDigest);
 
+            // ------------------------------------------------- DEF-096
+            // A clone copies what the source HOLDS. It cannot copy what the
+            // source's manifest merely DECLARES — and this repository's own
+            // project home declared plugin:skt and skill:skill-manager, held
+            // neither, and was the source every ticket worktree in this epic
+            // was cloned from. Twenty-two agents, silently short two units,
+            // with no command anywhere saying so.
+            //
+            // Run in its own temporary geometry rather than against the shared
+            // fixture, because the mechanism under test is the manifest sitting
+            // BESIDE a home, and writing one beside the fixture home would
+            // change what every other node in two graphs is looking at.
+            Path def096 = Files.createTempDirectory("home-clone-def096-");
+            Path unresolvedRepo = Files.createDirectories(def096.resolve("project"));
+            Path unresolvedHome = unresolvedRepo.resolve(".skill-manager");
+            ProcessRecord seed = HomeCloneSupport.sm(ctx, "def096-seed-project-home", fixture,
+                    "home", "clone", "--to", unresolvedHome.toString(), "--json");
+            Files.writeString(unresolvedRepo.resolve("skill-project.toml"), """
+                    [project]
+                    name = "def096-unresolved-project"
+
+                    [plugins.def096-absent-plugin]
+                    source = "github:example/def096-absent-plugin"
+                    """);
+            boolean theSourceHomeReallyLacksTheDeclaredUnit =
+                    !Files.isDirectory(unresolvedHome.resolve("plugins/def096-absent-plugin"));
+            ProcessRecord shortClone = HomeCloneSupport.sm(ctx, "def096-clone-into-worktree",
+                    fixture, "home", "clone", "--from", unresolvedHome.toString(),
+                    "--to", def096.resolve("wt/.skill-manager").toString(), "--json");
+            String shortLog = HomeCloneSupport.log(ctx, "def096-clone-into-worktree");
+            boolean theCloneOfAnUnresolvedProjectHomeSaysWhatItIsShort =
+                    shortClone.exitCode() == 0
+                            && shortLog.contains("def096-absent-plugin")
+                            && shortLog.contains("\"missing\"");
+            // POSITIVE CONTROL for that string. The seed clone above ran the
+            // same command against a home with NO manifest beside it; if the
+            // notice appeared there too it would be unconditional noise rather
+            // than a finding, and the assertion above would be meaningless.
+            boolean aCloneWithNothingToSaySaysNothing =
+                    seed.exitCode() == 0
+                            && !HomeCloneSupport.log(ctx, "def096-seed-project-home")
+                                    .contains("declared but absent");
+            // The probe tree is removed as it goes: this machine's disk sat at
+            // 98% for the whole epic, and a node that leaves a home behind is a
+            // node the fixpoint law will later discover and ask about.
+            try (var walk = Files.walk(def096)) {
+                walk.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (java.io.IOException ignored) {
+                        // best effort; the workspace is a temp tree
+                    }
+                });
+            }
+
             boolean pass = cloneSucceeded && cloneReportsClean && noOwnedSurfaceNamesTheSource
                     && theCloneRecordsItsDescentAndTheScanCountsIt
                     && productionAgreesNoPathNamesTheSource
@@ -270,7 +325,10 @@ public class HomeClonedIntoProject {
                     && theDescentRecordIsRestored && theTwoReadersAgreeAboutThisClone
                     && authoredSurvivedByteForByte && toleratedReferencesAreCounted
                     && ledgerIsTokenizedNotSubstituted && inHomeLinksAreRelative && relativeLinksResolveInsideTheClone
-                    && sourceUnchangedByCloning;
+                    && sourceUnchangedByCloning
+                    && theSourceHomeReallyLacksTheDeclaredUnit
+                    && theCloneOfAnUnresolvedProjectHomeSaysWhatItIsShort
+                    && aCloneWithNothingToSaySaysNothing;
             return (pass
                     ? NodeResult.pass("home.cloned.into.project")
                     : NodeResult.fail("home.cloned.into.project",
@@ -327,6 +385,12 @@ public class HomeClonedIntoProject {
                     .assertion("relative_symlinks_resolve_inside_the_clone",
                             relativeLinksResolveInsideTheClone)
                     .assertion("cloning_does_not_write_to_the_source_home", sourceUnchangedByCloning)
+                    .assertion("the_unresolved_project_home_really_lacks_what_it_declares",
+                            theSourceHomeReallyLacksTheDeclaredUnit)
+                    .assertion("a_clone_of_an_unresolved_project_home_says_what_it_is_short",
+                            theCloneOfAnUnresolvedProjectHomeSaysWhatItIsShort)
+                    .assertion("positive_control_a_clone_with_nothing_to_say_says_nothing",
+                            aCloneWithNothingToSaySaysNothing)
                     .metric("cloneExitCode", clone.exitCode())
                     .metric("leakCount", leaks.size())
                     .metric("toleratedContentReferences", tolerated.size())

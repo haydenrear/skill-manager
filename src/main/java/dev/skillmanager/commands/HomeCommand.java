@@ -96,7 +96,18 @@ public final class HomeCommand {
             HomeCloner.Report report = HomeCloner.cloneHome(source, to, strict,
                     lazyArtifacts != null ? lazyArtifacts
                             : HomePolicy.lazyArtifactsDefault(new SkillStore(to)));
-            print(report, json);
+            // DEF-096. A clone copies what the source HOLDS; it cannot copy what
+            // the source's manifest merely DECLARES. Measured on this
+            // repository's own project home: skill-project.toml declares
+            // plugin:skt and skill:skill-manager, the home held neither, and
+            // every ticket worktree in the epic was cloned from it — silently
+            // short the two units documenting the thing being worked on.
+            // Reported about the SOURCE, because the shortfall is inherited: the
+            // copy is short exactly what the original was short.
+            dev.skillmanager.project.ProjectManifestRealization.Shortfall shortfall =
+                    dev.skillmanager.project.ProjectManifestRealization
+                            .inspect(new SkillStore(source));
+            print(report, json, shortfall);
             if (!report.clean()) return 1;
             SkillStore cloned = new SkillStore(report.dest());
             // A gateway is one process on one port, and the copy inherited
@@ -1399,11 +1410,23 @@ public final class HomeCommand {
                         + "\",\"conflicts\":" + strings(blocker.unit().conflicts())
                         + ",\"remedy\":\"" + esc(blocker.remedy()) + "\"}")
                 .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+        // DEF-101. A unit that cleared the gate because the destination
+        // declares it is a DECISION, and a decision a script can read. An empty
+        // list here plus safe:true means "nothing was at risk"; a non-empty one
+        // means "these were not copied and here is why that is correct".
+        String obtainable = verdict.selfObtainable().stream()
+                .map(o -> "{\"unit\":\"" + esc(o.label())
+                        + "\",\"status\":\""
+                        + o.unit().status().name().toLowerCase().replace('_', '-')
+                        + "\",\"source\":\"" + esc(o.source())
+                        + "\",\"remedy\":\"" + esc(o.remedy()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
         return "{\"home\":\"" + esc(verdict.home().toString())
                 + "\",\"into\":\"" + esc(verdict.into().toString())
                 + "\",\"safe\":" + verdict.safe()
                 + ",\"exitCode\":" + verdict.exitCode()
                 + ",\"blockers\":" + blockers
+                + ",\"selfObtainable\":" + obtainable
                 + ",\"units\":" + unitsJson(verdict.units()) + "}";
     }
 
@@ -1584,14 +1607,37 @@ public final class HomeCommand {
         if (wrote) Log.ok("wrote %s", HomeDescriptor.file(store.root()));
     }
 
-    private static void print(HomeCloner.Report report, boolean json) {
+    /**
+     * DEF-096, machine-readable. {@code declared} is carried beside
+     * {@code missing} so a consumer can tell "this home realizes its manifest"
+     * from "this home has no manifest" — both of which have an empty
+     * {@code missing} list and are not the same fact.
+     */
+    private static String manifestShortfallJson(
+            dev.skillmanager.project.ProjectManifestRealization.Shortfall shortfall) {
+        if (shortfall == null || !shortfall.hasManifest()) {
+            return "{\"manifest\":null,\"declared\":0,\"missing\":[]}";
+        }
+        String missing = shortfall.missing().stream()
+                .map(d -> "{\"unit\":\"" + esc(d.lookupName())
+                        + "\",\"kind\":\"" + d.kind().name().toLowerCase()
+                        + "\",\"source\":\"" + esc(d.source()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+        return "{\"manifest\":\"" + esc(shortfall.manifest().toString())
+                + "\",\"declared\":" + shortfall.declared().size()
+                + ",\"missing\":" + missing + "}";
+    }
+
+    private static void print(HomeCloner.Report report, boolean json,
+                             dev.skillmanager.project.ProjectManifestRealization.Shortfall shortfall) {
         if (json) {
             System.out.println("""
                     {"source":"%s","dest":"%s","directories":%d,"files":%d,"symlinks":%d,\
                     "bytes":%d,"linksRelativized":%d,"stateReanchored":%d,\
                     "provisionedRewritten":%d,"leaks":%d,"contentReferences":%d,\
                     "danglingLinks":%d,"danglingReferences":%d,"droppedRegistrations":%d,\
-                    "droppedBindings":%d,"droppedChildHomes":%d,"clean":%b}"""
+                    "droppedBindings":%d,"droppedChildHomes":%d,"clean":%b,\
+                    "manifestShortfall":%s}"""
                     .formatted(esc(report.source().toString()), esc(report.dest().toString()),
                             report.directories(), report.files(), report.symlinks(),
                             report.bytes(), report.linksRelativized(), report.stateReanchored(),
@@ -1600,12 +1646,21 @@ public final class HomeCommand {
                             report.danglingReferences().size(),
                             report.droppedRegistrations().size(),
                             report.droppedBindings().size(),
-                            report.droppedChildHomes().size(), report.clean()));
+                            report.droppedChildHomes().size(), report.clean(),
+                            manifestShortfallJson(shortfall)));
             return;
         }
         // Both restated verbatim by the verdict line at the bottom of this
         // method, which names the destination and the source it was checked
         // against. Kept in the log; not printed twice.
+        if (shortfall != null && !shortfall.clean()) {
+            Log.warn("  manifest:    %s", shortfall.summary());
+            for (String line : shortfall.render().subList(1, shortfall.render().size())) {
+                Log.warn("  %s", line);
+            }
+            Log.warn("  this copy is short the same unit(s); resolving the SOURCE and "
+                    + "re-cloning, or resolving here, is what obtains them");
+        }
         Log.detail("  source:      %s", report.source());
         Log.detail("  destination: %s", report.dest());
         Log.info("  copied:      %d dirs, %d files, %d links (%d bytes; %s skipped)",

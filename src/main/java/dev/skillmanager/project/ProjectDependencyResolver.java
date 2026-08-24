@@ -183,7 +183,16 @@ public final class ProjectDependencyResolver {
         }
         if (report.clean()) return report;
         if (!report.fatalProblems().isEmpty()) {
-            throw new IOException(report.failureMessage());
+            // DEF-103: TYPED, not bare. Everything a `project resolve` /
+            // `project sync` operator sees is unchanged — this exception's
+            // message IS report.failureMessage(), and it still aborts the
+            // resolve before any binding is materialized. What the type buys is
+            // that the ONE caller for whom this project is not the subject —
+            // the best-effort post-sync child-home refresh in
+            // LiveInterpreter.syncClaimingProjects — can tell a durability
+            // finding ABOUT A PROJECT from a failure of the unit sync it was
+            // tacked onto, and stop failing the second for the first.
+            throw new ProjectVendoredDurabilityException(project.registryName(), report);
         }
         Log.warn("%d declared vendored path(s) do not point at this project's own home "
                 + "(on_invalid = \"warn\"):", report.problems().size());
@@ -647,7 +656,19 @@ public final class ProjectDependencyResolver {
         return new UnitStore(store).findInstalledNameByOrigin(g.url());
     }
 
-    private static Optional<String> installedUnitName(
+    /**
+     * The installed unit name a declared ref would resolve to, without a
+     * network round trip: the coord's own name, else the installed unit whose
+     * recorded origin is this coord's git URL.
+     *
+     * <p>Package-private rather than private since DEF-096:
+     * {@link ProjectManifestRealization} answers "does this home hold what its
+     * manifest declares" and must ask the question the resolver itself asks. A
+     * second spelling of it is how the two would come to disagree about which
+     * units a manifest names, which is the shape this epic has paid for
+     * repeatedly.
+     */
+    static Optional<String> installedUnitName(
             UnitReference ref,
             Path baseRoot,
             SkillStore lookupStore

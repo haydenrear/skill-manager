@@ -1,0 +1,91 @@
+version: 1
+name: child-home-materialization-workflow
+canonical_tla_module: SkillManager
+views:
+  core:
+    module: Core.tla
+    generates: none
+    role: shared constants and operators
+  internal:
+    module: Internal.tla
+    config: Internal.cfg
+    generates: spec_unit
+    adapter_mapping: case_adapters.toml
+  external:
+    module: External.tla
+    config: External.cfg
+    generates: testgraph
+    adapter_mapping: testgraph_bindings.yml
+  legacy_monolith:
+    module: SkillManager.tla
+    config: MC_program_promotion.cfg
+    generates: none
+    role: not-yet-migrated remainder of the accepted program model
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/SkillManager.tla
+  purpose: desired whole-program model for the child-home materialization epic
+  generation_status: planned
+  note: >
+    ../program_model has no Internal.tla or External.tla. The scaffold template
+    points these keys at those files; they were repointed at the monolith that
+    actually exists rather than reworded to fit a thinner model.
+
+implementation_status:
+  updated: "2026-07-25"
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: CHM-1
+  active_ticket_title: "Child home units materialize by copy, not by symlink"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: scaffolded
+    current_model: scaffolded_unchanged_from_baseline
+    desired_tla_authored: child_home_slice_only
+    generated_desired_cases: pending
+    adapters: pending
+
+modeled_boundary_status:
+  ticket_plan:
+    status: scaffolded
+    artifact: ticket_plan.yaml
+    next_ticket: CHM-1
+  child_home_materialization:
+    status: modeled_and_tlc_green
+    artifacts: [Core.tla, Internal.tla, External.tla]
+  remaining_program:
+    status: carried_forward_as_monolith
+    artifact: SkillManager.tla
+    plan: ticket_plan.yaml phase MIG
+
+program_domains:
+  - name: parent_store
+    variables: [store_body]
+    boundary: SKILL_MANAGER_HOME unit directories
+  - name: child_home
+    variables: [child_home, child_unit, record, staging, held_back]
+    boundary: "<project>/.skill-manager unit directories and .materialization records"
+  - name: agent_workspace
+    variables: [agent_edits]
+    boundary: edits an agent makes inside its project home
+
+implementation_sources:
+  ChildHomeMaterializer: src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+  ProjectChildHomeScaffolder: src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+
+adapter_plan:
+  desired_new_ports:
+    - ChildHomeMaterializerPort
+    - SkillManagerCliChildHomePort
+    - AgentWorkspacePort
+  desired_new_effect_ports: []
+  effect_port_note: >
+    Deliberately empty. effectful_onboarding.md makes Internal/External
+    onboarding a hard prerequisite for effect providers, and that prerequisite
+    is met for this slice only. See ticket_plan.yaml phase EFF.
+
+guardrails:
+  do_not_close: "No ticket in this workflow is closed and nothing is promoted. specs/current is unchanged from the accepted baseline."
+  regression_configs_must_keep_failing: "The five expected-violation cfgs are part of the contract; a clean run on any of them is a defect in the invariant."
+  dual_representation: "Core/Internal/External own child-home materialization; SkillManager.tla owns child-home membership. Never state a rule in both."

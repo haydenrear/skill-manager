@@ -1120,6 +1120,12 @@ validationGraph {
         // bytes in a home".
         node("sources/home-sync/HomeSyncProjectSeam.java")
         node("sources/home-sync/HomeSyncAuthoredAgentTree.java")
+        // HIS-22 / DEF-103. `home.sync.project.to.root` covers `home sync
+        // --from <project> --to <root>`; this covers the command an operator
+        // actually runs to bring a unit INTO the root home, which is where the
+        // promotion path broke. Named in the two law nodes' dependsOn below so
+        // the laws stay last.
+        node("sources/home-sync/HomeSyncProjectToRootChangeManagement.java")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -1128,13 +1134,17 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("home.sync.authored.agent.tree")
+        node("sources/common/HomeFixpointLaw.java")
+                .dependsOn("home.sync.authored.agent.tree",
+                        "home.sync.project.to.root.change.management")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
         // holds (DEF-047). Same structural discovery, same "zero homes
         // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("home.sync.authored.agent.tree")
+        node("sources/common/HomeMembershipLaw.java")
+                .dependsOn("home.sync.authored.agent.tree",
+                        "home.sync.project.to.root.change.management")
     }
 
     /**

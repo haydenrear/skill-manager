@@ -54,16 +54,69 @@ public final class HomeCloseOut {
         public String label() { return unit.label(); }
     }
 
+    /**
+     * A unit the destination does not have and <b>can obtain for itself</b> —
+     * DEF-101.
+     *
+     * <h2>The distinction close-out could not draw</h2>
+     *
+     * <p>Every {@code NEW} unit used to block, on one rule:
+     * {@code Files.isDirectory(<into>/<kind>/<name>) == false}. That rule is
+     * right about the case it was written for — a unit the agent authored in
+     * the worktree exists nowhere else, and deleting the worktree deletes it.
+     * It is wrong about the case measured on HIS-20: {@code skill:skill-manager}
+     * and {@code plugin:skt}, both unmodified checkouts of published refs, both
+     * <b>declared by the destination's own {@code skill-project.toml}</b>, and
+     * the destination short of them only because DEF-096 left its manifest
+     * unrealized. Two blockers, {@code safe: false}, {@code exit 1}, and
+     * <em>nothing would have been destroyed</em>.
+     *
+     * <p>Blocking on those is a spurious hold-back: it makes the operator run a
+     * sync to move bytes the destination can fetch, from a home that is about
+     * to be deleted, to make a gate stop complaining. That is the failure mode
+     * {@code GOAL-no-spurious-holdback} names.
+     *
+     * <h2>Both halves are required, and each is load-bearing</h2>
+     *
+     * <ol>
+     *   <li><b>The destination declares it.</b> Not "it looks fetchable" — the
+     *       destination's own manifest names it and names where from. That is
+     *       the destination making the claim, not close-out guessing on its
+     *       behalf.</li>
+     *   <li><b>The worktree's copy holds nothing of its own.</b> Read from the
+     *       worktree's materialization record via
+     *       {@link ChildHomeMaterializer#isLocallyModified}, the same predicate
+     *       that decides {@code HELD_BACK} and dirty checkouts. If the agent
+     *       edited it, or its git history moved on, it is <em>not</em> obtainable
+     *       from the published ref and it blocks exactly as before.</li>
+     * </ol>
+     *
+     * <p>Reported, never silent: a unit that clears the gate this way is named
+     * in the verdict and in {@code --json}, with the command that obtains it.
+     * "Nothing is at risk" and "nothing to say" are different answers.
+     */
+    public record SelfObtainable(UnitSync unit, String source, String remedy) {
+        public String label() { return unit.label(); }
+    }
+
     public record Verdict(
             Path home,
             Path into,
             boolean safe,
             List<Blocker> blockers,
-            List<UnitSync> units
+            List<UnitSync> units,
+            List<SelfObtainable> selfObtainable
     ) {
         public Verdict {
             blockers = blockers == null ? List.of() : List.copyOf(blockers);
             units = units == null ? List.of() : List.copyOf(units);
+            selfObtainable = selfObtainable == null ? List.of() : List.copyOf(selfObtainable);
+        }
+
+        /** Pre-DEF-101 shape, kept so existing call sites and tests still read. */
+        public Verdict(Path home, Path into, boolean safe,
+                       List<Blocker> blockers, List<UnitSync> units) {
+            this(home, into, safe, blockers, units, List.of());
         }
 
         public int exitCode() { return safe ? 0 : BLOCKED_EXIT_CODE; }
@@ -122,21 +175,92 @@ public final class HomeCloseOut {
                     .ifPresent(r -> dirtyCheckouts.add(outcome.label()));
         }
 
+        // DEF-101. What the DESTINATION says it can obtain for itself. Read
+        // once, before the loop, and read from the destination — a claim about
+        // what `--into` can fetch has to come from `--into`.
+        dev.skillmanager.project.ProjectManifestRealization.Shortfall declared =
+                dev.skillmanager.project.ProjectManifestRealization.inspect(into);
+        java.util.Set<String> modifiedInWorktree = new java.util.HashSet<>();
+        for (ChildHomeMaterializer.UnitOutcome outcome : worktreeSide.locallyModifiedUnits()) {
+            modifiedInWorktree.add(outcome.label());
+        }
+
         List<Blocker> blockers = new ArrayList<>();
+        List<SelfObtainable> selfObtainable = new ArrayList<>();
         for (UnitSync unit : report.units()) {
+            SelfObtainable obtainable =
+                    selfObtainable(unit, declared, modifiedInWorktree, worktreeSide, intoRoot);
+            if (obtainable != null) {
+                selfObtainable.add(obtainable);
+                continue;
+            }
             String remedy = remedyFor(unit, homeRoot, intoRoot);
             if (remedy != null) blockers.add(new Blocker(unit, remedy));
         }
         for (UnitSync unit : report.units()) {
             if (!dirtyCheckouts.contains(unit.label())) continue;
             if (blockers.stream().anyMatch(b -> b.label().equals(unit.label()))) continue;
+            // A dirty checkout is never self-obtainable — modifiedInWorktree is
+            // the same enumeration dirtyCheckouts is filtered from — but the
+            // guard is stated rather than relied on, because the two lists are
+            // built from one walk and a future change to either must not be able
+            // to let a unit with unpushed work out through this seam.
+            if (selfObtainable.stream().anyMatch(o -> o.label().equals(unit.label()))) continue;
             blockers.add(new Blocker(unit,
                     (cliInvocation(homeRoot) + " unit publish "
                             + HomeDescriptor.shellQuote(unit.unitName()) + " "
                             + HomeDescriptor.homeArg(homeRoot)).strip()
                             + "  (a git checkout with unpushed work; a file copy cannot carry it)"));
         }
-        return new Verdict(homeRoot, intoRoot, blockers.isEmpty(), blockers, report.units());
+        return new Verdict(homeRoot, intoRoot, blockers.isEmpty(), blockers,
+                report.units(), selfObtainable);
+    }
+
+    /**
+     * "The destination lacks this and its own manifest declares it at a
+     * published ref", or null for every other case — DEF-101.
+     *
+     * <p>Narrow on purpose. Only {@link SyncStatus#NEW} is considered: every
+     * other status describes a unit the destination <em>has</em>, where the
+     * question is whose bytes win rather than whether the bytes exist. A
+     * declared unit that the destination already holds and the worktree has
+     * edited is still {@code UPDATED} / {@code HELD_BACK} / {@code CONFLICTED},
+     * and still blocks.
+     *
+     * @param declared          what the destination's own manifest names
+     * @param modifiedInWorktree labels the worktree home has local work on
+     */
+    private static SelfObtainable selfObtainable(
+            UnitSync unit,
+            dev.skillmanager.project.ProjectManifestRealization.Shortfall declared,
+            java.util.Set<String> modifiedInWorktree,
+            ChildHomeMaterializer worktreeSide,
+            Path into) throws IOException {
+        if (unit.status() != SyncStatus.NEW) return null;
+        if (declared == null || !declared.hasManifest()) return null;
+        if (modifiedInWorktree.contains(unit.label())) return null;
+        // POSITIVE evidence of provenance, not merely the absence of a
+        // complaint. isLocallyModified already answers true for a unit with no
+        // materialization record, so this is belt-and-braces — and deliberately
+        // so: "we found no record saying this came from somewhere" and "we
+        // found a record saying this came from somewhere" must not be the same
+        // input to a gate that decides whether a directory may be deleted. If
+        // that predicate is ever relaxed, this line still refuses.
+        if (worktreeSide.readRecord(unit.unitName(), unit.unitKind()).isEmpty()) return null;
+        var match = declared.declared().stream()
+                .filter(d -> d.kind() == unit.unitKind())
+                .filter(d -> d.lookupName().equals(unit.unitName())
+                        || d.alias().equals(unit.unitName()))
+                .findFirst()
+                .orElse(null);
+        if (match == null) return null;
+        return new SelfObtainable(unit, match.source(),
+                "skill-manager project resolve --project-dir "
+                        + HomeDescriptor.shellQuote(String.valueOf(
+                                declared.manifest().getParent()))
+                        + "  (declared by " + declared.manifest().getFileName()
+                        + " at " + match.source() + "; nothing in this worktree's copy "
+                        + "exists only here)");
     }
 
     /**
@@ -253,6 +377,13 @@ public final class HomeCloseOut {
             if (unit.status() == SyncStatus.UNCHANGED) continue;
             out.add("  %-18s %s — %s".formatted(
                     unit.statusLabel(false), unit.label(), unit.detail()));
+        }
+        // DEF-101: cleared, not silent. Printed before the blockers so a reader
+        // who sees a short list of fixes can also see what was decided about the
+        // units that are NOT on it.
+        for (SelfObtainable obtainable : verdict.selfObtainable()) {
+            out.add("  obtainable %s: the destination declares it — %s".formatted(
+                    obtainable.label(), obtainable.remedy()));
         }
         for (Blocker blocker : verdict.blockers()) {
             out.add("  fix %s: %s".formatted(blocker.label(), blocker.remedy()));

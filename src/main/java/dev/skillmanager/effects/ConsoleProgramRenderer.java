@@ -238,6 +238,13 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             }
             case ContextFact.ProjectSyncFailed x ->
                     Log.warn("project-sync %s failed — %s", x.projectName(), x.message());
+            // DEF-103: a project skipped for its OWN non-durable vendored
+            // declarations. Warned, never counted as a sync failure, and the
+            // wording says which of the two happened so a reader cannot mistake
+            // "your project needs repairing" for "the unit sync broke".
+            case ContextFact.ProjectSyncSkippedNonDurable x ->
+                    Log.warn("project-sync %s skipped (not refreshed) — %s",
+                            x.projectName(), x.message());
 
             // ---- sync git ----
             case ContextFact.SyncGitUpToDate x -> {
