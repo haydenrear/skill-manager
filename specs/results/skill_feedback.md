@@ -177,3 +177,69 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket HIS-8
+
+- close_scope: ticket
+- close_id: HIS-8
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T00:55:27+00:00
+- summary: >
+    HIS-8 (skill-manager#224): the derived-artifact contract is now stated ONCE,
+    in skt's references/derived-artifacts.md, and the three other units that
+    instruct agents about homes link to it rather than restate it. Zero model
+    change (variables=38 actions=9, delta zero); the whole slice is markdown in
+    four OTHER repositories, published as four PRs. GOAL-mechanism-documented
+    clause 1 moved 0 of 4 -> 4 of 4 instructing units; clause 2's judged read
+    went 0 of 3 -> 3 of 3, twice, with different agents. pytest specs/ 38 passed,
+    RunTests.java ALL PASSED, home-integrity graph BUILD SUCCESSFUL 18/18.
+    Ticket current == desired, byte-identical, so promotion carried nothing.
+    CLOSE TAKEN UNDER --allow-open, i.e. CloseTicketWeakened, for the reason in
+    SF-002; the ticket agent stops at PR open by rule 7, so no honest plan status
+    satisfied the gate.
+- feedback_status: items-recorded
+
+### SF-002 — `close ticket`'s accepted plan statuses exclude every status an unmerged epic ticket can honestly hold
+- category: profile-schema-cli
+- target: scripts/spec_evolution.py — `TICKET_CLOSED_STATUSES` at the `close ticket` gate
+- observed_on: haydenrear/skill-manager HIS-8 (#224), epic/home-integrity-sync, epic ticket close
+- evidence: results/epic-home-integrity-sync/probes/his-8/tla-spec-dev-close.out
+- severity: forced-workaround
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-8`
+- detail: >
+    `TICKET_CLOSED_STATUSES = {accepted, closed, complete, completed, done}`. In
+    the git-epic-workflow model a ticket agent STOPS AT PR OPEN and the epic
+    owner merges, and this plan's own word for a landed ticket is `delivered`
+    (15 tickets carry it). `delivered` is not in the set, so at close time the
+    agent may pick a refused status or make a false claim. `--allow-open` is the
+    only route, and it correctly records the close as `CloseTicketWeakened` --
+    but for a reason unrelated to the ticket's evidence, which dilutes exactly
+    the signal that flag exists to preserve.
+- forced_workaround: `--allow-open`, recorded in the ticket's complexity-ledger narrative so the terminal evaluation reads the weaker claim
+- data_loss: no
+- workaround_applied: yes
+- recommendation: ticket https://github.com/haydenrear/tla-spec-dev/issues/288
+- status: filed
+
+### SF-003 — the ticket plan parses again: DEF-069 is closed by measurement
+- category: profile-schema-cli
+- target: scripts/spec_evolution.py — ticket_plan.yaml reader
+- observed_on: haydenrear/skill-manager HIS-8 (#224)
+- evidence: results/epic-home-integrity-sync/probes/his-8/tla-spec-dev-open.out
+- severity: none — RESOLVED, recorded so nobody re-files it
+- root_cause: tool (fixed upstream)
+- surface: `tla-spec-dev --spec-root specs open ticket HIS-8`
+- detail: >
+    Every prior ticket in this epic recorded `open ticket` as unusable because
+    the toolchain's YAML reader could not parse this plan (DEF-069). Re-measured
+    here: `open ticket HIS-8` succeeded, scaffolded 83 ticket-local workflow
+    files, and `close ticket HIS-8` then completed and promoted. HIS-8 is the
+    first ticket in this epic to run either half. Recording the positive result
+    because a defect nobody re-measures stays "open" forever, which this epic's
+    own backlog reconciliation note warns about.
+- forced_workaround: none
+- data_loss: no
+- workaround_applied: none
+- recommendation: no ticket needed — fixed in skill-manager 6d4c6a4 and verified here
+- status: resolved

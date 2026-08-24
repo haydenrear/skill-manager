@@ -1,0 +1,13 @@
+build — /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager
+
+  no-op       cli-shim:pip/pytest
+      stale — it is declared and not usable on disk
+      producer: pip:pytest (declared by spec-double-compiler)
+      now: stale — its output bin/cli/pytest is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+✗       the producer ran and this home still does not hold the artifact — it reported the dependency already satisfied from outside this home and wrote nothing. This is not a repair.
+
+1 selected: 0 built, 0 already current, 0 not buildable here
+✗ 1 producer(s) ran and wrote nothing — the backend reported the dependency already satisfied from outside this home
+1 of the selected artifact(s) are still stale
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/build-20260823-204514-f44a.log
+pytest_build_exit=1

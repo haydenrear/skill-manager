@@ -1,0 +1,46 @@
+# ISSUE-166 external semantic view -> production Test Graph evidence.
+external:
+  production_package: dev.skillmanager
+  port_bindings:
+    SkillManagerCli.sync_named_unit: real
+
+actions:
+  PublicNamedSyncPinnedRevision:
+    view: external
+    layer: external
+    channel: cli
+    controllability: e2e_direct
+    port: SkillManagerCli.sync_named_unit
+    command: skill-manager sync <unit> --from <clean-detached-A> --yes --skip-mcp --skip-agents
+    test_graph:
+      graph: project-smoke
+      nodes:
+        project.pinned.sync.revision.coherent:
+          - fixture_project_resolve_exit_zero
+          - fixture_unrelated_install_exit_zero
+          - fixture_units_lock_stabilized
+          - fixture_source_is_clean_detached_a_without_b
+          - fixture_unrelated_installed_record_present
+          - fixture_unrelated_parent_tree_nonempty
+          - fixture_unrelated_child_tree_nonempty
+          - fixture_unrelated_units_lock_row_present
+          - fixture_unrelated_cli_lock_row_present
+          - fixture_unrelated_parent_cli_shim_executable
+          - fixture_unrelated_child_cli_shim_executable
+          - named_sync_exit_zero
+          - checkout_head_remains_selected_a
+          - installed_git_hash_is_selected_a
+          - units_lock_resolved_sha_is_selected_a
+          - registered_project_revision_is_selected_a
+          - child_realization_is_selected_a
+          - project_lock_source_and_directness_preserved
+          - claimant_refresh_did_not_fetch_or_merge_b
+          - no_partial_or_error_receipt
+          - unrelated_records_trees_locks_and_shims_byte_identical
+          - every_git_tree_is_clean
+      also_covered_by:
+        - graph: spec-conformance
+          node: project.pinned.sync.revision.coherent
+    note: >
+      The fixture establishes every unrelated byte-identity surface before the
+      behavior under test, then drives the public CLI over local A/B git history.

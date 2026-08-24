@@ -1,0 +1,2321 @@
+== PluginParserTest (5 cases)
+  [PASS] loads plugin with only plugin.json
+  [PASS] loads plugin with sidecar toml plugin-level deps
+  [PASS] loads plugin with one contained skill
+  [PASS] looksLikePlugin detects layout
+  [PASS] missing plugin.json errors with a clear message
+   → 5 passed, 0 failed
+== PluginParserDriftWarnsTest (5 cases)
+  [PASS] name drift: toml wins, warning emitted
+  [PASS] version drift: toml wins, warning emitted
+  [PASS] multiple drifts: one warning per field
+  [PASS] no drift: no warnings
+  [PASS] toml-only field (json missing): no warning
+   → 5 passed, 0 failed
+== EffectiveDepUnionTest (7 cases)
+  [PASS] plugin-level + one contained skill: deps unioned
+  [PASS] plugin-level only: contained-skill list is empty union contributor
+  [PASS] contained-only: plugin's view is the contained-skill's view
+  [PASS] scoped npm CLI dep derives the package name, not an empty name
+  [PASS] multiple contained skills: union order is plugin-level then sorted-by-dirname
+  [PASS] references unioned across plugin-level and contained skills
+  [PASS] substitutability: skill DepSpec X ≡ plugin with one contained carrying X (deps surface)
+   → 7 passed, 0 failed
+== SkillUnitWrapsSkillTest (4 cases)
+  [PASS] Skill.asUnit returns a SkillUnit wrapping this
+  [PASS] every accessor delegates to the underlying skill
+  [PASS] AgentUnit polymorphism: SkillUnit and PluginUnit both legal
+  [PASS] existing skill behavior unchanged after wrapping
+   → 4 passed, 0 failed
+== CoordParserTest (22 cases)
+  [PASS] bare name
+  [PASS] bare name@version
+  [PASS] skill: prefix → Kinded(SKILL)
+  [PASS] skill: prefix with version
+  [PASS] plugin: prefix → Kinded(PLUGIN)
+  [PASS] plugin: prefix with version
+  [PASS] github: → DirectGit
+  [PASS] github: with #ref
+  [PASS] git+https URL
+  [PASS] git+ with #ref
+  [PASS] file:// absolute path → Local
+  [PASS] file: (single-slash, legacy) → Local
+  [PASS] ./ relative path → Local
+  [PASS] ../ relative path → Local
+  [PASS] / absolute path → Local
+  [PASS] blank input rejected
+  [PASS] null input rejected
+  [PASS] whitespace trimmed
+  [PASS] skill: with sub-element → SubElement wrapping Kinded
+  [PASS] plugin: with sub-element and version
+  [PASS] bare with sub-element
+  [PASS] unrecognized prefix falls through to Bare
+   → 22 passed, 0 failed
+== CoordRoundTripTest (18 cases)
+  [PASS] round-trip: hello-skill
+  [PASS] round-trip: hello-skill@1.2.3
+  [PASS] round-trip: x@0
+  [PASS] round-trip: skill:hello
+  [PASS] round-trip: skill:hello@1.0.0
+  [PASS] round-trip: plugin:repo-intelligence
+  [PASS] round-trip: plugin:foo@2.0.1
+  [PASS] round-trip: github:user/repo
+  [PASS] round-trip: github:user/repo#main
+  [PASS] round-trip: github:owner/proj#v1.0.0-alpha
+  [PASS] round-trip: git+https://gitlab.example.com/x/y.git
+  [PASS] round-trip: git+https://gitlab.example.com/x/y.git#v1.2.3
+  [PASS] round-trip: git+ssh://git@host/x.git#abc123
+  [PASS] round-trip: file:///abs/path
+  [PASS] round-trip: file:./legacy/relative
+  [PASS] round-trip: ./relative
+  [PASS] round-trip: ../sibling/x
+  [PASS] round-trip: /abs/path
+   → 18 passed, 0 failed
+== UnitReferenceFromTomlTest (4 cases)
+  [PASS] skill_references with mixed kinds → mixed kindFilters
+  [PASS] inline-table reference (name + path) → legacy projection
+  [PASS] inline-table reference (path only) → Local
+  [PASS] empty references → empty list
+   → 4 passed, 0 failed
+== SkillProjectParserTest (11 cases)
+  [PASS] parses skill project manifest sections as portable intent
+  [PASS] parses [[vendored]] declarations with the same array-of-tables idiom as [[libs]]
+  [PASS] vendored on_invalid defaults to error so a declared contract can fail
+  [PASS] rejects vendored paths that leave the project or name an unknown on_invalid
+  [PASS] rejects malformed project references
+  [PASS] rejects kind-conflicting references
+  [PASS] accepts legacy skill-manager-project.toml filename
+  [PASS] parses root array dependency declarations
+  [PASS] profiles select named project harness declarations
+  [PASS] profile default inheritance keeps legacy manifest declarations
+  [PASS] an array-of-tables `skills` section is refused by message, not by tomlj
+   → 11 passed, 0 failed
+== UnitStoreDirChoiceTest (5 cases)
+  [PASS] unitDir(SKILL) routes to skills/<name>
+  [PASS] unitDir(PLUGIN) routes to plugins/<name>
+  [PASS] init() creates plugins/ and installed/ alongside skills/
+  [PASS] sourcesDir() is a deprecated alias for installedDir()
+  [PASS] pluginsDir() resolves under root
+   → 5 passed, 0 failed
+== InstalledUnitRoundTripTest (5 cases)
+  [PASS] write+read returns the same record (skill)
+  [PASS] write+read returns the same record (plugin)
+  [PASS] legacy JSON without unitKind reads as SKILL
+  [PASS] unknown JSON fields are ignored (forward-compat)
+  [PASS] addError / clearError mutate via the store
+   → 5 passed, 0 failed
+== MigrationFromSkillSourceTest (6 cases)
+migrated installed-unit record: beta.json
+migrated installed-unit record: alpha.json
+  [PASS] migrates legacy records and deletes originals
+migrated installed-unit record: x.json
+  [PASS] idempotent: second call is a no-op
+  [PASS] preserves existing installed/ records
+  [PASS] no-op when sources/ does not exist
+  [PASS] empty sources/ dir is removed after migration
+migrated installed-unit record: echo.json
+  [PASS] post-migration: read goes through UnitStore
+   → 6 passed, 0 failed
+== FetcherLocalSourceTest (5 cases)
+  [PASS] file:<missing-path> fails fast with 'local source not found'
+  [PASS] ./<missing> fails fast even without the file: prefix
+  [PASS] /abs-but-missing fails fast
+  [PASS] file:<existing-file-not-dir> fails fast with 'exists but is not a directory'
+→ registry: resolving definitely-not-a-real-skill-name-563712584400458 from http://127.0.0.1:8090
+  [PASS] bare <name> still falls through to registry resolution (not fail-fast)
+   → 5 passed, 0 failed
+== RegistryUnavailableExceptionTest (3 cases)
+  [PASS] baseUrl is preserved + message names the URL
+  [PASS] EXIT_CODE is stable + distinct from AuthenticationRequiredException
+  [PASS] null cause message yields a clean main-message tail
+   → 3 passed, 0 failed
+== ResolverKindFilterTest (6 cases)
+  [PASS] bare name resolves to a skill when only a skill is registered
+  [PASS] bare name with multi-kind hits surfaces MultiKindCollision
+  [PASS] skill:name disambiguates a multi-kind registry
+  [PASS] plugin:name disambiguates a multi-kind registry
+  [PASS] skill:name returns NotFound when only the plugin is registered
+  [PASS] unknown name returns NotFound
+   → 6 passed, 0 failed
+== ResolverHeterogeneousRefsTest (3 cases)
+  [PASS] skill referencing a plugin: kindFilter survives into descriptor
+  [PASS] plugin referencing a skill: kindFilter survives into descriptor
+  [PASS] plugin with contained skill that references another plugin: refs unioned
+   → 3 passed, 0 failed
+== ResolverContainedSkillNotMatchedTest (3 cases)
+  [PASS] registry has no record for a contained skill name
+  [PASS] skill:contained-name still NotFound (kind-filtered registry has no hit)
+  [PASS] resolving the plugin returns the plugin descriptor; contained skills are bundled (not enumerated as references)
+   → 3 passed, 0 failed
+== ResolverBundledAliasTest (1 cases)
+  [PASS] aliases bundled skill-manager refs before registry lookup
+   → 1 passed, 0 failed
+== ResolverDirectGitDetectsKindTest (8 cases)
+  [PASS] github:user/repo of a skill → SKILL descriptor
+  [PASS] github:user/repo of a plugin → PLUGIN descriptor
+  [PASS] git+url with a #ref pins the clone target
+  [PASS] file:./rel resolves to local path; no clone
+  [PASS] file:./ pointing at a plugin → PLUGIN
+  [PASS] clone target with neither plugin.json nor SKILL.md → UnknownLayout
+  [PASS] clone failure surfaces FetchFailed
+  [PASS] local path does not exist → NotFound
+   → 8 passed, 0 failed
+== ResolverDirectGitTransitiveTest (1 cases)
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/resolver-direct-git-transitive-4707345412068464782/child/
+  [PASS] pinned direct-git transitive reference resolves and retains its requester
+   → 1 passed, 0 failed
+== ResolverDeterminismTest (4 cases)
+  [PASS] registry coord: two resolves produce equal descriptors (modulo scratch)
+  [PASS] github coord: two resolves produce equal descriptors
+  [PASS] plugin coord: descriptor identity is stable
+  [PASS] local coord: descriptor identity is stable across calls
+   → 4 passed, 0 failed
+== ResolverCycleTest (3 cases)
+! reference cycle: alpha-unit -> beta-unit -> alpha-unit
+  [PASS] name-mismatched file reference cycle resolves once and reports its path
+  [PASS] distinct coords with the same unit name discard redundant staging
+  [PASS] equivalent Git spellings share a key while different revisions do not
+   → 3 passed, 0 failed
+== PlanShapeInvariantTest (4 cases)
+  [PASS] skill and plugin with cli+mcp dep produce same action-count shapes
+  [PASS] store action carries SKILL kind for skill, PLUGIN kind for plugin
+  [PASS] cli dep name is stable across skill and plugin variants
+  [PASS] no-dep unit: plan has exactly one action (store)
+   → 4 passed, 0 failed
+== SkillScriptBackendTest (5 cases)
+→ cli: skill-script force-script-bin - force rerun requested
+→ cli: skill-script force-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-4287824113976159931/skills/force-script-skill/skill-scripts/install.sh
+→ cli: skill-script force-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-4287824113976159931/logs/skill-scripts/20260824-004057-866-force-script-skill-force-script-bin.log
+✓ cli: installed force-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-4287824113976159931/bin/cli/force-script-bin
+  [PASS] force reruns matching-fingerprint skill-script with existing binary
+  [PASS] planner marks only skill-script deps forced
+  [PASS] planner scopes force-scripts to selected units
+→ cli: skill-script logged-script-bin - force rerun requested
+→ cli: skill-script logged-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-17174758440923089432/skills/logged-script-skill/skill-scripts/install.sh
+→ cli: skill-script logged-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-17174758440923089432/logs/skill-scripts/20260824-004058-133-logged-script-skill-logged-script-bin.log
+✓ cli: installed logged-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-17174758440923089432/bin/cli/logged-script-bin
+  [PASS] skill-script stdout and stderr are written under store logs
+→ cli: skill-script failing-script-bin - force rerun requested
+→ cli: skill-script failing-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-13985409975297244052/skills/failing-script-skill/skill-scripts/install.sh
+→ cli: skill-script failing-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-13985409975297244052/logs/skill-scripts/20260824-004058-290-failing-script-skill-failing-script-bin.log
+  [PASS] skill-script failure includes log path and output tail
+   → 5 passed, 0 failed
+== InstallerFingerprintTest (28 cases)
+  [PASS] skill-script-v1 digest is byte-identical to the pre-ARTI-04 scheme
+  [PASS] an empty arg is encoded, and does not collide with no args at all
+  [PASS] every registered backend answers, and none throws
+  [PASS] each backend asserts the grade its evidence actually supports
+  [PASS] the four backends that recorded nothing now record a digest
+  [PASS] schemes are domain-separated: identical field text, different digests
+  [PASS] tar: the declared sha256 is in the digest, and its absence is in the basis
+  [PASS] tar: three different installed payloads produced ONE digest, and now do not
+  [PASS] tar: the installed digest is its own field and never becomes the declared one
+  [PASS] tar: a dangling shim is hashed as nothing, not as a resolved artifact
+  [PASS] tar: no target for this platform is a gap with a reason, not a digest
+  [PASS] pip: the version resolved into venvs/ moves the digest
+  [PASS] pip: a range spec fingerprints on what is installed, not on the range
+  [PASS] pip: the distribution name survives extras and operators
+  [PASS] npm: the installed package.json version moves the digest
+  [PASS] npm: the package name is parsed without inventing a version
+  [PASS] a backend with nothing declared to hash is a gap, never a digest
+  [PASS] a Fingerprint cannot be both a digest and a gap, or neither
+  [PASS] the recorder writes a digest, a basis and a binary for a non-script dep
+  [PASS] a recorded gap is written to the lock rather than dropped
+  [PASS] rows written before ARTI-04 still read, and say their basis is unknown
+  [PASS] brew: the cellar symlink is the only thing that can move this digest
+  [PASS] brew: a cask resolves, and an ambiguous one refuses to guess
+  [PASS] tar: a null install target under a present key does not throw
+  [PASS] an empty digest is refused, not written
+  [PASS] an ungraded legacy row is never read as resolved
+  [PASS] the kind round-trips through the lock file
+✓ cli: jinja2-cli [pip] installed for fp-unit
+✓ cli: 1 installed
+  [PASS] the effects path records the same row as the bulk path
+   → 28 passed, 0 failed
+== CliPresenceTest (6 cases)
+! cli: no install target for jinja2 on darwin-arm64
+  [PASS] a foreign home's copy of the tool is not this home's provisioning
+! cli: no install target for jinja2 on darwin-arm64
+  [PASS] and a SYMLINK to that foreign bin does not launder it
+  [PASS] the bin/cli/<name> fallback is tar's alone
+  [PASS] a tool the system provides outside any home still suppresses the install
+  [PASS] a shim in this home counts only while it resolves
+→ cli: downloading hello from http://127.0.0.1:57302/hello
+✓ cli: installed hello -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-presence-fixpoint-14129568329852290424/bin/cli/hello
+  [PASS] `home verify` refuses a dangling shim and the install clears it
+   → 6 passed, 0 failed
+== CliArtifactMatrixTest (42 cases)
+  [PASS] CliArtifact: ABSENT is NOT usable
+  [PASS] CliArtifact: DANGLING_SYMLINK is NOT usable
+  [PASS] CliArtifact: WRAPPER_TARGET_MISSING is NOT usable
+  [PASS] CliArtifact: NON_EXECUTABLE_FILE is NOT usable
+  [PASS] CliArtifact: HEALTHY_SYMLINK is usable
+  [PASS] CliArtifact: HEALTHY_WRAPPER is usable
+  [PASS] CliArtifact: REAL_BINARY is usable
+  [PASS] PIP × ABSENT -> installs
+  [PASS] PIP × DANGLING_SYMLINK -> installs
+  [PASS] PIP × WRAPPER_TARGET_MISSING -> installs
+  [PASS] PIP × NON_EXECUTABLE_FILE -> installs
+  [PASS] PIP × HEALTHY_SYMLINK -> declines
+  [PASS] PIP × HEALTHY_WRAPPER -> declines
+  [PASS] PIP × REAL_BINARY -> declines
+  [PASS] NPM × ABSENT -> installs
+  [PASS] NPM × DANGLING_SYMLINK -> installs
+  [PASS] NPM × WRAPPER_TARGET_MISSING -> installs
+  [PASS] NPM × NON_EXECUTABLE_FILE -> installs
+  [PASS] NPM × HEALTHY_SYMLINK -> declines
+  [PASS] NPM × HEALTHY_WRAPPER -> declines
+  [PASS] NPM × REAL_BINARY -> declines
+  [PASS] BREW × ABSENT -> installs
+  [PASS] BREW × DANGLING_SYMLINK -> installs
+  [PASS] BREW × WRAPPER_TARGET_MISSING -> installs
+  [PASS] BREW × NON_EXECUTABLE_FILE -> installs
+  [PASS] BREW × HEALTHY_SYMLINK -> declines
+  [PASS] BREW × HEALTHY_WRAPPER -> declines
+  [PASS] BREW × REAL_BINARY -> declines
+! cli: no install target for matrix-tool on darwin-arm64
+  [PASS] TAR × ABSENT -> installs
+! cli: no install target for matrix-tool on darwin-arm64
+  [PASS] TAR × DANGLING_SYMLINK -> installs
+! cli: no install target for matrix-tool on darwin-arm64
+  [PASS] TAR × WRAPPER_TARGET_MISSING -> installs
+! cli: no install target for matrix-tool on darwin-arm64
+  [PASS] TAR × NON_EXECUTABLE_FILE -> installs
+  [PASS] TAR × HEALTHY_SYMLINK -> declines
+  [PASS] TAR × HEALTHY_WRAPPER -> declines
+  [PASS] TAR × REAL_BINARY -> declines
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-785344384824363087/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-785344384824363087/logs/skill-scripts/20260824-004058-702-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-785344384824363087/bin/cli/matrix-tool
+  [PASS] SKILL_SCRIPT × ABSENT -> installs
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-3509815892401643573/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-3509815892401643573/logs/skill-scripts/20260824-004058-890-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-3509815892401643573/bin/cli/matrix-tool
+  [PASS] SKILL_SCRIPT × DANGLING_SYMLINK -> installs
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-13992970073815047642/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-13992970073815047642/logs/skill-scripts/20260824-004059-035-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-13992970073815047642/bin/cli/matrix-tool
+  [PASS] SKILL_SCRIPT × WRAPPER_TARGET_MISSING -> installs
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-13710145462770148339/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-13710145462770148339/logs/skill-scripts/20260824-004059-176-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-13710145462770148339/bin/cli/matrix-tool
+  [PASS] SKILL_SCRIPT × NON_EXECUTABLE_FILE -> installs
+  [PASS] SKILL_SCRIPT × HEALTHY_SYMLINK -> declines
+  [PASS] SKILL_SCRIPT × HEALTHY_WRAPPER -> declines
+  [PASS] SKILL_SCRIPT × REAL_BINARY -> declines
+   → 42 passed, 0 failed
+== CycleDetectionTest (8 cases)
+  [PASS] skill→skill cycle detected
+  [PASS] skill→plugin cycle detected
+  [PASS] plugin→skill cycle detected
+  [PASS] plugin→plugin cycle detected
+  [PASS] mixed chain cycle detected (s1→p1→s2→p2→s1)
+  [PASS] no cycle in linear chain (a→b→c)
+  [PASS] self-reference is caught as a cycle
+  [PASS] plan() throws PlanCycleException on cyclic input; chain preserved
+   → 8 passed, 0 failed
+== MixedKindTopoOrderTest (4 cases)
+  [PASS] plugin depending on skill: skill STORE action precedes plugin STORE action
+  [PASS] skill depending on plugin: plugin STORE action precedes skill STORE action
+  [PASS] 3-node chain A→B→C ordered [C, B, A] regardless of input order
+  [PASS] independent units preserve input order within their tier
+   → 4 passed, 0 failed
+== PlanPolicyCategorizationTest (6 cases)
+  [PASS] skill unit produces '+ SKILLS' line containing the unit name
+  [PASS] plugin unit produces '+ AGENTS' line containing the unit name
+  [PASS] mixed install produces both '+ SKILLS' and '+ AGENTS' lines
+  [PASS] unit with CLI dep produces '! CLI' line
+  [PASS] unit with MCP dep produces '! MCP' line
+  [PASS] no-dep unit has no '!' warning lines
+   → 6 passed, 0 failed
+== PolicyGatingTest (18 cases)
+  [PASS] skill — CLI dep with require_confirmation_for_cli_deps=true blocks
+  [PASS] skill — CLI dep with require_confirmation_for_cli_deps=false allows
+  [PASS] skill — MCP dep with require_confirmation_for_mcp=true blocks
+  [PASS] skill — MCP dep with require_confirmation_for_mcp=false allows
+  [PASS] skill — no deps + all flags on → zero violations
+  [PASS] skill — CLI + MCP with both flags on → two violations
+  [PASS] plugin — CLI dep with require_confirmation_for_cli_deps=true blocks
+  [PASS] plugin — CLI dep with require_confirmation_for_cli_deps=false allows
+  [PASS] plugin — MCP dep with require_confirmation_for_mcp=true blocks
+  [PASS] plugin — MCP dep with require_confirmation_for_mcp=false allows
+  [PASS] plugin — no deps + all flags on → zero violations
+  [PASS] plugin — CLI + MCP with both flags on → two violations
+  [PASS] MCP shell-load triggers HOOKS gate when flag on
+  [PASS] HOOKS flag off allows even when MCP flag on but no hooks line
+  [PASS] formatViolationMessage names each policy.install.* flag
+  [PASS] empty violations → empty message
+  [PASS] Policy.defaults() install matches InstallPolicy.defaults()
+  [PASS] default policy: hello-skill-shaped plan (CLI + MCP) → no violations
+   → 18 passed, 0 failed
+== HandlerSubstitutabilityTest (14 cases)
+  [PASS] skill — AddUnitError writes ErrorAdded fact
+  [PASS] skill — ClearUnitError writes ErrorCleared fact
+  [PASS] skill — ValidateAndClearError(GATEWAY_UNAVAILABLE) keeps error (no probe)
+  [PASS] skill — ValidateAndClearError(AGENT_SYNC_FAILED) keeps error (no probe)
+  [PASS] skill — ValidateAndClearError(AUTHENTICATION_NEEDED) keeps error (no probe)
+  [PASS] skill — RejectIfAlreadyInstalled passes when unit absent from store
+  [PASS] skill — RejectIfAlreadyInstalled HALTS when unit present on disk
+  [PASS] plugin — AddUnitError writes ErrorAdded fact
+  [PASS] plugin — ClearUnitError writes ErrorCleared fact
+  [PASS] plugin — ValidateAndClearError(GATEWAY_UNAVAILABLE) keeps error (no probe)
+  [PASS] plugin — ValidateAndClearError(AGENT_SYNC_FAILED) keeps error (no probe)
+  [PASS] plugin — ValidateAndClearError(AUTHENTICATION_NEEDED) keeps error (no probe)
+  [PASS] plugin — RejectIfAlreadyInstalled passes when unit absent from store
+  [PASS] plugin — RejectIfAlreadyInstalled HALTS when unit present on disk
+   → 14 passed, 0 failed
+== ListTypedHandlerSubstitutabilityTest (12 cases)
+  [PASS] batch=1 deps={cli=0,mcp=0} — cli/mcp accessors match across kinds
+  [PASS] batch=2 deps={cli=0,mcp=0} — cli/mcp accessors match across kinds
+  [PASS] batch=3 deps={cli=0,mcp=0} — cli/mcp accessors match across kinds
+  [PASS] batch=1 deps={cli=1,mcp=0} — cli/mcp accessors match across kinds
+  [PASS] batch=2 deps={cli=1,mcp=0} — cli/mcp accessors match across kinds
+  [PASS] batch=3 deps={cli=1,mcp=0} — cli/mcp accessors match across kinds
+  [PASS] batch=1 deps={cli=0,mcp=1} — cli/mcp accessors match across kinds
+  [PASS] batch=2 deps={cli=0,mcp=1} — cli/mcp accessors match across kinds
+  [PASS] batch=3 deps={cli=0,mcp=1} — cli/mcp accessors match across kinds
+  [PASS] batch=1 deps={cli=1,mcp=2} — cli/mcp accessors match across kinds
+  [PASS] batch=2 deps={cli=1,mcp=2} — cli/mcp accessors match across kinds
+  [PASS] batch=3 deps={cli=1,mcp=2} — cli/mcp accessors match across kinds
+   → 12 passed, 0 failed
+== GitOpsRepoBoundaryTest (10 cases)
+  [PASS] originUrl reports a repository root's own remote
+  [PASS] originUrl does not report the ENCLOSING repository's remote
+! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-nested-rewrite-13828929106459778670/enclosing/build/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
+  [PASS] setOrigin leaves the enclosing repository's remote INTACT
+! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-nested-add-10316617839660233157/enclosing/build/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
+  [PASS] setOrigin does not ADD an origin to an enclosing repository that has none
+! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-worktree-primary-15820691291872054926/wt/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
+  [PASS] a WORKTREE's shared config is not rewritten through a nested home
+  [PASS] setOrigin still rewrites a directory that IS a repository
+  [PASS] setOrigin adds an origin to a repository root that has none
+  [PASS] isGitRepo is about the directory itself, not an enclosing checkout
+  [PASS] isGitRepo accepts a linked worktree root, whose .git is a FILE
+  [PASS] initLocalSnapshot inside a checkout initialises the SNAPSHOT, not the checkout
+   → 10 passed, 0 failed
+== DereferencedStoreLinkSyncTest (10 cases)
+  [PASS] a dereferenced store link is named, and is not an authored change
+  [PASS] a link resolving inside the unit is the unit's own content
+  [PASS] a real edit alongside the materialization is still reported
+  [PASS] an intact store link is not a divergence
+  [PASS] a commit ahead of the baseline is dirty even with a clean tree
+  [PASS] a commit ahead is dirty even when a dereference is also present
+  [PASS] a wholesale replace does not destroy the materialized tree
+  [PASS] restore replaces a path upstream converted to real content
+  [PASS] the remedy for a stash-pop residue is not the remedy for a merge
+  [PASS] a rolled-back conflict is not reported as already clear
+   → 10 passed, 0 failed
+== SyncPathsAgreeAboutDirtyTest (4 cases)
+  [PASS] no effects handler asks the raw dirty question
+  [PASS] the scan can actually see a violation
+  [PASS] both sync paths reach the one definition
+  [PASS] the ledger of callers this scan cannot see is accurate
+   → 4 passed, 0 failed
+== SourceProvenanceRecorderTest (4 cases)
+  [PASS] local skill with bundled published name keeps local provenance outside bundled install root
+  [PASS] lookalike bundled local tree keeps local provenance without onboard registration
+  [PASS] registered onboard local bundled source records bundled github provenance
+  [PASS] a home inside a git checkout does not repoint that checkout's origin
+   → 4 passed, 0 failed
+== ResolveGraphDirectGitSyncTest (4 cases)
+  [PASS] matching provenance makes a direct-git transitive sync idempotent
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-8206281955072675116/shared-child-repository/
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-8206281955072675116/shared-child-repository/
+  [PASS] same repository with different refs attributes only the failing parent
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-removed-4369133012520206072/never-a-repository
+  [PASS] removing the offending reference clears the stale error on the next sync
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-reconcile-1379958189475915809/never-a-repository
+  [PASS] reconcile validateAndClear clears the error only once refs are met or removed
+   → 4 passed, 0 failed
+== SyncGitDocRepoTest (1 cases)
+  [PASS] git-latest sync of a DOC unit pulls the checkout and refreshes the record
+   → 1 passed, 0 failed
+== KindAwareDispatchTest (6 cases)
+  [PASS] RemoveUnitFromStore(SKILL) deletes skills/<name>
+  [PASS] RemoveUnitFromStore(PLUGIN) deletes plugins/<name>, leaves skills/ untouched
+  [PASS] RemoveUnitFromStore(PLUGIN) when only skills/<name> exists is a no-op
+  [PASS] UnlinkAgentUnit field carries kind for handler dispatch
+  [PASS] SyncGit field carries kind for unitDir routing
+  [PASS] SyncGit refuses dirty registry install before returning registry failure fact
+   → 6 passed, 0 failed
+== CompensationLogicTest (8 cases)
+  [PASS] RollbackJournal: pendingLifo reverses insertion order
+  [PASS] RollbackJournal: pendingLifo returns a defensive copy
+  [PASS] RollbackJournal: clear empties the journal
+  [PASS] compensationsFor(RunCliInstall) → UninstallCliIfOrphan
+  [PASS] compensationsFor(CommitUnitsToStore) emits one DeleteUnitDir per committed unit, kind-aware
+  [PASS] compensationsFor skips DeleteUnitDir for resolved units that DIDN'T emit SkillCommitted
+  [PASS] applyCompensation(DeleteUnitDir) removes the unit's store dir
+  [PASS] applyCompensation(RestoreInstalledUnit) writes the previous record back
+   → 8 passed, 0 failed
+== ProjectSyncErrorReportingTest (3 cases)
+  [PASS] one project sync failure on ten units is reported once, not ten times
+  [PASS] units degraded differently are still reported separately
+  [PASS] a project sync failure nothing can produce again clears itself
+   → 3 passed, 0 failed
+== CompensationPairingTest (12 cases)
+  [PASS] CommitUnitsToStore → DeleteUnitDir per committed (kind-aware)
+  [PASS] RecordSourceProvenance → DeleteInstalledUnit per resolved
+  [PASS] RunCliInstall → UninstallCliIfOrphan
+  [PASS] RegisterMcpServer → UnregisterMcpIfOrphan
+  [PASS] SyncAgents → UnprojectIfOrphan per unit that synced
+  [PASS] preState(AddUnitError) on existing record → RestoreInstalledUnit
+  [PASS] preState(AddUnitError) on absent record → DeleteInstalledUnit
+  [PASS] preState(OnboardUnit) on absent record → DeleteInstalledUnit
+  [PASS] preState(OnboardUnit) on existing record → empty (effect skips)
+  [PASS] MaterializeProjection → ReverseProjection (post-state, when materialized)
+  [PASS] MaterializeProjection skipped (no fact) → no compensation
+  [PASS] CreateBinding → RestoreProjectionLedger pre-state snapshot
+   → 12 passed, 0 failed
+== CompensationOrphanTest (7 cases)
+  [PASS] isClaimedByOtherUnit: sibling skill declaring same dep is visible
+  [PASS] isClaimedByOtherUnit: no other claimant → false
+  [PASS] isClaimedByOtherUnit: rolled-back unit excluded from its own claim
+  [PASS] isMcpClaimedByOtherUnit: sibling skill declaring same MCP server is visible
+  [PASS] isMcpClaimedByOtherUnit: no other claimant → false
+  [PASS] applyCompensation(UninstallCliIfOrphan) is a no-op when survivor claims dep
+rollback: uninstall CLI dep cowsay (claimed only by rolled-back rolled-back)
+  [PASS] applyCompensation(UninstallCliIfOrphan) drops lock when no survivor claims dep
+   → 7 passed, 0 failed
+== UninstallScenarioTest (8 cases)
+  [PASS] SKILL with one MCP dep, no other claimants → unregister
+  [PASS] SKILL with MCP dep claimed by sibling → no orphan emitted
+  [PASS] SKILL with no MCP deps → no orphans (regardless of siblings)
+  [PASS] SKILL with multiple MCP deps, one claimed by sibling → only unclaimed unregister
+  [PASS] PLUGIN re-walk: contained skill's MCP dep surfaces as orphan
+  [PASS] PLUGIN re-walk: plugin-level + contained-skill MCP deps both unioned
+  [PASS] PLUGIN with no MCP deps → no orphans
+  [PASS] Uninstall emits RemoveUnitFromStore with correct kind
+   → 8 passed, 0 failed
+== UninstallCliCleanupTest (5 cases)
+✓ removed alpha from store
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15135079234281895700/units.lock.toml
+  [PASS] uninstall prunes orphaned skill-script binary and cli-lock row
+✓ removed alpha from store
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7654466977236003200/units.lock.toml
+  [PASS] uninstall preserves shared CLI artifact and rewrites requested_by
+✓ removed widget from store
+! claude: CLI claude not on PATH — install with: brew install claude
+! codex: CLI codex not on PATH — install with: brew install codex
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4309455455596214240/units.lock.toml
+  [PASS] uninstall re-walks plugin-level and contained-skill CLI deps
+✓ removed alpha from store
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3103916908905510391/units.lock.toml
+  [PASS] uninstall preserves CLI dep claimed by surviving plugin-contained skill
+✓ removed alpha from store
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8232475949588296722/units.lock.toml
+  [PASS] lower-level remove leaves CLI artifacts and cli-lock rows alone
+   → 5 passed, 0 failed
+== FailureInjectionSweepTest (9 cases)
+  [PASS] skill — fail at step 1 of 3-effect chain → all prior mutations rolled back
+  [PASS] skill — fail at step 2 of 3-effect chain → all prior mutations rolled back
+  [PASS] skill — fail at step 0 (first effect) → no prior steps, no leak
+  [PASS] plugin — fail at step 1 of 3-effect chain → all prior mutations rolled back
+  [PASS] plugin — fail at step 2 of 3-effect chain → all prior mutations rolled back
+  [PASS] plugin — fail at step 0 (first effect) → no prior steps, no leak
+  [PASS] pre-existing installed-record → AddUnitError + fail → record restored to pre-image
+  [PASS] multi-unit commit + fail → every committed unit's dir removed
+  [PASS] clean run (no fault) → no rollback, mutations persist
+   → 9 passed, 0 failed
+== CommitPreImageRestoreTest (10 cases)
+  pre-existing skill: 3 file(s), 120 bytes at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1556104958782394313/skills/gamma
+rollback: restored the previously installed gamma at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1556104958782394313/skills/gamma
+  [PASS] the pre-installed skill survives a failure after the commit, byte-for-byte
+  pre-existing plugin: 6 file(s), 376 bytes at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4378734502911740004/plugins/gamma
+rollback: restored the previously installed gamma at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4378734502911740004/plugins/gamma
+  [PASS] the pre-installed plugin survives a failure after the commit, byte-for-byte
+  [PASS] a commit that succeeds keeps the NEW bytes and leaves no escrow behind
+  [PASS] a commit into an EMPTY destination still rolls back to absent
+✓ installed gamma
+! a program ended without committing or rolling back; releasing the escrowed pre-image of gamma
+  [PASS] an exception escaping the program releases the escrow instead of stranding it
+✓ installed gamma
+✗ ✋ halted: unit 'gamma' is already installed at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10711664281804852159/skills/gamma — remove it first (skill-manager remove gamma)
+  [PASS] a HALT after the commit keeps the new bytes and discards the pre-image, deliberately
+  [PASS] a held escrow says what it is holding and where it goes back
+! a program ended without committing or rolling back; releasing the escrowed pre-image of gamma
+  [PASS] a renderer that throws does not strand the escrow either — the journal learns about it before the effect runs
+  [PASS] a second program against the same home WAITS, and says so before it waits
+resolve-refused: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14140941510077390439 — another operation in this process holds this home's lock
+  [PASS] a second program that will not get the home REFUSES, naming it
+   → 10 passed, 0 failed
+== LockReadWriteTest (8 cases)
+  [PASS] round-trip with skill + plugin units preserves all fields
+  [PASS] write is deterministic — same lock written twice yields byte-identical output
+  [PASS] missing optional fields (origin/ref/resolvedSha) are omitted from output, not emitted as empty strings
+  [PASS] missing file → empty lock with current schema
+  [PASS] empty lock writes minimal but valid toml; reads back as empty
+  [PASS] CLI lock round-trips scoped npm package keys
+  [PASS] CLI lock reads legacy bare scoped npm table keys
+  [PASS] atomicWrite overwrites prior content cleanly (no stale rows)
+   → 8 passed, 0 failed
+== RequestedVersionTest (12 cases)
+  [PASS] pip: == is a pin and is recorded
+  [PASS] pip: >= is a range, so no version is recorded
+  [PASS] pip: <= is a range, so no version is recorded
+  [PASS] pip: ~= is a range, so no version is recorded
+  [PASS] pip: != is a range, so no version is recorded
+  [PASS] pip: > is a range, so no version is recorded
+  [PASS] pip: < is a range, so no version is recorded
+  [PASS] pip: extras stay with the tool and do not become a version
+  [PASS] pip: a bare package has no version
+  [PASS] brew: a formula never carries a version — brew tracks its own
+  [PASS] npm: a scoped package is not split at its scope
+  [PASS] npm: an exact version after @ is recorded
+   → 12 passed, 0 failed
+== LockDiffTest (6 cases)
+  [PASS] equal locks → empty diff
+  [PASS] unit in target but not in current → added
+  [PASS] unit in current but not in target → removed
+  [PASS] same name + different sha → bumped (not added/removed)
+  [PASS] same name + different version → bumped
+  [PASS] mixed: one added + one removed + one bumped
+   → 6 passed, 0 failed
+== LockSchemaVersionTest (4 cases)
+  [PASS] schema_version=1 → reads cleanly
+  [PASS] schema_version=2 (future) → IOException with explicit message
+  [PASS] schema_version=99 → IOException
+  [PASS] missing schema_version key → defaults to current (legacy compat)
+   → 4 passed, 0 failed
+== LockAtomicityTest (3 cases)
+  [PASS] UpdateUnitsLock + fault → byte-identical pre-image restored
+  [PASS] fault BEFORE UpdateUnitsLock → lock untouched on disk
+  [PASS] clean run (no fault) → lock advances to target, persists
+   → 3 passed, 0 failed
+== SyncFromLockScenarioTest (7 cases)
+  [PASS] empty store + empty lock → no drift (idempotent baseline)
+  [PASS] install + refresh + status → empty diff (round-trip idempotent)
+  [PASS] install without lock update → status shows added drift
+  [PASS] uninstall without lock update → status shows removed drift
+  [PASS] sha drift → status shows bumped drift
+  [PASS] mixed: added + removed + bumped surface together
+  [PASS] refresh against multiple installs writes deterministic, sorted output
+   → 7 passed, 0 failed
+== ClaudeProjectorTest (9 cases)
+  [PASS] skill — planProjection produces one projection routing to skillsDir
+  [PASS] skill — apply creates a symlink target → source
+  [PASS] skill — apply replaces a pre-existing target cleanly (idempotent)
+  [PASS] skill — remove deletes the target; idempotent
+  [PASS] skill — remove on never-applied projection is a no-op
+! claude: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-6743434400516438776/skills/widget holds content that is not a projection of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1378253877584846514/skills/widget — left in place. Rename one of the two, or remove /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-6743434400516438776/skills/widget by hand.
+  [PASS] skill — apply does not destroy a hand-authored directory at the target
+! claude: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-rm-1065584305390884277/skills/widget holds content that is not a projection of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10131004312702321974/skills/widget — left in place. Rename one of the two, or remove /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-rm-1065584305390884277/skills/widget by hand.
+  [PASS] skill — remove does not delete a hand-authored directory at the target
+  [PASS] skill — apply still replaces the projector's own copy-fallback output
+  [PASS] plugin — planProjection returns empty (handled by RefreshHarnessPlugins)
+   → 9 passed, 0 failed
+== CodexProjectorTest (3 cases)
+  [PASS] SKILL → one projection routing to skillsDir
+  [PASS] SKILL — apply creates symlink, remove cleans up
+  [PASS] PLUGIN — planProjection returns empty list (Codex skips plugins in v1)
+   → 3 passed, 0 failed
+== GeminiProjectorTest (3 cases)
+  [PASS] SKILL -> one projection routing to skillsDir
+  [PASS] SKILL - apply creates symlink, remove cleans up
+  [PASS] PLUGIN - planProjection returns empty list
+   → 3 passed, 0 failed
+== ProjectorRegistryTest (4 cases)
+  [PASS] SKILL unit applies through all projectors -> all targets exist
+  [PASS] PLUGIN unit produces no per-agent projection — handled by RefreshHarnessPlugins
+  [PASS] removeAll cleans up every projection apply produced
+  [PASS] removeAll on never-applied unit is a no-op (idempotent)
+   → 4 passed, 0 failed
+== SkillProjectRegistryTest (4 cases)
+  [PASS] register snapshots manifest intent without installing dependencies
+  [PASS] list and read return registered projects
+  [PASS] loadSnapshot uses recorded custom manifest filename
+  [PASS] register rejects snapshot filename that collides with registry metadata
+   → 4 passed, 0 failed
+== ProjectDependencyResolverTest (28 cases)
+✓ installed project-parent
+✓ installed project-child
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14162534461938108509/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] resolves transitive skill dependencies into the home store and project lock
+✓ installed project-mcp-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5793488191247230364/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] skip-gateway resolves a skill with MCP dependencies without registering them
+✓ installed plain-project-plugin
+✓ installed plain-project-skill
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-18303719191732446926/units.lock.toml
+✓ side effects: 2 binding(s) bound, 4 projection(s) materialized
+  [PASS] materializes direct skills and plugins into project agent homes
+✓ installed missing-ledger-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1147380920772952100/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] project remove prunes agent links even when projection ledger is missing
+✓ installed project-prompts
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15568494466360054663/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] binds selected doc repo source into project root
+✓ installed project-harness
+✓ installed harness-prompts
+✓ installed harness-skill
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1920854539831571935/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] materializes harness bindings into project agent homes
+✓ installed profile-dev-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8131348875744448750/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ installed profile-review-skill
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8131348875744448750/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] resolves named profiles into distinct project child homes
+✓ installed claimed-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10371483242433996955/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] plain remove is blocked while a project lock claims the unit
+✓ installed first-child-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4115961891204830625/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ installed second-child-skill
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4115961891204830625/units.lock.toml
+✓ side effects: 1 binding(s) bound, 1 binding(s) unbound, 3 projection(s) materialized
+  [PASS] re-resolve updates project child store and parent child-home claims
+✓ installed missing-ledger-reresolve-first
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4331037083985473984/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ installed missing-ledger-reresolve-second
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4331037083985473984/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] re-resolve prunes old project agent links when ledger is missing
+✓ installed sync-prompts
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12950479770732509632/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] project sync reconciles in place and tears nothing down
+✓ installed rebuild-prompts
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5235545645623566183/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) unbound
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] project sync --rebuild still tears the realization down
+✓ installed transactional-sync-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17678184331473397774/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17678184331473397774/skills/transactional-sync-skill/skill-manager.toml
+
+To inspect the full diff, run:
+
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17678184331473397774/skills/transactional-sync-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471/update/transactional-sync-skill
+
+✗ × BuildResolveGraphFromUnmetReferences: 1 unmet ref(s) failed to resolve
+! resolve: 0 unit(s) resolved, 1 failure(s)
+! transitive: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471/never-installed [(top-level)] — local source does not exist: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471/never-installed (parsed from '/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471…
+  [PASS] failed unmet-ref sync preserves global and project reconciliation state
+✓ installed project-cli-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/skills/project-cli-skill/skill-manager.toml
+A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-claiming-cli-18188034574763690509/units/project-cli-skill/skill-scripts/install-project-auto-cli.sh
+
+To inspect the full diff, run:
+
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/skills/project-cli-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-claiming-cli-18188034574763690509/units/project-cli-skill
+
+✓ resolve: 0 unit(s)
+→ cli: skill-script project-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/skills/project-cli-skill/skill-scripts/install-project-auto-cli.sh
+→ cli: skill-script project-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/logs/skill-scripts/20260824-004107-980-project-cli-skill-project-auto-cli.log
+✓ cli: installed project-auto-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/bin/cli/project-auto-cli
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ project-sync project-cli-refresh — 1 resolved unit(s), 0 binding(s) refreshed
+✓ cli: 1 installed
+  [PASS] local sync --from refreshes claiming project child homes when CLI deps change
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-12112625686888200939/upstream/pinned-claimant-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-12112625686888200939/upstream/pinned-claimant-skill
+✓ installed unrelated-claimant-skill
+✓ installed pinned-claimant-skill
+→ cli: skill-script unrelated-claimant-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/unrelated-claimant-skill/skill-scripts/install-unrelated-claimant-cli.sh
+→ cli: skill-script unrelated-claimant-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/logs/skill-scripts/20260824-004108-782-unrelated-claimant-skill-unrelated-claimant-cli.log
+✓ cli: installed unrelated-claimant-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/bin/cli/unrelated-claimant-cli
+✓ cli: unrelated-claimant-cli [skill-script] installed for unrelated-claimant-skill
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/units.lock.toml
+✓ cli: 1 installed
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+✓ units.lock.toml refreshed (2 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/units.lock.toml
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/config
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/index
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/logs/HEAD
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/logs/refs/heads/main
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/logs/refs/remotes/origin/HEAD
+
+To inspect the full diff, run:
+
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-12112625686888200939/selected-a
+
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+✓ project-sync pinned-claimant-project — 2 resolved unit(s), 0 binding(s) refreshed
+✓ cli: 1 already present
+  [PASS] named sync from detached pinned revision keeps claiming project coherent
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-7679827497286317686/git-skill/global-project-cli-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-7679827497286317686/git-skill/global-project-cli-skill
+✓ installed global-project-cli-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ resolve: 0 unit(s)
+→ cli: skill-script project-global-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/skills/global-project-cli-skill/skill-scripts/install-project-global-auto-cli.sh
+→ cli: skill-script project-global-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/logs/skill-scripts/20260824-004110-713-global-project-cli-skill-project-global-auto-cli.log
+✓ cli: installed project-global-auto-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/bin/cli/project-global-auto-cli
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ project-sync project-global-cli-refresh — 1 resolved unit(s), 0 binding(s) refreshed
+✓ synced 1 unit(s) — 1 merged
+✓ cli: 1 installed
+  [PASS] global sync refreshes claiming project child homes when CLI deps change
+✓ installed failing-claimed-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-785271604273807568/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] project sync failures are recorded only on units claiming the failed project
+✓ installed project-clear-second
+✓ installed project-clear-first
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11545666276701043800/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] successful project sync clears stale project errors for all project claimants
+✓ installed project-rollback-stable
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-16341551786812606914/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] automatic project sync rollback preserves existing realization on refresh failure
+✓ installed project-registration-stable
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-147464145593457658/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] project sync rollback restores prior registration snapshot on refresh failure
+  [PASS] preinstalled unit with wrong kind is rejected before skip
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-72555155337205030/git-skill/git-locked-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-72555155337205030/git-skill/git-locked-skill
+✓ installed git-locked-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17263354775789315631/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] direct git dependency is recorded in the project lock
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-transitive-git-2237139345487301062/acp-cdc-ai-python-skill/
+✓ installed hyper-experiments
+✓ installed acp-cdc-ai-python
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1938655674056159153/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] direct git transitive uses manifest identity in project lock and child homes
+  [PASS] preinstalled parent cannot silently omit a missing direct git child
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5935395046374735550/git-skill/preinstalled-git-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5935395046374735550/git-skill/preinstalled-git-skill
+✓ installed preinstalled-git-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4167603582509192842/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] preinstalled direct git dependency is projected into project child home
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-doc/git-prompts
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-harness/git-project-harness
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-harness/git-project-harness
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-doc/git-prompts
+✓ installed git-project-harness
+✓ installed git-harness-skill
+✓ installed git-prompts
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11260198006842597491/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] direct git doc and harness dependencies materialize project bindings
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-17293545201162203645/revision-skill/revision-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-17293545201162203645/revision-skill/revision-skill
+✓ installed revision-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8636476211887629569/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] manifest revision overrides direct git default branch
+✓ installed remove-prompts
+✓ installed remove-plugin
+✓ installed remove-skill
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4385066470371024135/units.lock.toml
+✓ side effects: 3 binding(s) bound, 7 projection(s) materialized
+✓ side effects: 3 binding(s) unbound
+  [PASS] project remove clears registration child home and bindings but keeps parent unit
+   → 28 passed, 0 failed
+== ProjectResolveAtomicClosureTest (4 cases)
+✓ installed atomic-b
+✓ installed atomic-a
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1283615715207662603/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] one clean resolve installs mutually importing units
+✓ installed order-b
+✓ installed order-a
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2931730495749232363/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+✓ installed order-a
+✓ installed order-b
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4611738378453295613/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] reversed declaration order produces the identical closure
+  [PASS] a genuinely missing import refuses before anything is committed
+✓ resolve: 1 unit(s)
+✓ installed direct-solo
+! claude: CLI claude not on PATH — install with: brew install claude
+! codex: CLI codex not on PATH — install with: brew install codex
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4969061659763456474/units.lock.toml
+markdown skill-import violations (1) — fix these references:
+✗   - direct-solo (skill): docs/uses-nowhere-unit.md
+✗     skill-imports[0] references missing unit `nowhere-unit`; install it or fix the `unit` value
+  [PASS] direct install of an undeclared missing import still commits and exits 11
+   → 4 passed, 0 failed
+== ProjectSyncTypedRefusalTest (4 cases)
+  [PASS] project sync renders the same typed refusal, and the same exit code, as project resolve
+  [PASS] the --json refusal is byte-identical between resolve and sync
+  [PASS] a refused --rebuild puts back a realization it really did tear down
+  [PASS] ProjectSyncUseCase.rebuild still captures a snapshot before it removes
+   → 4 passed, 0 failed
+== ProjectChildHomeMaterializationTest (22 cases)
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-4104047310258066870/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-4104047310258066870/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-4104047310258066870/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+  [PASS] a project whose home IS the parent home resolves, and says which layout it produced
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-says-2722438248665087863/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+  [PASS] and what it says about the child home is what it then does
+✓ installed copy-default-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11627992698010662963/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] default project resolve copies units into the child home
+✓ installed isolated-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1118483935370399514/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] editing a child home unit leaves the parent store unchanged
+✓ installed held-back-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6974186018480804750/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+! child home skill:held-back-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-hold-back-7229239506352921125/.skill-manager/skills/held-back-skill)
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] re-resolve keeps local child home edits and reports them as held back
+✓ installed foreign-record-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17987100857388320036/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] a pristine unit whose record names a store that is gone is not held back
+✓ installed foreign-edited-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15781735239516626867/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+! child home skill:foreign-edited-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-foreign-edited-1064885948916835676/.skill-manager/skills/foreign-edited-skill)
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] a unit that genuinely differs is still held back, foreign record or not
+✓ installed refresh-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4483326223258228807/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] re-resolve refreshes an unmodified child home unit from the parent
+! child home skill:seam-skill — left as-is, not refreshed from the parent store: its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-seam-3490153787681984460/worktree/.skill-manager/skills/seam-skill, which this store has never held, so replacing it would delete work that may exist nowhere else; send it on with `skill-manager unit publish seam-skill` (or `home sync`) first (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-seam-3490153787681984460/project/.skill-manager/skills/seam-skill)
+  [PASS] a merge from a worktree survives the next parent-store materialization
+! child home skill:link-guard-skill — left as-is, not refreshed from the parent store: a real directory the parent store cannot be shown to have passed through; not replaced with a symlink into it (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-link-17200245305080509551/child/.skill-manager/skills/link-guard-skill)
+  [PASS] LINK mode does not delete an edited child unit to install a symlink
+✓ installed sync-held-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8213714477224254968/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+! child home skill:sync-held-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-hold-5088624803285631360/.skill-manager/skills/sync-held-skill)
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] project sync keeps local child home edits and reports them
+✓ installed bad-record-skill
+✓ installed no-record-skill
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13556879077457071183/units.lock.toml
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+! child home skill:no-record-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-no-record-7941011364737698656/.skill-manager/skills/no-record-skill)
+! child home skill:bad-record-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-no-record-7941011364737698656/.skill-manager/skills/bad-record-skill)
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+  [PASS] project sync keeps local edits when the record is missing or corrupt
+✓ installed sync-rebuild-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12362014758203137963/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] project sync still rebuilds an unmodified child home unit
+✓ installed prune-keep-skill
+✓ installed prune-clean-skill
+✓ installed prune-edited-skill
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-441535681651120364/units.lock.toml
+✓ side effects: 3 binding(s) bound, 9 projection(s) materialized
+! child home skill:prune-edited-skill is no longer a project dependency but has local changes — left in place (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-prune-13639951928622145241/.skill-manager/skills/prune-edited-skill)
+✓ side effects: 1 binding(s) bound, 2 binding(s) unbound, 3 projection(s) materialized
+  [PASS] dropping a dependency keeps an edited child unit but prunes clean ones
+  [PASS] upgrading a unit behind a dereferenced link refreshes the child copy
+! child home: could not remove the displaced tree at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp/replaced-73f2b4f8-1f64-4b5b-9f24-44e5a9a159c4 (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp/replaced-73f2b4f8-1f64-4b5b-9f24-44e5a9a159c4/sticky/pinned.txt)
+! child home: could not clear the staging area at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp/replaced-73f2b4f8-1f64-4b5b-9f24-44e5a9a159c4/sticky/pinned.txt)
+  [PASS] a displaced tree never lands in the child store's unit directories
+  [PASS] LINK mode still symlinks the child home unit at the parent store
+  [PASS] upgrading a LINK-mode child home to COPY converges
+  [PASS] tool shims stay linked at the parent bin dir under COPY
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] harness instantiate into a child home copies units instead of symlinking
+  [PASS] symlinks into the parent store are dereferenced by COPY
+  [PASS] a failed materialization leaves the previous child home unit intact
+   → 22 passed, 0 failed
+== ProjectSyncIdempotencyTest (2 cases)
+✓ installed sync-idempotent-skill
+! cli: skill-script probe-tool has no install target with a 'script' field (needed under [cli_dependencies.install.<platform>])
+✓ cli: probe-tool [skill-script] installed for sync-idempotent-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11876202522067925826/units.lock.toml
+✓ cli: 1 installed
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+! child home provisions cli probe-tool itself (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-idempotent-15504299743584714976/.skill-manager/bin/cli/probe-tool) — kept, not replaced with a link into the parent store (declared by sync-idempotent-skill)
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+! child home provisions cli probe-tool itself (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-idempotent-15504299743584714976/.skill-manager/bin/cli/probe-tool) — kept, not replaced with a link into the parent store (declared by sync-idempotent-skill)
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] a project home that declares CLI deps syncs twice, and the second run is clean
+  [PASS] mirroring a shim over the child home's own file keeps it instead of throwing
+   → 2 passed, 0 failed
+== ProjectEnvMaterializerTest (3 cases)
+✓ installed env-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14113770500469817820/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] renders pyproject with project-relative vendor paths and env docs
+✓ installed sync-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15703524144161332094/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] sync invokes uv in the generated env root
+✓ installed run-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9913186333217767670/units.lock.toml
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] run executes through uv project for materialized env
+   → 3 passed, 0 failed
+== ProjectLibResolverTest (5 cases)
+  [PASS] resolves github and generic git libs into libs directory and lock
+  [PASS] rejects lib checkout whose resolved sha differs from manifest sha
+  [PASS] rejects lib names that escape the project libs directory
+  [PASS] existing clean checkout moves to changed manifest ref
+  [PASS] existing checkout without matching origin is rejected
+   → 5 passed, 0 failed
+== ProjectVendoredResolverTest (17 cases)
+  [PASS] accepts a relative vendored link into the project's own home
+  [PASS] accepts a correct link when the project root is given in a non-canonical spelling
+  [PASS] accepts a --copy-sdk snapshot directory and rejects an empty placeholder
+  [PASS] reports an absolute vendored link into a foreign home as machine-specific
+  [PASS] reports a relative vendored link that resolves outside the project as disguised
+  [PASS] reports a dangling vendored link that escapes the repository
+  [PASS] reports a declared vendored path that is simply absent
+  [PASS] reports a link that resolves inside the project but not at the declared source
+  [PASS] computes the link text from the link's own directory at any nesting depth
+  [PASS] names every enclosing home as a candidate and says which holds the content
+  [PASS] repair is opt-in: a check alone leaves the tracked symlink byte-identical
+  [PASS] repair re-points declared vendored paths at the project's own home
+  [PASS] repair replaces an empty placeholder but never anything holding content
+  [PASS] repair declines when the declared source does not exist in any enclosing home
+! 3 declared vendored path(s) do not point at this project's own home (on_invalid = "warn"):
+!   vendored test-graph-sdk: test_graph/sdk MISSING [warn]
+!     detail:     declared vendored path does not exist
+!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/sdk  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/sdk
+!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/sdk  (absent)
+!     remedy:     the declared source does not exist in any enclosing home yet: install the unit into the project's own home (`skill-manager project resolve`), then re-run with --repair-vendored; or vendor a snapshot instead: scaffold.py <repo-root> --copy-sdk (snapshot-copies the vendored trees instead of symlinking them)
+!   vendored test-graph-sdk: test_graph/build-logic MISSING [warn]
+!     detail:     declared vendored path does not exist
+!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/build-logic  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/build-logic
+!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/build-logic  (absent)
+!     remedy:     the declared source does not exist in any enclosing home yet: install the unit into the project's own home (`skill-manager project resolve`), then re-run with --repair-vendored; or vendor a snapshot instead: scaffold.py <repo-root> --copy-sdk (snapshot-copies the vendored trees instead of symlinking them)
+!   vendored test-graph-sdk: test_graph/standard-nodes MISSING [warn]
+!     detail:     declared vendored path does not exist
+!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes
+!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes  (absent)
+!     remedy:     the declared source does not exist in any enclosing home yet: install the unit into the project's own home (`skill-manager project resolve`), then re-run with --repair-vendored; or vendor a snapshot instead: scaffold.py <repo-root> --copy-sdk (snapshot-copies the vendored trees instead of symlinking them)
+  [PASS] on_invalid = error fails project resolve and warn does not
+✓ repaired vendored test-graph-sdk: test_graph/sdk -> ../.skill-manager/skills/test-graph/project_sdk_sources/sdk
+✓ repaired vendored test-graph-sdk: test_graph/build-logic -> ../.skill-manager/skills/test-graph/project_sdk_sources/build-logic
+✓ repaired vendored test-graph-sdk: test_graph/standard-nodes -> ../.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes
+  [PASS] project resolve repairs vendored paths only when asked, and then succeeds
+  [PASS] a project that declares nothing vendored is unaffected
+   → 17 passed, 0 failed
+== PluginMarketplaceTest (16 cases)
+  [PASS] empty store → manifest has 0 plugins + dirs created
+  [PASS] one plugin → symlink + manifest entry
+  [PASS] multiple plugins sorted alphabetically
+  [PASS] regenerate after removing a plugin prunes its symlink
+  [PASS] skills-only store → empty plugin list, no spurious symlinks
+  [PASS] regenerate is idempotent — second call leaves disk identical
+  [PASS] cleanupLegacyAgentPluginEntries removes only named symlinks
+  [PASS] per-home marketplace identity: non-root store gets a suffixed, stable name
+  [PASS] per-home marketplace identity: two stores never share a name
+  [PASS] regeneration records a RESOLVED input fingerprint per entry
+  [PASS] the entry fingerprint moves when the plugin's bytes move
+  [PASS] a plugin's row leaves with its entry
+  [PASS] a symlinked store dir is digested by its BYTES, not its path string
+  [PASS] a link that does not resolve is a graded GAP, not a resolved digest
+  [PASS] a no-op regeneration leaves the INPUTS RECORD byte-identical too
+! marketplace: could not record generation inputs in .marketplace-inputs.json: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17194899003939058645/plugin-marketplace/.marketplace-inputs.json (Is a directory)
+  [PASS] recording the inputs cannot fail the regeneration it describes
+   → 16 passed, 0 failed
+== HarnessPluginCliTest (17 cases)
+  [PASS] Claude: ensureMarketplaceAdded skips when list already shows it
+  [PASS] Claude: ensureMarketplaceAdded runs add when list is empty
+  [PASS] Claude: refreshMarketplace runs `marketplace update <name>`
+  [PASS] Claude: reinstallPlugin runs uninstall then install (uninstall+reinstall semantics)
+  [PASS] Claude: env exports CLAUDE_CONFIG_DIR pointing at $CLAUDE_HOME/.claude
+  [PASS] Codex: ensureMarketplaceAdded runs `marketplace add <path>` when not yet registered
+  [PASS] Codex: refreshMarketplace re-runs `marketplace add <root>` (idempotent local-path refresh)
+  [PASS] Codex: skips re-add when config already lists our marketplace at the same path
+  [PASS] Codex: replaces stale registration when path mismatches (remove + re-add)
+  [PASS] Codex: stale-registration replacement still ok when remove returns non-zero
+  [PASS] Codex: readMarketplaceSource returns empty for missing/unparseable config
+  [PASS] Codex: reinstallPlugin runs `plugin add <name>@skill-manager`
+  [PASS] Codex: reinstallPlugin treats already-added output as success
+  [PASS] Codex: uninstallPlugin no-op (CLI doesn't support it)
+  [PASS] missingHint returns null when every driver is available
+  [PASS] missingHint lists every missing binary with its install command
+  [PASS] onPath false for a nonsense binary
+   → 17 passed, 0 failed
+== HomeRefreshPluginsTest (3 cases)
+✓ marketplace 'skill-manager-2a496fec' regenerated with 1 plugin(s); 1/1 harness driver(s) registered
+  [PASS] regenerates the marketplace and registers each plugin under the per-home name
+✓ marketplace 'skill-manager-85acd1a8' regenerated with 1 plugin(s); 0/0 harness driver(s) registered
+! fake: CLI not on PATH (install fake) — registration skipped, non-fatal
+  [PASS] missing harness CLIs are non-fatal: marketplace still regenerated, exit 0
+✓ marketplace 'skill-manager-6e5de728' regenerated with 1 plugin(s); 1/1 harness driver(s) registered
+  [PASS] no unit content is touched: a plugin's store file survives byte-for-byte
+   → 3 passed, 0 failed
+== RefreshHarnessPluginsTest (7 cases)
+  [PASS] regenerates marketplace.json + behavior depends on harness CLI presence
+  [PASS] regenerates with empty plugin set when nothing is installed
+  [PASS] removing-mode regenerates without the removed plugin
+  [PASS] ValidateAndClearError(HARNESS_CLI_UNAVAILABLE) keeps error when CLIs disabled
+  [PASS] HARNESS_CLI_UNAVAILABLE survives a later available driver in the same loop
+  [PASS] Claude-install failure stays put when Codex no-op succeeds in the same loop
+  [PASS] AGENT_SYNC_FAILED clears when every driver actually succeeds
+   → 7 passed, 0 failed
+== PublishDetectsPluginTest (4 cases)
+  [PASS] plugin dir → detectKind returns PLUGIN
+  [PASS] plugin bundle includes plugin.json + skill-manager-plugin.toml + contained skills
+  [PASS] plugin bundle excludes .git and other dotfiles
+  [PASS] plugin bundle includes top-level .mcp.json (Claude runtime config)
+   → 4 passed, 0 failed
+== PublishDetectsSkillTest (4 cases)
+  [PASS] skill dir → detectKind returns SKILL
+  [PASS] skill bundle includes SKILL.md + skill-manager.toml; no plugin paths
+  [PASS] skill bundle still excludes dotfiles (.git, .DS_Store)
+  [PASS] dir with neither SKILL.md nor plugin.json → IOException with explicit message
+   → 4 passed, 0 failed
+== MarkdownImportValidatorTest (10 cases)
+  [PASS] validates markdown imports from and to any unit kind
+  [PASS] reports missing target unit and missing target path
+  [PASS] rejects schema problems and escaped paths
+  [PASS] effect emits violation facts without halting downstream effects
+  [PASS] invalid YAML frontmatter becomes a violation fact
+  [PASS] store listing skips invalid YAML and continues
+  [PASS] unit read diagnostics dedupe across effect contexts
+✓ resolve: 1 unit(s)
+✓ installed acme-broken
+! claude: CLI claude not on PATH — install with: brew install claude
+! codex: CLI codex not on PATH — install with: brew install codex
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8250986505139231767/units.lock.toml
+markdown skill-import violations (2) — fix these references:
+✗   - acme-broken (skill): SKILL.md
+✗     skill-imports[0] references missing unit `no-such-unit`; install it or fix the `unit` value
+✗   - acme-broken (skill): SKILL.md
+✗     skill-imports[1] references missing path `references/definitely-missing.md` in unit `shared`; add the file or fix the path
+✓ resolve: 1 unit(s)
+✓ installed acme-lint
+! claude: CLI claude not on PATH — install with: brew install claude
+! codex: CLI codex not on PATH — install with: brew install codex
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8250986505139231767/units.lock.toml
+  [PASS] install exits non-zero when it reports skill-import violations
+  [PASS] violations are printed before the ACTION_REQUIRED restart banner
+✓ resolve: 1 unit(s)
+✓ installed acme-broken
+! claude: CLI claude not on PATH — install with: brew install claude
+! codex: CLI codex not on PATH — install with: brew install codex
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+markdown skill-import violations (2) — fix these references:
+✗   - acme-broken (skill): SKILL.md
+✗     skill-imports[0] references missing unit `no-such-unit`; install it or fix the `unit` value
+✗   - acme-broken (skill): SKILL.md
+✗     skill-imports[1] references missing path `references/definitely-missing.md` in unit `shared`; add the file or fix the path
+✓ resolve: 1 unit(s)
+✓ installed acme-lint
+! claude: CLI claude not on PATH — install with: brew install claude
+! codex: CLI codex not on PATH — install with: brew install codex
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+✓ synced 1 unit(s) — 1 local-only (no shared upstream)
+markdown skill-import violations (2) — fix these references:
+✗   - acme-broken (skill): SKILL.md
+✗     skill-imports[0] references missing unit `no-such-unit`; install it or fix the `unit` value
+✗   - acme-broken (skill): SKILL.md
+✗     skill-imports[1] references missing path `references/definitely-missing.md` in unit `shared`; add the file or fix the path
+  [PASS] a named sync answers for the unit it synced, not the whole home
+   → 10 passed, 0 failed
+== ProjectMarkdownImportsTest (3 cases)
+  [PASS] a project's own valid imports produce no violations
+  [PASS] a missing unit AND a missing path in the project's own files are both named
+  [PASS] COMPANION: the walk covers docs/ and stops at the agent directories
+   → 3 passed, 0 failed
+== LocalInstallIsNotAnErrorTest (4 cases)
+  [PASS] sync of a file:-installed unit records no error and says why
+  [PASS] COMPANION: the same shape with no provenance still records the error
+  [PASS] a home that ALREADY carries the record heals itself
+  [PASS] COMPANION: the self-heal does not clear a record it cannot account for
+   → 4 passed, 0 failed
+== ScaffoldPluginTest (3 cases)
+  [PASS] scaffold writes plugin.json + skill-manager-plugin.toml + contained skill
+  [PASS] scaffold parent dirs created for nested paths
+  [PASS] scaffolded plugin parses cleanly via PluginParser
+   → 3 passed, 0 failed
+== CliObservabilityTest (9 cases)
+  [PASS] valid W3C parent is retained and injected for a child process
+  [PASS] invalid W3C parent starts a fresh valid trace
+  [PASS] active W3C context reaches registry and gateway HTTP boundaries
+Aug 23, 2026 8:41:19 PM io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder buildImpl
+INFO: Error encountered during autoconfiguration. Closing partially configured components.
+  [PASS] invalid SDK configuration retains incoming W3C propagation
+Aug 23, 2026 8:41:19 PM io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder buildImpl
+INFO: Error encountered during autoconfiguration. Closing partially configured components.
+  [PASS] propagation-only fallback does not invent an absent trace
+  [PASS] flush and provider shutdown share a finite deadline
+  [PASS] short-lived retry default preserves an explicit operator override
+  [PASS] unavailable OTLP is concise, fail-open, and bounded
+  [PASS] SDK failure records collapse to one process-wide notice
+   → 9 passed, 0 failed
+== QuietConsoleTest (14 cases)
+  [PASS] a 20-unit sync fits in 6 console lines AND still states its counts
+  [PASS] --verbose restores every line the quiet console dropped
+  [PASS] a 300-entry failure prints a bounded head, the count, and the log
+  [PASS] 30 provisioning items fit in 2 console lines AND state their split
+  [PASS] --verbose restores every provisioning line
+  [PASS] the backend itself demotes the no-op — console silent, log has it
+  [PASS] ToolInstallRecorder demotes a presence check that passed
+  [PASS] a sync refusal still names the unit and the command that clears it
+  [PASS] a --from refusal offers the SAME sync it refused, not a different one
+  [PASS] COMPANION: an implicit sync must NOT grow a --from it was never given
+  [PASS] --json is byte-identical to what it was: no rollup, no log footer
+  [PASS] the run log is never written inside a Skill Manager home
+  [PASS] WHY: a log inside a clone would make that clone fail its own verify
+  [PASS] no remedy pins SKILL_MANAGER_HOME without the agent-home variables
+   → 14 passed, 0 failed
+== ServerObservabilityContractTest (8 cases)
+  [PASS] defaults enable three signals on one route
+  [PASS] W3C propagation uses the active trace identity
+  [PASS] invalid context does not invent a header
+  [PASS] trace handle requires lowercase hex
+  [PASS] HTTP method metrics have bounded dimensions
+  [PASS] filter preserves HTTP protocol and exposes incoming trace
+  [PASS] configured filter creates an agent-visible root trace
+  [PASS] filter rethrows chain failure and reports error telemetry
+   → 8 passed, 0 failed
+== CliAgentContextExecutionTest (2 cases)
+  [PASS] handled execution exceptions emit failed agent context
+  [PASS] instrumented CLI keeps help stdout free of agent context
+   → 2 passed, 0 failed
+== CliRefusalsAreMessagesTest (5 cases)
+  [PASS] a refusal reaches stderr as its message, with no stack frames
+  [PASS] a library exception with a message is a refusal too
+  [PASS] a wrapped refusal reports the cause that carries the message
+  [PASS] COMPANION: a failure with nothing to say still prints its trace
+  [PASS] COMPANION: --verbose prints the message AND the trace
+   → 5 passed, 0 failed
+== JsonContractTest (39 cases)
+  [PASS] a confinement escape carries its typed code on stdout
+  [PASS] every --json command is covered by this guard's table
+  [PASS] in json mode no Log level writes to stdout, and stderr still gets them
+  [PASS] outside json mode the same lines go to stdout, so the latch is what moved them
+  [PASS] a CONTENDED close-out keeps stdout pure — #235's own case
+  [PASS] a caught, typed refusal carries its OWN reason, not the generic one
+  [PASS] exit 13 — HIS-14's unbindable-home refusal — emits a document too
+  [PASS] `skill-manager harness rm --json` succeeds silently (pinned) — no binding matches, so there is nothing to report
+  [PASS] `skill-manager home drift --json` succeeds silently (pinned) — --ack writes a record and reports through its exit code
+  [PASS] `skill-manager home close-out --json` fails with one document — the --home is not a home at all
+  [PASS] `skill-manager home sync --json` fails with one document — the --from is not a home
+  [PASS] `skill-manager home clone --json` fails with one document — the source home does not exist
+  [PASS] `skill-manager home describe --json` fails with one document — the named path is not a home
+  [PASS] `skill-manager home repair --json` fails with one document — the named path is not a home
+  [PASS] `skill-manager show --json` fails with one document — no such unit is installed
+  [PASS] `skill-manager artifacts show --json` fails with one document — no such artifact
+  [PASS] `skill-manager bindings show --json` fails with one document — no such binding
+  [PASS] `skill-manager bind --json` fails with one document — no such unit to bind
+  [PASS] `skill-manager build --json` fails with one document — no such unit to build
+  [PASS] `skill-manager harness show --json` fails with one document — no such template
+  [PASS] `skill-manager harness instantiate --json` fails with one document — no such template
+  [PASS] `skill-manager install --json` fails with one document — a local path that is not there — no registry is contacted
+  [PASS] `skill-manager project register --json` fails with one document — a confined process refuses a project root taken from a CWD outside it
+  [PASS] `skill-manager project remove --json` fails with one document — a confined process refuses a project root taken from a CWD outside it
+  [PASS] `skill-manager project resolve --json` fails with one document — a confined process refuses a project root taken from a CWD outside it
+  [PASS] `skill-manager project sync --json` fails with one document — a confined process refuses a project root taken from a CWD outside it
+  [PASS] `skill-manager unit publish --json` fails with one document — no such unit is installed
+  [PASS] `skill-manager list --json` succeeds with one document — an empty home lists nothing, in JSON
+  [PASS] `skill-manager artifacts list --json` succeeds with one document — empty ledger, in JSON
+  [PASS] `skill-manager artifacts stale --json` succeeds with one document — nothing stale, in JSON
+  [PASS] `skill-manager artifacts prune --json` succeeds with one document — nothing to prune, in JSON
+  [PASS] `skill-manager artifacts record --json` succeeds with one document — records nothing, in JSON
+  [PASS] `skill-manager bindings list --json` succeeds with one document — no bindings, in JSON
+  [PASS] `skill-manager harness list --json` succeeds with one document — no templates, in JSON
+  [PASS] `skill-manager lock status --json` succeeds with one document — an empty lock, in JSON
+  [PASS] `skill-manager home shims --json` fails with one document — refuses: nothing honest to pin when the running build cannot be named
+  [PASS] `skill-manager home refresh-plugins --json` succeeds with one document — nothing installed, so nothing to refresh
+  [PASS] `skill-manager env sync --json` fails with one document — no project env is declared here
+  [PASS] `skill-manager sandbox status --json` fails with one document — declared, but the cwd axis escapes — see Confinement's class comment
+   → 39 passed, 0 failed
+== LazyHomeScaffoldTest (61 cases)
+  [PASS] the counter sees a scaffold when one happens
+  [PASS] a read-only store leaves the decoy untouched
+  [PASS] every command path is classified
+  [PASS] help and version outrank the command's own row
+  [PASS] every read-only command has a probe below
+  [PASS] `` scaffolds nothing
+  [PASS] `ads` scaffolds nothing
+  [PASS] `ads list` scaffolds nothing
+  [PASS] `artifacts` scaffolds nothing
+  [PASS] `artifacts list` scaffolds nothing
+  [PASS] `artifacts show no-such-artifact` scaffolds nothing
+  [PASS] `artifacts stale` scaffolds nothing
+  [PASS] `bindings` scaffolds nothing
+  [PASS] `bindings list` scaffolds nothing
+  [PASS] `bindings show no-such-binding` scaffolds nothing
+  [PASS] `cli` scaffolds nothing
+  [PASS] `cli list` scaffolds nothing
+  [PASS] `cli show no-such-tool` scaffolds nothing
+  [PASS] `cli path` scaffolds nothing
+  [PASS] `deps` scaffolds nothing
+  [PASS] `env` scaffolds nothing
+  [PASS] `gateway` scaffolds nothing
+  [PASS] `gateway status` scaffolds nothing
+  [PASS] `harness` scaffolds nothing
+  [PASS] `harness list` scaffolds nothing
+  [PASS] `harness show no-such-harness` scaffolds nothing
+  [PASS] `list` scaffolds nothing
+  [PASS] `lock` scaffolds nothing
+  [PASS] `lock status` scaffolds nothing
+  [PASS] `login show` scaffolds nothing
+  [PASS] `pm` scaffolds nothing
+  [PASS] `pm list` scaffolds nothing
+  [PASS] `pm which uv` scaffolds nothing
+  [PASS] `policy` scaffolds nothing
+  [PASS] `policy show` scaffolds nothing
+  [PASS] `policy path` scaffolds nothing
+  [PASS] `project` scaffolds nothing
+  [PASS] `project list` scaffolds nothing
+  [PASS] `project show no-such-project` scaffolds nothing
+  [PASS] `project profiles` scaffolds nothing
+  [PASS] `project profiles list` scaffolds nothing
+  [PASS] `registry` scaffolds nothing
+  [PASS] `registry status` scaffolds nothing
+  [PASS] `home describe` scaffolds nothing
+  [PASS] `sandbox` scaffolds nothing
+  [PASS] `sandbox status` scaffolds nothing
+  [PASS] `search no-such-unit` scaffolds nothing
+  [PASS] `show no-such-unit` scaffolds nothing
+  [PASS] `unit` scaffolds nothing
+  [PASS] `home verify` scaffolds nothing
+  [PASS] `home close-out` scaffolds nothing
+  [PASS] `home repair` scaffolds nothing
+  [PASS] --version still prints a version and exits 0
+  [PASS] --help still prints usage and exits 0
+  [PASS] a writing command still creates the home on first run
+  [PASS] a read-only invocation does not pin the JVM read-only
+  [PASS] a writing invocation also puts the previous mode back
+  [PASS] an unparsed invocation is permissive, like an unknown path
+  [PASS] `is a home` has one definition, not two
+  [PASS] `exec` against a non-home ambient home names --init, not --home
+  [PASS] `exec --home <not a home>` still blames --home
+   → 61 passed, 0 failed
+== HomeBindsBothAxesTest (17 cases)
+  [PASS] FLOOR: a projection into a home's agent dirs is observable
+  [PASS] `sync --home <X>` writes nothing into the home the environment names
+  [PASS] the ROOT TIER, on a synthetic root-shaped home
+  [PASS] EVERY verb that declares --home is bound, and the list is derived
+  [PASS] the printed env prefix is a RENDERING of the binding --home applies
+  [PASS] --home makes every in-process reader answer with the named home
+  [PASS] an ambient CLAUDE_HOME naming another home does not survive the binding
+  [PASS] a home whose agent dirs are NOT beside the store keeps the ones it has
+  [PASS] COMPANION: an explicit agent dir OUTSIDE the home is still replaced
+  [PASS] a read-shaped verb does not reconcile the home it was asked to inspect
+  [PASS] a WRITING verb does not reconcile a FROZEN home either
+  [PASS] COMPANION: a writing verb on a LIVE home still reconciles
+  [PASS] `--home-root` on its own binds the agent axis and NOT the store
+  [PASS] REFUSAL: an agent dir that resolves out of the home is named, not bound
+  [PASS] REFUSAL: a DANGLING agent dir pointing out of the home is refused too
+  [PASS] COMPANION: a real agent directory inside the home is bound, not refused
+  [PASS] the printed remedy RUNS, in a shell whose environment names another home
+   → 17 passed, 0 failed
+== CliAgentContextTest (3 cases)
+  [PASS] agent context flag is inherited and command path resolves
+  [PASS] renderer covers representative agent workflows
+  [PASS] renderer exposes only a valid lowercase trace handle
+   → 3 passed, 0 failed
+== CliHelpProgressiveDisclosureTest (2 cases)
+  [PASS] root help stays shallow
+  [PASS] representative command help is direct and complete
+   → 2 passed, 0 failed
+== CliMetadataTest (6 cases)
+  [PASS] metadata command catalog matches picocli command tree
+  [PASS] workflow metadata links to commands and docs
+  [PASS] workflow examples parse against picocli command tree
+  [PASS] every command the CLI prints back at a user actually parses
+  [PASS] lockfile workflow examples point at distinct sync modes
+  [PASS] representative modeled workflows are present
+   → 6 passed, 0 failed
+== CommandKindCoverageTest (8 cases)
+  [PASS] lock live state includes skill + plugin + doc + harness
+  [PASS] deps renders harness references and doc nodes
+  [PASS] upgrade rejects doc and harness explicitly
+  [PASS] sync --from doc preserves doc-repo reconciliation
+  [PASS] install and sync parse --force-scripts
+→ cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill/skill-scripts/install.sh
+→ cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/logs/skill-scripts/20260824-004209-378-target-script-skill-target-script-bin.log
+✓ cli: installed target-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/bin/cli/target-script-bin
+→ cli: skill-script other-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/other-script-skill/skill-scripts/install.sh
+→ cli: skill-script other-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/logs/skill-scripts/20260824-004209-628-other-script-skill-other-script-bin.log
+✓ cli: installed other-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/bin/cli/other-script-bin
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill/skill-scripts/install.sh
+
+To inspect the full diff, run:
+
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-script-skill-18032513574497659086/target-script-skill
+
+✓ resolve: 0 unit(s)
+→ cli: skill-script target-script-bin - force rerun requested
+→ cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill/skill-scripts/install.sh
+→ cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/logs/skill-scripts/20260824-004209-890-target-script-skill-target-script-bin.log
+✓ cli: installed target-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/bin/cli/target-script-bin
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/units.lock.toml
+✓ cli: 1 already present, 1 installed
+  [PASS] sync named --force-scripts does not force unrelated installed scripts
+  [PASS] sync --from harness preserves live instance reconciliation
+✓ side effects: 1 binding(s) bound, 4 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 1 binding(s) unbound, 4 projection(s) materialized
+  [PASS] rebind supports doc source bindings
+   → 8 passed, 0 failed
+== ProjectCommandTest (2 cases)
+  [PASS] relative explicit manifest resolves under project dir
+  [PASS] absolute explicit manifest is preserved
+   → 2 passed, 0 failed
+== RemediesAreRunnableTest (6 cases)
+  [PASS] `home verify --root <home>` runs, rather than being a usage error
+  [PASS] without --against the run states which half it did not check
+  [PASS] COMPANION: the no---against run still catches what the remedy repairs
+  [PASS] COMPANION: no home at all is still refused, and names the home it wants
+  [PASS] `uninstall --yes` parses, the way `install --yes` does
+  [PASS] COMPANION: a flag neither half has is still rejected
+   → 6 passed, 0 failed
+== CreatePluginScenarioTest (3 cases)
+  [PASS] create skill templates include tool docs without default install refs
+  [PASS] create plugin → parses as PluginUnit
+  [PASS] create plugin → publish detects PLUGIN + bundles all expected entries
+   → 3 passed, 0 failed
+== GatewayStatusCommandTest (1 cases)
+  [PASS] unreachable gateway reports down and points at gateway up
+   → 1 passed, 0 failed
+== ListShowsKindAndShaTest (5 cases)
+  [PASS] listInstalledUnits surfaces skills + plugins + docs + harnesses, alphabetically
+  [PASS] installed-record sha + source flow into list-render data
+  [PASS] missing installed-record renders as '-' (handled by command, not store)
+  [PASS] plugin sha read from installed-record (kind-aware)
+  [PASS] list command renders binding counts and non-skill kinds
+   → 5 passed, 0 failed
+== SearchShowsKindTest (4 cases)
+  [PASS] registry hit with unit_kind=plugin → kind 'plugin'
+  [PASS] registry hit with unit_kind=skill → kind 'skill'
+  [PASS] legacy registry hit without unit_kind → defaults to 'skill'
+  [PASS] uppercase unit_kind is normalized to lowercase
+   → 4 passed, 0 failed
+== ShowNonSkillUnitsTest (2 cases)
+  [PASS] show renders harness template details
+  [PASS] show renders doc-repo details
+   → 2 passed, 0 failed
+== ShowPluginListsContainedSkillsTest (4 cases)
+  [PASS] plugin contained skills surface from PluginParser.load
+  [PASS] contained skill's CLI dep surfaces in plugin's unioned cliDependencies
+  [PASS] plugin-level + contained-skill MCP deps both unioned
+  [PASS] attribution: plugin-level dep → 'plugin level', contained → 'skills/<name>'
+   → 4 passed, 0 failed
+== SkillManagerSkillDocsTest (2 cases)
+  [PASS] skill docs cover projects and project child homes
+  [PASS] bundled skill docs cover modeled CLI workflows
+   → 2 passed, 0 failed
+== AgentHomesTest (14 cases)
+  [PASS] resolveOrDefault returns default when no override + env unset
+  [PASS] setOverride wins over the env-backed default
+  [PASS] clearOverrides drops the override
+  [PASS] setOverride(key, null) removes that key without disturbing others
+  [PASS] userHome prefers $HOME over the JVM's user.home
+  [PASS] a sandboxed HOME keeps every agent home out of the real user.home
+  [PASS] a sandboxed HOME also covers the four fallbacks outside this package
+  [PASS] claude(env) derives its fallback from the launch env's HOME
+  [PASS] Claude driver: CLAUDE_HOME override redirects CLAUDE_CONFIG_DIR
+  [PASS] Claude driver: explicit CLAUDE_CONFIG_DIR override wins over CLAUDE_HOME
+  [PASS] Codex driver: CODEX_HOME override redirects codexConfigPath
+  [PASS] TestHarness installs sandboxed overrides at create()
+  [PASS] ClaudeAgent.pluginsDir reflects the TestHarness sandbox
+  [PASS] GeminiAgent paths reflect the TestHarness sandbox
+   → 14 passed, 0 failed
+== AgentProjectionFollowsHomeTest (8 cases)
+  [PASS] a sync in a project home leaves the operator's agent homes alone
+  [PASS] the assertion above detects a write into the operator's agent homes
+  [PASS] the global home still projects into ~/.claude, ~/.codex, ~/.gemini
+  [PASS] an explicit agent-home variable still wins over the active home
+! unproject: refusing to remove /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-145-14684137979565386034/operator/.claude/skills/one-forty-five — it is inside /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-145-14684137979565386034/operator/.claude, which belongs to another Skill Manager home, not the one this command is running against. A default-agent row is derived from the active home's own agent directories, so one naming another home's was copied from it. Run `skill-manager sync` here to re-derive this home's rows, then retry.
+  [PASS] undoing a COPIED default-agent row cannot delete another home's link
+  [PASS] the guard does not fire on this home, nor on managed child homes
+  [PASS] agentHomeRoot is the store's parent, or the store when unconventional
+  [PASS] claude(env) does NOT derive the child's config dir from SKILL_MANAGER_HOME
+   → 8 passed, 0 failed
+== McpWriterTest (8 cases)
+  [PASS] Gemini settings.json gets idempotent virtual gateway entry
+✓ gemini: removed virtual-mcp-gateway entry
+  [PASS] Gemini removeAgentEntry removes only virtual gateway
+  [PASS] every agent's gateway entry lands in the file that agent reads
+  [PASS] with CLAUDE_CONFIG_DIR unset the GLOBAL home's entry stays at $HOME/.claude.json
+  [PASS] CLAUDE_HOME pointing somewhere that is not $HOME follows the same rule
+  [PASS] with CLAUDE_CONFIG_DIR unset a PROJECT home writes where a launch reads
+✓ gateway: registered runpod (DOCKER, scope=global)
+  [PASS] registering records the spec digest it already computed
+✓ gateway: registered runpod (DOCKER, scope=global)
+  [PASS] no home, no record — and registering still works
+   → 8 passed, 0 failed
+== GatewayRuntimeTest (2 cases)
+  [PASS] POSIX gateway command starts a detached session and preserves argv
+  [PASS] non-POSIX gateway command is unchanged
+   → 2 passed, 0 failed
+== FetcherGitCloneTest (12 cases)
+  [PASS] looksLikeAuthFailure: 'Permission denied (publickey)' matches
+  [PASS] looksLikeAuthFailure: 'Authentication failed' matches
+  [PASS] looksLikeAuthFailure: 'could not read Username' matches
+  [PASS] looksLikeAuthFailure: JGit 'no CredentialsProvider' matches
+  [PASS] looksLikeAuthFailure: '403 Forbidden' matches
+  [PASS] looksLikeAuthFailure: github's 'Repository not found' matches
+  [PASS] looksLikeAuthFailure: network error does NOT match
+  [PASS] looksLikeAuthFailure: empty string
+  [PASS] looksLikeAuthFailure: null
+  [PASS] GitCloneAuthException IS-A GitFetcherException
+  [PASS] GitFetcherException carries url + message
+  [PASS] Stable exit codes: 9 = auth, 10 = generic fetch
+   → 12 passed, 0 failed
+== HomePathsTest (26 cases)
+  [PASS] a path inside the home encodes to the token and decodes back
+  [PASS] the home root itself encodes to the bare token
+  [PASS] a path outside the home is stored verbatim
+  [PASS] a sibling whose name merely starts with the home's is not encoded
+  [PASS] a dest that IS a symlink into the home is not treated as a self-reference
+  [PASS] unbind removes the agent symlink, not the installed unit
+  [PASS] a path under a directory symlink into the home stays external
+  [PASS] decode accepts both the token form and a plain absolute path
+  [PASS] a token that is only a name prefix is not expanded
+  [PASS] the same record decodes to different roots under different homes
+  [PASS] a ledger stores its store-side path tokenized and its target absolute
+  [PASS] a ledger read back resolves its store-side path into the home
+  [PASS] a ledger written by an older skill-manager still reads
+  [PASS] child-home records tokenize parentHome and keep childHome absolute
+  [PASS] a child-home record with a legacy absolute parentHome still reads
+  [PASS] a registration whose manifest is the registry's own snapshot tokenizes it
+  [PASS] a registration pointing at the project's own manifest stays absolute
+  [PASS] a link between two places in the home is stored relative
+  [PASS] a link out of the home stays absolute
+  [PASS] relativizeLinksIn rewrites an absolute shim and leaves an external one
+  [PASS] shim normalization reaches nested shim directories
+  [PASS] the plugin marketplace links plugins relatively
+  [PASS] a projection backup path in the home is encoded too
+  [PASS] a project lock encodes a target root that points into the home
+  [PASS] a project lock leaves an external target root absolute
+  [PASS] installing a CLI dep normalizes the shim the backend left absolute
+   → 26 passed, 0 failed
+== HomeCloneTest (33 cases)
+  [PASS] a cloned home resolves its records under the new root
+  [PASS] a legacy home full of absolute paths clones into a clean copy
+  [PASS] verification catches a planted absolute path in a state record
+  [PASS] verification catches a planted absolute symlink back into the source
+  [PASS] an absolute in-home symlink is rewritten relative and still resolves
+  [PASS] a symlink out of the home is reproduced verbatim
+  [PASS] a link into a THIRD home fails the clone; one into a toolchain does not
+  [PASS] a relative link through an absolute parent still reaches the other home
+  [PASS] cache/ is not copied
+  [PASS] derived build caches are skipped, not copied and then leaked
+  [PASS] a script shim with a hardcoded path is re-anchored and still runs
+  [PASS] a deep destination lengthens the exec line, and the shim still runs
+  [PASS] a shim whose target lives under cache/ is reported, not silently broken
+  [PASS] a shim whose target does survive the clone is not reported as dangling
+  [PASS] a provisioned shebang is re-anchored at the copy's own interpreter
+  [PASS] toolchain roots are skipped for re-provisioning, pm is kept
+  [PASS] authored unit content is reported but never rewritten
+  [PASS] --strict fails the same clone that default mode accepts
+  [PASS] classification keeps a venv inside a skill out of the content class
+  [PASS] generated state under a content root is checked, not excused
+  [PASS] an unrecognized top-level directory is state, not excused content
+  [PASS] a leak in generated state under a content root fails the clone
+  [PASS] state the structured passes do not model is still re-anchored
+  [PASS] a shebang too long for the kernel fails the clone instead of shipping broken
+  [PASS] a text header with a binary tail is not rewritten
+  [PASS] a failed clone leaves no partial destination behind
+  [PASS] home verify does not claim success while content references survive
+  [PASS] a clone re-anchors the ledger's AGENT-home paths, not just the store's
+  [PASS] a clone inherits no claim over a checkout outside the new home
+  [PASS] verification catches a planted reference to the source's agent home
+  [PASS] a link into ANOTHER home's agent dir fails the clone
+  [PASS] cloning onto a non-empty destination is refused
+  [PASS] cloning into a subdirectory of the source is refused
+   → 33 passed, 0 failed
+== HomeVerifyReportTest (4 cases)
+  [PASS] the default mode fails, and names the paths that resolve into another home
+  [PASS] the tolerated mentions are summarised, so they cannot bury the failures
+  [PASS] --strict adds the mentions as failures and keeps the two counts apart
+  [PASS] a home with only authored mentions passes by default and fails under --strict
+   → 4 passed, 0 failed
+== HomeVerifyDiagnosticTextTest (3 cases)
+  [PASS] an error message quoting another home is not an isolation failure
+  [PASS] a live reference field in the same record is still a leak
+  [PASS] --strict still fails on the diagnostic message
+   → 3 passed, 0 failed
+== HomeUnresolvedGateTest (4 cases)
+  [PASS] `home verify` refuses a home whose CLI shims point at nothing
+  [PASS] and clears itself once the provisioning is completed
+  [PASS] a missing logs/ or tmp/ path is not an incomplete provisioning
+  [PASS] the clone reports the same set the gate will later refuse on
+   → 4 passed, 0 failed
+== ChildHomeShimIsolationTest (9 cases)
+  [PASS] a child home's shim at its parent's entry passes, on the PARENT's claim
+  [PASS] and on the CHILD's own provenance, which outlives the parent's claim
+  [PASS] with NO evidence on either side, the identical link is still a leak
+  [PASS] a COPY of a sanctioned child inherits the sanction — root -> project -> worktree
+  [PASS] inheritance needs a source that was itself sanctioned, not merely a source
+  [PASS] the sanction does not extend past bin/cli and bin/mcp
+  [PASS] a shim naming a DIFFERENT entry in the parent is not a mirror
+  [PASS] an isolation refusal prints a remedy, in the spelling every caller parses
+  [PASS] a leaking launcher pin gets home shims, which is the command that repairs it
+   → 9 passed, 0 failed
+== ClonedHomeDescentTest (6 cases)
+  [PASS] all four readers agree about a cloned home's inherited shim, with no --against
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-vacuity-3999039175181078167/parent, which is not this home's parent store
+  [PASS] VACUITY CONTROL: delete the record and the same four readers disagree again
+  [PASS] a clone of a home with NO record records nothing and stays unsanctioned
+  [PASS] a HAND-WRITTEN record grants nothing — the chain it names must re-derive
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-12064167625588799326/parent, which is not this home's parent store
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-12064167625588799326/parent, which is not this home's parent store
+  [PASS] revoking the parent's claim revokes it in EVERY tier at once
+  [PASS] descent is transitive: a clone of a clone still shares the root store
+   → 6 passed, 0 failed
+== DamagedHomeIsRepairableTest (19 cases)
+  [PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+  [PASS] a merely STALE home is not reported as damaged
+  [PASS] BLOCKER 1: one disk state, two policies, and the verdict follows the policy
+  [PASS] an EAGER home missing an entry no parent holds is not a repair this command can make
+  [PASS] all four damage shapes are reported, one line each, naming the repair
+  [PASS] BLOCKER 2: a rewrite replaces a PATH, not a substring, and keeps the shim running
+  [PASS] BLOCKER 2 postcondition: a rewrite that would break the shim is REFUSED
+  [PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+  [PASS] REPAIR makes detection clean, and it is DETECTION that says so
+  [PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+  [PASS] M3: a projection this home cannot back is reported UNREPAIRABLE, not relinked
+  [PASS] M3: a broken CLI pin with no locatable build is reported, with the runnable remedy
+  [PASS] the agent axis comes from the HOME and not from the ENVIRONMENT
+  [PASS] a repair cannot write outside the two axes of the home it was given
+  [PASS] `home repair` reports and exits 1; `--fix` repairs and exits 0
+  [PASS] a home damaged AFTER a repair goes red again — the verdict is not sticky
+  [PASS] HIS-9's measurement target: a home whose bin/cli IS a link is NAMED
+  [PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+  [PASS] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage
+   → 19 passed, 0 failed
+== HomeVerifyPathSpellingTest (4 cases)
+  [PASS] a missing reference is found through the symlinked spelling too
+  [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
+  [PASS] a reference that DOES resolve is reported by neither spelling
+  [PASS] the recovered path is reported in the spelling the caller asked about
+   → 4 passed, 0 failed
+== ProvenanceRecordExemptionTest (4 cases)
+  [PASS] a record whose mentions are exactly accounted for is NOT a leak
+  [PASS] ONE EXTRA occurrence beyond the accounted fields is still a hard leak
+  [PASS] the exemption is granted to the PATH, not to the JSON shape
+  [PASS] an unreadable record buys no exemption — a downgrade needs evidence
+   → 4 passed, 0 failed
+== CliShimPrunerTest (7 cases)
+cli: pruned bin/cli/ob-dangling — no installed unit declares it and it is dangling symlink -> ../../venvs/gone/bin/x
+  [PASS] an undeclared BROKEN shim is pruned — the state nothing could clear
+  [PASS] an undeclared shim that WORKS is left alone
+  [PASS] a non-executable file beside the shims is not this prune's business
+  [PASS] a DECLARED broken shim is left to the install pass
+  [PASS] the home's own CLI pin is never pruned, however broken
+cli: pruned bin/cli/leaky — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/foreign-home-17034361083363420341, which is not this home's parent store
+  [PASS] a shim resolving into another home is pruned even though it works
+  [PASS] a child home's sanctioned mirror of its parent's shim survives
+   → 7 passed, 0 failed
+== WriteConfinementTest (7 cases)
+  [PASS] a write through a link that leaves the home is refused, naming path AND home
+  [PASS] a DELETE of that same link is permitted — it removes what lives here
+  [PASS] a delete through a DIRECTORY that leaves the home is refused — DEF-007
+  [PASS] a scope has exactly ONE root, and there is no escape hatch
+  [PASS] the default gates nothing, because a dozen effects write outside on purpose
+  [PASS] a declaration does not outlive its scope
+  [PASS] two spellings of one home are the same home
+   → 7 passed, 0 failed
+== PruneStaysInsideItsHomeTest (6 cases)
+  [PASS] ROOT tier: a prune whose bin/cli is a link at another home is refused
+  [PASS] PROJECT tier: a REGISTERED child may not prune through a link at its parent
+  [PASS] WORKTREE tier: a clone with a descent record may not either
+  [PASS] the SANCTIONED mirror is untouched by the guard — sharing still works
+  [PASS] takeOwnershipOfShim — DEF-007's SECOND call site — is refused too
+cli: gamma was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-confinement-ownership-control-998669315150475158/other; rebuilding it here, so this home owns it
+  [PASS] takeOwnershipOfShim still takes ownership when the home is intact
+   → 6 passed, 0 failed
+== ProducerStaysInsideItsHomeTest (7 cases)
+  [PASS] a producer aimed at an UNSANCTIONED link into another home is refused, before it runs
+  [PASS] a producer aimed at a home whose bin/cli IS a link out is refused
+  [PASS] a SANCTIONED mirror is not refused, and the producer is left to decline
+cli: tool was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/producer-confinement-forced-sanctioned-11851543972296558342/other; rebuilding it here, so this home owns it
+  [PASS] a FORCED run over a sanctioned mirror owns the slot instead of writing through it
+  [PASS] an intact home installs exactly as before
+  [PASS] an artifact linked OUTSIDE every home is left alone — brew's case
+  [PASS] THE BULK PATH refuses too, and does not tally it as one dep failing
+   → 7 passed, 0 failed
+== ConfinementTest (8 cases)
+  [PASS] an undeclared confinement covers everything and confines nothing
+  [PASS] every axis is read, and the working directory is one of them
+  [PASS] an UNSET agent variable is an escape, not a pass
+  [PASS] covers() is exact about the root's own boundary
+  [PASS] ProjectRoot returns the CWD unchanged when nothing is declared
+  [PASS] a confined process refuses a CWD-derived root outside the root
+  [PASS] an explicit --project-dir inside the root is accepted
+  [PASS] an explicit --project-dir OUTSIDE the root is refused too
+   → 8 passed, 0 failed
+== BuildIdentityTest (6 cases)
+  [PASS] a checkout that is not on the release tag carries its commit
+  [PASS] a checkout standing exactly on v<release> reports the bare release
+  [PASS] an annotated tag is compared by its peeled commit, not its tag object
+  [PASS] a linked worktree resolves its branch through the common git dir
+  [PASS] no checkout means no discriminator rather than a guess
+  [PASS] the release is still the first thing on the first line
+   → 6 passed, 0 failed
+== HomeDescriptorTest (14 cases)
+  [PASS] homeRoot is the parent of a .skill-manager store
+  [PASS] CLAUDE_HOME and CLAUDE_CONFIG_DIR are one value
+  [PASS] exporting the descriptor env moves every agent home into the home
+  [PASS] a consumer that sets only CLAUDE_CONFIG_DIR still moves skill projection
+  [PASS] CLAUDE_HOME alone keeps its parent-of-.claude meaning
+  [PASS] a descriptor written into a home describes the clone after `home clone`
+  [PASS] a plain `cp -R` of the home yields a correct descriptor too
+  [PASS] an agent home outside the home's own directory stays absolute
+  [PASS] units mirror the `list --json` snapshot exactly
+  [PASS] describe reflects the home's policy and gateway rather than defaults
+  [PASS] cli.skillManager is resolved, and prefers the home's own shim
+  [PASS] describe keeps recorded env contributions when none are supplied
+  [PASS] `home describe --write --json` emits the descriptor and persists it
+✗ home describe --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home describe --init`. Nothing was read and nothing was written.
+✗ home drift --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home drift --init`. Nothing was read and nothing was written.
+✗ home policy --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home policy --init`. Nothing was read and nothing was written.
+✗ home shims --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home shims --init`. Nothing was read and nothing was written.
+✓ /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is now frozen — sync, upgrade, and project sync will refuse
+  [PASS] describe/drift/policy/shims refuse a path that is not a home, and build none
+   → 14 passed, 0 failed
+== HomeDescriptorCliRemedyTest (14 cases)
+  [PASS] locateCli walks all four steps, in the order it documents
+  [PASS] the javadoc's stated precedence is the precedence the walk observed
+  [PASS] the step that was replaced could not fire in any shipped launcher
+  [PASS] a remedy about home X names X, whichever step resolved the CLI
+  [PASS] DEF-002: another home's entrypoint is never the remedy
+  [PASS] DEF-002 survives a SYMLINK unless the candidate is resolved first
+  [PASS] the head token is the build and nothing else, for every source
+  [PASS] a PATH-resolved remedy says so; a verified one has nothing to admit
+  [PASS] a home entrypoint whose pin was deleted by an upgrade is not the remedy
+  [PASS] a pin that is not a literal path, or names a directory, is not dangling
+  [PASS] a remedy survives a home path a shell would otherwise interpret
+  [PASS] a hand-written entrypoint is left alone: cannot tell is not broken
+  [PASS] every printed remedy that names a class-2/3 verb also names its home
+  [PASS] the merge-conflict remedy names the home it was asked about
+   → 14 passed, 0 failed
+== HomePolicyTest (11 cases)
+  [PASS] a home with no policy file is live
+  [PASS] a declared policy round-trips through the file
+  [PASS] an unrecognized policy value fails loudly instead of defaulting to live
+  [PASS] frozen home refuses `sync` and writes nothing
+  [PASS] the sync program itself refuses to build against a frozen home
+  [PASS] frozen home refuses `sync --refresh` — the lockfile is not rewritten
+  [PASS] frozen home refuses `upgrade`
+  [PASS] frozen home refuses `project sync` before tearing anything down
+✓ units.lock.toml refreshed (1 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/policy-live-8767902696161290811/.skill-manager/units.lock.toml
+  [PASS] a live home is unaffected: sync runs and writes its lock
+✓ /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/policy-cmd-7266887556366456022/.skill-manager is now frozen — sync, upgrade, and project sync will refuse
+  [PASS] `home policy` shows and sets the declared policy
+java.io.IOException: unknown home policy "mostly-frozen"; expected "live" or "frozen"
+	at dev.skillmanager.policy.HomePolicy.parse(HomePolicy.java:117)
+	at dev.skillmanager.commands.HomeCommand$PolicyCmd.call(HomeCommand.java:840)
+	at dev.skillmanager.commands.HomeCommand$PolicyCmd.call(HomeCommand.java:772)
+	at picocli.CommandLine.executeUserObject(CommandLine.java:2045)
+	at picocli.CommandLine.access$1500(CommandLine.java:148)
+	at picocli.CommandLine$RunLast.executeUserObjectOfLastSubcommandWithSameParent(CommandLine.java:2465)
+	at picocli.CommandLine$RunLast.handle(CommandLine.java:2457)
+	at picocli.CommandLine$RunLast.handle(CommandLine.java:2419)
+	at picocli.CommandLine$AbstractParseResultHandler.execute(CommandLine.java:2277)
+	at picocli.CommandLine$RunLast.execute(CommandLine.java:2421)
+	at picocli.CommandLine.execute(CommandLine.java:2174)
+	at dev.skillmanager.policy.HomePolicyTest.lambda$run$16(HomePolicyTest.java:213)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.policy.HomePolicyTest.run(HomePolicyTest.java:219)
+	at RunTests.main(RunTests.java:283)
+  [PASS] `home policy nonsense` is rejected without touching the file
+   → 11 passed, 0 failed
+== LauncherShimsTest (40 cases)
+  [PASS] the active home's bin comes first on the launch PATH
+  [PASS] another home's bin directories are dropped from the launch PATH
+  [PASS] another home's AGENT-dir plugin bins are dropped from the launch PATH
+  [PASS] a .claude no home owns is left on PATH
+  [PASS] a directory that is not a home's bin is left on PATH
+  [PASS] exec runs the active home's skill-script shim, not the global home's
+  [PASS] a tool only the other home has is unreachable, not silently borrowed
+  [PASS] exec exports the descriptor env block to the child process
+  [PASS] declared env contributions reach the child
+  [PASS] a launch that would still read the real ~/.claude is refused, and nothing runs
+  [PASS] an env contribution pointing Claude back at the real home is refused too
+  [PASS] the global home launches against ~/.claude without being refused
+CLAUDE_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.claude
+PIP_CACHE_DIR=/Users/hayde/Library/Caches/pip
+GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.gemini
+UV_LINK_MODE=clone
+CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.codex
+CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.claude
+npm_config_cache=/Users/hayde/.npm
+UV_CACHE_DIR=/Users/hayde/.cache/uv
+SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager
+PATH=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager/bin/cli:/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager/bin/mcp:/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager/bin/launch:/usr/bin
+  [PASS] exec bootstraps a missing descriptor on a live home
+  [PASS] exec writes nothing into a frozen home
+  [PASS] `home shims` refuses on a frozen home and writes no launcher
+  [PASS] agent launchers are self-locating and name no absolute home
+  [PASS] running a generated shim binds the home it lives in
+  [PASS] an agent launcher whose home has no CLI entrypoint refuses, loudly
+  [PASS] a shim in a copied home binds the copy, not the original
+  [PASS] the cli entrypoint's body carries no unformatted percent
+  [PASS] the cli entrypoint pins an absolute CLI and searches no PATH
+  [PASS] the pin another tool reads back out of the body is a real executable
+  [PASS] the cli entrypoint execs its pin with a working decoy first on PATH
+  [PASS] the cli entrypoint binds the home it lives in when none was named
+  [PASS] the cli entrypoint refuses a home it was not told to edit, naming both
+  [PASS] the printed remedy RUNS -- both spellings, against the real CLI
+  [PASS] --home is still honoured when the subcommand takes one
+  [PASS] the cli entrypoint refuses when its pin is gone, and still ignores PATH
+  [PASS] the cli entrypoint refuses to exec itself and uses its pin instead
+  [PASS] a symlink to the cli entrypoint is still the cli entrypoint
+  [PASS] a relative spelling of the cli entrypoint is still the cli entrypoint
+  [PASS] a pin that is the entrypoint itself refuses loudly rather than looping
+  [PASS] an agent launcher refuses to exec itself and uses the home's entrypoint
+  [PASS] both generated shims carry the guard, and neither carries a bare exec
+  [PASS] SKILL_MANAGER_CLI still overrides the pin
+  [PASS] an explicit SKILL_MANAGER_CLI wins and need not be named skill-manager
+  [PASS] a source checkout is found beside SKILL_MANAGER_INSTALL_DIR
+  [PASS] a release tarball is found one level up from its share/ dir
+  [PASS] an install dir that names something else is rejected, not stretched
+  [PASS] with nothing to go on it refuses, and never falls back to PATH
+   → 40 passed, 0 failed
+== ProjectTrunkSyncTest (20 cases)
+  [PASS] pull merges the unit's trunk into the home
+  [PASS] a unit already at its trunk reports up to date, not merged
+  [PASS] a unit installed from a local path is reported, not failed
+! edited-skill has uncommitted local changes — not pulled from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-edited-skill-6103082998558335356/edited-skill.git main (re-run with --merge to fold them together)
+  [PASS] a unit with local edits is held back and its bytes are untouched
+  [PASS] --merge keeps both sides: the agent's edit and the trunk's
+! conflict-skill: merge of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-conflict-skill-208321294244928500/conflict-skill.git main conflicted — local work preserved, nothing resolved automatically
+  [PASS] a conflicting merge stops and the agent's text is still on disk
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ pulled skill:child-edited — merged /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-child-edited-17323229319434231949/child-edited.git main
+! child home skill:child-edited — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-childedit-9275574037939273468/.skill-manager/skills/child-edited)
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+! this sync changed 1 unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929 — a launch will refuse until the change is read (`/opt/homebrew/bin/skill-manager home drift --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929`, then `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929`)
+!   modified  skill:child-edited  c87b6906  (2 files)
+!   1 unit, 2 files changed — `home drift --detail` for the paths, `home drift --json` for the data
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929` to remove the guess.
+  [PASS] project sync does not destroy an edit in the child home
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+! drift-edited has uncommitted local changes — not pulled from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-drift-edited-16740841762782994781/drift-edited.git main (re-run with --merge to fold them together)
+✓ pulled skill:drift-moving — merged /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-drift-moving-13263034789502748303/drift-moving.git main
+✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
+! this sync changed 2 unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528 — a launch will refuse until the change is read (`/opt/homebrew/bin/skill-manager home drift --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528`, then `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528`)
+!   modified  skill:drift-edited  6f802d3f  (1 file)
+!   modified  skill:drift-moving  dc4c031f  (2 files)
+!   2 units, 3 files changed — `home drift --detail` for the paths, `home drift --json` for the data
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528` to remove the guess.
+  [PASS] project sync reports the drift it caused and keeps the agent's bytes
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] a checkout unit is materialized as its own git clone
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] the next resolve does not clobber a checkout, commits and all
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] a checkout with commits of its own counts as locally modified
+  [PASS] publish pushes a branch and leaves the trunk exactly where it was
+! direct-skill: pushed straight to main — no review
+  [PASS] publish --direct is the only way the trunk moves
+  [PASS] re-publishing the same ticket adds a commit, it does not reset the branch
+  [PASS] publish with nothing to publish says so and pushes nothing
+  [PASS] publish without a ticket is refused before anything is committed
+  [PASS] publish on a frozen home refuses and commits nothing
+✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
+  [PASS] publish from a child-home checkout publishes the child's commits
+  [PASS] a dry run reports the plan and touches nothing
+  [PASS] branch names are slugged so a ticket like `#8` still produces a legal ref
+   → 20 passed, 0 failed
+== HomeDriftGateTest (25 cases)
+  [PASS] the drift report names exactly the files whose bytes changed
+  [PASS] the rollup is one line per unit, and the paths are still reachable
+  [PASS] the committed baseline fixture renders inside GOAL-sync-quiet's bound
+  [PASS] a record predating the digest field is not reported as a deleted unit
+  [PASS] a REMOVED unit has no after-digest, and says so rather than printing null
+  [PASS] a home nobody touched produces no drift and no gate
+  [PASS] a first digest is not treated as everything having changed
+  [PASS] git bookkeeping inside a unit is not reported as drift
+  [PASS] a launch is refused while the change is unread, and nothing runs
+  [PASS] the second surfacing of one gate is a line, and a new change re-opens it
+  [PASS] --detail always answers in full, however often the gate has been shown
+  [PASS] an ack does not leave a count behind for the next gate to inherit
+  [PASS] a record written before surfacedCount existed degrades to full-once
+✓ acknowledged 1 changed unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-gate-ack-9193988497152403383/.skill-manager
+  [PASS] acknowledging clears the gate and the launch proceeds
+  [PASS] --ack-drift acknowledges in passing rather than blocking
+✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-stale-dst-2190594412131565708/.skill-manager
+  [PASS] a clone does not report the source's unrecorded change as its own
+✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-schema-dst-15986079837445160716/.skill-manager
+  [PASS] a clone is not drifted by a baseline written under an older content rule
+  [PASS] a clone does not inherit the source's unacknowledged gate
+✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager
+! 1 unit(s) changed in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager (home drift --record) and have not been read:
+✗   modified  skill:alpha  8409a669  (1 file)
+✗   1 unit, 1 file changed — `home drift --detail` for the paths, `home drift --json` for the data
+!   run `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager` once you have taken it in
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager` to remove the guess.
+  [PASS] a change made AFTER the clone still gates the clone's launch
+  [PASS] a second measurement does not retire an unread change
+  [PASS] a change arriving on top of an unread one is added, not substituted
+  [PASS] an unreadable gate file blocks rather than reading as nothing to do
+  [PASS] `home drift` shows the pending change and exits non-zero
+✓ recorded the first digest for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager — nothing to compare against yet
+! 1 unit(s) changed in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager (home drift --record) and have not been read:
+✗   modified  skill:alpha  4b7748cb  (1 file)
+✗   1 unit, 1 file changed — `home drift --detail` for the paths, `home drift --json` for the data
+!   run `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager` once you have taken it in
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager` to remove the guess.
+  [PASS] `home drift --record` measures, records, and refreshes the baseline
+  [PASS] a frozen home can be inspected for drift without being written to
+   → 25 passed, 0 failed
+== HomeSyncTest (21 cases)
+  [PASS] a clean fast-forward copies the source unit into the destination
+! home sync: skill:sync-skill held back — locally modified; re-run with --merge to three-way merge it
+  [PASS] a locally modified destination unit is held back with its bytes intact
+! home sync: skill:sync-skill held back — the result of an earlier merge, so it is a copy of no home; re-run with --merge to reconcile it
+  [PASS] --merge folds disjoint edits from both homes together
+! home sync: skill:sync-skill conflicted — 1 file(s) changed on both sides; nothing was written
+  [PASS] a file changed on both sides is reported as a conflict and nothing is written
+  [PASS] --dry-run reports the whole reconciliation and writes nothing
+  [PASS] build output written inside a unit does not make the unit differ
+  [PASS] a refresh keeps the build output it does not own
+! home sync: skill:sync-skill held back — locally modified; re-run with --merge to three-way merge it
+  [PASS] a .git directory inside a unit is content, never skipped as build output
+  [PASS] a sync that fails part way leaves the destination unit exactly as it was
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+  [PASS] two concurrent syncs into one home do not interleave
+! home sync: skill:sync-skill held back — its materialization record is schema 1 and this build reads 2 — the digests in it were computed over a different set of files (re-derivable build output used to count as unit content, issue #41), so they are not evidence about these bytes and nothing may be replaced on their authority. Nothing was written — re-run with --merge to reconcile it, or refresh the unit from its store (a unit that is still a pristine copy re-baselines itself with no further hold-back)
+  [PASS] a record from an older schema is not a licence to replace anything
+  [PASS] a clone re-baselines a record it cannot read, and leaves one it can
+  [PASS] a unit only the source has arrives; one only the destination has is reported
+  [PASS] a frozen destination refuses and a frozen source is only read
+  [PASS] close-out refuses while the worktree holds work and passes once it is synced
+  [PASS] close-out refuses a path that is not a home rather than clearing it
+! home sync: skill:linked-unit linked — the source reaches it through the symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/source/skills/linked-unit -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/elsewhere/linked-unit. Nothing was written and no baseline was recorded: a reconcile moves bytes between two homes that own them, and a link's bytes belong to what it points at. Replace the link with a real directory (`skill-manager home clone`, or a COPY materialization) to reconcile this unit.
+! home sync: skill:linked-unit linked — the source reaches it through the symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/linked-home/skills -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/elsewhere. Nothing was written and no baseline was recorded: a reconcile moves bytes between two homes that own them, and a link's bytes belong to what it points at. Replace the link with a real directory (`skill-manager home clone`, or a COPY materialization) to reconcile this unit.
+  [PASS] a symlinked unit or kind directory is reported, never silently skipped
+  [PASS] a cloned home records the baseline that lets its edits merge back
+  [PASS] a clone of a home that edited a unit in place restates the baseline
+  [PASS] close-out refuses a unit whose two sides conflict, and names it
+  [PASS] close-out names a runnable skill-manager, and still names the conflicts
+   → 21 passed, 0 failed
+== HomeCloseOutTenseTest (3 cases)
+  [PASS] close-out never claims a unit was updated, and never updates one
+  [PASS] a status that is true of both runs keeps its plain word
+  [PASS] a real `home sync` still reports in the past tense
+   → 3 passed, 0 failed
+== HomeSyncMergeTest (17 cases)
+  [PASS] absence is a value in the merge, not a case of its own
+! home sync: skill:merge-skill conflicted — 1 file(s) changed on both sides; nothing was written
+  [PASS] a file deleted on one side and edited on the other is a conflict
+! home sync: skill:merge-skill conflicted — 1 file(s) changed on both sides; nothing was written
+  [PASS] a conflict anywhere in a unit suppresses the paths that would have merged
+! home sync: skill:merge-skill held back — the result of an earlier merge, so it is a copy of no home; re-run with --merge to reconcile it
+  [PASS] a merge result survives a second, unrelated source change
+  [PASS] a second --merge keeps the work the first one kept (CHM-10)
+  [PASS] a merge claims no shared baseline for a path it declined to write (CHM-12)
+! home sync: skill:merge-skill conflicted — 1 file(s) changed on both sides; nothing was written
+! home sync: skill:merge-skill conflicted — both sides differ and neither home recorded a per-file baseline they can be shown to share, so there is no merge base; resolve it by hand or publish the edit with `skill-manager unit publish merge-skill`
+  [PASS] the ordinary three-tier round trip destroys no worktree's edit (CHM-12)
+! home sync: skill:merge-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-merge-ff-provenance-15455686006345328771/source/skills/merge-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+! home sync: skill:merge-skill conflicted — both sides differ and neither home recorded a per-file baseline they can be shown to share, so there is no merge base; resolve it by hand or publish the edit with `skill-manager unit publish merge-skill`
+  [PASS] a fast-forward is not disposable to a home it never came from (CHM-9)
+  [PASS] the work survives the teardown that close-out cleared
+! home sync: skill:merge-skill held back — this home has no materialization record of its own and its current bytes are not a state the source is on record as having held, so replacing them could delete work that exists nowhere else; re-run with --merge to reconcile it
+  [PASS] a destination unit with no materialization record is never overwritten
+! home sync: skill:merge-skill held back — this home has no materialization record of its own and its current bytes are not a state the source is on record as having held, so replacing them could delete work that exists nowhere else; re-run with --merge to reconcile it
+  [PASS] a record-less destination the source is on record as having held is refreshed
+! home sync: skill:merge-skill held back — its materialization record is schema 1 and this build reads 2 — the digests in it were computed over a different set of files (re-derivable build output used to count as unit content, issue #41), so they are not evidence about these bytes and nothing may be replaced on their authority. Nothing was written — re-run with --merge to reconcile it, or refresh the unit from its store (a unit that is still a pristine copy re-baselines itself with no further hold-back)
+  [PASS] a record written by a newer skill-manager reads as no baseline, not as a crash
+! home sync: skill:merge-skill conflicted — both sides differ and neither home recorded a per-file baseline they can be shown to share, so there is no merge base; resolve it by hand or publish the edit with `skill-manager unit publish merge-skill`
+  [PASS] a merge with no per-file baseline anywhere conflicts rather than guessing
+  [PASS] the home lock lives where nothing that enumerates a home will find it
+peer: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-lock-reentrant-8982510794845168345/home — another operation in this process holds this home's lock
+  [PASS] the home lock is re-entrant on one thread and exclusive across threads
+  [PASS] a home lock is released when the operation under it fails
+  [PASS] two homes do not contend for one lock
+   → 17 passed, 0 failed
+== HomeSyncGitUnitTest (7 cases)
+  [PASS] git's own bookkeeping inside a unit does not hold the unit back
+! home sync: skill:git-sourced-skill held back — locally modified; re-run with --merge to three-way merge it
+  [PASS] a commit the source does not have holds the unit back
+! home sync: skill:git-sourced-skill held back — locally modified; re-run with --merge to three-way merge it
+  [PASS] a reconcile keeps commits made in a unit whose working tree it did not change
+! home sync: skill:git-sourced-skill held back — locally modified; re-run with --merge to three-way merge it
+  [PASS] a commit on a side branch survives, with HEAD never having moved
+! home sync: skill:git-sourced-skill held back — locally modified; re-run with --merge to three-way merge it
+  [PASS] a stash survives a sync that would otherwise replace .git
+! home sync: skill:git-sourced-skill held back — locally modified; re-run with --merge to three-way merge it
+  [PASS] an uncommitted edit in a git-backed unit is still an edit
+  [PASS] a record this build cannot read still keeps a checkout a checkout
+   → 7 passed, 0 failed
+== HomeSyncUnitFilterTest (7 cases)
+! home sync: skill:blocked-skill conflicted — 1 file(s) changed on both sides; nothing was written
+  [PASS] a whole-home sync fails because of an UNRELATED unit — the defect
+  [PASS] --unit reconciles only that unit, and the neighbour is untouched
+! home sync: skill:blocked-skill conflicted — 1 file(s) changed on both sides; nothing was written
+  [PASS] a targeted report says so, so its zeroes are not read as a clean home
+  [PASS] a --unit no home holds is REFUSED, not reported clean
+  [PASS] no --unit is still the whole home, unchanged for every existing caller
+  [PASS] a targeted --dry-run reports one unit and writes nothing
+  [PASS] --unit matches the NAME across kinds, not one kind
+   → 7 passed, 0 failed
+== HomeSyncStaleBaselineTest (6 cases)
+  [PASS] an unedited ticket cloned after an upstream sync closes clean against a project that synced again since
+  [PASS] a ticket edit on top of a superseded baseline merges up without a conflict on git's own bookkeeping, and the next pass clears the gate
+  [PASS] the source's own record is preferred over a clone-time baseline the destination moved off — with no git in the picture
+  [PASS] an upstream sync restates the baseline of a pristine copy and leaves an edited copy's record alone
+  [PASS] a ticket that pulled newer upstream fast-forwards a clean project home and refuses -- with the sync as the remedy -- an edited one
+  [PASS] a local commit in the ticket's store copy is still unique work: neither history contains the other once the project has moved too
+   → 6 passed, 0 failed
+== HomeSyncUnitCliTest (6 cases)
+  [PASS] an unknown --unit exits 12, NOT picocli's usage code
+  [PASS] picocli still owns 2, so the two really are distinguishable
+  [PASS] a targeted run NAMES the unit, so its zeroes cannot read as a clean home
+  [PASS] a whole-home run says none of that
+  [PASS] --json carries the unit: null whole-home, the name when targeted
+  [PASS] --json on the refusal is a payload, not an empty stdout
+   → 6 passed, 0 failed
+== AuditTrailTest (2 cases)
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill/SKILL.md
+A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v2/audited-skill/references/added.md
+A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v2/audited-skill/skill-manager.toml
+
+To inspect the full diff, run:
+
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v2/audited-skill
+
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/units.lock.toml
+D	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill/references/added.md
+
+To inspect the full diff, run:
+
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v1/audited-skill
+
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/units.lock.toml
+  [PASS] sync appends a line naming the verb and the unit it touched
+  [PASS] a clone does not carry the source home's audit log
+   → 2 passed, 0 failed
+== SharedGatewayTest (12 cases)
+  [PASS] a home owns its gateway by default
+  [PASS] attach records the endpoint and drops ownership
+  [PASS] a plain URL write does not silently promote an attached home
+  [PASS] detach takes ownership back
+  use it as-is (agents are already pointed at it), or run `skill-manager gateway detach` to take ownership, or pass --force.
+  [PASS] `gateway up` refuses on an attached home
+  run `skill-manager gateway detach` first to take ownership, or pass --force if you really mean to stop the shared one.
+  [PASS] `gateway down` refuses on an attached home
+
+DRY RUN — no changes will be made
+operation: gateway-up-ea582df1-4664-4e36-9007-9e32227dd6d3
+effects (1):
+→ [1] ensure gateway running at http://127.0.0.1:52006
+
+
+DRY RUN — no changes will be made
+operation: gateway-up-f262d1be-6521-467b-8105-0ac6197f0cca
+effects (1):
+→ [1] ensure gateway running at http://127.0.0.1:52007
+
+  [PASS] an owning home is not blocked, and --force overrides attachment
+✗ this home is attached to the shared gateway at http://127.0.0.1:52008 — it does not own it, so `gateway up` would collide on the port.
+  use it as-is (agents are already pointed at it), or run `skill-manager gateway detach` to take ownership, or pass --force.
+✓ this home now owns http://127.0.0.1:52008 — `gateway up` / `gateway down` are enabled
+
+DRY RUN — no changes will be made
+operation: gateway-up-5a677d29-eba2-48ec-b054-1a63ffb4afdc
+effects (1):
+→ [1] ensure gateway running at http://127.0.0.1:52008
+
+  [PASS] detach re-enables `gateway up`
+  [PASS] `gateway status` publishes the mode so another home can discover it
+  copied:      8 dirs, 1 files, 0 links (116 bytes; cache, logs, npm, tmp, tools, venvs skipped)
+  re-anchored: 0 links relativized, 0 records, 0 provisioned files
+✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-dst-4414037126321749359/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-src-14838792975155756453/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
+  gateway:     attached to http://127.0.0.1:52009 (the source home owns it; pass --own-gateway to claim it instead)
+  drift:       baselined against this copy's own content (0 unit(s)); a clone is not drifted
+  [PASS] a cloned home attaches to the source's gateway instead of claiming it
+  copied:      8 dirs, 1 files, 0 links (116 bytes; cache, logs, npm, tmp, tools, venvs skipped)
+  re-anchored: 0 links relativized, 0 records, 0 provisioned files
+✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-own-dst-3259029512527815506/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-own-src-1340980016915574163/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
+  drift:       baselined against this copy's own content (0 unit(s)); a clone is not drifted
+  [PASS] `home clone --own-gateway` keeps ownership when the operator says so
+  copied:      8 dirs, 1 files, 0 links (116 bytes; cache, logs, npm, tmp, tools, venvs skipped)
+  re-anchored: 0 links relativized, 0 records, 0 provisioned files
+✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-verify-dst-8485333251522883907/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-verify-src-17854112034398310110/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
+  gateway:     attached to http://127.0.0.1:52011 (the source home owns it; pass --own-gateway to claim it instead)
+  drift:       baselined against this copy's own content (0 unit(s)); a clone is not drifted
+  [PASS] the clone's own verification still passes with the descriptor in it
+   → 12 passed, 0 failed
+== SyncMcpSplitTest (7 cases)
+  [PASS] a default sync registers MCP servers and does NOT start a gateway
+  [PASS] --include-mcp adds the gateway preflight and only that
+  [PASS] --skip-mcp turns off both halves, which is what it always said
+  [PASS] a claiming-project sync still does no gateway work unless asked
+  [PASS] a server that fails to deploy does not change what sync EXITS
+  [PASS] an unreachable gateway leaves a SKIPPED receipt, never a FAILED one
+  [PASS] upgrade and sync plan the same MCP work — they disagreed before
+   → 7 passed, 0 failed
+== GeminiHomeParityTest (5 cases)
+  [PASS] every known agent has a projector in the default registry
+  [PASS] Gemini plans the same skill projection shape as Codex
+  [PASS] the child-home layout declares a dotted .gemini beside .claude/.codex
+  [PASS] a derived Gemini home follows its sibling's naming convention
+  [PASS] an explicitly declared Gemini home is used verbatim
+   → 5 passed, 0 failed
+== ArtifactBackfillTest (11 cases)
+  [PASS] a home with no ledger still enumerates every kind
+  [PASS] a shim that exists and cannot run is DECLARED, not materialized
+  [PASS] a lock row nothing declares reports UNKNOWN, not missing
+  [PASS] recorded and actual are separate, and can disagree
+  [PASS] the ledger is an index of identity and copies no state
+  [PASS] the JSON report is a stable contract with a computed summary
+  [PASS] a bundled package manager declares the version this codebase pins
+  [PASS] a bundled package manager left behind by a version bump DISAGREES
+  [PASS] the current pointer is read in both spellings setCurrent can write
+  [PASS] a bundled root with no current pointer says so instead of guessing
+  [PASS] an external package manager is not described as something we derived
+   → 11 passed, 0 failed
+== ArtifactHomeStabilityTest (9 cases)
+  [PASS] the copy's ledger restricts the source's, and holds no absolute path
+  [PASS] every id the copy still holds survives the clone unchanged
+  [PASS] what a clone skips is DECLARED and not materialized
+  [PASS] a wrapper a clone re-anchored into nothing reports as broken
+  [PASS] the ledger refuses to write an absolute path
+  [PASS] a harness binding's three agent links get three ids
+  [PASS] a destination that IS the target root leaks no name
+  [PASS] file:// cannot smuggle an absolute path past the refusal
+  [PASS] a file:// origin never reaches the ledger in the first place
+   → 9 passed, 0 failed
+== ArtifactGraphTest (11 cases)
+  [PASS] a shim's edge to its tree is found through a SUBPATH, not an exact match
+  [PASS] a moved unit reaches its shims and the trees they run out of
+  [PASS] containment stops at a segment boundary
+  [PASS] the LONGEST containing output wins, so a nested tree beats its parent
+  [PASS] containment runs one way only — a tree does not depend on what is in it
+  [PASS] an artifact is never its own producer, and is not 'unresolved' either
+  [PASS] a dangling unit: reference is unresolved, so no verdict can skip it
+  [PASS] a cycle is a named plan error, not a stack overflow
+  [PASS] terminal schemes are leaves, and a missing store: path is not
+  [PASS] record: resolves only when exactly one artifact owns that record
+  [PASS] edges are derived on read and never written to the ledger
+   → 11 passed, 0 failed
+== ArtifactStalenessTest (30 cases)
+  [PASS] an untouched home reports its fingerprinted shim as current
+  [PASS] editing skill-scripts/ makes the shim AND its tree stale, with no install
+  [PASS] a shim whose declaring unit is gone is unverifiable, never current
+  [PASS] a row with no recorded fingerprint is unverifiable, not current
+  [PASS] ARTI-06: a shim on disk whose output is hidden stops being current
+  [PASS] ARTI-06: presence may DEMOTE a verdict and may never promote one
+  [PASS] ARTI-06: stale --json carries the axis that decided each row
+  [PASS] staleness propagates downstream and names what caused it
+  [PASS] a bundled package manager behind its pin is STALE, and names both versions
+  [PASS] a bundled package manager at its pin is CURRENT, not merely present
+  [PASS] a tree named only through a BROKEN link is credited to nobody
+  [PASS] --kind filters the counts too, so a report cannot contradict itself
+  [PASS] a missing input makes a verdict unverifiable rather than current
+  [PASS] an installed plugin the marketplace does not list is stale
+  [PASS] a re-pointed marketplace link DISAGREES — the identity half is compared
+  [PASS] a declared MCP server nothing registered is a node, and it is stale
+  [PASS] a recorded MCP digest is DECIDABLE against the live declaration
+  [PASS] a `declared` digest does not outrank an undecided record about it
+  [PASS] the MCP digest does not cover init VALUES, which keeps a secret out
+  [PASS] ARTI-18: a link that resolves to its declared source is current
+  [PASS] ARTI-18: presence may DEMOTE a projection and may never promote one
+  [PASS] ARTI-18: a repointed link is a definite negative, not unverifiable
+  [PASS] ARTI-18: a dangling link says which source this home does not hold
+  [PASS] ARTI-18: the copy fallback is undecided rather than wrong
+  [PASS] ARTI-18: nothing at the path is `absent`, and still a definite negative
+  [PASS] ARTI-18: a row with no declared source is `undeclared`, not `absent`
+  [PASS] ARTI-18: a link into ANOTHER home is unverifiable, never current
+  [PASS] ARTI-18: a home copied without re-anchoring is reported as ONE home fact
+  [PASS] ARTI-18: a recorded hash outranks the link check, never the other way
+  [PASS] ARTI-18: boundHash keeps deciding the kind that carries one
+   → 30 passed, 0 failed
+== ArtifactBuildTest (18 cases)
+  [PASS] hiding a shim's output makes `build --stale` name it
+  [PASS] `build <artifact>` really rebuilds it, and the home holds it again
+  [PASS] COMPANION: building one artifact does not build the others
+  [PASS] a provisioned tree is never a build target, whatever it inherited
+  [PASS] a missing tree still gets repaired — through the shim, not the tree
+  [PASS] a backend that records nothing is planned as unverifiable, up front
+  [PASS] every unbuildable kind names the command that DOES rebuild it
+  [PASS] a clean home builds nothing and says so
+  [PASS] an artifact id this home does not hold is a usage error with near-misses
+  [PASS] --dry-run changes nothing and still names what it would do
+  [PASS] `home verify`'s remedy NAMES the artifacts that own its findings
+  [PASS] COMPANION: an artifact id that reaches a shell is quoted
+  [PASS] COMPANION: with nothing buildable behind them it falls back, not silent
+  [PASS] an artifact this command never attempted does not decide its exit code
+  [PASS] a producer that ran and wrote nothing is a no-op, never `built`
+  [PASS] COMPANION: a producer that DID write is still reported as built
+  [PASS] an unowned tree is not sent after an artifact that does not exist
+  [PASS] a real build writes an audit line naming the artifact
+   → 18 passed, 0 failed
+== LazyArtifactHomeTest (15 cases)
+  [PASS] a cold entry point names the command, and the command is the real id
+  [PASS] a cold shim RUNS: it prints its reason literally and exits 86
+  [PASS] no cold shim in a real clone can be made to name another home
+  [PASS] the dangling-symlink shape gets the same treatment
+  [PASS] a cold shim lists as declared, never as materialized
+  [PASS] the tier decides it, and the root home is eager
+  [PASS] the clone records its decision, and `home policy live` preserves it
+  [PASS] a lazy home's declared artifacts are reported and not counted
+  [PASS] a declared artifact is the third state; an undeclared one is still broken
+  [PASS] an eager home excuses nothing
+  [PASS] a virtualenv inside a unit is declared, not copied
+  [PASS] a directory that only LOOKS derived is copied
+  [PASS] deferring a virtualenv does not move the drift baseline
+  [PASS] node_modules inside a unit is CARRIED, and the venv beside it is not
+  [PASS] the copy's ledger declares only what the clone skipped
+   → 15 passed, 0 failed
+== ArtifactPruneTest (20 cases)
+  [PASS] the skill-script cache tree goes with its unit
+  [PASS] pruning a shim drops its cli-lock.toml row
+  [PASS] a whole-home prune finds what past removals left behind
+  [PASS] a home with no ledger deletes nothing
+  [PASS] a target containing a .git is refused, by name
+  [PASS] an unattributed tree is not an orphan
+  [PASS] a surviving consumer keeps the tree
+  [PASS] a wrapper shim a registered child home links at is not an orphan
+  [PASS] a SYMLINK shim a child home links at keeps both it and its tree
+  [PASS] every hop of a child home's link chain is claimed, not just the last
+  [PASS] an output that reaches outside the home through a directory symlink is refused
+  [PASS] a subtree this pass cannot read is treated as holding a .git
+  [PASS] a row whose output is a unit store is refused, whatever kind it declares
+  [PASS] a harness instance is still in scope, though `harnesses` is a content root
+! artifacts prune: could not remove cache/blocked-tree (java.nio.file.AccessDeniedException: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-3277865699994607416/cache/blocked-tree/inner/file) — the rest of the plan still runs and the ledger is re-recorded from what is on disk
+  [PASS] one step that cannot be deleted does not abandon the rest, or the ledger
+! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-9184231883453955666/child-homes/child-corrupt/child-home.json — this pass cannot tell what that home links at, so it removes nothing
+  [PASS] a child-home record this pass cannot decode stops the prune, by name
+! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-16878169515923103458/bin/cli (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
+! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-16878169515923103458/bin/mcp (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
+  [PASS] a child home's shim directory this pass cannot stat stops the prune
+! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-15610113103817808510/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
+! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-15610113103817808510/child-homes/child-record-sealed/child-home.json — this pass cannot tell what that home links at, so it removes nothing
+! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-15610113103817808510/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
+  [PASS] a child-home record this pass cannot stat stops the prune, by name
+  [PASS] a recorded output that escapes the home is refused
+  [PASS] the plain-text verdict says how many it refused, not just how many it removed
+   → 20 passed, 0 failed
+== BindingsTest (13 cases)
+  [PASS] ProjectionLedger round-trips through Jackson
+  [PASS] Empty ledger writes drop the file
+  [PASS] withBinding replaces by id; withoutBinding drops by id
+  [PASS] findById across multiple unit ledgers
+  [PASS] explicit binding ids prefer GitHub slug, then target directory
+  [PASS] explicit binding id allocator suffixes collisions
+✓ side effects: 1 projection(s) materialized
+  [PASS] MaterializeProjection SYMLINK creates the link
+✗ × MaterializeProjection: could not materialize projection at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-error-9501452367822656980/dest: destination already exists: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-error-9501452367822656980/dest
+  [PASS] MaterializeProjection ERROR policy fails when dest exists
+! projection: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-skip-6989805762314327871/dest already exists — skipped (policy=SKIP)
+  [PASS] MaterializeProjection SKIP leaves dest alone
+✓ side effects: 1 projection(s) materialized
+  [PASS] RENAMED_ORIGINAL_BACKUP move + reverse round-trip
+✓ side effects: 1 binding(s) bound
+✓ side effects: 1 binding(s) unbound
+  [PASS] CreateBinding writes the row; RemoveBinding drops it
+✗ × MaterializeProjection: could not materialize projection at /this/path/is/not/writable/dest: /this: Read-only file system
+✓ side effects: 1 binding(s) bound
+  [PASS] Executor rolls back CreateBinding on downstream failure
+  [PASS] defaultBindingId is deterministic per (agent, unit)
+   → 13 passed, 0 failed
+== DocRepoTest (17 cases)
+  [PASS] Sha256 hashFile round-trip + missing file → null
+  [PASS] SyncDecision matrix — all 4 + 2 cells
+  [PASS] ManagedImports upsertLine creates section on first call
+  [PASS] ManagedImports upsertLine is idempotent
+  [PASS] ManagedImports removeLine drops section when empty
+  [PASS] ManagedImports preserves unknown lines and reports them
+  [PASS] DocRepoParser parses [doc-repo] + [[sources]] with defaults
+  [PASS] DocRepoParser rejects duplicate source ids
+  [PASS] DocRepoBinder plan: one binding per source, MANAGED_COPY + IMPORT_DIRECTIVE pairs
+  [PASS] DocRepoBinder plan with selectedSourceId binds just that source
+  [PASS] DocRepoBinder maps Gemini sources to GEMINI.md
+✓ side effects: 1 binding(s) bound, 4 projection(s) materialized
+  [PASS] End-to-end bind doc-repo -> file copy + agent imports + ledger
+✓ side effects: 1 binding(s) bound, 4 projection(s) materialized
+  [PASS] DocSync upgrade: source changed, dest unchanged → rewrites + bumps boundHash
+✓ side effects: 1 binding(s) bound, 4 projection(s) materialized
+  [PASS] DocSync locally-edited warns without --force; clobbers with --force
+✓ side effects: 1 binding(s) bound, 4 projection(s) materialized
+  [PASS] DocSync orphan dest recreates the tracked copy
+✓ side effects: 1 binding(s) bound, 4 projection(s) materialized
+  [PASS] DocSync orphan source surfaces as error
+✓ side effects: 1 binding(s) bound, 4 projection(s) materialized
+  [PASS] SyncDocRepo effect emits DocBindingSynced facts via the handler
+   → 17 passed, 0 failed
+== HarnessTest (13 cases)
+  [PASS] HarnessParser reads [harness] + units + docs + mcp_tools
+  [PASS] HarnessParser handles `tools = []` (allowlist nothing) vs omitted (allowlist all)
+  [PASS] HarnessParser rejects file without [harness] table
+  [PASS] HarnessInstantiator plans one Binding per referenced unit + doc-source
+  [PASS] HarnessInstantiator resolves local refs relative to the harness template
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+  [PASS] End-to-end instantiate: per-agent symlinks + doc into project + ledger
+✓ side effects: 2 binding(s) bound, 5 projection(s) materialized
+  [PASS] Child-home instantiate creates child store, agent homes, shims, docs, and ledger
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+  [PASS] SyncHarness effect: idempotent re-apply (UPGRADED facts)
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+  [PASS] SyncHarness effect: removed unit from template → orphan binding torn down
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+  [PASS] instantiate records a RESOLVED fingerprint of the template
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+  [PASS] SyncHarness re-records the fingerprint, and it moves with the template
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+  [PASS] a pre-ARTI-17 instance is not promoted, and one sync fixes it
+  [PASS] a template that is gone yields a graded GAP, never a match
+   → 13 passed, 0 failed
+== ScaffoldedTreeIsNotContentTest (14 cases)
+  [PASS] the ignore block under test is the one the scaffolder emits
+  [PASS] an excluded path is NOT HASHED — a dereference leaves the child copy's digest equal to the store's
+  [PASS] an excluded path is NOT COPIED
+  [PASS] an excluded path is NOT DELETED — a wholesale refresh carries it across the swap
+  [PASS] a unit that legitimately contains sdk and standard-nodes keeps them — and the same fixture without the exclusion moves its digest
+  [PASS] a path the unit TRACKS is content even when its own .gitignore matches it
+  [PASS] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it
+  [PASS] an agent's file under an excluded path is NOT DISPOSABLE — the teardown predicate still sees it
+  [PASS] an excluded path the SOURCE also holds is still disposable — the guard is narrow
+  [PASS] a DIRECTORY-ONLY rule over an in-unit store link leaves the two walkers agreeing
+  [PASS] a directory-only rule over a link to a FILE is not excluded — the divergence is narrow
+! child home skill:graph-consumer — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-11790592773285069041/child/.skill-manager/skills/graph-consumer)
+  [PASS] a unit that GENUINELY differs is still held back, excluded paths or not
+  [PASS] no readable index means NOTHING is ignored — one rule for all three ways of not having one
+! child home: results in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-declaring-5426995216969881684/child/.skill-manager/skills/graph-consumer is being replaced by the source's own copy — the source no longer treats it as generated, so this home's version of it is not carried across the swap
+  [PASS] when upstream stops declaring a path generated, the child's copy of it is not lost silently
+   → 14 passed, 0 failed
+
+ALL PASSED
+RUNTESTS_EXIT=0

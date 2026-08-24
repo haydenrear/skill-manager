@@ -1,0 +1,64 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileKotlin
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors
+> Task :build-logic:processResources
+> Task :build-logic:classes
+> Task :build-logic:jar
+
+> Task :home-integrity
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.12.5 (path: /opt/homebrew/bin/uv)
+testGraph 'home-integrity' run=20260824-004740 steps=18 fullPlanSteps=18 traceId=a24cef4b27838e2722689a8f8e0c56e6
+  plan[1/18] env.prepared  [fixture, jbang]  sources/common/EnvPrepared.java
+  plan[2/18] home.integrity.fixture  [fixture, jbang]  sources/home-integrity/HomeIntegrityFixture.java
+  plan[3/18] home.integrity.record.agrees.with.store  [assertion, jbang]  sources/home-integrity/RecordAgreesWithStore.java
+  plan[4/18] home.integrity.upstream.tracks.fetch  [assertion, jbang]  sources/home-integrity/UpstreamTracksWhatSyncFetched.java
+  plan[5/18] home.integrity.ack.is.stable  [assertion, jbang]  sources/home-integrity/AckIsStable.java
+  plan[6/18] home.integrity.every.shim.resolves  [assertion, jbang]  sources/home-integrity/EveryShimResolves.java
+  plan[7/18] home.integrity.lock.row.has.claimant  [assertion, jbang]  sources/home-integrity/EveryLockRowHasAClaimant.java
+  plan[8/18] home.integrity.declared.cli.attributed  [assertion, jbang]  sources/home-integrity/DeclaredCliIsAttributed.java
+  plan[9/18] home.integrity.instance.template.installed  [assertion, jbang]  sources/home-integrity/InstanceTemplateInstalled.java
+  plan[10/18] home.integrity.projection.decidable  [assertion, jbang]  sources/home-integrity/ProjectionSourceIsDecidable.java
+  plan[11/18] home.integrity.bootstrap.projects.target  [assertion, jbang]  sources/home-integrity/BootstrapProjectsTheTargetHome.java
+  plan[12/18] home.integrity.parent.survives.child.build  [assertion, jbang]  sources/home-integrity/ParentHomeSurvivesAChildBuild.java
+  plan[13/18] home.integrity.readers.agree.about.one.clone  [assertion, jbang]  sources/home-integrity/ReadersAgreeAboutOneClone.java
+  plan[14/18] home.integrity.sync.stays.inside.its.home  [assertion, jbang]  sources/home-integrity/SyncStaysInsideItsHome.java
+  plan[15/18] project.verb.stays.in.its.home  [assertion, jbang]  sources/home-integrity/ProjectVerbStaysInItsHome.java
+  plan[16/18] home.integrity.damaged.home.is.repairable  [assertion, jbang]  sources/home-integrity/DamagedHomeIsRepairable.java
+  plan[17/18] home.fixpoint.law  [assertion, jbang]  sources/common/HomeFixpointLaw.java
+  plan[18/18] home.membership.law  [assertion, jbang]  sources/common/HomeMembershipLaw.java
+  [1/18] env.prepared (jbang)
+  [2/18] home.integrity.fixture (jbang)
+  [3/18] home.integrity.record.agrees.with.store (jbang)
+  [4/18] home.integrity.upstream.tracks.fetch (jbang)
+  [5/18] home.integrity.ack.is.stable (jbang)
+  [6/18] home.integrity.every.shim.resolves (jbang)
+  [7/18] home.integrity.lock.row.has.claimant (jbang)
+  [8/18] home.integrity.declared.cli.attributed (jbang)
+  [9/18] home.integrity.instance.template.installed (jbang)
+  [10/18] home.integrity.projection.decidable (jbang)
+  [11/18] home.integrity.bootstrap.projects.target (jbang)
+  [12/18] home.integrity.parent.survives.child.build (jbang)
+  [13/18] home.integrity.readers.agree.about.one.clone (jbang)
+  [14/18] home.integrity.sync.stays.inside.its.home (jbang)
+  [15/18] project.verb.stays.in.its.home (jbang)
+  [16/18] home.integrity.damaged.home.is.repairable (jbang)
+  [17/18] home.fixpoint.law (jbang)
+  [18/18] home.membership.law (jbang)
+wrote /Users/hayde/IdeaProjects/wt-224-his-8/test_graph/build/validation-reports/20260824-004740/summary.json + /Users/hayde/IdeaProjects/wt-224-his-8/test_graph/build/validation-reports/20260824-004740/report.md
+testGraph 'home-integrity' done. traceId=a24cef4b27838e2722689a8f8e0c56e6 reports: /Users/hayde/IdeaProjects/wt-224-his-8/test_graph/build/validation-reports/20260824-004740
+
+[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/wt-224-his-8/test_graph/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 2m 26s
+5 actionable tasks: 5 executed
+GRAPH_EXIT=0
