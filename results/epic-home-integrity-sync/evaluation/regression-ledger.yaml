@@ -1,0 +1,115 @@
+# Regression ledger — WHICH INSTRUMENT CAUGHT WHAT, and which missed it.
+#
+# The epic's goals measure whether the PRODUCT got better. This file measures
+# whether the VALIDATION did, and it is the only place that can answer the
+# owner's question: "solid judgment on how well our architecture and validation
+# did."
+#
+# The measurement only works if provenance is recorded AT THE MOMENT OF THE
+# CATCH. A finding written up afterwards always looks like it could have been
+# caught by anything. So every entry names its instrument when it is filed, and
+# `missed_by` is completed only once every instrument has had its turn at the
+# same tip.
+#
+# THREE INSTRUMENTS, deliberately different in kind:
+#
+#   A  graph-sweep   `skills/test_graph/scripts/sweep.py --scope full`
+#                    26 registered graphs, one at a time, per-graph resumption.
+#                    Automated, repeatable, and blind to anything nobody wrote
+#                    a node for.
+#
+#   B  issue-agents  Small agents, one GitHub issue each, each validating ITS
+#                    OWN worktree (owner's instruction, 2026-08-24). Not
+#                    whole-epic agents. Sees what a real ticket agent sees.
+#
+#   C  manual        The epic agent driving `skt` and `skill-manager` by hand
+#                    across the tiers and the four promotion paths. Sees
+#                    sequences nobody scripted.
+#
+# A finding caught by C and missed by A is an argument for a new node.
+# A finding caught by B and missed by A and C is an argument that the product
+# only breaks under a real workload.
+# A finding caught by A alone is the automation earning its keep.
+#
+# PHASE 5 OF HIS-6 TURNS THIS INTO WORK: every row whose `caught_by` is not A
+# owes a test assertion, and a model update where it is a property rather than
+# a case. A found bug without a check is a bug that returns.
+
+version: 1
+
+instruments:
+  A-graph-sweep:
+    command: python skills/test_graph/scripts/sweep.py --scope full
+    kind: automated
+    scope: 26 registered graphs
+    blind_to: anything nobody wrote a node for
+  B-issue-agents:
+    command: one agent per GitHub issue, validating its own worktree
+    kind: agent
+    scope: the four promotion paths, progressive disclosure at three tiers
+    blind_to: conditions that need a second session or a real upgrade
+  C-manual:
+    command: skt / skill-manager driven by hand across tiers
+    kind: exploratory
+    scope: sequences, not cases
+    blind_to: anything the operator does not think to try
+
+findings:
+  - id: REG-001
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    defect: DEF-103
+    one_line: >
+      One registered project's durability defect refuses EVERY unit sync into
+      the root home, naming a project unrelated to the unit being synced.
+    how_it_surfaced: >
+      Not by looking for it. The owner authorised merging seven leaf PRs and
+      syncing them into the root home; all four syncs failed identically with
+      PROJECT_SYNC_FAILED naming `meta-harness`, a repository this epic never
+      touched.
+    why_A_missed_it: >
+      NO GRAPH EXERCISES project -> root. Every close-out node in this epic runs
+      worktree -> project. The promotion direction the owner asked to enforce
+      had never been executed by any instrument until it was run by hand.
+    missed_by: [A-graph-sweep]
+    owed_check: >
+      A node that registers two projects, breaks the durability of ONE, and
+      asserts that a unit sync naming NEITHER still succeeds -- or fails with a
+      refusal scoped to the project that owns it.
+    status: open
+
+  - id: REG-002
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    defect: null
+    one_line: >
+      `skill-manager sync --help` prints the project-failure banner. Help output
+      runs project checks.
+    how_it_surfaced: reading `sync --help` to look for a scoping flag
+    why_A_missed_it: no graph asserts anything about `--help` output
+    missed_by: [A-graph-sweep]
+    owed_check: "a node asserting that `--help` for any verb is pure text: no project scan, no home mutation, no non-zero exit"
+    status: open
+
+  - id: REG-003
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    defect: null
+    one_line: >
+      SELF-INFLICTED, in the evaluation's own instrument. `sweep.py` classified
+      every node that was not `passed` as FAILED, lumping `skipped` in with it.
+    how_it_surfaced: >
+      The driver's own negative control. On artifact-dag it reported THREE
+      failing nodes where there is ONE: `uninstall.prunes.the.subgraph` failed,
+      and `home.fixpoint.law` / `home.membership.law` are downstream with
+      spawnExitCode -1 and zero assertions. It would have reported this epic's
+      two cross-cutting laws as broken when they simply never ran.
+    why_A_missed_it: >
+      A was the subject, not the instrument. Recorded because the epic's honest
+      count of "instruments that could not fail" is now nine, and this one sat
+      inside the evaluation itself.
+    missed_by: []
+    owed_check: >
+      Fixed at source before the sweep ran; failed and skipped are separate and
+      both controls still fire. Vacuity ledger row owed.
+    status: closed
