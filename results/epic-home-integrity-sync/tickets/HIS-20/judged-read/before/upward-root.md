@@ -208,7 +208,7 @@ Two things in this transcript were checked against the product and both hold.
    own help reads *"Pull each project unit's trunk and reconcile the project
    realization in place"* — a **pull**. `git-issue-workflow/references/skill-homes.md`
    names it as the **push-back** route to a unit's own repository. The read found
-   a genuine contradiction in a unit this ticket does not own; filed as DEF-098.
+   a genuine contradiction in a unit this ticket does not own; filed as DEF-097.
 2. **C-Q1's per-unit repository answer is a real product gap, not a reading
    failure.** `skill-manager show <unit> --json` carries `source`, `sha` and
    `path` and no `origin`; `list` prints `SOURCE git` and a short SHA. Nothing

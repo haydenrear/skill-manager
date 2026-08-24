@@ -143,6 +143,7 @@ usual trigger, and its remedy, plus an eleven-row table separating it from the
 ten codes it is routinely confused with. That is the DEF-018 fact moving from
 *absent* to *stated once and routed to*.
 
-Finding **M-Q2 #1** (copy-on-write vs copying) is filed as DEF-099. It is not
+Finding **M-Q2 #1** (copy-on-write vs copying) is DEF-098 — since **resolved**
+by measurement; see the ledger for the table. It is not
 this ticket's text; it matters because HIS-6's disk arithmetic depends on which
 of the two numbers is right.

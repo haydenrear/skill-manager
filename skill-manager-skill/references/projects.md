@@ -305,9 +305,16 @@ answer, alongside `gitRef` and the `gitHash` the store is actually at.
 2026-08-24: the operator's root home had it for 29 of 29 units, and a worktree
 home had it for 4 of 6, the two without it being exactly the units `project
 resolve` had installed. Prefer the per-unit record; treat a lock entry with no
-`origin` as a gap in the lock, not as a unit with no repository. `spec-double-compiler` is published
-from `tla-spec-dev`, `test-graph` from `test_graph_skill`, `deploy-helm` from
-`deploy-cdc`, and the `skt` plugin from `skill-publisher-skill`.
+`origin` as a gap in the lock, not as a unit with no repository.
+
+Worked examples of the mismatch, **including this unit's own**: `skill-manager`
+is published from `skill-manager-skill`; `spec-double-compiler` from
+`tla-spec-dev`; `test-graph` from `test_graph_skill`; `deploy-helm` from
+`deploy-cdc`; the `skt` plugin from `skill-publisher-skill`. That list is
+**illustration, not a registry** — which units a home holds differs per home, so
+enumerating one home's inventory here would be a copy that goes stale the first
+time a home differs. The lookup above is the answer; these are only enough
+examples to show that guessing from the name does not work.
 
 For a **plugin**, the unit is the plugin, so `unit publish` lands on the
 plugin's repository and not on the repository of a skill contained in it.
@@ -365,12 +372,20 @@ skill-manager home close-out --home <worktree>/.skill-manager \
   before any record: a worktree home whose working tree is clean and whose every
   ref the project home already reaches holds nothing — including a home that is
   merely *behind* because the project home pulled a newer upstream since the
-  worktree was cloned. `.git` is one thing in the verdict, never a list of index
-  and reflog files; a history that neither side contains is reported as the
-  single conflict entry `.git (history)`, and its detail names the fix — bring
+  worktree was cloned. **For a unit both homes hold**, `.git` is one thing in the
+  verdict rather than a list of index and reflog files; a history that neither
+  side contains is reported as the single conflict entry `.git (history)`, and
+  its detail names the fix — bring
   the project home up to date (`skill-manager sync <unit>` there) when the
   worktree only pulled further, `unit publish` when the worktree committed
   something of its own.
+- **That collapsing applies to the comparison path only.** A unit the
+  destination does not hold at all comes back `status: new`, and its `files[]`
+  is a raw walk — `.git`, `.git/index`, `.git/packed-refs`,
+  `.git/logs/refs/heads/main` and eighteen `.git/hooks/*.sample` are each listed
+  individually. Measured 2026-08-24 on a worktree home whose parent lacked two
+  units. So do not read a `.git`-heavy file list as evidence that something
+  happened to git's bookkeeping; read the `status` first.
 - `--json` gives `.blockers[]` with `unit`, `status`, `conflicts[]` and `remedy`.
 
 There is **no `--force` on this command**, deliberately: the CLI owns the verdict.

@@ -5074,16 +5074,63 @@ findings:
       wall clock on the same tree, with `home clone` and `cp -Rc` side by side.
       Both pages are pre-existing prose in a unit this ticket does not carry.
     fix: >
-      Take the one measurement; then state in ONE of the two pages whether
-      `home clone` takes the `clonefile` path, and make the other cite it. If it
-      does not, DEF-084's "the burden has moved -- assume any home-size figure is
-      an inflated `du` figure" needs revisiting, because it assumes CoW.
+      DONE -- MEASURED TWICE, INDEPENDENTLY, AND SETTLED. See `resolution` below.
+      `worktrees.md`'s sentence is corrected in git-issue-workflow-skill PR
+      (HIS-20). `skill-homes.md` needs no change; its shape was right.
+    resolution: >
+      `skill-manager home clone` IS COPY-ON-WRITE. `worktrees.md`'s "it is
+      copying rather than cloning" is FALSE. Measured by free-space delta on the
+      same volume, with both a positive control for CoW and a positive control
+      for a true copy, never with `du`.
+
+      Reviewer of PR #251, on one home:
+
+        cp -Rc (clonefile), control                  1.2 MB
+        cp -R  (true copy), control                526.4 MB
+        skill-manager home clone                    31.0 MB   <- 6.1%
+        cp -R of exactly what home clone produced  511.3 MB
+
+      HIS-20's independent replication, on a DIFFERENT home (503 MB, 30,576
+      files, `cache/` empty so `home clone`'s cache-skip cannot account for it):
+
+        skill-manager home clone                     22.2 MB   <- 4.4%
+        cp -R of exactly what home clone produced   498.0 MB
+        cp -Rc of exactly that tree, control         39.7 MB
+
+      The `cp -R of exactly what home clone produced` arm is the one that
+      matters: it copies the SAME bytes `home clone` wrote, so the cache-skip is
+      factored out and the only remaining difference is the copy mechanism. Both
+      runs put `home clone` at clonefile's magnitude and 17-22x below a true
+      copy. Two homes, two operators, same conclusion.
+
+      WHAT IS *NOT* FALSIFIED, and the correction must not overreach:
+      `worktrees.md`'s TIMING measurement stands (`cp -Rc` 11.2 s, `cp -R`
+      26.0 s, `home clone` at the second speed). What fails is the INFERENCE
+      FROM TIME TO SPACE -- that running at `cp -R`'s wall clock means copying
+      `cp -R`'s bytes. It does not: `home clone` walks 30k files, stats and
+      rewrites descriptors and verifies the copy, and that work costs seconds
+      without costing blocks. So "copy-on-write would take ~17 s per worktree
+      off every `wt new`" is the false sentence, not the timings above it.
+
+      CONSEQUENTLY: "a new worktree is nearly free" is JUSTIFIED FOR DISK and
+      NOT for wall clock. DEF-084's standing assumption ("assume any home-size
+      figure in these docs is a `du` figure and therefore inflated") survives --
+      it depended on CoW being real, and CoW is real.
+
+      HOW THE FIRST REPLICATION ATTEMPT FAILED, recorded because it is a
+      vacuity-ledger shape: HIS-20's first probe passed `--home` to `home clone`,
+      which takes `--from`. The arm exited 2, produced ZERO files, and still
+      printed `C delta = -13.7 MB` -- a number that reads as "better than
+      clonefile". It was caught only because the probe also counted files per
+      arm. The two positive controls were green in that same run, so control
+      health did not reveal it; only the per-arm output count did. An arm can be
+      void while its controls are sound.
     consequence: >
-      HIS-6 reports disk arithmetic for this epic. Whether a home per ticket
-      worktree costs 3.8% or 100% of its parent is decided by which of these two
-      pages is right, and the epic currently has both on record.
-    candidate_owner: HIS-6, or whoever next opens git-issue-workflow-skill
-    status: open
+      HIS-6 reports disk arithmetic for this epic. Settled: a home per ticket
+      worktree costs roughly 4-6% of its parent in real blocks, and the
+      free-space instrument is the only one that can say so.
+    candidate_owner: HIS-20 (measured); git-issue-workflow-skill PR carries the prose fix
+    status: resolved
 
   - id: DEF-099
     found_by: HIS-20 (#247), verifying DEF-077 in the worktree home
@@ -5170,4 +5217,118 @@ findings:
       origin" is indistinguishable from "not git-backed", which is the predicate
       `skt publish` uses to decide whether a unit is publishable at all.
     candidate_owner: whoever next opens `project resolve`
+    status: open
+
+  - id: DEF-101
+    found_by: external review of PR #251 (attack D), HIS-20
+    found_at: "2026-08-24"
+    severity: major
+    summary: >
+      `skill-manager home close-out` cannot express "the destination can obtain
+      this unit from its own manifest, at a published ref", so it blocks a
+      teardown over units that are unmodified checkouts at published `main` SHAs
+      which the destination's own `skill-project.toml` already declares. Nothing
+      would be destroyed, and the gate must still refuse.
+    detail: >
+      Measured on HIS-20's own close-out, 2026-08-24:
+
+        exit 1, safe: false, 2 blockers
+          skill:skill-manager  status=new
+            "not in the destination home; the source holds it and this home does not"
+          plugin:skt           status=new  (same detail)
+          remedy: home sync --from <worktree>/.skill-manager
+                            --to <project>/.skill-manager
+
+      Both units arrived in the worktree home from `skill-manager project
+      resolve`, are unmodified checkouts at published `main` SHAs
+      (`skill-manager-skill` 7b02d14, `skill-publisher-skill` 6d49d7f), and are
+      BOTH DECLARED in the destination's own `skill-project.toml`. Discarding
+      the worktree home would destroy nothing: the destination can reconstruct
+      both with one `project resolve`, from the same refs, offline of this
+      worktree entirely.
+
+      THE GATE IS RIGHT PER ITS CONTRACT and the external review said so: it
+      knows the destination lacks the unit, and it cannot know that "nothing of
+      yours is in there". Refusing is the correct behaviour for the information
+      it has. The defect is the missing distinction, not the refusal.
+
+      It is also load-bearing in an unusual direction: the remedy the gate prints
+      (`home sync` into the project home) is FORBIDDEN by every ticket brief in
+      this epic. So the gate names a remedy the agent may not run, over units
+      that did not need saving, and the only correct disposition is to report the
+      verdict and leave it -- which is what HIS-20 did.
+    why_deferred: >
+      Split out of DEF-096 on review. DEF-096 is a PROVISIONING defect (the
+      project home does not realize its manifest); this is a PRODUCT defect in
+      `close-out`'s verdict vocabulary. Folding them lost the second one, and the
+      second one outlives the first: resolving the project home clears THIS
+      instance and leaves the missing distinction in place for every future
+      worktree that installs anything its parent lacks.
+    fix: >
+      Give `close-out` a status between `new` and clean -- e.g.
+      `reconstructible`: the unit is a clean checkout at a ref reachable from a
+      remote the destination is configured for, AND the destination declares it
+      in a manifest. Report it, do not block on it, and name `project resolve`
+      rather than `home sync` as its remedy. Absent that, at minimum distinguish
+      `new (modified here)` from `new (clean checkout at <sha>)` in the detail
+      string, so a reader can tell the two apart without inspecting the store.
+    consequence: >
+      Any worktree that installs a unit its parent lacks -- which is what
+      `project resolve` in a worktree does, and what DEF-096's remedy will make
+      routine -- cannot close cleanly, and the printed remedy is one an epic
+      ticket agent is forbidden to run. The gate's own doctrine is that a
+      non-clean verdict must be read, not bypassed; this makes a class of
+      non-clean verdicts uninformative.
+    candidate_owner: whoever next opens `home close-out`
+    evidence:
+      - results/epic-home-integrity-sync/tickets/HIS-20/judged-read/README.md
+    status: open
+
+  - id: DEF-102
+    found_by: HIS-20 (#247), scoring D-Q3 across all six judged reads
+    found_at: "2026-08-24"
+    severity: minor
+    summary: >
+      Three pages give three different answers to "may I edit a unit's store copy
+      inside my home?", and the disagreement is why D-Q3 is the one question that
+      scores PARTIAL at all three tiers BOTH BEFORE AND AFTER this ticket's fix.
+    detail: >
+      `skill-manager/references/projects.md`:
+        "An agent that improves a unit does it *inside a home*."
+      -- and `unit publish` "commits `<home>/skills/<name>/`", i.e. it publishes
+      FROM the store copy.
+
+      `skt/skills/unit-authoring/SKILL.md` (before HIS-20):
+        "**Never edit the store copy in place.** The next sync overwrites it,
+         and its provenance no longer matches `origin`."
+
+      `skt/skills/skt/SKILL.md` tier table, project row (before HIS-20):
+        "none -- pull-side only"
+
+      Every one is defensible on its own and no page acknowledges another. A
+      reader who loads `unit-authoring` first concludes the entire `skt publish`
+      flow is forbidden; a reader who loads the tier table concludes a
+      project-tier edit owes nothing. One judged reader said exactly that.
+
+      HIS-20 fixed two of the three sides -- `unit-authoring`'s prohibition is
+      now scoped to AUTHORING with the rescue path named, and the tier table's
+      project row now carries the obligation (skill-publisher-skill#35). What is
+      NOT done is the positive statement, in one place, of when editing a store
+      copy is the right move and when it is not, that the other two link to.
+    why_deferred: >
+      The remaining half is a doctrine decision about the intended workflow, not
+      a wording fix, and it spans two units in two repositories. HIS-20 corrected
+      the two demonstrably-wrong sides and is reporting the third rather than
+      inventing the doctrine on the last implementation ticket of the epic.
+    fix: >
+      State once -- most naturally in `projects.md` beside `home sync` /
+      `unit publish` -- the two legitimate cases (authoring belongs in the unit's
+      own checkout; an edit made mid-ticket in a home is rescued, not authored)
+      and have `unit-authoring` and skt's tier table link to it rather than each
+      asserting its own half.
+    consequence: >
+      D-Q3 -- "what may I change here?" -- is clause 1's most basic question and
+      is the only one this ticket could not move past PARTIAL at any tier. An
+      agent gets a different answer depending on which unit it opens first.
+    candidate_owner: whoever next opens skill-manager-skill or skill-publisher-skill
     status: open

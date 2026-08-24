@@ -102,4 +102,4 @@ read at this tier reached the same "not determinable" verdict but had **no route
 out of it**: it did not know `installed/<unit>.json` carries `origin`.
 
 M-Q2 #1 was asked for directly by the prompt and answered against the corpus's
-own interest. Filed as DEF-098.
+own interest. Filed as DEF-097.

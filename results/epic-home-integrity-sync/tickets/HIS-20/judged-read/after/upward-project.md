@@ -93,10 +93,10 @@ consistent**, including the copy-on-write figures that the AFTER downward-root
 read flagged as contradictory. The two disagreements are about *different pairs
 of pages* — 3.8% vs 3.1% (different homes, cross-cited, fine) and
 `skill-homes.md`'s "copy-on-write" vs `worktrees.md`'s "it is copying rather than
-cloning" (a real conflict). DEF-099 records the second and explicitly excludes
+cloning" (a real conflict). DEF-098 records the second and explicitly excludes
 the first, because a ledger row that names the wrong pair is worse than none.
 
-M-Q2 #1 and #2 are **DEF-098**: `skill-homes.md` names a pull command as the
+M-Q2 #1 and #2 are **DEF-097**: `skill-homes.md` names a pull command as the
 push-back route and forbids the tier three other pages designate. Both were found
 independently by the BEFORE upward-root read; two agents converging on it from
 opposite ends of the corpus is why it is filed as major rather than minor.

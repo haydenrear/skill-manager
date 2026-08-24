@@ -24,6 +24,45 @@ is scored a failure of its clause, not a pass with a caveat.
 Each agent's session `SKILL_MANAGER_HOME` was given to it, because a real agent
 has it; nothing else about the environment was.
 
+### Provenance of the "before" — CORRECTED 2026-08-24 after review
+
+**#247's criterion is "the before-transcripts are committed before any
+documentation change." That criterion is NOT literally met, and the evidence the
+first version of this page cited for it was the wrong evidence.**
+
+All UTC, all independently re-checked:
+
+| event | time |
+| --- | --- |
+| `skill-manager project resolve` installs `skill-manager` + `skt` into the worktree home (`installedAt`) | **12:13:39Z** |
+| first leaf documentation commit | 12:17:23Z |
+| four further leaf commits, through | 12:37:03Z |
+| **`6aadb49`, the before-transcripts** | **12:43:37Z** |
+
+The transcripts were committed **26 minutes after the first documentation change**
+and after all five leaf commits. Commit order does not establish the discipline
+and citing it was a mistake.
+
+**What does establish it is the corpus state, which is checkable and which no
+later edit could fabricate.** All six BEFORE corpora describe homes holding four
+skills and no plugins. That state ended at **12:13:39Z**, when `project resolve`
+installed the two missing units — *earlier than the first documentation commit*.
+A transcript describing a four-skill, no-plugin worktree home could not have been
+produced after 12:13:39Z, because the home no longer looked like that. The reads
+therefore did precede the edits, and the ordering the ticket cares about — measure
+before fix — holds.
+
+**One point of disagreement with the review, offered because it asked for one.**
+The review suggests saying that leaf-first publishing makes the literal criterion
+*unachievable by construction*. It does not, and this document should not hide
+behind that. "Any documentation change" spans two repositories with independent
+histories, so there is no single log to read — but the committer timestamps are
+comparable across them (they are compared above), and nothing prevented
+committing the transcripts in *this* repository before touching either leaf. **I
+simply did not do it in that order.** The criterion was achievable and was
+missed; what rescues the measurement is the corpus state, not the shape of the
+workflow.
+
 | read | corpus |
 | --- | --- |
 | BEFORE root | the operator's real root home — 193 md, 20 skills + 3 plugins |
@@ -45,44 +84,101 @@ has it; nothing else about the environment was.
    is attributable to provisioning, not to prose.** The worktree tier's delta is
    real: that home was changed, by `skill-manager project resolve`.
 
-### The instrument's own contamination, measured rather than assumed
+### The instrument's own contamination — CORRECTED 2026-08-24 after review
+
+**The first version of this section was wrong in the direction that flatters the
+ticket, and the correction is the most important thing on this page.** It audited
+one leak channel, declared four cells CLEAN, and those four cells are the ones
+carrying the goal. External review of PR #251 found three more channels, and two
+of the four "clean" cells are contaminated by one of them, standalone.
 
 Every AFTER read was asked, as a question: *"Your system prompt contains a
 listing of ~40 skills with full descriptions. For EACH answer above, say whether
-that listing could have supplied the answer independently of the corpus."*
+that listing could have supplied the answer independently of the corpus."* All
+six answered in detail. **That question named only one channel. There are four.**
 
-All six answered, unprompted-by-defensiveness and in detail. The finding is
-uncomfortable and it is the honest limit of both this ticket's instrument and
-HIS-8's:
+| # | channel | audited originally? |
+| --- | --- | --- |
+| 1 | the ~40-skill listing with full descriptions | yes |
+| 2 | **the operator's auto-memory `MEMORY.md`**, injected into every subagent context | **no** |
+| 3 | **the injected `gitStatus` block**, carrying recent commit subjects | **no** |
+| 4 | the `SubagentStart` hook line about the live filesystem | noted, immaterial |
 
-- **`skt`'s own listing description contains the complete tier enumeration
-  verbatim** — "root ~/.skill-manager, project `<repo>/.skill-manager`, or a
-  ticket worktree home" — **and** the tool that reports it. Every D-Q1 and U-Q1
-  answer in this ticket is contaminated by it.
-- **`skill-dev-skill`'s description contains "`skt publish` (home sync one tier
-  up, then unit publish)"** — the whole of C-Q2's central claim.
-- **`git-issue-workflow`'s description contains "a gate that refuses while
-  removing it would destroy unpublished skill work"** — U-Q3's headline.
+**Channel 2 is the damaging one**, and it is the epic agent's file rather than
+anything the readers did. Its rows, verbatim, against the cells they answer:
 
-**What is clean, on all six readers' own accounting:** `held-back`/`conflicted`
-(U-Q4), the unit→repository mapping and the `installed/<unit>.json` lookup
-(C-Q1's repository column), exit 79 and the CLI-pin material (F-Q1's real answer
-and F-Q2 entirely), the close-out exit ladder, and the worktree-tier publish
-split (C-Q4). **Those are the questions whose deltas mean the most**, and it is
-not a coincidence that they are also the four facts the epic's own record said
-were undocumented.
+| memory row | cell it answers |
+| --- | --- |
+| *"SKILL_MANAGER_HOME alone still writes into the real ~/.claude; CLAUDE_HOME is the parent of .claude/"* | **F-Q1, entire, standalone** |
+| *"drive scratch homes with the raw build, not a home's bin/cli pin"* | **F-Q2** |
+| *"unit names differ from repo names; sync the hosting repo first"* | **C-Q1's principle** |
 
-One reader noted the contamination cuts the other way too: *"my prompt lists
-`skt:skt` as an available skill, which would have led me to confidently tell you
-to run `skt status`. The corpus is what told me it is probably absent in this
-home."*
+Two of three fresh readers quoted that file unprompted. One said outright: *"I
+knew the answer from elsewhere while declining to give it; my abstention was a
+choice, not ignorance."*
+
+Channel 3 carries commit subjects about how close-out judges a git-backed unit
+and what `.git (history)` means (**U-Q3/U-Q4's neighbourhood**). Channel 1 also
+names `git-issue-workflow/scripts/bootstrap-home.sh` **by path** in
+`git-epic-workflow`'s description, which supplies **F-Q3's existence half**.
+
+#### Re-certification, cell by cell, against all four channels
+
+| cell | verdict | why |
+| --- | --- | --- |
+| D-Q1, U-Q1 | contaminated (ch. 1) | skt's description states the tier model verbatim |
+| C-Q2 | contaminated (ch. 1) | `skill-dev-skill`'s description: *"`skt publish` (home sync one tier up, then unit publish)"* |
+| U-Q3 — the gate's *purpose* | contaminated (ch. 1, ch. 3) | `git-issue-workflow`'s description gives it |
+| **U-Q3 — the exit ladder 0/1/2/9** | **clean** | in no channel |
+| **U-Q4** | **clean** | in no channel; ch. 3 is adjacent (`.git (history)`) but does not give held-back/conflicted |
+| C-Q3 — "installed hash vs remote tip" | contaminated in outline (ch. 1: *"which have a NEW VERSION AVAILABLE"*) | |
+| **C-Q3 — the error-record precedence** | **clean** | in no channel |
+| **F-Q1** | **CONTAMINATED — was certified clean, wrongly** | ch. 2, standalone and verbatim |
+| **F-Q2** | **CONTAMINATED — was certified clean, wrongly** | ch. 2, standalone |
+| C-Q1 — the *principle* that names differ | contaminated (ch. 2) | |
+| **C-Q1 — the `installed/<unit>.json` lookup** | **clean** | the mechanism is in no channel; only the principle is |
+| **C-Q4 — the `--home` mechanics** | **clean** | in no channel |
+| **F-Q3 — the exit codes, including 79** | **clean, and checked rather than asserted** | see below |
+
+**F-Q3 is the cell this ticket headlines, so its certification was verified
+rather than reasoned.** Channel 1 gives the *existence* of `bootstrap-home.sh`,
+not any code. Channel 2 contains no numeric exit code. Channel 3's nearest
+subject is *"give the unknown-unit refusal its own exit code"* — and that commit
+introduces `EXIT_CODE = 12`, not 79; `79` appears in **none** of the eight commit
+subjects `gitStatus` carried. So no channel supplies 79. The review's own list of
+genuinely-clean cells omitted F-Q3 without saying why; **this is the one place
+this document argues against the review, and the argument is checkable above.**
+
+#### What this costs the ticket, stated plainly
+
+The previous version of this section said: *"What is clean … exit 79 and the
+CLI-pin material (F-Q1's real answer and F-Q2 entirely) … the unit→repository
+mapping. Those are the questions whose deltas mean the most."* **Both halves of
+that sentence were true at once, which is exactly the problem: the strongest
+evidence for the goal was the most contaminated evidence, and the section
+asserting its cleanliness had not looked at the channel that dirties it.**
+
+The cells are **discounted, not struck.** The citations in the transcripts are
+real, the corpus does now contain the text, and a reader with prior knowledge who
+still had to find and quote the sentence has demonstrated the corpus can answer.
+What is no longer claimable is that F-Q1's and F-Q2's deltas are *uncontaminated*
+evidence.
+
+One reader noted the leak cuts the other way too: *"my prompt lists `skt:skt` as
+an available skill, which would have led me to confidently tell you to run `skt
+status`. The corpus is what told me it is probably absent in this home."*
 
 Two readers independently noticed the listing's `skt` description is an **older
 revision** than the corpus's frontmatter, so the listing is not even a superset.
-A `SubagentStart` hook also injected a line about the live filesystem into three
+A `SubagentStart` hook injected a line about the live filesystem into three
 readers' contexts; one said plainly, *"Your harness leaks state into the
-sandbox."* Neither affected an answer, and both are recorded because a sandbox
-whose leaks are catalogued is worth more than one assumed airtight.
+sandbox."*
+
+**For HIS-6, and for whoever runs the next judged read:** an isolated-corpus
+instrument in this harness has at least four inbound channels, and enumerating
+them is not optional. HIS-8's reads had every one of these exposures and recorded
+none. This ticket recorded one of four unaided and needed review to find the
+rest.
 
 ## What the corpora actually contained — the finding underneath every score
 
@@ -134,7 +230,7 @@ one agent's answer against one other agent's answer.
 | **U-Q2** what git carries and what it does not | PASS — from that one section | PASS — plus `$GIT_COMMON_DIR/info/exclude` as the actual mechanism, and the store-copy-is-a-git-checkout seam | PASS — same source | PASS — plus the tracked-symlink exception | PASS — and it found the `project sync` contradiction unprompted | PASS |
 | **U-Q3** what close-out decides | PARTIAL — what it refuses found; "NOT STATED: that this gate is invoked by `wt close` / `skt ticket close`, or any exit codes" | PASS — 0/1/2/9 with 2's and 9's rationales, `LINKED`, no-`--force`, the callers | PARTIAL — same, plus "the corpus never describes a close-out gate for the project→root boundary" | PASS | PASS | PASS |
 | **U-Q4** `held-back` / `conflicted` | **FAIL** — `NOT ANSWERABLE FROM THE CORPUS`, verified by case-insensitive grep for seven spellings | PASS — both statuses, the default/`--merge` split, what the agent does, and the `MERGE_CONFLICT` distinction | **FAIL** — same | PASS | PASS | PASS |
-| **C-Q1** publish command + tier + repo, per unit | **FAIL** — 1 of 4 units answered; three `NOT ANSWERABLE`; tier not stated; and the reader noted the corpus says "own **git repository**", never GitHub | PASS on command+tier (6/6); repository stated for 4 of 6, with the lookup that closes the other two | **FAIL** — same | same as worktree | PARTIAL — command for all 23; **repository `NOT ANSWERABLE` for ~16, with no route out** | PARTIAL→better — command 23/23; repository 12/23 **plus the mechanical lookup**; tier still ambiguous, because the corpus genuinely conflicts (DEF-098) |
+| **C-Q1** publish command + tier + repo, per unit | **FAIL** — 1 of 4 units answered; three `NOT ANSWERABLE`; tier not stated; and the reader noted the corpus says "own **git repository**", never GitHub | PASS on command+tier (6/6); repository stated for 4 of 6, with the lookup that closes the other two | **FAIL** — same | same as worktree | PARTIAL — command for all 23; **repository `NOT ANSWERABLE` for ~16, with no route out** | PARTIAL→better — command 23/23; repository 12/23 **plus the mechanical lookup**; tier still ambiguous, because the corpus genuinely conflicts (DEF-097) |
 | **C-Q2** `home sync` / `skt sync` / `unit publish` / `skt publish` | PARTIAL — the two `skill-manager` commands right; `skt sync` and `skt publish` `NOT ANSWERABLE` ("the string `skt` appears five times in the whole corpus") | PASS | PARTIAL — same | PASS | PASS | PASS |
 | **C-Q3** what `skt check` compares | **FAIL** — `NOT ANSWERABLE`; the reader named `home drift` and explicitly **declined** to promote it | PASS | **FAIL** — same, and again declined to guess | PASS | PASS | PASS |
 | **C-Q4** my brief forbids the project home — can I still publish | not asked (the AFTER-only question, because it is DEF-077) | **PASS** — named the split, which leg is forbidden, the by-hand fallback with its branch/base/PR shape, the reporting obligation, and that a non-clean close-out verdict is "the gate working, not a fault" | — | — | — | — |
@@ -142,16 +238,40 @@ one agent's answer against one other agent's answer.
 ### Reading the table
 
 - **The two lower tiers moved because the home changed, not because prose
-  changed.** Say that plainly. `skill-manager project resolve` installed the two
-  units the manifest already declared, and eleven `PARTIAL`/`FAIL` cells became
-  `PASS`. This ticket's *prose* changes account for: F-Q3's root delta (exit 79),
-  C-Q1's repository column at every tier, F-Q2's mechanism, and C-Q4 entirely.
+  changed — and the split is now MEASURED, not estimated.** External review of
+  PR #251 built the arm this ticket did not: the real worktree home after
+  `project resolve`, with `skill-manager` and `skt` at their **pre-ticket**
+  GitHub `main`. Resolve, zero prose.
+
+  | arm | result |
+  | --- | --- |
+  | resolve alone, no prose | **9 of 11 cells reach PASS** |
+  | still PARTIAL after resolve alone | 1 (C-Q1) |
+  | **required this ticket's prose** | **1 (F-Q2)** |
+
+  **The converse needs no agent, because it is a proof rather than a
+  measurement.** Every line this ticket wrote lands in `skill-manager` and
+  `skt`. Neither unit exists at the project or worktree tier before `project
+  resolve`. So prose-without-provisioning is **byte-identical to the BEFORE
+  corpus** at both lower tiers. **This ticket's documentation delivers exactly
+  zero at 2 of 3 tiers until DEF-096 runs.**
+
+  Two attributions in the first version of this document were overstated and are
+  withdrawn:
+  - **"C-Q4 entirely" — withdrawn.** The resolve-only reader answered C-Q4
+    correctly from the *pre-existing* `unit publish --home` flag, with three
+    honest cautions. The new prose makes the answer easier to reach and states
+    the reporting obligation; it is not what made the answer available.
+  - **"C-Q1's repository column at every tier" — narrowed.** Four of the six
+    mappings were already derivable from existing text. The genuinely new thing
+    is the **`installed/<unit>.json` lookup**, which is what closes the units no
+    page names.
 - **Four cells are failures the fix did not close, and they are named as
   failures.** D-Q3 stays PARTIAL at all three tiers after the change, because
   three pages disagree about whether editing a store copy in place is the
-  supported practice or an antipattern (DEF-101). C-Q1's *tier* stays ambiguous
+  supported practice or an antipattern (DEF-102). C-Q1's *tier* stays ambiguous
   at root because `skill-homes.md` forbids the tier three other pages designate
-  (DEF-098). Both are in units this ticket does not own.
+  (DEF-097). Both are in units this ticket does not own.
 - **F-Q1 at the lower tiers is the clause-1 failure most worth arguing about.**
   The BEFORE readers said "no, `SKILL_MANAGER_HOME` is not enough" and were
   right — but from a PATH argument in a consumer skill, never naming
@@ -180,6 +300,20 @@ printed by any command: `list` gives `SOURCE git` and a short SHA, and
 `show --json` carries `source`, `sha`, `path` and **no `origin`**. It is in
 `<home>/installed/<unit>.json`.
 
+**How much of that column the shipped prose actually carries, stated exactly.**
+At review time §"Finding a unit's repository" named **4 of these 6** by example
+and omitted `skill-manager` — this unit's own repository, and the one the
+publishing PR exercises. Both judged readers returned `NOT ANSWERABLE` for it.
+`skill-manager` → `skill-manager-skill` has been added, making it **5 of 6** by
+example, with `tracing-observability` reachable only through the lookup.
+
+That last one is deliberate rather than an oversight. **Enumerating a home's
+inventory inside a unit's documentation is the drift defect this epic exists to
+stop** — which units a home holds differs per home, so such a list is wrong the
+first time a home differs. The examples are there only to demonstrate that
+guessing from the name fails; `installed/<unit>.json` is the answer, and it is
+the answer for all six.
+
 **And `units.lock.toml` is not a reliable second source.** Measured the same day:
 the operator's root home records `origin` for **29 of 29** lock entries; this
 worktree home records it for **4 of 6** — the two without it being exactly the
@@ -203,7 +337,7 @@ $ echo $?
 and `unit publish zzz-no-such-unit` produces the **byte-identical** message with
 the name substituted. "Not installed in this home" and "you typed it wrong" are
 indistinguishable from the output, and `--checkout` is not a flag `unit publish`
-accepts. That is now documented (DEF-102 files the CLI half).
+accepts. That is now documented (DEF-099 files the CLI half).
 
 ## Honest limits of this instrument
 
@@ -220,3 +354,21 @@ accepts. That is now documented (DEF-102 files the CLI half).
   caused.** As with HIS-8's AFTER-2, none of their answers depended on those
   changes — the trims removed restatement and corrected two claims the readers
   had already flagged as wrong.
+- **C-Q1's worktree AFTER `PASS` was scored against a sentence this ticket later
+  found false and deleted.** `after/upward-worktree.md` quotes, as its source,
+  the first draft of §"Finding a unit's repository" — the version that named
+  `units.lock.toml` alongside `installed/<unit>.json`. `grep -F` cannot find that
+  sentence in the shipped corpus, because DEF-100 is exactly the finding that it
+  was half wrong (root records `origin` for 29/29 lock entries; a resolved
+  worktree home for 4/6). The reader's *answer* survives — it named
+  `installed/<unit>.json` first and the shipped text still says that — but the
+  cell was graded against text that no longer exists, and the disclosure in the
+  earlier draft of this page was generic where it should have been specific.
+- **The close-out scenario this ticket headlines is not answerable from the
+  corpus it shipped.** A fresh reader recovered the reporting obligation and the
+  absence of `--force`, but the corpus *"never names a status `new`, never
+  describes 'not in the destination home'"*. So an agent hitting HIS-20's own
+  verdict — two blockers, both `new` — cannot look it up in the documentation
+  this ticket delivered. Recorded as a named gap rather than fixed, because the
+  underlying behaviour is DEF-101 and the wording should follow that decision,
+  not precede it.

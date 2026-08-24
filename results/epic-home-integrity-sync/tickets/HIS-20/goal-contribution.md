@@ -19,21 +19,46 @@ Read §1 before the numbers.
 Three things are weaker than they look, and none of them is hidden below:
 
 1. **The lower two tiers moved because the HOME changed, not because prose
-   changed.** Eleven `PARTIAL`/`FAIL` cells became `PASS` at the project and
-   worktree tiers, and the cause was one `skill-manager project resolve` against
-   a manifest that already declared the missing units — not a word this ticket
-   wrote. Say that first or the table lies.
+   changed — and review measured the split rather than accepting the estimate.**
+   It built the arm this ticket did not: the real worktree home after `project
+   resolve`, with both units at their **pre-ticket** GitHub `main`. Resolve, zero
+   prose. **9 of 11 cells reach PASS with no prose at all**; 1 stays PARTIAL
+   (C-Q1); **exactly 1 required this ticket's prose (F-Q2)**.
+
+   The converse is a proof, not a measurement: every line this ticket wrote lands
+   in `skill-manager` and `skt`, and neither unit exists at the two lower tiers
+   before `project resolve` — so prose-without-provisioning is **byte-identical
+   to the BEFORE corpus**. **This ticket's documentation delivers zero at 2 of 3
+   tiers until DEF-096 runs.**
+
+   Two attributions in the first version of this document are **withdrawn**:
+   "C-Q4 entirely" (the resolve-only reader answered it correctly from the
+   pre-existing `unit publish --home` flag, with three honest cautions) and
+   "C-Q1's repository column at every tier" (four mappings were already
+   derivable; the genuinely new thing is the `installed/<unit>.json` lookup).
 2. **Two of the three AFTER corpora exist nowhere on disk.** The root corpus is a
    sandbox holding this ticket's units *as published* in two open leaf PRs; the
    real root home gets them when those merge and it syncs. The project corpus is
    an explicitly labelled counterfactual. Only the worktree AFTER corpus is a
    home that exists. HIS-8 carried the same caveat and it is carried again here.
-3. **The doc-only sandbox is not airtight, and this ticket measured the leak
-   rather than assuming it away.** Every subagent's system prompt carries a
-   ~40-skill listing in which `skt`'s own description states the three-tier model
-   verbatim. All six AFTER readers were asked to itemize what that listing could
-   have supplied independently, and all six did. HIS-8's reads had the same
-   exposure and did not record it.
+3. **The doc-only sandbox is not airtight — and the first version of this
+   document audited ONE leak channel of four, then certified as "clean" the two
+   cells that channel 2 answers standalone.** The operator's auto-memory
+   `MEMORY.md` is injected into every subagent context and contains
+   *"SKILL_MANAGER_HOME alone still writes into the real ~/.claude; CLAUDE_HOME
+   is the parent of .claude/"* (**F-Q1, entire**) and *"drive scratch homes with
+   the raw build, not a home's bin/cli pin"* (**F-Q2**). Two of three fresh
+   readers quoted it unprompted; one said *"my abstention was a choice, not
+   ignorance."* The `gitStatus` block is a third channel.
+
+   **The strongest evidence for the goal was the most contaminated evidence, and
+   the section asserting otherwise had not looked.** Corrected, with a cell-by-cell
+   re-certification against all four channels, in
+   [`judged-read/README.md`](judged-read/README.md#the-instruments-own-contamination--corrected-2026-08-24-after-review).
+   The cells are **discounted, not struck**. F-Q3's exit-79 delta survives
+   re-certification and the survival was *checked*, not asserted: no channel
+   carries any numeric exit code, and the nearest `gitStatus` subject introduces
+   `EXIT_CODE = 12`, not 79.
 
 Full method, per-question scoring and the change-management table:
 [`judged-read/README.md`](judged-read/README.md). Twelve transcripts:
@@ -189,6 +214,7 @@ the tracked snapshot so this PR carries the text.
 
 | unit | repository | PR | what |
 | --- | --- | --- | --- |
+| `git-issue-workflow` | `haydenrear/git-issue-workflow-skill` | [#24](https://github.com/haydenrear/git-issue-workflow-skill/pull/24) | `worktrees.md`'s copy-on-write claim, corrected against a measurement run twice on two homes (DEF-098) |
 | `skill-manager` | `haydenrear/skill-manager-skill` | [#5](https://github.com/haydenrear/skill-manager-skill/pull/5) | what `unit publish` can publish and the two remedies; where a unit's repository is recorded; the two legs of `skt publish` decided separately at the worktree tier; exit 79; the `--allow-same-home` correction; the `skill-imports` inheritance correction and the `home clone` validation gap; three restatements cut |
 | `skt` | `haydenrear/skill-publisher-skill` | [#35](https://github.com/haydenrear/skill-publisher-skill/pull/35) | "on PATH in every skill-manager home" scoped and given fallbacks; the same claim fixed inside the snippet it propagates into other repos' agent files; the retired `skill-publisher` unit name; "never edit the store copy" scoped to authoring; the project tier's obligation |
 
@@ -216,4 +242,23 @@ than described, in the ticket that documents it.
   `skill-manager-skill#5` and `skill-publisher-skill#35` merge and root syncs.
   The AFTER root corpus is a sandbox.
 - **It is met at the worktree tier on this machine, today**, because that home
-  was actually changed and actually re-read.
+  was actually changed and actually re-read. **But read the split above before
+  crediting that to this ticket:** 9 of the 11 cells that moved there would have
+  moved on `project resolve` alone.
+- **The close-out gate finding is DEF-101, not part of DEF-096.** They were
+  filed as one entry and review was right that this lost the second: DEF-096 is a
+  provisioning defect that one command clears; DEF-101 is a product defect in
+  `close-out`'s verdict vocabulary that outlives it. `close-out` has no way to say
+  *"the destination can obtain this from its own manifest, at a published ref"*,
+  so it must block over units that are unmodified checkouts at published SHAs
+  which the destination already declares — and the remedy it then prints is one
+  an epic ticket agent is forbidden to run.
+- **DEF-098 is closed by measurement.** `skill-manager home clone` **is**
+  copy-on-write: measured twice, on two different homes, by free-space delta with
+  both controls — `home clone` 31.0 MB / 22.2 MB against `cp -R` of exactly the
+  same bytes at 511.3 MB / 498.0 MB. `worktrees.md`'s "it is copying rather than
+  cloning" is wrong and is corrected in
+  [`git-issue-workflow-skill#24`](https://github.com/haydenrear/git-issue-workflow-skill/pull/24);
+  its *timings* stand, and only the inference from wall clock to blocks fails.
+  **"Nearly free" is justified for disk, not for wall clock.** HIS-6's disk
+  arithmetic can now use a number instead of choosing between two pages.
