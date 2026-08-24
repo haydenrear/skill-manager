@@ -5391,3 +5391,31 @@ findings:
       should not run project checks.
     candidate_owner: HIS-6 to record; a follow-up ticket for the scoping fix
     status: open
+    resolution_on_this_machine: >
+      UNBLOCKED 2026-08-24 at the owner's instruction, and the finding stands.
+      `project resolve --repair-vendored --skip-gateway` was run against
+      meta-harness with all four home axes pinned to ITS home: 3 checked, 3
+      repaired, 0 findings, exit 0. The three links are now relative, resolve to
+      the identical paths, and `git status` is clean because they are gitignored.
+
+      The four root-home syncs then succeeded immediately:
+        skill-manager       7b02d14 -> 043a0d3
+        skt                 6d49d7f -> 07e3531
+        git-issue-workflow  9e1a913 -> 2abdd3f
+        git-epic-workflow   726f133 -> 7a5bb33
+      `skt check`: all current, 21 change-managed units, tier root.
+
+      AND IT MOVED A GOAL ON THE REAL MACHINE, not in a sandbox:
+      check-docs-coverage.py went 0 of 4 -> 4 OF 4 against the operator's actual
+      root home. GOAL-mechanism-documented's baseline was 0 of 4.
+
+      THE FINDING IS NOT CLOSED BY THIS. One project's durability defect still
+      refuses every unit sync in the tier above it. The next operator with a
+      stale project hits the same wall, and the failure will name a repository
+      they have not touched in months.
+    still_open_here: >
+      The root home's pinned CLI predates the artifact graph -- `skt check`
+      reports "artifacts not checked (unsupported): this home's skill-manager
+      has no `artifacts` verb". That is the released 0.24.0 answering, and it
+      resolves when this epic ships. HIS-6 must not read an artifact number from
+      this home before then.
