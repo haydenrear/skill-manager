@@ -3397,13 +3397,34 @@ tickets:
       because the point is not to produce nine verdicts -- it is to find what
       breaks at release and to leave a check behind for each thing found.
 
-      PHASE 1 -- THE SWEEP, WITH RESUMPTION. `run.py --all`. It WILL fail part
-      way; that is expected and is the reason the phase exists. On a failure:
-      fix or record the node, then RESUME FROM THAT NODE. `run.py` already
-      carries `--resume-from-build`, `--resume-from-node` and `--run-only-node`
-      -- use them. NEVER RESTART FROM THE BEGINNING. Iterate through the graph
-      node by node until the whole set has executed. Read `graphs_executed` from
-      the artifact; a chain that stopped is not a sweep (DEF-011).
+      PHASE 1 -- THE SWEEP, WITH RESUMPTION, AND `--all` CANNOT DO IT.
+      Established by measurement 2026-08-24 before dispatch: `run.py` REFUSES
+      the combination outright --
+
+        if args.run_all and (args.resume_from_build or replay_node_count):
+            parser.error("resume options apply to one graph; pass <graph> instead of --all")
+
+      Resumption is PER GRAPH. So "sweep everything" and "resume from the
+      failing node" cannot both be asked of `--all`, and the owner's instruction
+      -- never restart from the beginning -- requires driving the graphs
+      individually. DEF-011's fix and the resumption requirement turn out to be
+      THE SAME FIX.
+
+      That driver is `skills/test_graph/scripts/sweep.py`. One graph at a time;
+      a red graph does NOT stop the sweep; every outcome recorded red or green;
+      `graphs_executed` and `graphs_passed` written as SEPARATE numbers so
+      neither can be inferred from the other; and `--retry-failed-from` re-runs
+      only the failures, resuming each from its own first FAILED node.
+
+      IT IS VALIDATED IN BOTH DIRECTIONS, and the selftest found a defect in it:
+      the first version classified any node not `passed` as failing, which
+      lumped `skipped` in with `failed`. On artifact-dag that reported THREE
+      failing nodes where there is ONE -- `uninstall.prunes.the.subgraph` failed,
+      and `home.fixpoint.law` / `home.membership.law` are downstream with
+      spawnExitCode -1 and zero assertions. It would have told this evaluation
+      that the cross-cutting laws were broken. Failed and skipped are now
+      separate, and the distinction also matters for resumption: a skipped node
+      has no saved input context to resume from.
 
       PHASE 2 -- SMALL AGENTS ON REAL ISSUES, NOT WHOLE-EPIC AGENTS. The owner:
       "I don't want you to deploy whole agents. Instead, deploy agents on gh
