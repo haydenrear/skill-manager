@@ -1,0 +1,46 @@
+# MAJOR 2, review of #250 — reproduced, and the counter-hypothesis tested.
+#
+# CASE A is the reviewer's finding: a versionless PATH entry is substituted, and
+# re-pointing that arbitrary alias backwards silently downgrades the home.
+#
+# The FIRST run of Case A reported "no substitution" — because `forPin` reads the
+# real PATH and the harness had not put the fixture's userbin on it. That is an
+# instrument failure that reads exactly like the reviewer being wrong, and it is
+# the reason Case A below is re-run through a corrected harness (`CaseA.java`,
+# invoked with PATH set) rather than the first one. The corrected result is at
+# the bottom of this file.
+#
+# CASE B is the question the reviewer did not ask, and it is the more important
+# result: the DERIVABLE Homebrew arm downgrades too, under `brew link` of an
+# older keg. That falsifies this class's own earlier javadoc claim ("not a
+# silent downgrade ... which this cannot produce"), which the reviewer had only
+# challenged for the PATH arm. The sentence was rewritten rather than narrowed.
+#
+# CASE C is what the alternative to substituting costs: a loud absence, which
+# `home verify` now exits 1 on and `home repair --fix` repairs.
+#
+# The decision these three produce: DROP the PATH arm, keep the derivable ones,
+# and state the downgrade limit instead of denying it. Prefer no substitution
+# over an unsafe one — the failure of no-substitution is detected and repaired
+# by machinery this epic already shipped; the failure of an unsafe substitution
+# is silent and nothing detects it.
+
+== CASE A: a versionless PATH entry (PATH_ALIAS) ==
+  located : opt/skill-manager/0.24.0/bin/skill-manager
+  PIN     : opt/skill-manager/0.24.0/bin/skill-manager
+  runs now: BUILD 0.24.0
+  after the alias is re-pointed BACKWARDS, the pin runs: BUILD 0.24.0
+
+== CASE B: Homebrew's linked prefix entry (HOMEBREW_LINKED) ==
+  located : prefix/Cellar/skill-manager/0.24.0/bin/skill-manager
+  PIN     : prefix/bin/skill-manager
+  runs now: BUILD 0.24.0
+  after `brew link` an OLDER keg, the pin runs: BUILD 0.19.2
+
+== CASE C: no substitution at all -- what the alternative costs ==
+  pin (no alias exists): Cellar/skill-manager/0.24.0/bin/skill-manager
+  after the keg is deleted, the pin runs: NOT EXECUTABLE / MISSING   <- a loud absence, which `home verify` now exits 1 on
+  PATH contains userbin: true
+  located : opt/skill-manager/0.24.0/bin/skill-manager
+  PIN     : userbin/skill-manager
+  source  : SUBSTITUTED

@@ -935,7 +935,32 @@ findings:
       returning exit 0 on a home whose own CLI is gone, because
       missingReferencesIn only considers references UNDER the home root. HIS-12
       changes nothing there. DEF-027 is the third piece: the writing half.
-    status: open
+    status: resolved
+    resolved_by: HIS-19 (#246), branch feature/246-his-19
+    resolved_at: "2026-08-23"
+    resolution: >
+      `DurableCliPin` writes the most durable spelling of the located build:
+      given /opt/homebrew/Cellar/skill-manager/0.24.0/libexec/bin/skill-manager
+      it pins /opt/homebrew/bin/skill-manager, measured against the operator's
+      real install. This entry asked that the tradeoff be decided AGAINST
+      LauncherShims' issue-#61 argument rather than around it; the decision is
+      written into that class's javadoc and into
+      results/epic-home-integrity-sync/tickets/HIS-19/goal-contribution.md,
+      section 2. In short: a candidate is refused unless `toRealPath()` makes it
+      the IDENTICAL file, so today's behaviour is byte-identical and only
+      tomorrow's differs; the property narrows from "the build it was
+      provisioned with" to "that build, or its successor under the same
+      installation", and it narrows ONLY where the alternative is a path naming
+      a deleted file. A build whose path carries no version -- a source
+      checkout, a CI artifact -- short-circuits and is pinned exactly as before.
+      With no versionless alias the versioned path is still written, and HIS-13's
+      DANGLING_CLI_PIN is still the net under it.
+
+      Measured before/after, both directions over one disk state, in
+      results/epic-home-integrity-sync/probes/his-19/transcript.out and
+      transcript-pre-his19.out. Two residual questions are filed rather than
+      closed silently: DEF-090 (the version predicate is a heuristic) and
+      DEF-091 (an explicit SKILL_MANAGER_CLI is stabilised too).
     candidate_owner: HIS-19 (schedule revision 9) -- promoted from unassigned to a ticket
     promoted_to_ticket: HIS-19
     promoted_at: "2026-08-23"
@@ -4644,3 +4669,214 @@ findings:
     candidate_owner: the epic agent -- git-epic-workflow, accepted at review
     related: [DEF-080]
     status: open
+
+  # ------------------------------------------------------------------ HIS-19
+  # RENUMBERED 089/090/091 -> 092/093/094 AT THE REVIEW OF PR #250.
+  #
+  # Filed as 089-091 on the epic agent's instruction ("the highest id is
+  # DEF-088"), which was ahead of what this branch's copy of the file showed
+  # (084) because 085-088 were live in sibling ticket worktrees. HIS-5 then
+  # merged carrying its own DEF-089, disclosed the collision in the comment
+  # above its entry, and was told to keep it. The epic owner adjudicated at
+  # this review: HIS-5's entry is the one that keeps 089, and these three move.
+  #
+  # The renumbering aid, the way the HIS-4/HIS-12 entries carry one: any
+  # citation of "DEF-089 (HIS-19, home clone / dead pin)" written before
+  # 2026-08-24 means DEF-092. 090 -> 093 and 091 -> 094 moved with it so this
+  # ticket's three findings stay contiguous; neither had a collision.
+  #
+  # WHY THIS COLLISION HAPPENED AT ALL is HIS-5's own DEF-089: the pre-filing
+  # dedup check covers one of at least two append-only ledgers, and nothing
+  # covers concurrent worktrees that cannot see each other's entries. Both
+  # ledgers WERE grepped before filing here -- backlog.yaml AND
+  # specs/results/skill_feedback.md, each with a known-present positive control
+  # first, because a zero from an unvalidated pattern is ledger row 14 -- and
+  # the grep was correct about the file it could read. It cannot read a file
+  # that does not exist on this branch yet, which is exactly the gap DEF-089
+  # names. Same near-miss recurred one level up in this ticket's SF entry, which
+  # collided with HIS-5's SF-004 and was renumbered SF-005 at the same rebase.
+
+  - id: DEF-092
+    found_by: HIS-19 (#246), adding the dead-pin question to `home verify`
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      `home clone` does not report a dead CLI pin; only `home verify` does. A
+      clone of a home whose pin an upgrade deleted is a clone whose pin is
+      deleted, and the command that MADE it says nothing.
+    detail: >
+      HIS-19 added `Verification.danglingCliPins`, populated in
+      `HomeCloner.verifyRoots` and reported by `home verify`, which now exits 1.
+      `HomeCloner.clone` calls the same `verifyRoots` and builds its own
+      `Report` from four of the verification's lists -- leaks,
+      contentReferences, danglingLinks, unresolvedReferences -- and not from the
+      new one. So:
+
+        home clone A B      exit 0, "no path in it reaches another home"
+        home verify --home B  exit 1, "1 CLI pin(s) name a build that is not there"
+
+      Two commands, one home, two verdicts about the same file, which is
+      GOAL-one-home-one-answer's exact shape. It is narrower than it sounds --
+      the pin is INHERITED, so a clone is only broken when the source already
+      was -- but "the source was already broken" is precisely what a clone is
+      the right moment to say.
+    why_deferred: >
+      `home clone`'s Report is a different record with its own printer, its own
+      --json shape and its own graph assertions (home-clone, checkout-home), and
+      widening it is a change to what `home clone` REFUSES on. HIS-19's slice is
+      the writer plus the exit-0 case named in its acceptance; making clone
+      refuse a home it faithfully copied is a separate decision about a separate
+      command.
+    fix: >
+      Carry `verification.danglingCliPins()` into `HomeCloner.Report`, print it
+      beside the unresolved-reference block, and decide -- explicitly -- whether
+      it makes `home clone` exit non-zero or merely say so. Consider the same
+      question for `home close-out`, which does not ask it either.
+    consequence: >
+      An operator who clones a home right after a `brew upgrade` is told the
+      copy is clean by the command that made it, and has to run a second command
+      to learn its front door cannot open.
+    candidate_owner: whoever next owns HomeCloner.Report, or HIS-6 as a sweep
+    status: open
+
+  - id: DEF-093
+    found_by: HIS-19 (#246), writing DurableCliPin's version predicate
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      "Does this path segment name a version" is a hand-written regex validated
+      against fourteen fixtures and two real layouts, not against a corpus of
+      install shapes.
+    detail: >
+      `DurableCliPin.VERSIONED_SEGMENT` is `(?:.*[-_])?v?\d+(\.\d+)+([._+-]\w+)*`.
+      It deliberately requires an internal dot between digits, so a bare number
+      is not a version and `x86_64`, `wt-246-his-19` and a macOS temp-dir name
+      are not either. Six positive and eight negative fixtures are asserted in
+      the suite, and V9 widens the pattern to `.*` as its control.
+
+      THE ASYMMETRY, CORRECTED AT THE REVIEW OF PR #250 (m3). The first version
+      of this entry said a false positive "costs a pointless probe". That was
+      wrong as written: a false positive on the LOCATED path makes the class
+      probe, and -- while the PATH arm existed -- could substitute a pin that
+      never needed moving, e.g. `backup-2024.06.01/skill-manager`. The reviewer
+      ran a corpus and found the predicate errs NARROW on the shapes this ticket
+      named (`v2-experiments`, `3d-tools`, `python3.11`, `temurin-21.jdk` are all
+      correctly not-a-version) and WIDE on dates and dotted numerics (`2024.1`,
+      `192.168.1.1`, `release-1.0`, `gradle-8.10.2`,
+      `commons-compress-1.27.1.jar` are all read as versions).
+
+      With the PATH arm REMOVED (MAJOR 2, same review) the cost genuinely does
+      collapse to a wasted `versionSegmentsIn` call: every candidate is now
+      derived from a Homebrew keg decomposition, so a false positive on a path
+      with no `Cellar` segment produces NO candidates and no substitution. A
+      false NEGATIVE still returns the located path unchanged, which is the
+      pre-HIS-19 behaviour and the state HIS-13 already detects.
+
+      So neither direction can pin a wrong build, and after MAJOR 2 neither
+      direction can pin a DIFFERENT build either. But "cannot do harm" is not
+      "is right", and the only layouts it has been seen against are Homebrew's
+      and fixtures written for this suite.
+    why_deferred: >
+      Sweeping real install layouts (asdf, mise, pyenv-style shims, nix store
+      paths, Windows Program Files versioned dirs, Debian alternatives) is a
+      research task with no fixture in this repo, and its output would be a
+      wider predicate whose failure mode is still the same benign one.
+    fix: >
+      Collect the layouts that actually ship skill-manager, add one fixture per
+      layout to `DurableCliPinTest`, and widen only where a real layout is
+      missed. The fix for a missed layout is a NEW ARM keyed on that packaging's
+      own marker -- the way the two present arms are keyed on a literal `Cellar`
+      segment -- never a search. MAJOR 2 of the #250 review settled that.
+
+      Nix is the case that shows why. `/nix/store/<hash>-skill-manager-0.24.0/bin`
+      carries a version and a content hash, and its stable alias is a profile
+      symlink -- which the removed PATH arm would have found and which a derived
+      arm cannot, because nothing in the store path names the profile. Nix
+      generations also roll BACKWARDS by design, so following that symlink is
+      exactly the silent downgrade MAJOR 2 refused. The honest answer for nix is
+      probably that a nix-installed build should not be re-spelled at all: the
+      store path is immutable and never dangles, so `NO_DURABLE_ALIAS` is the
+      right verdict and there is nothing to fix.
+    consequence: >
+      A packaging layout this predicate does not recognise keeps the old,
+      breakable pin -- which after MAJOR 2 is the DECLARED behaviour for an
+      unrecognised layout rather than an accident, and is announced in the
+      recorded reason ("this layout has no derivable alias"). The residue is
+      that a layout which SHOULD have an arm does not get one until someone
+      notices.
+    candidate_owner: whoever adds a second distribution channel
+    status: open
+
+  - id: DEF-094
+    found_by: HIS-19 (#246), deciding whether an explicit SKILL_MANAGER_CLI is
+      intent that must not be rewritten
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      An operator who explicitly pins an OLD keg via SKILL_MANAGER_CLI, on a
+      machine where the prefix alias currently points at that same keg, gets a
+      home that follows the next upgrade instead of staying.
+    detail: >
+      `RunningCli.locate` honours SKILL_MANAGER_CLI first and its javadoc calls
+      it "intent". HIS-19 puts whatever `locate` returns through
+      `DurableCliPin`, uniformly -- including that value.
+
+      Nothing is lost at write time: a candidate is only taken when
+      `toRealPath()` makes it the identical file, so an operator pinning a keg
+      the prefix does NOT point at keeps their exact path (branch
+      NO_DURABLE_ALIAS). The case is narrow: it is exactly the operator who
+      names the currently-linked keg by its versioned path and means "this
+      version, forever".
+
+      HIS-19 chose uniformity because the alternative -- exempting the env-var
+      arm -- would make the pin depend on HOW the build was located rather than
+      on WHAT it is, which is a second rule for one file.
+    why_deferred: >
+      It needs a user, and there is none: no caller in this repo, in
+      bootstrap-home.sh or in the skills sets SKILL_MANAGER_CLI to a versioned
+      path on purpose. Adding an opt-out (`home shims --exact`) for a use case
+      nobody has is the enumerated-list defect this epic keeps finding.
+    fix: >
+      If it turns out to matter: `home shims --exact` that skips the
+      stabilisation and says so in the generated file's comment, so the next
+      reader knows the pin is deliberate rather than stale. Do NOT special-case
+      the env-var arm silently.
+    consequence: >
+      A deliberate downgrade-pin drifts forward on the next upgrade, without a
+      message.
+    candidate_owner: whoever first needs to hold a home at an old build
+    status: open
+
+  - id: DEF-095
+    found_by: review of PR #250 (HIS-19, #246), MINOR 8 -- ruled correct as-is
+    found_at: "2026-08-24"
+    severity: none -- RECORDED SO NOBODY "FIXES" IT
+    summary: >
+      `HomeFixpointLaw` cannot auto-repair a dead CLI pin, because it parses the
+      remedy prefix "complete it with: " and the new refusal prints "re-pin it
+      with: ". That is the RIGHT outcome and the epic owner has ruled it left
+      alone.
+    detail: >
+      HIS-19 added a refusal to `home verify` whose remedy line uses its own
+      prefix. `HomeFixpointLaw` recovers a remedy by parsing the one spelling
+      `"complete it with: <cmd>"` and running it through `sh -c`, so it does not
+      recognise this one and fails loud instead of repairing.
+
+      That reads like a gap and is not. DEF-067 is open precisely BECAUSE that
+      law repairs what it observes, and an observer that repairs is no longer an
+      observer -- the same argument HomeRepair's class javadoc makes for
+      splitting `detect` from `repair`. A new refusal the law cannot silently
+      fix is a small improvement on that axis, not a hole.
+    why_deferred: >
+      Not deferred -- DECIDED. Recorded because the natural next move for anyone
+      reading the law is to teach it a second remedy string, which would widen
+      exactly the behaviour DEF-067 exists to narrow.
+    fix: >
+      None. If DEF-067 is ever resolved by making the law an observer that does
+      not repair, this entry becomes moot; if it is resolved the other way, this
+      is the counter-example to weigh.
+    consequence: >
+      A home with a dead CLI pin fails the fixpoint law loudly rather than being
+      silently repaired by it. Intended.
+    candidate_owner: whoever takes DEF-067
+    status: closed-by-decision

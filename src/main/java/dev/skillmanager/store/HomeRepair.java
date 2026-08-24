@@ -674,6 +674,22 @@ public final class HomeRepair {
      * production's reader for the line and it refuses to guess: a shim with no
      * readable literal pin returns empty, because "cannot tell" must never be
      * reported as "broken".
+     *
+     * <h2>HIS-19: the remedy names what the repair will actually write</h2>
+     *
+     * <p>{@code apply} carries this finding out by calling
+     * {@link dev.skillmanager.launch.LauncherShims#write}, which since DEF-027
+     * pins the most durable spelling of the build rather than the located one.
+     * So the {@code target} and the printed remedy are put through the same
+     * {@link dev.skillmanager.launch.DurableCliPin} the writer uses. Not a
+     * second mechanism — the identical pure function, called twice — because a
+     * remedy that names a path the repair does not write is #142's class
+     * (a remedy that reads as authoritative and is not what happens), and this
+     * epic's signature defect is two readers of one rule.
+     *
+     * <p>This is also the whole of HIS-19's migration story: existing homes
+     * carrying a versioned pin are repaired by the command that already
+     * repairs them, and come out durable. No second migration path.
      */
     private static int danglingCliPin(Path store, Path live, List<Finding> findings) {
         Path entrypoint;
@@ -685,14 +701,15 @@ public final class HomeRepair {
         if (!Files.isRegularFile(entrypoint)) return 0;
         Path gone = LauncherShims.danglingPinIn(entrypoint).orElse(null);
         if (gone == null) return 1;
+        Path durable = live == null ? null : dev.skillmanager.launch.DurableCliPin.forPin(live);
         String rel = relative(store, entrypoint);
         findings.add(new Finding(Kind.DANGLING_CLI_PIN, rel,
                 "pins the build at " + gone + ", which is not there — this home's front "
                         + "door cannot open, and `home verify` calls it clean",
-                live == null
+                durable == null
                         ? "re-pin it: skill-manager home shims --home " + store
-                        : "re-pin it at " + live,
-                live != null, live));
+                        : "re-pin it at " + durable,
+                durable != null, durable));
         return 1;
     }
 

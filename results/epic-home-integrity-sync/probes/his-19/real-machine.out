@@ -1,0 +1,21 @@
+located : /opt/homebrew/Cellar/skill-manager/0.24.0/bin/skill-manager
+  exists          : true
+  names a version : true
+  PIN WRITTEN     : /opt/homebrew/bin/skill-manager
+  pin versioned   : false
+  same real file  : true
+
+located : /opt/homebrew/Cellar/skill-manager/0.24.0/libexec/bin/skill-manager
+  exists          : true
+  names a version : true
+  PIN WRITTEN     : /opt/homebrew/bin/skill-manager
+  pin versioned   : false
+  same real file  : true
+
+located : /Users/hayde/IdeaProjects/wt-246-his-19/skill-manager
+  exists          : true
+  names a version : false
+  PIN WRITTEN     : /Users/hayde/IdeaProjects/wt-246-his-19/skill-manager
+  pin versioned   : false
+  same real file  : true
+

@@ -1,0 +1,33 @@
+
+=== BEFORE the upgrade -- one sandbox, two pins ===
+durable pin : /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/bin/skill-manager
+legacy  pin : /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.23.0/bin/skill-manager
+durable  rc=0   BUILD 0.23.0 
+legacy   rc=0   BUILD 0.23.0 
+durable  home verify rc=0
+legacy   home verify rc=0
+
+=== brew upgrade 0.23.0 -> 0.24.0 (install, DELETE the old keg, re-point both aliases) ===
+the keg the legacy home pins is now: GONE
+
+=== AFTER the upgrade ===
+durable  rc=0   BUILD 0.24.0 
+legacy   rc=127 skill-manager: the CLI pinned for the home at /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager is missing:   /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.23.0/bin/skill-manager 
+durable  home verify rc=0
+✗ 1 CLI pin(s) in /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager name a build that is not there — the entrypoint file exists and is executable, so every -x test passes, and running it can only produce exit 127
+✗   re-pin it with: skill-manager home repair --home /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager --fix (or `skill-manager home shims --home /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager`, run from the build this home should use), then re-run this check
+legacy   home verify rc=1
+   ^ legacy was EXIT 0 here before HIS-19 -- the 0.24.0 incident, verbatim
+
+=== MIGRATION -- through HIS-13's repairer, no second mechanism ===
+✓ repaired 1 of 1 finding(s) in /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-repair-20260824-001207-8e28.log
+legacy  pin : /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/bin/skill-manager
+legacy   rc=0   BUILD 0.24.0 
+legacy   home verify rc=0
+
+=== AND AGAIN -- 0.24.0 -> 0.25.0, the treadmill test ===
+legacy   rc=0   BUILD 0.25.0 
+legacy   home verify rc=0
+durable  rc=0   BUILD 0.25.0 
+durable  home verify rc=0

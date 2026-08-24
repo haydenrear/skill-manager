@@ -1582,7 +1582,28 @@ public final class HomeCloner {
                                 * counted. See
                                 * {@link HomePolicy#LAZY_ARTIFACTS_KEY}.
                                 */
-                               List<String> declaredNotBuilt) {
+                               List<String> declaredNotBuilt,
+                               /**
+                                * HIS-19. The home's own {@code bin/cli/skill-manager}
+                                * pins a build that is not there.
+                                *
+                                * <p>Its own list because the walk above cannot
+                                * see it and never could: {@code missingReferencesIn}
+                                * only considers paths under THIS home and under a
+                                * provisionable root, and a dead pin names a path
+                                * outside the home entirely — a Homebrew keg an
+                                * upgrade deleted. Nothing else in this record is
+                                * about a path that leaves the home, which is
+                                * precisely why {@code home verify} returned
+                                * <b>exit 0</b> on the root home the 0.24.0 upgrade
+                                * broke.
+                                *
+                                * <p>Read with {@link dev.skillmanager.launch.LauncherShims#danglingPinIn}
+                                * — HIS-13's reader and the only one — so
+                                * {@code home verify} and {@code home repair}
+                                * cannot come to disagree about one file.
+                                */
+                               List<String> danglingCliPins) {
         public Verification {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
@@ -1593,26 +1614,35 @@ public final class HomeCloner {
                     ? List.of() : List.copyOf(diagnosticReferences);
             parentStoreShims = parentStoreShims == null ? List.of() : List.copyOf(parentStoreShims);
             declaredNotBuilt = declaredNotBuilt == null ? List.of() : List.copyOf(declaredNotBuilt);
+            danglingCliPins = danglingCliPins == null ? List.of() : List.copyOf(danglingCliPins);
+        }
+
+        public Verification(List<Leak> leaks, List<String> contentReferences,
+                            List<String> danglingLinks, List<String> unresolvedReferences,
+                            List<String> diagnosticReferences, List<String> parentStoreShims,
+                            List<String> declaredNotBuilt) {
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences,
+                    diagnosticReferences, parentStoreShims, declaredNotBuilt, List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences,
                             List<String> diagnosticReferences, List<String> parentStoreShims) {
             this(leaks, contentReferences, danglingLinks, unresolvedReferences,
-                    diagnosticReferences, parentStoreShims, List.of());
+                    diagnosticReferences, parentStoreShims, List.of(), List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences,
                             List<String> diagnosticReferences) {
             this(leaks, contentReferences, danglingLinks, unresolvedReferences,
-                    diagnosticReferences, List.of(), List.of());
+                    diagnosticReferences, List.of(), List.of(), List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences) {
             this(leaks, contentReferences, danglingLinks, unresolvedReferences,
-                    List.of(), List.of(), List.of());
+                    List.of(), List.of(), List.of(), List.of());
         }
 
         public boolean clean() { return leaks.isEmpty(); }
@@ -1853,6 +1883,7 @@ public final class HomeCloner {
                     + "statement about descent and not a path into that home", record);
         }
         List<String> declaredNotBuilt = partitionDeclared(dstRoot, dangling, unresolved);
+        List<String> danglingCliPins = danglingCliPinIn(dstRoot);
         leaks.sort(java.util.Comparator.comparing(Leak::path));
         contentReferences.sort(String::compareTo);
         dangling.sort(String::compareTo);
@@ -1861,7 +1892,47 @@ public final class HomeCloner {
         parentShims.sort(String::compareTo);
         declaredNotBuilt.sort(String::compareTo);
         return new Verification(leaks, contentReferences, dangling, unresolved, diagnostics,
-                parentShims, declaredNotBuilt);
+                parentShims, declaredNotBuilt, danglingCliPins);
+    }
+
+    /**
+     * HIS-19. The home's CLI pin, when it names a build that is gone.
+     *
+     * <p><b>The 0.24.0 incident, as a check.</b> {@code brew upgrade} deleted the
+     * keg the operator's root home pinned; the home's front door could only
+     * produce exit 127 from that moment on; and {@code home verify} said
+     * {@code ✓} and exited 0. It said so honestly, given what it looked at — the
+     * walk above finds a missing path only when the path is INSIDE this home and
+     * under a provisionable root, and a dead pin is neither. So this is not a
+     * widening of the walk, it is the one question the walk structurally cannot
+     * ask, asked separately.
+     *
+     * <p><b>One subject, one reader, no repair.</b> The subject is always
+     * {@code bin/cli/skill-manager} and the reader is
+     * {@link dev.skillmanager.launch.LauncherShims#danglingPinIn}, which HIS-13's
+     * {@code home repair} also uses — so the two commands cannot come to
+     * disagree, which is what {@code GOAL-one-home-one-answer} asks of this
+     * ticket. Verification stays an observer: it reports, and names
+     * {@code home repair --fix} as the thing that acts. An observer that repairs
+     * is DEF-067.
+     *
+     * <p>Empty for a home with no entrypoint, for an entrypoint this program did
+     * not generate, and for a pin that is computed rather than literal.
+     * "Cannot tell" is never reported as "broken" — the response to this finding
+     * is to rewrite a home's front door, so a false positive here is worse than
+     * no check at all.
+     */
+    private static List<String> danglingCliPinIn(Path dstRoot) {
+        Path entrypoint;
+        try {
+            entrypoint = dev.skillmanager.launch.LauncherShims
+                    .cliEntrypoint(new SkillStore(dstRoot));
+        } catch (RuntimeException notAStore) {
+            return List.of();
+        }
+        Path gone = dev.skillmanager.launch.LauncherShims.danglingPinIn(entrypoint).orElse(null);
+        if (gone == null) return List.of();
+        return List.of(dstRoot.relativize(entrypoint) + " -> " + gone);
     }
 
     /**

@@ -1,0 +1,44 @@
+# The pre-HIS-19 behaviour, restored by mutation of FIVE call sites:
+#   LauncherShims.write      the pin string
+#   HomeCloner.verifyRoots   the dead-pin detector
+#   HomeCommand VerifyCmd    the verdict disjunction
+#   HomeRepair.danglingCliPin  THE REPAIR TARGET  <- added after the review of #250 (m7)
+#   HomeCommand ShimsCmd     the reported pin
+#
+# The first version of this file reverted only the first three, so the
+# MIGRATION section still produced a DURABLE pin and the file showed the
+# opposite of the treadmill claim the PR cited it for. Same family as
+# HIS-8's fabricated SHA: evidence that looks authoritative and does not
+# support the line attached to it.
+
+
+=== BEFORE the upgrade -- one sandbox, two pins ===
+durable pin : /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.23.0/bin/skill-manager
+legacy  pin : /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.23.0/bin/skill-manager
+durable  rc=0   BUILD 0.23.0 
+legacy   rc=0   BUILD 0.23.0 
+durable  home verify rc=0
+legacy   home verify rc=0
+
+=== brew upgrade 0.23.0 -> 0.24.0 (install, DELETE the old keg, re-point both aliases) ===
+the keg the legacy home pins is now: GONE
+
+=== AFTER the upgrade ===
+durable  rc=127 skill-manager: the CLI pinned for the home at /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/home/.skill-manager is missing:   /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.23.0/bin/skill-manager 
+legacy   rc=127 skill-manager: the CLI pinned for the home at /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager is missing:   /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.23.0/bin/skill-manager 
+durable  home verify rc=0
+legacy   home verify rc=0
+   ^ legacy was EXIT 0 here before HIS-19 -- the 0.24.0 incident, verbatim
+
+=== MIGRATION -- through HIS-13's repairer, no second mechanism ===
+✓ repaired 1 of 1 finding(s) in /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-repair-20260824-001131-3bdd.log
+legacy  pin : /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.24.0/bin/skill-manager
+legacy   rc=0   BUILD 0.24.0 
+legacy   home verify rc=0
+
+=== AND AGAIN -- 0.24.0 -> 0.25.0, the treadmill test ===
+legacy   rc=127 skill-manager: the CLI pinned for the home at /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/legacy/.skill-manager is missing:   /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.24.0/bin/skill-manager 
+legacy   home verify rc=0
+durable  rc=127 skill-manager: the CLI pinned for the home at /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/home/.skill-manager is missing:   /Users/hayde/IdeaProjects/wt-246-his-19/probe/sim/prefix/Cellar/skill-manager/0.23.0/bin/skill-manager 
+durable  home verify rc=0

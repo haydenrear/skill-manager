@@ -1,6 +1,6 @@
 # Vacuity ledger — every assertion this epic caught passing against broken code
 
-**Tracked for HIS-6.** Fifteen instances, four mechanisms. The owner's
+**Tracked for HIS-6.** Eighteen instances, four mechanisms. The owner's
 instruction at the wave-6 status review:
 
 > *"Each of them should have updated assertions so that the test graph catches. It's
@@ -13,7 +13,7 @@ whether it exists yet.
 
 ---
 
-## The fifteen instances
+## The eighteen instances
 
 | # | ticket | what happened | caught by |
 | --- | --- | --- | --- |
@@ -32,8 +32,11 @@ whether it exists yet.
 | 13 | HIS-13 | `makeStale()` planted `bin/cli/never-built` — a name **no parent store holds** — as the oracle for clause 3 of the ticket's own goal. That is the one flavour of staleness the check under test could never report, so the assertion could not fail. A stock `home clone` was meanwhile being called damaged | **reviewer** |
 | 14 | HIS-8 | the **widened sweep for a stale claim across four units** used `\|` inside `grep -E`, where it is a literal pipe — so every multi-term pattern searched for a string that cannot occur and returned a confident **all-zeros**. It reported three units clean of a claim it had never looked for. Mechanism **C** in a new medium: not a mutation that never reached the code, but a **search that never reached the corpus** | author |
 | 15 | HIS-5 | **an expected-violation cfg can refute the wrong invariant and read identically in every transcript.** TLC reports the FIRST invariant it finds violated, in an order the author does not control, so "the regression cfg fails" is a claim about iteration order and not about the invariant. Mechanism **A** in a new medium: not a probe reddening a precondition, but a **model checker reddening a neighbour** — and the check that would have accepted it (`assert TLC failed`) is the one a reasonable person writes | author |
+| 16 | HIS-19 | the probe for the **version gate** pointed `PATH` at the keg's own `bin/`, whose `skill-manager` **is** the located path — so the candidate was refused by the *identity* gate one line earlier and the version gate never ran. Green, and about nothing. Mechanism **D**, in the ticket whose brief said in bold that D was the one most likely to catch it | author |
+| 17 | HIS-19 | `transcript.sh`'s pin-rewriting instrument failed to compile its regex; the script ran under `set -u` without `-e`, carried on, and printed **"the two homes are indistinguishable … both exit 0"**. Both sentences were true of a fixture that had never been made. Mechanism **C**/row-14 in a third medium — not a mutation, not a search, but a **fixture that never reached the disk** | author |
+| 18 | HIS-19 | **a javadoc claiming "four separately-decided gates, each with its own control" over two branches that are VERDICT-NEUTRAL.** The identity gate and the unresolvable-located short-circuit could each be deleted with the suite fully green — and the probe *named after one of them* passed with it removed, because its fixture used an empty `PATH` and could never have distinguished. Mechanism **D** again, and the third instance in ONE ticket | **reviewer** |
 
-**Ten of fifteen were caught by the ticket's own author**, five by a reviewer
+**Twelve of eighteen were caught by the ticket's own author**, six by a reviewer
 or the epic agent. That ratio is the process working. The rate not falling is
 the finding — and row 11 was the first one no existing mechanism described.
 
@@ -226,6 +229,16 @@ inputs, different order, different evidence — each branch needs its own contro
 and a control whose javadoc explains that it deliberately avoids the evidence
 under test is naming a gap, not a strength.
 
+**AND IT RECURRED AGAIN SIX TICKETS LATER, IN A BRIEF THAT NAMED IT (row 15).**
+HIS-19's assignment said, in bold, that mechanism D *"is the one most likely to
+catch you, because a pin has several branches … and production decides them in
+an order you do not control"*. The author wrote one probe per branch, and the
+probe for the version gate handed production an input the **identity** gate
+refuses one line earlier — a different branch, decided first, on different
+evidence. It passed. It was caught by running it and reading *which rejection
+string came back*, which is the same procedural check that caught row 12 and is
+still the only thing that has ever caught this mechanism.
+
 **AND IT RECURRED IMMEDIATELY (row 12).** HIS-13 read this section before
 writing an assertion, wrote a probe against its repair path, and the probe
 moved a no-op guard that the idempotence claim is not downstream of. It came
@@ -259,6 +272,9 @@ new graphs.
 | C | **a sweep is validated against a string it is KNOWN to contain before its zeros are believed** — a positive control per pattern, so an unmatchable pattern fails loudly instead of reporting clean | every ticket's evidence sweep; the `RunHis*` harnesses that grep | **HIS-8 (row 14)** — not mechanised. Cheap: one known-present string per pattern, asserted non-zero before the real corpus is scanned |
 | C | a multi-term grep declares its dialect — `-E` with `\|`, or BRE with `\\|`, never mixed | same | **HIS-8 (row 14)** — the specific spelling that produced it |
 | C | **every SHA written into evidence is resolved before it is written** — `git rev-parse --verify <sha>^{commit}` — because a 40-hex string looks equally authoritative whether or not the object exists | every ticket's `goal-contribution.md` and PR body | **HIS-8** — not mechanised. HIS-8 fabricated one in a PR comment by expanding a short form by hand; it self-caught and corrected, and then verified all 15 SHAs in its own evidence. This is the artefact HIS-6 re-reads, so an unresolvable SHA silently voids the "record what was published" acceptance assertion |
+| C | **an evidence SCRIPT asserts its own fixture and runs under `set -euo pipefail`** — a shell instrument that fails silently produces a transcript indistinguishable from a result | every ticket's transcript / measurement script | **HIS-19 (row 16)** — mechanised in `probes/his-19/transcript.sh`: the rewrite asserts `n == 1`, the pin line is read back and compared, and the script aborts on any failure before a number is printed |
+| D | **a probe asserts its candidate REACHED the gate under test** — spelled `precondition:` so the harness classifies its red as setup rather than crediting a gate that never saw an input | probe-bearing unit suites | **HIS-19 (row 15)** — done in `DurableCliPinTest`; it is what turned two mis-credited claims into honestly-reported preconditions under V4 |
+| A | **a precondition is BLIND to the change under test, or it is not a precondition** — an assertion downstream of the fix aborts the run before the claim is evaluated, and the probe credits a claim it never reached | every ticket's probe harness | **HIS-19** — found in its own `CLAIM 1` (V1 reported `claims=4 preconditions=1`; after splitting, `claims=6 preconditions=0`) |
 | D | a probe names which BRANCH it exercises, and it is the branch the change moved | every `RunHis*` + probe record | **HIS-17** wrote it down; **convention only** |
 | D | a rule with separately-decided branches has a control per branch | `home-clone` (done: symlink decoy + descent tamper) | **HIS-17**; not general |
 | — | a home's **unit membership** is what the graph intended | new law beside `HomeFixpointLaw` | **HIS-16** |
@@ -288,7 +304,7 @@ the `--json` guard caught a failure path **created one promotion slot earlier**.
 and they are held by discipline rather than by a check, which is precisely the
 condition that produced eleven instances.
 
-**The honest read for HIS-6:** the discipline is working — ten of fourteen
+**The honest read for HIS-6:** the discipline is working — twelve of sixteen
 self-caught — and the count is not falling. It has now recurred **inside the
 ticket that read the entry about it** (row 12) and, in row 14, **inside a sweep
 being run to audit another unit for precisely this class of defect**. That is the
