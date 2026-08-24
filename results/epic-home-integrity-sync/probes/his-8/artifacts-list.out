@@ -1,0 +1,44 @@
+artifacts — /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager
+ledger: artifacts.lock.toml (35 row(s), recorded 2026-08-24T00:27:16.422253Z)
+
+unit-store:deploy-helm                                                                materialized   agrees    deploy-helm
+unit-store:spec-double-compiler                                                       materialized   agrees    spec-double-compiler
+unit-store:test-graph                                                                 materialized   agrees    test-graph
+unit-store:tracing-observability                                                      materialized   agrees    tracing-observability
+cli-shim:brew/docker                                                                  declared-only  unverifiable deploy-helm
+cli-shim:brew/helm                                                                    declared-only  unverifiable deploy-helm
+cli-shim:brew/k3d                                                                     declared-only  unverifiable deploy-helm
+cli-shim:brew/kubernetes-cli                                                          declared-only  unverifiable deploy-helm
+cli-shim:brew/opentofu                                                                declared-only  unverifiable deploy-helm
+cli-shim:pip/jinja2-cli[yaml]                                                         declared-only  unverifiable spec-double-compiler
+cli-shim:pip/pytest                                                                   declared-only  unverifiable spec-double-compiler
+cli-shim:skill-script/computeq                                                        materialized   unverifiable deploy-helm
+cli-shim:skill-script/helm-deploy                                                     materialized   unverifiable deploy-helm
+cli-shim:skill-script/monitoring                                                      materialized   unverifiable deploy-helm
+cli-shim:skill-script/tla-spec-dev                                                    materialized   unverifiable spec-double-compiler
+cli-shim:skill-script/tlc2                                                            materialized   unverifiable spec-double-compiler
+cli-shim:skill-script/tracing-observability                                           declared-only  unverifiable tracing-observability
+provisioned-tree:cache/skill-script-deploy-helm-computeq                              declared-only  unrecorded 
+provisioned-tree:cache/skill-script-deploy-helm-helm-deploy                           declared-only  unrecorded 
+provisioned-tree:cache/skill-script-deploy-helm-monitoring                            declared-only  unrecorded 
+provisioned-tree:cache/tracing-observability-wheelhouse                               declared-only  unrecorded tracing-observability
+provisioned-tree:pm/uv                                                                materialized   agrees    
+provisioned-tree:venvs/jinja2-cli                                                     declared-only  unrecorded spec-double-compiler
+projection:default:claude:deploy-helm#SYMLINK/target/deploy-helm                      materialized   agrees    deploy-helm
+projection:default:claude:spec-double-compiler#SYMLINK/target/spec-double-compiler    materialized   agrees    spec-double-compiler
+projection:default:claude:test-graph#SYMLINK/target/test-graph                        materialized   agrees    test-graph
+projection:default:claude:tracing-observability#SYMLINK/target/tracing-observability  materialized   agrees    tracing-observability
+projection:default:codex:deploy-helm#SYMLINK/target/deploy-helm                       materialized   agrees    deploy-helm
+projection:default:codex:spec-double-compiler#SYMLINK/target/spec-double-compiler     materialized   agrees    spec-double-compiler
+projection:default:codex:test-graph#SYMLINK/target/test-graph                         materialized   agrees    test-graph
+projection:default:codex:tracing-observability#SYMLINK/target/tracing-observability   materialized   agrees    tracing-observability
+projection:default:gemini:deploy-helm#SYMLINK/target/deploy-helm                      materialized   agrees    deploy-helm
+projection:default:gemini:spec-double-compiler#SYMLINK/target/spec-double-compiler    materialized   agrees    spec-double-compiler
+projection:default:gemini:test-graph#SYMLINK/target/test-graph                        materialized   agrees    test-graph
+projection:default:gemini:tracing-observability#SYMLINK/target/tracing-observability  materialized   agrees    tracing-observability
+unit-digest:deploy-helm                                                               materialized   unverifiable deploy-helm
+unit-digest:spec-double-compiler                                                      materialized   unverifiable spec-double-compiler
+unit-digest:test-graph                                                                materialized   unverifiable test-graph
+unit-digest:tracing-observability                                                     materialized   unverifiable tracing-observability
+
+39 artifact(s) across 5 kind(s)

@@ -1,0 +1,16 @@
+unit                         md  skill-manager      cold shim  declared-only  artifacts lis
+------------------------------------------------------------------------------------
+git-epic-workflow             8              1              0              1              1
+git-issue-workflow           10              2              1              1              1
+skill-manager                 7              1              1              1              1
+skt                          27              2              1              1              1
+------------------------------------------------------------------------------------
+TOTAL                                        6              3              4              4
+
+Units that instruct agents about homes, and whether the contract reaches them:
+  skt                    5 file(s)
+  skill-manager          4 file(s)
+  git-issue-workflow     5 file(s)
+  git-epic-workflow      3 file(s)
+
+4 of 4 instructing units reach the contract.

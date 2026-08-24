@@ -3882,3 +3882,471 @@ findings:
     candidate_owner: HIS-6 to triage; HIS-14 owns the two-axis contract
     related: [DEF-029]
     status: open
+
+  - id: DEF-077
+    found_by: HIS-8 (#224), attempting its own declared change-management path
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      `skt publish` and `skill-manager unit publish` cannot publish a unit that
+      is not installed in the ticket's own home -- and for HIS-8 that was ALL
+      FOUR of the units it was assigned to change. The declared route for the
+      one ticket whose subject IS change management was unavailable to it.
+    detail: >
+      HIS-8's assignment says its edits "reach their units through `skt publish`
+      (home sync one tier up, then unit publish)". Measured in the ticket
+      worktree home, which was cloned from the project home:
+
+        skt publish skt
+          -> exit 12
+             "error: home sync into <project>/.skill-manager failed (exit 12)"
+             "fix: no unit named 'skt' in this home or its parent"
+
+        skill-manager unit publish skt --dry-run --ticket 224-his-8
+          -> exit 1
+             "skt: not a git checkout at <wt-home>/skills/skt -- reinstall the
+              unit from a git source, or materialize it into the child home with
+              --checkout, to publish from it"
+
+      The cause is not a bug in publish. It is that the project home holds four
+      skills and NO plugins, so a worktree cloned from it holds neither `skt`
+      (a plugin) nor `skill-manager` / `git-issue-workflow` / `git-epic-workflow`.
+      A home can only publish what it installed.
+
+      SECOND HALF, AND IT IS THE SHARPER ONE. `skt publish`'s worktree-tier
+      parent resolution targets the MAIN WORKING TREE's home -- i.e. the PROJECT
+      home. HIS-8's brief forbids a ticket agent from writing the project home
+      ("Do not sync into the project home or the root home. The epic agent owns
+      that reconciliation"). So even had the units been installed, following the
+      documented path would have violated the epic's containment rule. The
+      documented route and the containment rule are in direct conflict for every
+      ticket in this epic, and nothing warns about it.
+    what_was_done_instead: >
+      The four leaf repos were cloned, edited, committed and pushed as feature
+      branches with PRs, mirroring `unit publish`'s own conventions exactly --
+      branch `skill/<ticket>-<unit>`, PR title `skill(<unit>): <ticket>`, base
+      `main`, no force push, no `--direct`. The resulting commits and PRs are
+      indistinguishable from what the tool would have produced; the SHAs are in
+      the ticket evidence.
+    consequence: >
+      An agent that follows the documented change-management path in a ticket
+      worktree gets exit 12 or exit 1 with a remedy it cannot act on
+      (`--checkout` materialization it was not told about), and the fallback it
+      reaches for by itself is unlikely to match `unit publish`'s branch and PR
+      conventions. This is HIS-20's (#247) subject matter measured in advance:
+      the process is NOT discoverable from the docs for a ticket whose units the
+      home does not carry.
+    candidate_owner: HIS-20 (#247), which measures whether an agent can derive
+      this process from the docs; the containment conflict may belong to the
+      epic owner instead
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-8/publish-path-attempt.out
+
+  - id: DEF-078
+    found_by: HIS-8 (#224)
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      The FIRST `skt publish --check` in a cold home reports a clean unit as
+      edited, with state `unknown`, and that command is the leftovers gate
+      `skt ticket close` consults.
+    detail: >
+      Measured in the HIS-8 worktree home, four consecutive runs, nothing
+      changed between them:
+
+        run 1 (cold): "edited: spec-double-compiler (unknown) at <home>/skills/spec-double-compiler"   exit 10
+        run 2:        "skt publish --check: no edited units in this home"                              exit 0
+        run 3:        same                                                                             exit 0
+        run 4:        same                                                                             exit 0
+
+      `git -C <home>/skills/spec-double-compiler status --short` is empty and
+      the branch is `main` with no divergence. The unit was never touched.
+
+      The cause is almost certainly the shared 15s `NETWORK_BUDGET_SECONDS` in
+      `publish.edited_units`, exhausted on a cold run before every unit's probe
+      finishes. The POLICY is right and documented -- "A probe the budget cut
+      short leaves the unit reported, not dropped ... at a gate whose job is to
+      refuse while unpublished work exists, an evidence gap must never read as
+      'nothing here'." Failing safe is correct.
+    the_defect_is_the_rendering_not_the_policy: >
+      The safe direction is reported in the SAME SHAPE as a real edit. `edited:
+      <unit> (unknown)` is one word away from `edited: <unit> (dirty)`, and
+      nothing on the line says "I ran out of budget and did not find out". An
+      agent -- or the close gate quoting it -- cannot tell an evidence gap from
+      unpublished work, and the natural response to a spurious one is to publish
+      a unit that has nothing to publish.
+    fix: >
+      Render the cut-short case distinctly: name it as a probe that did not
+      finish, say so on the line, and tell the reader to re-run. The state token
+      already exists (`unknown`); only the presentation treats it as an edit.
+    consequence: >
+      Warm caches hide it, so it fires on exactly the runs where nobody has run
+      anything yet -- the first close of a fresh worktree.
+    candidate_owner: HIS-20 (#247) or a skt ticket
+    status: open
+
+  - id: DEF-079
+    found_by: HIS-8 (#224), measuring the remedy its own documentation recommends
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      `skill-manager build` cannot provision a `pip:` CLI dependency whose
+      binary already exists on the ambient PATH outside the home. The producer
+      runs, writes nothing, and the home still has no entry point.
+    detail: >
+      Measured in the HIS-8 worktree home:
+
+        $ skill-manager build 'cli-shim:pip/pytest' --yes
+          no-op       cli-shim:pip/pytest
+              now: stale -- its output bin/cli/pytest is not there
+        ✗ the producer ran and this home still does not hold the artifact -- it
+          reported the dependency already satisfied from outside this home and
+          wrote nothing. This is not a repair.
+          1 of the selected artifact(s) are still stale
+        exit 1
+
+        $ command -v pytest
+        /Library/Frameworks/Python.framework/Versions/3.10/bin/pytest
+
+      `--force` does not change it. The contrasting case works: the same command
+      for `cli-shim:pip/jinja2-cli[yaml]`, whose binary is NOT on the ambient
+      PATH, built cleanly, provisioned `venvs/jinja2-cli`, took the home's stale
+      count 13 -> 11, and exited 0.
+    why_this_matters_beyond_one_tool: >
+      This is a HOME-ISOLATION defect wearing a build failure's clothes, and it
+      is this epic's exact subject. A home's whole claim is that what it holds
+      does not depend on the operator's machine; here the operator's global
+      Python install decides whether a home can own its own pytest. The
+      diagnosis is EXCELLENT -- the tool says precisely what happened and
+      refuses to claim success -- so the report is not the problem. The
+      behaviour is.
+    consequence: >
+      The remedy every cold shim prints, and the one HIS-8's new documentation
+      recommends, silently does not work for an unknown subset of `pip:` deps
+      determined by the ambient environment. Two agents on two machines get
+      different answers from the same command.
+    documented_rather_than_hidden: >
+      HIS-8's page states this limit explicitly with the measured output, rather
+      than presenting `build <id>` as unconditionally effective.
+    candidate_owner: artifact-DAG / a skill-manager ticket
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-8/build-one-artifact.out
+      - results/epic-home-integrity-sync/probes/his-8/build-pytest-fail.out
+
+  - id: DEF-080
+    found_by: HIS-8 (#224)
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      `tla-spec-dev close ticket` accepts only {accepted, closed, complete,
+      completed, done} as a plan status, and this epic's word for a landed
+      ticket is `delivered` -- so every epic ticket's close must either lie or
+      pass `--allow-open` and be recorded as weakened.
+    detail: >
+      `spec_evolution.py`: `TICKET_CLOSED_STATUSES = {"accepted", "closed",
+      "complete", "completed", "done"}`. 15 tickets in this plan carry
+      `status: delivered`. A ticket agent stops at PR OPEN (rule 7), so at the
+      moment `close ticket` runs, the PR is unmerged and:
+
+        planned    -> refused (correct)
+        delivered  -> refused, though it is the plan's own word for "landed"
+        closed     -> accepted, and false
+
+      HIS-8 took `--allow-open`, which is the flag whose stated purpose is
+      exactly this and which is recorded, never refused. The close is therefore
+      the modeled state `CloseTicketWeakened` rather than `CloseTicket`.
+    consequence: >
+      Every epic ticket that runs this step will be recorded as a weakened close
+      for a reason unrelated to its evidence, which dilutes the one signal
+      `weakening_flags_record` exists to preserve. HIS-6 should not read
+      `weakened: true` on HIS-8 as a comment on HIS-8's evidence.
+    filed_upstream: https://github.com/haydenrear/tla-spec-dev/issues/288
+    also_recorded_in: specs/results/skill_feedback.md SF-002
+    candidate_owner: HIS-6 (interpretation) / tla-spec-dev (fix)
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-8/tla-spec-dev-close.out
+
+  - id: DEF-081
+    found_by: HIS-8 (#224), while deciding where a leaf change must start
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      This repository vendors `skill-publisher-skill/` (the skt plugin) and
+      `skill-manager-skill/` as tracked directories, and both snapshots are
+      STALE against their leaf repos -- the skt one by an entire feature.
+    detail: >
+      `diff -rq` between the tracked copies and the leaf checkouts at
+      `origin/main`, 2026-08-23:
+
+        skill-publisher-skill/src/skt/  is MISSING artifacts.py, build_cmd.py
+        and sweep.py entirely. Its cli.py (4317 bytes vs 6974) has no `build`
+        subparser at all. tests/ has no test_artifacts.py,
+        test_artifact_notify.py, test_ticket_sweep.py. Its publish.py is
+        pre-#26: 6383 bytes vs 12496, no `--unit` narrowing, no
+        UNKNOWN_UNIT_EXIT branch, no upstream-stale adjudication.
+
+        skill-manager-skill/references/projects.md differs from the installed
+        copy.
+
+      So the repo's own snapshot of skt predates the entire artifact surface
+      this epic is about, and `skt build` -- the command HIS-8's documentation
+      tells agents to run -- does not exist in the tracked copy.
+    why_it_was_not_fixed_here: >
+      HIS-8 changed the LEAF repos, per CLAUDE.md's leaf-to-parent rule and the
+      brief's instruction that these edits do not travel on the epic's branch.
+      Refreshing the vendored snapshots would either (a) copy only the files
+      HIS-8 touched, producing a snapshot that is internally inconsistent and
+      newly misleading, or (b) resync wholesale, putting an unrelated multi-
+      feature diff in a documentation ticket's PR. Both are worse than leaving
+      it visible and named.
+    consequence: >
+      Any agent that reads `skill-publisher-skill/` in this checkout -- which is
+      the natural thing to do, since it is right there and tracked -- gets a skt
+      that cannot build artifacts and a publish path two releases old. The
+      integration-repo fan-out direction is leaf -> parent, and nothing
+      schedules the parent refresh.
+    fix: >
+      A deliberate `git-integration-repo` refresh of the vendored constituents
+      from their leaf tips, as its own change, after this epic's four leaf PRs
+      land.
+    the_follow_up_is_scheduled_here_because_nothing_else_schedules_it: >
+      Run `git-integration-repo`'s `scripts/refresh.sh` over this repo AFTER
+      skill-publisher-skill#34, skill-manager-skill#4,
+      git-issue-workflow-skill#23 and git-epic-skill#16 have all merged --
+      NOT before. `refresh.sh` resets each constituent to its DEFAULT BRANCH, so
+      run against unmerged feature branches it would pull the pre-HIS-8 tips and
+      quietly re-stale the snapshot it was run to fix. Ordering is the whole
+      content of this note; the command itself is one line.
+    candidate_owner: epic owner, or HIS-6 as part of terminal reconciliation
+    status: open
+
+  - id: DEF-082
+    found_by: >
+      HIS-8 (#224), external review of PR #248 -- the reviewer identified it and
+      HIS-8 confirmed it against the script
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      `check-docs-coverage.py` cannot decide the clause it is cited for. It
+      counts TERM HITS PER UNIT, so a unit that links to the contract and a unit
+      that restates it score identically -- and its own docstring claims it
+      shows "whether it is stated ONCE rather than copied into four units that
+      will drift apart".
+    detail: >
+      The script's per-unit measurement is `re.search(rx, text)` over each md
+      file, incremented once per file per term. Nothing in it distinguishes
+
+        "the contract is at <path>; this skill does not restate it"
+
+      from a full second copy of the mechanism. Both score 1 for
+      `declared-only`, 1 for `skill-manager build`, and both make the unit
+      "reach the contract".
+
+      GOAL-mechanism-documented clause 1 is "the contract is stated ONCE and the
+      four units that instruct agents about homes link to it rather than restate
+      it". The instrument decides the SECOND half (does the contract reach the
+      unit at all) and is blind to the FIRST (is it stated once). Its docstring
+      asserts otherwise:
+
+        "What it can show is whether the contract is stated at all, and whether
+         it is stated ONCE rather than copied into four units that will drift
+         apart."
+
+      The first clause of that sentence is true; the second is false.
+    measured: >
+      HIS-8's first published version scored 4 of 4 instructing units while
+      carrying THREE restatements of the contract (skt/SKILL.md's 9-line
+      blockquote with exit 86 and a machine-specific `13 stale of 39`;
+      git-issue-workflow/SKILL.md; and git-issue-workflow's own
+      references/skill-homes.md, the file that had ALREADY drifted). The
+      instrument reported the same 4 of 4 before and after those three were
+      trimmed to pure routing. A green that does not move when the defect it
+      claims to detect is removed is not measuring it.
+    it_moves_the_wrong_way_too_and_this_is_the_stronger_evidence: >
+      Measured while acting on the review. The three restatements were trimmed to
+      PURE routing -- no exit code, no count, no verbatim string, just "here is
+      the question, here is the page". By the goal's own definition the docs got
+      strictly better. The instrument reported:
+
+        before trim   4 of 4 instructing units, TOTAL 6 / 3 / 4 / 4
+        after  trim   3 of 4, "missing: git-issue-workflow"
+
+      It marked the unit ABSENT because a pure pointer contains none of the four
+      terms. So the instrument does not merely fail to detect a copy -- it
+      PENALISES the fix, and the only way to keep it green is to leave a term in
+      the linking unit. (Resolved by routing on SYMPTOMS -- "`artifacts list`
+      shows rows I do not understand" -- which is honest routing and happens to
+      carry a term. That it had to be engineered around is the point.)
+
+      A metric that goes DOWN when the defect is removed is not a weak metric;
+      it is pointing the wrong way.
+    a_better_measurement_exists_and_costs_one_grep: >
+      Count md files containing an EXIT CODE, a MEASURED COUNT or a verbatim
+      product MESSAGE, rather than files containing a term:
+
+        grep -rlE "exit 86|DECLARED and not built|build it: skill-manager|0 rebuildable" <roots> --include='*.md'
+
+      Before HIS-8: 0 files. After the first publish: 3 files (the page plus two
+      restatements). After the trim: 1 file -- the page. THAT is "stated once",
+      and it moves in the right direction at every step.
+    provenance: >
+      PRE-EXISTING, not introduced by HIS-8. The docstring dates from 5c72dc7,
+      which added the script. Recorded here because HIS-8 is the ticket that
+      cited it and the ticket whose evidence had to stop citing it.
+    consequence: >
+      HIS-6 must NOT read `N of 4 instructing units` as evidence that the
+      contract is stated once. That half is a judged read of the four diffs, and
+      HIS-8's goal contribution now says so explicitly.
+    READ_THIS_BEFORE_SCORING_A_DROP: >
+      VERBATIM, SO IT CANNOT BE MISREAD AS A REGRESSION.
+
+      The instrument does not merely fail to see clause 1. IT SCORES COMPLIANCE
+      LOWER THAN THE VIOLATION. Measured on this ticket's own units, in this
+      order:
+
+        first publish, WITH three restatements    ->  4 of 4 instructing units
+        after trimming them to PURE routing       ->  3 of 4, "missing: git-issue-workflow"
+
+      The docs got strictly better by the goal's own definition at that step, and
+      the number WENT DOWN, because a pure pointer contains none of the four
+      terms the script greps for. The final 4 of 4 was recovered only by routing
+      on SYMPTOMS ("`artifacts list` shows rows I do not understand"), which is
+      better routing anyway but which had to be ENGINEERED so the instrument
+      would not punish the fix.
+
+      So: a 4 -> 3 movement in this metric is evidence that a unit STOPPED
+      restating the contract. It is the intended outcome, not a regression. Any
+      scorecard that reads it the other way is reading the metric backwards.
+    fix: >
+      Either correct the docstring to claim only what the count supports, or add
+      a real second measurement -- e.g. flag any unit other than the owner whose
+      hit COUNT exceeds a routing threshold, or diff the term-bearing lines
+      against the owning page. The cheap honest fix is the docstring.
+    candidate_owner: HIS-6 (#218), which owns the scorecard that would otherwise
+      cite it
+    status: open
+
+  - id: DEF-083
+    found_by: >
+      HIS-8 (#224) -- flagged independently by the external review of PR #248 and
+      by two separate judged-read agents given only the docs
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      Every generated cold shim prints an ARTI-06 warning that is broader than
+      what `skill-manager build` now does, and the only correction lives in
+      prose. A shipped user-facing string is wrong and the fix so far has been to
+      document around it.
+    detail: >
+      The generated cold shim body contains:
+
+        note:  that command exits 1 even when it built what you asked for
+               (ARTI-06); re-run this entry point rather than trusting its
+               status.
+
+      Measured 2026-08-23: `skill-manager build 'cli-shim:pip/jinja2-cli[yaml]'
+      --yes` built the artifact, provisioned `venvs/jinja2-cli`, took the home's
+      stale count 13 -> 11 and exited **0**. The exit 1 that WAS observed came
+      from a genuinely-unbuilt case (DEF-079), where exiting 1 is correct.
+
+      So the sentence is not describing current behaviour. The habit it
+      recommends -- re-run the entry point rather than trusting the status -- is
+      still worth having and costs nothing.
+    this_entry_reverses_its_own_author_s_earlier_call: >
+      HIS-8 DECIDED NOT TO FILE THIS, AND WAS WRONG. The goal contribution for
+      the first hand-off said so explicitly, under "Deferred": "Not filed, and
+      named here instead: the cold shim's ARTI-06 note is broader than current
+      behaviour. It is now documented on the page itself, which is where an agent
+      meets it, so a backlog entry would add a list item and no reader."
+
+      That reasoning was wrong in one specific way, and the correction is the
+      reason this entry exists: the page is not where the agent meets it. The
+      SHIM is, at the moment of failure, and the page is somewhere the agent may
+      never open. Recorded in these words because a ledger that shows where its
+      author changed their mind is worth more than one that reads as though every
+      call was right first time.
+    why_it_is_worth_an_entry_after_all: >
+      HIS-8 first decided NOT to file this, on the grounds that the contract page
+      documents it where an agent meets it. Two independent readers then raised
+      it unprompted, and the second put the cost precisely: the reader is left
+      "having to remember which of two authoritative-looking texts to
+      disbelieve", and the wrong one is the one printed AT THE MOMENT OF FAILURE
+      while the correction is on a page they may not have opened. Prose cannot
+      win that race. Filing reverses HIS-8's own earlier call.
+    fix: >
+      Narrow the generated note to the case that still happens, or drop it and
+      keep only "re-run this entry point rather than trusting the status", which
+      is true unconditionally and carries no claim about exit codes.
+    consequence: >
+      An agent that builds successfully and reads the shim's own advice has been
+      told its exit 0 might be a lie. That is the opposite of the confidence the
+      cold shim exists to give.
+    candidate_owner: artifact-DAG / a skill-manager ticket, with DEF-079
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-8/build-one-artifact.out
+
+  - id: DEF-084
+    found_by: HIS-8 (#224), judged read of the trimmed docs
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      Two units justify decisions with `du`-shaped disk figures while a third
+      document says `du` over-reports these homes by ~30x. Nobody reconciles
+      them, and one of the figures is load-bearing for a design decision.
+    detail: >
+      `skt/skills/skt/SKILL.md` (pre-existing): "These homes are cloned
+      copy-on-write, so `du` bills every shared block to every copy and
+      over-reports by roughly 30x -- a home `du` called 1.1 GB cost 33.7 MB of
+      real space."
+
+      `git-issue-workflow/references/skill-homes.md` (pre-existing): `home clone`
+      skips `tools/` because "copying `tools/` costs 1.3 GB".
+
+      The same SKILL.md also says, 100 lines from the CoW note, "Homes are real
+      copies, never symlinks" -- true, and the sentence an agent is most likely
+      to quote when reasoning about disk.
+
+      If the 1.3 GB is a `du` figure over a CoW tree, the real cost is nearer
+      40 MB and the justification for the skip is inflated by exactly the factor
+      the sibling page documents. It may not be a `du` figure. NOBODY SAYS, and
+      that is the finding.
+    why_deferred: >
+      Both figures are pre-existing prose in two units, neither is about the
+      derived-artifact contract, and settling it needs a real measurement of
+      `tools/` (apparent vs allocated) that HIS-8 did not take. Guessing which
+      kind of number it is would substitute one unsourced figure for another.
+    prior_art_that_makes_this_near_certain: >
+      Supplied by the epic agent, and it settles the direction. `git-epic-workflow`'s
+      own worktree-lifecycle rule already says:
+
+        "a home is cloned copy-on-write, so a new worktree is nearly free
+         (measured here, 33.7 MB real for a home `du` calls 1.1 GB) --
+         measure the sweep with free space, never with `du`."
+
+      That is a MEASURED ~33x over-report on this machine, in this epic, for
+      exactly this kind of tree, with the correct instrument named. So the 1.3 GB
+      is very likely a `du` figure over a CoW tree, and the real cost of copying
+      `tools/` is nearer 40 MB -- a skip justified by a number roughly 30x too
+      large.
+
+      It is still not PROVEN, because nobody has stated which kind of number the
+      1.3 GB is; that is the measurement this entry asks for. But the burden has
+      moved: the default assumption should now be that any home-size figure in
+      these docs is a `du` figure and therefore inflated, unless it says
+      otherwise.
+    fix: >
+      Measure `tools/` both ways once -- apparent size and real allocated space,
+      via free-space delta, per the rule above -- state which the 1.3 GB is, and
+      cross-link the CoW caveat from any page that quotes a home size. The
+      instrument is already named in git-epic-workflow; it just is not applied
+      where the figures are quoted.
+    consequence: >
+      A skip that costs agents a re-provisioning step may be justified by a
+      number ~30x too large; or it may be correct and simply unciteable. Either
+      way an agent reasoning about home disk cost from these docs cannot tell.
+    candidate_owner: epic owner, or whoever next touches clone sizing
+    status: open

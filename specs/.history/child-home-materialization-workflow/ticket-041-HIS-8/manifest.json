@@ -1,0 +1,635 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/HIS-8",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/ticket-041-HIS-8 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json",
+    "git_commit": "git commit -m 'record spec history for HIS-8'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/ticket-041-HIS-8"
+  },
+  "complexity_delta": {
+    "direction": "zero",
+    "metrics": {
+      "actions": {
+        "after": 9,
+        "before": 9,
+        "delta": 0,
+        "percent": 0.0
+      },
+      "bound": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "depth": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "distinct_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "generated_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "variables": {
+        "after": 38,
+        "before": 38,
+        "delta": 0,
+        "percent": 0.0
+      }
+    },
+    "previous_scope_id": "ISSUE-168"
+  },
+  "complexity_ledger": {
+    "coverage_audit": {
+      "in_scope_gaps": null,
+      "passing": false,
+      "report": "",
+      "scope_source": "",
+      "status": "not_run"
+    },
+    "delta": {
+      "direction": "zero",
+      "metrics": {
+        "actions": {
+          "after": 9,
+          "before": 9,
+          "delta": 0,
+          "percent": 0.0
+        },
+        "bound": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "depth": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "distinct_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "generated_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "variables": {
+          "after": 38,
+          "before": 38,
+          "delta": 0,
+          "percent": 0.0
+        }
+      },
+      "previous_scope_id": "ISSUE-168"
+    },
+    "errors": [],
+    "input_path": "specs/tickets/HIS-8/results/complexity_ledger.yaml",
+    "justification": "",
+    "ledger_path": "specs/results/complexity_ledger.json",
+    "metrics": {
+      "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+      "actions": 9,
+      "actions_from_fallback_heuristic": false,
+      "bound": null,
+      "bound_complete": false,
+      "bound_resolved_variables": 0,
+      "bound_unresolved_variables": [
+        "cli_store_units",
+        "cli_doc_repos",
+        "cli_harness_templates",
+        "cli_harness_instances",
+        "cli_installed_records",
+        "cli_lock_units",
+        "cli_agent_projections",
+        "cli_bindings",
+        "cli_projection_rows",
+        "cli_managed_copies",
+        "cli_import_directives",
+        "cli_projection_conflicts",
+        "cli_tool_records",
+        "cli_cli_lock",
+        "cli_skill_scripts_run",
+        "cli_errors",
+        "cli_gateway_url_configured",
+        "cli_registry_url_configured",
+        "cli_gateway_mcp_snapshot",
+        "effect_status",
+        "effect_continuation",
+        "program_halted",
+        "always_after_ran",
+        "rollback_journal",
+        "gateway_catalog",
+        "gateway_dynamic_servers",
+        "gateway_global_deployments",
+        "gateway_session_deployments",
+        "gateway_tools",
+        "gateway_disclosures",
+        "gateway_errors",
+        "gateway_last_init",
+        "server_registry_units",
+        "server_versions",
+        "server_packages",
+        "server_authenticated_users",
+        "project_model",
+        "result"
+      ],
+      "budget_utilization": {},
+      "depth": null,
+      "distinct_states": null,
+      "gate_passed": false,
+      "gate_violations": [
+        "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+        "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      ],
+      "generated_states": null,
+      "modularity": 0.0,
+      "variables": 38
+    },
+    "narrative": "HIS-8 (issue #224) is a DOCUMENTATION ticket with a zero-delta model, so the machine-checked core above is uninformative by construction. What it cannot express is the whole of what this ticket did, so it is recorded here.\nWHAT WAS BUILT. The derived-artifact contract -- what an artifact is, what a clone inherits versus declares, when to rebuild, and the exact command -- is now stated ONCE, in skt, at skills/skt/references/derived-artifacts.md. The three other units that instruct agents about homes link to it and deliberately do not restate it.\nTHE MEASURED ALTERNATIVE THAT WAS REJECTED. Restating the contract in each of the four units would have made every one of them self-sufficient. It was rejected because this epic has already measured what a second copy does: DEF-021 found eight javadocs describing code that had moved, and this ticket's own BEFORE judged read found git-issue-workflow/references/skill-homes.md asserting -- in the present tense, with a measurement -- that `home verify` REFUSES a lazy clone and that the gap is unfixable. Re-measured 2026-08-23: cold shim, exit 86, `home verify` exit 0. That page was corrected, and then a second read found a TWIN passage 100 lines below it that had been left stale. Two copies of one claim, one corrected, one not, inside the fix for exactly that failure mode. That is the argument for single-sourcing, made by the ticket's own material rather than asserted.\nHOW CORRECTNESS WAS DECIDED. The goal's clause 2 is a judged read, and it was run three times against three fresh agents with NO source access, each given only the four units' markdown and required to cite a file and a quoted sentence per answer. BEFORE: 0 of 3. AFTER: 3 of 3, twice, by different agents. Transcripts and scoring: results/epic-home-integrity-sync/tickets/HIS-8/judged-read/.\nClause 1's instrument moved 0 of 4 -> 4 of 4 instructing units. Both halves, and the honest limits of each, are in the goal contribution.\nWHAT THIS TICKET FOUND BY MEASURING RATHER THAN READING. Two facts the source alone would have got wrong, both now on the page: building a `cli-shim` also provisions the tree behind it (stale 13 -> 11 on one build, exit 0), and a `pip:` dependency already satisfied on the ambient PATH DEFEATS its own producer -- `build` exits 1 with \"the producer ran and this home still does not hold the artifact\". The second is a real limit of the remedy this page recommends, filed as a deferred finding rather than papered over.\nCLOSE TAKEN UNDER --allow-open, AND WHY. `close ticket` requires ticket_plan.yaml status in {accepted, closed, complete, completed, done}. This epic marks a landed ticket `delivered`, which is not in that set, and the ticket agent stops at PR OPEN by rule 7 -- so no honest status available to me satisfies the gate. `--allow-open` is the flag whose stated purpose is exactly this case, it is RECORDED and never refused, and the close is therefore the modeled state CloseTicketWeakened rather than CloseTicket. Recorded here so the terminal evaluation reads the weaker claim, not the stronger one. Filed as a deferred finding against the vocabulary mismatch itself.\nNOT DONE. Ticket current == desired (verified by diff, byte-identical), so promotion carries nothing. `refinement.measured` is false because no TLC run was made: the model is byte-identical before and after, and running TLC to reproduce a number that cannot have changed would be evidence theatre.",
+    "notes": [
+      "NOTE: TLC reports incomplete; comparison skipped.",
+      "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+    ],
+    "recorded_at_utc": "2026-08-24T00:55:27.813018+00:00",
+    "refinement": {
+      "applied": false,
+      "approved_by": "",
+      "detail": "Searched, found none, and the reason is structural rather than a judgement call: HIS-8 changes no TLA+ model, no .cfg, no adapter and no spec double. Its whole slice is markdown in four units that live in four OTHER repositories, reached by publish rather than by this branch. The plan's own validation block records `tlc: \"N/A: this ticket states no new invariant\"` and empty `tla`/`adapters` conflict keys, and the measured delta is `variables=38 actions=9, direction=zero` -- identical to the pre-change model because the model was not touched.\nA refinement recommendation here would have to be about a representation this ticket neither adds nor moves. Recording one would be inventing work to satisfy a field.\n",
+      "measured": false,
+      "outcome": "none",
+      "searched": true
+    },
+    "retention": {
+      "effect_conformance": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "external_coverage": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "kill_rate": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "retention_summary": [
+      "kill_rate=not_run (UNVERIFIED)",
+      "effect_conformance=not_run (UNVERIFIED)",
+      "external_coverage=not_run (UNVERIFIED)"
+    ],
+    "schema_version": 1,
+    "scope": "ticket",
+    "scope_id": "HIS-8",
+    "tlc_findings": [
+      {
+        "level": "NOTE",
+        "message": "TLC reports incomplete; comparison skipped."
+      }
+    ],
+    "transition_diff": "",
+    "validated_refactor": {
+      "behavior_tests": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the behavior-test output",
+        "status": "",
+        "value": null
+      },
+      "descriptor_comparison": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the before/after descriptor comparison",
+        "status": "",
+        "value": null
+      },
+      "tlc_after": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the post-change TLC output",
+        "status": "",
+        "value": null
+      },
+      "tlc_before": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the pre-change TLC output",
+        "status": "",
+        "value": null
+      }
+    },
+    "validated_refactor_summary": [
+      "tlc_before=(absent) (UNVERIFIED)",
+      "tlc_after=(absent) (UNVERIFIED)",
+      "behavior_tests=(absent) (UNVERIFIED)",
+      "descriptor_comparison=(absent) (UNVERIFIED)"
+    ],
+    "verdict": "recorded",
+    "workflow": "child-home-materialization-workflow"
+  },
+  "created_at_utc": "2026-08-24T00:55:27.890484+00:00",
+  "entry_name": "ticket-041-HIS-8",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "git": {
+    "branch": "feature/224-his-8",
+    "commit": "ef0107d",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": {
+    "bypassed": [
+      "snapshots a ticket whose ticket_plan.yaml status is not closed/done"
+    ],
+    "flags": [
+      "--allow-open"
+    ],
+    "model_action": "CloseTicketWeakened",
+    "note": "RC-01: a close taken under a guard-weakening flag is a different modeled state from one taken under the guard. Recorded, never refused.",
+    "weakened": true
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.cfg",
+            "relative": "ClaimantRefreshExternal.cfg",
+            "source": "specs/tickets/HIS-8/desired/ClaimantRefreshExternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.tla",
+            "relative": "ClaimantRefreshExternal.tla",
+            "source": "specs/tickets/HIS-8/desired/ClaimantRefreshExternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal_regression.cfg",
+            "relative": "ClaimantRefreshExternal_regression.cfg",
+            "source": "specs/tickets/HIS-8/desired/ClaimantRefreshExternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.cfg",
+            "relative": "ClaimantRefreshInternal.cfg",
+            "source": "specs/tickets/HIS-8/desired/ClaimantRefreshInternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.tla",
+            "relative": "ClaimantRefreshInternal.tla",
+            "source": "specs/tickets/HIS-8/desired/ClaimantRefreshInternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal_regression.cfg",
+            "relative": "ClaimantRefreshInternal_regression.cfg",
+            "source": "specs/tickets/HIS-8/desired/ClaimantRefreshInternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.cfg",
+            "relative": "HomeIntegrityInternal.cfg",
+            "source": "specs/tickets/HIS-8/desired/HomeIntegrityInternal.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.tla",
+            "relative": "HomeIntegrityInternal.tla",
+            "source": "specs/tickets/HIS-8/desired/HomeIntegrityInternal.tla"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "source": "specs/tickets/HIS-8/desired/HomeIntegrityInternal_regression_foreignprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "source": "specs/tickets/HIS-8/desired/HomeIntegrityInternal_regression_narrowprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfrepend.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfrepend.cfg",
+            "source": "specs/tickets/HIS-8/desired/HomeIntegrityInternal_regression_selfrepend.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_silentdrift.cfg",
+            "relative": "HomeIntegrityInternal_regression_silentdrift.cfg",
+            "source": "specs/tickets/HIS-8/desired/HomeIntegrityInternal_regression_silentdrift.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleack.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleack.cfg",
+            "source": "specs/tickets/HIS-8/desired/HomeIntegrityInternal_regression_staleack.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/HIS-8/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/HIS-8/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/HIS-8/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/HIS-8/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/HIS-8/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/claimant_refresh_actions.yml",
+            "relative": "claimant_refresh_actions.yml",
+            "source": "specs/tickets/HIS-8/desired/claimant_refresh_actions.yml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/HIS-8/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/ClaimantRefreshInternal.dot",
+            "relative": "generated/spec-unit/ClaimantRefreshInternal.dot",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/ClaimantRefreshInternal.dot"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/__init__.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "relative": "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/case_coverage.json"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/cases.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/cases.py",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/cases.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/docs.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/docs.md",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/docs.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/doubles.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/types.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/types.py",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/types.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/validators.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/validators.py",
+            "source": "specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/validators.py"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/HIS-8/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/HIS-8/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/HIS-8/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/HIS-8/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_claimant_refresh_program_model.py",
+            "relative": "tests/test_claimant_refresh_program_model.py",
+            "source": "specs/tickets/HIS-8/desired/tests/test_claimant_refresh_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/HIS-8/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/HIS-8/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/HIS-8/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/HIS-8/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/HIS-8/desired/tests/test_program_model_contract.py"
+          }
+        ],
+        "operation": "promote ticket desired onto project current, preserving unseeded current-only paths",
+        "preserved": [
+          "tests/test_current_ticket_workflow.py"
+        ],
+        "removed": [],
+        "role": "current",
+        "seed_basis": "seed manifest recorded at open; removing only seeded paths the ticket dropped",
+        "seed_recorded": true,
+        "source": "specs/tickets/HIS-8/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/HIS-8"
+  },
+  "refinement_record": {
+    "applied": false,
+    "approved_by": "",
+    "detail": "Searched, found none, and the reason is structural rather than a judgement call: HIS-8 changes no TLA+ model, no .cfg, no adapter and no spec double. Its whole slice is markdown in four units that live in four OTHER repositories, reached by publish rather than by this branch. The plan's own validation block records `tlc: \"N/A: this ticket states no new invariant\"` and empty `tla`/`adapters` conflict keys, and the measured delta is `variables=38 actions=9, direction=zero` -- identical to the pre-change model because the model was not touched.\nA refinement recommendation here would have to be about a representation this ticket neither adds nor moves. Recording one would be inventing work to satisfy a field.\n",
+    "measured": false,
+    "outcome": "none",
+    "searched": true
+  },
+  "results": [],
+  "retention_evidence": {
+    "effect_conformance": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "external_coverage": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "kill_rate": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    }
+  },
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 3,
+    "close_out_entry": "Close-out ticket HIS-8",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/wt-224-his-8/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-041-HIS-8/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-041-HIS-8/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-041-HIS-8/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-041-HIS-8/ticket",
+      "source": "specs/tickets/HIS-8"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The contract is stated once, in skt, and the other three link rather than restate.",
+        "A fresh agent given only the docs answers what an artifact is, what a clone inherits versus declares, and when to rebuild.",
+        "The page states the LAZY contract explicitly, including why an eager rebuild is waste -- both wrong answers this epic produced are named and closed off.",
+        "Each touched unit is published and its commit recorded."
+      ]
+    },
+    "added_in_schedule_revision": 3,
+    "blocks": [
+      "HIS-6",
+      "HIS-20"
+    ],
+    "change_management": "Four separate repositories. Edits go through the home and reach their units by `skt publish` (home sync one tier up, then unit publish), not by this epic's branch -- the epic's own PR carries nothing from a gitignored home. Sequence leaf-to-parent per CLAUDE.md, and record each published unit's commit in the ticket evidence so the terminal evaluation can re-read exactly what was published.\n",
+    "conflict_keys": {
+      "adapters": [],
+      "production": [],
+      "test_graph": [],
+      "tla": [],
+      "workflow_data": [
+        "skt",
+        "skill-manager-skill",
+        "git-issue-workflow",
+        "git-epic-workflow"
+      ]
+    },
+    "depends_on": [
+      "HIS-7",
+      "HIS-9",
+      "HIS-10",
+      "HIS-11",
+      "HIS-12",
+      "HIS-13",
+      "HIS-14",
+      "HIS-15",
+      "HIS-16",
+      "HIS-17",
+      "HIS-18"
+    ],
+    "epic": "home-integrity-sync",
+    "found_by": "Two consecutive wrong diagnoses of HIS-7 by the epic agent, both from reading source because no document describes the mechanism. The first blamed the clone/verify sanction rule; the second proposed eager rebuilds. The owner corrected both.\n",
+    "github_issue": 224,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "0 md files documenting the contract -> stated once and linked from the four units that instruct agents about homes; judged read answers all three questions\n",
+        "goal": "GOAL-mechanism-documented",
+        "local_signal": "uv run .github/scripts/check-docs-coverage.py"
+      }
+    ],
+    "id": "HIS-8",
+    "objective": "MEASURED across every installed unit: `skill-manager build` appears in 0 markdown files, cold shim / ColdArtifact in 0, declared-only in 1. skt's SKILL.md -- the session-start front door an agent is told to read FIRST -- mentions artifacts once, inside a code comment, and the skill ships no references/ pages at all. Meanwhile skt/src/skt/check.py:877 prints artifact state into every session's opening context. So the tooling announces artifacts to every agent and nothing tells them what an artifact is, that `skill-manager build` exists, what a clone inherits, or when to rebuild. This is not a tidiness ticket. It is the direct cause of two wrong root-cause diagnoses in this epic's own wave 2, and the next agent will make the third.\n",
+    "phase": "HIS",
+    "promotion_order": 16,
+    "promotion_predecessor": "HIS-13",
+    "rescheduled_in_revision_4": "Moved from wave 3 to wave 6. HIS-8 documents the contract; revision 4 added five tickets that CHANGE the contract (what a clone records, what a remedy names, what a walk-back may delete, how a damaged home is repaired). Documenting it before those land would publish a page that is wrong within a wave, across four repositories, through `skt publish`.\n",
+    "slice": "State the contract ONCE, in skt, as a references page -- skt is the session-start front door and the one unit every agent is told to read. It must answer, in the agent's order of need: - what a derived artifact is, and that `artifacts list` names them; - what a clone INHERITS (the parent's artifacts, on PATH, usable) and what it DECLARES rather than builds -- and why building unchanged artifacts is waste; - when to rebuild: after YOU change the unit, not on arrival; - the exact command, `skill-manager build <artifact-id>`, and how to read `artifacts stale`. Then skill-manager, git-issue-workflow and git-epic-workflow LINK to it. They must not restate it: a copy is covered by nothing and will drift, which is the rule this epic already applies to judged rubrics.\n",
+    "status": "planned",
+    "title": "the derived-artifact contract is undocumented, so agents read the source and get it wrong",
+    "wave": 10
+  },
+  "ticket_id": "HIS-8",
+  "ticket_index": 41,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "planned",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/child-home-materialization-workflow/ticket-041-HIS-8/ticket",
+    "source": "specs/tickets/HIS-8"
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

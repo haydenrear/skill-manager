@@ -1,0 +1,32 @@
+stale artifacts — /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager
+
+  cli-shim:brew/docker  (deploy-helm)
+      its output bin/cli/docker is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  cli-shim:brew/helm  (deploy-helm)
+      its output bin/cli/helm is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  cli-shim:brew/k3d  (deploy-helm)
+      its output bin/cli/k3d is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  cli-shim:brew/kubernetes-cli  (deploy-helm)
+      its output bin/cli/kubectl is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  cli-shim:brew/opentofu  (deploy-helm)
+      its output bin/cli/tofu is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  cli-shim:pip/jinja2-cli[yaml]  (spec-double-compiler)
+      its declared inputs moved: recorded aa4da3212449…, now 2cec03d37155… over declared spec only — this home holds no venvs/jinja2-cli, so the installed version is not observable here; and its output bin/cli/jinja2 is a link whose target this home does not hold — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  cli-shim:pip/pytest  (spec-double-compiler)
+      its output bin/cli/pytest is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  cli-shim:skill-script/tracing-observability  (tracing-observability)
+      its output bin/cli/tracing-observability-install is a link whose target this home does not hold — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  provisioned-tree:cache/skill-script-deploy-helm-computeq
+      its output cache/skill-script-deploy-helm-computeq is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  provisioned-tree:cache/skill-script-deploy-helm-helm-deploy
+      its output cache/skill-script-deploy-helm-helm-deploy is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  provisioned-tree:cache/skill-script-deploy-helm-monitoring
+      its output cache/skill-script-deploy-helm-monitoring is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  provisioned-tree:cache/tracing-observability-wheelhouse  (tracing-observability)
+      its output cache/tracing-observability-wheelhouse is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+  provisioned-tree:venvs/jinja2-cli  (spec-double-compiler)
+      its output venvs/jinja2-cli is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to
+
+13 stale, 4 unverifiable, 22 current, of 39 artifact(s)
+  (--unverifiable names the ones nothing in this home could decide; an undecided artifact is not a current one)
+stale-exit=0

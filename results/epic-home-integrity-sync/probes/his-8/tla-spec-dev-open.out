@@ -1,0 +1,42 @@
+### tla-spec-dev --spec-root specs open ticket HIS-8
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/ClaimantRefreshInternal.dot -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/ClaimantRefreshInternal.dot
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/__init__.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/__init__.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/case_coverage.json -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/case_coverage.json
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/cases.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/cases.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/docs.md -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/docs.md
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/doubles.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/doubles.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/types.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/types.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/generated/spec-unit/claimant_refresh_cases/validators.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/generated/spec-unit/claimant_refresh_cases/validators.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/production_adapters.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/production_adapters.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/run_tlc.sh -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/run_tlc.sh
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/spec_manifest.yaml -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/spec_manifest.yaml
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/testgraph_bindings.yml -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/testgraph_bindings.yml
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/tests/test_claimant_refresh_program_model.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/tests/test_claimant_refresh_program_model.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/tests/test_cli_agent_context_program_model.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/tests/test_cli_agent_context_program_model.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/tests/test_cli_help_program_model.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/tests/test_cli_help_program_model.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/tests/test_cli_metadata_program_model.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/tests/test_cli_metadata_program_model.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/tests/test_cli_skill_docs_program_model.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/tests/test_cli_skill_docs_program_model.py
+copied /Users/hayde/IdeaProjects/wt-224-his-8/specs/current/tests/test_program_model_contract.py -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired/tests/test_program_model_contract.py
+wrote /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/README.md
+wrote /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/ticket.yaml
+wrote /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/tests/test_ticket_workflow.py
+wrote /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/results/.gitkeep
+wrote /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/results/complexity_ledger.yaml
+
+Next ticket workflow steps for HIS-8:
+  1. Edit /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired first. Update the TLA+ model/configs so
+     they describe the whole-program ending state after this ticket.
+  2. Add or update ticket-local spec-unit adapters/tests under
+     /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/desired when the desired behavior needs local
+     conformance coverage.
+  3. Add or update ticket-local Test Graph adapters/bindings/selectors under
+     /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/testgraph or /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/test_graph when the
+     behavior needs external integration coverage.
+  4. Implement the ticket, then update /Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8/current to match the
+     landed behavior. Before close, ticket current and desired must be equal.
+  5. Mark HIS-8 closed/done in the project ticket plan and run:
+     tla-spec-dev --spec-root specs close ticket HIS-8
+
+scaffolded ticket-local workflow files: 83
+open_exit=
