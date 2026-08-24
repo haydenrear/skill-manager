@@ -5570,3 +5570,88 @@ findings:
     missed_by: [A-graph-sweep]
     candidate_owner: HIS-6 to decide; a follow-up ticket
     status: open
+
+  - id: DEF-107
+    found_by: the round-1 full sweep (instrument A) -- the first `--all`-equivalent ever to complete in this epic
+    found_at: "2026-08-24"
+    severity: major
+    escalated: true
+    short_label: "HomeMembershipLaw flags deliberate test staging as a product violation, and reddens the CORE home-sync graph"
+    summary: >
+      `home.membership.law` FAILS on `home-sync`, reproducibly, with three homes
+      reporting GAINED units. The units are `hs-delta` and `hs-epsilon`, and
+      they are on disk because THE FIXTURE PUT THEM THERE ON PURPOSE.
+    detail: >
+      MEASURED twice, identically (runs 20260824-175221 and 20260824-181723):
+
+        FAIL  <tmp>/home-sync/project/.skill-manager
+            disk    [hs-alpha, hs-beta, hs-delta, hs-epsilon, hs-gamma]
+            records [hs-alpha, hs-beta, hs-gamma]
+            lock    [hs-alpha, hs-beta, hs-gamma]
+
+      The detector's OWN SELF-TEST passes first, in both directions
+      ("gained a unit -> 1 violation; lost a unit -> 2 violations"), so the
+      instrument is working. It is the RULE that is wrong for this context.
+
+      `HomeSyncSupport.mkUnit(home, name, body)` writes a unit directory
+      straight onto disk with no install, no `installed/` record and no lock
+      entry. It is used in AT LEAST EIGHT home-sync nodes to stage the
+      precondition of a sync scenario -- e.g.
+      `mkUnit(root, DELTA, "delta v1 -- installed into the root home later")`,
+      whose whole point is that the unit exists upstream BEFORE any sync.
+
+      The law's rule is "a unit present with no installed record is a unit
+      nobody installed." That is exactly what a staged fixture looks like.
+    the_deeper_defect: >
+      `HomeMembershipLaw.SPEC` declares NO `dependsOn`. It is an unordered
+      assertion node, so the runner schedules it wherever it likes -- in these
+      runs, third, after the fixture staged units and BEFORE any sync executed.
+      A post-condition that can run mid-scenario is measuring an intermediate
+      state and calling it final. Same family as DEF-048: "a post-condition that
+      runs once cannot hold a snapshot of a home it never saw at the start."
+    why_nothing_caught_it_until_now: >
+      HIS-16 added the law in wave 7. The last `home-sync` run before today was
+      the wave-5 sweep on 2026-08-22, which PREDATES the law. So the law has
+      been latent-red on a CORE graph since the day it merged, and ONLY a full
+      sweep could find it. It is wired into 24 graphs; any graph that stages a
+      unit before syncing it is exposed.
+    consequence: >
+      It would have reddened HIS-6's terminal sweep and been read as a PRODUCT
+      regression. An instrument that cries wolf on 24 graphs is worse than no
+      instrument, because the epic's own record shows what happens next: the
+      obvious repair is to weaken the law, and the law is otherwise sound -- it
+      caught DEF-047, a unit vanishing from a home nobody named.
+    candidate_fix: >
+      Give the law an explicit position in the graph (dependsOn the terminal
+      node, or a declared post-condition phase), or let a fixture MARK a
+      deliberately staged unit so the law can tell staging from a real gain.
+      Do NOT simply drop the GAINED direction: that is the direction that caught
+      DEF-047.
+    caught_by_instrument: A-graph-sweep
+    missed_by: [C-manual]
+    candidate_owner: HIS-21 (#253) -- a reader reporting something that is not so
+    status: open
+
+  - id: DEF-108
+    found_by: the round-1 full sweep (instrument A)
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "git-latest-source-tracking/gls.conflict fails, and takes three nodes with it"
+    summary: >
+      `gls.conflict` FAILED in the round-1 sweep, skipping `home.fixpoint.law`,
+      `home.membership.law` and `servers.down` downstream. Not triaged: the
+      sweep's job was to execute every graph, and it did. This is recorded so
+      HIS-6 does not have to rediscover it.
+    detail: >
+      Run 20260824-173152. The graph is NOT on either deliberate-exclusion list
+      (`refresh-flow`, `hyper-experiments`), so it is either a real defect or an
+      undeclared flake, and which one is unknown.
+    owed_check: >
+      Determine whether it reproduces. If it is a flake, it joins the declared
+      exclusions with its reason, the way refresh-flow did; if it is real, it is
+      a defect. An undeclared flake in a 26-graph sweep is a number nobody can
+      read.
+    caught_by_instrument: A-graph-sweep
+    missed_by: [C-manual]
+    candidate_owner: HIS-6 to triage
+    status: open

@@ -57,7 +57,17 @@ rounds:
   round_1:
     what: 26-graph sweep (instrument A) + manual skt/skill-manager pass (instrument C)
     when: "2026-08-24"
-    status: A in progress; C complete, 6 findings
+    status: COMPLETE
+    result: >
+      graphs_executed=26  graphs_passed=23  graphs_failed=3.
+      THE FIRST FULL SWEEP EVER TO COMPLETE IN THIS EPIC -- DEF-011 closed with
+      a number rather than an argument. Of the three failures, ONE is the
+      declared red (artifact-dag/uninstall.prunes.the.subgraph, DEF-066,
+      ARTI-08's), and TWO are new: DEF-107 and DEF-108.
+    findings: 8
+    by_instrument:
+      A-graph-sweep: 2
+      C-manual: 6
   round_2:
     what: re-run after HIS-21 and HIS-22 land fixes AND regression assertions
     when: pending
@@ -237,6 +247,9 @@ findings:
 #                 does not work -- REG-001 (DEF-103), plus DEF-096 and DEF-101
 #                 carried in from HIS-20
 #
+# REG-007 (DEF-107) joins HIS-21 after the sweep completed: it is the same KIND
+# -- a reader reporting something that is not so -- but in the graph layer.
+#
 # REG-003 needs no ticket: it was the evaluation's own instrument and was fixed
 # at source before the sweep ran.
 #
@@ -245,4 +258,53 @@ findings:
 # owes a regression assertion, and round 2 is where those assertions are first
 # exercised.
 # ---------------------------------------------------------------------------
+
+  - id: REG-007
+    caught_by: A-graph-sweep
+    caught_at: "2026-08-24"
+    defect: DEF-107
+    severity: major
+    one_line: >
+      HomeMembershipLaw flags deliberate test staging as a product violation and
+      reddens the CORE home-sync graph. The units it calls GAINED were written
+      to disk on purpose by the fixture, as the precondition of a sync scenario.
+    how_it_surfaced: >
+      The round-1 full sweep -- the first one ever to complete. Reproduced
+      identically on an isolated re-run. The detector's own self-test passes in
+      both directions first, so the instrument works; the RULE is wrong for this
+      context.
+    why_C_missed_it: >
+      The manual sweep drives real homes at the three tiers. This lives in a
+      graph fixture's temp directory and only appears when the law runs against
+      a home a fixture staged. No amount of hand-driving the real homes reaches
+      it.
+    why_NOTHING_caught_it_until_now: >
+      HIS-16 added the law in wave 7. The last home-sync run predates it. The law
+      has been latent-red on a CORE graph since the day it merged, and only a
+      full sweep could find it. THIS IS THE SINGLE BEST ARGUMENT IN THE EPIC FOR
+      RUNNING THE FULL SWEEP AT ALL.
+    missed_by: [C-manual]
+    owed_check: >
+      Give the law a declared position in the graph, or let a fixture MARK a
+      staged unit. Do NOT drop the GAINED direction -- that is the direction
+      that caught DEF-047.
+    status: open
+
+  - id: REG-008
+    caught_by: A-graph-sweep
+    caught_at: "2026-08-24"
+    defect: DEF-108
+    severity: minor
+    one_line: >
+      git-latest-source-tracking/gls.conflict fails and skips three nodes
+      downstream. Not on either deliberate-exclusion list, so it is either a
+      real defect or an undeclared flake.
+    how_it_surfaced: the round-1 full sweep, graph 5 of 26
+    why_C_missed_it: the manual sweep does not run graphs
+    missed_by: [C-manual]
+    owed_check: >
+      Determine whether it reproduces. A flake joins the declared exclusions
+      with its reason; a defect is a defect. An undeclared flake in a 26-graph
+      sweep is a number nobody can read.
+    status: open
 

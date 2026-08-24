@@ -4096,7 +4096,7 @@ tickets:
       production: [HomeCommand.describe, HomeCommand.policy, HomeCloner.verifyRoots, HomePolicy, CliMetadata.help]
       tla: []
       adapters: []
-      test_graph: [home-integrity/EveryShimResolves]
+      test_graph: [home-integrity/EveryShimResolves, common/HomeMembershipLaw]
       workflow_data: []
     found_by: >
       The manual sweep (instrument C) run by the epic agent on 2026-08-24, in
@@ -4128,6 +4128,17 @@ tickets:
 
       DEF-102 -- `skill-manager sync --help` runs project checks and prints a
       project-failure banner. Help output should be pure text.
+
+      DEF-107 -- ADDED AFTER THE ROUND-1 SWEEP COMPLETED, and it is the same
+      kind one layer down: HomeMembershipLaw flags DELIBERATE TEST STAGING as a
+      product violation and reddens the CORE `home-sync` graph. The units it
+      calls GAINED were written to disk on purpose by `HomeSyncSupport.mkUnit`,
+      which is used in at least eight nodes to stage the precondition of a sync
+      scenario. The law's own self-test passes in both directions first, so the
+      instrument works and the RULE is wrong for this context. The deeper defect
+      is that the law declares NO `dependsOn`, so it can run mid-scenario and
+      call an intermediate state final. Do NOT fix it by dropping the GAINED
+      direction -- that is the direction that caught DEF-047.
 
       NOT IN SCOPE: the promotion path itself (HIS-22), and repairing the
       operator's root home, which is the owner's call to make.
