@@ -1,6 +1,6 @@
 # Vacuity ledger — every assertion this epic caught passing against broken code
 
-**Tracked for HIS-6.** Thirteen instances, four mechanisms. The owner's
+**Tracked for HIS-6.** Fourteen instances, four mechanisms. The owner's
 instruction at the wave-6 status review:
 
 > *"Each of them should have updated assertions so that the test graph catches. It's
@@ -13,7 +13,7 @@ whether it exists yet.
 
 ---
 
-## The thirteen instances
+## The fourteen instances
 
 | # | ticket | what happened | caught by |
 | --- | --- | --- | --- |
@@ -30,6 +30,7 @@ whether it exists yet.
 | 11 | HIS-17 | the walk was widened on the **regular-file** branch and the only control added was a **symlink** decoy — a branch production decides earlier and by different rules. The claim reddened under every probe, and the widening was tested by none of them | **reviewer** |
 | 12 | HIS-13 | probe V6 removed `rewrite`'s no-op guard and **reddened nothing**: the branch only runs for a finding, and on the second repair the report is clean, so the idempotence claim is not downstream of it. Mechanism **D**, in the harness of the ticket that had just read row 11 | author |
 | 13 | HIS-13 | `makeStale()` planted `bin/cli/never-built` — a name **no parent store holds** — as the oracle for clause 3 of the ticket's own goal. That is the one flavour of staleness the check under test could never report, so the assertion could not fail. A stock `home clone` was meanwhile being called damaged | **reviewer** |
+| 14 | HIS-8 | the **widened sweep for a stale claim across four units** used `\|` inside `grep -E`, where it is a literal pipe — so every multi-term pattern searched for a string that cannot occur and returned a confident **all-zeros**. It reported three units clean of a claim it had never looked for. Mechanism **C** in a new medium: not a mutation that never reached the code, but a **search that never reached the corpus** | author |
 
 **Nine of thirteen were caught by the ticket's own author**, four by a reviewer
 or the epic agent. That ratio is the process working. The rate not falling is
@@ -87,13 +88,31 @@ model — it found that neither frozen fixture was frozen only because something
 finally checked. A precondition that is not asserted is a hope.
 
 ### C — the mutation never reached the code
-Rows **4, 6, 7**. The disable was applied to a path the run does not take, or the
-pattern matched nothing, so a **green** result reads exactly like a passing check.
+Rows **4, 6, 7**, and now **14**. The disable was applied to a path the run does
+not take, or the pattern matched nothing, so a **green** result reads exactly like
+a passing check.
 
 **The assertion:** the harness asserts `s.count(old) == 1` before mutating (DEF-035),
 and the probe asserts the mutated path was **reached** — not merely that the suite
 stayed green. HIS-15's exit-13 case is the model: it proves the code ran before it
 proves what the code did.
+
+**Row 14 widens this mechanism from probes to INSTRUMENTS, and the ledger had no
+row for it.** Every C instance before it was a *mutation* that never reached the
+code. Row 14 is a *search* that never reached the corpus: `grep -E "a\|b"` treats
+`\|` as a literal pipe, so the pattern is unmatchable and the sweep returns zeros
+that read exactly like a clean bill of health. Nothing distinguishes *"this claim
+is not in these three units"* from *"my pattern cannot match anything"*.
+
+The generalisation is one sentence: **an instrument that cannot fail is the same
+defect as an assertion that cannot fail**, and a zero is only evidence if the
+instrument has been shown capable of producing a non-zero. Same shape as
+DEF-035's `count == 1` clause, applied to search rather than mutation.
+
+It is worth noting how row 14 was caught: the author was, at that moment,
+*auditing someone else's sweep for exactly this class of defect* and nearly
+shipped one. That is the same recurrence property as row 12 — reading the entry
+does not confer immunity — which is why this needs a check and not a note.
 
 ### D — the probe exercises a *different branch* than the change
 Row **11**. **The newest, and the one that hides best**, because it passes every
@@ -172,6 +191,8 @@ new graphs.
 | B | a tier fixture asserts the tier count it needs actually exists | `home-integrity` | HIS-7's node does; **not general** |
 | C | the mutation harness asserts its pattern matched exactly once | every `RunHis*` | **DEF-035**, routed to HIS-8 |
 | C | a probe asserts the mutated path was reached | unit suites | HIS-15 did it; **not general** |
+| C | **a sweep is validated against a string it is KNOWN to contain before its zeros are believed** — a positive control per pattern, so an unmatchable pattern fails loudly instead of reporting clean | every ticket's evidence sweep; the `RunHis*` harnesses that grep | **HIS-8 (row 14)** — not mechanised. Cheap: one known-present string per pattern, asserted non-zero before the real corpus is scanned |
+| C | a multi-term grep declares its dialect — `-E` with `\|`, or BRE with `\\|`, never mixed | same | **HIS-8 (row 14)** — the specific spelling that produced it |
 | D | a probe names which BRANCH it exercises, and it is the branch the change moved | every `RunHis*` + probe record | **HIS-17** wrote it down; **convention only** |
 | D | a rule with separately-decided branches has a control per branch | `home-clone` (done: symlink decoy + descent tamper) | **HIS-17**; not general |
 | — | a home's **unit membership** is what the graph intended | new law beside `HomeFixpointLaw` | **HIS-16** |
@@ -191,11 +212,19 @@ the `--json` guard caught a failure path **created one promotion slot earlier**.
 and they are held by discipline rather than by a check, which is precisely the
 condition that produced eleven instances.
 
-**The honest read for HIS-6:** the discipline is working — nine of thirteen
+**The honest read for HIS-6:** the discipline is working — ten of fourteen
 self-caught — and the count is not falling. It has now recurred **inside the
-ticket that read the entry about it**, which is the strongest evidence in this
-file that writing a mechanism down does not prevent it. Three of the fifteen
-countermeasures are mechanised; the rest are still enforced by care.
+ticket that read the entry about it** (row 12) and, in row 14, **inside a sweep
+being run to audit another unit for precisely this class of defect**. That is the
+strongest evidence in this file that writing a mechanism down does not prevent
+it. Three of the seventeen countermeasures are mechanised; the rest are still
+enforced by care.
+
+**Row 14 also moves the boundary of what this ledger covers.** Every earlier row
+is an *assertion* that could not fail. Row 14 is an *instrument* that could not
+fail — the same defect one level out, in the tooling a ticket uses to produce
+evidence rather than in the evidence itself. HIS-6 should count it, because a
+sweep whose zeros are believed is exactly as load-bearing as a green suite.
 
 **One thing did change, and it is worth more than the count.** HIS-13's harness
 now classifies each red as landing on the CLAIM or on a PRECONDITION and prints

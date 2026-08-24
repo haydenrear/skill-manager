@@ -4200,6 +4200,26 @@ findings:
       HIS-6 must NOT read `N of 4 instructing units` as evidence that the
       contract is stated once. That half is a judged read of the four diffs, and
       HIS-8's goal contribution now says so explicitly.
+    READ_THIS_BEFORE_SCORING_A_DROP: >
+      VERBATIM, SO IT CANNOT BE MISREAD AS A REGRESSION.
+
+      The instrument does not merely fail to see clause 1. IT SCORES COMPLIANCE
+      LOWER THAN THE VIOLATION. Measured on this ticket's own units, in this
+      order:
+
+        first publish, WITH three restatements    ->  4 of 4 instructing units
+        after trimming them to PURE routing       ->  3 of 4, "missing: git-issue-workflow"
+
+      The docs got strictly better by the goal's own definition at that step, and
+      the number WENT DOWN, because a pure pointer contains none of the four
+      terms the script greps for. The final 4 of 4 was recovered only by routing
+      on SYMPTOMS ("`artifacts list` shows rows I do not understand"), which is
+      better routing anyway but which had to be ENGINEERED so the instrument
+      would not punish the fix.
+
+      So: a 4 -> 3 movement in this metric is evidence that a unit STOPPED
+      restating the contract. It is the intended outcome, not a regression. Any
+      scorecard that reads it the other way is reading the metric backwards.
     fix: >
       Either correct the docstring to claim only what the count supports, or add
       a real second measurement -- e.g. flag any unit other than the owner whose
@@ -4235,6 +4255,19 @@ findings:
       So the sentence is not describing current behaviour. The habit it
       recommends -- re-run the entry point rather than trusting the status -- is
       still worth having and costs nothing.
+    this_entry_reverses_its_own_author_s_earlier_call: >
+      HIS-8 DECIDED NOT TO FILE THIS, AND WAS WRONG. The goal contribution for
+      the first hand-off said so explicitly, under "Deferred": "Not filed, and
+      named here instead: the cold shim's ARTI-06 note is broader than current
+      behaviour. It is now documented on the page itself, which is where an agent
+      meets it, so a backlog entry would add a list item and no reader."
+
+      That reasoning was wrong in one specific way, and the correction is the
+      reason this entry exists: the page is not where the agent meets it. The
+      SHIM is, at the moment of failure, and the page is somewhere the agent may
+      never open. Recorded in these words because a ledger that shows where its
+      author changed their mind is worth more than one that reads as though every
+      call was right first time.
     why_it_is_worth_an_entry_after_all: >
       HIS-8 first decided NOT to file this, on the grounds that the contract page
       documents it where an agent meets it. Two independent readers then raised
@@ -4286,9 +4319,31 @@ findings:
       derived-artifact contract, and settling it needs a real measurement of
       `tools/` (apparent vs allocated) that HIS-8 did not take. Guessing which
       kind of number it is would substitute one unsourced figure for another.
+    prior_art_that_makes_this_near_certain: >
+      Supplied by the epic agent, and it settles the direction. `git-epic-workflow`'s
+      own worktree-lifecycle rule already says:
+
+        "a home is cloned copy-on-write, so a new worktree is nearly free
+         (measured here, 33.7 MB real for a home `du` calls 1.1 GB) --
+         measure the sweep with free space, never with `du`."
+
+      That is a MEASURED ~33x over-report on this machine, in this epic, for
+      exactly this kind of tree, with the correct instrument named. So the 1.3 GB
+      is very likely a `du` figure over a CoW tree, and the real cost of copying
+      `tools/` is nearer 40 MB -- a skip justified by a number roughly 30x too
+      large.
+
+      It is still not PROVEN, because nobody has stated which kind of number the
+      1.3 GB is; that is the measurement this entry asks for. But the burden has
+      moved: the default assumption should now be that any home-size figure in
+      these docs is a `du` figure and therefore inflated, unless it says
+      otherwise.
     fix: >
-      Measure `tools/` both ways once, state which the 1.3 GB is, and cross-link
-      the CoW caveat from any page that quotes a home size.
+      Measure `tools/` both ways once -- apparent size and real allocated space,
+      via free-space delta, per the rule above -- state which the 1.3 GB is, and
+      cross-link the CoW caveat from any page that quotes a home size. The
+      instrument is already named in git-epic-workflow; it just is not applied
+      where the figures are quoted.
     consequence: >
       A skip that costs agents a re-provisioning step may be justified by a
       number ~30x too large; or it may be correct and simply unciteable. Either

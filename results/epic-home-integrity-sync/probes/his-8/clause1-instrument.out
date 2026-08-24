@@ -1,0 +1,21 @@
+HIS-8 clause-1 instrument of record — files that EXPLAIN the mechanism
+Measured 2026-08-23 over the four units as published to their PR branches.
+
+PATTERN: DECLARED and not built|build it: skill-manager|is declared in this home and has not been built|[0-9]+ rebuildable|[0-9]+ stale of [0-9]+
+
+--- positive control: the page that DOES explain must match ---
+/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/fakehome/.skill-manager/plugins/skt/skills/skt/references/derived-artifacts.md
+--- negative controls: routing-only files must NOT match ---
+  plugins/skt/skills/skt/SKILL.md                      0
+  skills/git-issue-workflow/SKILL.md                   0
+  skills/git-epic-workflow/SKILL.md                    0
+  skills/skill-manager/SKILL.md                        0
+  skills/git-issue-workflow/references/skill-homes.md  0
+  (note: skt/SKILL.md carries the literal 'exit 86' as an index term and correctly scores 0)
+--- falsification control: the pre-trim version that VIOLATED clause 1 must match ---
+  git show 9d90fb0:skills/skt/SKILL.md -> 1
+  on: 13 stale of 39 0 rebuildable 
+
+--- THE NUMBER ---
+plugins/skt/skills/skt/references/derived-artifacts.md
+count: 1   (baseline 0, first publish 3, final 1)

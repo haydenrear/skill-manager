@@ -174,7 +174,63 @@ its new pointer uses the word in an unrelated sense.
 
 ---
 
-## 4. Clause 1 — the counting half
+## 4. Clause 1 — the instrument of record, and the one that was replaced
+
+> **CLAUSE-1 INSTRUMENT OF RECORD, agreed with the epic agent 2026-08-23. Cite
+> this, not the coverage count.**
+>
+> ```bash
+> grep -rlE 'DECLARED and not built|build it: skill-manager|is declared in this home and has not been built|[0-9]+ rebuildable|[0-9]+ stale of [0-9]+' \
+>   ~/.skill-manager/skills ~/.skill-manager/plugins --include='*.md' | wc -l
+> ```
+>
+> **Count of markdown files that EXPLAIN the mechanism** — that carry a verbatim
+> product message or a measured count, as opposed to naming a question and a path.
+>
+> | | files that explain | clause-1 reading |
+> | --- | --: | --- |
+> | baseline | **0** | the contract is stated nowhere |
+> | first publish | **3** | stated, but **three times** — clause 1 NOT met |
+> | final | **1** | **stated once.** Clause 1 met |
+>
+> `check-docs-coverage.py`'s `N of 4 instructing units` answers a *different*
+> question — does the contract reach the unit at all — and is retained for that
+> half only. **It cannot decide "stated ONCE", and on this ticket it scored the
+> compliant version LOWER than the violating one (4 of 4 → 3 of 4).** DEF-082.
+
+#### The first version of this instrument was wrong, and the `86` edit exposed it
+
+My first proposal keyed on `exit 86|DECLARED and not built|build it: skill-manager|0 rebuildable`.
+The epic agent then reversed its own call and asked for the literal `exit 86` on
+skt's front door as an **index term**. Re-measured immediately after that edit, my
+instrument read **2, not 1** — it counted the front door as an explainer.
+
+**The instrument was conflating a token with the sentence about what the token
+means**, which is precisely the line the epic agent had drawn when authorising the
+edit: *"Duplicating one integer is not duplicating the contract; duplicating the
+sentence about what the integer means would be."* Bare `exit 86` is not an
+explanation, so a metric that counts it is measuring the wrong thing.
+
+Corrected by dropping the bare token and keying on **verbatim product output** and
+**measured counts** — strings that cannot appear unless the meaning is being
+stated. This is a correction toward the definition, not a tune toward my preferred
+number, and the controls are what make that checkable rather than assertable.
+
+**Validated per vacuity-ledger row 14 — an instrument is only believed after it is
+shown capable of failing:**
+
+| control | expectation | measured |
+| --- | --- | --- |
+| **positive** — `derived-artifacts.md`, which does explain | must match | **matches** |
+| **negative** — `skt/SKILL.md` (routing **and** the bare `exit 86`) | must not match | **0** |
+| **negative** — the other four routing files | must not match | **0, 0, 0, 0** |
+| **falsification** — `git show 9d90fb0:skills/skt/SKILL.md`, the pre-trim version that violated clause 1 | **must** match | **matches**, on `13 stale of 39` and `0 rebuildable` |
+
+The falsification row is the one that matters: **the instrument flags the version
+this ticket shipped and had to withdraw.** A clause-1 metric that could not do that
+would be row 14 again, one level out.
+
+### 4.1 The coverage count — the half it can still answer
 
 `HOME=<sandbox> uv run .github/scripts/check-docs-coverage.py`, over the four
 units as published — `probes/his-8/docs-coverage-AFTER-sandbox.out`:
@@ -202,11 +258,10 @@ TOTAL                                        6              3              4    
 | md files naming a cold shim | 0 | 3 |
 | md files naming `artifacts list/show/stale` | 0 | 4 |
 
-> **SUPERSEDED BY §11.2 — the numbers above are the FIRST published version's
-> and are kept for the comparison. The instrument cannot decide the clause it is
-> cited for (DEF-082), and acting on the review made it move the WRONG WAY. Read
-> §11.2 for the final measurement and for the one-line grep that actually
-> answers "stated once".**
+> **The numbers above are the FIRST published version's, kept for the
+> comparison. Final: 4 of 4, with `git-issue-workflow` at 1 file. The route
+> between the two is §11.2, and it includes the 4 → 3 drop that made this
+> instrument's limits measurable rather than merely arguable.**
 
 **The TOTAL row is not the goal and should not be read as one.** It counts
 *mentions*, and a pointer that names the command it points at scores the same as
@@ -784,7 +839,50 @@ non-blank changed lines returns **nothing** for both `bootstrap-home.sh` and
 `selftest.sh`'s assertions are byte-identical and its behaviour cannot have
 moved — which is why running it was not necessary to justify the change.
 
-### 11.10 What I still think is unresolved
+### 11.10 Round four — the `86` reversal, and my own instrument failing its control
+
+The epic agent **reversed its own instruction** and asked for the literal
+`exit 86` on skt's front door, on the argument I had escalated: a bare error code
+is an **index term**, not a copy of the contract, and it is the only string an
+agent that hits a cold shim can grep for. Its framing is the operative line, and
+I have used it as the discriminator everywhere since:
+
+> *"Duplicating one integer is not duplicating the contract; duplicating the
+> sentence about what the integer means would be."*
+
+Shipped as **one occurrence**, in the symptom row, with no explanation attached
+(`grep -c 86` on `skt/SKILL.md` is exactly 1). Commit `9a2371a`.
+
+**And it immediately broke the instrument I had just proposed as clause 1's
+measure of record.** Re-measured after the edit: **2, not 1**. My pattern keyed on
+bare `exit 86`, so it scored the front door as an explainer — conflating a token
+with the sentence about what the token means, the exact distinction that had just
+authorised the edit. Corrected, and validated with a positive, four negative and a
+**falsification** control (§4). The falsification control is the point: the metric
+flags the pre-trim version this ticket shipped and withdrew.
+
+That is **vacuity-ledger row 14 in the same ticket, one level out** — first a sweep
+that could not fail, then a metric that could not distinguish. Both were caught by
+running a control rather than by reading the code, which is now written into the
+ledger's work list as a check rather than a habit.
+
+**Vacuity ledger updated** (`validation/vacuity-ledger.md`): thirteen instances →
+**fourteen**; row 14 is the broken sweep; **mechanism C is widened from probes to
+instruments** — *"an instrument that cannot fail is the same defect as an assertion
+that cannot fail, and a zero is only evidence if the instrument has been shown
+capable of producing a non-zero"* — and two work-list rows added (a positive
+control per sweep pattern; declare the grep dialect). HIS-6's headline count moves
+from 13 to 14 and from *nine self-caught* to *ten*.
+
+**DEF-082** now carries the 4 → 3 measurement verbatim under a heading that says
+a drop in that metric is the intended outcome, not a regression. **DEF-083** states
+in those words that it reverses its own author's earlier decision not to file, and
+why that decision was wrong (the page is not where the agent meets the string; the
+shim is). **DEF-084** carries the epic agent's CoW prior art — *33.7 MB real for a
+home `du` calls 1.1 GB* — which moves the 1.3 GB `tools/` figure from suspicion to
+near-certainty and names free-space delta as the correct instrument.
+
+### 11.11 What I still think is unresolved
 
 - **Nothing checks that a path a unit names resolves.** M3 fixed the four
   spellings; the class of defect is untouched, and `check-docs-coverage.py` walks
