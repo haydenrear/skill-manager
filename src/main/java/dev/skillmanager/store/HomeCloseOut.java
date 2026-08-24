@@ -95,7 +95,7 @@ public final class HomeCloseOut {
      * in the verdict and in {@code --json}, with the command that obtains it.
      * "Nothing is at risk" and "nothing to say" are different answers.
      */
-    public record SelfObtainable(UnitSync unit, String source, String remedy) {
+    public record SelfObtainable(UnitSync unit, String source, String publishedAt, String remedy) {
         public String label() { return unit.label(); }
     }
 
@@ -188,8 +188,8 @@ public final class HomeCloseOut {
         List<Blocker> blockers = new ArrayList<>();
         List<SelfObtainable> selfObtainable = new ArrayList<>();
         for (UnitSync unit : report.units()) {
-            SelfObtainable obtainable =
-                    selfObtainable(unit, declared, modifiedInWorktree, worktreeSide, intoRoot);
+            SelfObtainable obtainable = selfObtainable(
+                    unit, declared, modifiedInWorktree, worktreeSide, home, intoRoot);
             if (obtainable != null) {
                 selfObtainable.add(obtainable);
                 continue;
@@ -235,6 +235,7 @@ public final class HomeCloseOut {
             dev.skillmanager.project.ProjectManifestRealization.Shortfall declared,
             java.util.Set<String> modifiedInWorktree,
             ChildHomeMaterializer worktreeSide,
+            SkillStore home,
             Path into) throws IOException {
         if (unit.status() != SyncStatus.NEW) return null;
         if (declared == null || !declared.hasManifest()) return null;
@@ -247,6 +248,33 @@ public final class HomeCloseOut {
         // input to a gate that decides whether a directory may be deleted. If
         // that predicate is ever relaxed, this line still refuses.
         if (worktreeSide.readRecord(unit.unitName(), unit.unitKind()).isEmpty()) return null;
+        // MAJOR 1 of PR #255's review. POSITIVE EVIDENCE OF PUBLICATION, not
+        // merely the absence of a modification.
+        //
+        // "Unmodified against its record" was measurably not enough. The
+        // reviewer built a home whose clone-time baseline had been stamped over
+        // commits that were never pushed -- which is exactly what
+        // recordCloneBaselines does, and `home clone` is how bootstrap-home.sh
+        // makes every ticket worktree home in this epic. The gate printed
+        // "nothing in this worktree's copy exists only here" in the same
+        // document where the CLI printed NO_GIT_REMOTE for the same unit.
+        //
+        // A record says "nobody has touched this since it arrived". It says
+        // nothing about whether what arrived exists anywhere else, and the
+        // exemption's whole claim is that it does. So HEAD must be reachable
+        // from a refs/remotes/** ref. A unit that is not a git checkout at all
+        // cannot show publication and therefore does not qualify -- "cannot
+        // tell" blocks, which is the same rule LINKED already follows one
+        // switch arm below.
+        // The WORKTREE's copy, not `unit.destPath()`. destPath names the
+        // destination, and for a NEW unit the destination is precisely the
+        // directory that does not exist yet -- asking git about it would answer
+        // "not a repo" for every unit and silently disable the exemption, which
+        // is the failure mode that looks like caution and is actually a check
+        // that never ran.
+        String publishedAt = dev.skillmanager.source.GitOps.publishedRefContaining(
+                home.unitDir(unit.unitName(), unit.unitKind()).toAbsolutePath().normalize());
+        if (publishedAt == null) return null;
         var match = declared.declared().stream()
                 .filter(d -> d.kind() == unit.unitKind())
                 .filter(d -> d.lookupName().equals(unit.unitName())
@@ -254,13 +282,24 @@ public final class HomeCloseOut {
                 .findFirst()
                 .orElse(null);
         if (match == null) return null;
-        return new SelfObtainable(unit, match.source(),
+        // The remedy states ONLY what was checked. The old wording -- "nothing
+        // in this worktree's copy exists only here" -- asserted a property the
+        // gate never verified, and #142's rule (a remedy that does not work is
+        // worse than none) applies to the sentence beside it as much as to the
+        // command. What is now claimed is exactly what publishedRefContaining
+        // established: this commit is on a remote-tracking ref. It is NOT a
+        // claim that the declared coordinate is fetchable today; nothing offline
+        // can promise that, and it is named as the destination's claim rather
+        // than the gate's.
+        return new SelfObtainable(unit, match.source(), publishedAt,
                 "skill-manager project resolve --project-dir "
                         + HomeDescriptor.shellQuote(String.valueOf(
                                 declared.manifest().getParent()))
-                        + "  (declared by " + declared.manifest().getFileName()
-                        + " at " + match.source() + "; nothing in this worktree's copy "
-                        + "exists only here)");
+                        + "  (this copy's HEAD is published at " + publishedAt
+                        + ", so it exists outside this worktree; "
+                        + declared.manifest().getFileName() + " declares it as "
+                        + match.source() + ", which is the destination's claim about "
+                        + "where to get it, not one this gate verified)");
     }
 
     /**

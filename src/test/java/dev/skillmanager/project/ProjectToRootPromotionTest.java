@@ -143,8 +143,19 @@ public final class ProjectToRootPromotionTest {
                         assertEquals(1, skipped.findings(), "and how many declared paths are at risk");
                         assertContains(skipped.message(), "--repair-vendored",
                                 "and the exact command that clears it");
-                        assertContains(skipped.message(), "NOT refreshed",
+                        // MAJOR 2 of PR #255's review: this used to assert the
+                        // string "NOT refreshed", which was measurably FALSE --
+                        // register(), installMissing() and scaffold() all run
+                        // before checkVendored. The claim now is that the message
+                        // REPORTS what happened rather than asserting a negative.
+                        assertContains(skipped.message(), "PARTIALLY REFRESHED",
                                 "and states the cost plainly rather than implying success");
+                        assertFalse(skipped.message().contains("was NOT refreshed"),
+                                "never the false negative it used to print: " + skipped.message());
+                        assertContains(skipped.message(), "no units needed installing",
+                                "and in THIS fixture nothing was installed, so it must not claim "
+                                        + "the units-lock was rewritten either -- the conditional "
+                                        + "half is the part that keeps the new sentence true");
                     }
                 })
 
@@ -241,6 +252,70 @@ public final class ProjectToRootPromotionTest {
                     }
                 })
 
+                // ------- CASE 5: MAJOR 2 of PR #255. The advisory must REPORT, not assert.
+
+                .test("the advisory names what was already written, and its remedy is runnable", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Fixture f = Fixture.build(h, "promotion-advisory");
+                        f.breakVendoredDurably();
+
+                        // A SECOND unit, declared but not yet installed, so the
+                        // refusal happens with real work already committed behind
+                        // it. Without this the case could pass while the advisory
+                        // said "nothing happened" and nothing had.
+                        Path second = UnitFixtures.scaffoldSkill(
+                                f.repoRoot.resolve("src2"), f.unitName + "-b", DepSpec.empty())
+                                .sourcePath();
+                        gitInitCommit(second);
+                        f.declareAlso("demo_b", second);
+                        assertFalse(h.store().containsUnit(f.unitName + "-b"),
+                                "fixture precondition: the second unit is not installed yet");
+
+                        ProjectVendoredDurabilityException refused = null;
+                        try {
+                            new ProjectDependencyResolver(h.store(), null).resolve(
+                                    f.reload(), new ProjectDependencyResolver.Options(true, false));
+                        } catch (ProjectVendoredDurabilityException e) {
+                            refused = e;
+                        }
+                        if (refused == null) throw new AssertionError("expected the refusal");
+
+                        // THE MEASUREMENT. checkVendored runs AFTER register(),
+                        // installMissing() and scaffold() -- by its own javadoc,
+                        // because the declared vendored source lives inside the
+                        // child home the scaffolder creates. So work HAS landed.
+                        assertTrue(h.store().containsUnit(f.unitName + "-b"),
+                                "the second unit really was installed before the refusal -- this "
+                                        + "is what makes \"NOT refreshed\" a false sentence");
+
+                        String advisory = refused.advisory();
+                        assertFalse(advisory.contains("NOT refreshed"),
+                                "the advisory must not claim nothing happened when four things "
+                                        + "did, behind exit 0. Pre-PR the operator saw exit 1 and "
+                                        + "went looking; a false 'nothing happened' at exit 0 is "
+                                        + "strictly worse. Got: " + advisory);
+                        assertContains(advisory, "PARTIALLY REFRESHED",
+                                "it says what actually happened");
+                        assertContains(advisory, "unit(s) installed into the store",
+                                "naming the work that landed");
+                        assertContains(advisory, "bindings NOT materialized",
+                                "and the work that did not");
+
+                        // MINOR 1: the remedy has to be pasteable. It used to
+                        // interpolate the project NAME into a `--project-dir <...>`
+                        // placeholder; angle brackets are shell redirection and the
+                        // name is not the directory.
+                        assertFalse(advisory.contains("<" + f.projectName + ">"),
+                                "the remedy no longer puts the project NAME in angle brackets: "
+                                        + advisory);
+                        assertContains(refused.repairCommand(), f.repoRoot.toString(),
+                                "it names the project's real directory");
+                        assertEquals(f.repoRoot.toAbsolutePath().normalize(),
+                                refused.projectRoot().toAbsolutePath().normalize(),
+                                "which the exception carries from the SkillProject it refused");
+                    }
+                })
+
                 .runAll();
     }
 
@@ -320,6 +395,13 @@ public final class ProjectToRootPromotionTest {
             assertTrue(h.store().containsUnit(unitName),
                     "fixture precondition: the unit really landed in the root home");
             return new Fixture(h, repoRoot, sourceDir, slug, unitName);
+        }
+
+        /** Add a second declared unit to the manifest, leaving everything else. */
+        void declareAlso(String alias, Path source) throws IOException {
+            Path manifest = repoRoot.resolve("skill-project.toml");
+            Files.writeString(manifest, Files.readString(manifest)
+                    + "\n[skills." + alias + "]\nsource = \"git+file://" + source + "#main\"\n");
         }
 
         SkillProject reload() throws IOException {

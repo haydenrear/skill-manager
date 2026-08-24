@@ -1126,6 +1126,12 @@ validationGraph {
         // promotion path broke. Named in the two law nodes' dependsOn below so
         // the laws stay last.
         node("sources/home-sync/HomeSyncProjectToRootChangeManagement.java")
+        // HIS-22 / DEF-101, added at the review of PR #255. The four in-process
+        // unit cases could not see the defect the reviewer found by running the
+        // real CLI: the gate printing "nothing exists only here" in the same
+        // document where the closing report printed NO_GIT_REMOTE. A verdict and
+        // a report that disagree is only visible end to end.
+        node("sources/home-sync/HomeSyncCloseOutSelfObtainable.java")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -1136,7 +1142,7 @@ validationGraph {
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java")
                 .dependsOn("home.sync.authored.agent.tree",
-                        "home.sync.project.to.root.change.management")
+                        "home.sync.close.out.self.obtainable")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
@@ -1144,7 +1150,7 @@ validationGraph {
         // is a FAILURE" rule, and it carries its own self-test.
         node("sources/common/HomeMembershipLaw.java")
                 .dependsOn("home.sync.authored.agent.tree",
-                        "home.sync.project.to.root.change.management")
+                        "home.sync.close.out.self.obtainable")
     }
 
     /**

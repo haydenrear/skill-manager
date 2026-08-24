@@ -123,7 +123,9 @@ public final class ProjectDependencyResolver {
                 .scaffold(project, resolvedUnits,
                         ProjectChildHomeScaffolder.DEFAULT_MODE, opts.checkoutUnits(),
                         opts.allowSameHome());
-        ProjectVendoredResolver.Report vendored = checkVendored(project, opts);
+        ProjectVendoredResolver.Report vendored = checkVendored(project, opts,
+                new ProjectVendoredDurabilityException.PartialWork(
+                        installed.installed().size(), childHome != null));
         List<SkillProjectLock.ProjectBinding> projectBindings =
                 materializeProjectBindings(project, childHome.layout(), childHome.childStore(),
                         resolvedUnits, previousLock);
@@ -173,8 +175,10 @@ public final class ProjectDependencyResolver {
      *       not leave those behind first.</li>
      * </ol>
      */
-    private ProjectVendoredResolver.Report checkVendored(SkillProject project, Options opts)
-            throws IOException {
+    private ProjectVendoredResolver.Report checkVendored(
+            SkillProject project,
+            Options opts,
+            ProjectVendoredDurabilityException.PartialWork partial) throws IOException {
         ProjectVendoredResolver.Report report =
                 ProjectVendoredResolver.check(project, opts.repairVendored());
         for (var repaired : report.repairs()) {
@@ -192,7 +196,8 @@ public final class ProjectDependencyResolver {
             // LiveInterpreter.syncClaimingProjects — can tell a durability
             // finding ABOUT A PROJECT from a failure of the unit sync it was
             // tacked onto, and stop failing the second for the first.
-            throw new ProjectVendoredDurabilityException(project.registryName(), report);
+            throw new ProjectVendoredDurabilityException(
+                    project.registryName(), project.projectRoot(), report, partial);
         }
         Log.warn("%d declared vendored path(s) do not point at this project's own home "
                 + "(on_invalid = \"warn\"):", report.problems().size());

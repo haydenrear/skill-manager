@@ -78,8 +78,12 @@ rounds:
       home-sync, checkout-home, home-clone, project-child-home, project-resolve,
       ticket-lifecycle.
       GRAPHS EXECUTED 6, GRAPHS PASSED 5, GRAPHS FAILED 1.
-      The one failure is home-sync, on `home.membership.law` alone -- 19 of its
-      20 nodes green, including the new one. That node is DEF-107 and it is
+      RE-RUN AFTER THE REVIEW OF PR #255 (run 20260824-210901): home-sync is now
+      21 nodes, 20 green. The one failure is still `home.membership.law` alone,
+      and its attribution was VERIFIED rather than assumed -- the failure text
+      names only `hs-delta` and `hs-epsilon`, the fixture units staged by
+      pre-existing nodes, and does not mention either unit the two HIS-22 nodes
+      create. That is DEF-107, HIS-21's. That node is DEF-107 and it is
       HIS-21's. The other five ran through sweep.py and were 5/5:
       checkout-home 20260824-200314, home-clone 20260824-200433,
       project-child-home 20260824-200624, project-resolve 20260824-200719,
@@ -515,7 +519,13 @@ carried_findings_his22:
       V4 makes selfObtainable return null unconditionally -- CASE 1 red, CASES
       2-4 green, which is what makes it a scoped exemption rather than a removed
       gate.
-      GAP, STATED: no graph-layer coverage. Filed as DEF-112 along with the
-      unmade TLA+ change (CloseOutIsSafe cannot express the disjunct without a
-      new variable and a constant in ~25 cfgs).
+      GAP CLOSED AT REVIEW: the graph-layer coverage this row used to record as
+      missing now exists -- `home.sync.close.out.self.obtainable`, 7 assertions,
+      run 20260824-210901 PASSED. It was not optional. The reviewer of PR #255
+      found MAJOR 1 (now DEF-113) precisely because four in-process unit cases
+      cannot observe a second reader they never invoke: the gate printed
+      `"safe":true` in the same document where the CLI printed NO_GIT_REMOTE.
+      The node's arm 3 is that comparison, with a positive control.
+      STILL GAPPED: the TLA+ change. CloseOutIsSafe cannot express the disjunct
+      without a new variable and a constant in ~25 cfgs -- DEF-112.
     status: fixed-pending-review

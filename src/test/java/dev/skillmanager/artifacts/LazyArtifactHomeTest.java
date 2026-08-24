@@ -378,7 +378,11 @@ public final class LazyArtifactHomeTest {
             Path pkg = source.root().resolve("skills/alpha/node_modules/tree-sitter");
             Files.createDirectories(pkg.resolve("build/Release"));
             Files.writeString(pkg.resolve("package.json"), "{\"name\": \"tree-sitter\"}\n");
-            Files.writeString(pkg.resolve("build/Release/tree_sitter.node"), " prebuilt\n");
+            // DEF-109: the NUL is written as the ESCAPE "\\0", not as a raw byte in this
+            // source. The bytes this test writes are identical either way; what changes
+            // is that this file stays greppable. A raw NUL here made the whole class
+            // invisible to every `grep -I`, silently.
+            Files.writeString(pkg.resolve("build/Release/tree_sitter.node"), "\0prebuilt\n");
             Path venv = source.root().resolve("skills/alpha/.venv");
             Files.createDirectories(venv);
             Files.writeString(venv.resolve("pyvenv.cfg"), "home = /usr/bin\n");

@@ -7,7 +7,18 @@ by copying the file aside first and copying it back afterwards — never
 Re-run one suite: `jbang RunHis22.java` (seconds). The full signal is
 `jbang RunTests.java`.
 
-**Baseline: `ALL PASSED`, 11 cases across 3 suites.**
+**Baseline: `ALL PASSED`, 16 cases across 4 suites** — 11 at first submission,
+plus 5 added at the review of PR #255 (probes V7–V10).
+
+**One probe of the ten was itself found blind, by running it.** The first
+version of the DEF-101 graph node built its worktree home by hand and cloned it
+*away*, so the home under test carried no materialization record at all: every
+unit read as locally modified, nothing could ever be exempt, and arm 1 failed for
+a reason that had nothing to do with the claim. That is mechanism **B** in this
+ticket's own new node, caught only because the node was executed rather than
+reasoned about. The fixture now asserts both of its preconditions — the worktree
+home is a real `home clone` destination, and the cloned unit kept its
+remote-tracking ref.
 
 | probe | file | branch it moves | verdict | which assertion reddened |
 | --- | --- | --- | --- | --- |
@@ -18,11 +29,33 @@ Re-run one suite: `jbang RunHis22.java` (seconds). The full signal is
 | **V5** | `HomeCommand` | the human-mode shortfall block in `print(HomeCloner.Report…)` — **DEF-096's reporting surface, silenced** | FAILURES: 1 | CLAIM. `home clone says the copy inherits the source's manifest shortfall` |
 | **V6** | `ProjectManifestRealization` | `if (false && !holds(home, d))` — **the shortfall is never computed at all** | FAILURES: 2 | CLAIM. `a home short of what its own manifest declares says so` (`expected <2> but was <0>`) **and** `home clone says the copy inherits…` — one mutation, two surfaces, which is the evidence that they read one mechanism rather than two copies of a rule |
 
+| **V7** | `HomeCloseOut` | the **publication check** in `selfObtainable` — the pre-review gate restored, so "unmodified against a record" clears again | FAILURES: 1 | CLAIM. `a declared unit whose commits are on no remote still blocks`. **This is the reviewer of #255's MAJOR 1, reproduced.** The other five close-out cases stay green, so the check is an addition rather than a replacement |
+| **V8** | `ProjectVendoredDurabilityException` | `describe()` returns the old `"was NOT refreshed"` | FAILURES: 2 | CLAIM. `the advisory names what was already written…` **and** CASE 1's *"states the cost plainly rather than implying success"* — one mutation, both surfaces |
+| **V9** | `ProjectVendoredDurabilityException` | `repairCommand()` back to interpolating the project NAME into `--project-dir <…>` | FAILURES: 1 | CLAIM. `…and its remedy is runnable`, on `the remedy no longer puts the project NAME in angle brackets` |
+| **V10** | `ProjectVendoredResolver` | the raw NUL byte put back into `key()` | FAILURES: 1 | CLAIM. `no tracked source file contains a raw NUL byte`, naming the offender. `file` also flips back to `data` |
+
 *(V3 was reserved for a separate DEF-096 probe on `manifestBeside`; V6 subsumes
 it, and an unused number is left in place rather than renumbered, for the reason
 stated in the deferred backlog.)*
 
 ---
+
+## What the review added, and what it says about the first four probes
+
+**Four green probes are not four covered branches.** V1–V6 were honest and each
+reddened its claim, and the reviewer of PR #255 still found a defect none of them
+could see — because every one of them called `HomeCloseOut.inspect` **in
+process**, and the defect was that the verdict and the **closing error report
+printed beside it** disagreed about the same unit. No in-process case can observe
+a second reader it never invokes.
+
+That is vacuity-ledger row 13's composite lesson arriving from the outside: *a
+probe suite can be large, honest, and entirely blind, when every probe is read
+against one oracle and that oracle cannot express the defect.* Six probes, six
+reds, one oracle. **The count of probes is not a measure of coverage; the count
+of distinct oracles is closer** — and the countermeasure is the new graph node
+`home.sync.close.out.self.obtainable`, which adds the second oracle by running
+the real CLI and comparing the two readers in one document.
 
 ## The pairing that matters: V1 and V2 are the DEF-103 acceptance, and they oppose each other
 

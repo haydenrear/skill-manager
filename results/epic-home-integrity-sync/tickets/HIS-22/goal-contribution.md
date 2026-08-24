@@ -152,14 +152,14 @@ graph at a time.
 
 | signal | result |
 | --- | --- |
-| `jbang RunTests.java` | **1408 passed, 0 failed** — ALL PASSED |
+| `jbang RunTests.java` | **1410 passed, 0 failed** — ALL PASSED |
 | `uv run pytest specs/` | **88 passed** |
-| `home-sync` (declared) | **19 of 20 nodes green**, run `20260824-195838`. The 20th is `home.membership.law` — **DEF-107, HIS-21's**, the law flagging deliberate fixture staging (`hs-delta`, `hs-epsilon`). Inherited, not mine. |
-| `checkout-home` (declared) | **PASS**, run `20260824-200314` |
-| `home-clone` (second set) | **PASS**, run `20260824-200433` |
-| `project-child-home` (second set) | **PASS**, run `20260824-200624` |
-| `project-resolve` (second set) | **PASS**, run `20260824-200719` |
-| `ticket-lifecycle` (second set) | **PASS**, run `20260824-200804` |
+| `home-sync` (declared) | **20 of 21 nodes green**, run `20260824-210901`. Both HIS-22 nodes pass. The 21st is `home.membership.law` — **DEF-107, HIS-21's**. Attribution **verified, not assumed**: the failure text names only `hs-delta` and `hs-epsilon`, fixture units staged by pre-existing nodes, and mentions neither unit the HIS-22 nodes create. |
+| `checkout-home` (declared) | **PASS**, run `20260824-211431` |
+| `home-clone` (second set) | **PASS**, run `20260824-211613` |
+| `project-child-home` (second set) | **PASS**, run `20260824-211828` |
+| `project-resolve` (second set) | **PASS**, run `20260824-211944` |
+| `ticket-lifecycle` (second set) | **PASS**, run `20260824-212043` |
 
 `graphs_executed = 6`, `graphs_passed = 5`, `graphs_failed = 1` — and the one
 failure is the inherited node named above.
@@ -175,6 +175,88 @@ Recorded in `results/epic-home-integrity-sync/evaluation/regression-ledger.yaml`
 under `rounds.round_2`, `REG-001` (`fixed_in`, `correction_to_this_row`,
 `regression_check`, `round_2_result`) and `carried_findings_his22` for DEF-096
 and DEF-101.
+
+## 5b. What the review of PR #255 changed
+
+The review returned **merge with follow-ups, no blockers**, and independently
+reproduced the DEF-103 pairing with a different mutation
+(`if (false && !report.fatalProblems().isEmpty())` → CASE 1 **and** CASE 2 red).
+It also confirmed CASE 3 stays green under V1, so the issue's own prescribed
+acceptance node is vacuous by two measurements rather than one. Four things came
+back; **two of them were self-doubts filed at §6 that the reviewer judged
+understated by my own standard, and it was right.**
+
+### MAJOR 1 — the DEF-101 exemption cleared unpublished work (now DEF-113)
+
+Built with the real CLI, no test scaffolding: a home whose clone baseline had
+been stamped over commits on no remote. The gate printed `"safe":true` and
+*"nothing in this worktree's copy exists only here"* **in the same document
+where the CLI printed `NO_GIT_REMOTE` for that unit.** Two readers, one wrong
+answer, inside the gate whose job is to refuse when work would be destroyed.
+
+Fixed: `GitOps.publishedRefContaining` requires HEAD to be reachable from a
+`refs/remotes/**` ref — positive evidence, no network — and a unit that is not a
+git checkout does not qualify, so *"cannot tell"* blocks. The remedy no longer
+asserts what was never checked; it names the ref, and names the declared
+coordinate as the destination's claim.
+
+**Reproduced red by probe V7.** Bounds kept from the reviewer: the ordinary flow
+was already defended, the source home still blocked, and no actual byte loss was
+constructible.
+
+### MAJOR 2 — my advisory's central sentence was false
+
+*"this project's realization was NOT refreshed"*. Measured: `checkVendored` runs
+after `register()`, `installMissing()` and `scaffold()` — by its own javadoc,
+because the declared source lives inside the child home the scaffolder creates.
+So units are installed and the child home is refreshed, **behind exit 0**, where
+pre-PR the operator saw exit 1 and went looking. Another output with no way to
+detect its own invalidity, inside the fix for a defect of that family.
+
+Now it reports: `PARTIALLY REFRESHED before the refusal — N unit(s) installed
+into the store and the units-lock rewritten, child home scaffolded, registration
+snapshot rewritten; bindings NOT materialized and the project lock NOT written`.
+The installed clause is **conditional**, because `installMissing` returns before
+writing anything when nothing is missing — an unconditional "units-lock
+rewritten" would have been false exactly as often as the sentence it replaced.
+Probes **V8** and the second half of CASE 5 cover both.
+
+### MINOR 1 — the remedy was not runnable
+
+`--project-dir <skip-probe>`: angle brackets are shell redirection and the
+project *name* is not a directory. The exception now carries `projectRoot()` and
+shell-quotes it. Probe **V9**.
+
+### DEF-109 — fixed here rather than deferred
+
+Both raw NULs replaced with the escape `\0`. Measured before/after on the class
+at the centre of DEF-103:
+
+```
+before: file -> "data";  wrapper grep -c "enum Status" -> no output, exit 1
+after:  file -> "Java source, Unicode text, UTF-8 text";  same grep -> 1
+```
+
+An independent byte-level scan of all **5253** tracked files confirmed the
+reviewer's count (12 NUL-bearing, 2 tracked Java sources); it is now 11 and **0**.
+`SourcesAreGreppableTest` makes it non-recurring, reads with
+`Files.readAllBytes` so the instrument cannot suffer the defect it hunts, and
+carries a canary control. Probe **V10**. The wrapper's silent-drop behaviour is
+split out as not-ours and left open — **it blinded the reviewer's own first
+command too**, which is three readers to one instrument.
+
+### MINOR 3 — taken, not deferred
+
+DEF-101 now has a graph node: `home.sync.close.out.self.obtainable`. Its arm 3 is
+the assertion that would have caught MAJOR 1 — *the gate's verdict and the
+closing error report must never disagree about the same unit in the same
+document* — with a positive control, because an implication is trivially true
+when its antecedent never holds.
+
+**The lesson worth more than the fixes.** V1–V6 were honest and each reddened its
+claim, and all six were blind to MAJOR 1, because every one called
+`HomeCloseOut.inspect` in process and the defect lived between two readers. Six
+probes, six reds, **one oracle**.
 
 ## 6. What is NOT delivered, stated rather than omitted
 

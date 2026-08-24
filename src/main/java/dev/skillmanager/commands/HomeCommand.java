@@ -1419,6 +1419,7 @@ public final class HomeCommand {
                         + "\",\"status\":\""
                         + o.unit().status().name().toLowerCase().replace('_', '-')
                         + "\",\"source\":\"" + esc(o.source())
+                        + "\",\"publishedAt\":\"" + esc(o.publishedAt())
                         + "\",\"remedy\":\"" + esc(o.remedy()) + "\"}")
                 .collect(java.util.stream.Collectors.joining(",", "[", "]"));
         return "{\"home\":\"" + esc(verdict.home().toString())

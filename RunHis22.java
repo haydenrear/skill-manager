@@ -40,6 +40,7 @@ public class RunHis22 {
         int f = dev.skillmanager.project.ProjectToRootPromotionTest.run();
         f += dev.skillmanager.project.ProjectManifestRealizationTest.run();
         f += dev.skillmanager.store.HomeCloseOutSelfObtainableTest.run();
+        f += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
         System.out.println(f == 0 ? "\nALL PASSED" : "\nFAILURES: " + f);
         System.exit(f == 0 ? 0 : 1);
     }

@@ -127,6 +127,55 @@ public final class HomeCloseOutSelfObtainableTest {
                             "naming the unit whose edit would be lost");
                 })
 
+                // ---- CASE 3b: guard - MAJOR 1 of PR #255. Pristine is not published.
+
+                .test("a declared unit whose commits are on no remote still blocks", () -> {
+                    Fixture f = Fixture.create("unpublished");
+                    f.declare(DECLARED, "skills", "github:example/declared-unit");
+                    f.unpublishedCheckout(DECLARED);
+
+                    HomeCloseOut.Verdict verdict = HomeCloseOut.inspect(f.source, f.dest);
+
+                    assertFalse(verdict.safe(),
+                            "the reviewer of #255 built exactly this and the first version of the "
+                                    + "gate cleared it, printing \"nothing in this worktree's copy "
+                                    + "exists only here\" in the same document where the CLI "
+                                    + "printed NO_GIT_REMOTE for the same unit. A materialization "
+                                    + "record says nobody TOUCHED the unit; it says nothing about "
+                                    + "whether what arrived exists anywhere else");
+                    assertEquals(0, verdict.selfObtainable().size(), "so it is not exempted");
+                    assertEquals(1, verdict.blockers().size(),
+                            "and the commits that exist nowhere else are named");
+                    assertEquals("skill:" + DECLARED, verdict.blockers().get(0).label(),
+                            "naming the unit");
+                })
+
+                .test("the exemption states only what it verified, and names the ref", () -> {
+                    Fixture f = Fixture.create("honest-remedy");
+                    f.declare(DECLARED, "skills", "github:example/declared-unit");
+                    f.putInWorktreeOnly(DECLARED);
+
+                    HomeCloseOut.Verdict verdict = HomeCloseOut.inspect(f.source, f.dest);
+                    assertEquals(1, verdict.selfObtainable().size(), "precondition: it is exempt");
+                    HomeCloseOut.SelfObtainable obtainable = verdict.selfObtainable().get(0);
+
+                    assertContains(obtainable.publishedAt(), "refs/remotes/",
+                            "the verdict carries the remote-tracking ref the claim rests on");
+                    assertContains(obtainable.remedy(), "published at",
+                            "and the remedy says what was actually established");
+                    // #142: a remedy that does not work is worse than none, and
+                    // that applies to the sentence beside the command too. The
+                    // gate cannot verify that the DECLARED COORDINATE is
+                    // fetchable -- `github:example/declared-unit` does not exist,
+                    // as the reviewer pointed out -- so it must not imply it did.
+                    assertFalse(obtainable.remedy().contains("exists only here"),
+                            "and no longer asserts the unverifiable claim it used to: "
+                                    + obtainable.remedy());
+                    assertContains(obtainable.remedy(), "not one this gate verified",
+                            "the declared source is named as the DESTINATION's claim, not as "
+                                    + "something checked here");
+                })
+
                 // ------------------- CASE 4: guard — no manifest beside the destination
 
                 .test("a destination with no manifest of its own exempts nothing", () -> {
@@ -154,11 +203,13 @@ public final class HomeCloseOutSelfObtainableTest {
      * mechanism under test, so the fixture builds it rather than stubbing it.
      */
     private static final class Fixture {
+        final Path root;
         final Path repoRoot;
         final SkillStore source;
         final SkillStore dest;
 
-        private Fixture(Path repoRoot, SkillStore source, SkillStore dest) {
+        private Fixture(Path root, Path repoRoot, SkillStore source, SkillStore dest) {
+            this.root = root;
             this.repoRoot = repoRoot;
             this.source = source;
             this.dest = dest;
@@ -173,7 +224,7 @@ public final class HomeCloseOutSelfObtainableTest {
                     [project]
                     name = "close-out-obtainable"
                     """);
-            return new Fixture(repoRoot, source, dest);
+            return new Fixture(root, repoRoot, source, dest);
         }
 
         void declare(String unit, String table, String source) throws IOException {
@@ -187,22 +238,100 @@ public final class HomeCloseOutSelfObtainableTest {
         }
 
         /**
-         * A unit the worktree home has and the destination does not: status NEW.
+         * A unit the worktree home has and the destination does not: status NEW,
+         * as a checkout whose HEAD really is on a remote-tracking ref.
          *
-         * <p>The clone baseline is recorded, because that is what
-         * {@code home clone} does at the moment a ticket worktree's home is
-         * created, and it is what the measured HIS-20 case had. Without it every
-         * unit reads as locally modified — the record is missing, so provenance
-         * cannot be shown — and CASE 2 would then be green for a reason that has
-         * nothing to do with the manifest, which is mechanism B.
+         * <p>Three things are true of it, and all three are asserted rather than
+         * assumed, because each one being false would make a case below green
+         * for the wrong reason (mechanism B):
+         *
+         * <ul>
+         *   <li>the clone baseline is recorded, which is what {@code home clone}
+         *       does when a ticket worktree's home is created;</li>
+         *   <li>the copy reads as pristine against that record;</li>
+         *   <li><b>its HEAD is reachable from a real {@code refs/remotes/} ref</b>,
+         *       built by cloning from a bare repository on disk rather than by
+         *       writing a ref by hand. MAJOR 1 of PR #255's review is that
+         *       "pristine" and "published" are different properties, so a fixture
+         *       that conflated them could not tell the two apart.</li>
+         * </ul>
          */
-        void putInWorktreeOnly(String unit) throws IOException {
-            UnitFixtures.scaffoldSkill(source.skillsDir(), unit, DepSpec.empty());
+        void putInWorktreeOnly(String unit) throws Exception {
+            publishedCheckout(unit);
             dev.skillmanager.bindings.ChildHomeMaterializer.recordCloneBaselines(source);
             assertFalse(new dev.skillmanager.bindings.ChildHomeMaterializer(dest, source)
                             .isLocallyModified(unit, dev.skillmanager.model.UnitKind.SKILL),
                     "fixture precondition: with a baseline recorded the worktree copy reads as "
                             + "pristine, so the only variable left is what the manifest declares");
+            assertTrue(dev.skillmanager.source.GitOps.publishedRefContaining(
+                            source.skillDir(unit)) != null,
+                    "fixture precondition: the worktree copy's HEAD really is on a "
+                            + "remote-tracking ref");
+        }
+
+        /**
+         * The shape the reviewer of #255 built to defeat the first version of the
+         * gate: a checkout carrying commits that exist on NO remote, over which a
+         * clone baseline has been stamped. It reads as pristine, and it is the one
+         * thing the exemption must never clear.
+         */
+        void unpublishedCheckout(String unit) throws Exception {
+            publishedCheckout(unit);
+            Path unitDir = source.skillDir(unit);
+            Files.writeString(unitDir.resolve("SKILL.md"),
+                    Files.readString(unitDir.resolve("SKILL.md"))
+                            + "\nWORK THAT WAS NEVER PUSHED\n");
+            git(unitDir, "add", ".");
+            git(unitDir, "-c", "user.email=t@e.com", "-c", "user.name=T",
+                    "commit", "-m", "unpushed");
+            // The stamp is the defect's precondition, not a contrivance:
+            // recordCloneBaselines writes gitStateOf(dir) over whatever is in the
+            // tree, and `home clone` is how bootstrap-home.sh makes every ticket
+            // worktree home in this epic.
+            dev.skillmanager.bindings.ChildHomeMaterializer.recordCloneBaselines(source);
+            assertFalse(new dev.skillmanager.bindings.ChildHomeMaterializer(dest, source)
+                            .isLocallyModified(unit, dev.skillmanager.model.UnitKind.SKILL),
+                    "fixture precondition: the stamped baseline makes unpushed work read as "
+                            + "PRISTINE. That is the whole defect, and if this were false the "
+                            + "case below would be testing nothing");
+            assertTrue(dev.skillmanager.source.GitOps.publishedRefContaining(unitDir) == null,
+                    "fixture precondition: and its HEAD really is on no remote-tracking ref");
+        }
+
+        /** A unit whose history exists on a real remote: a bare repo on disk. */
+        private void publishedCheckout(String unit) throws IOException {
+            Path origin = root.resolve("origins").resolve(unit + ".git");
+            Path staging = root.resolve("staging").resolve(unit);
+            try {
+                Files.createDirectories(staging.getParent());
+                UnitFixtures.scaffoldSkill(staging.getParent(), unit, DepSpec.empty());
+                git(staging, "init", "-b", "main");
+                git(staging, "add", ".");
+                git(staging, "-c", "user.email=t@e.com", "-c", "user.name=T",
+                        "commit", "-m", "published");
+                Files.createDirectories(origin.getParent());
+                git(staging, "clone", "--bare", staging.toString(), origin.toString());
+                Files.createDirectories(source.skillsDir());
+                dev.skillmanager.source.GitOps.clone(
+                        source.skillDir(unit), origin.toString(), "main");
+            } catch (IOException io) {
+                throw io;
+            } catch (Exception e) {
+                throw new IOException("fixture: could not build a published checkout", e);
+            }
+        }
+
+        private static void git(Path repo, String... args) throws Exception {
+            String[] command = new String[args.length + 3];
+            command[0] = "git";
+            command[1] = "-C";
+            command[2] = repo.toString();
+            System.arraycopy(args, 0, command, 3, args.length);
+            Process p = new ProcessBuilder(command).redirectErrorStream(true).start();
+            String out = new String(p.getInputStream().readAllBytes());
+            if (p.waitFor() != 0) {
+                throw new IllegalStateException("git " + String.join(" ", args) + ": " + out);
+            }
         }
 
         /**
