@@ -37,6 +37,36 @@
 
 version: 1
 
+# ROUNDS. The owner, 2026-08-24: "we'll restart the validation process after we
+# fix them and add assertions... this way, we fix them, we test the regression
+# assertion, and we get multiple rounds of validation."
+#
+#   round 1  the 26-graph sweep + the manual pass that produced DEF-102..DEF-106
+#   round 2  re-run after HIS-21 (#253) and HIS-22 (#254) land their fixes AND
+#            their regression assertions. Round 2 does two jobs at once: it
+#            confirms the fixes, and it gives every new assertion its first
+#            real exercise against a tree that is supposed to be clean.
+#   round 3  HIS-6's terminal sweep, on a tree validated twice.
+#
+# A row's `caught_by` never changes. `fixed_in` and `regression_check` are
+# filled by the ticket that closes it, and `round_2_result` by the re-run --
+# so a check that was added but never seen to work is visibly distinct from one
+# that has been exercised.
+
+rounds:
+  round_1:
+    what: 26-graph sweep (instrument A) + manual skt/skill-manager pass (instrument C)
+    when: "2026-08-24"
+    status: A in progress; C complete, 6 findings
+  round_2:
+    what: re-run after HIS-21 and HIS-22 land fixes AND regression assertions
+    when: pending
+    status: not started
+  round_3:
+    what: HIS-6 terminal sweep and goal scorecard
+    when: pending
+    status: not started
+
 instruments:
   A-graph-sweep:
     command: python skills/test_graph/scripts/sweep.py --scope full
@@ -196,4 +226,23 @@ findings:
       A node asserting `home describe` marks synthesised fields, and that two
       homes never both report one gateway as owned.
     status: open
+
+# ---------------------------------------------------------------------------
+# BATCHED INTO TICKETS, 2026-08-24 (schedule revision 10)
+#
+#   HIS-21  #253  the four findings where a command REPORTS SOMETHING THAT IS
+#                 NOT SO -- REG-002 (DEF-102), REG-004 (DEF-104),
+#                 REG-005 (DEF-105), REG-006 (DEF-106)
+#   HIS-22  #254  the three findings where the PROJECT -> ROOT promotion path
+#                 does not work -- REG-001 (DEF-103), plus DEF-096 and DEF-101
+#                 carried in from HIS-20
+#
+# REG-003 needs no ticket: it was the evaluation's own instrument and was fixed
+# at source before the sweep ran.
+#
+# The batching is BY KIND, not by file. One ticket is about what the product
+# SAYS; the other about what it DOES on the promotion path. Every row in both
+# owes a regression assertion, and round 2 is where those assertions are first
+# exercised.
+# ---------------------------------------------------------------------------
 
