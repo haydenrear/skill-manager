@@ -866,7 +866,22 @@ epic_goals:
         used to sync (DEF-018); that a command the assignment block PRINTS has
         never worked (DEF-069/DEF-072). Four facts an agent needed at tier
         boundaries, none of them disclosed by the tier.
-      measured_at: "TO BE MEASURED BY HIS-20"
+
+        AND, MEASURED 2026-08-23 BY HIS-8 -- one instance of CLAUSE 3 already
+        failing before HIS-20 starts. HIS-8's declared change-management path is
+        `skt publish` / `unit publish`, written into its own plan entry. The
+        ticket tried it and IT DID NOT WORK: those commands can only publish a
+        unit the home INSTALLED, and none of the four units HIS-8 had to touch
+        is installed in a worktree home. Worse, `skt publish` at the worktree
+        tier syncs into the PROJECT home -- which every ticket brief in this
+        epic forbids, for reasons two live incidents established. The documented
+        route and the containment rule are in DIRECT CONFLICT for every ticket
+        in this epic, and nothing warns about it. Filed as DEF-077.
+
+        That is not a prediction about the baseline; it IS part of the baseline.
+        The one ticket whose declared slice was change management could not
+        follow the documented path, and found out only by attempting it.
+      measured_at: "PARTIALLY MEASURED -- see DEF-077; the six judged reads are HIS-20's"
       evidence: results/epic-home-integrity-sync/goals/GOAL-progressive-disclosure
     target: >
       CLAUSE 1 (downward): an agent at each of the three tiers answers, without
