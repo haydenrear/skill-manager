@@ -3823,7 +3823,53 @@ tickets:
   - id: HIS-20
     title: "progressive disclosure has never been measured in either direction, and no tier says how a skill change reaches GitHub"
     phase: HIS
-    status: planned
+    status: delivered
+    delivered_in: "PR #251, merged into epic/home-integrity-sync; leaf PRs skill-manager-skill#5, skill-publisher-skill#35, git-issue-workflow-skill#24 -- all OPEN, none merged"
+    delivery_note: >
+      TWELVE JUDGED READS -- six before, six after, fresh agents, each sandboxed
+      to one tier's unit markdown with no source access and a citation required
+      per answer.
+
+      THE HEADLINE IS NOT WHAT THE TICKET WAS BUILT TO FIND. The largest gap is
+      a PROVISIONING gap, not a documentation gap: two of three tiers had ZERO
+      units installed that document the tier model, while `skill-project.toml`
+      already declared `[plugins.skt]` and `[skills.skill-manager]` and the home
+      had never been resolved against it (`projects/` empty). Escalated as
+      DEF-096; the project-home write is the owner's.
+
+      THE SPLIT, measured by the reviewer building the arm the ticket did not:
+      of 11 improved worktree-tier cells, 9 reach PASS from `project resolve`
+      ALONE with zero prose, 1 stays PARTIAL, and exactly 1 required the prose.
+      The converse is a PROOF: every line this ticket wrote lands in
+      `skill-manager` and `skt`, neither of which exists at the two lower tiers
+      before resolve, so prose-without-provisioning is BYTE-IDENTICAL to the
+      baseline there.
+
+      THE READS ARE NOT BLIND, and the ticket audited one channel of four. The
+      operator's auto-memory MEMORY.md is injected into every subagent and
+      answers F-Q1 and F-Q2 standalone; the skill listing states the tier model
+      verbatim; `gitStatus` leaks close-out and exit-code behaviour. The cells
+      the ticket first certified CLEAN were the contaminated ones. Cells are
+      DISCOUNTED, not struck -- the citations are real.
+
+      THE TICKET PUSHED BACK TWICE AND WAS RIGHT BOTH TIMES. F-Q3 (exit 79) IS
+      clean -- verified rather than asserted: no channel carries a numeric exit
+      code, and the nearest gitStatus subject introduces EXIT_CODE = 12, not 79;
+      `79` appears in 0 of 8 subjects. And it DECLINED the epic agent's offered
+      excuse that leaf-first publishing makes the before-first criterion
+      unachievable: "nothing stopped me committing the transcripts here first.
+      It was achievable and I missed it."
+    known_limitation: >
+      THE GOAL IS MET AT EXACTLY ONE TIER on this machine -- the worktree -- and
+      only because that home was actually changed. Root waits on two open leaf
+      PRs plus a sync; project waits on DEF-096. Both lower-tier AFTER corpora
+      exist NOWHERE ON DISK. Any "3 of 3 tiers" reading is false.
+      Close-out returned exit 1 / safe:false with 2 blockers -- `skill:skill-manager`
+      and `plugin:skt`, both `new`. The gate is correct per its contract and its
+      remedy (`home sync --from <wt> --to <project>`) is genuinely forbidden, so
+      declining to run it was right. That the gate cannot express "the
+      destination can obtain this from its own manifest at a published ref" is a
+      separate PRODUCT finding, DEF-101.
     role_note_revision_9: >
       Typed `evaluation` when first written and corrected to `implementation`
       before dispatch, by the plan validator. HIS-20 MEASURES and then CLOSES
