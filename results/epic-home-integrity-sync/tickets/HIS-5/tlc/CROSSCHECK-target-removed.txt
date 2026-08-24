@@ -1,18 +1,22 @@
-# Cross-check sweep: every regression cfg run with its TARGET invariant REMOVED
-# and the other 13 kept. Green means the counterexample violates ONLY the target.
-# Run 2026-08-24T02:10Z, tlc2 from $SKILL_MANAGER_HOME/bin/cli.
+# Cross-check sweep, POST-REVIEW re-run. Every regression cfg with its TARGET
+# REMOVED and the other 13 kept. Green => the counterexample violates ONLY the target.
+# NOTE (m3): informative only where another invariant reads a variable the spec moves.
+#   green-by-construction: foreignprojection, selfcertifyingdescent, halfboundhome
+#   degenerate (target not among the 13): narrowprojection
 
-XCHECK_blindobserver                     Model checking completed. No error has been found.
-XCHECK_collapsedgateadmits               Model checking completed. No error has been found.
-XCHECK_everythingdisposable              Model checking completed. No error has been found.
-XCHECK_foreignprojection                 Model checking completed. No error has been found.
-XCHECK_gaterefires                       Model checking completed. No error has been found.
-XCHECK_halfboundhome                     Model checking completed. No error has been found.
-XCHECK_narrowprojection                  Model checking completed. No error has been found.
-XCHECK_recordvetoesidenticaltree         Model checking completed. No error has been found.
-XCHECK_repairingobserver                 Model checking completed. No error has been found.
-XCHECK_selfcertifyingdescent             Model checking completed. No error has been found.
-XCHECK_selfrepend                        Model checking completed. No error has been found.
-XCHECK_silentdrift                       Model checking completed. No error has been found.
-XCHECK_staleack                          Model checking completed. No error has been found.
-XCHECK_staleerror                        Model checking completed. No error has been found.
+XCHECK_blindobserver                Model checking completed. No error has been found.
+XCHECK_collapsedgateadmits          Model checking completed. No error has been found.
+XCHECK_everythingdisposable         Model checking completed. No error has been found.
+XCHECK_foreignprojection            Model checking completed. No error has been found.
+XCHECK_gaterefires                  Model checking completed. No error has been found.
+XCHECK_halfboundhome                Model checking completed. No error has been found.
+XCHECK_narrowprojection             Model checking completed. No error has been found.
+XCHECK_recordvetoesidenticaltree    Model checking completed. No error has been found.
+XCHECK_repairingobserver            Model checking completed. No error has been found.
+XCHECK_selfcertifyingdescent        Model checking completed. No error has been found.
+XCHECK_selfrepend                   Model checking completed. No error has been found.
+XCHECK_silentdrift                  Model checking completed. No error has been found.
+XCHECK_staleack                     Model checking completed. No error has been found.
+XCHECK_staleerror                   Model checking completed. No error has been found.
+
+reds: 0 of 14  (must be 0)

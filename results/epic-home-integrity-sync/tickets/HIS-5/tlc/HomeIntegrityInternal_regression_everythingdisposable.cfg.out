@@ -1,16 +1,16 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 125 and seed -8295411228209629441 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 23383] (Mac OS X 26.6.1 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 84 and seed 6297213059248786831 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 7777] (Mac OS X 26.6.1 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file /Users/hayde/IdeaProjects/wt-217-his-5/specs/desired_program_model/HomeIntegrityInternal.tla
 Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Integers.tla
 Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Naturals.tla
 Semantic processing of module Naturals
 Semantic processing of module Integers
 Semantic processing of module HomeIntegrityInternal
-Starting... (2026-08-23 22:08:05)
+Starting... (2026-08-23 23:07:58)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-08-23 22:08:05.
+Finished computing initial states: 1 distinct state generated at 2026-08-23 23:07:59.
 Error: Invariant ADivergentTreeIsNeverSilentlyReplaced is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -43,7 +43,7 @@ State 1: <Initial predicate>
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 2: <DisposeOfEveryTreeUnconditionally line 465, col 3 to line 473, col 45 of module HomeIntegrityInternal>
+State 2: <DisposeOfEveryTreeUnconditionally line 557, col 3 to line 565, col 45 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = FALSE
@@ -75,4 +75,4 @@ State 2: <DisposeOfEveryTreeUnconditionally line 465, col 3 to line 473, col 45 
 
 3 states generated, 3 distinct states found, 1 states left on queue.
 The depth of the complete state graph search is 2.
-Finished in 00s at (2026-08-23 22:08:05)
+Finished in 00s at (2026-08-23 23:07:59)

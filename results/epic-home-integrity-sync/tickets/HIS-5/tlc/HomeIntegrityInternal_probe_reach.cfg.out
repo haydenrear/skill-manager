@@ -1,16 +1,16 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 100 and seed 5762626673871291179 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 25717] (Mac OS X 26.6.1 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 96 and seed 8176618289191839601 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 7716] (Mac OS X 26.6.1 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file /Users/hayde/IdeaProjects/wt-217-his-5/specs/desired_program_model/HomeIntegrityInternal.tla
 Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Integers.tla
 Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Naturals.tla
 Semantic processing of module Naturals
 Semantic processing of module Integers
 Semantic processing of module HomeIntegrityInternal
-Starting... (2026-08-23 22:09:20)
+Starting... (2026-08-23 23:07:56)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-08-23 22:09:20.
+Finished computing initial states: 1 distinct state generated at 2026-08-23 23:07:56.
 Error: Invariant NoHomeReachesEveryStateTheseInvariantsAreAbout is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -73,7 +73,7 @@ State 2: <SyncConflictsAndRecordsTheError line 244, col 3 to line 258, col 34 of
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 3: <RefreshTheUnitFromEvidenceOnDisk line 425, col 3 to line 437, col 45 of module HomeIntegrityInternal>
+State 3: <RefreshTheUnitFromEvidenceOnDisk line 481, col 3 to line 493, col 45 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = FALSE
@@ -103,7 +103,7 @@ State 3: <RefreshTheUnitFromEvidenceOnDisk line 425, col 3 to line 437, col 45 o
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 4: <SyncDetectsAChange line 536, col 3 to line 545, col 59 of module HomeIntegrityInternal>
+State 4: <SyncDetectsAChange line 628, col 3 to line 637, col 59 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -133,7 +133,7 @@ State 4: <SyncDetectsAChange line 536, col 3 to line 545, col 59 of module HomeI
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 5: <TheGateIsSurfacedInFull line 551, col 3 to line 557, col 59 of module HomeIntegrityInternal>
+State 5: <TheGateIsSurfacedInFull line 643, col 3 to line 649, col 59 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -163,7 +163,7 @@ State 5: <TheGateIsSurfacedInFull line 551, col 3 to line 557, col 59 of module 
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 6: <ACloneRecordsADescentTheParentClaims line 636, col 3 to line 641, col 45 of module HomeIntegrityInternal>
+State 6: <ACloneRecordsADescentTheParentClaims line 728, col 3 to line 733, col 45 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -193,7 +193,7 @@ State 6: <ACloneRecordsADescentTheParentClaims line 636, col 3 to line 641, col 
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 7: <ACommandBindsBothAxesAndWrites line 720, col 3 to line 724, col 48 of module HomeIntegrityInternal>
+State 7: <ACommandBindsBothAxesAndWrites line 812, col 3 to line 816, col 48 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -223,7 +223,7 @@ State 7: <ACommandBindsBothAxesAndWrites line 720, col 3 to line 724, col 48 of 
 /\ hi_agent_write = "named"
 /\ hi_ack_baseline = "A"
 
-State 8: <TheHomeTakesDamage line 770, col 3 to line 775, col 44 of module HomeIntegrityInternal>
+State 8: <TheHomeTakesDamage line 862, col 3 to line 867, col 44 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -253,7 +253,7 @@ State 8: <TheHomeTakesDamage line 770, col 3 to line 775, col 44 of module HomeI
 /\ hi_agent_write = "named"
 /\ hi_ack_baseline = "A"
 
-State 9: <AnObserverReportsWhatItFound line 781, col 3 to line 786, col 44 of module HomeIntegrityInternal>
+State 9: <AnObserverReportsWhatItFound line 873, col 3 to line 878, col 44 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -286,4 +286,4 @@ State 9: <AnObserverReportsWhatItFound line 781, col 3 to line 786, col 44 of mo
 78517 states generated, 14700 distinct states found, 4824 states left on queue.
 The depth of the complete state graph search is 9.
 The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 15 and the 95th percentile is 5).
-Finished in 00s at (2026-08-23 22:09:20)
+Finished in 00s at (2026-08-23 23:07:56)

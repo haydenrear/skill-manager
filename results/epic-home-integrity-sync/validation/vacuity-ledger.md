@@ -1,6 +1,6 @@
 # Vacuity ledger — every assertion this epic caught passing against broken code
 
-**Tracked for HIS-6.** Fourteen instances, four mechanisms. The owner's
+**Tracked for HIS-6.** Fifteen instances, four mechanisms. The owner's
 instruction at the wave-6 status review:
 
 > *"Each of them should have updated assertions so that the test graph catches. It's
@@ -13,7 +13,7 @@ whether it exists yet.
 
 ---
 
-## The fourteen instances
+## The fifteen instances
 
 | # | ticket | what happened | caught by |
 | --- | --- | --- | --- |
@@ -31,10 +31,19 @@ whether it exists yet.
 | 12 | HIS-13 | probe V6 removed `rewrite`'s no-op guard and **reddened nothing**: the branch only runs for a finding, and on the second repair the report is clean, so the idempotence claim is not downstream of it. Mechanism **D**, in the harness of the ticket that had just read row 11 | author |
 | 13 | HIS-13 | `makeStale()` planted `bin/cli/never-built` — a name **no parent store holds** — as the oracle for clause 3 of the ticket's own goal. That is the one flavour of staleness the check under test could never report, so the assertion could not fail. A stock `home clone` was meanwhile being called damaged | **reviewer** |
 | 14 | HIS-8 | the **widened sweep for a stale claim across four units** used `\|` inside `grep -E`, where it is a literal pipe — so every multi-term pattern searched for a string that cannot occur and returned a confident **all-zeros**. It reported three units clean of a claim it had never looked for. Mechanism **C** in a new medium: not a mutation that never reached the code, but a **search that never reached the corpus** | author |
+| 15 | HIS-5 | **an expected-violation cfg can refute the wrong invariant and read identically in every transcript.** TLC reports the FIRST invariant it finds violated, in an order the author does not control, so "the regression cfg fails" is a claim about iteration order and not about the invariant. Mechanism **A** in a new medium: not a probe reddening a precondition, but a **model checker reddening a neighbour** — and the check that would have accepted it (`assert TLC failed`) is the one a reasonable person writes | author |
 
-**Nine of thirteen were caught by the ticket's own author**, four by a reviewer
+**Ten of fifteen were caught by the ticket's own author**, five by a reviewer
 or the epic agent. That ratio is the process working. The rate not falling is
 the finding — and row 11 was the first one no existing mechanism described.
+
+**Row 15 is the first row that arrived with its countermeasure mechanised in the
+same pull request**, and that is the only reason it is worth more than a count.
+Every other row above is enforced by care. Row 15's is enforced by
+`specs/*/tests/test_tlc_expected_violations.py`, which asserts the invariant TLC
+NAMES is the one the manifest declared, runs in `uv run pytest specs/`, and was
+proved to discriminate by pointing a row at a neighbour and watching it go red.
+See "What is already mechanised" below, where it is now the fourth entry.
 
 **Rows 12 and 13 are the more useful pair, and they should be read together.**
 Both are HIS-13's, the ticket that shipped the epic's only *repairer*, written
@@ -86,6 +95,21 @@ substring-compatible spellings, a filename that never took effect.
 **The assertion:** a fixture **asserts its own preconditions**. HIS-14's V8 is the
 model — it found that neither frozen fixture was frozen only because something
 finally checked. A precondition that is not asserted is a hope.
+
+### A, in a second medium — the CHECKER reddens a neighbour
+Row **15**. Distinct enough from the three preconditions above to be worth
+stating separately, because the reddened thing is not a precondition at all: it
+is a genuine violation of a genuine invariant, just **not the one under test**.
+Everything a reader looks for is present — a counterexample, a named invariant,
+a non-zero exit — and the configuration is still refuting the wrong property.
+
+**The assertion:** a regression configuration declares WHICH invariant it
+refutes, machine-readably, and something asserts that TLC named that one. Two
+supporting habits: list the neighbours in the configuration so a neighbour
+firing is visible, and re-run each configuration with its TARGET REMOVED — it
+must go green. Ten of HIS-5's fourteen are informative under that second test;
+three are green by construction because their variable group is read by a single
+invariant, and saying so is part of the assertion.
 
 ### C — the mutation never reached the code
 Rows **4, 6, 7**, and now **14**. The disable was applied to a path the run does
@@ -212,11 +236,21 @@ new graphs.
 | A | a probe records WHICH assertion reddened, and whether it was the claim or a precondition | probe harnesses | **HIS-13** — mechanised in `probes/his-13/probes.py`, which classifies every red and prints the two counts. The review of #244 found five undeclared precondition-reds in the hand-written table it replaced |
 | B | a clause-3 / non-detection oracle plants the variant that CAN trip the check | `home-integrity`, unit suites | **HIS-13** (row 13) — the discriminating pair is now one disk state judged under two policies |
 | D | an all-green probe is reported as a FAILED probe, never omitted | every `RunHis*` | **HIS-13** — how row 12 was caught at all |
+| A/checker | a regression cfg declares which invariant it refutes, and a test asserts TLC named THAT one | `specs/*/tests/test_tlc_expected_violations.py` | **HIS-5** — mechanised, runs in `uv run pytest specs/`, proved to discriminate |
+| A/checker | each expected-violation cfg is re-run with its target REMOVED and must go green | HIS-5's cross-check sweep | **HIS-5** — by hand; not yet in the suite |
 
 ### What is already mechanised, and what is not
 
 **Mechanised:** `HomeFixpointLaw` (24 of 30 graphs), HIS-12's remedy source-scan,
-HIS-15's `--json` convention guard. All three caught something no enumerated list
+HIS-15's `--json` convention guard, and HIS-5's expected-violation runner — the
+last of which closes the gap that until it existed **nothing read the
+`expected_violations` table at all**: `grep -rn expected_violations` over
+`*.py *.sh *.kts *.java *.yml` returned nothing, and `run_tlc.sh` had no caller
+anywhere in the repository. Twenty configurations declared, zero executed, every
+run green — the same shape as `vars.ENABLE_TEST_GRAPH`.
+**Its residue: the CI runner has no `tlc2`**, so the model-checking half skips
+there and only the structural half runs. `SPEC_REQUIRE_TLC=1` turns the skip into
+a failure and the local pre-merge signal sets it. See DEF-087. All three caught something no enumerated list
 would have — the remedy scan caught a **sibling ticket's** drift during a merge, and
 the `--json` guard caught a failure path **created one promotion slot earlier**.
 

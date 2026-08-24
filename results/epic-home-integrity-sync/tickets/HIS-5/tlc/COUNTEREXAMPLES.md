@@ -1,10 +1,15 @@
 # HIS-5 — the counterexample TLC produced for every configuration
 
-Distilled from the full transcripts beside this file. For each state after
-the initial predicate, only the variables that CHANGED are shown, and the
-action that produced them is named. `Violated:` is the invariant TLC
-actually reported — the answer to "does this counterexample violate MY
-invariant and not a neighbour's".
+Regenerated after review, against the shipped module (clause 2 guarded on
+`hi_unit_pass = "done"`). Distilled from the full transcripts beside this
+file: for each state after the initial predicate, only the variables that
+CHANGED are shown, and the action that produced them is named. Values not
+shown carry forward from `Init`.
+
+`Violated:` is the invariant TLC actually reported — the answer to "does
+this counterexample violate MY invariant and not a neighbour's". The
+companion measurement is `CROSSCHECK-target-removed.txt`, which re-runs each
+configuration with its target removed and requires green.
 
 ## `HomeIntegrityInternal.cfg`
 

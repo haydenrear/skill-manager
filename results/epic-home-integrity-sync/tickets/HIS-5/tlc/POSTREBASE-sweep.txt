@@ -1,4 +1,25 @@
-# POST-REBASE re-run onto origin/epic/home-integrity-sync e644bd2, 2026-08-24T02:24Z
+# POST-REVIEW re-run, 2026-08-24T03:05Z, epic tip e644bd2
+# clause 2 now guarded on hi_unit_pass = "done".
+## specs/desired_program_model
+HomeIntegrityInternal_guard_repairingobserver.cfg              Model checking completed. No error has been found.
+HomeIntegrityInternal_probe_disposalreach.cfg                  Error: Invariant NoRefreshedTreeEverHadAForeignRecord is violated.
+HomeIntegrityInternal_probe_reach.cfg                          Error: Invariant NoHomeReachesEveryStateTheseInvariantsAreAbout is violated.
+HomeIntegrityInternal_regression_blindobserver.cfg             Error: Invariant ADamagedHomeIsNeverReportedClean is violated.
+HomeIntegrityInternal_regression_collapsedgateadmits.cfg       Error: Invariant AnUnacknowledgedGateStillRefusesALaunch is violated.
+HomeIntegrityInternal_regression_everythingdisposable.cfg      Error: Invariant ADivergentTreeIsNeverSilentlyReplaced is violated.
+HomeIntegrityInternal_regression_foreignprojection.cfg         Error: Invariant ProjectionSourceIsDecidable is violated.
+HomeIntegrityInternal_regression_gaterefires.cfg               Error: Invariant OneGateIsSurfacedInFullAtMostOnce is violated.
+HomeIntegrityInternal_regression_halfboundhome.cfg             Error: Invariant AHomesTwoAxesNameOneHome is violated.
+HomeIntegrityInternal_regression_narrowprojection.cfg          Error: Invariant ProjectionResolvesInsideThisHome is violated.
+HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg Error: Invariant AnIdenticalTreeIsDisposableWhateverItsRecordNames is violated.
+HomeIntegrityInternal_regression_repairingobserver.cfg         Error: Invariant AnObservationNeverRepairsWhatItObserved is violated.
+HomeIntegrityInternal_regression_selfcertifyingdescent.cfg     Error: Invariant SanctionIsRederivedFromTheParentsOwnStore is violated.
+HomeIntegrityInternal_regression_selfrepend.cfg                Error: Invariant AckWritesFallInsideItsBaseline is violated.
+HomeIntegrityInternal_regression_silentdrift.cfg               Error: Invariant RecordDescribesItsStoreOrSaysWhy is violated.
+HomeIntegrityInternal_regression_staleack.cfg                  Error: Invariant AckIsNotStaleOnArrival is violated.
+HomeIntegrityInternal_regression_staleerror.cfg                Error: Invariant ARecordedErrorIsAFunctionOfTheLiveTree is violated.
+HomeIntegrityInternal.cfg                                      Model checking completed. No error has been found.
+## specs/current
 HomeIntegrityInternal_guard_repairingobserver.cfg              Model checking completed. No error has been found.
 HomeIntegrityInternal_probe_disposalreach.cfg                  Error: Invariant NoRefreshedTreeEverHadAForeignRecord is violated.
 HomeIntegrityInternal_probe_reach.cfg                          Error: Invariant NoHomeReachesEveryStateTheseInvariantsAreAbout is violated.

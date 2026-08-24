@@ -43,7 +43,30 @@ about TLC's iteration order.
 
 ---
 
-## 0. What this ticket does NOT deliver, up front
+## 0. Corrected after review of PR #249
+
+**Read this before anything else.** The review found no blockers and reproduced
+every number, including rebuilding the cross-check sweep from scratch rather
+than trusting this file. It also found that **the strongest sentence in the
+first version of this document was false of the code**, and three smaller
+claims with it. They are corrected in place below; this list is so the
+corrections are not discoverable only by diff.
+
+| # | claim in v1 | status |
+| --- | --- | --- |
+| M2 | *"`disposable()` was `sourceHeldTheseBytes && recordIsAboutThisSource`"* | **FALSE.** It is a DISJUNCTION and HIS-1 never touched it. §1, invariant 5. |
+| M1 | clause 2 stated without its frame condition | **TRAP.** Frame now stated in module + manifest, antecedent guarded, breakage measured. §1, invariant 6. |
+| M3 | DEF-087 deferred | **FIXED HERE.** The table is now executed by a test. §3(d). |
+| m1 | *"`hi_full_surfacings` is the persisted `surfacedCount`"* | **FALSE.** It is `min(surfacedCount, 1)`. Conclusion survives, reason did not. §1, invariant 7. |
+| m2 | HIS-10's sanction re-derives from "the parent's own store" | **NARROWER THAN PRODUCTION.** `isChildOf` has a second, in-home arm. §1, invariant 10. |
+| m3 | *"fourteen greens"* presented as one measurement | **10 informative, 3 green by construction, 1 degenerate.** §3(b). |
+| m4 | *"every cfg lists its neighbouring invariants"* | **Six of fourteen list only `TypeOK` + target** — they have no neighbours. §3(b). |
+| m7 | *"HIS-14 delivered across seven verbs"* | **Twelve** declare `--home`. §6. |
+| — | HIS-11 covered by `InFlightMaterializationLeavesTheChildUnitIntact` | **Wrong invariant** — it is guarded on `staging.active`. §4. |
+
+---
+
+## 0b. What this ticket does NOT deliver, up front
 
 **Read this before §1.**
 
@@ -62,10 +85,12 @@ about TLC's iteration order.
   `ProjectionResolvesInsideThisHome`, inverted — there a configuration preserves
   a correction, here one preserves a finding that has not been fixed yet — but
   it means `specs/current` now asserts something the product does not do.
-- **This ticket adds no executable coverage.** Nine invariants over a bounded
-  model are nine statements about a MODEL. The `home-integrity` graph is what
-  checks the same relations against real homes, and this ticket did not extend
-  it. If the model and the product drift, nothing here notices.
+- **This ticket adds no executable coverage OF THE PRODUCT.** Nine invariants
+  over a bounded model are nine statements about a MODEL. The `home-integrity`
+  graph is what checks the same relations against real homes, and this ticket
+  did not extend it. If the model and the product drift, nothing here notices.
+  What this ticket *did* add — after review folded DEF-087 back in — is
+  executable coverage of **the model's own claims**: see §3(d).
 - **The state count grew 24× and nothing bounds the next one.** 10 distinct
   states → 24,000. That is inside `budgets.max_distinct_states` (50,000) and it
   is a product, not a sum: the six property groups are disjoint, so a seventh
@@ -106,29 +131,130 @@ with only the variables that moved: `tlc/COUNTEREXAMPLES.md`.
 byte-identical to what the live source is standing on right now is disposable,
 whatever its record names.
 
-*The invariant does not mention `hi_record_names_source`, and must not.* That is
-the whole content: an invariant that granted the record a vote would be
-satisfied by exactly the implementation the defect was —
-`sourceHeldTheseBytes && recordIsAboutThisSource`. `RefreshTheUnitFromEvidence-
-OnDisk` lets the record range over BOTH values rather than pinning it, so TLC
-must show the property holding whichever way the record points.
+*The invariant does not mention `hi_record_names_source`, and must not.*
+`RefreshTheUnitFromEvidenceOnDisk` lets the record range over BOTH values rather
+than pinning it, so TLC must show the property holding whichever way the record
+points.
 
 *Counterexample:* one step. `HoldBackAnIdenticalTreeBecauseOfItsRecord` with
 `hi_unit_content = hi_live_source = "t_src"` carried from Init and
 `hi_record_names_source = FALSE` — sixteen of the operator's eighteen records —
 sets `hi_held_back = TRUE`. Nothing else in the state moves. **Violates 5.
 `ADivergentTreeIsNeverSilentlyReplaced` is listed in that cfg and holds**, and
-that is not an accident of ordering: the broken rule is strictly MORE
+that is not an accident of ordering: the modelled broken rule is strictly MORE
 conservative than the fixed one, so clause 2 cannot fire on it.
 
-**6 — `(hi_unit_content # hi_live_source) => hi_held_back`.** The guard on 5, and
-the reason 5 is not the whole property: "everything is disposable" satisfies 5
-completely and destroys every agent edit in the home. `DisposeOfEveryTree-
-Unconditionally` refutes it; **5 holds on that trace**, cross-checked.
+### M2 — the correction, and it is the sharpest thing in this document
+
+**v1 of this file said the invariant refutes "exactly the implementation the
+defect was — `sourceHeldTheseBytes && recordIsAboutThisSource`". That
+conjunction exists in no version of the code.**
+`ChildHomeMaterializer.Disposal.disposable()` is, and was before HIS-1:
+
+```java
+return (destUntouched && recordIsAboutThisSource && !mergeResult)
+        || sourceHeldTheseBytes;
+```
+
+a **disjunction** with `sourceHeldTheseBytes` as an escape arm.
+`git log --all -S "sourceHeldTheseBytes ||"` over that file returns **no
+commit**. HIS-1 is `8346fef` *"copyUnit asks the disk before it asks the
+record"*, and what it actually did was extract `settledWithoutARecord(...)` and
+call it from `copyUnit` **before** `disposal(...)` — `reconcile` had had those
+three disk answers all along, and the defect was that only **one of the two
+paths** asked them.
+
+**The consequence is worth more than the deletion.**
+`HoldBackAnIdenticalTreeBecauseOfItsRecord` models a machine **strictly harsher
+than the broken one ever was**: `held_back = divergent ∨ ¬record_names_source`
+holds back on the record's say-so alone. The real broken `copyUnit` satisfies
+clause 1 in the **common case**, because `describesSource`'s third arm is
+
+```java
+if (record.entryDigests().equals(src.entries())) return true;
+```
+
+— the destination's recorded entry digests against the **live source's**
+fingerprint. So a record naming a worktree deleted in July still answers *"yes,
+evidence about this source"* whenever the bytes line up, and the unit is rescued
+regardless of what `record.source()` names.
+
+**That is vacuity-ledger row 1, one level up.** Row 1 records HIS-1's first
+regression test passing *without* the fix — *"`describesSource` rescued it
+because both trees were left pristine"*. The single boolean
+`hi_record_names_source` **cannot express the distinction that actually decided
+that case**: a *stale* record (names elsewhere, digests still match the live
+source → rescued) versus a record genuinely not about this source (digests
+differ → held back). A faithful model needs two bits there, not one. **So the
+TLA+ model reproduces, one level up, the exact vacuity the ledger already
+recorded for HIS-1's unit test.**
+
+**The invariant is still a correct pin on delivered behaviour** — production
+disposes of every identical tree and this forbids holding one back. What was
+wrong was the story about which implementation it refutes, and that story is the
+specific claim the PR asked a reviewer to weigh.
+
+**6 — `(hi_unit_pass = "done" /\ hi_unit_content # hi_live_source) => hi_held_back`.**
+The guard on 5, and the reason 5 is not the whole property: "everything is
+disposable" satisfies 5 completely and destroys every agent edit in the home.
+`DisposeOfEveryTreeUnconditionally` refutes it; **5 holds on that trace**,
+cross-checked.
+
+### M1 — the frame condition, now written down, and what it costs
+
+**As shipped in v1 this invariant was false of the product** — it held only
+because `hi_live_source` is declared a variable, described as *"the bytes the
+live SOURCE is standing on right now"*, and **never assigned after `Init`**.
+Nothing edits `hi_unit_content` outside a pass either, so divergence and the
+judging of it were inseparable by construction and **the frame was written down
+nowhere**.
+
+Production genuinely leaves a unit standing on bytes that differ from the live
+source without holding it back: an ordinary clean out-of-date copy satisfies
+`destUntouched && recordIsAboutThisSource && !mergeResult`, is disposed of, and
+is refreshed. **That is what `sync` is for.** The module's own header sets the
+standard — *"an invariant a healthy home genuinely violates is a modelling error
+and not a bug."*
+
+**Measured**, by adding `TheSourcePublishesANewRevision` — the most ordinary
+event in the system — to `HomeIntegrityNext` and running the **correct**
+configuration:
+
+| clause 2 | result |
+| --- | --- |
+| **unguarded** (as shipped in v1) | red at **depth 2** — the source moves; no pass has run |
+| **guarded** (as shipped now) | red at **depth 3** — a pass refreshes, then the source moves past it |
+
+**Read those two numbers together, because they say something the review's
+proposed fix does not.** Guarding the antecedent **does not make clause 2 true
+of a moving source** — it buys one step. What makes it true is the *frame*, and
+the guard's job is to stop the invariant claiming anything about states no pass
+has judged. **Both are needed and neither substitutes for the other**, so both
+landed: the frame condition is stated in the module (a titled block beside
+`RefreshTheUnitFromEvidenceOnDisk`) *and* against `hi_live_source` in the
+manifest's variable list, and the antecedent is guarded.
+
+The frame block also names the correct repair for whoever models an upstream
+revision next: **capture what the pass JUDGED**, do not weaken clause 2. That is
+the move this module says it refused, and it would give back HIS-1's second
+acceptance assertion. It costs a witness and therefore a guard cfg, which is why
+it was not done for a model in which the source cannot move.
 
 **7 — `hi_full_surfacings <= 1`.** One unacknowledged gate is surfaced in full at
 most once; a genuinely new change zeroes the counter and re-opens the full
 report, which is why `SyncDetectsAChange` resets rather than leaves it.
+
+*m1, corrected.* v1 waived a guard cfg here on the grounds that
+`hi_full_surfacings` *"is `home.drift.json`'s persisted `surfacedCount`"`.
+**It is not.** `DriftGate.markSurfaced` increments on **every** surfacing, full
+or collapsed — `ExecCommand:172` and `HomeCommand:1054` both call it *after* the
+`firstSurfacing()` branch — so the persisted field legitimately reaches 3, 4, 5
+and `<= 1` is false of it. What this variable models is `min(surfacedCount, 1)`,
+equivalently `~firstSurfacing()`, since `DriftGate.firstSurfacing()` is
+`surfacedCount <= 0` and is the **only reader of the field anywhere in the
+product**. That predicate is persisted, is re-read across processes, and decides
+whether the full report is emitted — so **the conclusion stands and the stated
+reason did not**.
 
 **8 — `hi_gate_open => ~hi_launch_admitted`.** The half that stops 7 being
 decoration. `_regression_collapsedgateadmits` is the demonstration: **7 is GREEN
@@ -173,6 +299,17 @@ caught while the cfg still fails.
 
 *It fails closed, and the cost is stated rather than assumed:* evidence that
 cannot be re-derived does not sanction. *Not claimed:* forgery-proof.
+
+*m2, corrected.* v1's comment implied the parent's registry is the only witness.
+`ChildHomeLink.isChildOf` is `parentClaims(p, c) || childWasMaterializedFrom(c, p)`,
+and the second disjunct walks `<child>/.materialization/**/*.json` and trusts its
+`source` field — **a file inside the home being judged**. So the live
+re-derivation this invariant pins is broader than "the parent's own store says
+so", and one of its two arms is in-home evidence. No forgery was demonstrated
+and HIS-10 explicitly named that pre-existing trust rather than widening it, so
+this is an over-claim in the prose, not a hole. What HIS-10 removed is the
+**arbitrary** grant — a record that sanctioned itself with no live question
+asked at all.
 
 **HIS-10's own plan row promised GOAL-home-invariants a `direct` contribution —
 "an invariant that a home's sanction set is a function of its recorded descent,
@@ -270,10 +407,31 @@ oracle.
 configurations, fourteen reds. This is the check `regression_config_rule` asks
 for, and it is the weakest of the three.
 
-**(b) Does each counterexample violate MY invariant?** Every regression cfg
-lists its neighbours, and all fourteen were re-run with the target removed and
-the other thirteen kept. **Fourteen greens.** Each counterexample violates
-exactly one invariant, and it is the declared one. `tlc/CROSSCHECK-target-removed.txt`.
+**(b) Does each counterexample violate MY invariant?** All fourteen were re-run
+with the target removed and the other thirteen kept. **Fourteen greens.**
+`tlc/CROSSCHECK-target-removed.txt`. The review rebuilt this sweep from scratch
+rather than trusting the transcript and reproduced 14/14.
+
+*m3, corrected — the fourteen are not one uniform measurement.* A cross-check is
+**informative** only where some other invariant reads a variable the regression
+spec actually moves; where a group is read by exactly one invariant, removing it
+leaves nothing that could fail and the green is true by construction.
+
+| | rows |
+| --- | --- |
+| **informative (10)** | silentdrift, staleack, selfrepend, recordvetoesidenticaltree, everythingdisposable, gaterefires, collapsedgateadmits, staleerror, repairingobserver, blindobserver |
+| **green by construction (3)** | foreignprojection, selfcertifyingdescent, halfboundhome — one invariant each reads `projection`, `descent_vars`, `axis_vars` |
+| **degenerate (1)** | narrowprojection — its target is not among the thirteen kept, so with it removed the run *is* `HomeIntegrityInternal.cfg` |
+
+The disjointness that makes three of them uninformative is deliberate and is
+what keeps the counterexamples clean. Presenting fourteen equivalent
+measurements was not.
+
+*m4, corrected.* v1 said *"every expected-violation cfg lists its neighbouring
+invariants"*. **Six of fourteen list only `TypeOK` + target** —
+foreignprojection, halfboundhome, narrowprojection, selfcertifyingdescent,
+silentdrift, staleack — because their group has no neighbour to list. The other
+eight do list one that must not fire.
 
 **(c) Was each invariant ever EVALUATED?** Nine invariants that hold is not the
 claim that nine were evaluated — every one is an implication or an equality, and
@@ -298,16 +456,80 @@ specification and **must FAIL**:
 
 Both fail. If either ever reports "No error has been found", the healthy model
 has stopped reaching the states the invariants are about and every green run
-above is measuring nothing.
+above is measuring nothing. The review ran an independent 12-antecedent
+reachability sweep and found no vacuity; all 11 reachable antecedents were
+confirmed directly.
+
+**(d) Does anything RUN any of this? — DEF-087, fixed here rather than
+deferred.** v1 filed it against its own PR and the review folded it back in,
+correctly: the goal says *"so the defect cannot come back unnoticed"*, and nine
+invariants with zero automatic enforcement do not meet it. It was worse than v1
+stated — nothing ran the cfgs **and nothing read the table**:
+`grep -rn expected_violations` over `*.py *.sh *.kts *.java *.yml` returned
+nothing, and `run_tlc.sh`'s only repository-wide reference is a prose string in
+`.github/scripts/render-epic-assignment.py`.
+
+`specs/*/tests/test_tlc_expected_violations.py` now reads all three declared
+tables and asserts **the invariant TLC names is the one declared** — not merely
+that TLC failed, which would pass in exactly the mechanism-A case this ticket is
+about. **25 cases, ~16 s**, in both model directories.
+
+*Proved to discriminate, because a check nobody has watched fail is a check
+nobody should believe.* The table was deliberately broken two ways and restored
+byte-for-byte afterwards (checksum verified; **no `git restore`**, per DEF-035):
+
+| break | result |
+| --- | --- |
+| point `gaterefires` at a **neighbour** (`AnUnacknowledgedGateStillRefusesALaunch`) | **RED** — *"failed on `OneGateIsSurfacedInFullAtMostOnce`, but the manifest declares … mechanism A"* |
+| declare the **green** guard cfg as an expected violation | **RED** — *"reported NO violation … a regression configuration that starts passing is a defect in the invariant"* |
+
+**Two halves, and the split is the honest part.** The **structural** checks need
+no model checker and run everywhere including CI: every declared cfg exists,
+every cfg on disk is declared (the ARTI-22 "five undeclared copies" shape),
+every named invariant is defined in the module, and the healthy cfg lists every
+declared invariant. The **model-checking** checks need `tlc2`.
+
+**The review's "it lands in CI for free" is optimistic and I measured why.** CI
+runs `uv run --with pytest pytest specs/program_model/tests specs/current/tests`
+— two named directories, **not `specs/`** — so only the mirror in
+`specs/current/tests` is collected, and that job installs no `tlc2`. Under an
+env-scrubbed, `tlc2`-free invocation shaped like the runner: **34 passed, 18
+skipped**, with the skip reason named under `-rs`. So the structural half is in
+CI today and the model-checking half is not.
+
+Two things were done about that rather than leaving it implicit.
+`specs/current/spec_manifest.yaml` **gained the tables**, because the tree CI
+actually collects had no declaration of what its own configurations are for —
+my own guard caught that within a minute of the mirror landing. And
+`SPEC_REQUIRE_TLC=1` turns the skip into a **failure**, which the local
+pre-merge signal sets, so a skip is a gap that says so rather than an unbroken
+row of dots. The residue — `tla2tools.jar` on the runner, a workflow change with
+a network fetch in it — is narrowed in DEF-087 and left to whoever owns CI
+policy.
 
 **Validating the instrument before believing it (HIS-8's lesson).** The
 classifier is one `grep -E "^Error: Invariant|No error has been found"`. It was
 exercised on inputs whose answer was known **in both directions** before any
-result was believed: 16 reds naming 12 distinct invariants, and 4 greens, from
-the same command shape over the same corpus. The cross-check sweep in particular
+result was believed: reds naming 12 distinct invariants, and greens, from the
+same command shape over the same corpus. The cross-check sweep in particular
 **can** come back red — the identical pipeline produced the reds in §1 — so its
 fourteen greens are a measurement and not a pattern that cannot match. A sweep
 that cannot fail is the same defect as an assertion that cannot fail.
+
+**And the mechanism kept happening, four times in two days, to four different
+readers.** HIS-8's `grep -E` carried a literal `\|` and returned a confident
+all-zeros. The reviewer of this PR had its first cross-check show 14 *reds*
+because zsh does not word-split an unquoted `$ALL`, so the target was never
+removed — it caught that itself and said so. And while finishing these
+corrections I wrote a wait-loop for the two long suites whose pattern was
+`FAILED`, which matched `[PASS] … AGENT_SYNC_FAILED` and returned "done" while
+both suites were still running.
+
+Three of those four were caught only because the result was *implausible* — all
+zeros, all reds, done-too-soon. **None was caught by a check.** That is the
+argument for §3(d) existing at all: the one countermeasure in this ticket that
+does not depend on a human finding the number surprising is the test that
+asserts the invariant TLC named.
 
 ---
 
@@ -332,18 +554,30 @@ guard also refuses a write into a path in **no home at all** — the
 worth a duplicate representation of the reach rule to reach it, and a reviewer
 may disagree.
 
-**HIS-11 — "a failed operation restores the bytes it moved aside". NOT STATED.**
-The rule is `Internal.InFlightMaterializationLeavesTheChildUnitIntact` and
-`External.AConflictedUnitIsNeverPartiallyWritten`: a destination is never left as
-half of two things. HIS-11's defect was not a different rule — it was an
-**EMPTY** pre-state compensation in an exhaustive switch, and an at-rest
-invariant over this view's variables cannot tell "restored" from "never
-touched". What catches that is a probe with a non-degenerate pre-state, which is
-a fixture property and is already recorded as vacuity-ledger row 10.
+**HIS-11 — "a failed operation restores the bytes it moved aside". NOT STATED —
+omission upheld at review, but MY CITATION WAS WRONG and the review's is better.**
 
-*This is the weakest of my omissions.* A write witness would make it statable,
-the way `sync_history` was added to External for exactly this reason. I did not
-add one.
+v1 cited `Internal.InFlightMaterializationLeavesTheChildUnitIntact`. That
+invariant is guarded on `staging.active`, **so it says nothing at all after an
+abort** — which is precisely the moment HIS-11 is about. The invariant that
+actually covers it is
+
+```tla
+AgentEditsSurviveMaterialization ==
+  \A u \in agent_edits:
+    /\ child_unit[u].present
+    /\ child_unit[u].content = AgentBytes
+```
+
+over a **monotone witness set**, whose own comment reads *"no stage, swap,
+prune, or abort may overwrite or delete it"*. That is a post-condition that
+survives the abort, and restating it is what `dual_representation_rule` forbids.
+
+What remains uncovered is "restored" versus "never touched", which is
+byte-identical and harmless. HIS-11's defect was an **EMPTY** pre-state
+compensation in an exhaustive switch; what catches *that* is a probe with a
+non-degenerate pre-state — a fixture property, already vacuity-ledger row 10 —
+not a state relation this module can hold.
 
 **Stated instead:** HIS-10, HIS-13/DEF-067 and HIS-14, argued in §1.
 
@@ -356,11 +590,14 @@ add one.
 | `run_tlc.sh`, 18 cfgs, `specs/desired_program_model` | home pinned to this worktree (`tlc2` resolves from `$SKILL_MANAGER_HOME/bin/cli`) | 2 green (healthy + guard), 16 red, every red naming its declared invariant |
 | `run_tlc.sh`, 18 cfgs, `specs/current` mirror | same | identical results, byte-identical mirrors |
 | cross-check sweep, 14 cfgs, target removed | same | **14 green** |
-| `uv run pytest specs/` | five home vars UNSET (DEF-074) | **38 passed** |
-| `jbang RunTests.java` | five home vars UNSET (DEF-074) | **ALL PASSED — 146 suites, 1384 cases, 0 failed** |
-| `run.py home-integrity` | five home vars UNSET (DEF-074) | **BUILD SUCCESSFUL — 18/18 nodes passed**, run `20260824-021701` |
+| `uv run pytest specs/` | five home vars UNSET (DEF-074) | **88 passed** (38 pre-existing + 25 new × 2 model dirs) |
+| `pytest … -q` on a CI-shaped runner, locally | `env -i`, no `tlc2` | **34 passed, 18 skipped**, skip reason named under `-rs` |
+| **the real CI runner**, PR #249 | GitHub Actions `unit-tests` | **34 passed, 18 skipped in 2.55 s** — the predicted number, confirmed |
+| `jbang RunTests.java` | five home vars UNSET (DEF-074) | **ALL PASSED — 146 suites, 1384 cases, 0 failed** (re-run post-review, identical) |
+| `run.py home-integrity` | five home vars UNSET (DEF-074) | **BUILD SUCCESSFUL — 18/18 nodes passed**, run `20260824-030800` (re-run post-review) |
 
-| 18-cfg sweep re-run AFTER rebase onto `e644bd2` | home pinned | identical — `tlc/POSTREBASE-sweep.txt` |
+| 18-cfg sweep × BOTH model dirs, post-review | home pinned | **32 red / 4 green** — `tlc/POSTREBASE-sweep.txt` |
+| cross-check sweep, rebuilt post-review | home pinned | **0 reds of 14** — `tlc/CROSSCHECK-target-removed.txt` |
 | `skill-manager home close-out --home <wt> --into <project>` | home pinned, raw build (`./skill-manager`, not the PATH 0.24.0) | **`safe: true`, exit 0, no blockers**, four units all `unchanged` — `close-out.json`. The project home was NOT synced into; `git status` there is clean. |
 
 `run.py --all` was NOT run. It is multi-hour and belongs to HIS-6, which owns
@@ -371,37 +608,90 @@ the one terminal sweep — owner's instruction, recorded in the assignment block
 ## 6. What I am NOT confident about
 
 1. **That nine invariants over a model is worth what it costs.** This ticket
-   added 18 variables and 24,000 states to a view nothing executes. Its whole
-   value is that a future change which reintroduces one of these defects makes a
-   cfg go green, and **nothing runs these cfgs automatically** — the graphs are
-   suspended on push and PR, and `run_tlc.sh` is invoked by hand. An assertion
-   nobody runs is the same defect as an assertion that cannot fail, one level
-   up. HIS-6 should decide whether this view has a runner.
-2. **The HIS-11 omission**, per §4.
+   added 18 variables and 24,000 states to a view nothing executes against the
+   product. **The enforcement half is now real** — §3(d) — but only structurally
+   in CI; the model-checking half runs locally. HIS-6 should decide whether
+   `tla2tools.jar` belongs on the runner.
+2. **The HIS-11 omission** — upheld at review, with my citation corrected. §4.
 3. **Invariant 11's fidelity.** `hi_store_write = hi_agent_write` is a two-state
-   model of a contract HIS-14 delivered across seven verbs. It catches the
-   measured defect. It says nothing about a command that binds both axes to the
-   *wrong* home, and I did not model home identity beyond named/ambient.
+   model of a contract HIS-14 delivered across **twelve** verbs — v1 said seven,
+   which understated delivery; `grep -rn '"--home"' src/main/java/dev/skillmanager/commands/`
+   returns 12, and `SkillManagerCli.bindNamedHome` walks the picocli parse chain
+   generically. It catches the measured defect. It says nothing about a command
+   that binds both axes to the *wrong* home, and I did not model home identity
+   beyond named/ambient.
 4. **Invariant 12 asserts something the product does not do.** DEF-067 is open.
    If HIS-6 reads `specs/current` as a description of current behaviour rather
    than of intended behaviour, this row is wrong there and right in
    `desired_program_model`. The two directories are byte-identical for this
    module today, so the distinction has nowhere to live.
-5. **A duplicate finding was avoided by luck, not by process, and it is worth
-   more than any of the above.** I wrote an SF-002 against
-   `tla-spec-dev close ticket`'s status gate before rebasing. **HIS-8 had
-   already filed it, upstream, with a URL** — its own SF-002, one commit ahead
-   of me on the epic branch. Mine was dropped at the rebase, and the ONLY
-   reason it was seen is that both tickets happened to append to the same file,
-   so git forced the two versions to be read side by side. Had HIS-8 filed it
-   anywhere else, I would have re-filed a known defect as new — which is this
-   epic's named recurring failure. I grepped the DEFERRED backlog before filing
-   (as instructed) and it was not there; `specs/results/skill_feedback.md` is a
-   second ledger, and nothing told me to grep it. **There are at least two
-   append-only ledgers in this repository and the pre-filing check covers one.**
+5. **A duplicate finding was avoided by luck — and my account of it was unfair
+   to HIS-8, so here is the corrected version.** I wrote an SF entry against
+   `tla-spec-dev close ticket`'s status gate; HIS-8 had already filed it
+   upstream with a URL. Mine was dropped at the rebase, seen only because both
+   tickets appended to the same file so git forced the two versions side by
+   side.
+
+   **The correction: HIS-8 *did* also record it in the deferred backlog, as
+   DEF-080.** I branched before that commit landed, so my grep was correct
+   against the tree I had and the miss was a concurrency artefact, not a missing
+   cross-reference. The ledger split is still real — review measured that
+   `skill_feedback.md` appears nowhere in `git-epic-workflow` or
+   `git-issue-workflow`, that `references/deferment.md` carries **no pre-filing
+   dedup instruction of any kind** (so my grep was personal discipline, not a
+   rule), and that exactly one cross-reference exists in either direction. But
+   this particular near-miss is not evidence for it. Filed as **DEF-089**; the
+   epic agent has taken the upstream fix.
 6. **Whether the six property groups should have been six specifications.** The
    repo's own precedent (`two_specs_per_module`) says disjoint variable sets get
    their own specs, and I put them all under one `HomeIntegritySpec` so the
    healthy cfg checks everything at once. That is why the state count is a
-   product. It was a deliberate trade and it is the decision most likely to look
-   wrong at the next extension.
+   product.
+
+   **The trade-off v1 omitted, and it cuts the other way.** Splitting would turn
+   the product into a sum — and it would make
+   `HomeIntegrityInternal_probe_reach.cfg` **impossible**, because that probe
+   works precisely by putting every group's antecedent live in ONE state, which
+   is only true while one specification drives them all. So the un-split model
+   is not merely convenient; it buys the strongest vacuity evidence in this
+   view. A split needs a different answer to *"was this invariant ever
+   evaluated"*, not just six more healthy configurations. Deferral upheld at
+   review, which also verified all 11 reachable antecedents directly: **no
+   invariant here is checked over a space too small to reach its interesting
+   states.**
+
+---
+
+## 7. CI on this PR, read rather than assumed
+
+`Lint PR title` was RED and is now green. The title carried no
+conventional-commit type prefix at all, so
+`amannn/action-semantic-pull-request`'s `headerPattern` failed before its
+`subjectPattern` was ever reached — which is what the assignment's *"the PR
+title's subject must start with a letter"* was pointing at, and I mis-read it
+as a rule about the first character rather than about the text after a type.
+Retitled `feat(HIS-5): …`, which satisfies the linter and keeps the ticket id
+where the epic owner looks for it. **Say if the bare `HIS-N: …` shape is
+load-bearing for tooling and I will put it back** — HIS-8 merged with that shape
+and a red lint.
+
+`DCO` is RED and I did **not** fix it. It is red on HIS-8's merged PR too, and
+**no commit on this epic branch carries a `Signed-off-by` trailer** — 0 of the
+last 15, against 14 of the last 20 on `main`. So the epic merges through it by
+practice. A sign-off is a legal attestation made in the author's name, and a
+ticket agent adding one on the operator's behalf is not a formatting fix.
+Escalated rather than silently satisfied.
+
+The rest: `Lint release signal for rebase merge` pass, GitGuardian pass, graph
+jobs `skipping` (expected — suspended on push and PR, per CLAUDE.md), and
+`skill-manager unit tests (RunTests.java + spec models)` **passed, and §3(d)'s
+suite genuinely ran inside it** — the job log reads `34 passed, 18 skipped in
+2.55s`, exactly the number the local `env -i` simulation predicted. So the split
+is confirmed on the real runner rather than merely modelled: the six structural
+checks execute on every push and pull request, and the eighteen model-checking
+cases skip there for want of `tlc2`. That is DEF-087's residue, measured on the
+machine it applies to.
+
+**Checking that the job passed would not have shown this.** A suite that failed
+to collect at all also reports no failures — so the log was read for the case
+count, not the colour.

@@ -4508,7 +4508,35 @@ findings:
       test and it is the only thing that makes regression_config_rule
       enforceable rather than remembered. It must NOT repair anything it finds
       (DEF-067).
-    candidate_owner: HIS-6
+    resolved_in_this_ticket: >
+      MOSTLY FIXED IN THE SAME PULL REQUEST, after review folded it back into
+      HIS-5 rather than deferring it. specs/*/tests/test_tlc_expected_violations.py
+      now reads all three tables and asserts THE INVARIANT TLC NAMES IS THE ONE
+      DECLARED -- not merely that TLC failed, which would pass in exactly the
+      mechanism-A case. 25 cases, ~16s. Proved to discriminate: pointing one row
+      at a neighbour and declaring a green guard cfg as an expected violation
+      both go red, by name.
+
+      specs/current/spec_manifest.yaml gained the same tables, because CI
+      collects `specs/program_model/tests specs/current/tests` -- NOT `specs/`
+      -- and the current tree had no declaration of what its own configurations
+      are for.
+    residue_still_open: >
+      THE CI RUNNER HAS NO tlc2, so on a push or a pull request only the
+      STRUCTURAL half runs -- 6 cases: every declared cfg exists, every cfg on
+      disk is declared, every named invariant is defined in the module, the
+      healthy cfg lists every declared invariant. The 18 model-checking cases
+      SKIP with a named reason (verified with `-rs` under an env-scrubbed,
+      tlc2-free invocation).
+
+      SPEC_REQUIRE_TLC=1 turns that skip into a failure, and the local pre-merge
+      signal sets it -- so the table is executed before every merge, by the same
+      posture the graphs now have ("run them locally for now"). What remains is
+      the decision to put tla2tools.jar on the runner, which is a workflow
+      change with a network fetch in it and belongs to whoever owns CI policy,
+      not to a ticket agent. Until then a skip is a gap and the suite says so
+      out loud rather than reporting an unbroken row of dots.
+    candidate_owner: HIS-6 -- only the CI residue above remains
     related: [DEF-011, DEF-067]
     status: open
 
@@ -4558,4 +4586,42 @@ findings:
       paths -- the measurement DEF-040 already records having made by hand.
     candidate_owner: HIS-6 to re-route; NOT HIS-5
     related: [DEF-036, DEF-040]
+    review_outcome: >
+      UPHELD at review of PR #249: refusing to state these as TLA+ invariants
+      was the right call.
+    status: open
+
+  - id: DEF-089
+    found_by: HIS-5 (#217), review of PR #249
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      THE PRE-FILING DEDUP CHECK COVERS ONE OF AT LEAST TWO APPEND-ONLY LEDGERS,
+      and it is not written down as a rule anywhere.
+    detail: >
+      A ticket agent is told to grep this backlog before filing. There is a
+      SECOND append-only ledger -- specs/results/skill_feedback.md, written by
+      `tla-spec-dev close ticket` -- and nothing routes a reader to it.
+      Measured at review: `skill_feedback.md` appears nowhere in
+      git-epic-workflow or git-issue-workflow; references/deferment.md carries
+      no pre-filing dedup instruction of ANY kind, so the grep is a habit rather
+      than a rule; and exactly one cross-reference exists in either direction.
+
+      HIS-5 wrote an SF entry against `tla-spec-dev close ticket`'s status gate
+      that HIS-8 had already filed upstream with a URL. It was dropped at the
+      rebase, and the only reason it was seen is that both tickets happened to
+      append to the same file so git forced the two versions side by side.
+    correction_to_the_first_account: >
+      HIS-5's PR body first said HIS-8 had filed it "anywhere else" and the grep
+      would have missed it. That is unfair to HIS-8: it DID record the finding
+      in this backlog as DEF-080. HIS-5 branched before that commit landed, so
+      the grep was correct against the tree it had, and the miss was a
+      concurrency artefact rather than a missing cross-reference. The ledger
+      split is still real; the specific near-miss is not evidence of it.
+    why_deferred: >
+      The fix is a line in git-epic-workflow's references/deferment.md and
+      belongs upstream in the skill, not in this repository. The epic agent has
+      taken it.
+    candidate_owner: the epic agent -- git-epic-workflow, accepted at review
+    related: [DEF-080]
     status: open

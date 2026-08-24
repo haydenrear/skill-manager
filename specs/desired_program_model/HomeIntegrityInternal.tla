@@ -389,14 +389,25 @@ AcknowledgeThenWriteWithinTheSameOperation ==
 \*     module's header says it models none.
 \*
 \*   HIS-11, "a failed operation restores the bytes it moved aside".
-\*     The rule is Internal.InFlightMaterializationLeavesTheChildUnitIntact and
-\*     External.AConflictedUnitIsNeverPartiallyWritten: a destination is never
-\*     left as half of two things. HIS-11's defect was not a different rule, it
-\*     was an EMPTY compensation list in an exhaustive switch -- and an at-rest
-\*     invariant cannot tell "restored" from "never touched". What catches that
-\*     is a probe with a non-degenerate pre-state, which is a fixture property
-\*     and is recorded as such in the vacuity ledger (row 10), not a state
-\*     relation this module can hold.
+\*     THE CITATION HERE WAS CORRECTED AT REVIEW, and the correction matters
+\*     because the first one did not actually cover the case.
+\*     Internal.InFlightMaterializationLeavesTheChildUnitIntact is guarded on
+\*     `staging.active`, so it says nothing at all AFTER an abort -- which is
+\*     precisely the moment HIS-11 is about. The invariant that does cover it is
+\*
+\*         Internal.AgentEditsSurviveMaterialization ==
+\*           \A u \in agent_edits:
+\*             /\ child_unit[u].present
+\*             /\ child_unit[u].content = AgentBytes
+\*
+\*     over a MONOTONE witness set, with the comment "no stage, swap, prune, or
+\*     abort may overwrite or delete it". That is a post-condition that survives
+\*     the abort, and it is the rule dual_representation_rule forbids restating.
+\*     What is left uncovered is "restored" versus "never touched", which is
+\*     byte-identical and harmless. HIS-11's defect was an EMPTY compensation
+\*     list in an exhaustive switch; what catches that is a probe with a
+\*     non-degenerate pre-state, a fixture property recorded as vacuity-ledger
+\*     row 10, not a state relation this module can hold.
 \*
 \* HIS-14 IS stated, and the reason it is not in the paragraph above is worth
 \* recording: the agent axis is not the store axis, and NO module in this
@@ -417,6 +428,51 @@ AcknowledgeThenWriteWithinTheSameOperation ==
 \* tree is not yet held back, and ADivergentTreeIsNeverSilentlyReplaced would
 \* have had to be weakened to "...once the pass is done" -- a guard a broken
 \* model satisfies by never finishing a pass.
+\*
+\* ============================ THE FRAME CONDITION ==========================
+\* READ THIS BEFORE ADDING AN ACTION TO THIS GROUP. It is load-bearing, it was
+\* undocumented in the first version of this ticket, and a reviewer found it.
+\*
+\* TWO THINGS DO NOT HAPPEN inside the window this group models:
+\*   (1) THE SOURCE DOES NOT MOVE. `hi_live_source` is declared a variable and
+\*       is assigned ONLY in Init -- constant across all reachable states. It
+\*       is a variable rather than a constant so that a later ticket can make
+\*       it move deliberately, not because anything moves it today.
+\*   (2) NOTHING EDITS A UNIT OUTSIDE A PASS. `hi_unit_content` changes only in
+\*       the same step that judges it.
+\*
+\* Together those make "the tree diverges from the live source" and "the pass
+\* judged this tree divergent" the SAME PROPOSITION, which is what lets clause
+\* 2 be stated over the divergence rather than over a witness of what the pass
+\* saw.
+\*
+\* WHAT BREAKS IF YOU REMOVE EITHER, and it is the CORRECT configuration that
+\* breaks, not a regression one. MEASURED, by adding
+\* `TheSourcePublishesANewRevision` -- the most ordinary event in the system --
+\* to HomeIntegrityNext and running HomeIntegrityInternal.cfg:
+\*
+\*     clause 2 UNGUARDED   red at DEPTH 2   the source moves; no pass has run
+\*     clause 2 GUARDED     red at DEPTH 3   a pass refreshes, then the source
+\*                                           moves past the refreshed copy
+\*
+\* Production really does leave a unit standing on bytes that differ from the
+\* live source without holding it back: an ordinary clean out-of-date copy
+\* satisfies `destUntouched && recordIsAboutThisSource && !mergeResult`, is
+\* disposed of, and is refreshed. THAT IS WHAT `sync` IS FOR.
+\*
+\* READ THE TWO NUMBERS TOGETHER, because they say something the guard alone
+\* does not. THE GUARD DOES NOT MAKE CLAUSE 2 TRUE OF A MOVING SOURCE -- it buys
+\* one step. What makes it true is the frame, and the guard's job is to stop the
+\* invariant claiming anything about states no pass has judged. Both are needed
+\* and neither substitutes for the other.
+\*
+\* THE REPAIR IS NOT TO WEAKEN CLAUSE 2. That is the move this module's own
+\* header says it refused, and it would give back HIS-1's second acceptance
+\* assertion. The repair is to capture WHAT THE PASS JUDGED -- the divergence
+\* observed at the moment of the decision -- and state clause 2 over that. It
+\* costs a witness and therefore a guard configuration, which is why it was not
+\* done here for a model in which the source cannot move.
+\* ===========================================================================
 
 \* @command RefreshAUnitDecidingDisposabilityFromEvidenceOnDisk
 \* @result HomeIntegrityOutcome
@@ -436,10 +492,46 @@ RefreshTheUnitFromEvidenceOnDisk ==
   /\ UNCHANGED << arti22_vars, hi_error_cause_live, gate_vars, descent_vars,
                   axis_vars, observer_vars >>
 
-\* THE DEFECT. `disposable()` asked the record as well as the source:
-\* sourceHeldTheseBytes AND recordIsAboutThisSource. A tree byte-identical to
-\* the live source is held back because a record names a worktree that was
-\* deleted in July.
+\* THE DEFECT -- AND THIS ACTION IS HARSHER THAN THE PRODUCT EVER WAS. Corrected
+\* after review; the first version of this comment claimed `disposable()` was
+\* the conjunction `sourceHeldTheseBytes && recordIsAboutThisSource`. IT IS NOT,
+\* AND NEVER WAS. ChildHomeMaterializer.Disposal.disposable() is, and was before
+\* HIS-1:
+\*
+\*     (destUntouched && recordIsAboutThisSource && !mergeResult)
+\*         || sourceHeldTheseBytes
+\*
+\* a DISJUNCTION with sourceHeldTheseBytes as an escape arm. `git log -S` over
+\* that expression returns no commit; HIS-1 (8346fef, "copyUnit asks the disk
+\* before it asks the record") did not touch it. What HIS-1 actually did was
+\* extract `settledWithoutARecord(...)` and call it from `copyUnit` BEFORE
+\* `disposal(...)` -- `reconcile` had had those three answers all along, and the
+\* defect was that ONE of the two paths asked them.
+\*
+\* SO WHAT DOES THIS ACTION MODEL? A machine strictly harsher than the broken
+\* one: `held_back = divergent \/ ~record_names_source` holds back on the
+\* record's say-so alone. The real broken copyUnit satisfies clause 1 in the
+\* COMMON case, because describesSource's third arm is
+\*
+\*     record.entryDigests().equals(src.entries())
+\*
+\* -- the destination's recorded entry digests against the LIVE SOURCE's
+\* fingerprint -- so a record naming a worktree deleted in July still answers
+\* "yes, evidence about this source" whenever the bytes line up, and the unit is
+\* rescued regardless of what `record.source()` names.
+\*
+\* THAT IS VACUITY-LEDGER ROW 1, ONE LEVEL UP. Row 1 records HIS-1's first
+\* regression test passing WITHOUT the fix, "describesSource rescued it because
+\* both trees were left pristine". The single boolean `hi_record_names_source`
+\* cannot express the distinction that actually decided that case -- a STALE
+\* record (names elsewhere, digests still match the live source: rescued) versus
+\* a record that is genuinely not about this source (digests differ: held back).
+\* A faithful model needs two bits there, not one.
+\*
+\* THE INVARIANT IS STILL A CORRECT PIN ON DELIVERED BEHAVIOUR -- production
+\* disposes of every identical tree and this forbids holding one back. What was
+\* wrong was the story about which implementation it refutes, and the story is
+\* the part the PR asked a reviewer to weigh.
 \* @command RefreshAUnitAskingTheRecordAsWellAsTheSource
 \* @result HomeIntegrityOutcome
 \* @port SkillManagerCli.project_resolve_regression
@@ -1013,10 +1105,19 @@ ProjectionResolvesInsideThisHome ==
 \* path that no longer existed, and all eighteen were pristine.
 \*
 \* THIS INVARIANT DOES NOT MENTION hi_record_names_source, AND MUST NOT. An
-\* invariant that granted the record a vote would be satisfied by exactly the
-\* implementation the defect was -- `sourceHeldTheseBytes && recordIsAbout-
-\* ThisSource` -- which is why HoldBackAnIdenticalTreeBecauseOfItsRecord lets
-\* the record range over BOTH values rather than pinning it.
+\* invariant that granted the record a vote could not forbid holding back a
+\* byte-identical tree on the record's say-so, which is the shape HIS-1's
+\* objective describes: sixteen of eighteen pristine trees held back on every
+\* sync. HoldBackAnIdenticalTreeBecauseOfItsRecord lets the record range over
+\* BOTH values rather than pinning it, so TLC must show the property holding
+\* whichever way the record points.
+\*
+\* IT DOES NOT REFUTE THE IMPLEMENTATION HIS-1 REPLACED, and the first version
+\* of this ticket said it did. See that action's comment: `disposable()` is a
+\* DISJUNCTION and the real defect was that only ONE of the two paths asked the
+\* three disk questions at all. What this pins is the DELIVERED behaviour --
+\* every identical tree is disposable -- against a future change that makes the
+\* record decisive again.
 \*
 \* NOT WITNESS-DEPENDENT: hi_held_back is the refusal the operator reads and
 \* the refresh that did not happen, not a shadow kept for the invariant.
@@ -1026,26 +1127,52 @@ AnIdenticalTreeIsDisposableWhateverItsRecordNames ==
 
 \* HIS-1, CLAUSE 2. THE GUARD ON CLAUSE 1, and the reason clause 1 is not the
 \* whole property: "everything is disposable" satisfies clause 1 completely and
-\* destroys every edit an agent made. A tree that genuinely differs from the
-\* live source is held back.
+\* destroys every edit an agent made. A tree that a PASS found differing from
+\* the live source is held back by that pass.
 \*
-\* NOT WITNESS-DEPENDENT, same reason as clause 1.
+\* THE ANTECEDENT IS GUARDED ON hi_unit_pass = "done" AND THAT GUARD IS NOT
+\* DECORATION. Without it the invariant reads every state, including states in
+\* which no pass has judged anything, and it then says something FALSE of a
+\* healthy home the moment this group models an upstream revision or an
+\* out-of-band edit: an ordinary clean out-of-date copy diverges from the live
+\* source and is correctly NOT held back, because refreshing it is what `sync`
+\* is for. See THE FRAME CONDITION beside RefreshTheUnitFromEvidenceOnDisk for
+\* what the group does and does not let happen, and for why the repair to a
+\* moving source is to capture what the pass JUDGED rather than to weaken this.
+\*
+\* The guard costs nothing today -- `hi_unit_pass = "done"` holds in every state
+\* where the antecedent could otherwise fire -- and it makes the invariant say
+\* what it means rather than rely on a frame nobody wrote down.
+\*
+\* NOT WITNESS-DEPENDENT, same reason as clause 1: hi_unit_pass is whether the
+\* pass ran, and hi_held_back is the refusal it printed.
 \* @invariant ADivergentTreeIsNeverSilentlyReplaced
 ADivergentTreeIsNeverSilentlyReplaced ==
-  (hi_unit_content # hi_live_source) => hi_held_back
+  (hi_unit_pass = "done" /\ hi_unit_content # hi_live_source) => hi_held_back
 
 \* HIS-3, CLAUSE 1. One unacknowledged gate is surfaced in FULL at most once.
 \* Second and later passes over the same gate content collapse; a genuinely new
 \* change resets the count and re-opens the full report, which is why
 \* SyncDetectsAChange zeroes hi_full_surfacings rather than leaving it.
 \*
-\* NOT WITNESS-DEPENDENT. hi_full_surfacings is home.drift.json's persisted
-\* surfacedCount: HIS-3 took route (a), the schema change, so this is state the
-\* product writes and re-reads across processes. Under route (b) -- the
-\* per-process call-site distinction -- there would have been nothing on disk
-\* to read and this WOULD have needed a guard configuration. The choice of
-\* route is what decides it, and it is recorded here because a future change of
-\* route silently turns this invariant into a witness-reading one.
+\* NOT WITNESS-DEPENDENT -- and the reason first given for that was wrong, so
+\* here is the measured one. hi_full_surfacings is NOT home.drift.json's
+\* surfacedCount. DriftGate.markSurfaced increments on EVERY surfacing, full or
+\* collapsed (ExecCommand:172 and HomeCommand:1054 both call it after the
+\* firstSurfacing() branch), so the persisted field legitimately reaches 3, 4,
+\* 5 and `hi_full_surfacings <= 1` is false of it.
+\*
+\* What this variable models is `min(surfacedCount, 1)` -- equivalently
+\* `~firstSurfacing()`, since DriftGate.firstSurfacing() is `surfacedCount <= 0`
+\* and is the ONLY reader of the field anywhere in the product. That predicate
+\* is persisted, is re-read across processes, and is what decides whether the
+\* full report is emitted, so the conclusion stands: this reads product state,
+\* not a ghost, and needs no guard configuration.
+\*
+\* HIS-3 took route (a), the schema change; under route (b) -- the per-process
+\* call-site distinction -- there would have been nothing on disk to read and
+\* this WOULD have needed a guard. A future change of route silently turns this
+\* invariant into a witness-reading one.
 \* @invariant OneGateIsSurfacedInFullAtMostOnce
 OneGateIsSurfacedInFullAtMostOnce == hi_full_surfacings <= 1
 
@@ -1095,9 +1222,24 @@ ARecordedErrorIsAFunctionOfTheLiveTree ==
 \*
 \* IT FAILS CLOSED, and that is stated rather than assumed: evidence that cannot
 \* be re-derived does not sanction, so a worktree whose project home was deleted
-\* reverts to pre-HIS-10 behaviour. NOT CLAIMED: forgery-proof. A writer can
-\* still name some other home that genuinely IS a claimed child. What is gone is
-\* the arbitrary grant.
+\* reverts to pre-HIS-10 behaviour.
+\*
+\* WHAT `hi_parent_claims_home` REALLY STANDS FOR, corrected after review. The
+\* first version of this comment implied the parent's registry is the only
+\* witness. ChildHomeLink.isChildOf is
+\*
+\*     parentClaims(p, c) || childWasMaterializedFrom(c, p)
+\*
+\* and the second disjunct walks `<child>/.materialization/**/*.json` and trusts
+\* its `source` field -- A FILE INSIDE THE HOME BEING JUDGED. So the live
+\* re-derivation this invariant pins is broader than "the parent's own registry
+\* says so", and one of its two arms is in-home evidence.
+\*
+\* NOT CLAIMED: forgery-proof, and this is where that caveat earns its keep. No
+\* forgery was demonstrated, and HIS-10 named the same pre-existing trust rather
+\* than widening it. What HIS-10 removed is the ARBITRARY grant -- a record that
+\* sanctioned itself with no live question asked at all. Modelling the two arms
+\* separately would be a faithful extension and is not done here.
 \*
 \* NOT WITNESS-DEPENDENT: hi_shim_sanctioned is `home verify`'s exit code and
 \* whether the shim survives a sync; hi_parent_claims_home is a file in the

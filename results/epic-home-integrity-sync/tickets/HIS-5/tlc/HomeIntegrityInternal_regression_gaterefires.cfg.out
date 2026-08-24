@@ -1,16 +1,16 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 120 and seed -8106715207030666191 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 23486] (Mac OS X 26.6.1 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 116 and seed 4178372467131696998 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 7819] (Mac OS X 26.6.1 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file /Users/hayde/IdeaProjects/wt-217-his-5/specs/desired_program_model/HomeIntegrityInternal.tla
 Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Integers.tla
 Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Naturals.tla
 Semantic processing of module Naturals
 Semantic processing of module Integers
 Semantic processing of module HomeIntegrityInternal
-Starting... (2026-08-23 22:08:07)
+Starting... (2026-08-23 23:08:00)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-08-23 22:08:07.
+Finished computing initial states: 1 distinct state generated at 2026-08-23 23:08:00.
 Error: Invariant OneGateIsSurfacedInFullAtMostOnce is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -43,7 +43,7 @@ State 1: <Initial predicate>
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 2: <SyncDetectsAChange line 536, col 3 to line 545, col 59 of module HomeIntegrityInternal>
+State 2: <SyncDetectsAChange line 628, col 3 to line 637, col 59 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -73,7 +73,7 @@ State 2: <SyncDetectsAChange line 536, col 3 to line 545, col 59 of module HomeI
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 3: <TheGateIsSurfacedInFull line 551, col 3 to line 557, col 59 of module HomeIntegrityInternal>
+State 3: <TheGateIsSurfacedInFull line 643, col 3 to line 649, col 59 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -103,7 +103,7 @@ State 3: <TheGateIsSurfacedInFull line 551, col 3 to line 557, col 59 of module 
 /\ hi_agent_write = "none"
 /\ hi_ack_baseline = "A"
 
-State 4: <TheGateIsSurfacedInFullAgain line 602, col 3 to line 609, col 59 of module HomeIntegrityInternal>
+State 4: <TheGateIsSurfacedInFullAgain line 694, col 3 to line 701, col 59 of module HomeIntegrityInternal>
 /\ hi_projection_target = "self"
 /\ hi_launch_admitted = FALSE
 /\ hi_gate_open = TRUE
@@ -136,4 +136,4 @@ State 4: <TheGateIsSurfacedInFullAgain line 602, col 3 to line 609, col 59 of mo
 7 states generated, 6 distinct states found, 1 states left on queue.
 The depth of the complete state graph search is 4.
 The average outdegree of the complete state graph is 1 (minimum is 1, the maximum 2 and the 95th percentile is 2).
-Finished in 00s at (2026-08-23 22:08:07)
+Finished in 00s at (2026-08-23 23:08:00)
