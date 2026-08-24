@@ -121,7 +121,7 @@ migrated installed-unit record: echo.json
   [PASS] ./<missing> fails fast even without the file: prefix
   [PASS] /abs-but-missing fails fast
   [PASS] file:<existing-file-not-dir> fails fast with 'exists but is not a directory'
-→ registry: resolving definitely-not-a-real-skill-name-563712584400458 from http://127.0.0.1:8090
+→ registry: resolving definitely-not-a-real-skill-name-567126607089625 from http://127.0.0.1:8090
   [PASS] bare <name> still falls through to registry resolution (not fail-fast)
    → 5 passed, 0 failed
 == RegistryUnavailableExceptionTest (3 cases)
@@ -161,7 +161,7 @@ migrated installed-unit record: echo.json
   [PASS] local path does not exist → NotFound
    → 8 passed, 0 failed
 == ResolverDirectGitTransitiveTest (1 cases)
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/resolver-direct-git-transitive-4707345412068464782/child/
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/resolver-direct-git-transitive-6261080753320981469/child/
   [PASS] pinned direct-git transitive reference resolves and retains its requester
    → 1 passed, 0 failed
 == ResolverDeterminismTest (4 cases)
@@ -184,20 +184,20 @@ migrated installed-unit record: echo.json
    → 4 passed, 0 failed
 == SkillScriptBackendTest (5 cases)
 → cli: skill-script force-script-bin - force rerun requested
-→ cli: skill-script force-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-4287824113976159931/skills/force-script-skill/skill-scripts/install.sh
-→ cli: skill-script force-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-4287824113976159931/logs/skill-scripts/20260824-004057-866-force-script-skill-force-script-bin.log
-✓ cli: installed force-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-4287824113976159931/bin/cli/force-script-bin
+→ cli: skill-script force-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-15424766620852747395/skills/force-script-skill/skill-scripts/install.sh
+→ cli: skill-script force-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-15424766620852747395/logs/skill-scripts/20260824-013751-928-force-script-skill-force-script-bin.log
+✓ cli: installed force-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-15424766620852747395/bin/cli/force-script-bin
   [PASS] force reruns matching-fingerprint skill-script with existing binary
   [PASS] planner marks only skill-script deps forced
   [PASS] planner scopes force-scripts to selected units
 → cli: skill-script logged-script-bin - force rerun requested
-→ cli: skill-script logged-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-17174758440923089432/skills/logged-script-skill/skill-scripts/install.sh
-→ cli: skill-script logged-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-17174758440923089432/logs/skill-scripts/20260824-004058-133-logged-script-skill-logged-script-bin.log
-✓ cli: installed logged-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-17174758440923089432/bin/cli/logged-script-bin
+→ cli: skill-script logged-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-4824228151122509080/skills/logged-script-skill/skill-scripts/install.sh
+→ cli: skill-script logged-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-4824228151122509080/logs/skill-scripts/20260824-013752-180-logged-script-skill-logged-script-bin.log
+✓ cli: installed logged-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-4824228151122509080/bin/cli/logged-script-bin
   [PASS] skill-script stdout and stderr are written under store logs
 → cli: skill-script failing-script-bin - force rerun requested
-→ cli: skill-script failing-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-13985409975297244052/skills/failing-script-skill/skill-scripts/install.sh
-→ cli: skill-script failing-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-13985409975297244052/logs/skill-scripts/20260824-004058-290-failing-script-skill-failing-script-bin.log
+→ cli: skill-script failing-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-12390333348245047406/skills/failing-script-skill/skill-scripts/install.sh
+→ cli: skill-script failing-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-12390333348245047406/logs/skill-scripts/20260824-013752-340-failing-script-skill-failing-script-bin.log
   [PASS] skill-script failure includes log path and output tail
    → 5 passed, 0 failed
 == InstallerFingerprintTest (28 cases)
@@ -240,8 +240,8 @@ migrated installed-unit record: echo.json
   [PASS] the bin/cli/<name> fallback is tar's alone
   [PASS] a tool the system provides outside any home still suppresses the install
   [PASS] a shim in this home counts only while it resolves
-→ cli: downloading hello from http://127.0.0.1:57302/hello
-✓ cli: installed hello -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-presence-fixpoint-14129568329852290424/bin/cli/hello
+→ cli: downloading hello from http://127.0.0.1:58822/hello
+✓ cli: installed hello -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-presence-fixpoint-9386792914360209026/bin/cli/hello
   [PASS] `home verify` refuses a dangling shim and the install clears it
    → 6 passed, 0 failed
 == CliArtifactMatrixTest (42 cases)
@@ -284,21 +284,21 @@ migrated installed-unit record: echo.json
   [PASS] TAR × HEALTHY_SYMLINK -> declines
   [PASS] TAR × HEALTHY_WRAPPER -> declines
   [PASS] TAR × REAL_BINARY -> declines
-→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-785344384824363087/skills/matrix-unit/skill-scripts/install.sh
-→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-785344384824363087/logs/skill-scripts/20260824-004058-702-matrix-unit-matrix-tool.log
-✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-785344384824363087/bin/cli/matrix-tool
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-13331388233839289499/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-13331388233839289499/logs/skill-scripts/20260824-013752-745-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-13331388233839289499/bin/cli/matrix-tool
   [PASS] SKILL_SCRIPT × ABSENT -> installs
-→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-3509815892401643573/skills/matrix-unit/skill-scripts/install.sh
-→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-3509815892401643573/logs/skill-scripts/20260824-004058-890-matrix-unit-matrix-tool.log
-✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-3509815892401643573/bin/cli/matrix-tool
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-16331492494426583777/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-16331492494426583777/logs/skill-scripts/20260824-013752-925-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-16331492494426583777/bin/cli/matrix-tool
   [PASS] SKILL_SCRIPT × DANGLING_SYMLINK -> installs
-→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-13992970073815047642/skills/matrix-unit/skill-scripts/install.sh
-→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-13992970073815047642/logs/skill-scripts/20260824-004059-035-matrix-unit-matrix-tool.log
-✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-13992970073815047642/bin/cli/matrix-tool
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-4513431489310863112/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-4513431489310863112/logs/skill-scripts/20260824-013753-068-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-4513431489310863112/bin/cli/matrix-tool
   [PASS] SKILL_SCRIPT × WRAPPER_TARGET_MISSING -> installs
-→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-13710145462770148339/skills/matrix-unit/skill-scripts/install.sh
-→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-13710145462770148339/logs/skill-scripts/20260824-004059-176-matrix-unit-matrix-tool.log
-✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-13710145462770148339/bin/cli/matrix-tool
+→ cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-7214419452233526284/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-7214419452233526284/logs/skill-scripts/20260824-013753-210-matrix-unit-matrix-tool.log
+✓ cli: installed matrix-tool -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-7214419452233526284/bin/cli/matrix-tool
   [PASS] SKILL_SCRIPT × NON_EXECUTABLE_FILE -> installs
   [PASS] SKILL_SCRIPT × HEALTHY_SYMLINK -> declines
   [PASS] SKILL_SCRIPT × HEALTHY_WRAPPER -> declines
@@ -381,11 +381,11 @@ migrated installed-unit record: echo.json
 == GitOpsRepoBoundaryTest (10 cases)
   [PASS] originUrl reports a repository root's own remote
   [PASS] originUrl does not report the ENCLOSING repository's remote
-! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-nested-rewrite-13828929106459778670/enclosing/build/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
+! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-nested-rewrite-15703416763876403248/enclosing/build/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
   [PASS] setOrigin leaves the enclosing repository's remote INTACT
-! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-nested-add-10316617839660233157/enclosing/build/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
+! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-nested-add-16549483314840972669/enclosing/build/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
   [PASS] setOrigin does not ADD an origin to an enclosing repository that has none
-! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-worktree-primary-15820691291872054926/wt/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
+! refusing to set origin on /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gitops-boundary-worktree-primary-5647271912987834680/wt/run/.skill-manager/skills/some-unit: not a git repository root (a nested directory's git commands would write to the enclosing checkout)
   [PASS] a WORKTREE's shared config is not rewritten through a nested home
   [PASS] setOrigin still rewrites a directory that IS a repository
   [PASS] setOrigin adds an origin to a repository root that has none
@@ -419,12 +419,12 @@ migrated installed-unit record: echo.json
    → 4 passed, 0 failed
 == ResolveGraphDirectGitSyncTest (4 cases)
   [PASS] matching provenance makes a direct-git transitive sync idempotent
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-8206281955072675116/shared-child-repository/
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-8206281955072675116/shared-child-repository/
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-13251230201239672228/shared-child-repository/
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-13251230201239672228/shared-child-repository/
   [PASS] same repository with different refs attributes only the failing parent
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-removed-4369133012520206072/never-a-repository
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-removed-2058138240489895780/never-a-repository
   [PASS] removing the offending reference clears the stale error on the next sync
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-reconcile-1379958189475915809/never-a-repository
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-reconcile-6073113213876754035/never-a-repository
   [PASS] reconcile validateAndClear clears the error only once refs are met or removed
    → 4 passed, 0 failed
 == SyncGitDocRepoTest (1 cases)
@@ -489,21 +489,21 @@ rollback: uninstall CLI dep cowsay (claimed only by rolled-back rolled-back)
    → 8 passed, 0 failed
 == UninstallCliCleanupTest (5 cases)
 ✓ removed alpha from store
-✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15135079234281895700/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12536745830127825385/units.lock.toml
   [PASS] uninstall prunes orphaned skill-script binary and cli-lock row
 ✓ removed alpha from store
-✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7654466977236003200/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10008784383118082583/units.lock.toml
   [PASS] uninstall preserves shared CLI artifact and rewrites requested_by
 ✓ removed widget from store
 ! claude: CLI claude not on PATH — install with: brew install claude
 ! codex: CLI codex not on PATH — install with: brew install codex
-✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4309455455596214240/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2413054698609718578/units.lock.toml
   [PASS] uninstall re-walks plugin-level and contained-skill CLI deps
 ✓ removed alpha from store
-✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3103916908905510391/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14357504475179334341/units.lock.toml
   [PASS] uninstall preserves CLI dep claimed by surviving plugin-contained skill
 ✓ removed alpha from store
-✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8232475949588296722/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14795705368319572039/units.lock.toml
   [PASS] lower-level remove leaves CLI artifacts and cli-lock rows alone
    → 5 passed, 0 failed
 == FailureInjectionSweepTest (9 cases)
@@ -518,11 +518,11 @@ rollback: uninstall CLI dep cowsay (claimed only by rolled-back rolled-back)
   [PASS] clean run (no fault) → no rollback, mutations persist
    → 9 passed, 0 failed
 == CommitPreImageRestoreTest (10 cases)
-  pre-existing skill: 3 file(s), 120 bytes at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1556104958782394313/skills/gamma
-rollback: restored the previously installed gamma at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1556104958782394313/skills/gamma
+  pre-existing skill: 3 file(s), 120 bytes at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13553623305577238734/skills/gamma
+rollback: restored the previously installed gamma at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13553623305577238734/skills/gamma
   [PASS] the pre-installed skill survives a failure after the commit, byte-for-byte
-  pre-existing plugin: 6 file(s), 376 bytes at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4378734502911740004/plugins/gamma
-rollback: restored the previously installed gamma at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4378734502911740004/plugins/gamma
+  pre-existing plugin: 6 file(s), 376 bytes at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6059858246068289404/plugins/gamma
+rollback: restored the previously installed gamma at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6059858246068289404/plugins/gamma
   [PASS] the pre-installed plugin survives a failure after the commit, byte-for-byte
   [PASS] a commit that succeeds keeps the NEW bytes and leaves no escrow behind
   [PASS] a commit into an EMPTY destination still rolls back to absent
@@ -530,13 +530,13 @@ rollback: restored the previously installed gamma at /var/folders/b7/rsz3g6wn4hg
 ! a program ended without committing or rolling back; releasing the escrowed pre-image of gamma
   [PASS] an exception escaping the program releases the escrow instead of stranding it
 ✓ installed gamma
-✗ ✋ halted: unit 'gamma' is already installed at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10711664281804852159/skills/gamma — remove it first (skill-manager remove gamma)
+✗ ✋ halted: unit 'gamma' is already installed at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4101052601336197734/skills/gamma — remove it first (skill-manager remove gamma)
   [PASS] a HALT after the commit keeps the new bytes and discards the pre-image, deliberately
   [PASS] a held escrow says what it is holding and where it goes back
 ! a program ended without committing or rolling back; releasing the escrowed pre-image of gamma
   [PASS] a renderer that throws does not strand the escrow either — the journal learns about it before the effect runs
   [PASS] a second program against the same home WAITS, and says so before it waits
-resolve-refused: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14140941510077390439 — another operation in this process holds this home's lock
+resolve-refused: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11751312534689844834 — another operation in this process holds this home's lock
   [PASS] a second program that will not get the home REFUSES, naming it
    → 10 passed, 0 failed
 == LockReadWriteTest (8 cases)
@@ -597,9 +597,9 @@ resolve-refused: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sk
   [PASS] skill — apply replaces a pre-existing target cleanly (idempotent)
   [PASS] skill — remove deletes the target; idempotent
   [PASS] skill — remove on never-applied projection is a no-op
-! claude: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-6743434400516438776/skills/widget holds content that is not a projection of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1378253877584846514/skills/widget — left in place. Rename one of the two, or remove /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-6743434400516438776/skills/widget by hand.
+! claude: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-17626404087058430389/skills/widget holds content that is not a projection of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8918848232237160621/skills/widget — left in place. Rename one of the two, or remove /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-17626404087058430389/skills/widget by hand.
   [PASS] skill — apply does not destroy a hand-authored directory at the target
-! claude: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-rm-1065584305390884277/skills/widget holds content that is not a projection of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10131004312702321974/skills/widget — left in place. Rename one of the two, or remove /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-rm-1065584305390884277/skills/widget by hand.
+! claude: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-rm-3571498901743639443/skills/widget holds content that is not a projection of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5846144507586162761/skills/widget — left in place. Rename one of the two, or remove /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/claude-proj-authored-rm-3571498901743639443/skills/widget by hand.
   [PASS] skill — remove does not delete a hand-authored directory at the target
   [PASS] skill — apply still replaces the projector's own copy-fallback output
   [PASS] plugin — planProjection returns empty (handled by RefreshHarnessPlugins)
@@ -629,203 +629,203 @@ resolve-refused: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sk
 == ProjectDependencyResolverTest (28 cases)
 ✓ installed project-parent
 ✓ installed project-child
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14162534461938108509/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15942830502450059986/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] resolves transitive skill dependencies into the home store and project lock
 ✓ installed project-mcp-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5793488191247230364/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15351819601172628767/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] skip-gateway resolves a skill with MCP dependencies without registering them
 ✓ installed plain-project-plugin
 ✓ installed plain-project-skill
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-18303719191732446926/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1009887714808011551/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 4 projection(s) materialized
   [PASS] materializes direct skills and plugins into project agent homes
 ✓ installed missing-ledger-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1147380920772952100/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4314547845160893526/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] project remove prunes agent links even when projection ledger is missing
 ✓ installed project-prompts
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15568494466360054663/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4177939153890043041/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] binds selected doc repo source into project root
 ✓ installed project-harness
 ✓ installed harness-prompts
 ✓ installed harness-skill
-✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1920854539831571935/units.lock.toml
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13002637131217564101/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] materializes harness bindings into project agent homes
 ✓ installed profile-dev-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8131348875744448750/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7015842695358436997/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ installed profile-review-skill
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8131348875744448750/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7015842695358436997/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] resolves named profiles into distinct project child homes
 ✓ installed claimed-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10371483242433996955/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15187558074873341448/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] plain remove is blocked while a project lock claims the unit
 ✓ installed first-child-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4115961891204830625/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14977356421915651223/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ installed second-child-skill
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4115961891204830625/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14977356421915651223/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 1 binding(s) unbound, 3 projection(s) materialized
   [PASS] re-resolve updates project child store and parent child-home claims
 ✓ installed missing-ledger-reresolve-first
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4331037083985473984/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6816701176791133410/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ installed missing-ledger-reresolve-second
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4331037083985473984/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6816701176791133410/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] re-resolve prunes old project agent links when ledger is missing
 ✓ installed sync-prompts
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12950479770732509632/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4006979495451300106/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] project sync reconciles in place and tears nothing down
 ✓ installed rebuild-prompts
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5235545645623566183/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13351942858943209170/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ side effects: 1 binding(s) unbound
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] project sync --rebuild still tears the realization down
 ✓ installed transactional-sync-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17678184331473397774/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6059818384199003729/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17678184331473397774/skills/transactional-sync-skill/skill-manager.toml
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6059818384199003729/skills/transactional-sync-skill/skill-manager.toml
 
 To inspect the full diff, run:
 
-    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17678184331473397774/skills/transactional-sync-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471/update/transactional-sync-skill
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6059818384199003729/skills/transactional-sync-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-7018786291214802843/update/transactional-sync-skill
 
 ✗ × BuildResolveGraphFromUnmetReferences: 1 unmet ref(s) failed to resolve
 ! resolve: 0 unit(s) resolved, 1 failure(s)
-! transitive: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471/never-installed [(top-level)] — local source does not exist: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471/never-installed (parsed from '/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-1705440847305646471…
+! transitive: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-7018786291214802843/never-installed [(top-level)] — local source does not exist: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-7018786291214802843/never-installed (parsed from '/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-rollback-7018786291214802843…
   [PASS] failed unmet-ref sync preserves global and project reconciliation state
 ✓ installed project-cli-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1763452763445213242/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/skills/project-cli-skill/skill-manager.toml
-A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-claiming-cli-18188034574763690509/units/project-cli-skill/skill-scripts/install-project-auto-cli.sh
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1763452763445213242/skills/project-cli-skill/skill-manager.toml
+A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-claiming-cli-10285454389898252968/units/project-cli-skill/skill-scripts/install-project-auto-cli.sh
 
 To inspect the full diff, run:
 
-    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/skills/project-cli-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-claiming-cli-18188034574763690509/units/project-cli-skill
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1763452763445213242/skills/project-cli-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-claiming-cli-10285454389898252968/units/project-cli-skill
 
 ✓ resolve: 0 unit(s)
-→ cli: skill-script project-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/skills/project-cli-skill/skill-scripts/install-project-auto-cli.sh
-→ cli: skill-script project-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/logs/skill-scripts/20260824-004107-980-project-cli-skill-project-auto-cli.log
-✓ cli: installed project-auto-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/bin/cli/project-auto-cli
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1806574110750331903/units.lock.toml
+→ cli: skill-script project-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1763452763445213242/skills/project-cli-skill/skill-scripts/install-project-auto-cli.sh
+→ cli: skill-script project-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1763452763445213242/logs/skill-scripts/20260824-013801-974-project-cli-skill-project-auto-cli.log
+✓ cli: installed project-auto-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1763452763445213242/bin/cli/project-auto-cli
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1763452763445213242/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ project-sync project-cli-refresh — 1 resolved unit(s), 0 binding(s) refreshed
 ✓ cli: 1 installed
   [PASS] local sync --from refreshes claiming project child homes when CLI deps change
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-12112625686888200939/upstream/pinned-claimant-skill
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-12112625686888200939/upstream/pinned-claimant-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-4120752885174366231/upstream/pinned-claimant-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-4120752885174366231/upstream/pinned-claimant-skill
 ✓ installed unrelated-claimant-skill
 ✓ installed pinned-claimant-skill
-→ cli: skill-script unrelated-claimant-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/unrelated-claimant-skill/skill-scripts/install-unrelated-claimant-cli.sh
-→ cli: skill-script unrelated-claimant-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/logs/skill-scripts/20260824-004108-782-unrelated-claimant-skill-unrelated-claimant-cli.log
-✓ cli: installed unrelated-claimant-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/bin/cli/unrelated-claimant-cli
+→ cli: skill-script unrelated-claimant-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/skills/unrelated-claimant-skill/skill-scripts/install-unrelated-claimant-cli.sh
+→ cli: skill-script unrelated-claimant-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/logs/skill-scripts/20260824-013802-819-unrelated-claimant-skill-unrelated-claimant-cli.log
+✓ cli: installed unrelated-claimant-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/bin/cli/unrelated-claimant-cli
 ✓ cli: unrelated-claimant-cli [skill-script] installed for unrelated-claimant-skill
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/units.lock.toml
 ✓ cli: 1 installed
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
-✓ units.lock.toml refreshed (2 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/units.lock.toml
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/config
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/index
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/logs/HEAD
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/logs/refs/heads/main
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill/.git/logs/refs/remotes/origin/HEAD
+✓ units.lock.toml refreshed (2 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/units.lock.toml
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/skills/pinned-claimant-skill/.git/config
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/skills/pinned-claimant-skill/.git/index
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/skills/pinned-claimant-skill/.git/logs/HEAD
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/skills/pinned-claimant-skill/.git/logs/refs/heads/main
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/skills/pinned-claimant-skill/.git/logs/refs/remotes/origin/HEAD
 
 To inspect the full diff, run:
 
-    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/skills/pinned-claimant-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-12112625686888200939/selected-a
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/skills/pinned-claimant-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-4120752885174366231/selected-a
 
 ✓ resolve: 0 unit(s)
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3083734486860588394/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7597729306437382124/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
 ✓ project-sync pinned-claimant-project — 2 resolved unit(s), 0 binding(s) refreshed
 ✓ cli: 1 already present
   [PASS] named sync from detached pinned revision keeps claiming project coherent
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-7679827497286317686/git-skill/global-project-cli-skill
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-7679827497286317686/git-skill/global-project-cli-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-1660479775523380488/git-skill/global-project-cli-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-1660479775523380488/git-skill/global-project-cli-skill
 ✓ installed global-project-cli-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7522704185131779244/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ resolve: 0 unit(s)
-→ cli: skill-script project-global-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/skills/global-project-cli-skill/skill-scripts/install-project-global-auto-cli.sh
-→ cli: skill-script project-global-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/logs/skill-scripts/20260824-004110-713-global-project-cli-skill-project-global-auto-cli.log
-✓ cli: installed project-global-auto-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/bin/cli/project-global-auto-cli
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7841668918333605966/units.lock.toml
+→ cli: skill-script project-global-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7522704185131779244/skills/global-project-cli-skill/skill-scripts/install-project-global-auto-cli.sh
+→ cli: skill-script project-global-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7522704185131779244/logs/skill-scripts/20260824-013804-826-global-project-cli-skill-project-global-auto-cli.log
+✓ cli: installed project-global-auto-cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7522704185131779244/bin/cli/project-global-auto-cli
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7522704185131779244/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ project-sync project-global-cli-refresh — 1 resolved unit(s), 0 binding(s) refreshed
 ✓ synced 1 unit(s) — 1 merged
 ✓ cli: 1 installed
   [PASS] global sync refreshes claiming project child homes when CLI deps change
 ✓ installed failing-claimed-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-785271604273807568/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10881289941869567372/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] project sync failures are recorded only on units claiming the failed project
 ✓ installed project-clear-second
 ✓ installed project-clear-first
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11545666276701043800/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3580393555871720821/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] successful project sync clears stale project errors for all project claimants
 ✓ installed project-rollback-stable
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-16341551786812606914/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8110562780145934778/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] automatic project sync rollback preserves existing realization on refresh failure
 ✓ installed project-registration-stable
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-147464145593457658/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7303841134379767047/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] project sync rollback restores prior registration snapshot on refresh failure
   [PASS] preinstalled unit with wrong kind is rejected before skip
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-72555155337205030/git-skill/git-locked-skill
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-72555155337205030/git-skill/git-locked-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-5242716058297151861/git-skill/git-locked-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-5242716058297151861/git-skill/git-locked-skill
 ✓ installed git-locked-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17263354775789315631/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13296564101363090413/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] direct git dependency is recorded in the project lock
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-transitive-git-2237139345487301062/acp-cdc-ai-python-skill/
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-transitive-git-5753213434736196410/acp-cdc-ai-python-skill/
 ✓ installed hyper-experiments
 ✓ installed acp-cdc-ai-python
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1938655674056159153/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15609654732416055927/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] direct git transitive uses manifest identity in project lock and child homes
   [PASS] preinstalled parent cannot silently omit a missing direct git child
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5935395046374735550/git-skill/preinstalled-git-skill
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5935395046374735550/git-skill/preinstalled-git-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5160763457777099503/git-skill/preinstalled-git-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5160763457777099503/git-skill/preinstalled-git-skill
 ✓ installed preinstalled-git-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4167603582509192842/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10182356242512537329/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] preinstalled direct git dependency is projected into project child home
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-doc/git-prompts
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-harness/git-project-harness
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-harness/git-project-harness
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-4525127622164832521/git-doc/git-prompts
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-11200469262912109186/git-doc/git-prompts
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-11200469262912109186/git-harness/git-project-harness
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-11200469262912109186/git-harness/git-project-harness
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-11200469262912109186/git-doc/git-prompts
 ✓ installed git-project-harness
 ✓ installed git-harness-skill
 ✓ installed git-prompts
-✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11260198006842597491/units.lock.toml
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-18421675262463069388/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] direct git doc and harness dependencies materialize project bindings
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-17293545201162203645/revision-skill/revision-skill
-→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-17293545201162203645/revision-skill/revision-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-16863096909280972111/revision-skill/revision-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-16863096909280972111/revision-skill/revision-skill
 ✓ installed revision-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8636476211887629569/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6600994118247883073/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] manifest revision overrides direct git default branch
 ✓ installed remove-prompts
 ✓ installed remove-plugin
 ✓ installed remove-skill
-✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4385066470371024135/units.lock.toml
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11079600402931187927/units.lock.toml
 ✓ side effects: 3 binding(s) bound, 7 projection(s) materialized
 ✓ side effects: 3 binding(s) unbound
   [PASS] project remove clears registration child home and bindings but keeps parent unit
@@ -833,16 +833,16 @@ To inspect the full diff, run:
 == ProjectResolveAtomicClosureTest (4 cases)
 ✓ installed atomic-b
 ✓ installed atomic-a
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1283615715207662603/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10550150675405447135/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] one clean resolve installs mutually importing units
 ✓ installed order-b
 ✓ installed order-a
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2931730495749232363/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15477146706204598873/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
 ✓ installed order-a
 ✓ installed order-b
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4611738378453295613/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1597733155724076340/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] reversed declaration order produces the identical closure
   [PASS] a genuinely missing import refuses before anything is committed
@@ -850,7 +850,7 @@ To inspect the full diff, run:
 ✓ installed direct-solo
 ! claude: CLI claude not on PATH — install with: brew install claude
 ! codex: CLI codex not on PATH — install with: brew install codex
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4969061659763456474/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1167543300349524304/units.lock.toml
 markdown skill-import violations (1) — fix these references:
 ✗   - direct-solo (skill): docs/uses-nowhere-unit.md
 ✗     skill-imports[0] references missing unit `nowhere-unit`; install it or fix the `unit` value
@@ -863,76 +863,76 @@ markdown skill-import violations (1) — fix these references:
   [PASS] ProjectSyncUseCase.rebuild still captures a snapshot before it removes
    → 4 passed, 0 failed
 == ProjectChildHomeMaterializationTest (22 cases)
-! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-4104047310258066870/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
-! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-4104047310258066870/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
-! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-4104047310258066870/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-13536034893767486279/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-13536034893767486279/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-repo-13536034893767486279/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
   [PASS] a project whose home IS the parent home resolves, and says which layout it produced
-! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-says-2722438248665087863/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
+! this project's home IS the parent home (/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/same-home-says-11659443827603244053/.skill-manager) — a per-checkout layout: units resolve in place rather than being copied into a separate home, and the child-home record this resolve writes names this home as its own parent. That is the intended shape for a repository-local home, and that record is what `project remove` unwinds. If you meant to materialize a child home from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.
   [PASS] and what it says about the child home is what it then does
 ✓ installed copy-default-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11627992698010662963/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1275949357860462808/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] default project resolve copies units into the child home
 ✓ installed isolated-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1118483935370399514/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5264960856460536762/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] editing a child home unit leaves the parent store unchanged
 ✓ installed held-back-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6974186018480804750/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10672244799845682854/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-! child home skill:held-back-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-hold-back-7229239506352921125/.skill-manager/skills/held-back-skill)
+! child home skill:held-back-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-hold-back-7987342622321642975/.skill-manager/skills/held-back-skill)
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] re-resolve keeps local child home edits and reports them as held back
 ✓ installed foreign-record-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17987100857388320036/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15957723050258647632/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] a pristine unit whose record names a store that is gone is not held back
 ✓ installed foreign-edited-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15781735239516626867/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8982108356315654462/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-! child home skill:foreign-edited-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-foreign-edited-1064885948916835676/.skill-manager/skills/foreign-edited-skill)
+! child home skill:foreign-edited-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-foreign-edited-13103990480886241202/.skill-manager/skills/foreign-edited-skill)
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] a unit that genuinely differs is still held back, foreign record or not
 ✓ installed refresh-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4483326223258228807/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1216031211364948035/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] re-resolve refreshes an unmodified child home unit from the parent
-! child home skill:seam-skill — left as-is, not refreshed from the parent store: its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-seam-3490153787681984460/worktree/.skill-manager/skills/seam-skill, which this store has never held, so replacing it would delete work that may exist nowhere else; send it on with `skill-manager unit publish seam-skill` (or `home sync`) first (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-seam-3490153787681984460/project/.skill-manager/skills/seam-skill)
+! child home skill:seam-skill — left as-is, not refreshed from the parent store: its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-seam-10397129053980747036/worktree/.skill-manager/skills/seam-skill, which this store has never held, so replacing it would delete work that may exist nowhere else; send it on with `skill-manager unit publish seam-skill` (or `home sync`) first (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-seam-10397129053980747036/project/.skill-manager/skills/seam-skill)
   [PASS] a merge from a worktree survives the next parent-store materialization
-! child home skill:link-guard-skill — left as-is, not refreshed from the parent store: a real directory the parent store cannot be shown to have passed through; not replaced with a symlink into it (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-link-17200245305080509551/child/.skill-manager/skills/link-guard-skill)
+! child home skill:link-guard-skill — left as-is, not refreshed from the parent store: a real directory the parent store cannot be shown to have passed through; not replaced with a symlink into it (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/chm15-link-9518601235660738617/child/.skill-manager/skills/link-guard-skill)
   [PASS] LINK mode does not delete an edited child unit to install a symlink
 ✓ installed sync-held-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8213714477224254968/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8145717463907714359/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-! child home skill:sync-held-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-hold-5088624803285631360/.skill-manager/skills/sync-held-skill)
+! child home skill:sync-held-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-hold-243888054551470820/.skill-manager/skills/sync-held-skill)
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] project sync keeps local child home edits and reports them
 ✓ installed bad-record-skill
 ✓ installed no-record-skill
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13556879077457071183/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2247220663979519672/units.lock.toml
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
-! child home skill:no-record-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-no-record-7941011364737698656/.skill-manager/skills/no-record-skill)
-! child home skill:bad-record-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-no-record-7941011364737698656/.skill-manager/skills/bad-record-skill)
+! child home skill:no-record-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-no-record-150698998002408728/.skill-manager/skills/no-record-skill)
+! child home skill:bad-record-skill — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-sync-no-record-150698998002408728/.skill-manager/skills/bad-record-skill)
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
   [PASS] project sync keeps local edits when the record is missing or corrupt
 ✓ installed sync-rebuild-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12362014758203137963/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1002732187648346262/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] project sync still rebuilds an unmodified child home unit
 ✓ installed prune-keep-skill
 ✓ installed prune-clean-skill
 ✓ installed prune-edited-skill
-✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-441535681651120364/units.lock.toml
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8299428045761286852/units.lock.toml
 ✓ side effects: 3 binding(s) bound, 9 projection(s) materialized
-! child home skill:prune-edited-skill is no longer a project dependency but has local changes — left in place (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-prune-13639951928622145241/.skill-manager/skills/prune-edited-skill)
+! child home skill:prune-edited-skill is no longer a project dependency but has local changes — left in place (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-prune-6572103600198367451/.skill-manager/skills/prune-edited-skill)
 ✓ side effects: 1 binding(s) bound, 2 binding(s) unbound, 3 projection(s) materialized
   [PASS] dropping a dependency keeps an edited child unit but prunes clean ones
   [PASS] upgrading a unit behind a dereferenced link refreshes the child copy
-! child home: could not remove the displaced tree at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp/replaced-73f2b4f8-1f64-4b5b-9f24-44e5a9a159c4 (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp/replaced-73f2b4f8-1f64-4b5b-9f24-44e5a9a159c4/sticky/pinned.txt)
-! child home: could not clear the staging area at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-7339910834218135141/.skill-manager/.materialization/tmp/replaced-73f2b4f8-1f64-4b5b-9f24-44e5a9a159c4/sticky/pinned.txt)
+! child home: could not remove the displaced tree at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-5263461433769285274/.skill-manager/.materialization/tmp/replaced-25adfbf1-03e7-43e8-a160-063db19ba3c3 (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-5263461433769285274/.skill-manager/.materialization/tmp/replaced-25adfbf1-03e7-43e8-a160-063db19ba3c3/sticky/pinned.txt)
+! child home: could not clear the staging area at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-5263461433769285274/.skill-manager/.materialization/tmp (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/child-home-orphan-5263461433769285274/.skill-manager/.materialization/tmp/replaced-25adfbf1-03e7-43e8-a160-063db19ba3c3/sticky/pinned.txt)
   [PASS] a displaced tree never lands in the child store's unit directories
   [PASS] LINK mode still symlinks the child home unit at the parent store
   [PASS] upgrading a LINK-mode child home to COPY converges
@@ -947,27 +947,27 @@ markdown skill-import violations (1) — fix these references:
 ✓ installed sync-idempotent-skill
 ! cli: skill-script probe-tool has no install target with a 'script' field (needed under [cli_dependencies.install.<platform>])
 ✓ cli: probe-tool [skill-script] installed for sync-idempotent-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-11876202522067925826/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13346507253071890240/units.lock.toml
 ✓ cli: 1 installed
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-! child home provisions cli probe-tool itself (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-idempotent-15504299743584714976/.skill-manager/bin/cli/probe-tool) — kept, not replaced with a link into the parent store (declared by sync-idempotent-skill)
+! child home provisions cli probe-tool itself (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-idempotent-17840638716466010287/.skill-manager/bin/cli/probe-tool) — kept, not replaced with a link into the parent store (declared by sync-idempotent-skill)
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-! child home provisions cli probe-tool itself (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-idempotent-15504299743584714976/.skill-manager/bin/cli/probe-tool) — kept, not replaced with a link into the parent store (declared by sync-idempotent-skill)
+! child home provisions cli probe-tool itself (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-idempotent-17840638716466010287/.skill-manager/bin/cli/probe-tool) — kept, not replaced with a link into the parent store (declared by sync-idempotent-skill)
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] a project home that declares CLI deps syncs twice, and the second run is clean
   [PASS] mirroring a shim over the child home's own file keeps it instead of throwing
    → 2 passed, 0 failed
 == ProjectEnvMaterializerTest (3 cases)
 ✓ installed env-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14113770500469817820/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7469195642087209022/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] renders pyproject with project-relative vendor paths and env docs
 ✓ installed sync-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15703524144161332094/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5392564276721276019/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] sync invokes uv in the generated env root
 ✓ installed run-skill
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9913186333217767670/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13775208371488095716/units.lock.toml
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] run executes through uv project for materialized env
    → 3 passed, 0 failed
@@ -996,18 +996,18 @@ markdown skill-import violations (1) — fix these references:
 ! 3 declared vendored path(s) do not point at this project's own home (on_invalid = "warn"):
 !   vendored test-graph-sdk: test_graph/sdk MISSING [warn]
 !     detail:     declared vendored path does not exist
-!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/sdk  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/sdk
-!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/sdk  (absent)
+!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/sdk  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14331284577318480103/.skill-manager/skills/test-graph/project_sdk_sources/sdk
+!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14331284577318480103/.skill-manager/skills/test-graph/project_sdk_sources/sdk  (absent)
 !     remedy:     the declared source does not exist in any enclosing home yet: install the unit into the project's own home (`skill-manager project resolve`), then re-run with --repair-vendored; or vendor a snapshot instead: scaffold.py <repo-root> --copy-sdk (snapshot-copies the vendored trees instead of symlinking them)
 !   vendored test-graph-sdk: test_graph/build-logic MISSING [warn]
 !     detail:     declared vendored path does not exist
-!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/build-logic  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/build-logic
-!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/build-logic  (absent)
+!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/build-logic  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14331284577318480103/.skill-manager/skills/test-graph/project_sdk_sources/build-logic
+!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14331284577318480103/.skill-manager/skills/test-graph/project_sdk_sources/build-logic  (absent)
 !     remedy:     the declared source does not exist in any enclosing home yet: install the unit into the project's own home (`skill-manager project resolve`), then re-run with --repair-vendored; or vendor a snapshot instead: scaffold.py <repo-root> --copy-sdk (snapshot-copies the vendored trees instead of symlinking them)
 !   vendored test-graph-sdk: test_graph/standard-nodes MISSING [warn]
 !     detail:     declared vendored path does not exist
-!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes
-!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14947805352772084245/.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes  (absent)
+!     expected:   ../.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes  ->  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14331284577318480103/.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes
+!     candidate:  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/vendored-resolve-warn-14331284577318480103/.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes  (absent)
 !     remedy:     the declared source does not exist in any enclosing home yet: install the unit into the project's own home (`skill-manager project resolve`), then re-run with --repair-vendored; or vendor a snapshot instead: scaffold.py <repo-root> --copy-sdk (snapshot-copies the vendored trees instead of symlinking them)
   [PASS] on_invalid = error fails project resolve and warn does not
 ✓ repaired vendored test-graph-sdk: test_graph/sdk -> ../.skill-manager/skills/test-graph/project_sdk_sources/sdk
@@ -1032,7 +1032,7 @@ markdown skill-import violations (1) — fix these references:
   [PASS] a symlinked store dir is digested by its BYTES, not its path string
   [PASS] a link that does not resolve is a graded GAP, not a resolved digest
   [PASS] a no-op regeneration leaves the INPUTS RECORD byte-identical too
-! marketplace: could not record generation inputs in .marketplace-inputs.json: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17194899003939058645/plugin-marketplace/.marketplace-inputs.json (Is a directory)
+! marketplace: could not record generation inputs in .marketplace-inputs.json: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1025688095082876458/plugin-marketplace/.marketplace-inputs.json (Is a directory)
   [PASS] recording the inputs cannot fail the regeneration it describes
    → 16 passed, 0 failed
 == HarnessPluginCliTest (17 cases)
@@ -1055,12 +1055,12 @@ markdown skill-import violations (1) — fix these references:
   [PASS] onPath false for a nonsense binary
    → 17 passed, 0 failed
 == HomeRefreshPluginsTest (3 cases)
-✓ marketplace 'skill-manager-2a496fec' regenerated with 1 plugin(s); 1/1 harness driver(s) registered
+✓ marketplace 'skill-manager-62251358' regenerated with 1 plugin(s); 1/1 harness driver(s) registered
   [PASS] regenerates the marketplace and registers each plugin under the per-home name
-✓ marketplace 'skill-manager-85acd1a8' regenerated with 1 plugin(s); 0/0 harness driver(s) registered
+✓ marketplace 'skill-manager-0b389156' regenerated with 1 plugin(s); 0/0 harness driver(s) registered
 ! fake: CLI not on PATH (install fake) — registration skipped, non-fatal
   [PASS] missing harness CLIs are non-fatal: marketplace still regenerated, exit 0
-✓ marketplace 'skill-manager-6e5de728' regenerated with 1 plugin(s); 1/1 harness driver(s) registered
+✓ marketplace 'skill-manager-dd5252c5' regenerated with 1 plugin(s); 1/1 harness driver(s) registered
   [PASS] no unit content is touched: a plugin's store file survives byte-for-byte
    → 3 passed, 0 failed
 == RefreshHarnessPluginsTest (7 cases)
@@ -1096,7 +1096,7 @@ markdown skill-import violations (1) — fix these references:
 ✓ installed acme-broken
 ! claude: CLI claude not on PATH — install with: brew install claude
 ! codex: CLI codex not on PATH — install with: brew install codex
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8250986505139231767/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13054344526051786653/units.lock.toml
 markdown skill-import violations (2) — fix these references:
 ✗   - acme-broken (skill): SKILL.md
 ✗     skill-imports[0] references missing unit `no-such-unit`; install it or fix the `unit` value
@@ -1106,14 +1106,14 @@ markdown skill-import violations (2) — fix these references:
 ✓ installed acme-lint
 ! claude: CLI claude not on PATH — install with: brew install claude
 ! codex: CLI codex not on PATH — install with: brew install codex
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-8250986505139231767/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13054344526051786653/units.lock.toml
   [PASS] install exits non-zero when it reports skill-import violations
   [PASS] violations are printed before the ACTION_REQUIRED restart banner
 ✓ resolve: 1 unit(s)
 ✓ installed acme-broken
 ! claude: CLI claude not on PATH — install with: brew install claude
 ! codex: CLI codex not on PATH — install with: brew install codex
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9252032745514083741/units.lock.toml
 markdown skill-import violations (2) — fix these references:
 ✗   - acme-broken (skill): SKILL.md
 ✗     skill-imports[0] references missing unit `no-such-unit`; install it or fix the `unit` value
@@ -1123,11 +1123,11 @@ markdown skill-import violations (2) — fix these references:
 ✓ installed acme-lint
 ! claude: CLI claude not on PATH — install with: brew install claude
 ! codex: CLI codex not on PATH — install with: brew install codex
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9252032745514083741/units.lock.toml
 ✓ resolve: 0 unit(s)
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9252032745514083741/units.lock.toml
 ✓ resolve: 0 unit(s)
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4993289782050474048/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9252032745514083741/units.lock.toml
 ✓ synced 1 unit(s) — 1 local-only (no shared upstream)
 markdown skill-import violations (2) — fix these references:
 ✗   - acme-broken (skill): SKILL.md
@@ -1156,10 +1156,10 @@ markdown skill-import violations (2) — fix these references:
   [PASS] valid W3C parent is retained and injected for a child process
   [PASS] invalid W3C parent starts a fresh valid trace
   [PASS] active W3C context reaches registry and gateway HTTP boundaries
-Aug 23, 2026 8:41:19 PM io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder buildImpl
+Aug 23, 2026 9:38:13 PM io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder buildImpl
 INFO: Error encountered during autoconfiguration. Closing partially configured components.
   [PASS] invalid SDK configuration retains incoming W3C propagation
-Aug 23, 2026 8:41:19 PM io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder buildImpl
+Aug 23, 2026 9:38:13 PM io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdkBuilder buildImpl
 INFO: Error encountered during autoconfiguration. Closing partially configured components.
   [PASS] propagation-only fallback does not invent an absent trace
   [PASS] flush and provider shutdown share a finite deadline
@@ -1350,24 +1350,24 @@ INFO: Error encountered during autoconfiguration. Closing partially configured c
   [PASS] upgrade rejects doc and harness explicitly
   [PASS] sync --from doc preserves doc-repo reconciliation
   [PASS] install and sync parse --force-scripts
-→ cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill/skill-scripts/install.sh
-→ cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/logs/skill-scripts/20260824-004209-378-target-script-skill-target-script-bin.log
-✓ cli: installed target-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/bin/cli/target-script-bin
-→ cli: skill-script other-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/other-script-skill/skill-scripts/install.sh
-→ cli: skill-script other-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/logs/skill-scripts/20260824-004209-628-other-script-skill-other-script-bin.log
-✓ cli: installed other-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/bin/cli/other-script-bin
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill/skill-scripts/install.sh
+→ cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/skills/target-script-skill/skill-scripts/install.sh
+→ cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/logs/skill-scripts/20260824-013904-043-target-script-skill-target-script-bin.log
+✓ cli: installed target-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/bin/cli/target-script-bin
+→ cli: skill-script other-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/skills/other-script-skill/skill-scripts/install.sh
+→ cli: skill-script other-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/logs/skill-scripts/20260824-013904-257-other-script-skill-other-script-bin.log
+✓ cli: installed other-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/bin/cli/other-script-bin
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/skills/target-script-skill/skill-scripts/install.sh
 
 To inspect the full diff, run:
 
-    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-script-skill-18032513574497659086/target-script-skill
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/skills/target-script-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-script-skill-12021348112683323784/target-script-skill
 
 ✓ resolve: 0 unit(s)
 → cli: skill-script target-script-bin - force rerun requested
-→ cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/skills/target-script-skill/skill-scripts/install.sh
-→ cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/logs/skill-scripts/20260824-004209-890-target-script-skill-target-script-bin.log
-✓ cli: installed target-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/bin/cli/target-script-bin
-✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3412797996750050080/units.lock.toml
+→ cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/skills/target-script-skill/skill-scripts/install.sh
+→ cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/logs/skill-scripts/20260824-013904-521-target-script-skill-target-script-bin.log
+✓ cli: installed target-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/bin/cli/target-script-bin
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-3800522877646141617/units.lock.toml
 ✓ cli: 1 already present, 1 installed
   [PASS] sync named --force-scripts does not force unrelated installed scripts
   [PASS] sync --from harness preserves live instance reconciliation
@@ -1443,7 +1443,7 @@ To inspect the full diff, run:
   [PASS] the assertion above detects a write into the operator's agent homes
   [PASS] the global home still projects into ~/.claude, ~/.codex, ~/.gemini
   [PASS] an explicit agent-home variable still wins over the active home
-! unproject: refusing to remove /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-145-14684137979565386034/operator/.claude/skills/one-forty-five — it is inside /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-145-14684137979565386034/operator/.claude, which belongs to another Skill Manager home, not the one this command is running against. A default-agent row is derived from the active home's own agent directories, so one naming another home's was copied from it. Run `skill-manager sync` here to re-derive this home's rows, then retry.
+! unproject: refusing to remove /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-145-16809353786100348476/operator/.claude/skills/one-forty-five — it is inside /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-145-16809353786100348476/operator/.claude, which belongs to another Skill Manager home, not the one this command is running against. A default-agent row is derived from the active home's own agent directories, so one naming another home's was copied from it. Run `skill-manager sync` here to re-derive this home's rows, then retry.
   [PASS] undoing a COPIED default-agent row cannot delete another home's link
   [PASS] the guard does not fire on this home, nor on managed child homes
   [PASS] agentHomeRoot is the store's parent, or the store when unconventional
@@ -1573,12 +1573,12 @@ To inspect the full diff, run:
    → 9 passed, 0 failed
 == ClonedHomeDescentTest (6 cases)
   [PASS] all four readers agree about a cloned home's inherited shim, with no --against
-cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-vacuity-3999039175181078167/parent, which is not this home's parent store
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-vacuity-14705639285737682755/parent, which is not this home's parent store
   [PASS] VACUITY CONTROL: delete the record and the same four readers disagree again
   [PASS] a clone of a home with NO record records nothing and stays unsanctioned
   [PASS] a HAND-WRITTEN record grants nothing — the chain it names must re-derive
-cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-12064167625588799326/parent, which is not this home's parent store
-cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-12064167625588799326/parent, which is not this home's parent store
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-12116068131955443176/parent, which is not this home's parent store
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-12116068131955443176/parent, which is not this home's parent store
   [PASS] revoking the parent's claim revokes it in EVERY tier at once
   [PASS] descent is transitive: a clone of a clone still shares the root store
    → 6 passed, 0 failed
@@ -1622,7 +1622,7 @@ cli: pruned bin/cli/ob-dangling — no installed unit declares it and it is dang
   [PASS] a non-executable file beside the shims is not this prune's business
   [PASS] a DECLARED broken shim is left to the install pass
   [PASS] the home's own CLI pin is never pruned, however broken
-cli: pruned bin/cli/leaky — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/foreign-home-17034361083363420341, which is not this home's parent store
+cli: pruned bin/cli/leaky — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/foreign-home-16250136169735268529, which is not this home's parent store
   [PASS] a shim resolving into another home is pruned even though it works
   [PASS] a child home's sanctioned mirror of its parent's shim survives
    → 7 passed, 0 failed
@@ -1641,14 +1641,14 @@ cli: pruned bin/cli/leaky — resolved into the home at /private/var/folders/b7/
   [PASS] WORKTREE tier: a clone with a descent record may not either
   [PASS] the SANCTIONED mirror is untouched by the guard — sharing still works
   [PASS] takeOwnershipOfShim — DEF-007's SECOND call site — is refused too
-cli: gamma was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-confinement-ownership-control-998669315150475158/other; rebuilding it here, so this home owns it
+cli: gamma was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-confinement-ownership-control-7602520861637259609/other; rebuilding it here, so this home owns it
   [PASS] takeOwnershipOfShim still takes ownership when the home is intact
    → 6 passed, 0 failed
 == ProducerStaysInsideItsHomeTest (7 cases)
   [PASS] a producer aimed at an UNSANCTIONED link into another home is refused, before it runs
   [PASS] a producer aimed at a home whose bin/cli IS a link out is refused
   [PASS] a SANCTIONED mirror is not refused, and the producer is left to decline
-cli: tool was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/producer-confinement-forced-sanctioned-11851543972296558342/other; rebuilding it here, so this home owns it
+cli: tool was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/producer-confinement-forced-sanctioned-12420269551187831049/other; rebuilding it here, so this home owns it
   [PASS] a FORCED run over a sanctioned mirror owns the slot instead of writing through it
   [PASS] an intact home installs exactly as before
   [PASS] an artifact linked OUTSIDE every home is left alone — brew's case
@@ -1686,11 +1686,11 @@ cli: tool was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx
   [PASS] cli.skillManager is resolved, and prefers the home's own shim
   [PASS] describe keeps recorded env contributions when none are supplied
   [PASS] `home describe --write --json` emits the descriptor and persists it
-✗ home describe --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home describe --init`. Nothing was read and nothing was written.
-✗ home drift --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home drift --init`. Nothing was read and nothing was written.
-✗ home policy --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home policy --init`. Nothing was read and nothing was written.
-✗ home shims --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662/.skill-manager. To lay a home out here instead, re-run with `skill-manager home shims --init`. Nothing was read and nothing was written.
-✓ /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-1823695953475117662 is now frozen — sync, upgrade, and project sync will refuse
+✗ home describe --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821/.skill-manager. To lay a home out here instead, re-run with `skill-manager home describe --init`. Nothing was read and nothing was written.
+✗ home drift --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821/.skill-manager. To lay a home out here instead, re-run with `skill-manager home drift --init`. Nothing was read and nothing was written.
+✗ home policy --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821/.skill-manager. To lay a home out here instead, re-run with `skill-manager home policy --init`. Nothing was read and nothing was written.
+✗ home shims --home: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821 is not a Skill Manager home (it exists but carries neither a descriptor nor the installed/ + skills/ pair). A home carries a home.runtime.json descriptor, or an installed/ and a skills/ directory. If you meant the home inside a worktree, name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821/.skill-manager. To lay a home out here instead, re-run with `skill-manager home shims --init`. Nothing was read and nothing was written.
+✓ /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/descriptor-not-a-home-6003411287896922821 is now frozen — sync, upgrade, and project sync will refuse
   [PASS] describe/drift/policy/shims refuse a path that is not a home, and build none
    → 14 passed, 0 failed
 == HomeDescriptorCliRemedyTest (14 cases)
@@ -1718,9 +1718,9 @@ cli: tool was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx
   [PASS] frozen home refuses `sync --refresh` — the lockfile is not rewritten
   [PASS] frozen home refuses `upgrade`
   [PASS] frozen home refuses `project sync` before tearing anything down
-✓ units.lock.toml refreshed (1 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/policy-live-8767902696161290811/.skill-manager/units.lock.toml
+✓ units.lock.toml refreshed (1 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/policy-live-10085141715170263671/.skill-manager/units.lock.toml
   [PASS] a live home is unaffected: sync runs and writes its lock
-✓ /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/policy-cmd-7266887556366456022/.skill-manager is now frozen — sync, upgrade, and project sync will refuse
+✓ /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/policy-cmd-14950305663375004042/.skill-manager is now frozen — sync, upgrade, and project sync will refuse
   [PASS] `home policy` shows and sets the declared policy
 java.io.IOException: unknown home policy "mostly-frozen"; expected "live" or "frozen"
 	at dev.skillmanager.policy.HomePolicy.parse(HomePolicy.java:117)
@@ -1753,16 +1753,16 @@ java.io.IOException: unknown home policy "mostly-frozen"; expected "live" or "fr
   [PASS] a launch that would still read the real ~/.claude is refused, and nothing runs
   [PASS] an env contribution pointing Claude back at the real home is refused too
   [PASS] the global home launches against ~/.claude without being refused
-CLAUDE_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.claude
-PIP_CACHE_DIR=/Users/hayde/Library/Caches/pip
-GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.gemini
+GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.gemini
 UV_LINK_MODE=clone
-CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.codex
-CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.claude
+CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.codex
+CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.claude
 npm_config_cache=/Users/hayde/.npm
 UV_CACHE_DIR=/Users/hayde/.cache/uv
-SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager
-PATH=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager/bin/cli:/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager/bin/mcp:/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233719449451637/.skill-manager/bin/launch:/usr/bin
+SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.skill-manager
+CLAUDE_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.claude
+PIP_CACHE_DIR=/Users/hayde/Library/Caches/pip
+PATH=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.skill-manager/bin/cli:/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.skill-manager/bin/mcp:/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-7062239582239503048/.skill-manager/bin/launch:/usr/bin
   [PASS] exec bootstraps a missing descriptor on a live home
   [PASS] exec writes nothing into a frozen home
   [PASS] `home shims` refuses on a frozen home and writes no launcher
@@ -1796,29 +1796,29 @@ PATH=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233
   [PASS] pull merges the unit's trunk into the home
   [PASS] a unit already at its trunk reports up to date, not merged
   [PASS] a unit installed from a local path is reported, not failed
-! edited-skill has uncommitted local changes — not pulled from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-edited-skill-6103082998558335356/edited-skill.git main (re-run with --merge to fold them together)
+! edited-skill has uncommitted local changes — not pulled from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-edited-skill-15910393366696561522/edited-skill.git main (re-run with --merge to fold them together)
   [PASS] a unit with local edits is held back and its bytes are untouched
   [PASS] --merge keeps both sides: the agent's edit and the trunk's
-! conflict-skill: merge of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-conflict-skill-208321294244928500/conflict-skill.git main conflicted — local work preserved, nothing resolved automatically
+! conflict-skill: merge of /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-conflict-skill-17529488605103571851/conflict-skill.git main conflicted — local work preserved, nothing resolved automatically
   [PASS] a conflicting merge stops and the agent's text is still on disk
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-✓ pulled skill:child-edited — merged /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-child-edited-17323229319434231949/child-edited.git main
-! child home skill:child-edited — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-childedit-9275574037939273468/.skill-manager/skills/child-edited)
+✓ pulled skill:child-edited — merged /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-child-edited-10477531959743375744/child-edited.git main
+! child home skill:child-edited — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-sync-childedit-16724027398699768454/.skill-manager/skills/child-edited)
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
-! this sync changed 1 unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929 — a launch will refuse until the change is read (`/opt/homebrew/bin/skill-manager home drift --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929`, then `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929`)
+! this sync changed 1 unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2890054379469190994 — a launch will refuse until the change is read (`/opt/homebrew/bin/skill-manager home drift --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2890054379469190994`, then `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2890054379469190994`)
 !   modified  skill:child-edited  c87b6906  (2 files)
 !   1 unit, 2 files changed — `home drift --detail` for the paths, `home drift --json` for the data
-!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7164613073906510929` to remove the guess.
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2890054379469190994` to remove the guess.
   [PASS] project sync does not destroy an edit in the child home
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
-! drift-edited has uncommitted local changes — not pulled from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-drift-edited-16740841762782994781/drift-edited.git main (re-run with --merge to fold them together)
-✓ pulled skill:drift-moving — merged /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-drift-moving-13263034789502748303/drift-moving.git main
+! drift-edited has uncommitted local changes — not pulled from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-drift-edited-85246228454203845/drift-edited.git main (re-run with --merge to fold them together)
+✓ pulled skill:drift-moving — merged /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/upstream-drift-moving-4259167717315836165/drift-moving.git main
 ✓ side effects: 2 binding(s) bound, 6 projection(s) materialized
-! this sync changed 2 unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528 — a launch will refuse until the change is read (`/opt/homebrew/bin/skill-manager home drift --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528`, then `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528`)
+! this sync changed 2 unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3445215162075177448 — a launch will refuse until the change is read (`/opt/homebrew/bin/skill-manager home drift --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3445215162075177448`, then `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3445215162075177448`)
 !   modified  skill:drift-edited  6f802d3f  (1 file)
 !   modified  skill:drift-moving  dc4c031f  (2 files)
 !   2 units, 3 files changed — `home drift --detail` for the paths, `home drift --json` for the data
-!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17100920959031855528` to remove the guess.
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3445215162075177448` to remove the guess.
   [PASS] project sync reports the drift it caused and keeps the agent's bytes
 ✓ side effects: 1 binding(s) bound, 3 projection(s) materialized
   [PASS] a checkout unit is materialized as its own git clone
@@ -1853,31 +1853,31 @@ PATH=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233
   [PASS] --detail always answers in full, however often the gate has been shown
   [PASS] an ack does not leave a count behind for the next gate to inherit
   [PASS] a record written before surfacedCount existed degrades to full-once
-✓ acknowledged 1 changed unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-gate-ack-9193988497152403383/.skill-manager
+✓ acknowledged 1 changed unit(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-gate-ack-3979328180301228330/.skill-manager
   [PASS] acknowledging clears the gate and the launch proceeds
   [PASS] --ack-drift acknowledges in passing rather than blocking
-✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-stale-dst-2190594412131565708/.skill-manager
+✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-stale-dst-11927824821599568213/.skill-manager
   [PASS] a clone does not report the source's unrecorded change as its own
-✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-schema-dst-15986079837445160716/.skill-manager
+✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-schema-dst-11255949264605004835/.skill-manager
   [PASS] a clone is not drifted by a baseline written under an older content rule
   [PASS] a clone does not inherit the source's unacknowledged gate
-✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager
-! 1 unit(s) changed in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager (home drift --record) and have not been read:
+✓ no unread change in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16860495699002461430/.skill-manager
+! 1 unit(s) changed in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16860495699002461430/.skill-manager (home drift --record) and have not been read:
 ✗   modified  skill:alpha  8409a669  (1 file)
 ✗   1 unit, 1 file changed — `home drift --detail` for the paths, `home drift --json` for the data
-!   run `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager` once you have taken it in
-!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16264613539532683595/.skill-manager` to remove the guess.
+!   run `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16860495699002461430/.skill-manager` once you have taken it in
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-clone-later-dst-16860495699002461430/.skill-manager` to remove the guess.
   [PASS] a change made AFTER the clone still gates the clone's launch
   [PASS] a second measurement does not retire an unread change
   [PASS] a change arriving on top of an unread one is added, not substituted
   [PASS] an unreadable gate file blocks rather than reading as nothing to do
   [PASS] `home drift` shows the pending change and exits non-zero
-✓ recorded the first digest for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager — nothing to compare against yet
-! 1 unit(s) changed in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager (home drift --record) and have not been read:
+✓ recorded the first digest for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-13420357239243967209/.skill-manager — nothing to compare against yet
+! 1 unit(s) changed in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-13420357239243967209/.skill-manager (home drift --record) and have not been read:
 ✗   modified  skill:alpha  4b7748cb  (1 file)
 ✗   1 unit, 1 file changed — `home drift --detail` for the paths, `home drift --json` for the data
-!   run `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager` once you have taken it in
-!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-11393750193957307589/.skill-manager` to remove the guess.
+!   run `/opt/homebrew/bin/skill-manager home drift --ack --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-13420357239243967209/.skill-manager` once you have taken it in
+!   note: this skill-manager came from PATH (/opt/homebrew/bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand with usage and exit 0. Give this home its own CLI with `/opt/homebrew/bin/skill-manager home shims --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/drift-cmd-record-13420357239243967209/.skill-manager` to remove the guess.
   [PASS] `home drift --record` measures, records, and refreshes the baseline
   [PASS] a frozen home can be inspected for drift without being written to
    → 25 passed, 0 failed
@@ -1895,22 +1895,23 @@ PATH=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/exec-bootstrap-live-700233
 ! home sync: skill:sync-skill held back — locally modified; re-run with --merge to three-way merge it
   [PASS] a .git directory inside a unit is content, never skipped as build output
   [PASS] a sync that fails part way leaves the destination unit exactly as it was
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
-home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/dest — another operation in this process holds this home's lock
-! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
-! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-15583842708516739033/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/dest — another operation in this process holds this home's lock
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+! home sync: skill:sync-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-race-10605852517849968835/left/skills/sync-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
   [PASS] two concurrent syncs into one home do not interleave
 ! home sync: skill:sync-skill held back — its materialization record is schema 1 and this build reads 2 — the digests in it were computed over a different set of files (re-derivable build output used to count as unit content, issue #41), so they are not evidence about these bytes and nothing may be replaced on their authority. Nothing was written — re-run with --merge to reconcile it, or refresh the unit from its store (a unit that is still a pristine copy re-baselines itself with no further hold-back)
   [PASS] a record from an older schema is not a licence to replace anything
@@ -1919,8 +1920,8 @@ home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-syn
   [PASS] a frozen destination refuses and a frozen source is only read
   [PASS] close-out refuses while the worktree holds work and passes once it is synced
   [PASS] close-out refuses a path that is not a home rather than clearing it
-! home sync: skill:linked-unit linked — the source reaches it through the symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/source/skills/linked-unit -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/elsewhere/linked-unit. Nothing was written and no baseline was recorded: a reconcile moves bytes between two homes that own them, and a link's bytes belong to what it points at. Replace the link with a real directory (`skill-manager home clone`, or a COPY materialization) to reconcile this unit.
-! home sync: skill:linked-unit linked — the source reaches it through the symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/linked-home/skills -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-11505249999704582322/elsewhere. Nothing was written and no baseline was recorded: a reconcile moves bytes between two homes that own them, and a link's bytes belong to what it points at. Replace the link with a real directory (`skill-manager home clone`, or a COPY materialization) to reconcile this unit.
+! home sync: skill:linked-unit linked — the source reaches it through the symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-10713806792886043524/source/skills/linked-unit -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-10713806792886043524/elsewhere/linked-unit. Nothing was written and no baseline was recorded: a reconcile moves bytes between two homes that own them, and a link's bytes belong to what it points at. Replace the link with a real directory (`skill-manager home clone`, or a COPY materialization) to reconcile this unit.
+! home sync: skill:linked-unit linked — the source reaches it through the symlink /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-10713806792886043524/linked-home/skills -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-linked-10713806792886043524/elsewhere. Nothing was written and no baseline was recorded: a reconcile moves bytes between two homes that own them, and a link's bytes belong to what it points at. Replace the link with a real directory (`skill-manager home clone`, or a COPY materialization) to reconcile this unit.
   [PASS] a symlinked unit or kind directory is reported, never silently skipped
   [PASS] a cloned home records the baseline that lets its edits merge back
   [PASS] a clone of a home that edited a unit in place restates the baseline
@@ -1945,7 +1946,7 @@ home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-syn
 ! home sync: skill:merge-skill conflicted — 1 file(s) changed on both sides; nothing was written
 ! home sync: skill:merge-skill conflicted — both sides differ and neither home recorded a per-file baseline they can be shown to share, so there is no merge base; resolve it by hand or publish the edit with `skill-manager unit publish merge-skill`
   [PASS] the ordinary three-tier round trip destroys no worktree's edit (CHM-12)
-! home sync: skill:merge-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-merge-ff-provenance-15455686006345328771/source/skills/merge-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
+! home sync: skill:merge-skill held back — its content came from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-merge-ff-provenance-4943759653791424055/source/skills/merge-skill, which this source has never held, so replacing it would delete work that may exist nowhere else; re-run with --merge to reconcile it
 ! home sync: skill:merge-skill conflicted — both sides differ and neither home recorded a per-file baseline they can be shown to share, so there is no merge base; resolve it by hand or publish the edit with `skill-manager unit publish merge-skill`
   [PASS] a fast-forward is not disposable to a home it never came from (CHM-9)
   [PASS] the work survives the teardown that close-out cleared
@@ -1958,7 +1959,7 @@ home sync: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-syn
 ! home sync: skill:merge-skill conflicted — both sides differ and neither home recorded a per-file baseline they can be shown to share, so there is no merge base; resolve it by hand or publish the edit with `skill-manager unit publish merge-skill`
   [PASS] a merge with no per-file baseline anywhere conflicts rather than guessing
   [PASS] the home lock lives where nothing that enumerates a home will find it
-peer: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-lock-reentrant-8982510794845168345/home — another operation in this process holds this home's lock
+peer: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-lock-reentrant-2281322471084040626/home — another operation in this process holds this home's lock
   [PASS] the home lock is re-entrant on one thread and exclusive across threads
   [PASS] a home lock is released when the operation under it fails
   [PASS] two homes do not contend for one lock
@@ -2005,24 +2006,24 @@ peer: waiting for /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-lock-ree
   [PASS] --json on the refusal is a payload, not an empty stdout
    → 6 passed, 0 failed
 == AuditTrailTest (2 cases)
-M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill/SKILL.md
-A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v2/audited-skill/references/added.md
-A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v2/audited-skill/skill-manager.toml
+M	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1689974882184622842/skills/audited-skill/SKILL.md
+A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-8919449629715325151/v2/audited-skill/references/added.md
+A	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-8919449629715325151/v2/audited-skill/skill-manager.toml
 
 To inspect the full diff, run:
 
-    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v2/audited-skill
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1689974882184622842/skills/audited-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-8919449629715325151/v2/audited-skill
 
 ✓ resolve: 0 unit(s)
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/units.lock.toml
-D	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill/references/added.md
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1689974882184622842/units.lock.toml
+D	/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1689974882184622842/skills/audited-skill/references/added.md
 
 To inspect the full diff, run:
 
-    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/skills/audited-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-14839169980315048423/v1/audited-skill
+    git diff --no-index /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1689974882184622842/skills/audited-skill /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/audit-sync-8919449629715325151/v1/audited-skill
 
 ✓ resolve: 0 unit(s)
-✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17092886900345283228/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1689974882184622842/units.lock.toml
   [PASS] sync appends a line naming the verb and the unit it touched
   [PASS] a clone does not carry the source home's audit log
    → 2 passed, 0 failed
@@ -2037,13 +2038,13 @@ To inspect the full diff, run:
   [PASS] `gateway down` refuses on an attached home
 
 DRY RUN — no changes will be made
-operation: gateway-up-ea582df1-4664-4e36-9007-9e32227dd6d3
+operation: gateway-up-33b66682-5686-463e-819b-804be83cdb3f
 effects (1):
 → [1] ensure gateway running at http://127.0.0.1:52006
 
 
 DRY RUN — no changes will be made
-operation: gateway-up-f262d1be-6521-467b-8105-0ac6197f0cca
+operation: gateway-up-720e03d5-2752-48e7-b0bd-1f89363ef207
 effects (1):
 → [1] ensure gateway running at http://127.0.0.1:52007
 
@@ -2053,7 +2054,7 @@ effects (1):
 ✓ this home now owns http://127.0.0.1:52008 — `gateway up` / `gateway down` are enabled
 
 DRY RUN — no changes will be made
-operation: gateway-up-5a677d29-eba2-48ec-b054-1a63ffb4afdc
+operation: gateway-up-af89dbb3-4b9d-477d-8db3-e4caa11624ee
 effects (1):
 → [1] ensure gateway running at http://127.0.0.1:52008
 
@@ -2061,18 +2062,18 @@ effects (1):
   [PASS] `gateway status` publishes the mode so another home can discover it
   copied:      8 dirs, 1 files, 0 links (116 bytes; cache, logs, npm, tmp, tools, venvs skipped)
   re-anchored: 0 links relativized, 0 records, 0 provisioned files
-✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-dst-4414037126321749359/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-src-14838792975155756453/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
+✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-dst-9026711151483670837/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-src-947224729935358787/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
   gateway:     attached to http://127.0.0.1:52009 (the source home owns it; pass --own-gateway to claim it instead)
   drift:       baselined against this copy's own content (0 unit(s)); a clone is not drifted
   [PASS] a cloned home attaches to the source's gateway instead of claiming it
   copied:      8 dirs, 1 files, 0 links (116 bytes; cache, logs, npm, tmp, tools, venvs skipped)
   re-anchored: 0 links relativized, 0 records, 0 provisioned files
-✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-own-dst-3259029512527815506/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-own-src-1340980016915574163/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
+✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-own-dst-3276687993901981221/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-own-src-7844017519872478178/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
   drift:       baselined against this copy's own content (0 unit(s)); a clone is not drifted
   [PASS] `home clone --own-gateway` keeps ownership when the operator says so
   copied:      8 dirs, 1 files, 0 links (116 bytes; cache, logs, npm, tmp, tools, venvs skipped)
   re-anchored: 0 links relativized, 0 records, 0 provisioned files
-✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-verify-dst-8485333251522883907/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-verify-src-17854112034398310110/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
+✓ cloned home to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-verify-dst-2187797774617061221/home — checked: nothing in it resolves back to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/gw-clone-verify-src-5397685794562540998/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
   gateway:     attached to http://127.0.0.1:52011 (the source home owns it; pass --own-gateway to claim it instead)
   drift:       baselined against this copy's own content (0 unit(s)); a clone is not drifted
   [PASS] the clone's own verification still passes with the descriptor in it
@@ -2214,16 +2215,16 @@ effects (1):
   [PASS] a subtree this pass cannot read is treated as holding a .git
   [PASS] a row whose output is a unit store is refused, whatever kind it declares
   [PASS] a harness instance is still in scope, though `harnesses` is a content root
-! artifacts prune: could not remove cache/blocked-tree (java.nio.file.AccessDeniedException: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-3277865699994607416/cache/blocked-tree/inner/file) — the rest of the plan still runs and the ledger is re-recorded from what is on disk
+! artifacts prune: could not remove cache/blocked-tree (java.nio.file.AccessDeniedException: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-5203686265887271921/cache/blocked-tree/inner/file) — the rest of the plan still runs and the ledger is re-recorded from what is on disk
   [PASS] one step that cannot be deleted does not abandon the rest, or the ledger
-! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-9184231883453955666/child-homes/child-corrupt/child-home.json — this pass cannot tell what that home links at, so it removes nothing
+! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-1721365849408046219/child-homes/child-corrupt/child-home.json — this pass cannot tell what that home links at, so it removes nothing
   [PASS] a child-home record this pass cannot decode stops the prune, by name
-! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-16878169515923103458/bin/cli (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
-! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-16878169515923103458/bin/mcp (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
+! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-7574929622889154111/bin/cli (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
+! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-7574929622889154111/bin/mcp (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
   [PASS] a child home's shim directory this pass cannot stat stops the prune
-! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-15610113103817808510/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
-! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-15610113103817808510/child-homes/child-record-sealed/child-home.json — this pass cannot tell what that home links at, so it removes nothing
-! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-15610113103817808510/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
+! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-16183758262095724462/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
+! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-16183758262095724462/child-homes/child-record-sealed/child-home.json — this pass cannot tell what that home links at, so it removes nothing
+! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-16183758262095724462/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
   [PASS] a child-home record this pass cannot stat stops the prune, by name
   [PASS] a recorded output that escapes the home is refused
   [PASS] the plain-text verdict says how many it refused, not just how many it removed
@@ -2237,9 +2238,9 @@ effects (1):
   [PASS] explicit binding id allocator suffixes collisions
 ✓ side effects: 1 projection(s) materialized
   [PASS] MaterializeProjection SYMLINK creates the link
-✗ × MaterializeProjection: could not materialize projection at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-error-9501452367822656980/dest: destination already exists: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-error-9501452367822656980/dest
+✗ × MaterializeProjection: could not materialize projection at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-error-13998261978246102035/dest: destination already exists: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-error-13998261978246102035/dest
   [PASS] MaterializeProjection ERROR policy fails when dest exists
-! projection: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-skip-6989805762314327871/dest already exists — skipped (policy=SKIP)
+! projection: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/mat-skip-17879491718394180621/dest already exists — skipped (policy=SKIP)
   [PASS] MaterializeProjection SKIP leaves dest alone
 ✓ side effects: 1 projection(s) materialized
   [PASS] RENAMED_ORIGINAL_BACKUP move + reverse round-trip
@@ -2310,10 +2311,10 @@ effects (1):
   [PASS] an excluded path the SOURCE also holds is still disposable — the guard is narrow
   [PASS] a DIRECTORY-ONLY rule over an in-unit store link leaves the two walkers agreeing
   [PASS] a directory-only rule over a link to a FILE is not excluded — the divergence is narrow
-! child home skill:graph-consumer — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-11790592773285069041/child/.skill-manager/skills/graph-consumer)
+! child home skill:graph-consumer — left as-is, not refreshed from the parent store: local changes in the child home (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-4824009864344947155/child/.skill-manager/skills/graph-consumer)
   [PASS] a unit that GENUINELY differs is still held back, excluded paths or not
   [PASS] no readable index means NOTHING is ignored — one rule for all three ways of not having one
-! child home: results in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-declaring-5426995216969881684/child/.skill-manager/skills/graph-consumer is being replaced by the source's own copy — the source no longer treats it as generated, so this home's version of it is not carried across the swap
+! child home: results in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-declaring-8811170731313048871/child/.skill-manager/skills/graph-consumer is being replaced by the source's own copy — the source no longer treats it as generated, so this home's version of it is not carried across the swap
   [PASS] when upstream stops declaring a path generated, the child's copy of it is not lost silently
    → 14 passed, 0 failed
 

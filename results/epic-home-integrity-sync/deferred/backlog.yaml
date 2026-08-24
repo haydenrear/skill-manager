@@ -4112,5 +4112,186 @@ findings:
       A deliberate `git-integration-repo` refresh of the vendored constituents
       from their leaf tips, as its own change, after this epic's four leaf PRs
       land.
+    the_follow_up_is_scheduled_here_because_nothing_else_schedules_it: >
+      Run `git-integration-repo`'s `scripts/refresh.sh` over this repo AFTER
+      skill-publisher-skill#34, skill-manager-skill#4,
+      git-issue-workflow-skill#23 and git-epic-skill#16 have all merged --
+      NOT before. `refresh.sh` resets each constituent to its DEFAULT BRANCH, so
+      run against unmerged feature branches it would pull the pre-HIS-8 tips and
+      quietly re-stale the snapshot it was run to fix. Ordering is the whole
+      content of this note; the command itself is one line.
     candidate_owner: epic owner, or HIS-6 as part of terminal reconciliation
+    status: open
+
+  - id: DEF-082
+    found_by: >
+      HIS-8 (#224), external review of PR #248 -- the reviewer identified it and
+      HIS-8 confirmed it against the script
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      `check-docs-coverage.py` cannot decide the clause it is cited for. It
+      counts TERM HITS PER UNIT, so a unit that links to the contract and a unit
+      that restates it score identically -- and its own docstring claims it
+      shows "whether it is stated ONCE rather than copied into four units that
+      will drift apart".
+    detail: >
+      The script's per-unit measurement is `re.search(rx, text)` over each md
+      file, incremented once per file per term. Nothing in it distinguishes
+
+        "the contract is at <path>; this skill does not restate it"
+
+      from a full second copy of the mechanism. Both score 1 for
+      `declared-only`, 1 for `skill-manager build`, and both make the unit
+      "reach the contract".
+
+      GOAL-mechanism-documented clause 1 is "the contract is stated ONCE and the
+      four units that instruct agents about homes link to it rather than restate
+      it". The instrument decides the SECOND half (does the contract reach the
+      unit at all) and is blind to the FIRST (is it stated once). Its docstring
+      asserts otherwise:
+
+        "What it can show is whether the contract is stated at all, and whether
+         it is stated ONCE rather than copied into four units that will drift
+         apart."
+
+      The first clause of that sentence is true; the second is false.
+    measured: >
+      HIS-8's first published version scored 4 of 4 instructing units while
+      carrying THREE restatements of the contract (skt/SKILL.md's 9-line
+      blockquote with exit 86 and a machine-specific `13 stale of 39`;
+      git-issue-workflow/SKILL.md; and git-issue-workflow's own
+      references/skill-homes.md, the file that had ALREADY drifted). The
+      instrument reported the same 4 of 4 before and after those three were
+      trimmed to pure routing. A green that does not move when the defect it
+      claims to detect is removed is not measuring it.
+    it_moves_the_wrong_way_too_and_this_is_the_stronger_evidence: >
+      Measured while acting on the review. The three restatements were trimmed to
+      PURE routing -- no exit code, no count, no verbatim string, just "here is
+      the question, here is the page". By the goal's own definition the docs got
+      strictly better. The instrument reported:
+
+        before trim   4 of 4 instructing units, TOTAL 6 / 3 / 4 / 4
+        after  trim   3 of 4, "missing: git-issue-workflow"
+
+      It marked the unit ABSENT because a pure pointer contains none of the four
+      terms. So the instrument does not merely fail to detect a copy -- it
+      PENALISES the fix, and the only way to keep it green is to leave a term in
+      the linking unit. (Resolved by routing on SYMPTOMS -- "`artifacts list`
+      shows rows I do not understand" -- which is honest routing and happens to
+      carry a term. That it had to be engineered around is the point.)
+
+      A metric that goes DOWN when the defect is removed is not a weak metric;
+      it is pointing the wrong way.
+    a_better_measurement_exists_and_costs_one_grep: >
+      Count md files containing an EXIT CODE, a MEASURED COUNT or a verbatim
+      product MESSAGE, rather than files containing a term:
+
+        grep -rlE "exit 86|DECLARED and not built|build it: skill-manager|0 rebuildable" <roots> --include='*.md'
+
+      Before HIS-8: 0 files. After the first publish: 3 files (the page plus two
+      restatements). After the trim: 1 file -- the page. THAT is "stated once",
+      and it moves in the right direction at every step.
+    provenance: >
+      PRE-EXISTING, not introduced by HIS-8. The docstring dates from 5c72dc7,
+      which added the script. Recorded here because HIS-8 is the ticket that
+      cited it and the ticket whose evidence had to stop citing it.
+    consequence: >
+      HIS-6 must NOT read `N of 4 instructing units` as evidence that the
+      contract is stated once. That half is a judged read of the four diffs, and
+      HIS-8's goal contribution now says so explicitly.
+    fix: >
+      Either correct the docstring to claim only what the count supports, or add
+      a real second measurement -- e.g. flag any unit other than the owner whose
+      hit COUNT exceeds a routing threshold, or diff the term-bearing lines
+      against the owning page. The cheap honest fix is the docstring.
+    candidate_owner: HIS-6 (#218), which owns the scorecard that would otherwise
+      cite it
+    status: open
+
+  - id: DEF-083
+    found_by: >
+      HIS-8 (#224) -- flagged independently by the external review of PR #248 and
+      by two separate judged-read agents given only the docs
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      Every generated cold shim prints an ARTI-06 warning that is broader than
+      what `skill-manager build` now does, and the only correction lives in
+      prose. A shipped user-facing string is wrong and the fix so far has been to
+      document around it.
+    detail: >
+      The generated cold shim body contains:
+
+        note:  that command exits 1 even when it built what you asked for
+               (ARTI-06); re-run this entry point rather than trusting its
+               status.
+
+      Measured 2026-08-23: `skill-manager build 'cli-shim:pip/jinja2-cli[yaml]'
+      --yes` built the artifact, provisioned `venvs/jinja2-cli`, took the home's
+      stale count 13 -> 11 and exited **0**. The exit 1 that WAS observed came
+      from a genuinely-unbuilt case (DEF-079), where exiting 1 is correct.
+
+      So the sentence is not describing current behaviour. The habit it
+      recommends -- re-run the entry point rather than trusting the status -- is
+      still worth having and costs nothing.
+    why_it_is_worth_an_entry_after_all: >
+      HIS-8 first decided NOT to file this, on the grounds that the contract page
+      documents it where an agent meets it. Two independent readers then raised
+      it unprompted, and the second put the cost precisely: the reader is left
+      "having to remember which of two authoritative-looking texts to
+      disbelieve", and the wrong one is the one printed AT THE MOMENT OF FAILURE
+      while the correction is on a page they may not have opened. Prose cannot
+      win that race. Filing reverses HIS-8's own earlier call.
+    fix: >
+      Narrow the generated note to the case that still happens, or drop it and
+      keep only "re-run this entry point rather than trusting the status", which
+      is true unconditionally and carries no claim about exit codes.
+    consequence: >
+      An agent that builds successfully and reads the shim's own advice has been
+      told its exit 0 might be a lie. That is the opposite of the confidence the
+      cold shim exists to give.
+    candidate_owner: artifact-DAG / a skill-manager ticket, with DEF-079
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-8/build-one-artifact.out
+
+  - id: DEF-084
+    found_by: HIS-8 (#224), judged read of the trimmed docs
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      Two units justify decisions with `du`-shaped disk figures while a third
+      document says `du` over-reports these homes by ~30x. Nobody reconciles
+      them, and one of the figures is load-bearing for a design decision.
+    detail: >
+      `skt/skills/skt/SKILL.md` (pre-existing): "These homes are cloned
+      copy-on-write, so `du` bills every shared block to every copy and
+      over-reports by roughly 30x -- a home `du` called 1.1 GB cost 33.7 MB of
+      real space."
+
+      `git-issue-workflow/references/skill-homes.md` (pre-existing): `home clone`
+      skips `tools/` because "copying `tools/` costs 1.3 GB".
+
+      The same SKILL.md also says, 100 lines from the CoW note, "Homes are real
+      copies, never symlinks" -- true, and the sentence an agent is most likely
+      to quote when reasoning about disk.
+
+      If the 1.3 GB is a `du` figure over a CoW tree, the real cost is nearer
+      40 MB and the justification for the skip is inflated by exactly the factor
+      the sibling page documents. It may not be a `du` figure. NOBODY SAYS, and
+      that is the finding.
+    why_deferred: >
+      Both figures are pre-existing prose in two units, neither is about the
+      derived-artifact contract, and settling it needs a real measurement of
+      `tools/` (apparent vs allocated) that HIS-8 did not take. Guessing which
+      kind of number it is would substitute one unsourced figure for another.
+    fix: >
+      Measure `tools/` both ways once, state which the 1.3 GB is, and cross-link
+      the CoW caveat from any page that quotes a home size.
+    consequence: >
+      A skip that costs agents a re-provisioning step may be justified by a
+      number ~30x too large; or it may be correct and simply unciteable. Either
+      way an agent reasoning about home disk cost from these docs cannot tell.
+    candidate_owner: epic owner, or whoever next touches clone sizing
     status: open

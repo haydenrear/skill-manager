@@ -28,6 +28,7 @@ compliance, and the citation requirement is how a lucky guess is caught.
 | **BEFORE** | the four units at `origin/main`, i.e. the state this ticket found | `before.md` |
 | **AFTER-1** | the four units with the first draft of the contract page | `after-1.md` |
 | **AFTER-2** | the four units after AFTER-1's findings were fixed | `after-2.md` |
+| **AFTER-3** | the four units after external review of PR #248 **trimmed three restatements to pure routing** | `after-3.md` |
 
 `AFTER-1` and `AFTER-2` were separate agents; neither saw the other's answers.
 
@@ -39,6 +40,43 @@ compliance, and the citation requirement is how a lucky guess is caught.
 | Q2 what a clone inherits vs declares; healthy or broken | **PARTIAL/FAIL** — mechanics found, verdict `INFERRED, not stated`, and the two doc passages it found gave **opposite** verdicts | PASS (high) | PASS (high) |
 | Q3 when to rebuild, and the command | **FAIL** — `NOT ANSWERABLE FROM THE DOCS`; "there is no general rebuild command" | PASS (high) | PASS (high) |
 | **total** | **0 of 3** | **3 of 3** | **3 of 3** |
+
+AFTER-3 also scored **3 of 3, all high confidence**, and it was run to answer a
+different question — see below.
+
+### AFTER-3 and the trim
+
+External review of #248 found that three of the four units were *restating* the
+contract rather than linking to it, and required them cut to pure routing. **The
+obvious risk of that change is that the front door stops being able to route.**
+AFTER-3 was run against the trimmed corpus with Q4 asking directly, and
+explicitly inviting *"yes, the trim went too far"*:
+
+> "It did not hurt me at all… I opened `skt/skills/skt/SKILL.md` and had the
+> destination inside ~30 lines… A pointer that names the *question* removes all
+> the uncertainty a pointer that names the *subject* leaves behind. I never had
+> to hedge about whether the page would answer me, and I never opened a second
+> page to be sure. One hop, zero backtracking, zero source reading."
+
+It also disputed the premise usefully — skt's SKILL.md is not routing-only, it
+still carries the tier table, the `MERGE_CONFLICT` rule and the sweep gate; the
+trim was to the *artifact topic*, not the file — and it argued for adding the
+literal `exit 86` back to the front door, on the grounds that an agent that hits
+one will grep its loaded context for `86` and find nothing. **That was not done**:
+the epic agent's instruction was explicitly to drop every exit code from the
+linking text, and one judged read is not grounds to reverse an explicit call.
+A symptom row was added instead — *"a command on my `PATH` refused instead of
+running, with an exit code I do not recognise"* — and the tension is reported
+rather than silently resolved.
+
+Nine Q5 findings, seven fixed before hand-off (the `13/4/22` vs
+`0/13/4` arithmetic, the owner-less remedy contradicting its own diagnosis, the
+discouraged bare-`build` form given top billing, two clones' counts presented as
+one, the missing `pm/` clause, the UTC timestamp, and the dead-end pointer with
+no fallback). Two were filed instead: **DEF-083** (the cold shim's generated
+ARTI-06 string is wrong and prose cannot win that race) and **DEF-084** (two
+units cite `du`-shaped disk figures while a third says `du` over-reports these
+homes ~30x).
 
 Q2's BEFORE result is scored **fail, not partial credit**. The agent reconstructed
 the mechanics correctly from `git-issue-workflow/references/skill-homes.md`, but

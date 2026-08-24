@@ -18,6 +18,13 @@ Declared expected effect, verbatim from the plan:
 **Delivered.** Clause 1 moved **0 of 4 → 4 of 4**; clause 2's judged read moved
 **0 of 3 → 3 of 3**, measured twice with different agents.
 
+**REVIEW ROUND, 2026-08-23.** External review of #248 returned *merge with
+follow-ups, no blockers* — but it found four things worth fixing and **it was
+right about the one that matters most: clause 1 was not met, and I had flagged
+the wrong unit.** §11 is the whole round, including the two places I pushed back
+with a measurement and the place where acting on the review **falsified the
+goal's own instrument**. Read §11 before §4.
+
 **Read §6 before believing the numbers.** Three things are weaker than they look:
 
 1. **Clause 1's instrument reads the operator's ROOT home**, which this ticket is
@@ -195,14 +202,16 @@ TOTAL                                        6              3              4    
 | md files naming a cold shim | 0 | 3 |
 | md files naming `artifacts list/show/stale` | 0 | 4 |
 
+> **SUPERSEDED BY §11.2 — the numbers above are the FIRST published version's
+> and are kept for the comparison. The instrument cannot decide the clause it is
+> cited for (DEF-082), and acting on the review made it move the WRONG WAY. Read
+> §11.2 for the final measurement and for the one-line grep that actually
+> answers "stated once".**
+
 **The TOTAL row is not the goal and should not be read as one.** It counts
-*mentions*, and a pointer that names the command it is pointing at scores the
-same as a page that explains it. The clause is "stated ONCE and the four link to
-it", and the honest check for that is to read the four diffs: one page explains
-the mechanism; the other three are a sentence and a path. A reviewer who thinks
-one of the pointers has crossed into restatement should say so — the
-`skill-manager` entry, which lists four surface terms in one sentence, is the
-closest call.
+*mentions*, and a pointer that names the command it points at scores the same as
+a page that explains it. **This is not a caveat, it is a defect: `N of 4` is
+blind to the half of the clause that says "stated ONCE".** DEF-082.
 
 **What this measurement is NOT.** The instrument's `ROOTS` are
 `~/.skill-manager/{skills,plugins}`. This ticket must not write the root home, so
@@ -496,21 +505,29 @@ not include them. **Escalating rather than silently absorbing.**
 Listed because a reviewer will find them anyway, and because five tickets in
 this epic have had their headline claim overturned.
 
-1. **Whether the pointers stay pointers.** Three units now name
-   `artifacts list`, `declared-only` and `skill-manager build` in routing
-   sentences. That is a link, not a restatement — but the boundary is a
-   judgement, and `skill-manager`'s entry (four surface terms in one sentence) is
-   the closest call. If a reviewer thinks it has crossed, it should be cut to the
-   path and one clause.
-2. **The absolute path in the pointers.**
-   `$SKILL_MANAGER_HOME/plugins/skt/skills/skt/references/derived-artifacts.md`
-   assumes skt is installed as a plugin at that location. **In a home without
-   skt, the pointer dangles** — and the project home this epic works in is
-   exactly such a home. Nothing checks this. A reviewer should decide whether the
-   pointers need a fallback, and whether the docs-coverage instrument should
-   assert that every path a unit names resolves.
-3. **AFTER-2's fixes are unjudged.** The last seven changes were made in response
-   to a read and not re-read.
+1. ~~**Whether the pointers stay pointers.**~~ **RESOLVED AGAINST ME, and I
+   named the wrong unit.** I flagged `skill-manager` as the closest call. Review
+   measured it as the *least* restating of the three; the restatements were in
+   the two I did not doubt — `skt/SKILL.md` (a nine-line blockquote with an exit
+   code and a machine-specific count) and `git-issue-workflow` (twice, including
+   in the file that had already drifted). All three are now pure routing. §11.2.
+2. ~~**The absolute path in the pointers.**~~ **CONFIRMED AND WORSE THAN I
+   SAID; fixed.** I disclosed that the pointer dangles in a home without skt.
+   Review added the second half I had missed: the literal was bare
+   `$SKILL_MANAGER_HOME/...`, and in an ordinary session that variable is
+   **unset**, so it expanded to `/plugins/skt/...` — broken even in a home that
+   *does* have skt. All four now read
+   `${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/...`, matching the idiom
+   `git-epic-workflow` already used 25 lines above its own new pointer, and all
+   four say the page is absent in a home without skt. **Nothing still checks
+   that a path a unit names resolves** — that part of the doubt stands.
+3. ~~**AFTER-2's fixes are unjudged.**~~ **SETTLED BY REVIEW.** The shipped
+   bytes were judged twice more by fresh agents: **5/5 and 4/5**. The one
+   non-STATED answer was correctly *inferred*, and the agent named the gap
+   itself — the artifact page never mentions close-out, and the teardown pages
+   never mention artifacts. An honest miss, not a failure. **The review round's
+   own changes (§11) are now the unjudged ones**, and that regress does not
+   terminate.
 4. **The `--force` half of DEF-079 is one observation.** I measured that
    `--force` did not change the pytest outcome. I did not establish *why* the pip
    backend treats an ambient binary as satisfying, so the diagnosis in DEF-079 is
@@ -523,3 +540,259 @@ this epic have had their headline claim overturned.
    states by reading `artifacts list`. `marketplace-entry`, `harness-instance`,
    `mcp-registration`, `doc-import` and `unit-digest` are documented from the
    source's own text and **not measured**.
+
+---
+
+## 11. The review round — what changed, and where I pushed back
+
+External review of #248: **merge with follow-ups, no blockers.** Of roughly two
+dozen falsifiable claims the reviewer could execute, one did not manifest and
+one table cell oversimplified. Both facts §6 says the source alone gets wrong
+reproduced exactly, exit codes and message text included. DEF-077 and DEF-081
+each pre-empted a finding the reviewer reached independently.
+
+Six items. Four were straight corrections; on one I disagreed in part and
+**measured to settle it**; one produced a result that falsifies this goal's own
+instrument.
+
+### 11.1 M1 — the third copy was executable, and a test held it in place
+
+I corrected the stale `home verify` claim in `skill-homes.md`, then found its
+twin 100 lines below. **I did not sweep the scripts in the same unit.** Review
+did: `bootstrap-home.sh` *prints* it, carries the retracted premise in comments,
+and `selftest.sh` **asserts the sentence**, so the test pinned the wrong text.
+
+**I measured before editing, because the framing and mine differ.** Same
+worktree home, `probes/his-8/home-verify-dangling-probe.out`:
+
+| home | verdict | exit |
+| --- | --- | --: |
+| clean lazy clone, untouched | `✓ every reference … resolves` | **0** |
+| + one planted `bin/cli/fixture-dangling -> ../../venvs/fixture-missing/bin/tool` | `✗ 1 reference(s) … do not resolve` | **1** |
+
+**So M1 splits, and I am not making the whole change requested:**
+
+- **FALSE, corrected** — the **premise**. *"any link INTO venvs/tools/npm/cache
+  arrives dangling"*, *"a clone always produces some"*, *"every real home on this
+  machine has one"*. A lazy clone writes a regular-file cold shim at those paths,
+  so `find -type l ! -e` finds **nothing** on one.
+- **STILL TRUE, kept** — the **consequence**. *"`skill-manager home verify`
+  REFUSES this home"* at `bootstrap-home.sh:1684`, and `selftest.sh:373`'s
+  assertion on it. `dangling_home_links()` only ever reports links that genuinely
+  do not resolve, and the table above measures that `home verify` refuses exactly
+  those. **The printed warning and the test assertion are correct and unchanged.**
+
+Also re-dated, because it is quoted twice as though current: the *"the remedy is
+not a fixpoint"* measurement was taken against `sync --force-scripts`.
+`home verify` now prints `skill-manager build --stale`. The deletion it justified
+was right; the reason expired.
+
+Both scripts pass `bash -n`.
+
+### 11.1b The widened sweep — every non-markdown file in all four units
+
+| unit | non-md files | dangling | venvs | `home verify` | force-scripts | cold shim / exit 86 | declared-only | artifacts/build |
+| --- | --: | --: | --: | --: | --: | --: | --: | --: |
+| `skill-publisher-skill` | 60 | 0 | 0 | **0** | 0 | 0 | 4 | 54 |
+| `skill-manager-skill` | 5 | 0 | 0 | **0** | 0 | 0 | 0 | 0 |
+| `git-issue-workflow-skill` | 19 | 35 | 18 | **18** | 11 | 4 | 0 | 3 |
+| `git-epic-skill` | 11 | 0 | 1 | **0** | 0 | 0 | 0 | 0 |
+
+**`git-issue-workflow-skill` is the only unit carrying this topic outside
+markdown, and that is where the third copy was.** The other three found nothing,
+and the two apparent exceptions are not claims: skt's 58 hits are its own
+*implementation* (`src/skt/artifacts.py` and its tests — `materialization ==
+"declared-only"` is code, not prose), and `git-epic-skill`'s single `venvs` hit
+is a disk-size comment in `skill-project.toml`.
+
+> **My first sweep was wrong and reported all zeros.** I used `\|` inside
+> `grep -E`, where it is a **literal pipe**, not alternation — so every
+> multi-term pattern searched for a string that cannot occur. It printed a clean
+> bill of health for three units. Recorded because a sweep that cannot fail is
+> the same defect as an assertion that cannot fail, which is what this epic keeps
+> finding, and I nearly shipped one while reporting on someone else's.
+
+### 11.2 M2 — clause 1 was not met, and acting on it falsified the instrument
+
+**The reviewer is right and I flagged the wrong unit.** I doubted
+`skill-manager`; measured, it was the *least* restating. The restatements were in
+the two I did not doubt — `skt/SKILL.md`'s nine-line blockquote (all four points,
+plus exit 86, plus a machine-specific `13 stale of 39 — 0 rebuildable` in a
+checked-in file) and `git-issue-workflow` **twice**, including in
+`references/skill-homes.md`, *the file that had already drifted*. Four copies of
+"exit 86 is normal / `home verify` exits 0", not one.
+
+All three are now **pure routing**: the questions the page answers and where it
+is. No exit codes, no counts, no verbatim product strings.
+
+**Then the instrument moved the wrong way.**
+
+| | instructing units | TOTAL (build / cold / declared / artifacts) | md files that *explain* |
+| --- | --- | --- | --: |
+| baseline | **0 of 4** | 0 / 0 / 1 / 0 | **0** |
+| first publish | 4 of 4 | 6 / 3 / 4 / 4 | **3** |
+| after trim (pure routing) | **3 of 4** — *"missing: git-issue-workflow"* | 3 / 2 / 2 / 3 | **1** |
+| final (symptom-trigger routing) | **4 of 4** | 3 / 2 / 2 / 4 | **1** |
+
+**By the goal's own definition the docs got strictly better at the third row,
+and `check-docs-coverage.py` marked a unit ABSENT** — because a pure pointer
+contains none of the four terms. The instrument does not merely fail to detect a
+copy; it **penalises the fix**, and the only way to keep it green is to leave a
+term in the linking unit.
+
+Resolved by routing on **symptoms** — *"`artifacts list` shows rows I do not
+understand"*, *"a command on my `PATH` refuses instead of running"` — which is
+better routing anyway and happens to carry a term. **That it had to be engineered
+around is the finding.** DEF-082, with the measurement.
+
+**The last column is the honest clause-1 evidence**, and it costs one grep:
+
+```bash
+grep -rlE "exit 86|DECLARED and not built|build it: skill-manager|0 rebuildable" <roots> --include='*.md'
+```
+
+`0 → 3 → 1`. One file explains the mechanism: the page. **Cite that, not
+`N of 4`.**
+
+### 11.3 M3 — the pointer was broken twice over
+
+Confirmed, and worse than I disclosed. Beyond "absent in a home without skt", the
+literal was bare `$SKILL_MANAGER_HOME/…` — **unset in an ordinary session**, so
+it expanded to `/plugins/skt/…`, broken even where skt *is* installed. All four
+now read:
+
+```
+${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/plugins/skt/skills/skt/references/derived-artifacts.md
+```
+
+matching the idiom `git-epic-workflow` already used 25 lines above its own new
+pointer. All four also say the page is absent in a home without skt, and
+`git-epic-workflow` names this project's own home as such a home.
+
+### 11.4 m1 — the page claimed a message that never fires
+
+Correct, and it already cost something: a judged-read agent asserted the
+behaviour *from my page*. `home verify`'s `DECLARED and not built` message exists
+at `HomeCommand.java:322`, but `grep -c DECLARED` on the output of two lazy
+clones is **0** — cold shims are regular files that *resolve*, so nothing is ever
+collected as a candidate.
+
+The page now says `home verify` is **silent** about unbuilt artifacts and exits
+0, that the message exists but should not be expected, and — the useful part —
+that **`home verify` is not the command that separates lazy from broken**;
+`artifacts list`'s materialization column is. The contrasting exit-1 measurement
+from §11.1 is printed beside it.
+
+### 11.5 m2 — an owner-less tree has no producer at all
+
+Correct. Measured, `probes/his-8/build-one-artifact.out`:
+
+```
+$ skill-manager build 'provisioned-tree:cache/skill-script-deploy-helm-computeq' --yes
+  nothing in this home claims to have produced it: no record says which installer
+  wrote it and no artifact names it as an input, so there is no install to rerun
+  and `build` has nothing to offer
+  1 selected: 0 built, 0 already current, 1 not buildable here          exit 0
+```
+
+Three of the four `provisioned-tree` rows in this home are owner-less. Added as
+its own case, with the exit code, so nobody reads exit 0 as "it worked".
+
+### 11.6 Not for me, recorded
+
+- **m3** — DEF-081 now schedules the follow-up: run `git-integration-repo`'s
+  `scripts/refresh.sh` **after** all four leaf PRs merge, never before, because
+  it resets constituents to their default branch and would re-stale the snapshot
+  it was run to fix.
+- **m4** — `--allow-open` judged a legitimate escape. DEF-080 + the upstream
+  issue stands. Nothing to do.
+- Containment re-confirmed: root home, project home and `~/.claude` unwritten.
+- The DEF-077 workaround is judged legitimate and left as is.
+
+### 11.7 I verified the trim instead of assuming it, and it found nine more
+
+**The trim is the change most likely to have broken discoverability**, so it was
+measured rather than asserted. A fourth judged read, fresh agent, no source
+access, the trimmed corpus, with Q4 asking directly and **explicitly offering
+"yes, the trim went too far"** as an acceptable answer. Transcript:
+`judged-read/after-3.md`.
+
+**3 of 3, all high confidence, one hop from `skt/SKILL.md`, zero backtracking.**
+
+> *"It did not hurt me at all… A pointer that names the **question** removes all
+> the uncertainty a pointer that names the **subject** leaves behind. I never had
+> to hedge about whether the page would answer me, and I never opened a second
+> page to be sure."*
+
+It also disputed the premise usefully: skt's SKILL.md is not routing-only — it
+still carries the tier table, the `MERGE_CONFLICT` rule, the sweep gate — so the
+trim was to the *artifact topic*, not the file.
+
+**Nine Q5 findings. Seven fixed:**
+
+| # | finding | fix |
+| --- | --- | --- |
+| 1 | **`13, 4, 22 of 39` above `13 stale — 0 rebuildable, 13 declared-not-built, 4 unverifiable`, which reads as a breakdown and sums to 17** — the exact sum a reader does to decide what to act on | says why before they try: two axes, and `unverifiable` belongs to *agreement*, not materialization |
+| 2 | the owner-less remedy contradicted its own diagnosis one sentence later — *"no record says which installer wrote it"*, then *"reinstall the unit that wrote it"* | names what is actually available: a **hint in the id**, labelled as an inference from a filename |
+| 3 | bare `skill-manager build` given second billing, above the recommended forms, on a page arguing against eager rebuilds | moved below, warning attached |
+| 4 | two different clones (8 vs 13 `declared-only`) both introduced as "the clone measured for this page" | says they are different homes, and that machine-specificity is the point |
+| 5 | the dead-end pointer: *absent in this home* + *do not read the source*, no third option | repo coordinate and install command named in **all four** units |
+| 6 | `skill-homes.md`'s skip list omitted `pm/`, which is deliberately **not** skipped | one clause; without it an agent cannot explain why `uv` works in a clone |
+| 7 | `clonedAt` 2026-08-24 against measurements dated 2026-08-23 | annotated as UTC |
+
+**Two filed rather than fixed:** **DEF-083** (the cold shim's generated ARTI-06
+string is wrong, and prose cannot win a race against a message printed at the
+moment of failure — this **reverses my own earlier decision** not to file it, after
+two independent readers raised it) and **DEF-084** (two units cite `du`-shaped
+disk figures while a third says `du` over-reports these homes ~30x, and the 1.3 GB
+that justifies skipping `tools/` may be inflated by that factor — or may not be a
+`du` figure at all; nobody says).
+
+**One thing it asked for that I did not do.** It argued the literal `exit 86`
+belongs on the front door, because the realistic entry point is *"an agent runs a
+tool, gets a weird 86, and greps its loaded context for `86`"* — and skt's
+SKILL.md has no hit. That is a good argument. **I declined it**: the epic agent's
+instruction was explicitly to drop every exit code from routing text, and one
+judged read is not grounds to reverse an explicit call. A **symptom row** went in
+instead — *"a command on my `PATH` refused instead of running, with an exit code I
+do not recognise"* — which routes the same reader without the literal. **The
+tension is reported, not resolved.** If the epic agent prefers the literal, it is
+four words.
+
+### 11.8 Commits — rounds two and three
+
+| unit | round 2 (review) | round 3 (judged read) | PR |
+| --- | --- | --- | --- |
+| `skt` | `41fdfa2f01ff15de162f315fc343f1c569207121` | `ad14d5f4d54a47bfefc545a1e5ddc2085a8e1700` | #34 |
+| `skill-manager` | `2ba99473b0f36410506e6f76aa565c91279e20ce` | `66dd0004d2b6f205930b17a11f5103f330906aed` | #4 |
+| `git-issue-workflow` | `3170bf16ba5f40a4c9fbeefb3ba56898d9a37171` | `f68b03baa61e54c606aa626120c2a80b6843d6d7` | #23 |
+| `git-epic-workflow` | `0c10a55119d1962f1ceb9d608a49ced53b38b07d` | `fdb2fb4bdbf58e24f9a1f40712e19e286d8cbe37` | #16 |
+
+### 11.9 Validation after the review round
+
+| declared | result |
+| --- | --- |
+| `uv run pytest specs/` | **38 passed** |
+| `jbang RunTests.java` | **ALL PASSED**, exit 0 |
+| `run.py home-integrity` | **BUILD SUCCESSFUL** in 2m15s, exit 0 |
+| `home close-out` | **clean, exit 0** |
+| project / root home writes | **0 / 0** (mtime) |
+
+**The two script edits are comments-only.** `git diff` filtered to non-comment,
+non-blank changed lines returns **nothing** for both `bootstrap-home.sh` and
+`selftest.sh`, and both pass `bash -n`. No executable line changed, so
+`selftest.sh`'s assertions are byte-identical and its behaviour cannot have
+moved — which is why running it was not necessary to justify the change.
+
+### 11.10 What I still think is unresolved
+
+- **Nothing checks that a path a unit names resolves.** M3 fixed the four
+  spellings; the class of defect is untouched, and `check-docs-coverage.py` walks
+  every unit's markdown already, so the check is nearly free.
+- **The judged-read regress does not terminate.** Every round of fixes is
+  unjudged by construction. The right answer is probably one final read against
+  the merged bytes, owned by HIS-6, not another round here.
+- **`skt/SKILL.md` no longer contains `skill-manager build`**, so skt's
+  instructing-unit score now rests entirely on its own reference page. That is
+  correct — the owner should be the only explainer — but it means a future edit
+  that moved the page without updating the front door would still score 4 of 4.
