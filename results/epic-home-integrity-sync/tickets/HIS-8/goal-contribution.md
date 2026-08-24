@@ -816,12 +816,31 @@ four words.
 
 ### 11.8 Commits — rounds two and three
 
-| unit | round 2 (review) | round 3 (judged read) | PR |
-| --- | --- | --- | --- |
-| `skt` | `41fdfa2f01ff15de162f315fc343f1c569207121` | `ad14d5f4d54a47bfefc545a1e5ddc2085a8e1700` | #34 |
-| `skill-manager` | `2ba99473b0f36410506e6f76aa565c91279e20ce` | `66dd0004d2b6f205930b17a11f5103f330906aed` | #4 |
-| `git-issue-workflow` | `3170bf16ba5f40a4c9fbeefb3ba56898d9a37171` | `f68b03baa61e54c606aa626120c2a80b6843d6d7` | #23 |
-| `git-epic-workflow` | `0c10a55119d1962f1ceb9d608a49ced53b38b07d` | `fdb2fb4bdbf58e24f9a1f40712e19e286d8cbe37` | #16 |
+| unit | round 2 (review) | round 3 (judged read) | round 4 (`86`) | **final tip** | PR |
+| --- | --- | --- | --- | --- | --- |
+| `skt` | `41fdfa2f01ff15de162f315fc343f1c569207121` | `ad14d5f4d54a47bfefc545a1e5ddc2085a8e1700` | `9a2371a7e8f754070a80ab8121cb4c2fac375ae7` | **`9a2371a…`** | #34 |
+| `skill-manager` | `2ba99473b0f36410506e6f76aa565c91279e20ce` | `66dd0004d2b6f205930b17a11f5103f330906aed` | — | **`66dd000…`** | #4 |
+| `git-issue-workflow` | `3170bf16ba5f40a4c9fbeefb3ba56898d9a37171` | `f68b03baa61e54c606aa626120c2a80b6843d6d7` | — | **`f68b03b…`** | #23 |
+| `git-epic-workflow` | `0c10a55119d1962f1ceb9d608a49ced53b38b07d` | `fdb2fb4bdbf58e24f9a1f40712e19e286d8cbe37` | — | **`fdb2fb4…`** | #16 |
+
+**Every 40-hex SHA in this file has been resolved against its repository** with
+`git rev-parse --verify <sha>^{commit}` — 15 of 15, plus 7 short forms. That check
+exists because **I fabricated one.** Writing the round-four comment on #248 I
+expanded the short form `6ff4e09` by inventing the remaining 33 characters instead
+of reading them, and posted a 40-hex string that resolves to nothing. Corrected in
+a follow-up comment on #248 rather than edited away, because:
+
+- **it fails this ticket's own acceptance assertion completely** — *"record every
+  published unit's commit SHA so the terminal evaluation can re-read exactly what
+  was published"* — and it fails it **silently**, since a well-formed SHA looks
+  equally authoritative whether or not the object exists. HIS-6 would have hit
+  `fatal: bad object` with no way to tell a fabrication from a force-push;
+- **it is vacuity-ledger row 14 a third time in one ticket**: an output carrying no
+  way to detect its own invalidity. The sweep returned zeros indistinguishable
+  from a clean corpus; the metric returned 1 for a token it should not have
+  counted; this returned a valid-looking SHA for a commit that never existed.
+
+The countermeasure is one line and is now in the ledger's work list.
 
 ### 11.9 Validation after the review round
 

@@ -114,6 +114,17 @@ It is worth noting how row 14 was caught: the author was, at that moment,
 shipped one. That is the same recurrence property as row 12 — reading the entry
 does not confer immunity — which is why this needs a check and not a note.
 
+**And it recurred twice more in the same ticket, both times one level further
+out.** After row 14 was written, HIS-8 (a) proposed a clause-1 metric that keyed
+on a bare token and so could not distinguish an index term from an explanation —
+caught by a falsification control, not by reading it — and (b) posted a 40-hex
+SHA it had expanded by hand, which resolved to nothing. Three instances, one
+ticket, one shape: **an output that carries no way to detect its own
+invalidity.** A sweep's zero, a metric's 1, and a well-formed SHA are all
+indistinguishable from the correct answer at a glance, and all three are cheap to
+make self-checking. That is the argument for these being checks rather than
+conventions.
+
 ### D — the probe exercises a *different branch* than the change
 Row **11**. **The newest, and the one that hides best**, because it passes every
 test the first three impose: the mutation compiles and runs, the fixture is rich
@@ -193,6 +204,7 @@ new graphs.
 | C | a probe asserts the mutated path was reached | unit suites | HIS-15 did it; **not general** |
 | C | **a sweep is validated against a string it is KNOWN to contain before its zeros are believed** — a positive control per pattern, so an unmatchable pattern fails loudly instead of reporting clean | every ticket's evidence sweep; the `RunHis*` harnesses that grep | **HIS-8 (row 14)** — not mechanised. Cheap: one known-present string per pattern, asserted non-zero before the real corpus is scanned |
 | C | a multi-term grep declares its dialect — `-E` with `\|`, or BRE with `\\|`, never mixed | same | **HIS-8 (row 14)** — the specific spelling that produced it |
+| C | **every SHA written into evidence is resolved before it is written** — `git rev-parse --verify <sha>^{commit}` — because a 40-hex string looks equally authoritative whether or not the object exists | every ticket's `goal-contribution.md` and PR body | **HIS-8** — not mechanised. HIS-8 fabricated one in a PR comment by expanding a short form by hand; it self-caught and corrected, and then verified all 15 SHAs in its own evidence. This is the artefact HIS-6 re-reads, so an unresolvable SHA silently voids the "record what was published" acceptance assertion |
 | D | a probe names which BRANCH it exercises, and it is the branch the change moved | every `RunHis*` + probe record | **HIS-17** wrote it down; **convention only** |
 | D | a rule with separately-decided branches has a control per branch | `home-clone` (done: symlink decoy + descent tamper) | **HIS-17**; not general |
 | — | a home's **unit membership** is what the graph intended | new law beside `HomeFixpointLaw` | **HIS-16** |
