@@ -232,27 +232,71 @@ jobs:
       - name: Check hand-authored YAML and spec manifests
         run: uv run .github/scripts/check_yaml.py
 
+      # HOISTED ABOVE THE SPEC SUITES by HIS-5 (#217), which is the only reason
+      # this sits before JBang rather than beside it: the spec suites now shell
+      # TLC, and TLC is a jar. Setting up the JDK is cached and costs seconds;
+      # installing JBang and resolving Maven is the expensive part and still
+      # runs after, so the ordering intent below is preserved.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # TLA+ tools, so the spec suites can actually MODEL-CHECK rather than skip.
+      #
+      # WHY THIS STEP EXISTS. HIS-5 (#217) made
+      # specs/*/tests/test_tlc_expected_violations.py execute the manifest's
+      # expected-violation table — every regression configuration must keep
+      # FAILING, and must fail ON THE INVARIANT THE MANIFEST NAMES. Without a
+      # tlc2 on the runner those 18 cases SKIPPED and CI enforced the manifest
+      # bookkeeping while enforcing none of the invariants. Measured on this
+      # runner before the change: 34 passed, 18 skipped. After: 52 passed, 0
+      # skipped. GOAL-home-invariants says "so the defect cannot come back
+      # unnoticed", and skipped-in-CI does not meet that.
+      #
+      # run_tlc.sh already had the fallback (`java -cp "$TLA2TOOLS_JAR"`), so
+      # this is a jar download and not a skill install.
+      #
+      # PINNED BY DIGEST, and the digest is not decoration: this is the byte-
+      # identical jar spec-double-compiler installs locally, verified equal, so
+      # a green run here and a green run on a developer's machine are the same
+      # model checker rather than two that happen to agree.
+      - name: Fetch TLA+ tools
+        env:
+          TLA2TOOLS_URL: https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+          TLA2TOOLS_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+        run: |
+          set -euo pipefail
+          curl -sSL --retry 3 --retry-delay 2 -o "$RUNNER_TEMP/tla2tools.jar" "$TLA2TOOLS_URL"
+          echo "$TLA2TOOLS_SHA256  $RUNNER_TEMP/tla2tools.jar" | sha256sum -c -
+          echo "TLA2TOOLS_JAR=$RUNNER_TEMP/tla2tools.jar" >> "$GITHUB_ENV"
+
       # The accepted-baseline (specs/program_model) and working-model
       # (specs/current) contract suites. Neither was in any workflow before
       # ARTI-02 (#103), which is how
       # test_program_model_accepts_bounded_cli_disclosure_case_surface stayed
       # red on main across two releases: the check existed, nothing ran it.
       #
-      # Runs before the JBang suite deliberately — both suites finish in well
-      # under a second, so a broken spec model is reported before the runner
-      # spends minutes resolving Maven artifacts.
+      # Runs before the JBang suite deliberately — a broken spec model is
+      # reported before the runner spends minutes resolving Maven artifacts.
+      # (This comment used to say "both suites finish in well under a second".
+      # HIS-5 made that false: the TLC half adds ~18s. The ordering argument is
+      # unchanged — 18 seconds is still far less than Maven resolution — but the
+      # number was wrong to leave standing.)
+      #
+      # SPEC_REQUIRE_TLC=1 turns "tlc2 is missing" from a SKIP into a FAILURE.
+      # Without it a runner that lost the jar would report an unbroken row of
+      # dots, which is the exact defect the suite it is guarding exists to
+      # prevent — a suite that fails to collect also reports no failures.
       #
       # specs/pytest.ini supplies --import-mode=importlib; the two directories
       # carry five identically named test modules and cannot be collected
       # together without it.
       - name: Run spec-model suites
+        env:
+          SPEC_REQUIRE_TLC: "1"
         run: uv run --with pytest pytest specs/program_model/tests specs/current/tests -q
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
 
       - name: Install JBang
         uses: jbangdev/setup-jbang@main

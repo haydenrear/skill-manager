@@ -195,22 +195,246 @@ ticket_slices:
           - hi_child_registered
           - hi_ack_own_writes
           - hi_phase
+          # HIS-5 (#217). Six DISJOINT property groups, listed in group order.
+          # Each new invariant reads only its own group, which is what lets
+          # every expected-violation configuration carry its neighbours and
+          # still have TLC name the target -- see cross_check below.
+          - hi_unit_pass                 # HIS-1
+          - hi_unit_content
+          # FRAME CONDITION, and it is load-bearing. hi_live_source is a
+          # VARIABLE that is assigned ONLY in Init -- constant across all
+          # reachable states, measured. Together with "nothing edits a unit
+          # outside a pass" that makes "the tree diverges from the live source"
+          # and "the pass judged this tree divergent" the same proposition,
+          # which is what lets ADivergentTreeIsNeverSilentlyReplaced be stated
+          # over the divergence instead of over a witness.
+          #
+          # ADD AN ACTION THAT MOVES IT AND THE **CORRECT** CONFIGURATION GOES
+          # RED. Measured with TheSourcePublishesANewRevision added to
+          # HomeIntegrityNext: clause 2 unguarded reddens at depth 2, guarded at
+          # depth 3. That is not a defect in production -- an ordinary clean
+          # out-of-date copy is disposed of and refreshed, which is what `sync`
+          # is for. The repair is to capture what the pass JUDGED, not to weaken
+          # clause 2. See the FRAME CONDITION block in the module.
+          - hi_live_source
+          - hi_record_names_source
+          - hi_held_back
+          - hi_error_cause_live          # HIS-4
+          - hi_gate_open                 # HIS-3
+          - hi_gate_change
+          - hi_full_surfacings
+          - hi_launch_admitted
+          - hi_descent_record            # HIS-10
+          - hi_parent_claims_home
+          - hi_shim_sanctioned
+          - hi_store_write               # HIS-14
+          - hi_agent_write
+          - hi_home_damaged              # HIS-13 / DEF-067
+          - hi_observation
+          - hi_observer_repaired
         actions:
           - SyncAdvancesStoreAndRecord
           - SyncConflictsAndRecordsTheError
           - MaterializeIntoRegisteredChild
           - AcknowledgeCurrentDigest
+          # HIS-5 healthy actions, all reachable from HomeIntegritySpec.
+          - RefreshTheUnitFromEvidenceOnDisk
+          - ResolveTheConflictAndRederiveTheRecord
+          - SyncDetectsAChange
+          - TheGateIsSurfacedInFull
+          - TheGateIsSurfacedCollapsed
+          - TheGateIsAcknowledged
+          - ALaunchProceedsThroughAClearGate
+          - ACloneRecordsADescentTheParentClaims
+          - ACloneRecordsADescentNoParentClaims
+          - TheParentRevokesItsClaim
+          - ACommandBindsBothAxesAndWrites
+          - ACommandWithNoHomeNamedUsesTheAmbientHome
+          - TheHomeTakesDamage
+          - AnObserverReportsWhatItFound
+          - ARepairRunsAsItsOwnCommand
         invariants:
           - RecordDescribesItsStoreOrSaysWhy
           - AckIsNotStaleOnArrival
           - AckWritesFallInsideItsBaseline
           - ProjectionSourceIsDecidable
+          # HIS-5 (#217): one per behavioural fix this epic made.
+          - AnIdenticalTreeIsDisposableWhateverItsRecordNames
+          - ADivergentTreeIsNeverSilentlyReplaced
+          - OneGateIsSurfacedInFullAtMostOnce
+          - AnUnacknowledgedGateStillRefusesALaunch
+          - ARecordedErrorIsAFunctionOfTheLiveTree
+          - SanctionIsRederivedFromTheParentsOwnStore
+          - AHomesTwoAxesNameOneHome
+          - AnObservationNeverRepairsWhatItObserved
+          - ADamagedHomeIsNeverReportedClean
         expected_violations:
           HomeIntegrityInternal_regression_silentdrift.cfg: RecordDescribesItsStoreOrSaysWhy
           HomeIntegrityInternal_regression_staleack.cfg: AckIsNotStaleOnArrival
           HomeIntegrityInternal_regression_selfrepend.cfg: AckWritesFallInsideItsBaseline
           HomeIntegrityInternal_regression_foreignprojection.cfg: ProjectionSourceIsDecidable
           HomeIntegrityInternal_regression_narrowprojection.cfg: ProjectionResolvesInsideThisHome
+          HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg: AnIdenticalTreeIsDisposableWhateverItsRecordNames
+          HomeIntegrityInternal_regression_everythingdisposable.cfg: ADivergentTreeIsNeverSilentlyReplaced
+          HomeIntegrityInternal_regression_gaterefires.cfg: OneGateIsSurfacedInFullAtMostOnce
+          HomeIntegrityInternal_regression_collapsedgateadmits.cfg: AnUnacknowledgedGateStillRefusesALaunch
+          HomeIntegrityInternal_regression_staleerror.cfg: ARecordedErrorIsAFunctionOfTheLiveTree
+          HomeIntegrityInternal_regression_selfcertifyingdescent.cfg: SanctionIsRederivedFromTheParentsOwnStore
+          HomeIntegrityInternal_regression_halfboundhome.cfg: AHomesTwoAxesNameOneHome
+          HomeIntegrityInternal_regression_repairingobserver.cfg: AnObservationNeverRepairsWhatItObserved
+          HomeIntegrityInternal_regression_blindobserver.cfg: ADamagedHomeIsNeverReportedClean
+        witness_dependence:
+          note: >
+            Declared for every HIS-5 invariant, per planning_rules.
+            guard_config_rule. The test used: does the invariant read a
+            variable that exists ONLY so the property can be written -- a
+            shadow of an act that erases its own evidence -- or one the product
+            persists, prints, or leaves on disk? Exactly one of the nine is the
+            former.
+          not_witness_dependent:
+            - AnIdenticalTreeIsDisposableWhateverItsRecordNames
+            - ADivergentTreeIsNeverSilentlyReplaced
+            - OneGateIsSurfacedInFullAtMostOnce
+            - AnUnacknowledgedGateStillRefusesALaunch
+            - ARecordedErrorIsAFunctionOfTheLiveTree
+            - SanctionIsRederivedFromTheParentsOwnStore
+            - AHomesTwoAxesNameOneHome
+            - ADamagedHomeIsNeverReportedClean
+          witness_dependent:
+            AnObservationNeverRepairsWhatItObserved:
+              witness: hi_observer_repaired
+              guard_config: HomeIntegrityInternal_guard_repairingobserver.cfg
+              reason: >
+                DEF-067's own argument. A repairing observer destroys exactly
+                the evidence that would let its verdict be read correctly, so by
+                the time the observation is written the home really is clean and
+                every other invariant here is satisfied. The evidence has to be
+                taken at the instant of the act.
+              guard_result: >
+                "No error has been found" -- which is the finding, not good
+                news: it is DEF-067 consequence 3, "it can green a real defect",
+                demonstrated rather than asserted.
+          surfaced_count_note: >
+            OneGateIsSurfacedInFullAtMostOnce is NOT witness-dependent because
+            HIS-3 took route (a) -- surfacedCount is a persisted field in
+            home.drift.json, read back across processes. Under route (b), the
+            per-process call-site distinction, there would have been nothing on
+            disk and it WOULD have needed a guard. A future change of route
+            silently turns this invariant into a witness-reading one.
+        reachability_probes:
+          note: >
+            Nine invariants that HOLD is not the claim that nine invariants were
+            EVALUATED. Every one is an implication or an equality, and an
+            implication whose antecedent is unreachable is TRUE and worthless --
+            which ProjectionSourceIsDecidable's own reachability note records
+            this view nearly shipping. Both probes run the CORRECT
+            specification and MUST FAIL; their counterexamples are the evidence
+            that the healthy model reaches the states the invariants are about.
+          HomeIntegrityInternal_probe_disposalreach.cfg: NoRefreshedTreeEverHadAForeignRecord
+          HomeIntegrityInternal_probe_reach.cfg: NoHomeReachesEveryStateTheseInvariantsAreAbout
+        executed_by: >
+          specs/*/tests/test_tlc_expected_violations.py, added by HIS-5 after
+          review folded DEF-087 back into the ticket. It reads the three tables
+          above, shells run_tlc.sh per entry, and asserts THE INVARIANT TLC
+          NAMES IS THE ONE DECLARED HERE -- not merely that TLC failed, which
+          would pass in exactly the mechanism-A case this view is about.
+
+          Two halves. The STRUCTURAL checks need no model checker and run
+          everywhere including CI: every declared configuration exists, every
+          configuration on disk is declared, every named invariant is defined in
+          the module, and the healthy configuration lists every declared
+          invariant. The MODEL-CHECKING checks need tlc2 and skip where it is
+          absent; SPEC_REQUIRE_TLC=1 turns that skip into a failure, and the
+          epic's local pre-merge signal sets it.
+
+          Measured: 25 cases, ~16s, both model directories. On a CI-shaped
+          runner with no tlc2: 6 structural cases run, 18 model-checking cases
+          skip with a named reason. Proven to discriminate -- pointing one row
+          at a NEIGHBOUR and declaring a green guard cfg as an expected
+          violation both go red, by name. See DEF-087 for the residue.
+        cross_check: >
+          MECHANISM A, from the vacuity ledger: a configuration that fails for a
+          reason other than the invariant under test is a probe pointed at the
+          wrong branch, and TLC will happily report a counterexample to the
+          wrong property. Every expected-violation configuration above lists its
+          NEIGHBOURING invariants as well as its target where it HAS
+          neighbours, and each was additionally re-run with its TARGET REMOVED
+          and the other thirteen kept: all fourteen came back "No error has been
+          found", so each counterexample violates exactly one invariant and it is
+          the declared one. Transcript:
+          results/epic-home-integrity-sync/tickets/HIS-5/tlc/CROSSCHECK-target-removed.txt
+
+          THE FOURTEEN ARE NOT ONE UNIFORM MEASUREMENT, corrected after review.
+          A cross-check is INFORMATIVE only where some other invariant reads a
+          variable the regression specification actually moves; where the group
+          is read by exactly one invariant, removing it leaves nothing that
+          could fail and the green is true by construction.
+
+            informative (10): silentdrift, staleack, selfrepend,
+              recordvetoesidenticaltree, everythingdisposable, gaterefires,
+              collapsedgateadmits, staleerror, repairingobserver, blindobserver
+            green by construction (3): foreignprojection, selfcertifyingdescent,
+              halfboundhome -- one invariant reads projection_vars,
+              descent_vars, axis_vars respectively
+            degenerate (1): narrowprojection -- its target is not among the
+              thirteen kept, so with it removed the run IS
+              HomeIntegrityInternal.cfg
+
+          The disjointness that makes three of them uninformative is deliberate
+          and is what keeps the counterexamples clean; presenting fourteen
+          equivalent measurements was not.
+
+          SIX of the fourteen configurations list only TypeOK and their target,
+          because their group is read by one invariant and there is no neighbour
+          to list: foreignprojection, halfboundhome, narrowprojection,
+          selfcertifyingdescent, silentdrift, staleack. The other eight list a
+          neighbour that must NOT fire.
+        not_stated_here: >
+          HIS-9 ("a write outside the declared roots is refused") is NOT
+          stated: the at-rest half is already
+          External.WritesThroughOneHomeReachNoOtherHome and
+          External.NoOwnedSurfaceNamesAnotherHome, and restating it is what
+          planning_rules.dual_representation_rule forbids; what HIS-9 adds --
+          the refusal, its exit code and its message -- is a command-surface
+          property and this view models no command surface.
+          HIS-11 ("a failed operation restores the bytes it moved aside") is
+          NOT stated, and the citation was CORRECTED at review:
+          Internal.InFlightMaterializationLeavesTheChildUnitIntact is guarded on
+          `staging.active` and says nothing after an abort, which is the moment
+          HIS-11 is about. The covering invariant is
+          Internal.AgentEditsSurviveMaterialization -- a post-condition over a
+          MONOTONE witness set whose own comment reads "no stage, swap, prune,
+          or abort may overwrite or delete it". HIS-11's defect was an EMPTY
+          compensation list, and an at-rest invariant cannot tell "restored"
+          from "never touched" -- which is byte-identical and harmless anyway;
+          what catches an empty compensation is a non-degenerate pre-state in a
+          probe, a fixture property (vacuity ledger row 10), not a state
+          relation.
+          HIS-14 IS stated, because no module in this directory models the AGENT
+          axis at all -- External's homes have one axis -- which is also why
+          DEF-076 could measure a dangling projection in every ticket worktree's
+          .codex and .gemini with nothing to notice it.
+        state_space_note: >
+          The healthy configuration is 158,801 states generated / 24,000
+          distinct / depth 14, inside budgets.max_distinct_states (50,000) and
+          well inside budgets.tlc_seconds. It is NOT inside
+          budgets.max_component_variables (6): the module declares 28. That
+          heuristic is about COMPONENT size, and this module is six disjoint
+          groups of at most five variables plus ARTI-22's ten; but the number is
+          recorded rather than argued away, because the next group added to this
+          view multiplies the state count rather than adding to it.
+
+          THE TRADE-OFF THE FIRST VERSION OF THIS NOTE OMITTED. Splitting into
+          six specifications would turn the product into a sum -- and it would
+          also make HomeIntegrityInternal_probe_reach.cfg IMPOSSIBLE. That probe
+          works precisely because every group's antecedent can be live in ONE
+          state, which is only true while one specification drives them all. So
+          the un-split model is not merely convenient; it is what buys the
+          strongest vacuity evidence in this view. A split needs a different
+          answer to "was this invariant ever evaluated", not just six more
+          healthy configurations. All 11 reachable antecedents were verified
+          directly at review: no invariant here is checked over a space too
+          small to reach its interesting states.
         narrow_projection_note: >
           The last row is not a defect in the product: it runs the CORRECT
           specification -- a healthy home -- against #124's narrower wording of

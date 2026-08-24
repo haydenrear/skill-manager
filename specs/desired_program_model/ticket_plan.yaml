@@ -3161,8 +3161,54 @@ tickets:
   - id: HIS-5
     title: "state the four fixes as invariants a broken model violates"
     phase: HIS
-    status: planned
+    status: delivered
     epic: home-integrity-sync
+    status_note_delivered: >
+      DELIVERED. NINE invariants, not four: the plan's four candidates were all
+      settled and stated (HIS-1 both clauses, HIS-3 both halves, HIS-4), and
+      four more were added after arguing each of the five candidates the plan
+      did not list.
+
+      STATED BEYOND THE PLAN, with the reason in each case.
+      SanctionIsRederivedFromTheParentsOwnStore (HIS-10) -- a clone's descent is
+      a POINTER, not a GRANT; the invariant mentions the descent record NOWHERE,
+      so it refutes both faces review rejected, the hand-written
+      home.provenance.json and the clone-time snapshot that keeps sanctioning
+      after the parent revokes. HIS-10's own plan row promised
+      GOAL-home-invariants a "direct" contribution and discharged it against
+      `jbang RunTests.java`; this is the TLA+ half of that promise, arriving
+      seven promotion slots late.
+      AHomesTwoAxesNameOneHome (HIS-14) -- stated because NO module in this
+      directory models the agent axis. External's homes have one axis, which is
+      also why DEF-076 could measure a dangling projection in every ticket
+      worktree's .codex and .gemini with nothing to notice it.
+      AnObservationNeverRepairsWhatItObserved and
+      ADamagedHomeIsNeverReportedClean (HIS-13 / DEF-067) -- the first is the
+      one WITNESS-DEPENDENT invariant here and the only one that describes
+      behaviour the product STILL HAS. DEF-067 is open.
+
+      NOT STATED, deliberately. HIS-9's write confinement: the at-rest half is
+      External.WritesThroughOneHomeReachNoOtherHome and
+      External.NoOwnedSurfaceNamesAnotherHome, and restating it is what
+      dual_representation_rule forbids; the refusal and its exit code are a
+      command-surface property this view does not model. HIS-11's compensation:
+      the rule is Internal.InFlightMaterializationLeavesTheChildUnitIntact and
+      External.AConflictedUnitIsNeverPartiallyWritten, and HIS-11's actual
+      defect -- an EMPTY compensation list -- is invisible to an at-rest
+      invariant, which cannot tell "restored" from "never touched".
+
+      CLAUSE 2 HELD: all five pre-existing regression cfgs still FAIL, each on
+      its own invariant, individually re-run and individually reported.
+
+      THE CHECK WORTH REVIEWING FIRST. Every expected-violation cfg carries its
+      NEIGHBOURING invariants as well as its target, and all fourteen were
+      additionally re-run with the TARGET REMOVED and the other thirteen kept:
+      fourteen greens, so each counterexample violates exactly one invariant and
+      it is the declared one. That is vacuity-ledger mechanism A answered by
+      measurement rather than by reading the trace. Two REACHABILITY PROBES were
+      added for the same reason facing the other way -- nine invariants that
+      HOLD is not the claim that nine were EVALUATED -- and both must FAIL.
+    delivered_in: "PR #TBD, feature/217-his-5"
     github_issue: 217
     wave: 11
     depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]

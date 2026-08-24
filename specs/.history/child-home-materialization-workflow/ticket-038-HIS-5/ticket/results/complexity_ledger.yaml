@@ -1,0 +1,207 @@
+# Complexity ledger input -- MF-019 standing objective.
+#
+# `close ticket` refuses until this is filled in. That refusal is the mechanism:
+# the standing objective is a required close-out step, not a stance.
+#
+# The delta is computed for you from `analyze complexity` and the TLC report.
+# What you supply is the part a tool cannot know: whether behavior was retained,
+# what the refinement search found, and why any increase is essential.
+
+# Validated-refactor basis -- CD-09 (owner-approved 2026-07-22). This is what
+# LICENSES a complexity DECREASE: TLC green on the model before AND after the
+# change, behavior tests green, and the before/after descriptor comparison
+# recorded. Absent, unknown, or degraded evidence REJECTS a decrease: an
+# unmeasured constraint cannot witness retention. (The fourth obligation, the
+# inspected transition-level diff, is `transition_diff:` below and is demanded
+# whenever the MF-020 red flag fires.)
+#
+#   tlc_before:            green | fail        -- TLC on the pre-change model
+#   tlc_after:             green | fail        -- TLC on the post-change model
+#   behavior_tests:        pass | fail         -- the repository behavior tests
+#   descriptor_comparison: recorded            -- before/after descriptor doc
+validated_refactor:
+  tlc_before:
+    status: "green"
+    evidence: "results/epic-home-integrity-sync/tickets/HIS-5/tlc/BASELINE.HomeIntegrityInternal.cfg.out -- 11 states generated, 10 distinct, No error has been found. The four ARTI-22 regression configurations are BASELINE.*_regression_*.out and all four fail on their own invariant, as does the narrowprojection correction."
+  tlc_after:
+    status: "green"
+    evidence: "results/epic-home-integrity-sync/tickets/HIS-5/tlc/HomeIntegrityInternal.cfg.out -- 158,801 states generated, 24,000 distinct, depth 14, No error has been found, over 13 invariants instead of 4. All five pre-existing regression configurations still FAIL, each on its own invariant."
+  behavior_tests:
+    status: "pass"
+    evidence: "jbang RunTests.java -- ALL PASSED, 146 suites / 1384 cases / 0 failed. uv run pytest specs/ -- 38 passed. python skills/test_graph/scripts/run.py home-integrity -- BUILD SUCCESSFUL, 18/18 nodes passed, run 20260824-021701. All three run with the five home variables UNSET, per DEF-074."
+  descriptor_comparison:
+    status: "not_recorded"
+    evidence: "NOT PRODUCED, and the honest reason rather than a TODO: this ledger's declared model is SkillManager.tla + MC.cfg, which this ticket does not touch byte-for-byte, so its descriptor is unchanged and there is nothing to compare. The module that DID change, HomeIntegrityInternal, is a bounded non-replacement view with non_replacement: true and no descriptor of its own. Recorded as absent instead of claimed."
+
+# Fuzzing-era retention members -- RECORDED at every close, non-gating since
+# CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs
+# floor 0.8, 0/9 content bugs caught). `not_run` is the honest value; fill in a
+# measured verdict only when one of them actually ran.
+#
+#   kill_rate:           pass | below_floor | incomplete_catalog | not_run   (MF-016)
+#   effect_conformance:  clean | gaps | dead_surface | unobservable | not_run (MF-013/MF-027)
+#   external_coverage:   pass | gaps | incomplete | not_run                  (MF-015)
+#
+# NOTE: `unobservable` IS NOT `clean`. MF-027 made the effect oracle refuse
+# targets it cannot see; the record keeps that distinction even though the
+# member no longer gates.
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+# Coverage audit -- MF-026. The completeness REVIEW, distinct from the three
+# retention members above, which are all FIDELITY measures bounded to what is
+# already modeled. Unmodeled surface is invisible to every one of them, and this
+# is the only sweep that looks at it.
+#
+#   status: pass | fail | incomplete | not_run
+#
+# RECORDED, NEVER REFUSING (2026-08-04, owner direction). It was a hard gate at
+# workflow close with no override; it is now an optional agent-run review whose
+# verdict is written down and read by a person. `incomplete` IS STILL NOT
+# `pass`, because a sweep that did not walk the surface says nothing about it --
+# what was withdrawn is the refusal, not the distinction.
+#
+# Procedure: prompts/coverage_audit.md   Doctrine: references/coverage_audit.md
+coverage_audit:
+  status: "not_run"
+  report: ""          # path to the filled templates/coverage_audit_report.md
+  in_scope_gaps: null # count; in-scope gaps are HARD -- model it or change the program
+  scope_source: ""    # plan file:lines the declared scope was READ from, never chosen
+
+# Required if complexity INCREASED. Name the new essential behavior the added
+# representation carries. This documents real behavior; it does not waive the
+# increase, which is recorded and reported either way.
+justification: >
+  COMPLEXITY INCREASED IN THE MODULE THIS TICKET TOUCHED, and the ledger's own
+  delta says zero because its declared model is SkillManager.tla, which is
+  untouched. Stating the real number rather than accepting the convenient one:
+  HomeIntegrityInternal went from 10 variables / 8 actions / 6 configurations
+  to 28 variables / 23 actions / 18 configurations, and the healthy run from 10
+  distinct states to 24,000.
+
+  THE ESSENTIAL BEHAVIOUR THE ADDED REPRESENTATION CARRIES. Nine properties
+  this epic FIXED in production and that nothing anywhere asserted: a tree
+  identical to the live source is disposable whatever its record names (HIS-1),
+  a divergent one is not (HIS-1), one gate is surfaced in full at most once
+  (HIS-3), an unacknowledged gate still refuses a launch (HIS-3), a reported
+  error is a function of the live tree (HIS-4), a clone's sanction is
+  re-derived from the parent's own store rather than granted by its record
+  (HIS-10), a home's two axes name one home (HIS-14), an observation never
+  repairs what it observed (HIS-13 / DEF-067), and a damaged home is never
+  reported clean (HIS-13). Each is carried by its own disjoint variable group,
+  each has an expected-violation configuration that fails on IT and on nothing
+  else, and that isolation is measured rather than asserted -- see
+  tlc/CROSSCHECK-target-removed.txt.
+
+  WHAT THE INCREASE COSTS, stated because it is the part a later reader needs:
+  the six groups are DISJOINT, so the healthy state count is a PRODUCT. A
+  seventh group multiplies rather than adds, and 24,000 of
+  budgets.max_distinct_states = 50,000 is already half the ceiling. Filed as
+  DEF-087 together with the observation that nothing runs these configurations
+  automatically at all.
+
+# The recursive refinement loop -- REQUIRED at every close.
+# Either an approved recommendation with evidence, or "searched, found none".
+# Recommendations are advisory and user-approved, never auto-applied.
+refinement:
+  searched: true
+  outcome: "found"
+  detail: >
+    FOUR smaller representations were considered. Three were taken and one is
+    recommended and NOT applied.
+
+    TAKEN (1): three of the five extra candidate properties were argued and
+    DROPPED rather than modelled. HIS-9's write confinement is already
+    External.WritesThroughOneHomeReachNoOtherHome and
+    External.NoOwnedSurfaceNamesAnotherHome (dual_representation_rule);
+    HIS-11's compensation is already
+    Internal.InFlightMaterializationLeavesTheChildUnitIntact; and DEF-036 /
+    DEF-040, both routed to this ticket as "state it as an invariant", were
+    REFUSED because a bounded model in which the author writes both derivations
+    cannot catch two Java methods drifting apart -- an assertion that would pass
+    forever regardless of the code, which is the defect #217 exists to prevent.
+    Recorded as DEF-088. That is five properties' worth of variables not added.
+
+    TAKEN (2): HIS-1's two clauses were NOT collapsed into the single equality
+    `hi_held_back <=> (hi_unit_content # hi_live_source)`, which would have been
+    one invariant instead of two over the same variables. Rejected because each
+    clause has an INDEPENDENT counterexample -- the record-consulting rule and
+    the dispose-everything rule -- and the collapsed form gives them one
+    configuration and one report line, which is exactly the shape that lets a
+    fix that went too far read as a fix that worked.
+
+    TAKEN (3): the HIS-1 pass is ONE action rather than a present-then-decide
+    pair, which removes an intermediate state in which a divergent tree is not
+    yet held back and would have forced clause 2 to be weakened to
+    "...once the pass is done" -- a guard a broken model satisfies by never
+    finishing a pass.
+
+    RECOMMENDED, NOT APPLIED: give each of the six property groups its OWN
+    specification over its own variable set, following this repository's
+    existing `two_specs_per_module` precedent, instead of one
+    HomeIntegritySpec over all 28 variables. That turns the healthy state count
+    from a PRODUCT of the groups into a SUM. It was not applied because the
+    single healthy specification is what lets HomeIntegrityInternal.cfg check
+    all thirteen invariants in one run against a home that reaches all of their
+    antecedents, which the two reachability probes then demonstrate; splitting
+    it needs six healthy configurations and a decision about where the
+    cross-group reachability probe lives. Advisory, unapproved, and named as
+    the decision most likely to look wrong at the next extension.
+  measured: false      # the product-vs-sum figure is arithmetic, not a TLC run
+  applied: false
+  approved_by: ""
+
+# Required only if a generated-states drop at constant distinct states is
+# detected. That is a RED FLAG (deleted self-loop, MF-020), not a win -- record
+# the inspected transition-level diff here to accept it.
+transition_diff: ""
+
+# REQUIRED. The narrative ledger: reasoning, measured alternatives, findings the
+# machine-checked core above cannot express. Path to a document, or prose.
+narrative: >
+  results/epic-home-integrity-sync/tickets/HIS-5/goal-contribution.md is the
+  narrative ledger. Read section 3 first -- it is the part the machine-checked
+  core above cannot express.
+
+  THE FINDING THIS TICKET IS ACTUALLY ABOUT. TLC reports the FIRST invariant it
+  finds violated, in an order the author does not control, so a configuration
+  written to refute invariant X can be refuting invariant Y for years and read
+  identically in every transcript. "The regression cfg fails" is therefore a
+  claim about iteration order, not about the invariant. Every one of the
+  fourteen expected-violation configurations here was consequently re-run with
+  its TARGET REMOVED and the other thirteen invariants kept, and had to come
+  back green. Fourteen greens. That is vacuity-ledger mechanism A answered by
+  measurement rather than by reading a trace, and it is the check a reviewer
+  should attack first -- transcript at tlc/CROSSCHECK-target-removed.txt.
+
+  THE SAME QUESTION FACING THE OTHER WAY. Nine invariants that HOLD is not the
+  claim that nine were EVALUATED: every one is an implication or an equality,
+  and an implication whose antecedent is unreachable is TRUE and worthless.
+  This view has already nearly shipped that exact defect once -- ARTI-22's
+  ProjectionSourceIsDecidable had "foreign" unassigned and TLC could not
+  distinguish it from TRUE. Two reachability probes were added, following
+  External.NoWorktreeEditEverReachesTheRootHome, and BOTH MUST FAIL; the second
+  one's counterexample is a nine-state trace in which the antecedent of every
+  remaining new invariant is live at once.
+
+  THREE THINGS I AM NOT CONFIDENT ABOUT, in the order a reviewer should test
+  them. (1) NOTHING RUNS THESE CONFIGURATIONS -- run_tlc.sh has no caller in
+  test_graph, in pytest or in CI, and the graphs are suspended on push and PR,
+  so the manifest's expected_violations map is a table only a human re-running
+  eighteen commands can falsify. An assertion nobody runs is the same defect as
+  an assertion that cannot fail, one level up. DEF-087. (2) The HIS-11 omission
+  is the weakest of the two: a write witness would make it statable, the way
+  External.sync_history was added for exactly this reason, and I did not add
+  one. (3) AnObservationNeverRepairsWhatItObserved is TRUE of the desired
+  instrument and FALSE of the shipped one, because DEF-067 is open -- so
+  specs/current now asserts something the product does not do, and
+  specs/current and specs/desired_program_model are byte-identical for this
+  module, which leaves the distinction nowhere to live.

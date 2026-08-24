@@ -108,6 +108,78 @@ status:
       - SyncConflictsAndRecordsTheError
       - MaterializeIntoRegisteredChild
       - AcknowledgeCurrentDigest
+      # HIS-5 (#217), epic/home-integrity-sync.
+      - RefreshTheUnitFromEvidenceOnDisk
+      - ResolveTheConflictAndRederiveTheRecord
+      - SyncDetectsAChange
+      - TheGateIsSurfacedInFull
+      - TheGateIsSurfacedCollapsed
+      - TheGateIsAcknowledged
+      - ALaunchProceedsThroughAClearGate
+      - ACloneRecordsADescentTheParentClaims
+      - ACloneRecordsADescentNoParentClaims
+      - TheParentRevokesItsClaim
+      - ACommandBindsBothAxesAndWrites
+      - ACommandWithNoHomeNamedUsesTheAmbientHome
+      - TheHomeTakesDamage
+      - AnObserverReportsWhatItFound
+      - ARepairRunsAsItsOwnCommand
+    # HIS-5 (#217). THE TABLE, DECLARED BESIDE THE CONFIGURATIONS IT DESCRIBES.
+    # It was in ../desired_program_model/spec_manifest.yaml only, and this
+    # directory holds byte-identical copies of every configuration -- so the
+    # tree that CI actually collects (specs/current/tests) had no declaration
+    # of what its own files are for. That is the shape ARTI-22 already shipped
+    # once and #103 spent a whole ticket repairing.
+    #
+    # tests/test_tlc_expected_violations.py EXECUTES all three tables and
+    # asserts the invariant TLC names is the one declared here.
+    expected_violations:
+      HomeIntegrityInternal_regression_silentdrift.cfg: RecordDescribesItsStoreOrSaysWhy
+      HomeIntegrityInternal_regression_staleack.cfg: AckIsNotStaleOnArrival
+      HomeIntegrityInternal_regression_selfrepend.cfg: AckWritesFallInsideItsBaseline
+      HomeIntegrityInternal_regression_foreignprojection.cfg: ProjectionSourceIsDecidable
+      HomeIntegrityInternal_regression_narrowprojection.cfg: ProjectionResolvesInsideThisHome
+      HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg: AnIdenticalTreeIsDisposableWhateverItsRecordNames
+      HomeIntegrityInternal_regression_everythingdisposable.cfg: ADivergentTreeIsNeverSilentlyReplaced
+      HomeIntegrityInternal_regression_gaterefires.cfg: OneGateIsSurfacedInFullAtMostOnce
+      HomeIntegrityInternal_regression_collapsedgateadmits.cfg: AnUnacknowledgedGateStillRefusesALaunch
+      HomeIntegrityInternal_regression_staleerror.cfg: ARecordedErrorIsAFunctionOfTheLiveTree
+      HomeIntegrityInternal_regression_selfcertifyingdescent.cfg: SanctionIsRederivedFromTheParentsOwnStore
+      HomeIntegrityInternal_regression_halfboundhome.cfg: AHomesTwoAxesNameOneHome
+      HomeIntegrityInternal_regression_repairingobserver.cfg: AnObservationNeverRepairsWhatItObserved
+      HomeIntegrityInternal_regression_blindobserver.cfg: ADamagedHomeIsNeverReportedClean
+    reachability_probes:
+      HomeIntegrityInternal_probe_disposalreach.cfg: NoRefreshedTreeEverHadAForeignRecord
+      HomeIntegrityInternal_probe_reach.cfg: NoHomeReachesEveryStateTheseInvariantsAreAbout
+    witness_dependence:
+      witness_dependent:
+        AnObservationNeverRepairsWhatItObserved:
+          witness: hi_observer_repaired
+          guard_config: HomeIntegrityInternal_guard_repairingobserver.cfg
+    invariants:
+      - RecordDescribesItsStoreOrSaysWhy
+      - AckIsNotStaleOnArrival
+      - AckWritesFallInsideItsBaseline
+      - ProjectionSourceIsDecidable
+      - AnIdenticalTreeIsDisposableWhateverItsRecordNames
+      - ADivergentTreeIsNeverSilentlyReplaced
+      - OneGateIsSurfacedInFullAtMostOnce
+      - AnUnacknowledgedGateStillRefusesALaunch
+      - ARecordedErrorIsAFunctionOfTheLiveTree
+      - SanctionIsRederivedFromTheParentsOwnStore
+      - AHomesTwoAxesNameOneHome
+      - AnObservationNeverRepairsWhatItObserved
+      - ADamagedHomeIsNeverReportedClean
+    his_5_extension: >
+      HIS-5 (#217) states this epic's behavioural fixes as invariants a
+      deliberately broken model violates. ARTI-22's four invariants and five
+      regression configurations are unchanged and all five still FAIL on their
+      own invariant; nine invariants, nine expected-violation configurations,
+      one guard configuration and two reachability probes are added. The
+      authoritative per-invariant declaration -- including witness-dependence,
+      what is deliberately NOT stated, and the cross-check that each
+      counterexample violates exactly one invariant -- is in
+      ../desired_program_model/spec_manifest.yaml, ticket_slices.ARTI-22.
     corrections_after_review: >
       Four numbers in the first version of this slice were wrong and are
       corrected here rather than quietly edited. (1) The CHM plan has 34
@@ -145,13 +217,31 @@ status:
       tlc:
         status: passed
         views: 1
-        configurations: 6
-        expected_violations: 5
+        # HIS-5 (#217): was 6 configurations / 5 expected violations.
+        configurations: 18
+        expected_violations: 14
+        guard_configurations: 1
+        reachability_probes: 2
+        healthy_run: 158801 states generated, 24000 distinct, depth 14
         commands:
           - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal.cfg
           - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_silentdrift.cfg
           - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_staleack.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_selfrepend.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_foreignprojection.cfg
           - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_narrowprojection.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_everythingdisposable.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_gaterefires.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_collapsedgateadmits.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_staleerror.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_selfcertifyingdescent.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_halfboundhome.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_repairingobserver.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_blindobserver.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_guard_repairingobserver.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_probe_disposalreach.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_probe_reach.cfg
       graph:
         status: passed
         full_graphs: [home-integrity]
