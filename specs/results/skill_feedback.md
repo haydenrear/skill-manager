@@ -243,3 +243,63 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 - workaround_applied: none
 - recommendation: no ticket needed — fixed in skill-manager 6d4c6a4 and verified here
 - status: resolved
+
+## Close-out ticket HIS-5
+
+- close_scope: ticket
+- close_id: HIS-5
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T02:21:26+00:00
+- summary: >
+    HIS-5 (#217): HomeIntegrityInternal goes from 4 invariants / 5 regression
+    configurations to 13 / 14, plus one guard configuration and two reachability
+    probes. Nine new invariants, one per behavioural fix this epic made. Every
+    expected-violation configuration was re-run with its TARGET REMOVED and the
+    other thirteen kept -- fourteen greens -- so each counterexample violates
+    exactly one invariant and it is the declared one. All five pre-existing
+    regression configurations still fail, each on its own invariant. pytest
+    specs/ 38 passed, RunTests.java ALL PASSED (146 suites / 1384 cases),
+    home-integrity graph BUILD SUCCESSFUL 18/18.
+    CLOSE TAKEN UNDER --allow-open for the reason HIS-8 already filed as SF-002
+    below; the ticket agent stops at PR open by rule 7, so no honest plan status
+    satisfied the gate.
+- feedback_status: items-recorded
+- duplicate_avoided: >
+    I had written my own SF-002 for the `--allow-open` gate before rebasing onto
+    the epic tip, and HIS-8 had already filed it -- with an upstream URL. It was
+    DROPPED at the rebase rather than appended. Recorded because "I filed a
+    finding as new that another ticket had recorded two days earlier" is this
+    epic's recurring defect, and the only reason it did not recur here is that
+    the rebase conflict forced both versions of this file to be read side by
+    side. Nothing would have caught it had the two tickets touched different
+    files.
+
+### SF-004 — the ledger's delta reports zero for a module that grew 2.8x
+- category: metric-blind-spot
+- target: complexity ledger (MF-019) — `complexity_ledger_model` scoping
+- observed_on: haydenrear/skill-manager HIS-5 (#217)
+- gated_quantity: variables/actions of `SkillManager.tla` + `MC.cfg`
+- measured_quantity: variables/actions of the module the ticket actually changed
+- evidence: >
+    The close printed `measured: variables=38 actions=9` and
+    `delta: direction=zero (vs ISSUE-168)`. Both are true of the declared
+    ledger model, which this ticket does not touch. `HomeIntegrityInternal`
+    went from 10 variables / 8 actions / 6 configurations to 28 / 23 / 18, and
+    its healthy run from 10 distinct states to 24,000 — none of which the
+    delta can see, because the module is a declared non-replacement view and
+    is not the ledger's model.
+- metric_blind_spot: >
+    A repository whose accepted monolith is frozen while all real work happens
+    in bounded non-replacement views gets `direction=zero` on every close, so
+    the standing objective is measured against a model nobody is editing.
+- workaround_applied: >
+    none — the real numbers were written into `justification:` by hand, which
+    is the only place they exist. A reader of `specs/results/complexity_ledger.json`
+    alone would see zero.
+- recommendation: >
+    Let the ledger measure the union of the modules a ticket's `tla:` conflict
+    keys name, falling back to `complexity_ledger_model` when that set is
+    empty; or refuse `direction=zero` when the ticket's conflict keys name a
+    module the ledger does not measure.
+- status: not-filed — filing against tla-spec-dev is outside a ticket agent's mandate. Reported in the PR body
+  so the epic owner can decide whether to file it.

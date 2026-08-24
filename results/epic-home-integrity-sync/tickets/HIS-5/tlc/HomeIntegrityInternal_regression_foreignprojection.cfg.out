@@ -1,0 +1,78 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 90 and seed -7193796515889754943 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 23434] (Mac OS X 26.6.1 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/hayde/IdeaProjects/wt-217-his-5/specs/desired_program_model/HomeIntegrityInternal.tla
+Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Integers.tla
+Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module HomeIntegrityInternal
+Starting... (2026-08-23 22:08:06)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-23 22:08:06.
+Error: Invariant ProjectionSourceIsDecidable is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ hi_projection_target = "self"
+/\ hi_launch_admitted = FALSE
+/\ hi_gate_open = FALSE
+/\ hi_store_revision = "A"
+/\ hi_unit_content = "t_src"
+/\ hi_home_digest = "A"
+/\ hi_gate_change = 0
+/\ hi_observer_repaired = FALSE
+/\ hi_acknowledged = TRUE
+/\ hi_record_error = FALSE
+/\ hi_observation = "none"
+/\ hi_store_write = "none"
+/\ hi_shim_sanctioned = FALSE
+/\ hi_phase = "provisioned"
+/\ hi_home_damaged = FALSE
+/\ hi_child_registered = FALSE
+/\ hi_ack_own_writes = FALSE
+/\ hi_record_revision = "A"
+/\ hi_live_source = "t_src"
+/\ hi_held_back = FALSE
+/\ hi_record_names_source = FALSE
+/\ hi_error_cause_live = FALSE
+/\ hi_parent_claims_home = FALSE
+/\ hi_descent_record = "none"
+/\ hi_full_surfacings = 0
+/\ hi_unit_pass = "pending"
+/\ hi_agent_write = "none"
+/\ hi_ack_baseline = "A"
+
+State 2: <MaterializeIntoUnregisteredHome line 326, col 3 to line 332, col 24 of module HomeIntegrityInternal>
+/\ hi_projection_target = "foreign"
+/\ hi_launch_admitted = FALSE
+/\ hi_gate_open = FALSE
+/\ hi_store_revision = "A"
+/\ hi_unit_content = "t_src"
+/\ hi_home_digest = "A"
+/\ hi_gate_change = 0
+/\ hi_observer_repaired = FALSE
+/\ hi_acknowledged = TRUE
+/\ hi_record_error = FALSE
+/\ hi_observation = "none"
+/\ hi_store_write = "none"
+/\ hi_shim_sanctioned = FALSE
+/\ hi_phase = "provisioned"
+/\ hi_home_damaged = FALSE
+/\ hi_child_registered = FALSE
+/\ hi_ack_own_writes = FALSE
+/\ hi_record_revision = "A"
+/\ hi_live_source = "t_src"
+/\ hi_held_back = FALSE
+/\ hi_record_names_source = FALSE
+/\ hi_error_cause_live = FALSE
+/\ hi_parent_claims_home = FALSE
+/\ hi_descent_record = "none"
+/\ hi_full_surfacings = 0
+/\ hi_unit_pass = "pending"
+/\ hi_agent_write = "none"
+/\ hi_ack_baseline = "A"
+
+2 states generated, 2 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 2.
+Finished in 00s at (2026-08-23 22:08:06)

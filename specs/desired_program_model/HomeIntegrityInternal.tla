@@ -57,16 +57,90 @@ VARIABLES
   hi_projection_target,    \* where a recorded projection resolves
   hi_child_registered,     \* is that target a child home THIS home registered
   hi_ack_own_writes,       \* did the acking operation itself write after its baseline
-  hi_phase
+  hi_phase,
 
+  \* ------------------------------------------------------------ HIS-5 ---
+  \* HIS-1: disposability, decided from bytes on disk.
+  hi_unit_pass,            \* has the refresh pass for this unit run yet
+  hi_unit_content,         \* the bytes the destination unit is standing on
+  hi_live_source,          \* the bytes the live SOURCE is standing on right now
+  hi_record_names_source,  \* does the unit's record name THIS store as its source
+  hi_held_back,            \* did the pass refuse to refresh the unit
+
+  \* HIS-4: a reported error is re-derived, not remembered.
+  hi_error_cause_live,     \* is the condition the recorded error names true of the tree
+
+  \* HIS-3: the drift gate settles without failing open.
+  hi_gate_open,            \* is there an unacknowledged drift gate
+  hi_gate_change,          \* how many distinct changes the open gate has absorbed
+  hi_full_surfacings,      \* home.drift.json's surfacedCount for the CURRENT gate content
+  hi_launch_admitted,      \* did the launch gate let the process run
+
+  \* HIS-10: a clone's descent is a pointer, not a grant.
+  hi_descent_record,       \* what the clone's provenance record names as its parent
+  hi_parent_claims_home,   \* does that parent's OWN store hold a live claim on this home
+  hi_shim_sanctioned,      \* does a reader treat the inherited parent-store shim as sanctioned
+
+  \* HIS-14: a home has two axes.
+  hi_store_write,          \* which home the STORE half of a command's writes landed in
+  hi_agent_write,          \* which home the AGENT-CONFIG half landed in
+
+  \* HIS-13 / DEF-067: an observer that repairs is no longer an observer.
+  hi_home_damaged,         \* does the home carry the defect the instrument exists to detect
+  hi_observation,          \* what the observation reported
+  hi_observer_repaired     \* WITNESS: did the observation itself run a remedy
+
+\* Written out literally. TLC recognizes the subscript of [][A]_vars
+\* syntactically and warns that every variable is missing from it when the
+\* tuple is built by concatenating the group tuples below.
 vars == << hi_record_revision, hi_store_revision, hi_record_error,
            hi_home_digest, hi_ack_baseline, hi_acknowledged,
            hi_projection_target, hi_child_registered, hi_ack_own_writes,
-           hi_phase >>
+           hi_phase,
+           hi_unit_pass, hi_unit_content, hi_live_source,
+           hi_record_names_source, hi_held_back,
+           hi_error_cause_live,
+           hi_gate_open, hi_gate_change, hi_full_surfacings,
+           hi_launch_admitted,
+           hi_descent_record, hi_parent_claims_home, hi_shim_sanctioned,
+           hi_store_write, hi_agent_write,
+           hi_home_damaged, hi_observation, hi_observer_repaired >>
+
+\* Group tuples, used only in UNCHANGED clauses. Each HIS-5 property group is
+\* a DISJOINT set of variables and each new invariant reads only its own
+\* group, so a counterexample to one cannot be a counterexample to another.
+\* That separation is not cosmetic: it is what lets every expected-violation
+\* configuration below carry its NEIGHBOURS as well as its target and still
+\* name the target in TLC's report. See the vacuity ledger, mechanism A -- a
+\* configuration that fails for a reason other than the invariant under test
+\* is a probe pointed at the wrong branch.
+arti22_vars   == << hi_record_revision, hi_store_revision, hi_record_error,
+                    hi_home_digest, hi_ack_baseline, hi_acknowledged,
+                    hi_projection_target, hi_child_registered,
+                    hi_ack_own_writes, hi_phase >>
+disposal_vars == << hi_unit_pass, hi_unit_content, hi_live_source,
+                    hi_record_names_source, hi_held_back >>
+gate_vars     == << hi_gate_open, hi_gate_change, hi_full_surfacings,
+                    hi_launch_admitted >>
+descent_vars  == << hi_descent_record, hi_parent_claims_home,
+                    hi_shim_sanctioned >>
+axis_vars     == << hi_store_write, hi_agent_write >>
+observer_vars == << hi_home_damaged, hi_observation, hi_observer_repaired >>
+
+\* Everything HIS-5 added, for the ARTI-22 actions that touch none of it.
+his5_vars == << disposal_vars, hi_error_cause_live, gate_vars, descent_vars,
+                axis_vars, observer_vars >>
 
 HiRevisions == {"A", "B"}
 HiTargets == {"self", "child", "foreign"}
 HiPhases == {"provisioned", "changed", "acknowledged"}
+
+\* HIS-5 domains.
+HiTrees        == {"t_src", "t_edited"}   \* two trees that are not the same bytes
+HiUnitPasses   == {"pending", "done"}
+HiDescents     == {"none", "parent", "nowhere"}
+HiWriteTargets == {"none", "named", "ambient"}
+HiObservations == {"none", "clean", "damaged"}
 
 Init ==
   /\ hi_record_revision = "A"
@@ -79,6 +153,31 @@ Init ==
   /\ hi_child_registered = FALSE
   /\ hi_ack_own_writes = FALSE
   /\ hi_phase = "provisioned"
+  \* HIS-5. A home that has done nothing yet: the unit is standing on the same
+  \* bytes as its source, nothing is held back, no gate is open, no error is
+  \* reported and none is live, no descent is recorded and nothing is
+  \* sanctioned, no command has written on either axis, the home is undamaged
+  \* and unobserved. Every HIS-5 invariant holds here, which is what lets the
+  \* five ARTI-22 regression specs -- which touch none of these variables --
+  \* keep failing on their own invariant and nothing else.
+  /\ hi_unit_pass = "pending"
+  /\ hi_unit_content = "t_src"
+  /\ hi_live_source = "t_src"
+  /\ hi_record_names_source = FALSE
+  /\ hi_held_back = FALSE
+  /\ hi_error_cause_live = FALSE
+  /\ hi_gate_open = FALSE
+  /\ hi_gate_change = 0
+  /\ hi_full_surfacings = 0
+  /\ hi_launch_admitted = FALSE
+  /\ hi_descent_record = "none"
+  /\ hi_parent_claims_home = FALSE
+  /\ hi_shim_sanctioned = FALSE
+  /\ hi_store_write = "none"
+  /\ hi_agent_write = "none"
+  /\ hi_home_damaged = FALSE
+  /\ hi_observation = "none"
+  /\ hi_observer_repaired = FALSE
 
 \* @invariant TypeOK
 TypeOK ==
@@ -92,6 +191,24 @@ TypeOK ==
   /\ hi_child_registered \in BOOLEAN
   /\ hi_ack_own_writes \in BOOLEAN
   /\ hi_phase \in HiPhases
+  /\ hi_unit_pass \in HiUnitPasses
+  /\ hi_unit_content \in HiTrees
+  /\ hi_live_source \in HiTrees
+  /\ hi_record_names_source \in BOOLEAN
+  /\ hi_held_back \in BOOLEAN
+  /\ hi_error_cause_live \in BOOLEAN
+  /\ hi_gate_open \in BOOLEAN
+  /\ hi_gate_change \in 0..2
+  /\ hi_full_surfacings \in 0..2
+  /\ hi_launch_admitted \in BOOLEAN
+  /\ hi_descent_record \in HiDescents
+  /\ hi_parent_claims_home \in BOOLEAN
+  /\ hi_shim_sanctioned \in BOOLEAN
+  /\ hi_store_write \in HiWriteTargets
+  /\ hi_agent_write \in HiWriteTargets
+  /\ hi_home_damaged \in BOOLEAN
+  /\ hi_observation \in HiObservations
+  /\ hi_observer_repaired \in BOOLEAN
 
 ------------------------------------------------------------------------------
 \* The correct behaviours.
@@ -112,6 +229,7 @@ SyncAdvancesStoreAndRecord ==
   /\ hi_phase' = "changed"
   /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered,
                   hi_ack_own_writes >>
+  /\ UNCHANGED his5_vars
 
 \* A sync whose merge conflicted: the store moved, the record could not follow,
 \* and the record SAYS SO. This is the state three units are in on the
@@ -132,6 +250,12 @@ SyncConflictsAndRecordsTheError ==
   /\ hi_phase' = "changed"
   /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered,
                   hi_ack_own_writes >>
+  \* HIS-4. The error is recorded because the condition is TRUE of the tree
+  \* right now. That is the whole content of ARecordedErrorIsAFunctionOf-
+  \* TheLiveTree: the record is the report, not the cause.
+  /\ hi_error_cause_live' = TRUE
+  /\ UNCHANGED << disposal_vars, gate_vars, descent_vars, axis_vars,
+                  observer_vars >>
 
 \* Materialize a unit into a child home this home registered. The projection
 \* leaves this home and is entirely accountable, because child-homes/ records
@@ -146,6 +270,7 @@ MaterializeIntoRegisteredChild ==
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
                   hi_home_digest, hi_ack_baseline, hi_acknowledged,
                   hi_ack_own_writes, hi_phase >>
+  /\ UNCHANGED his5_vars
 
 \* Acknowledge the pending change, receipting the digest the home is on NOW.
 \* DriftGate.recordSince writes the pending gate and then refreshes the
@@ -163,6 +288,7 @@ AcknowledgeCurrentDigest ==
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
                   hi_home_digest, hi_projection_target, hi_child_registered >>
   /\ hi_ack_own_writes' = FALSE
+  /\ UNCHANGED his5_vars
 
 ------------------------------------------------------------------------------
 \* The regression behaviours. Each is a thing the product must NOT do, kept
@@ -186,6 +312,7 @@ SyncLeavesTheRecordBehindSilently ==
   /\ hi_phase' = "changed"
   /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered,
                   hi_ack_own_writes >>
+  /\ UNCHANGED his5_vars
 
 \* Materialize a unit into a home this home never registered as a child. The
 \* projection leaves this home and NOTHING here can say whose bytes it serves:
@@ -202,6 +329,7 @@ MaterializeIntoUnregisteredHome ==
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
                   hi_home_digest, hi_ack_baseline, hi_acknowledged,
                   hi_ack_own_writes, hi_phase >>
+  /\ UNCHANGED his5_vars
 
 \* An acknowledgement that receipts the digest observed when the change was
 \* DETECTED rather than the digest the home is on. The ack is then a receipt
@@ -221,6 +349,7 @@ AcknowledgeDetectionDigest ==
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
                   hi_home_digest, hi_projection_target, hi_child_registered >>
   /\ hi_ack_own_writes' = FALSE
+  /\ UNCHANGED his5_vars
 
 \* An acknowledging operation that performs its OWN content writes after
 \* computing the baseline it acknowledges. This is #124's defect 4, in the only
@@ -240,6 +369,467 @@ AcknowledgeThenWriteWithinTheSameOperation ==
   /\ hi_phase' = "acknowledged"
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
                   hi_home_digest, hi_projection_target, hi_child_registered >>
+  /\ UNCHANGED his5_vars
+
+------------------------------------------------------------------------------
+\* HIS-5 (#217). The behaviours this epic FIXED, and the broken ones they
+\* replaced, kept runnable so the fixes cannot come back undone unnoticed.
+\*
+\* WHAT IS DELIBERATELY NOT STATED HERE, and why -- because an omission that is
+\* a decision is fine and an omission nobody noticed is what this epic keeps
+\* catching:
+\*
+\*   HIS-9, "a write resolving outside the home's declared roots is refused".
+\*     The AT-REST half is already stated, twice, in the accepted model:
+\*     External.WritesThroughOneHomeReachNoOtherHome (over the write witness)
+\*     and External.NoOwnedSurfaceNamesAnotherHome. Restating it here is exactly
+\*     what planning_rules.dual_representation_rule forbids. What HIS-9 adds on
+\*     top -- that the offending write is REFUSED, with an exit code, naming the
+\*     path and the home -- is a property of the COMMAND SURFACE, and this
+\*     module's header says it models none.
+\*
+\*   HIS-11, "a failed operation restores the bytes it moved aside".
+\*     The rule is Internal.InFlightMaterializationLeavesTheChildUnitIntact and
+\*     External.AConflictedUnitIsNeverPartiallyWritten: a destination is never
+\*     left as half of two things. HIS-11's defect was not a different rule, it
+\*     was an EMPTY compensation list in an exhaustive switch -- and an at-rest
+\*     invariant cannot tell "restored" from "never touched". What catches that
+\*     is a probe with a non-degenerate pre-state, which is a fixture property
+\*     and is recorded as such in the vacuity ledger (row 10), not a state
+\*     relation this module can hold.
+\*
+\* HIS-14 IS stated, and the reason it is not in the paragraph above is worth
+\* recording: the agent axis is not the store axis, and NO module in this
+\* directory models it. External's homes have one axis. DEF-076 measured the
+\* consequence -- the agent axis is outside `home verify`'s walk, so nothing saw
+\* the dangling projections until `home repair` existed.
+------------------------------------------------------------------------------
+
+\* ---------------------------------------------------------------- HIS-1 ---
+\* Disposability is decided from bytes on disk. `hi_live_source` is what the
+\* source is standing on RIGHT NOW; `hi_record_names_source` is whether the
+\* destination's record happens to name this store. Sixteen of eighteen of the
+\* operator's records named something else -- two deleted worktrees and a
+\* /private/tmp scratchpad among them -- over trees nobody had touched.
+\*
+\* Both halves of the pass are ONE action on purpose. Splitting "present the
+\* unit" from "decide it" leaves an intermediate state in which a divergent
+\* tree is not yet held back, and ADivergentTreeIsNeverSilentlyReplaced would
+\* have had to be weakened to "...once the pass is done" -- a guard a broken
+\* model satisfies by never finishing a pass.
+
+\* @command RefreshAUnitDecidingDisposabilityFromEvidenceOnDisk
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.project_resolve
+RefreshTheUnitFromEvidenceOnDisk ==
+  /\ hi_unit_pass = "pending"
+  /\ hi_unit_pass' = "done"
+  /\ \E c \in HiTrees, r \in BOOLEAN:
+       /\ hi_unit_content' = c
+       /\ hi_record_names_source' = r
+       \* The decision. It reads the two trees and NOTHING ELSE. `r` ranges
+       \* over BOTH values so TLC must show the invariant holding whatever the
+       \* record names -- if this were pinned to TRUE the property would be
+       \* satisfied by a model that consults the record, which is the defect.
+       /\ hi_held_back' = (c # hi_live_source)
+  /\ UNCHANGED hi_live_source
+  /\ UNCHANGED << arti22_vars, hi_error_cause_live, gate_vars, descent_vars,
+                  axis_vars, observer_vars >>
+
+\* THE DEFECT. `disposable()` asked the record as well as the source:
+\* sourceHeldTheseBytes AND recordIsAboutThisSource. A tree byte-identical to
+\* the live source is held back because a record names a worktree that was
+\* deleted in July.
+\* @command RefreshAUnitAskingTheRecordAsWellAsTheSource
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.project_resolve_regression
+HoldBackAnIdenticalTreeBecauseOfItsRecord ==
+  /\ hi_unit_pass = "pending"
+  /\ hi_unit_pass' = "done"
+  /\ \E c \in HiTrees, r \in BOOLEAN:
+       /\ hi_unit_content' = c
+       /\ hi_record_names_source' = r
+       /\ hi_held_back' = (c # hi_live_source \/ ~r)
+  /\ UNCHANGED hi_live_source
+  /\ UNCHANGED << arti22_vars, hi_error_cause_live, gate_vars, descent_vars,
+                  axis_vars, observer_vars >>
+
+\* THE FIX GONE TOO FAR, and the reason clause 1 is not the whole property. A
+\* model in which everything is disposable satisfies
+\* AnIdenticalTreeIsDisposableWhateverItsRecordNames completely and destroys
+\* every edit an agent made.
+\* @command RefreshEveryUnitWithoutComparingAnything
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.project_resolve_regression
+DisposeOfEveryTreeUnconditionally ==
+  /\ hi_unit_pass = "pending"
+  /\ hi_unit_pass' = "done"
+  /\ \E c \in HiTrees, r \in BOOLEAN:
+       /\ hi_unit_content' = c
+       /\ hi_record_names_source' = r
+       /\ hi_held_back' = FALSE
+  /\ UNCHANGED hi_live_source
+  /\ UNCHANGED << arti22_vars, hi_error_cause_live, gate_vars, descent_vars,
+                  axis_vars, observer_vars >>
+
+\* ---------------------------------------------------------------- HIS-4 ---
+\* The condition clears on the tree and the report follows, with nobody editing
+\* the record. ReconcileUseCase -> ValidateAndClearError re-derives the
+\* installed-record error on every command; `resolvedAt` would have been a
+\* second answer to a question the code already answers.
+
+\* @command ResolveTheConflictAndRederiveTheRecordOnTheNextRead
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_sync
+ResolveTheConflictAndRederiveTheRecord ==
+  /\ hi_record_error
+  /\ hi_error_cause_live
+  /\ hi_error_cause_live' = FALSE
+  /\ hi_record_error' = FALSE
+  /\ hi_record_revision' = hi_store_revision
+  /\ UNCHANGED << hi_store_revision, hi_home_digest, hi_ack_baseline,
+                  hi_acknowledged, hi_projection_target, hi_child_registered,
+                  hi_ack_own_writes, hi_phase >>
+  /\ UNCHANGED << disposal_vars, gate_vars, descent_vars, axis_vars,
+                  observer_vars >>
+
+\* THE DEFECT. `git reset` cleared the index and the merge was clean; `skt
+\* check` kept reporting MERGE_CONFLICT because errors[] carries no resolvedAt
+\* and nothing re-derived it. The record had become a diary.
+\* @command ResolveTheConflictAndLeaveTheRecordReportingIt
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_sync_regression
+TheConditionClearsButTheRecordKeepsReportingIt ==
+  /\ hi_record_error
+  /\ hi_error_cause_live
+  /\ hi_error_cause_live' = FALSE
+  \* The record is NOT edited -- that is the point. It is also advanced, so
+  \* RecordDescribesItsStoreOrSaysWhy holds through this step by its FIRST
+  \* disjunct and the counterexample can only be to the HIS-4 invariant.
+  /\ hi_record_revision' = hi_store_revision
+  /\ UNCHANGED hi_record_error
+  /\ UNCHANGED << hi_store_revision, hi_home_digest, hi_ack_baseline,
+                  hi_acknowledged, hi_projection_target, hi_child_registered,
+                  hi_ack_own_writes, hi_phase >>
+  /\ UNCHANGED << disposal_vars, gate_vars, descent_vars, axis_vars,
+                  observer_vars >>
+
+\* ---------------------------------------------------------------- HIS-3 ---
+\* The gate settles WITHOUT failing open. DriftGate.java:39-49 records the spec
+\* run that proved a gate clearing itself on refresh lets the second recompute
+\* report "nothing to acknowledge" while the first sync's change is still
+\* unread, so the two halves are stated separately: collapsing the SURFACE is
+\* the fix, and the gate still REFUSING is the thing the fix must not buy it
+\* with.
+\*
+\* hi_full_surfacings is home.drift.json's persisted surfacedCount -- HIS-3
+\* took route (a), a schema change, not route (b)'s per-process call-site
+\* distinction. It is therefore state the product writes and re-reads, not a
+\* ghost this module keeps so an invariant can be written, which is why
+\* OneGateIsSurfacedInFullAtMostOnce is NOT witness-dependent and carries no
+\* guard configuration. Under route (b) it would have been.
+
+\* @command SyncDetectsAChangeAndOpensOrExtendsTheGate
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_drift
+SyncDetectsAChange ==
+  /\ hi_gate_change < 2
+  /\ hi_gate_change' = hi_gate_change + 1
+  /\ hi_gate_open' = TRUE
+  \* A genuinely NEW change re-opens the full report. record() merges into the
+  \* pending gate, so "new" is defined against the union, not against whether a
+  \* record exists.
+  /\ hi_full_surfacings' = 0
+  /\ hi_launch_admitted' = FALSE
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live,
+                  descent_vars, axis_vars, observer_vars >>
+
+\* @command SurfaceAnUnacknowledgedGateInFullForTheFirstTime
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_drift
+TheGateIsSurfacedInFull ==
+  /\ hi_gate_open
+  /\ hi_full_surfacings = 0
+  /\ hi_full_surfacings' = 1
+  /\ hi_launch_admitted' = FALSE
+  /\ UNCHANGED << hi_gate_open, hi_gate_change >>
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live,
+                  descent_vars, axis_vars, observer_vars >>
+
+\* @command SurfaceTheSameGateAgainCollapsedToOneLine
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_drift
+TheGateIsSurfacedCollapsed ==
+  /\ hi_gate_open
+  /\ hi_full_surfacings >= 1
+  /\ hi_launch_admitted' = FALSE
+  /\ UNCHANGED << hi_gate_open, hi_gate_change, hi_full_surfacings >>
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live,
+                  descent_vars, axis_vars, observer_vars >>
+
+\* @command AcknowledgeThePendingGate
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_drift_ack
+TheGateIsAcknowledged ==
+  /\ hi_gate_open
+  /\ hi_gate_open' = FALSE
+  \* surfacedCount does not survive an ack. A marker that did would let a
+  \* re-pended gate open collapsed -- the interaction HIS-3's own design note
+  \* flagged against AckIsNotStaleOnArrival.
+  /\ hi_full_surfacings' = 0
+  /\ hi_launch_admitted' = FALSE
+  /\ UNCHANGED hi_gate_change
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live,
+                  descent_vars, axis_vars, observer_vars >>
+
+\* @command LaunchThroughAGateWithNothingUnread
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.exec
+ALaunchProceedsThroughAClearGate ==
+  /\ ~hi_gate_open
+  /\ hi_launch_admitted' = TRUE
+  /\ UNCHANGED << hi_gate_open, hi_gate_change, hi_full_surfacings >>
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live,
+                  descent_vars, axis_vars, observer_vars >>
+
+\* THE DRAG. DriftReport.render() re-emitted 889 lines on every `project sync`,
+\* every `exec` launch gate and every `home drift`, for one unacknowledged gate
+\* with nothing new in it.
+\* @command SurfaceTheSameGateInFullAgain
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_drift_regression
+TheGateIsSurfacedInFullAgain ==
+  /\ hi_gate_open
+  /\ hi_full_surfacings >= 1
+  /\ hi_full_surfacings < 2
+  /\ hi_full_surfacings' = hi_full_surfacings + 1
+  /\ hi_launch_admitted' = FALSE
+  /\ UNCHANGED << hi_gate_open, hi_gate_change >>
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live,
+                  descent_vars, axis_vars, observer_vars >>
+
+\* THE FIX BUYING ITSELF WITH THE SAFETY -- what "make the gate stop nagging"
+\* becomes if the collapse is implemented by retiring the gate. The surfacing
+\* is collapsed, OneGateIsSurfacedInFullAtMostOnce is perfectly satisfied, and
+\* the launch that should have exited 8 runs.
+\* @command LaunchThroughACollapsedButUnacknowledgedGate
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.exec_regression
+TheCollapsedGateAdmitsTheLaunch ==
+  /\ hi_gate_open
+  /\ hi_full_surfacings >= 1
+  /\ hi_launch_admitted' = TRUE
+  /\ UNCHANGED << hi_gate_open, hi_gate_change, hi_full_surfacings >>
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live,
+                  descent_vars, axis_vars, observer_vars >>
+
+\* --------------------------------------------------------------- HIS-10 ---
+\* THE PROPERTY THE WHOLE EPIC CONVERGED ON. The record is a POINTER TO
+\* EVIDENCE, not the evidence. HomeProvenance.sanctions walks clonedFrom hop by
+\* hop and asks ChildHomeLink.isChildOf LIVE at each hop; parentStores survives
+\* only as a reporting snapshot that nothing consults.
+
+\* @command CloneRecordingADescentTheParentItselfClaims
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_clone
+ACloneRecordsADescentTheParentClaims ==
+  /\ hi_descent_record = "none"
+  /\ hi_descent_record' = "parent"
+  /\ hi_parent_claims_home' = TRUE
+  /\ hi_shim_sanctioned' = TRUE
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  axis_vars, observer_vars >>
+
+\* FAIL CLOSED. A record naming a home that does not claim this one -- the
+\* review's `clonedFrom: /nowhere` -- sanctions nothing. Re-derivation gives up
+\* the property the old javadoc chose the snapshot for ("needs no second home
+\* to be present, readable, or even to still exist"), and this is where that
+\* cost is paid.
+\* @command CloneRecordingADescentNoParentClaims
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_clone
+ACloneRecordsADescentNoParentClaims ==
+  /\ hi_descent_record = "none"
+  /\ hi_descent_record' = "nowhere"
+  /\ hi_parent_claims_home' = FALSE
+  /\ hi_shim_sanctioned' = FALSE
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  axis_vars, observer_vars >>
+
+\* THE LIVE RE-DERIVATION, in the one case a snapshot cannot survive: the
+\* parent revokes and every reader answers differently on the next command,
+\* with nothing rewritten in the clone.
+\* @command ParentRevokesItsClaimAndEveryReaderFollows
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_verify
+TheParentRevokesItsClaim ==
+  /\ hi_parent_claims_home
+  /\ hi_parent_claims_home' = FALSE
+  /\ hi_shim_sanctioned' = FALSE
+  /\ UNCHANGED hi_descent_record
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  axis_vars, observer_vars >>
+
+\* THE FIRST VERSION OF HIS-10, WHICH REVIEW REFUSED. A hand-written
+\* home.provenance.json flipped `home verify` from exit 1 to exit 0, and
+\* clonedFrom: /nowhere -- a path that does not exist -- was printed as
+\* authoritative descent. Anything that could write one file into a home
+\* switched that home's isolation gate off permanently.
+\* @command DescentRecordGrantsItsOwnSanction
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_verify_regression
+ADescentRecordSanctionsItself ==
+  /\ hi_descent_record = "none"
+  /\ hi_descent_record' = "nowhere"
+  /\ hi_parent_claims_home' = FALSE
+  /\ hi_shim_sanctioned' = TRUE
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  axis_vars, observer_vars >>
+
+\* THE SECOND FACE, which needed no hand-editing at all: the sanction is
+\* carried forward from the snapshot the record took at clone time, so revoking
+\* the parent's claim leaves `verify proj` = 1 and `verify wt1` = 0 on the same
+\* shim and the same parent.
+\* @command SanctionCarriedForwardFromTheCloneTimeSnapshot
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_verify_regression
+TheSnapshotKeepsSanctioningAfterTheParentRevokes ==
+  /\ hi_parent_claims_home
+  /\ hi_shim_sanctioned
+  /\ hi_parent_claims_home' = FALSE
+  /\ UNCHANGED << hi_descent_record, hi_shim_sanctioned >>
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  axis_vars, observer_vars >>
+
+\* --------------------------------------------------------------- HIS-14 ---
+\* A HOME HAS TWO AXES. SKILL_MANAGER_HOME says where the UNITS live;
+\* CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME say where the AGENT CONFIGS
+\* live. A command that binds one and lets the other resolve against the
+\* ambient shell writes half of itself into a home nobody named -- measured,
+\* into the operator's real ~/.claude, ~/.codex and ~/.gemini, twice.
+\*
+\* A REFUSAL is the state in which neither axis was written, which Init already
+\* occupies and the invariant admits. That is deliberate: "binds BOTH axes, or
+\* refuses" is one property, not two, once you state it over where the bytes
+\* landed rather than over what the flag parser did.
+
+\* @command CommandNamingAHomeBindsBothOfItsAxes
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.sync
+ACommandBindsBothAxesAndWrites ==
+  /\ hi_store_write = "none"
+  /\ hi_store_write' = "named"
+  /\ hi_agent_write' = "named"
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, observer_vars >>
+
+\* No --home given: BOTH halves resolve against the ambient environment, which
+\* is one home and is correct. The invariant is not "never ambient" -- it is
+\* that the two agree, and this action is what stops it being satisfied by a
+\* model that hard-codes "named".
+\* @command CommandNamingNoHomeUsesTheAmbientHomeOnBothAxes
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.sync
+ACommandWithNoHomeNamedUsesTheAmbientHome ==
+  /\ hi_store_write = "none"
+  /\ hi_store_write' = "ambient"
+  /\ hi_agent_write' = "ambient"
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, observer_vars >>
+
+\* DEF-029, AS MEASURED. `sync probe-unit --merge --home <scratch>` wrote
+\* units.lock.toml into the scratch home and linked the agent half into the
+\* operator's real homes, which is how probe-unit turned up as a loadable skill
+\* in an unrelated agent session days later.
+\* @command CommandBindsTheStoreAxisAndLetsTheAgentAxisResolveAgainstTheShell
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.sync_regression
+ACommandBindsTheStoreAxisOnly ==
+  /\ hi_store_write = "none"
+  /\ hi_store_write' = "named"
+  /\ hi_agent_write' = "ambient"
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, observer_vars >>
+
+\* --------------------------------------------------- HIS-13 / DEF-067 ---
+\* AN OBSERVER THAT REPAIRS IS NO LONGER AN OBSERVER. HomeFixpointLaw parses
+\* the remedy out of a refusal and RUNS it, in 24 of 29 graphs. This is the one
+\* group here whose defect is LIVE: DEF-067 is open, and the invariant is
+\* stated against the desired instrument rather than the shipped one.
+\*
+\* Repair itself is not the hazard -- HIS-13 shipped a repairer deliberately,
+\* and ARepairRunsAsItsOwnCommand is a healthy action. The hazard is repair
+\* INSIDE the observation, because the evidence for telling "this home was
+\* stale" from "the product is broken in the way this law exists to detect" is
+\* exactly what the repair destroys.
+
+\* @command HomeTakesDamageBeforeAnythingLooksAtIt
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_verify
+TheHomeTakesDamage ==
+  /\ ~hi_home_damaged
+  /\ hi_observation = "none"
+  /\ hi_home_damaged' = TRUE
+  /\ UNCHANGED << hi_observation, hi_observer_repaired >>
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, axis_vars >>
+
+\* @command ObserveTheHomeAndReportWhatIsThere
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_verify
+AnObserverReportsWhatItFound ==
+  /\ hi_observation = "none"
+  /\ hi_observation' = IF hi_home_damaged THEN "damaged" ELSE "clean"
+  /\ hi_observer_repaired' = FALSE
+  /\ UNCHANGED hi_home_damaged
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, axis_vars >>
+
+\* Repair is a SEPARATE command, downstream of a verdict that already exists.
+\* HIS-13's graph node records the same separation as a metric:
+\* detectRunsBeforeRepair 2, findingsAtFirstDetect 2, findingsAfterRepair 0.
+\* @command RepairTheHomeAsItsOwnCommandAfterDetectionReported
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_repair
+ARepairRunsAsItsOwnCommand ==
+  /\ hi_observation = "damaged"
+  /\ hi_home_damaged' = FALSE
+  /\ hi_observation' = "none"
+  /\ UNCHANGED hi_observer_repaired
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, axis_vars >>
+
+\* DEF-067, MADE RUNNABLE. Bare `home verify` refuses the damage and prints
+\* `complete it with: ... sync --force-scripts`; the law parses that, runs it,
+\* re-verifies, exits 0, records homesRepaired and PASSES. Every reading is
+\* true and the defect is gone from the record.
+\* @command ObserveTheHomeAndRunTheRemedyItPrinted
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_verify_regression
+TheObserverParsesTheRemedyAndRunsIt ==
+  /\ hi_observation = "none"
+  /\ hi_home_damaged
+  /\ hi_observer_repaired' = TRUE
+  /\ hi_home_damaged' = FALSE
+  \* By the time the verdict is computed the home really is clean, so
+  \* ADamagedHomeIsNeverReportedClean is SATISFIED. That is the finding, and
+  \* the guard configuration is how it is proved rather than asserted.
+  /\ hi_observation' = "clean"
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, axis_vars >>
+
+\* The plain detection failure, kept so the detection invariant has its own
+\* refutation and is not carried by the repair one.
+\* @command ReportTheHomeCleanWithoutLooking
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_verify_regression
+TheObserverReportsCleanWithoutLooking ==
+  /\ hi_observation = "none"
+  /\ hi_observation' = "clean"
+  /\ hi_observer_repaired' = FALSE
+  /\ UNCHANGED hi_home_damaged
+  /\ UNCHANGED << arti22_vars, disposal_vars, hi_error_cause_live, gate_vars,
+                  descent_vars, axis_vars >>
 
 ------------------------------------------------------------------------------
 
@@ -248,6 +838,24 @@ HomeIntegrityNext ==
   \/ SyncConflictsAndRecordsTheError
   \/ MaterializeIntoRegisteredChild
   \/ AcknowledgeCurrentDigest
+  \* HIS-5. Every healthy behaviour the epic's fixes produce, so that
+  \* HomeIntegrityInternal.cfg checks the new invariants against a home that
+  \* actually exercises them rather than against one sitting at Init.
+  \/ RefreshTheUnitFromEvidenceOnDisk
+  \/ ResolveTheConflictAndRederiveTheRecord
+  \/ SyncDetectsAChange
+  \/ TheGateIsSurfacedInFull
+  \/ TheGateIsSurfacedCollapsed
+  \/ TheGateIsAcknowledged
+  \/ ALaunchProceedsThroughAClearGate
+  \/ ACloneRecordsADescentTheParentClaims
+  \/ ACloneRecordsADescentNoParentClaims
+  \/ TheParentRevokesItsClaim
+  \/ ACommandBindsBothAxesAndWrites
+  \/ ACommandWithNoHomeNamedUsesTheAmbientHome
+  \/ TheHomeTakesDamage
+  \/ AnObserverReportsWhatItFound
+  \/ ARepairRunsAsItsOwnCommand
 
 SilentDriftNext ==
   \/ SyncLeavesTheRecordBehindSilently
@@ -270,6 +878,60 @@ SilentDriftSpec   == Init /\ [][SilentDriftNext]_vars
 StaleAckSpec      == Init /\ [][StaleAckNext]_vars
 ForeignProjectionSpec == Init /\ [][ForeignProjectionNext]_vars
 SelfRePendingAckSpec  == Init /\ [][SelfRePendingAckNext]_vars
+
+\* ------------------------------------------------------- HIS-5 (#217) ---
+\* One regression specification per new invariant. Each contains ONLY the
+\* actions of its own property group, so the counterexample TLC prints is
+\* short and cannot wander into a neighbour's variables. Every expected-
+\* violation configuration below then carries the neighbouring invariants as
+\* well as its target: if TLC names anything but the target, the probe is
+\* pointed at the wrong branch and the row is a vacuity finding, not a pass.
+
+RecordVetoesIdenticalTreeNext ==
+  \/ HoldBackAnIdenticalTreeBecauseOfItsRecord
+
+EverythingDisposableNext ==
+  \/ DisposeOfEveryTreeUnconditionally
+
+StaleErrorNext ==
+  \/ SyncConflictsAndRecordsTheError
+  \/ TheConditionClearsButTheRecordKeepsReportingIt
+
+GateRefiresNext ==
+  \/ SyncDetectsAChange
+  \/ TheGateIsSurfacedInFull
+  \/ TheGateIsSurfacedInFullAgain
+
+CollapsedGateAdmitsNext ==
+  \/ SyncDetectsAChange
+  \/ TheGateIsSurfacedInFull
+  \/ TheCollapsedGateAdmitsTheLaunch
+
+SelfCertifyingDescentNext ==
+  \/ ACloneRecordsADescentTheParentClaims
+  \/ ADescentRecordSanctionsItself
+  \/ TheSnapshotKeepsSanctioningAfterTheParentRevokes
+
+HalfBoundHomeNext ==
+  \/ ACommandBindsTheStoreAxisOnly
+
+RepairingObserverNext ==
+  \/ TheHomeTakesDamage
+  \/ TheObserverParsesTheRemedyAndRunsIt
+
+BlindObserverNext ==
+  \/ TheHomeTakesDamage
+  \/ TheObserverReportsCleanWithoutLooking
+
+RecordVetoesIdenticalTreeSpec == Init /\ [][RecordVetoesIdenticalTreeNext]_vars
+EverythingDisposableSpec      == Init /\ [][EverythingDisposableNext]_vars
+StaleErrorSpec                == Init /\ [][StaleErrorNext]_vars
+GateRefiresSpec               == Init /\ [][GateRefiresNext]_vars
+CollapsedGateAdmitsSpec       == Init /\ [][CollapsedGateAdmitsNext]_vars
+SelfCertifyingDescentSpec     == Init /\ [][SelfCertifyingDescentNext]_vars
+HalfBoundHomeSpec             == Init /\ [][HalfBoundHomeNext]_vars
+RepairingObserverSpec         == Init /\ [][RepairingObserverNext]_vars
+BlindObserverSpec             == Init /\ [][BlindObserverNext]_vars
 
 ------------------------------------------------------------------------------
 \* The invariants.
@@ -331,5 +993,236 @@ ProjectionSourceIsDecidable ==
 \* @invariant ProjectionResolvesInsideThisHome
 ProjectionResolvesInsideThisHome ==
   hi_projection_target = "self"
+
+------------------------------------------------------------------------------
+\* HIS-5 (#217). The epic's behavioural fixes, stated so a deliberately broken
+\* model violates them.
+\*
+\* WITNESS-DEPENDENCE is declared for every one of them, per this workflow's
+\* guard_config_rule. The test used is: does the invariant read a variable that
+\* exists ONLY so the property can be written -- a shadow of an act that erases
+\* its own evidence -- or does it read something the product persists, prints,
+\* or leaves on disk? Exactly one of the nine is the former.
+------------------------------------------------------------------------------
+
+\* HIS-1, CLAUSE 1. A tree byte-identical to what the live source is standing
+\* on right now is disposable, whatever its record names. Refreshing it is a
+\* byte-identical no-op, so nothing can be destroyed -- and that argument needs
+\* no record at all, which is the point: sixteen of the operator's eighteen
+\* per-unit records named a source that was not the root store, six of them a
+\* path that no longer existed, and all eighteen were pristine.
+\*
+\* THIS INVARIANT DOES NOT MENTION hi_record_names_source, AND MUST NOT. An
+\* invariant that granted the record a vote would be satisfied by exactly the
+\* implementation the defect was -- `sourceHeldTheseBytes && recordIsAbout-
+\* ThisSource` -- which is why HoldBackAnIdenticalTreeBecauseOfItsRecord lets
+\* the record range over BOTH values rather than pinning it.
+\*
+\* NOT WITNESS-DEPENDENT: hi_held_back is the refusal the operator reads and
+\* the refresh that did not happen, not a shadow kept for the invariant.
+\* @invariant AnIdenticalTreeIsDisposableWhateverItsRecordNames
+AnIdenticalTreeIsDisposableWhateverItsRecordNames ==
+  (hi_unit_content = hi_live_source) => ~hi_held_back
+
+\* HIS-1, CLAUSE 2. THE GUARD ON CLAUSE 1, and the reason clause 1 is not the
+\* whole property: "everything is disposable" satisfies clause 1 completely and
+\* destroys every edit an agent made. A tree that genuinely differs from the
+\* live source is held back.
+\*
+\* NOT WITNESS-DEPENDENT, same reason as clause 1.
+\* @invariant ADivergentTreeIsNeverSilentlyReplaced
+ADivergentTreeIsNeverSilentlyReplaced ==
+  (hi_unit_content # hi_live_source) => hi_held_back
+
+\* HIS-3, CLAUSE 1. One unacknowledged gate is surfaced in FULL at most once.
+\* Second and later passes over the same gate content collapse; a genuinely new
+\* change resets the count and re-opens the full report, which is why
+\* SyncDetectsAChange zeroes hi_full_surfacings rather than leaving it.
+\*
+\* NOT WITNESS-DEPENDENT. hi_full_surfacings is home.drift.json's persisted
+\* surfacedCount: HIS-3 took route (a), the schema change, so this is state the
+\* product writes and re-reads across processes. Under route (b) -- the
+\* per-process call-site distinction -- there would have been nothing on disk
+\* to read and this WOULD have needed a guard configuration. The choice of
+\* route is what decides it, and it is recorded here because a future change of
+\* route silently turns this invariant into a witness-reading one.
+\* @invariant OneGateIsSurfacedInFullAtMostOnce
+OneGateIsSurfacedInFullAtMostOnce == hi_full_surfacings <= 1
+
+\* HIS-3, CLAUSE 2. THE HALF THAT STOPS CLAUSE 1 BEING DECORATION. A gate that
+\* has been surfaced is still a gate: while anything is unacknowledged, a launch
+\* does not proceed. Collapsing the SURFACE must not be bought by retiring the
+\* GATE -- DriftGate.java:39-49 records the spec run where exactly that made the
+\* reporting invariant vacuously true and TLC answered "No error has been found"
+\* over a gate that had stopped gating.
+\*
+\* NOT WITNESS-DEPENDENT: hi_launch_admitted is whether the process ran, i.e.
+\* the difference between exit 8 and exit 0.
+\* @invariant AnUnacknowledgedGateStillRefusesALaunch
+AnUnacknowledgedGateStillRefusesALaunch ==
+  hi_gate_open => ~hi_launch_admitted
+
+\* HIS-4, CLAUSE 3. A reported error is a function of the LIVE TREE, not of
+\* history. ReconcileUseCase -> ValidateAndClearError re-derives the
+\* installed-record error on every command, so a condition that has cleared
+\* stops being reported with nobody editing the record -- and a condition that
+\* is live is reported even though nothing wrote a new record. Stated as an
+\* equality for that reason: the one-directional form permits a record that
+\* forgets a live conflict, which is the same defect facing the other way.
+\*
+\* NOTE the interaction that keeps this independent of
+\* RecordDescribesItsStoreOrSaysWhy. That invariant is satisfied by a stale
+\* error -- the error is its escape disjunct -- so a record whose error has
+\* outlived its cause looks HEALTHY to it. The two are not redundant; the older
+\* one is propped up by exactly the state the newer one forbids.
+\*
+\* NOT WITNESS-DEPENDENT: hi_error_cause_live is the tree, and hi_record_error
+\* is what the command printed.
+\* @invariant ARecordedErrorIsAFunctionOfTheLiveTree
+ARecordedErrorIsAFunctionOfTheLiveTree ==
+  hi_record_error = hi_error_cause_live
+
+\* HIS-10. A CLONE'S DESCENT IS A POINTER, NOT A GRANT. Nothing is sanctioned
+\* unless the home the record names holds a claim on this one, LIVE, at the
+\* moment the question is asked. The record says where to look; the parent's own
+\* store answers.
+\*
+\* THIS INVARIANT DOES NOT MENTION hi_descent_record, AND MUST NOT. Both of the
+\* rejected first version's failures are failures of a model that reads the
+\* record instead of re-deriving: a hand-written home.provenance.json naming
+\* /nowhere, and a clone-time snapshot that keeps sanctioning after the parent
+\* revokes. An invariant phrased over the record would have accepted both.
+\*
+\* IT FAILS CLOSED, and that is stated rather than assumed: evidence that cannot
+\* be re-derived does not sanction, so a worktree whose project home was deleted
+\* reverts to pre-HIS-10 behaviour. NOT CLAIMED: forgery-proof. A writer can
+\* still name some other home that genuinely IS a claimed child. What is gone is
+\* the arbitrary grant.
+\*
+\* NOT WITNESS-DEPENDENT: hi_shim_sanctioned is `home verify`'s exit code and
+\* whether the shim survives a sync; hi_parent_claims_home is a file in the
+\* parent's store.
+\* @invariant SanctionIsRederivedFromTheParentsOwnStore
+SanctionIsRederivedFromTheParentsOwnStore ==
+  hi_shim_sanctioned => hi_parent_claims_home
+
+\* HIS-14. A HOME HAS TWO AXES AND A COMMAND BINDS BOTH OR NEITHER. The store
+\* axis is SKILL_MANAGER_HOME; the agent axis is CLAUDE_CONFIG_DIR / CODEX_HOME
+\* / GEMINI_HOME. `--home` bound the first only, so the agent half resolved
+\* against whatever the shell happened to export -- measured, into the
+\* operator's real agent directories, twice, and found by an unrelated agent
+\* session rather than by any check.
+\*
+\* The refusal branch is the state where neither axis was written, which Init
+\* occupies and this admits. "Binds both, or refuses" is one property once it is
+\* stated over where the bytes landed instead of over what the flag parser did.
+\*
+\* NOT stated by External.WritesThroughOneHomeReachNoOtherHome, and that is
+\* worth being precise about rather than assuming: External's homes have ONE
+\* axis. No module in this directory models the agent axis at all, which is
+\* also why DEF-076 could measure a dangling projection in every ticket
+\* worktree's .codex and .gemini with nothing to notice it.
+\*
+\* NOT WITNESS-DEPENDENT: both variables are where files were written.
+\* @invariant AHomesTwoAxesNameOneHome
+AHomesTwoAxesNameOneHome == hi_store_write = hi_agent_write
+
+\* HIS-13 / DEF-067. AN OBSERVER THAT REPAIRS IS NO LONGER AN OBSERVER.
+\* HomeFixpointLaw parses the remedy out of a refusal and runs it, in 24 of 29
+\* graphs, and cannot then distinguish "this home was stale" from "another node
+\* left that there" from "the product is broken in the way this law exists to
+\* detect". It converts all three into PASS plus a homesRepaired count.
+\*
+\* This is not a prohibition on repair. HIS-13 shipped a repairer deliberately
+\* and ARepairRunsAsItsOwnCommand is a healthy action here. It is a prohibition
+\* on repairing INSIDE the observation.
+\*
+\* WITNESS-DEPENDENT -- the only one of the nine, and DEF-067's own text is the
+\* argument for why. The repair destroys exactly the evidence that would let the
+\* verdict be read correctly, so by the time the observation is written the home
+\* really is clean and every other invariant here is satisfied. The evidence has
+\* to be taken at the instant of the act, which is what hi_observer_repaired is.
+\* GUARD: HomeIntegrityInternal_guard_repairingobserver.cfg runs the same
+\* repairing observer with THIS invariant removed and must keep returning "No
+\* error has been found". If it ever starts failing, some other invariant has
+\* been strengthened into this one and the record of why the witness exists is
+\* stale. Its passing is DEF-067's third consequence -- "it can green a real
+\* defect" -- demonstrated rather than asserted.
+\*
+\* THIS INVARIANT IS TRUE OF THE DESIRED INSTRUMENT AND FALSE OF THE SHIPPED
+\* ONE. DEF-067 is open. That is deliberate and is the same shape as
+\* ProjectionResolvesInsideThisHome above, inverted: there, a configuration
+\* preserves a correction; here, a configuration preserves a finding that has
+\* not been fixed yet.
+\* @invariant AnObservationNeverRepairsWhatItObserved
+AnObservationNeverRepairsWhatItObserved == ~hi_observer_repaired
+
+\* HIS-13. THE DETECTION HALF, and the second oracle. A home carrying the
+\* damage is never reported clean. Kept separate from the invariant above
+\* because a repairing observer satisfies THIS one perfectly -- which is the
+\* whole of DEF-067 -- and because the vacuity ledger's composite lesson is that
+\* the count of probes measures nothing and the count of distinct ORACLES is
+\* closer.
+\*
+\* NOT WITNESS-DEPENDENT: hi_observation is what the command printed and
+\* hi_home_damaged is the state of the home's files.
+\* @invariant ADamagedHomeIsNeverReportedClean
+ADamagedHomeIsNeverReportedClean ==
+  (hi_observation = "clean") => ~hi_home_damaged
+
+------------------------------------------------------------------------------
+\* HIS-5 REACHABILITY PROBES -- THESE TWO MUST FAIL.
+\*
+\* Nine invariants that hold is not the same claim as nine invariants that were
+\* EVALUATED. Every one of them above is an implication or an equality, and an
+\* implication whose antecedent the model never reaches is TRUE and worthless --
+\* which is this epic's signature defect, and which
+\* ProjectionSourceIsDecidable's own reachability note records nearly shipping.
+\*
+\* So the antecedents are stated as their own negations and checked against the
+\* HEALTHY specification, following External.NoWorktreeEditEverReachesTheRoot-
+\* Home. If TLC reports "No error has been found" for either of these, the
+\* healthy model has stopped reaching the states the invariants are about and
+\* every green run above is measuring nothing. Their COUNTEREXAMPLES are the
+\* evidence, and they are kept with the ticket's TLC transcripts.
+\*
+\* Two rather than one, because the HIS-1 clauses have contradictory
+\* antecedents -- a tree cannot be identical to the live source and divergent
+\* from it in the same state -- so no single state witnesses both.
+------------------------------------------------------------------------------
+
+\* MUST FAIL. Its counterexample is HIS-1 clause 1 actually happening: a pass
+\* that finished, over a tree byte-identical to the live source, whose record
+\* names something else, refreshed rather than held back. Without this the
+\* clause-1 invariant would be satisfied by a model in which the record always
+\* names this source -- the exact vacuity the regression configuration was
+\* written to avoid, one level up.
+\* @invariant NoRefreshedTreeEverHadAForeignRecord
+NoRefreshedTreeEverHadAForeignRecord ==
+  ~ /\ hi_unit_pass = "done"
+    /\ hi_unit_content = hi_live_source
+    /\ ~hi_record_names_source
+    /\ ~hi_held_back
+
+\* MUST FAIL. Its counterexample is ONE state in which every other new
+\* invariant's antecedent is live at once: a divergent tree that was held back,
+\* an open gate that has been surfaced in full, a reported error whose cause is
+\* on the tree, a sanctioned shim whose parent claims this home, a command that
+\* wrote both axes, and a damaged home whose observation says damaged.
+\* @invariant NoHomeReachesEveryStateTheseInvariantsAreAbout
+NoHomeReachesEveryStateTheseInvariantsAreAbout ==
+  ~ /\ hi_unit_pass = "done"
+    /\ hi_unit_content # hi_live_source
+    /\ hi_held_back
+    /\ hi_gate_open
+    /\ hi_full_surfacings = 1
+    /\ hi_record_error
+    /\ hi_error_cause_live
+    /\ hi_shim_sanctioned
+    /\ hi_parent_claims_home
+    /\ hi_store_write = "named"
+    /\ hi_agent_write = "named"
+    /\ hi_home_damaged
+    /\ hi_observation = "damaged"
 
 ===============================================================================

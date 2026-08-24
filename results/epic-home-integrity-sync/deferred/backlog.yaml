@@ -4349,4 +4349,213 @@ findings:
       number ~30x too large; or it may be correct and simply unciteable. Either
       way an agent reasoning about home disk cost from these docs cannot tell.
     candidate_owner: epic owner, or whoever next touches clone sizing
+  - id: DEF-085
+    found_by: HIS-5 (#217), reconciling this goal's metric against the rows that claimed it
+    found_at: "2026-08-24"
+    severity: major
+    summary: >
+      TWO TICKETS DECLARED A `direct` CONTRIBUTION TO GOAL-home-invariants AND
+      DISCHARGED IT AGAINST A DIFFERENT INSTRUMENT. The goal's metric is
+      "invariants over the home-integrity VIEW, each carrying a regression cfg
+      that must keep failing". HIS-9 and HIS-10 both carry
+      `goal: GOAL-home-invariants, contribution: direct` with
+      `local_signal: jbang RunTests.java`, and neither added an invariant to
+      HomeIntegrityInternal -- both have `tla: []` in their conflict keys.
+    detail: >
+      HIS-10's row promises "an invariant that a home's sanction set is a
+      function of its recorded descent, not of the command line". HIS-9's
+      promises "an invariant stating a producer writes only inside the home
+      SKILL_MANAGER_HOME names". Both are real properties and both were really
+      delivered -- as PRODUCTION behaviour with unit coverage. Neither was
+      delivered as the thing this goal counts.
+
+      HIS-5 landed HIS-10's half (SanctionIsRederivedFromTheParentsOwnStore,
+      with HomeIntegrityInternal_regression_selfcertifyingdescent.cfg), seven
+      promotion slots after the ticket that promised it. HIS-5 deliberately did
+      NOT land HIS-9's, because the at-rest half is already
+      External.WritesThroughOneHomeReachNoOtherHome and restating it violates
+      planning_rules.dual_representation_rule -- reasoning in
+      results/epic-home-integrity-sync/tickets/HIS-5/goal-contribution.md §4.
+    consequence: >
+      If HIS-6 counts goal rows, GOAL-home-invariants has three `direct`
+      contributors and one of them (HIS-9) contributed nothing the metric can
+      see. If it counts invariants, the number is right and two tickets'
+      declared contributions are mis-typed. The two readings differ, which is
+      the same defect this epic keeps catching in other places -- a declared
+      relationship nobody re-reads against what landed.
+    reproduction: >
+      grep -n "GOAL-home-invariants" specs/desired_program_model/ticket_plan.yaml
+      and compare each row's local_signal with the goal's own `metric:` field.
+    why_deferred: >
+      Re-typing another ticket's delivered goal row is an epic-level bookkeeping
+      decision, not a HIS-5 change, and HIS-6 is the ticket that decides every
+      goal.
+    candidate_fix: >
+      Either re-type HIS-9's row to `contribution: enabling` with the
+      dual-representation reason recorded, or accept "an invariant" as covering
+      a unit-test invariant and say so in the goal's metric. Do not leave the
+      two readings both available.
+    candidate_owner: HIS-6
+    related: [DEF-011]
+    status: open
+
+  - id: DEF-086
+    found_by: HIS-5 (#217), checking dual_representation_rule before stating HIS-1
+    found_at: "2026-08-24"
+    severity: major
+    summary: >
+      THE DESIRED MODEL STILL ENCODES THE RULE HIS-1 OVERTURNED, in a
+      definition and in a comment that argues for it. `Internal.LocallyModified`
+      asks the RECORD, which is the defect.
+    detail: >
+      specs/desired_program_model/Internal.tla:124-130 --
+
+        \* A child unit whose tree no longer matches its materialization record. A unit
+        \* with no usable record counts as modified: without provenance there is no
+        \* evidence that anything in it is disposable.
+        LocallyModified(u) ==
+          /\ child_unit[u].present
+          /\ \/ ~record[u].present
+             \/ child_unit[u].content # record[u].source
+
+      That comment is HIS-1's root cause stated as a design principle. HIS-1's
+      whole finding is that the baseline rule has a THIRD showing which needs no
+      record at all: the source is standing on exactly these bytes right now.
+      Internal already has the term for it -- `DesiredContent(u) ==
+      MaterializedContent(store_body, u)`, one line below -- and does not use it
+      in the disposability test.
+
+      This is an OMISSION rather than a contradiction, and that is why nothing
+      has failed. `HeldBackUnitsAreLocallyModified` says held_back is a SUBSET
+      of LocallyModified, so a model that holds back a record-less
+      byte-identical unit satisfies it. The invariant is weaker than the
+      delivered behaviour; it is not falsified by it.
+    reproduction: >
+      Read specs/desired_program_model/Internal.tla:124-136 beside
+      specs/desired_program_model/HomeIntegrityInternal.tla's
+      AnIdenticalTreeIsDisposableWhateverItsRecordNames.
+    why_deferred: >
+      HIS-5's declared tla conflict key is `HomeIntegrityInternal` and nothing
+      else. Internal.tla carries five invariants and four regression
+      configurations of its own (Internal_regression_{nonatomic,overwrite,
+      partialclone,unreanchored}.cfg) that a change to LocallyModified would
+      move, and re-deciding them is a ticket, not a line.
+    candidate_fix: >
+      Weaken LocallyModified to `child_unit[u].content # DesiredContent(u) /\
+      (~record[u].present => child_unit[u].content # DesiredContent(u))` -- or,
+      more simply, drop the `~record[u].present` disjunct and compare against
+      DesiredContent -- then re-run all four Internal regression configurations
+      and expect at least one to change. Correct the comment: it is the
+      argument HIS-1 disproved.
+    candidate_owner: HIS-6 to triage; the CHM/MIG phase owns Internal.tla
+    related: []
+    status: open
+
+  - id: DEF-087
+    found_by: HIS-5 (#217), asking what runs the configurations it just wrote
+    found_at: "2026-08-24"
+    severity: major
+    summary: >
+      NOTHING RUNS THESE CONFIGURATIONS. HomeIntegrityInternal now carries 18
+      configurations -- 14 that must FAIL, 2 that must PASS, 2 reachability
+      probes that must FAIL -- and every one of them is invoked by hand.
+      An assertion nobody runs is the same defect as an assertion that cannot
+      fail, one level up.
+    detail: >
+      `specs/*/run_tlc.sh` takes one spec and one cfg and returns TLC's exit
+      code. There is no wrapper that runs the set and asserts the EXPECTED
+      VERDICT of each -- which is the only form in which "a regression cfg that
+      starts passing is a defect in the invariant" is checkable, because a
+      cfg that starts passing exits 0 and looks like success to anything reading
+      exit codes naively.
+
+      `uv run pytest specs/` (38 cases) does not shell TLC. No test_graph node
+      does either: `home-integrity` has 18 steps and all 18 are jbang assertions
+      over real homes. And CLAUDE.md records that the graphs do not run on push
+      or PR at all right now, by the owner's instruction.
+
+      So the manifest's `expected_violations` map is a table of claims that only
+      a human re-running eighteen commands can falsify. HIS-5 did re-run them,
+      and also cross-checked each against its neighbours; the next ticket to
+      touch this module will not, unless something makes it.
+    second_half_state_space: >
+      Recorded here rather than separately because it bites the same wrapper.
+      The healthy configuration is now 158,801 states generated / 24,000
+      distinct / depth 14, against budgets.max_distinct_states = 50,000. The six
+      HIS-5 property groups are DISJOINT, so a seventh group MULTIPLIES the
+      count rather than adding to it: the next extension of this view crosses
+      the budget. The module also declares 28 variables against
+      budgets.max_component_variables = 6 (advisory, and already violated at 10
+      before this ticket).
+    reproduction: >
+      grep -rn "run_tlc" test_graph/ src/ specs/tests/ -- no caller.
+      Then: bash specs/desired_program_model/run_tlc.sh
+      specs/desired_program_model/HomeIntegrityInternal.tla
+      specs/desired_program_model/HomeIntegrityInternal_regression_silentdrift.cfg
+      and note that "this exit code is EXPECTED to be 12" is written down
+      nowhere a machine reads.
+    why_deferred: >
+      A verdict-asserting runner is a new instrument, and this epic's own
+      lesson (DEF-067) is that instruments need their contract decided before
+      they are built -- in particular whether it belongs in pytest, in a
+      test_graph node, or in CI, given that the graphs are currently suspended
+      on push and PR.
+    candidate_fix: >
+      A pytest case in specs/tests that reads `expected_violations`,
+      `reachability_probes` and the guard row out of spec_manifest.yaml, runs
+      each configuration, and asserts the DECLARED verdict -- red on the named
+      invariant, or green -- so the manifest stops being prose. It costs one
+      test and it is the only thing that makes regression_config_rule
+      enforceable rather than remembered. It must NOT repair anything it finds
+      (DEF-067).
+    candidate_owner: HIS-6
+    related: [DEF-011, DEF-067]
+    status: open
+
+  - id: DEF-088
+    found_by: HIS-5 (#217), answering the two backlog rows routed to it
+    found_at: "2026-08-24"
+    severity: minor
+    summary: >
+      DEF-036 AND DEF-040 WERE ROUTED TO HIS-5 AS "state it as an invariant" AND
+      HIS-5 REFUSES BOTH, with a reason that applies to the whole family: a TLA+
+      invariant cannot catch two code paths drifting apart, because the model
+      author writes both paths.
+    detail: >
+      DEF-036: `AgentHomes.binding` (four variables) and
+      `HomeDescriptor.envFor` (the same four plus CLAUDE_HOME) are two
+      statements of what home X means as an environment; they agree today and
+      nothing enforces it. DEF-040: `ExecCommand.refreshHome` and
+      `SkillManagerCli.bindNamedHome` are two derivations of one binding; they
+      agree today and nothing enforces it.
+
+      Both are the epic's signature defect -- two spellings of one decision --
+      and both are real. Neither is a relation a home HOLDS. The hazard is that
+      a future EDIT separates two Java methods, and a bounded model in which I
+      declare one variable per derivation and write the action that sets them
+      can only fail if I also write the action that makes them differ. That
+      assertion would pass forever regardless of what the code did, which is
+      this epic's signature defect restated in TLA+ -- exactly what #217 was
+      written to avoid.
+
+      DEF-036's own `fix:` field already names the right instrument: "assert
+      that relation in a test rather than in prose."
+    reproduction: >
+      Read DEF-036 and DEF-040's `candidate_owner:` lines: both name HIS-5.
+      Neither is addressed in
+      results/epic-home-integrity-sync/tickets/HIS-5/goal-contribution.md,
+      because this entry is the answer.
+    why_deferred: >
+      This is a re-routing, not a fix. The work itself -- an equality assertion,
+      or the source-scan shape HIS-12 mechanised for remedies, which is the only
+      instrument in this epic that has caught a sibling ticket's drift -- lands
+      in a unit suite and belongs to whoever owns those two classes.
+    candidate_fix: >
+      For DEF-036: assert `HomeDescriptor.envFor(...).asMap()` is a superset of
+      `AgentHomes.binding(store)` and agrees on every shared key, in
+      HomeCommand's or AgentHomes' suite. For DEF-040: assert
+      `exec --home <X> --print-env` and the CLI binding resolve the same four
+      paths -- the measurement DEF-040 already records having made by hand.
+    candidate_owner: HIS-6 to re-route; NOT HIS-5
+    related: [DEF-036, DEF-040]
     status: open

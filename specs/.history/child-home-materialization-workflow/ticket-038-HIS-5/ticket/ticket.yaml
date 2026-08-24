@@ -1,0 +1,136 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket HIS-5",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "HomeIntegrityInternal.cfg",
+      "HomeIntegrityInternal.tla",
+      "HomeIntegrityInternal_guard_repairingobserver.cfg",
+      "HomeIntegrityInternal_probe_disposalreach.cfg",
+      "HomeIntegrityInternal_probe_reach.cfg",
+      "HomeIntegrityInternal_regression_blindobserver.cfg",
+      "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+      "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+      "HomeIntegrityInternal_regression_foreignprojection.cfg",
+      "HomeIntegrityInternal_regression_gaterefires.cfg",
+      "HomeIntegrityInternal_regression_halfboundhome.cfg",
+      "HomeIntegrityInternal_regression_narrowprojection.cfg",
+      "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+      "HomeIntegrityInternal_regression_repairingobserver.cfg",
+      "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+      "HomeIntegrityInternal_regression_selfrepend.cfg",
+      "HomeIntegrityInternal_regression_silentdrift.cfg",
+      "HomeIntegrityInternal_regression_staleack.cfg",
+      "HomeIntegrityInternal_regression_staleerror.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "generated/spec-unit/ClaimantRefreshInternal.dot",
+      "generated/spec-unit/claimant_refresh_cases/__init__.py",
+      "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+      "generated/spec-unit/claimant_refresh_cases/cases.py",
+      "generated/spec-unit/claimant_refresh_cases/docs.md",
+      "generated/spec-unit/claimant_refresh_cases/doubles.py",
+      "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+      "generated/spec-unit/claimant_refresh_cases/types.py",
+      "generated/spec-unit/claimant_refresh_cases/validators.py",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_claimant_refresh_program_model.py",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/wt-217-his-5/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/wt-217-his-5/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-217-his-5/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "blocks": [
+      "HIS-6"
+    ],
+    "conflict_keys": {
+      "adapters": [
+        "specs/desired_program_model/tests"
+      ],
+      "production": [],
+      "test_graph": [],
+      "tla": [
+        "HomeIntegrityInternal"
+      ],
+      "workflow_data": [
+        "spec_manifest.yaml"
+      ]
+    },
+    "delivered_in": "PR #TBD, feature/217-his-5",
+    "depends_on": [
+      "HIS-1",
+      "HIS-2",
+      "HIS-3",
+      "HIS-4",
+      "HIS-7",
+      "HIS-9",
+      "HIS-10",
+      "HIS-11",
+      "HIS-12",
+      "HIS-13",
+      "HIS-14",
+      "HIS-15",
+      "HIS-16",
+      "HIS-17",
+      "HIS-18"
+    ],
+    "epic": "home-integrity-sync",
+    "github_issue": 217,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "4 invariants / 5 cfgs -> one new invariant per fix, each with a failing cfg, all 5 originals still failing",
+        "goal": "GOAL-home-invariants",
+        "local_signal": "specs/program_model/run_tlc.sh"
+      }
+    ],
+    "id": "HIS-5",
+    "objective": "ARTI-22 gave the home-integrity view 4 invariants and 5 regression cfgs. None of them state the four properties this epic fixes, so all four can regress silently. Extend the view; do not restate anything the legacy monolith already says (dual_representation_rule).\n",
+    "phase": "HIS",
+    "promotion_order": 17,
+    "promotion_predecessor": "HIS-8",
+    "slice": "One invariant per fix, each with an expected-violation cfg that FAILS, and for each, an explicit statement of whether it is witness-dependent (guard_config_rule). Candidates, to be settled in the ticket: - an identical tree is disposable regardless of what its record names; - a divergent tree is not; - an acknowledged gate is surfaced at most once in full; - a recorded error is a function of the live tree, not of history. Re-run ALL pre-existing regression cfgs; a cfg that starts passing is a defect in the invariant, per regression_config_rule.\n",
+    "status": "delivered",
+    "status_note_delivered": "DELIVERED. NINE invariants, not four: the plan's four candidates were all settled and stated (HIS-1 both clauses, HIS-3 both halves, HIS-4), and four more were added after arguing each of the five candidates the plan did not list. STATED BEYOND THE PLAN, with the reason in each case. SanctionIsRederivedFromTheParentsOwnStore (HIS-10) -- a clone's descent is a POINTER, not a GRANT; the invariant mentions the descent record NOWHERE, so it refutes both faces review rejected, the hand-written home.provenance.json and the clone-time snapshot that keeps sanctioning after the parent revokes. HIS-10's own plan row promised GOAL-home-invariants a \"direct\" contribution and discharged it against `jbang RunTests.java`; this is the TLA+ half of that promise, arriving seven promotion slots late. AHomesTwoAxesNameOneHome (HIS-14) -- stated because NO module in this directory models the agent axis. External's homes have one axis, which is also why DEF-076 could measure a dangling projection in every ticket worktree's .codex and .gemini with nothing to notice it. AnObservationNeverRepairsWhatItObserved and ADamagedHomeIsNeverReportedClean (HIS-13 / DEF-067) -- the first is the one WITNESS-DEPENDENT invariant here and the only one that describes behaviour the product STILL HAS. DEF-067 is open. NOT STATED, deliberately. HIS-9's write confinement: the at-rest half is External.WritesThroughOneHomeReachNoOtherHome and External.NoOwnedSurfaceNamesAnotherHome, and restating it is what dual_representation_rule forbids; the refusal and its exit code are a command-surface property this view does not model. HIS-11's compensation: the rule is Internal.InFlightMaterializationLeavesTheChildUnitIntact and External.AConflictedUnitIsNeverPartiallyWritten, and HIS-11's actual defect -- an EMPTY compensation list -- is invisible to an at-rest invariant, which cannot tell \"restored\" from \"never touched\". CLAUSE 2 HELD: all five pre-existing regression cfgs still FAIL, each on its own invariant, individually re-run and individually reported. THE CHECK WORTH REVIEWING FIRST. Every expected-violation cfg carries its NEIGHBOURING invariants as well as its target, and all fourteen were additionally re-run with the TARGET REMOVED and the other thirteen kept: fourteen greens, so each counterexample violates exactly one invariant and it is the declared one. That is vacuity-ledger mechanism A answered by measurement rather than by reading the trace. Two REACHABILITY PROBES were added for the same reason facing the other way -- nine invariants that HOLD is not the claim that nine were EVALUATED -- and both must FAIL.\n",
+    "title": "state the four fixes as invariants a broken model violates",
+    "wave": 11
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-217-his-5/specs/tickets/HIS-5",
+  "ticket_id": "HIS-5",
+  "ticket_index": 38,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-217-his-5/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-217-his-5/specs/tickets"
+}
