@@ -1,0 +1,68 @@
+{
+  "graphs_selected": 26,
+  "graphs_executed": 5,
+  "graphs_passed": 4,
+  "results": [
+    {
+      "graph": "smoke",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172339",
+      "seconds": 282.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/smoke.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "onboard",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172759",
+      "seconds": 62.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/onboard.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "sponsored",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172904",
+      "seconds": 50.3,
+      "log": "results/epic-home-integrity-sync/sweep/logs/sponsored.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "source-tracking",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172959",
+      "seconds": 117.8,
+      "log": "results/epic-home-integrity-sync/sweep/logs/source-tracking.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "git-latest-source-tracking",
+      "exit_code": 1,
+      "passed": false,
+      "run_id": "20260824-173152",
+      "seconds": 133.2,
+      "log": "results/epic-home-integrity-sync/sweep/logs/git-latest-source-tracking.log",
+      "resumed_from": null,
+      "failing_nodes": [
+        "gls.conflict"
+      ],
+      "skipped_nodes": [
+        "home.fixpoint.law",
+        "home.membership.law",
+        "servers.down"
+      ]
+    }
+  ]
+}

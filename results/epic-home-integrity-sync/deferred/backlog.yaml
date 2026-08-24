@@ -5419,3 +5419,154 @@ findings:
       has no `artifacts` verb". That is the released 0.24.0 answering, and it
       resolves when this epic ships. HIS-6 must not read an artifact number from
       this home before then.
+
+  - id: DEF-104
+    found_by: epic agent, manual sweep (instrument C) during HIS-6 preparation
+    found_at: "2026-08-24"
+    severity: major
+    escalated: true
+    short_label: "`home verify` reports the operator's ROOT home clean while three of its shims execute code inside the PROJECT home"
+    summary: >
+      MEASURED on the operator's real root home, same home, same minute, two
+      answers:
+
+        home verify --home ~/.skill-manager   -> EXIT 0
+            "every reference resolves, and NO PATH IN IT REACHES ANY OTHER
+             Skill Manager home"
+        home repair --home ~/.skill-manager   -> 5 FINDINGS, 71 entries examined
+            FOREIGN_PATH_IN_SHIM bin/cli/tla-spec-dev
+            FOREIGN_PATH_IN_SHIM bin/cli/monitoring   (x2)
+            FOREIGN_PATH_IN_SHIM bin/cli/helm-deploy  (x2)
+
+      `home repair` is RIGHT. Confirmed by reading the shim:
+
+        $ grep exec ~/.skill-manager/bin/cli/tla-spec-dev
+        exec python3 "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/spec-double-compiler/scripts/tla_spec_dev.py" "$@"
+
+      and the ROOT HOME HAS ITS OWN COPY of that script -- same size, older
+      mtime (Aug 16 vs Aug 20). The shim is not a sanctioned inheritance; it is
+      simply pointed at the wrong home. Three shims, five paths.
+    why_this_is_not_just_DEF_070: >
+      DEF-070 recorded that verify and repair "disagree about one home" as a
+      deliberate cut, measured on a FIXTURE. This is the same disagreement on
+      REAL, PRE-EXISTING DAMAGE in the tier the epic's own record says was
+      damaged twice -- and the direction is the dangerous one: the command whose
+      entire purpose is to detect cross-home reach reports CLEAN.
+    localised: >
+      The project home is CLEAN and the two readers AGREE there (verify: 5
+      sanctioned parent-store shims; repair: nothing damaged, 16 entries). The
+      disagreement is specific to the ROOT tier and to shim CONTENT. Plausible
+      mechanism, not confirmed: verifyRoots' foreign-home question is framed
+      against a home's SOURCE/parent, and the root home has no parent, so the
+      branch that would catch this never runs. HIS-13's detector asks a
+      different question -- "does any shim's content name a path inside another
+      home" -- and does not depend on there being a parent.
+
+      IF THAT MECHANISM IS RIGHT, `home verify` IS WEAKEST EXACTLY AT THE ROOT
+      TIER, which is the tier that keeps taking the damage.
+    consequence: >
+      RELEASE-RELEVANT. An operator whose project home is deleted, moved or
+      renamed loses three ROOT-tier CLIs with no warning, and `home verify` will
+      have told them the home was fine right up to the moment it broke. It also
+      means every `tla-spec-dev` invoked from the root PATH on this machine has
+      been executing the PROJECT home's build since 2026-08-20 -- including runs
+      made during this epic.
+    remedy_available: >
+      `skill-manager home repair --home ~/.skill-manager --fix` repairs all 5.
+      NOT RUN: this is the operator's root home and the epic agent does not
+      write it without being asked.
+    owed_check: >
+      A graph node that plants a foreign path in a shim's CONTENT in a home with
+      NO PARENT, and asserts verify and repair return the SAME verdict. The
+      existing fixtures all give the home a parent, which is why no instrument
+      caught this.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep]
+    candidate_owner: HIS-6 to record and decide; a follow-up ticket for the verify gap
+    status: open
+
+  - id: DEF-105
+    found_by: epic agent, manual sweep (instrument C) during HIS-6 preparation
+    found_at: "2026-08-24"
+    severity: major
+    escalated: true
+    short_label: "the operator's root home carries a security policy the product does not read, because the filename changed"
+    summary: >
+      The root home holds `policy.toml`, dated 2026-05-22, headed "skill-manager
+      policy -- guards against hostile skills", declaring `allowed_backends`,
+      `require_hash = false`, and an `init_script` flag its own comment calls
+      "very dangerous". THE PRODUCT DOES NOT READ IT. It reads
+      `home.policy.toml`, and says so plainly:
+
+        $ skill-manager home policy --home ~/.skill-manager
+        policy: live
+        lazy_artifacts: false  (not declared -- default for this tier)
+        file:   /Users/hayde/.skill-manager/home.policy.toml  (absent -- live by default)
+
+      So the root home runs on DEFAULTS while a hand-written policy file sits
+      beside the one the product looks for.
+    this_is_a_known_shape_on_a_new_subject: >
+      Vacuity-ledger row 8 (HIS-14, mechanism B) is exactly this filename:
+      "neither 'frozen' fixture was frozen -- both wrote `policy.toml`; the file
+      is `home.policy.toml`." That was caught in a FIXTURE. This is the same
+      confusion on the OPERATOR'S REAL ROOT HOME, and nothing caught it because
+      `home policy` prints `live` whether the policy is absent or merely unread.
+    the_product_is_honest_but_not_helpful: >
+      It does print "(absent -- live by default)". It does NOT say "there is a
+      `policy.toml` in this directory and you probably meant that one." A
+      one-line hint would have closed this the first time anybody ran the verb.
+    consequence: >
+      SECURITY POSTURE, and release-relevant. Any operator who wrote a policy
+      before the rename has an inert file and a home running on defaults, with
+      no warning. `require_hash = false` and the backend allow-list are exactly
+      the settings a cautious operator would have edited by hand.
+    owed_check: >
+      (a) `home policy` warns when a legacy `policy.toml` is present beside an
+      absent `home.policy.toml`; (b) a graph node that plants the OLD filename
+      and asserts the verb SAYS SO rather than silently defaulting.
+      Both are cheap and neither exists.
+    also_observed: >
+      The PROJECT home has NO descriptor files at all -- no home.runtime.json,
+      no home.policy.toml, no gateway.properties -- while a worktree home cloned
+      from it has all three. See DEF-106.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep]
+    candidate_owner: HIS-6 to record; a follow-up ticket
+    status: open
+
+  - id: DEF-106
+    found_by: epic agent, manual sweep (instrument C) during HIS-6 preparation
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "`home describe` prints a full descriptor for a home that has no descriptor, including gateway ownership it cannot know"
+    summary: >
+      The PROJECT home holds NO `home.runtime.json`, NO `home.policy.toml` and
+      NO `gateway.properties`. A worktree home cloned FROM it holds all three.
+      Yet:
+
+        $ skill-manager home describe --home <project>
+          policy:   live
+          cli:      <project>/.skill-manager/bin/cli/skill-manager
+          gateway:  http://127.0.0.1:51717 (owned)
+          env:      ... all five variables ...
+
+      Every field is SYNTHESISED. The `(owned)` is the sharpest: the root home's
+      descriptor declares `"gateway": {"owned": true}` for the same URL, and one
+      process is listening on 51717. Two homes cannot both own it, and the
+      project home has no descriptor in which to claim anything.
+    why_it_matters: >
+      `home describe` is the verb an operator or agent runs to find out what a
+      home IS. Reporting synthesised defaults in the same shape as recorded fact,
+      with no marker distinguishing them, is a reader that cannot be trusted at
+      the tier where this epic spent nineteen tickets. Compare `home policy`,
+      which DOES mark its default: "(not declared -- default for this tier)".
+      `home describe` should do the same.
+    open_question_not_resolved_here: >
+      Whether a project home is SUPPOSED to have a descriptor. If yes, this
+      machine's project home is malformed and that is the finding. If no, then
+      `home describe` is inventing one and THAT is the finding. Either way one
+      of the two is wrong, and HIS-6 should decide which.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep]
+    candidate_owner: HIS-6 to decide; a follow-up ticket
+    status: open

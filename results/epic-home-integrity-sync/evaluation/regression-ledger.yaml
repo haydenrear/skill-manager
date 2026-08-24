@@ -113,3 +113,87 @@ findings:
       Fixed at source before the sweep ran; failed and skipped are separate and
       both controls still fire. Vacuity ledger row owed.
     status: closed
+
+  - id: REG-004
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    defect: DEF-104
+    severity: major
+    one_line: >
+      `home verify` reports the operator's ROOT home clean while three of its
+      shims execute code inside the PROJECT home. `home repair` catches all
+      five paths. Same home, same minute, two answers.
+    how_it_surfaced: >
+      Running HIS-13's detector by hand against the REAL root home -- something
+      no graph does and no ticket did outside its own fixtures. verify exit 0
+      and "no path in it reaches any other Skill Manager home"; repair, five
+      findings over 71 entries. Confirmed by reading the shim and finding the
+      root home holds its OWN copy of the script the shim skips.
+    why_A_missed_it: >
+      Every fixture in every graph gives the home under test a PARENT. The root
+      home has none, and the plausible mechanism is that verifyRoots frames its
+      foreign-home question against a home's source, so the branch never runs.
+      No node plants a foreign path in a shim's CONTENT in a parentless home.
+    why_it_matters_more_than_the_count: >
+      This is the epic's founding defect -- one home reaching into another --
+      alive in the operator's root home right now, with the command built to
+      detect it reporting clean. It is also the tier this epic's own record says
+      was damaged twice.
+    missed_by: [A-graph-sweep]
+    owed_check: >
+      A node that plants a foreign path in shim CONTENT in a home with NO
+      PARENT and asserts verify and repair return the same verdict.
+    status: open
+
+  - id: REG-005
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    defect: DEF-105
+    severity: major
+    one_line: >
+      The operator's root home carries a hand-written security policy the
+      product does not read, because the filename changed from `policy.toml` to
+      `home.policy.toml`. The home runs on defaults.
+    how_it_surfaced: >
+      Listing descriptor files across all three tiers side by side and noticing
+      the root had `policy.toml` where the worktree had `home.policy.toml`.
+      `skill-manager home policy` then said it outright: "file:
+      .../home.policy.toml (absent -- live by default)".
+    why_A_missed_it: >
+      No graph plants the LEGACY filename. Vacuity-ledger row 8 caught this
+      exact confusion in a FIXTURE during HIS-14 and the lesson was applied to
+      the fixture, not to the product's diagnostics. `home policy` prints `live`
+      whether the policy is absent or merely unread, so nothing distinguishes
+      them.
+    missed_by: [A-graph-sweep]
+    owed_check: >
+      `home policy` warns when a legacy `policy.toml` sits beside an absent
+      `home.policy.toml`; plus a node that plants the old filename and asserts
+      the verb says so rather than silently defaulting.
+    status: open
+
+  - id: REG-006
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    defect: DEF-106
+    severity: major
+    one_line: >
+      `home describe` prints a full descriptor for the project home, which has
+      no descriptor files at all -- including a gateway marked `(owned)` that
+      the root home's descriptor also claims.
+    how_it_surfaced: >
+      Following up the gateway line from `home describe` on both tiers: both
+      printed "(owned)" for one URL with one listener. The root home records
+      `"owned": true`; the project home has no home.runtime.json to record
+      anything.
+    why_A_missed_it: >
+      No node asserts that a verb's output distinguishes RECORDED fact from
+      SYNTHESISED default. `home policy` does mark its defaults -- "(not
+      declared -- default for this tier)" -- so the convention exists and
+      `home describe` simply does not follow it.
+    missed_by: [A-graph-sweep]
+    owed_check: >
+      A node asserting `home describe` marks synthesised fields, and that two
+      homes never both report one gateway as owned.
+    status: open
+
