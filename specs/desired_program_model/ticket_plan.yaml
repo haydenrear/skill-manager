@@ -3162,6 +3162,49 @@ tickets:
     title: "state the four fixes as invariants a broken model violates"
     phase: HIS
     status: delivered
+    delivered_in: "PR #249, merged into epic/home-integrity-sync"
+    epic_agent_note: >
+      DEF-087 WAS FOLDED INTO THIS TICKET RATHER THAN DEFERRED, and closed on a
+      measured CI number. The goal's statement is "so the defect cannot come
+      back unnoticed" and NOTHING RAN THE CFGS: `grep -rn "expected_violations"`
+      across every .py/.sh/.kts/.java/.yml returned nothing, and CI's
+      check_yaml.py validated only that the named files exist. Nine invariants
+      with zero automatic enforcement does not meet the goal.
+
+      Measured on GitHub Actions, verified in the run log by the epic agent:
+
+        before  34 passed, 18 SKIPPED in 2.55s   (unit-tests job 105s)
+        after   52 passed in 22.33s, 0 skipped   (unit-tests job 120s)
+
+      The 18 model-checking cases now run on every push and PR for +15s. The
+      tla2tools jar is DIGEST-PINNED and was byte-verified against the one
+      spec-double-compiler installs locally (2,274,532 bytes, same SHA-256), so
+      a green CI run and a green local run are the SAME model checker rather
+      than two that happen to agree. That verification was the ticket's own
+      addition, beyond what was asked.
+
+      TWO CORRECTIONS THIS TICKET MADE TO THE EPIC AGENT, both by measurement
+      and both accepted:
+        - The claimed broken implementation `sourceHeldTheseBytes &&
+          recordIsAboutThisSource` EXISTS IN NO VERSION of the code
+          (`git log --all -S "sourceHeldTheseBytes ||"` returns no commit;
+          disposable() is a DISJUNCTION and HIS-1 never touched it). Struck,
+          and replaced with the real finding: the model describes a machine
+          strictly harsher than the broken one ever was, because describesSource
+          compares against the LIVE SOURCE's fingerprint and rescues the unit
+          whatever the record names. That is vacuity-ledger row 1 reproduced one
+          level up.
+        - Guarding ADivergentTreeIsNeverSilentlyReplaced's antecedent buys ONE
+          STEP (reddens the correct cfg at depth 3 instead of depth 2). It does
+          NOT make the clause true of a moving source -- the FRAME does. Both
+          numbers are now in the module.
+    known_limitation: >
+      These remain statements about a MODEL. If the model and the product
+      drift, the suite stays green; the home-integrity graph is the only thing
+      checking these relations against real homes, and this ticket did not
+      extend it. And the HIS-1 group still needs two bits where it has one:
+      hi_record_names_source cannot separate a STALE record from a
+      FOREIGN-NAMED one, which is the distinction that decided vacuity row 1.
     epic: home-integrity-sync
     status_note_delivered: >
       DELIVERED. NINE invariants, not four: the plan's four candidates were all
