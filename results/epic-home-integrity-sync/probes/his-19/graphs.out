@@ -1,0 +1,6 @@
+=== run.py home-integrity ===
+BUILD SUCCESSFUL in 2m 13s
+=== run.py home-clone ===
+BUILD SUCCESSFUL in 1m 42s
+=== run.py checkout-home ===
+BUILD SUCCESSFUL in 1m 3s

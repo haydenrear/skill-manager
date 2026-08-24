@@ -67,6 +67,37 @@ import java.util.List;
  * not. Two writers of one file is what let the difference hide; this class is
  * now the writer, and {@code ensure_cli_pin} has nothing left to repair.
  *
+ * <h2>HIS-19: the pin is the most DURABLE spelling of that build, not the most
+ * physical one</h2>
+ *
+ * <p>Everything above stands and the tradeoff it states was still real, but one
+ * of its clauses was measured false. "A stale pin fails loudly" is what the
+ * bullet promised; DEF-012 measured a stale pin failing <em>silently</em>, in
+ * the one place it matters — {@code brew upgrade} deleted the keg the operator's
+ * root home pinned, the entrypoint file remained present and executable, and
+ * {@code home verify} returned <b>exit 0</b>. Every reader that tests {@code -x}
+ * on that file, including {@code HomeDescriptor.locateCli}, called the home
+ * healthy.
+ *
+ * <p>HIS-12 stopped remedies naming a dead pin and HIS-13 made {@code home
+ * repair} report and re-pin one. Neither stopped THIS class writing the same
+ * pin on the next run, so the repair ran on a treadmill. {@link DurableCliPin}
+ * is the cause: given the located build it looks for another spelling of THE
+ * SAME FILE that carries no version, and pins that instead.
+ *
+ * <p><b>It is not the {@code PATH} fallback this section argues against, and
+ * the difference is enforced rather than asserted.</b> The build is already
+ * chosen — a candidate is refused unless {@link java.nio.file.Path#toRealPath}
+ * makes it the identical file — so what a home runs today is byte-for-byte
+ * unchanged, and there is still exactly one absolute path in the generated file
+ * and no search at launch time. What changes is the day after an upgrade: the
+ * home runs the build that replaced the one it was provisioned with, rather
+ * than nothing at all. The property this section defends narrows from "the
+ * build it was provisioned with" to "that build, or its successor under the
+ * same installation", and it narrows only where the alternative is a path that
+ * names a deleted file. A build whose path carries no version — a source
+ * checkout, a CI artifact, a hand-built binary — is pinned exactly as before.
+ *
  * <h2>One implementation of the launch rules</h2>
  *
  * <p>{@code PATH} precedence, foreign-home pruning, the
@@ -83,7 +114,18 @@ public final class LauncherShims {
 
     private LauncherShims() {}
 
-    public record Result(Path dir, List<Path> written) {}
+    /**
+     * What one {@code home shims} run wrote.
+     *
+     * @param pin the path actually recorded in {@code bin/cli/skill-manager},
+     *            which since HIS-19 need not be the path the caller passed in:
+     *            {@link DurableCliPin} may substitute a versionless spelling of
+     *            the same file. Carried here so the COMMAND reports what was
+     *            written rather than what was located — those were two different
+     *            paths for one run, which is exactly the reader-disagreement
+     *            this epic exists to remove, freshly created by its fix.
+     */
+    public record Result(Path dir, List<Path> written, Path pin) {}
 
     /** {@code <store>/bin/launch}. */
     public static Path dir(SkillStore store) {
@@ -130,7 +172,43 @@ public final class LauncherShims {
      */
     public static Result write(SkillStore store, Path pinnedCli) throws IOException {
         HomePolicy.requireLive(store, "home shims");
-        Path pin = pinnedCli.toAbsolutePath().normalize();
+        // THE PIN IS THE MOST DURABLE SPELLING OF THIS BUILD, NOT THE MOST
+        // PHYSICAL ONE. DEF-027, the cause under DEF-012.
+        //
+        // `toAbsolutePath().normalize()` was the whole of this line, and it is
+        // faithful to a fault: on a Homebrew install the launcher resolves its
+        // own symlink before exporting SKILL_MANAGER_INSTALL_DIR, so RunningCli
+        // hands this method a path INSIDE the keg
+        // (/opt/homebrew/Cellar/skill-manager/0.24.0/...). That pin is correct
+        // exactly until the next `brew upgrade` deletes the directory it names,
+        // and wrong forever after — measured live on the operator's machine
+        // during this epic's own 0.24.0 release, with `home verify` reporting
+        // exit 0 on the broken home.
+        //
+        // DurableCliPin never chooses a BUILD; it is handed one and looks only
+        // for another spelling of THE SAME FILE, checked by real-path equality.
+        // So this changes nothing about which binary a home runs today, and it
+        // is not the PATH search RunningCli's javadoc argues against: the
+        // resolution happens once, here, and the generated entrypoint still
+        // carries one absolute path and no PATH branch.
+        DurableCliPin.Choice choice = DurableCliPin.choose(pinnedCli);
+        Path pin = choice.pin();
+        if (choice.substituted()) {
+            // Said out loud, because it changes which file this home's front
+            // door names. A substitution nobody can audit is the shape
+            // `ensure_cli_pin` had when it silently overwrote 17 correct pins.
+            dev.skillmanager.util.Log.detail(
+                    "home shims: pinning %s instead of %s — the same build reached by a "
+                            + "spelling that survives an upgrade (%s)",
+                    pin, choice.located(), choice.source());
+        }
+        // And the whole audit, not only the outcome. Bounded to at most three
+        // lines because every candidate is derived from the located path.
+        // Choice.considered's javadoc promised this and nothing printed it
+        // until the review of #250 grepped for the reader (m5).
+        for (String line : choice.auditLines()) {
+            dev.skillmanager.util.Log.detail("  pin candidate: %s", line);
+        }
         Path dir = dir(store);
         Fs.ensureDir(dir);
         List<Path> written = new java.util.ArrayList<>();
@@ -156,7 +234,7 @@ public final class LauncherShims {
         Fs.makeExecutable(cli);
         written.add(cli);
 
-        return new Result(dir, List.copyOf(written));
+        return new Result(dir, List.copyOf(written), pin);
     }
 
     /**

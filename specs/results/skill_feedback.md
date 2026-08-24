@@ -303,3 +303,53 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
     module the ledger does not measure.
 - status: not-filed — filing against tla-spec-dev is outside a ticket agent's mandate. Reported in the PR body
   so the epic owner can decide whether to file it.
+## Close-out ticket HIS-19
+
+- close_scope: ticket
+- close_id: HIS-19
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T04:25:59+00:00
+- summary: HIS-19 (#246) / DEF-027: home shims writes the most DURABLE spelling of the located build (DurableCliPin), verified same-file by realpath. Revised at the review of #250: the PATH arm was REMOVED as unsafe and the class's downgrade claim was corrected against my own measurement; home shims now has a test that it prints the pin it wrote. No TLA+ surface change -- HIS-5 carries the model work.
+- feedback_status: items-recorded
+
+### SF-005 — SF-002 has now been forced THREE times: HIS-8, HIS-5, HIS-19
+- category: profile-schema-cli
+- target: scripts/spec_evolution.py — `TICKET_CLOSED_STATUSES` at the `close ticket` gate
+- observed_on: haydenrear/skill-manager HIS-19 (#246), epic/home-integrity-sync, epic ticket close
+- id_note: >
+    Filed as SF-004 on this branch and RENUMBERED to SF-005 at the rebase onto
+    the epic tip, where HIS-5 had already taken SF-004 for a different finding.
+    Recorded rather than silently shifted, because a renumbered id in someone
+    else's citation is the failure this note prevents. Same reason HIS-5's
+    `duplicate_avoided:` block above exists, and the same near-miss: nothing
+    but the rebase conflict put the two lists side by side.
+- evidence: results/epic-home-integrity-sync/tickets/HIS-19/goal-contribution.md; the refusal was `ERROR: ticket HIS-19 is not closed in ticket_plan.yaml: status=delivered`
+- severity: forced-workaround
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-19`
+- detail: >
+    NOT A NEW FINDING. This is SF-002, and after the rebase it is measurably
+    worse than the recurrence I first wrote it up as: HIS-8 filed it, HIS-5's
+    close-out records taking `--allow-open` for the same reason, and this is the
+    THIRD. Recorded rather than re-filed, because three occurrences is the datum
+    an upstream maintainer does not otherwise get — the first report reads as one
+    agent's unusual plan, and three consecutive epic tickets do not. The verbatim
+    refusal is above; `delivered` is this plan's word for a landed ticket and the
+    ticket agent stops at PR open by rule 7, so no honest status satisfies the
+    gate.
+
+    ONE THING SF-002 DID NOT RECORD, and it is the more useful half: the FIRST
+    close attempt with `--allow-open` was still refused, by the complexity
+    ledger, with a verdict naming both missing fields (`refinement.searched` and
+    `narrative`). That refusal is the tool working exactly as designed and it is
+    worth stating beside the complaint, because it is why `--allow-open` does
+    not weaken the close as much as SF-002 implies: the substantive gate is
+    downstream of it and did not yield.
+- forced_workaround: `--allow-open`, declared here and in the ticket's complexity-ledger narrative and in the PR body, so the terminal evaluation reads the weaker claim
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002's ticket; this is the THIRD occurrence on it, not a new issue -- verified open with `gh issue view 288 -R haydenrear/tla-spec-dev`)
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.

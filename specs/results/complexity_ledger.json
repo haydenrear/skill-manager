@@ -1314,6 +1314,390 @@
       ],
       "errors": [],
       "verdict": "recorded"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-19",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T04:25:48.680053+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-5",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the pre-change TLC output",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the post-change TLC output",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the behavior-test output",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the before/after descriptor comparison",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": true,
+        "outcome": "found -- and applied, at the review of pr #250",
+        "detail": "Searched twice, and the second search found something the first did not.\nFIRST PASS (structural, and it still holds for the model): HIS-19 changes no TLA+ module, no .cfg, no adapter and no spec double. Its conflict keys declare `tla: []` and `adapters: []`, and the assignment records `tlc: \"N/A: HIS-5 carries the model work for this epic\"`. `uv run pytest specs/` is green at 88 passed after the rebase onto HIS-5. The change is below the modelled surface: which absolute path string is written into a generated bash file. Adding a state variable for \"the spelling of a pin\" to justify a refinement record would be inventing model surface to fill a field.\nSECOND PASS, IN THE PROGRAM, AND IT REMOVED REPRESENTATION. The review of #250 (MAJOR 2) asked whether the `PATH_ALIAS` arm earned its safety claim. Measured, it did not -- and neither did the claim. Removed: one `Source` enum value, one candidate-generation loop, the `Function<String,String> env` parameter threaded through `forPin`/`choose`/`candidates`, and the test helper that fed it. Removed separately (m4): the identity gate in `rejection`, which every candidate now makes unreachable.\nThe class is smaller and STRICTLY MORE CONSTRAINED afterwards: it reads no environment at all, so `choose` is a function of the located path and the filesystem, and the same command writes the same pin from cron and from a login shell. That is a refinement in the sense that matters here -- fewer reachable states, one fewer input -- and it was found by a reviewer asking whether a documented property was true rather than by a complexity metric, which could not see it.\nKEPT DELIBERATELY: the `DurableCliPin.Source` enum, now four values. It exists so a probe can name the branch it exercises (vacuity mechanism D). Collapsing it to a boolean was reconsidered at this review and rejected again: V2/V3/V7/V14 are only distinguishable because the branches are named apart, and row 18 of the vacuity ledger is what happens when a branch has no name of its own.\n",
+        "measured": false,
+        "applied": true,
+        "approved_by": "review of PR #250 (MAJOR 2), epic owner adjudicating"
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "HIS-19 (issue #246) / DEF-027 fixes the CAUSE under DEF-012. The machine-checked core above is uninformative by construction -- the model delta is zero because no model was touched. The full record is results/epic-home-integrity-sync/tickets/HIS-19/goal-contribution.md; this is the part the delta cannot express, written AFTER the review of PR #250 so it states the corrected position rather than the one I opened with.\nWHAT WAS BROKEN. `home shims` recorded the located build's absolute path, and on a Homebrew install that path is inside the keg. The 0.24.0 upgrade deleted that directory on the operator's own machine. The generated entrypoint stayed present and executable -- so every `-x` test, including HomeDescriptor.locateCli's, called the home healthy -- while running it could only produce exit 127, and `home verify` returned EXIT 0. HIS-12 stopped remedies naming a dead pin; HIS-13 detects and repairs one. Neither stopped this class writing the same pin again, so the repair ran on a treadmill.\nWHAT WAS BUILT. DurableCliPin: given the located build, find another SPELLING of the same file that carries no version segment, and pin that. `home verify` gained the one question its walk structurally could not ask -- a dead pin names a path OUTSIDE the home, and missingReferencesIn only considers paths inside it -- and now exits 1 on it, through HIS-13's reader. Existing homes migrate through HIS-13's repairer, which already re-pins by calling LauncherShims.write.\nWHAT THE REVIEW CHANGED, AND IT IS THE MOST USEFUL THING IN THIS ENTRY. The class shipped with a third arm that searched PATH for a versionless entry, and a javadoc sentence claiming a substitution \"cannot produce\" an older build answering. The review challenged the sentence for that arm. Reproducing it confirmed the arm was unsafe -- and asking the same question of the DERIVABLE Homebrew arm showed the sentence false there too, which is more than the review claimed and is my own claim falsified by my own measurement (probes/his-19/downgrade.out, case B: `brew link` an older keg and the pin runs BUILD 0.19.2).\nSo the sentence was rewritten rather than narrowed, and the PATH arm was dropped on four counts: the set of things that can move a DERIVED alias is bounded and is about this product, while an arbitrary PATH directory can be moved by anything and nix generations roll backwards by design; a PATH arm makes the written pin depend on ambient state, which is a second answer to \"which build does this home run\" produced by the mechanism added to remove one; the fallback when nothing is substituted is a LOUD 127 that this epic already detects (`home verify` exit 1) and repairs (`home repair --fix`), whereas a silent downgrade has none of that; and the arm had no measured user -- the only layouts ever seen are Homebrew's and a fixture written for the arm itself. The governing rule, and it is this epic's own doctrine: PREFER NO SUBSTITUTION OVER AN UNSAFE ONE.\nWhat the design now guarantees, stated so a reader cannot take more from it than was measured: issue #61's failure -- an unrelated build the operator never chose, selected by PATH ordering at launch -- cannot occur, because nothing is resolved at launch and every recorded path is the package manager's own alias for this formula. It does NOT guarantee the build never moves backwards. A deliberate downgrade is followed, and there is now a test asserting that limit rather than prose denying it.\nTHE OTHER REVIEW FINDING WORTH RECORDING. The reader-disagreement I had caught by hand -- `home shims` printing the located pin while writing the durable one -- was still caught only by hand. Reverting the fix reddened NOTHING in 1402 cases. A class of defect this epic exists to remove was being defended by my memory of having noticed it once, on the command an operator runs to REPAIR a broken pin. Two assertions and an injected-pin seam on ShimsCmd close it, and probe V4 is the measured red.\nFINDINGS FILED RATHER THAN SOLVED: DEF-092 (`home clone` still does not report a dead pin), DEF-093 (the version predicate is a validated heuristic; the review supplied a corpus showing it errs wide on dates and dotted numerics), DEF-094 (an explicit SKILL_MANAGER_CLI is stabilised too). DEF-095 records MINOR 8 as CLOSED BY DECISION: HomeFixpointLaw cannot auto-repair a dead pin and must not be taught to, because DEF-067 is open precisely because that law repairs what it observes. Three vacuity-ledger rows, 16-18; two mine, one the reviewer's.",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [
+        "REJECTED -- refinement record has no outcome. Set `refinement.outcome` to `found` (with detail and evidence) or `none` (searched, found none)."
+      ],
+      "verdict": "rejected"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-19",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T04:25:59.390731+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-5",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the pre-change TLC output",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the post-change TLC output",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the behavior-test output",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the before/after descriptor comparison",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": true,
+        "outcome": "found",
+        "detail": "FOUND AND APPLIED, at the review of PR #250. Searched twice, and the second search found something the first did not.\nFIRST PASS (structural, and it still holds for the model): HIS-19 changes no TLA+ module, no .cfg, no adapter and no spec double. Its conflict keys declare `tla: []` and `adapters: []`, and the assignment records `tlc: \"N/A: HIS-5 carries the model work for this epic\"`. `uv run pytest specs/` is green at 88 passed after the rebase onto HIS-5. The change is below the modelled surface: which absolute path string is written into a generated bash file. Adding a state variable for \"the spelling of a pin\" to justify a refinement record would be inventing model surface to fill a field.\nSECOND PASS, IN THE PROGRAM, AND IT REMOVED REPRESENTATION. The review of #250 (MAJOR 2) asked whether the `PATH_ALIAS` arm earned its safety claim. Measured, it did not -- and neither did the claim. Removed: one `Source` enum value, one candidate-generation loop, the `Function<String,String> env` parameter threaded through `forPin`/`choose`/`candidates`, and the test helper that fed it. Removed separately (m4): the identity gate in `rejection`, which every candidate now makes unreachable.\nThe class is smaller and STRICTLY MORE CONSTRAINED afterwards: it reads no environment at all, so `choose` is a function of the located path and the filesystem, and the same command writes the same pin from cron and from a login shell. That is a refinement in the sense that matters here -- fewer reachable states, one fewer input -- and it was found by a reviewer asking whether a documented property was true rather than by a complexity metric, which could not see it.\nKEPT DELIBERATELY: the `DurableCliPin.Source` enum, now four values. It exists so a probe can name the branch it exercises (vacuity mechanism D). Collapsing it to a boolean was reconsidered at this review and rejected again: V2/V3/V7/V14 are only distinguishable because the branches are named apart, and row 18 of the vacuity ledger is what happens when a branch has no name of its own.\n",
+        "measured": false,
+        "applied": true,
+        "approved_by": "review of PR #250 (MAJOR 2), epic owner adjudicating"
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "HIS-19 (issue #246) / DEF-027 fixes the CAUSE under DEF-012. The machine-checked core above is uninformative by construction -- the model delta is zero because no model was touched. The full record is results/epic-home-integrity-sync/tickets/HIS-19/goal-contribution.md; this is the part the delta cannot express, written AFTER the review of PR #250 so it states the corrected position rather than the one I opened with.\nWHAT WAS BROKEN. `home shims` recorded the located build's absolute path, and on a Homebrew install that path is inside the keg. The 0.24.0 upgrade deleted that directory on the operator's own machine. The generated entrypoint stayed present and executable -- so every `-x` test, including HomeDescriptor.locateCli's, called the home healthy -- while running it could only produce exit 127, and `home verify` returned EXIT 0. HIS-12 stopped remedies naming a dead pin; HIS-13 detects and repairs one. Neither stopped this class writing the same pin again, so the repair ran on a treadmill.\nWHAT WAS BUILT. DurableCliPin: given the located build, find another SPELLING of the same file that carries no version segment, and pin that. `home verify` gained the one question its walk structurally could not ask -- a dead pin names a path OUTSIDE the home, and missingReferencesIn only considers paths inside it -- and now exits 1 on it, through HIS-13's reader. Existing homes migrate through HIS-13's repairer, which already re-pins by calling LauncherShims.write.\nWHAT THE REVIEW CHANGED, AND IT IS THE MOST USEFUL THING IN THIS ENTRY. The class shipped with a third arm that searched PATH for a versionless entry, and a javadoc sentence claiming a substitution \"cannot produce\" an older build answering. The review challenged the sentence for that arm. Reproducing it confirmed the arm was unsafe -- and asking the same question of the DERIVABLE Homebrew arm showed the sentence false there too, which is more than the review claimed and is my own claim falsified by my own measurement (probes/his-19/downgrade.out, case B: `brew link` an older keg and the pin runs BUILD 0.19.2).\nSo the sentence was rewritten rather than narrowed, and the PATH arm was dropped on four counts: the set of things that can move a DERIVED alias is bounded and is about this product, while an arbitrary PATH directory can be moved by anything and nix generations roll backwards by design; a PATH arm makes the written pin depend on ambient state, which is a second answer to \"which build does this home run\" produced by the mechanism added to remove one; the fallback when nothing is substituted is a LOUD 127 that this epic already detects (`home verify` exit 1) and repairs (`home repair --fix`), whereas a silent downgrade has none of that; and the arm had no measured user -- the only layouts ever seen are Homebrew's and a fixture written for the arm itself. The governing rule, and it is this epic's own doctrine: PREFER NO SUBSTITUTION OVER AN UNSAFE ONE.\nWhat the design now guarantees, stated so a reader cannot take more from it than was measured: issue #61's failure -- an unrelated build the operator never chose, selected by PATH ordering at launch -- cannot occur, because nothing is resolved at launch and every recorded path is the package manager's own alias for this formula. It does NOT guarantee the build never moves backwards. A deliberate downgrade is followed, and there is now a test asserting that limit rather than prose denying it.\nTHE OTHER REVIEW FINDING WORTH RECORDING. The reader-disagreement I had caught by hand -- `home shims` printing the located pin while writing the durable one -- was still caught only by hand. Reverting the fix reddened NOTHING in 1402 cases. A class of defect this epic exists to remove was being defended by my memory of having noticed it once, on the command an operator runs to REPAIR a broken pin. Two assertions and an injected-pin seam on ShimsCmd close it, and probe V4 is the measured red.\nFINDINGS FILED RATHER THAN SOLVED: DEF-092 (`home clone` still does not report a dead pin), DEF-093 (the version predicate is a validated heuristic; the review supplied a corpus showing it errs wide on dates and dotted numerics), DEF-094 (an explicit SKILL_MANAGER_CLI is stabilised too). DEF-095 records MINOR 8 as CLOSED BY DECISION: HomeFixpointLaw cannot auto-repair a dead pin and must not be taught to, because DEF-067 is open precisely because that law repairs what it observes. Three vacuity-ledger rows, 16-18; two mine, one the reviewer's.",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [],
+      "verdict": "recorded"
     }
   ]
 }

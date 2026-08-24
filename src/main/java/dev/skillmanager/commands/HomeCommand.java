@@ -364,6 +364,37 @@ public final class HomeCommand {
                         reprovisionRemedy(home, unresolved));
                 noteCaveat(home);
             }
+            // HIS-19 / DEF-012. THE HOME'S OWN FRONT DOOR PINS A BUILD THAT IS
+            // GONE, and until now this command exited 0 on exactly that home.
+            //
+            // Measured on the operator's machine during this epic's 0.24.0
+            // release: `brew upgrade` deleted the keg the root home pinned, the
+            // home's `bin/cli/skill-manager` could only produce exit 127, and
+            // `home verify` printed ✓ and exited 0. It was not lying about what
+            // it had checked — the walk finds a missing path only INSIDE the
+            // home and under a provisionable root, and a dead pin names one
+            // outside the home entirely — which is why this is a separate
+            // question rather than a wider walk.
+            //
+            // Never gated on --strict: a front door that cannot open is not a
+            // historical record under any reading.
+            List<String> deadPins = result.danglingCliPins();
+            if (!deadPins.isEmpty()) {
+                Log.error("%d CLI pin(s) in %s name a build that is not there — the entrypoint "
+                                + "file exists and is executable, so every -x test passes, and "
+                                + "running it can only produce exit 127",
+                        deadPins.size(), home);
+                Log.errorList("    ", deadPins);
+                // HIS-13 owns the repair; this names it rather than inventing a
+                // second one. `home shims` re-pins too and is named second,
+                // because it pins whatever build is running it while
+                // `home repair --fix` locates one itself.
+                Log.error("  re-pin it with: skill-manager home repair --home %s --fix "
+                                + "(or `skill-manager home shims --home %s`, run from the build "
+                                + "this home should use), then re-run this check",
+                        home, home);
+                noteCaveat(home);
+            }
             // Last, because it is the verdict, and because a terminal keeps
             // the tail. Never gated on --strict: a path that RESOLVES into
             // another home is not a historical record under any reading.
@@ -404,7 +435,10 @@ public final class HomeCommand {
                         + "persisted error text, not paths. Edit the unit content (listed above) "
                         + "and re-run, or drop --strict — without it this home passes.");
             }
-            if (!result.clean() || !unresolved.isEmpty()) return 1;
+            // HIS-19: `|| !deadPins.isEmpty()`. This clause is the regression
+            // test for the 0.24.0 incident — every other term was already true
+            // of that home and every one of them was FALSE, so it exited 0.
+            if (!result.clean() || !unresolved.isEmpty() || !deadPins.isEmpty()) return 1;
             // "no path reaches any other home" is FALSE of a child home, and a
             // verdict that says it anyway is the same defect as the three
             // earlier versions of this line: a guarantee wider than the run.
@@ -876,9 +910,29 @@ public final class HomeCommand {
 
         private final SkillStore injectedStore;
 
-        public ShimsCmd() { this(null); }
+        /**
+         * The build to pin, when the caller already knows it; {@code RunningCli}
+         * answers when nothing is injected.
+         *
+         * <p>The seam exists for the reason {@link RepairCmd}'s and
+         * {@link LauncherShims#write(SkillStore, Path)}'s do: an in-process test
+         * cannot be located as a running CLI. It is load-bearing for a specific
+         * assertion — that this command PRINTS the pin it wrote — which cannot
+         * be made at all unless a fixture build reaches
+         * {@code LauncherShims.write}. Reverting the two lines below reddened
+         * nothing in 1402 cases before that assertion existed (review of #250,
+         * MAJOR 1).
+         */
+        private final Path injectedPin;
 
-        public ShimsCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+        public ShimsCmd() { this(null, null); }
+
+        public ShimsCmd(SkillStore injectedStore) { this(injectedStore, null); }
+
+        public ShimsCmd(SkillStore injectedStore, Path injectedPin) {
+            this.injectedStore = injectedStore;
+            this.injectedPin = injectedPin;
+        }
 
         @Override
         public Integer call() throws Exception {
@@ -897,7 +951,9 @@ public final class HomeCommand {
             }
             Path pin;
             try {
-                pin = dev.skillmanager.launch.RunningCli.locate();
+                pin = injectedPin != null
+                        ? injectedPin
+                        : dev.skillmanager.launch.RunningCli.locate();
             } catch (dev.skillmanager.launch.RunningCli.UnknownLocationException e) {
                 // Reported rather than thrown: the operator has to act on this,
                 // and the alternative the code refused to take (resolve the CLI
@@ -908,6 +964,12 @@ public final class HomeCommand {
                 return 127;
             }
             LauncherShims.Result result = LauncherShims.write(store, pin);
+            // HIS-19: report what was WRITTEN, not what was located. The writer
+            // may record a versionless spelling of the same build (DEF-027), and
+            // a `pinned CLI:` line naming a path the file does not contain is a
+            // reader disagreeing with the writer about one artifact — the class
+            // this epic is about, and one its own fix could have introduced.
+            pin = result.pin();
             if (json) {
                 System.out.println("""
                         {"dir":"%s","cli":"%s","shims":[%s]}"""
