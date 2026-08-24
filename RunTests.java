@@ -263,6 +263,13 @@ public class RunTests {
         failures += dev.skillmanager.store.HomePathsTest.run();
         failures += dev.skillmanager.store.HomeCloneTest.run();
         failures += dev.skillmanager.commands.HomeVerifyReportTest.run();
+        // HIS-21 (#253): the four diagnostics that reported something that was
+        // not so. DEF-102 lives in the execution strategy; DEF-105 and DEF-106
+        // in what `home policy` and `home describe` say about files they never
+        // read. DEF-104's regression sits in DamagedHomeIsRepairableTest below,
+        // beside the repair half it had to stop disagreeing with.
+        failures += dev.skillmanager.cli.HelpIsTextOnlyTest.run();
+        failures += dev.skillmanager.commands.HomeReportsMarkWhatTheyInventTest.run();
         failures += HomeVerifyDiagnosticTextTest.run();
         failures += dev.skillmanager.commands.HomeUnresolvedGateTest.run();
         failures += dev.skillmanager.store.ChildHomeShimIsolationTest.run();

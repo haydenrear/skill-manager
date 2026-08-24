@@ -446,16 +446,14 @@ public final class HomeRepair {
             for (Path file : files) {
                 examined++;
                 String rel = relative(store, file);
-                Set<Path> foreignSeen = new LinkedHashSet<>();
-                for (String token : absolutePathTokens(file)) {
-                    Path candidate;
-                    try {
-                        candidate = Path.of(token);
-                    } catch (RuntimeException notAPath) {
-                        continue;
-                    }
-                    Path foreign = HomeCloner.unsanctionedForeignHome(rel, candidate, store);
-                    if (foreign == null || !foreignSeen.add(candidate)) continue;
+                // HIS-21 / DEF-104. The extraction AND the verdict now live in
+                // HomeCloner, because `home verify` had to ask the identical
+                // question and two spellings of it is what DEF-104 WAS. This
+                // loop keeps only what is this command's own: the remedy.
+                for (HomeCloner.ForeignShimPath found
+                        : HomeCloner.foreignPathsInShimContent(rel, file, store)) {
+                    Path candidate = found.candidate();
+                    Path foreign = found.foreign();
                     Path mine = mappedIntoThisHome(foreign, candidate, store);
                     boolean fixable = mine != null;
                     findings.add(new Finding(Kind.FOREIGN_PATH_IN_SHIM, rel,

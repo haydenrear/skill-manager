@@ -687,6 +687,128 @@ public final class DamagedHomeIsRepairableTest {
                                     + unsanctioned.findings());
                 })
 
+                .test("DEF-104: verify and repair return the SAME verdict on a wrapper shim", () -> {
+                    // HIS-21 / DEF-104. THE HEADLINE, AND THE CORRECTION TO IT.
+                    //
+                    // Measured on the operator's root home, same minute:
+                    // `home verify` exit 0, "no path in it reaches any other
+                    // Skill Manager home"; `home repair` five
+                    // FOREIGN_PATH_IN_SHIM findings, and repair was right.
+                    //
+                    // #253's proposed mechanism was that `verifyRoots` frames
+                    // the question against a home's SOURCE, so a home with no
+                    // parent never runs the branch. THAT IS NOT THE MECHANISM,
+                    // and the third assertion below is what says so: the same
+                    // blindness held WITH a source. The foreign-home question
+                    // was asked only of SYMLINKS; a regular-file wrapper was
+                    // invisible at every tier.
+                    //
+                    // THE BRANCH THIS EXERCISES: `bin/cli/wrapper` is a REGULAR
+                    // FILE whose text execs a path in the other home, so it
+                    // travels HomeCloner.verifyRoots' regular-file arm and the
+                    // new foreignPathsInShimContent call on it. A symlink decoy
+                    // would exercise the arm that was ALREADY correct, which is
+                    // HIS-17's blocker (vacuity row 11) restated one ticket on.
+                    //
+                    // THE MUTATION THAT REDDENS IT: delete the
+                    // foreignPathsInShimContent loop from verifyRoots. Assertion
+                    // 2 then fails with `isolated()=true` while assertion 1 --
+                    // the repair half, untouched -- still passes, which is the
+                    // disagreement itself.
+                    Fixture fx = Fixture.build("def104");
+
+                    HomeCloner.Verification healthy = HomeCloner.verify(fx.store, false);
+                    assertTrue(healthy.isolated(),
+                            "precondition: an undamaged home verifies clean, INCLUDING its "
+                                    + "sanctioned bin/cli/mirror wrapper. Without this the "
+                                    + "widening would redden every child home and the finding "
+                                    + "below would be noise; got " + healthy.isolationFailures());
+
+                    fx.damageShimText();
+
+                    List<String> repairSubjects = HomeRepair.detect(fx.store, fx.pin).findings()
+                            .stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.FOREIGN_PATH_IN_SHIM)
+                            .map(HomeRepair.Finding::subject)
+                            .distinct()
+                            .sorted()
+                            .toList();
+                    assertEquals(List.of("bin/cli/wrapper"), repairSubjects,
+                            "precondition: repair still names exactly the damaged wrapper");
+
+                    HomeCloner.Verification damaged = HomeCloner.verify(fx.store, false);
+                    List<String> verifySubjects = damaged.isolationFailures().stream()
+                            .filter(l -> HomeCloner.Leak.FOREIGN_PATH_IN_SHIM.equals(l.kind()))
+                            .map(HomeCloner.Leak::path)
+                            .distinct()
+                            .sorted()
+                            .toList();
+                    assertEquals(repairSubjects, verifySubjects,
+                            "THE CLAIM: the two readers name the same file. verify said "
+                                    + damaged.isolationFailures() + "; repair said "
+                                    + repairSubjects);
+                    assertFalse(damaged.isolated(),
+                            "and verify REFUSES the home rather than merely mentioning it — "
+                                    + "a FOREIGN_PATH_IN_SHIM leak must be an isolation "
+                                    + "failure at every strictness, because the shim RUNS "
+                                    + "that path");
+
+                    // THE MECHANISM CORRECTION, as an assertion rather than a
+                    // sentence. #253 said the branch does not run for a
+                    // parentless home. If that were the cause, handing verify a
+                    // source would make it see the wrapper before this fix and
+                    // this line would prove nothing. Measured before the fix:
+                    // `home verify --home A --against C` exited 0 on exactly
+                    // this shape. The blindness was about the SURFACE.
+                    HomeCloner.Verification withSource =
+                            HomeCloner.verify(fx.other, fx.store, false);
+                    assertTrue(withSource.isolationFailures().stream()
+                                    .anyMatch(l -> HomeCloner.Leak.FOREIGN_PATH_IN_SHIM
+                                                    .equals(l.kind())
+                                            && l.path().equals("bin/cli/wrapper")),
+                            "the same wrapper is found with a source supplied — so the fix is "
+                                    + "not conditioned on the home being parentless, and "
+                                    + "neither was the defect; got "
+                                    + withSource.isolationFailures());
+                })
+
+                .test("DEF-104: the SANCTION survives the widening — a clone's inherited wrapper is not a leak", () -> {
+                    // The non-detection half, and the one that decides whether
+                    // this widening is shippable. `home verify` runs on every
+                    // home HomeFixpointLaw touches across 24 graphs; if a
+                    // legitimately inherited wrapper became a leak, the epic
+                    // would trade one wrong answer for a louder one.
+                    //
+                    // A GRANDCHILD, deliberately: only the descent record can
+                    // sanction it, so deleting that record is a control with
+                    // nothing else holding the verdict up — the same argument
+                    // the detection test above it makes, asked of the other
+                    // reader.
+                    Fixture fx = Fixture.build("def104-sanction");
+                    Path child = fx.cloneToChild("child");
+                    assertContains(Files.readString(child.resolve("bin/cli/mirror")),
+                            fx.other.toString(),
+                            "precondition: the clone still carries the wrapper naming the "
+                                    + "grandparent store — if re-anchoring rewrote it there is "
+                                    + "no foreign path here and this test asserts nothing");
+
+                    HomeCloner.Verification sanctioned = HomeCloner.verify(child, false);
+                    assertTrue(sanctioned.isolated(),
+                            "a clone's inherited wrapper is sanctioned by the descent record "
+                                    + "the clone wrote; got " + sanctioned.isolationFailures());
+
+                    Files.delete(child.resolve(HomeProvenance.FILENAME));
+                    HomeCloner.Verification unsanctioned = HomeCloner.verify(child, false);
+                    assertTrue(unsanctioned.isolationFailures().stream()
+                                    .anyMatch(l -> HomeCloner.Leak.FOREIGN_PATH_IN_SHIM
+                                                    .equals(l.kind())
+                                            && l.path().equals("bin/cli/mirror")),
+                            "and with the record gone the SAME bytes are a leak — so the "
+                                    + "verdict above came from production's sanction and not "
+                                    + "from verify being blind again; got "
+                                    + unsanctioned.isolationFailures());
+                })
+
                 .runAll();
     }
 

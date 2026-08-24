@@ -1,0 +1,697 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/HIS-21",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/ticket-044-HIS-21 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json",
+    "git_commit": "git commit -m 'record spec history for HIS-21'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/ticket-044-HIS-21"
+  },
+  "complexity_delta": {
+    "direction": "zero",
+    "metrics": {
+      "actions": {
+        "after": 9,
+        "before": 9,
+        "delta": 0,
+        "percent": 0.0
+      },
+      "bound": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "depth": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "distinct_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "generated_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "variables": {
+        "after": 38,
+        "before": 38,
+        "delta": 0,
+        "percent": 0.0
+      }
+    },
+    "previous_scope_id": "HIS-20"
+  },
+  "complexity_ledger": {
+    "coverage_audit": {
+      "in_scope_gaps": null,
+      "passing": false,
+      "report": "",
+      "scope_source": "",
+      "status": "not_run"
+    },
+    "delta": {
+      "direction": "zero",
+      "metrics": {
+        "actions": {
+          "after": 9,
+          "before": 9,
+          "delta": 0,
+          "percent": 0.0
+        },
+        "bound": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "depth": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "distinct_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "generated_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "variables": {
+          "after": 38,
+          "before": 38,
+          "delta": 0,
+          "percent": 0.0
+        }
+      },
+      "previous_scope_id": "HIS-20"
+    },
+    "errors": [],
+    "input_path": "specs/tickets/HIS-21/results/complexity_ledger.yaml",
+    "justification": "",
+    "ledger_path": "specs/results/complexity_ledger.json",
+    "metrics": {
+      "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+      "actions": 9,
+      "actions_from_fallback_heuristic": false,
+      "bound": null,
+      "bound_complete": false,
+      "bound_resolved_variables": 0,
+      "bound_unresolved_variables": [
+        "cli_store_units",
+        "cli_doc_repos",
+        "cli_harness_templates",
+        "cli_harness_instances",
+        "cli_installed_records",
+        "cli_lock_units",
+        "cli_agent_projections",
+        "cli_bindings",
+        "cli_projection_rows",
+        "cli_managed_copies",
+        "cli_import_directives",
+        "cli_projection_conflicts",
+        "cli_tool_records",
+        "cli_cli_lock",
+        "cli_skill_scripts_run",
+        "cli_errors",
+        "cli_gateway_url_configured",
+        "cli_registry_url_configured",
+        "cli_gateway_mcp_snapshot",
+        "effect_status",
+        "effect_continuation",
+        "program_halted",
+        "always_after_ran",
+        "rollback_journal",
+        "gateway_catalog",
+        "gateway_dynamic_servers",
+        "gateway_global_deployments",
+        "gateway_session_deployments",
+        "gateway_tools",
+        "gateway_disclosures",
+        "gateway_errors",
+        "gateway_last_init",
+        "server_registry_units",
+        "server_versions",
+        "server_packages",
+        "server_authenticated_users",
+        "project_model",
+        "result"
+      ],
+      "budget_utilization": {},
+      "depth": null,
+      "distinct_states": null,
+      "gate_passed": false,
+      "gate_violations": [
+        "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+        "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      ],
+      "generated_states": null,
+      "modularity": 0.0,
+      "variables": 38
+    },
+    "narrative": "HIS-21 (issue so. The machine-checked core above is uninformative by construction -- the model delta is zero because no model was touched. The full record is results/epic-home-integrity-sync/tickets/HIS-21/goal-contribution.md and results/epic-home-integrity-sync/probes/his-21/vacuity-checks.md; this is the part the delta cannot express. THREE OF THE FIVE WERE FILED WITH A MECHANISM THAT MEASUREMENT REFUTED, and in two of the three the correction changed what the fix had to be. That is the most useful thing in this entry, so it is first. DEF-104, as filed: \"verifyRoots frames its foreign-home question against a home's SOURCE, and the root home has no parent, so the branch never runs\" -- offered explicitly as \"to be confirmed rather than assumed\". CONFIRMED FALSE. Two throwaway homes, A holding a regular-file wrapper execing a path inside B, on the pre-fix tree: `home verify --home A` exit 0; `home verify --home A --against C` ALSO exit 0, with a source supplied; `home repair --home A` one finding; and the same target rewritten as a SYMLINK, `home verify` exit 1. The blindness was about the SURFACE, not the tier and not `--against`: the foreign-home question was asked only of symlinks. A wrapper naming a third home was invisible at EVERY tier. This matters beyond the record -- the fix the filed mechanism implies is \"run the branch when srcRoot == null\", and that branch is the symlink branch, which already ran. A ticket that implemented the stated mechanism would have shipped green tests and the defect. The regression test therefore asserts the `--against` case explicitly. DEF-105, as filed: \"the root home carries a security policy the product does not read\". IT READS IT. `skill-manager policy show` on a home holding allowed_backends = [\"tar\"], require_hash = true, allow_init_scripts = true printed all three back, from `Policy.load`, which resolves `<store>/policy.toml`. `policy.toml` is the INSTALL/SECURITY policy and `home.policy.toml` is the LIVE/FROZEN policy: two live files, two jobs, two verbs, neither legacy. The real defect is narrower and worse -- both are called policy, both govern that home, and neither verb mentioned the other, so an operator reading \"home.policy.toml (absent -- live by default)\" concludes the home declares no policy with a live security policy permitting init scripts beside it. `home policy` now names both. DEF-107, as filed: \"HomeMembershipLaw.SPEC declares no dependsOn, so it runs mid-scenario and calls an intermediate state final\". MEASURED FALSE, run 20260824-193907: home-sync wires the node .dependsOn(\"home.sync.authored.agent.tree\") and the planner ran it [19/19], dead last; all 23 wirings declare a predecessor. The backlog entry's own quoted output contradicts the sentence too -- the project home it shows holds hs-delta, which is staged into the ROOT home and reaches the project home only through a sync. Ordering could not have been the fix either: a staged unit is still on disk at the end of the graph, which is exactly when a post-condition looks. And a SPEC-level dependsOn is unimplementable as stated, because the node has a different predecessor in each of the 23 graphs. Fixed instead by letting the FIXTURE declare what it staged -- a marker inside the unit directory, so it travels with the unit through a real `home sync`, which is necessary because hs-delta is staged in one home and audited in three. The latent hazard the sentence describes is real one graph from now and is filed as DEF-109. DEF-106 CARRIED AN OPEN QUESTION the ticket had to decide: is a project home SUPPOSED to have a home.runtime.json? It is not, and this is decidable from the code rather than from taste -- `LaunchEnv.of` reads one when present and otherwise DERIVES the same block, and only `home clone` and `describe --write` persist one. So the project home is not malformed and `describe` computing a descriptor is correct. What was wrong is that it printed the computed answer in the shape of a recorded one: `policy`, `cli` and `gateway` were all defaults, and the gateway default is how the root home and the project home both reported `(owned)` for one port with one listener. Each field now carries its provenance. `--json` is deliberately unchanged, and `GatewayConfig.owned()` still defaults to true -- the claim is about the REPORT, and widening it to the resolution would change what `gateway up` does in every undeclared home with no measurement behind it. DEF-102 is the small one and the only one whose filed description was exact. `--help` ran the closing report program: it resolved the ambient home, called `store.init()`, and walked every installed record. Three things wrong and only the first cosmetic -- noise on the one output whose job is to be quotable, a full home walk on the command an agent runs when it does not know what a command does, and a WRITE held off only by CommandHomeAccess classifying help as READ. VACUITY. Nine probes, every red observed rather than argued; the table is in probes/his-21/vacuity-checks.md. Mechanism D bit once, and not where the brief warned it would: HelpIsTextOnlyTest's `--version` case bound a home for two invocations through a driver that clears the binding after each, so it ran against the ambient home and was GREEN UNDER THE MUTATION. Caught by running the mutation, not by reading the test; re-written per-invocation and re-run red. ONE FINDING THE TICKET CREATED RATHER THAN FOUND. Running the second graph set the brief instructs (`sweep.py --only <graphs>`) OVERWROTE this epic's 26-graph round-1 sweep.json, which sweep.py writes by default. Found by `git status`; recovered from HEAD; filed as DEF-111. Nothing in the tooling would have said so -- the clobbered file is valid JSON with the same schema and reads as a completed small run. DEFERRED: DEF-109 (SPEC has no dependsOn: latent, one graph from now), DEF-110 (the model has ONE observer, so reader-agreement is inexpressible in it), DEF-111 (sweep.py clobbers the canonical record). Three of a budget of five.",
+    "notes": [
+      "NOTE: TLC reports incomplete; comparison skipped.",
+      "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+    ],
+    "recorded_at_utc": "2026-08-24T20:26:48.357648+00:00",
+    "refinement": {
+      "applied": true,
+      "approved_by": "HIS-21 author; the model-side recommendation is DEFERRED as DEF-110 for HIS-6",
+      "detail": "SEARCHED TWICE -- once in the model, once in the program -- and found no refinement to apply. Recorded with what each search actually looked at, so a reader can tell \"searched, found none\" from \"did not search\". IN THE MODEL: HIS-21 changes no TLA+ module, no .cfg, no adapter and no spec double. Its conflict keys declare `tla: []` and `adapters: []`, and the assignment records `tlc: N/A unless the fix states a new invariant`. The delta above is zero because the model is byte-identical before and after. AND THE MODEL WAS ALREADY RIGHT, which is the interesting half. `HomeIntegrityInternal.tla` carries `ADamagedHomeIsNeverReportedClean`, with its own refutation cfg (`_regression_blindobserver.cfg`, \"the observer reports clean without looking\"). DEF-104 is an instance of exactly that invariant. The model did not catch it and could not: the model has ONE `hi_observation` variable and production has at least four readers (`home verify`, `home verify --against`, `home repair`, `home clone`). GOAL-one-home-one-answer is not \"the observation is correct\", it is \"the observations AGREE\", and a single observation variable cannot express disagreement at all. That IS a refinement recommendation -- `hi_observation` as READER -> observation, plus `AllReadersAgreeAboutOneHome` and a cfg that refutes IT rather than a neighbour (vacuity-ledger row 15's rule). It is NOT applied here: it is a model change with a TLC cost and a new expected-violation cfg, this ticket states no new invariant, and HIS-6 is the ticket that decides GOAL-one-home-one-answer. Filed as DEF-110 with the owed check written out, rather than half-built inside a diagnostics ticket. IN THE PROGRAM: one refinement was found and APPLIED, and it removes representation rather than adding it. `home repair` and `home verify` each had their own answer to \"does this shim's text name another home\". `HomeRepair.foreignPathsInShims` kept a token loop, a dedup set and a call to `unsanctionedForeignHome`; `home verify` had nothing. Rather than write a second one, the extraction AND the verdict moved into `HomeCloner.foreignPathsInShimContent`, which both readers now call -- `HomeRepair`'s loop keeps only what is its own, the remedy text. One scanner, one verdict, one scope. Two spellings of that question is what DEF-104 WAS, so fixing it by adding a third would have been the defect inside its own repair. Also folded, for the same reason: `GatewayConfig.FILE` and `GatewayConfig.URL_ENV` were private and `home describe` needed both to say where its answer came from. Made public rather than re-spelled at the call site.\n",
+      "measured": false,
+      "outcome": "none",
+      "searched": true
+    },
+    "retention": {
+      "effect_conformance": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "external_coverage": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "kill_rate": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "retention_summary": [
+      "kill_rate=not_run (UNVERIFIED)",
+      "effect_conformance=not_run (UNVERIFIED)",
+      "external_coverage=not_run (UNVERIFIED)"
+    ],
+    "schema_version": 1,
+    "scope": "ticket",
+    "scope_id": "HIS-21",
+    "tlc_findings": [
+      {
+        "level": "NOTE",
+        "message": "TLC reports incomplete; comparison skipped."
+      }
+    ],
+    "transition_diff": "",
+    "validated_refactor": {
+      "behavior_tests": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the behavior-test output",
+        "status": "",
+        "value": null
+      },
+      "descriptor_comparison": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the before/after descriptor comparison",
+        "status": "",
+        "value": null
+      },
+      "tlc_after": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the post-change TLC output",
+        "status": "",
+        "value": null
+      },
+      "tlc_before": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the pre-change TLC output",
+        "status": "",
+        "value": null
+      }
+    },
+    "validated_refactor_summary": [
+      "tlc_before=(absent) (UNVERIFIED)",
+      "tlc_after=(absent) (UNVERIFIED)",
+      "behavior_tests=(absent) (UNVERIFIED)",
+      "descriptor_comparison=(absent) (UNVERIFIED)"
+    ],
+    "verdict": "recorded",
+    "workflow": "child-home-materialization-workflow"
+  },
+  "created_at_utc": "2026-08-24T20:26:48.434168+00:00",
+  "entry_name": "ticket-044-HIS-21",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "git": {
+    "branch": "feature/253-his-21",
+    "commit": "9c55c07",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": {
+    "bypassed": [],
+    "flags": [],
+    "model_action": "CloseTicket",
+    "note": "RC-01: a close taken under a guard-weakening flag is a different modeled state from one taken under the guard. Recorded, never refused.",
+    "weakened": false
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.cfg",
+            "relative": "ClaimantRefreshExternal.cfg",
+            "source": "specs/tickets/HIS-21/desired/ClaimantRefreshExternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.tla",
+            "relative": "ClaimantRefreshExternal.tla",
+            "source": "specs/tickets/HIS-21/desired/ClaimantRefreshExternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal_regression.cfg",
+            "relative": "ClaimantRefreshExternal_regression.cfg",
+            "source": "specs/tickets/HIS-21/desired/ClaimantRefreshExternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.cfg",
+            "relative": "ClaimantRefreshInternal.cfg",
+            "source": "specs/tickets/HIS-21/desired/ClaimantRefreshInternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.tla",
+            "relative": "ClaimantRefreshInternal.tla",
+            "source": "specs/tickets/HIS-21/desired/ClaimantRefreshInternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal_regression.cfg",
+            "relative": "ClaimantRefreshInternal_regression.cfg",
+            "source": "specs/tickets/HIS-21/desired/ClaimantRefreshInternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.cfg",
+            "relative": "HomeIntegrityInternal.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.tla",
+            "relative": "HomeIntegrityInternal.tla",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal.tla"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_guard_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_disposalreach.cfg",
+            "relative": "HomeIntegrityInternal_probe_disposalreach.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_probe_disposalreach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_reach.cfg",
+            "relative": "HomeIntegrityInternal_probe_reach.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_probe_reach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_blindobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_blindobserver.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_blindobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "relative": "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_collapsedgateadmits.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "relative": "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_everythingdisposable.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_foreignprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_gaterefires.cfg",
+            "relative": "HomeIntegrityInternal_regression_gaterefires.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_gaterefires.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "relative": "HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_halfboundhome.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_narrowprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "relative": "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfrepend.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfrepend.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_selfrepend.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_silentdrift.cfg",
+            "relative": "HomeIntegrityInternal_regression_silentdrift.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_silentdrift.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleack.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleack.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_staleack.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleerror.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleerror.cfg",
+            "source": "specs/tickets/HIS-21/desired/HomeIntegrityInternal_regression_staleerror.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/HIS-21/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/HIS-21/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/HIS-21/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/HIS-21/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/HIS-21/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/claimant_refresh_actions.yml",
+            "relative": "claimant_refresh_actions.yml",
+            "source": "specs/tickets/HIS-21/desired/claimant_refresh_actions.yml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/HIS-21/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/ClaimantRefreshInternal.dot",
+            "relative": "generated/spec-unit/ClaimantRefreshInternal.dot",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/ClaimantRefreshInternal.dot"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/__init__.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "relative": "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/case_coverage.json"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/cases.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/cases.py",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/cases.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/docs.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/docs.md",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/docs.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/doubles.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/types.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/types.py",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/types.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/validators.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/validators.py",
+            "source": "specs/tickets/HIS-21/desired/generated/spec-unit/claimant_refresh_cases/validators.py"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/HIS-21/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/HIS-21/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/HIS-21/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/HIS-21/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_claimant_refresh_program_model.py",
+            "relative": "tests/test_claimant_refresh_program_model.py",
+            "source": "specs/tickets/HIS-21/desired/tests/test_claimant_refresh_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/HIS-21/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/HIS-21/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/HIS-21/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/HIS-21/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/HIS-21/desired/tests/test_program_model_contract.py"
+          },
+          {
+            "destination": "specs/current/tests/test_tlc_expected_violations.py",
+            "relative": "tests/test_tlc_expected_violations.py",
+            "source": "specs/tickets/HIS-21/desired/tests/test_tlc_expected_violations.py"
+          }
+        ],
+        "operation": "promote ticket desired onto project current, preserving unseeded current-only paths",
+        "preserved": [
+          "tests/test_current_ticket_workflow.py"
+        ],
+        "removed": [],
+        "role": "current",
+        "seed_basis": "seed manifest recorded at open; removing only seeded paths the ticket dropped",
+        "seed_recorded": true,
+        "source": "specs/tickets/HIS-21/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/HIS-21"
+  },
+  "refinement_record": {
+    "applied": true,
+    "approved_by": "HIS-21 author; the model-side recommendation is DEFERRED as DEF-110 for HIS-6",
+    "detail": "SEARCHED TWICE -- once in the model, once in the program -- and found no refinement to apply. Recorded with what each search actually looked at, so a reader can tell \"searched, found none\" from \"did not search\". IN THE MODEL: HIS-21 changes no TLA+ module, no .cfg, no adapter and no spec double. Its conflict keys declare `tla: []` and `adapters: []`, and the assignment records `tlc: N/A unless the fix states a new invariant`. The delta above is zero because the model is byte-identical before and after. AND THE MODEL WAS ALREADY RIGHT, which is the interesting half. `HomeIntegrityInternal.tla` carries `ADamagedHomeIsNeverReportedClean`, with its own refutation cfg (`_regression_blindobserver.cfg`, \"the observer reports clean without looking\"). DEF-104 is an instance of exactly that invariant. The model did not catch it and could not: the model has ONE `hi_observation` variable and production has at least four readers (`home verify`, `home verify --against`, `home repair`, `home clone`). GOAL-one-home-one-answer is not \"the observation is correct\", it is \"the observations AGREE\", and a single observation variable cannot express disagreement at all. That IS a refinement recommendation -- `hi_observation` as READER -> observation, plus `AllReadersAgreeAboutOneHome` and a cfg that refutes IT rather than a neighbour (vacuity-ledger row 15's rule). It is NOT applied here: it is a model change with a TLC cost and a new expected-violation cfg, this ticket states no new invariant, and HIS-6 is the ticket that decides GOAL-one-home-one-answer. Filed as DEF-110 with the owed check written out, rather than half-built inside a diagnostics ticket. IN THE PROGRAM: one refinement was found and APPLIED, and it removes representation rather than adding it. `home repair` and `home verify` each had their own answer to \"does this shim's text name another home\". `HomeRepair.foreignPathsInShims` kept a token loop, a dedup set and a call to `unsanctionedForeignHome`; `home verify` had nothing. Rather than write a second one, the extraction AND the verdict moved into `HomeCloner.foreignPathsInShimContent`, which both readers now call -- `HomeRepair`'s loop keeps only what is its own, the remedy text. One scanner, one verdict, one scope. Two spellings of that question is what DEF-104 WAS, so fixing it by adding a third would have been the defect inside its own repair. Also folded, for the same reason: `GatewayConfig.FILE` and `GatewayConfig.URL_ENV` were private and `home describe` needed both to say where its answer came from. Made public rather than re-spelled at the call site.\n",
+    "measured": false,
+    "outcome": "none",
+    "searched": true
+  },
+  "results": [],
+  "retention_evidence": {
+    "effect_conformance": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "external_coverage": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "kill_rate": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    }
+  },
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 7,
+    "close_out_entry": "Close-out ticket HIS-21",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/wt-253-his-21/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-044-HIS-21/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-044-HIS-21/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-044-HIS-21/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-044-HIS-21/ticket",
+      "source": "specs/tickets/HIS-21"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "DEF-104: verify and repair return the SAME verdict on a home with NO PARENT whose shim CONTENT names a foreign path. The regression node plants exactly that and fails when the widened check is removed.",
+        "DEF-105: the policy verb reports a legacy policy.toml sitting beside an absent home.policy.toml, rather than silently defaulting. A node plants the old filename and asserts the verb says so.",
+        "DEF-106: describe MARKS synthesised fields distinctly from recorded ones, and two homes never both report one gateway as owned.",
+        "DEF-102: --help for any verb performs no project scan, no home mutation, and exits 0.",
+        "Every new assertion is vacuity-checked in writing, naming the branch it exercises and the mutation that reddens it.",
+        "ROUND 2: the graphs these nodes live in are re-run after the fix, and the result is recorded in the regression ledger against round 1."
+      ]
+    },
+    "added_in_schedule_revision": 10,
+    "blocks": [
+      "HIS-6"
+    ],
+    "conflict_keys": {
+      "adapters": [],
+      "production": [
+        "HomeCommand.describe",
+        "HomeCommand.policy",
+        "HomeCloner.verifyRoots",
+        "HomePolicy",
+        "CliMetadata.help"
+      ],
+      "test_graph": [
+        "home-integrity/EveryShimResolves",
+        "common/HomeMembershipLaw"
+      ],
+      "tla": [],
+      "workflow_data": []
+    },
+    "depends_on": [
+      "HIS-13",
+      "HIS-19",
+      "HIS-20"
+    ],
+    "epic": "home-integrity-sync",
+    "found_by": "The manual sweep (instrument C) run by the epic agent on 2026-08-24, in preparation for HIS-6. Every one of these was missed by the 26-graph sweep, and the reason is the same in each case: no fixture exercises the condition.\n",
+    "github_issue": 253,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "verify and repair stop disagreeing about the root tier; describe stops inventing a fifth answer about which home owns what",
+        "goal": "GOAL-one-home-one-answer",
+        "local_signal": "python skills/test_graph/scripts/run.py home-integrity"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "a home whose damage verify cannot see is a home nobody repairs; closing the gap is what makes HIS-13's detector reachable from the ordinary verb",
+        "goal": "GOAL-no-destructive-recovery",
+        "local_signal": "jbang RunTests.java"
+      }
+    ],
+    "id": "HIS-21",
+    "phase": "HIS",
+    "promotion_order": 20,
+    "promotion_predecessor": "HIS-20",
+    "root_cause": "A DIAGNOSTIC THAT CANNOT BE TRUSTED IS WORSE THAN NO DIAGNOSTIC. Each of these four is a reader answering confidently about a state it did not check, and three of them are answering about the ROOT home -- the tier this epic's own record says was damaged twice and the tier every other reader is weakest at.\n",
+    "slice": "DEF-104 -- `home verify` reports the root home clean while three of its shims execute code inside the project home. `home repair` catches all five paths. Same home, same minute, two answers. Plausible mechanism, to be confirmed: verifyRoots frames its foreign-home question against a home's SOURCE, and the root home has no parent, so the branch never runs. DEF-105 -- the root home carries `policy.toml`, hand-written, headed \"guards against hostile skills\", and the product reads `home.policy.toml` and runs on defaults. `home policy` prints `live` whether the policy is absent or merely unread. This is vacuity-ledger row 8 on a real home. DEF-106 -- `home describe` prints a full descriptor for the project home, which holds no descriptor files at all, including a gateway marked (owned) that the root home also claims. `home policy` marks its defaults; `home describe` does not follow that convention. DEF-102 -- `skill-manager sync --help` runs project checks and prints a project-failure banner. Help output should be pure text. DEF-107 -- ADDED AFTER THE ROUND-1 SWEEP COMPLETED, and it is the same kind one layer down: HomeMembershipLaw flags DELIBERATE TEST STAGING as a product violation and reddens the CORE `home-sync` graph. The units it calls GAINED were written to disk on purpose by `HomeSyncSupport.mkUnit`, which is used in at least eight nodes to stage the precondition of a sync scenario. The law's own self-test passes in both directions first, so the instrument works and the RULE is wrong for this context. The deeper defect is that the law declares NO `dependsOn`, so it can run mid-scenario and call an intermediate state final. Do NOT fix it by dropping the GAINED direction -- that is the direction that caught DEF-047. NOT IN SCOPE: the promotion path itself (HIS-22), and repairing the operator's root home, which is the owner's call to make.\n",
+    "status": "closed",
+    "title": "four commands report something that is not so, and three of them about the operator's real root home",
+    "wave": 15
+  },
+  "ticket_id": "HIS-21",
+  "ticket_index": 44,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/child-home-materialization-workflow/ticket-044-HIS-21/ticket",
+    "source": "specs/tickets/HIS-21"
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

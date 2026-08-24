@@ -328,6 +328,56 @@ public final class HomeCloner {
         public static final String FOREIGN_AGENT_HOME = "FOREIGN_AGENT_HOME";
 
         /**
+         * A shim whose <em>content</em> execs a path inside another home —
+         * the wrapper twin of {@code FOREIGN_HOME}, and DEF-104.
+         *
+         * <h2>The measured disagreement, and what actually caused it</h2>
+         *
+         * <p>Same home, same minute, on the operator's root store:
+         *
+         * <pre>
+         *   home verify --home ~/.skill-manager  -> exit 0, "no path in it
+         *                                           reaches any other home"
+         *   home repair --home ~/.skill-manager  -> 5 findings,
+         *                                           FOREIGN_PATH_IN_SHIM x3 shims
+         * </pre>
+         *
+         * <p>and repair was right: {@code bin/cli/tla-spec-dev} held
+         * {@code exec python3 "<project home>/skills/.../tla_spec_dev.py"}
+         * while the root home carried its own copy of that script.
+         *
+         * <p>Issue #253 proposed that {@link #verifyRoots} frames the
+         * foreign-home question against a home's SOURCE, so a parentless home
+         * never runs the branch. <b>That is not the mechanism, and the
+         * difference matters.</b> Measured on two throwaway homes, A holding a
+         * regular-file wrapper that execs a path inside B:
+         *
+         * <pre>
+         *   home verify --home A              -> exit 0   (no source)
+         *   home verify --home A --against C  -> exit 0   (a source, and still blind)
+         *   home repair --home A              -> 1 finding
+         *   A's shim rewritten as a SYMLINK, home verify --home A -> exit 1
+         * </pre>
+         *
+         * <p>So the blindness is not about the TIER and not about
+         * {@code --against}. The foreign-home question was asked only of
+         * SYMLINKS; for a regular file the walk searched for the SOURCE needle
+         * and nothing else, so a wrapper naming a THIRD home was invisible at
+         * every tier, with or without a parent. The root home merely happened
+         * to be where the wrappers had been mis-pointed —
+         * {@code HomeRepair.foreignPathsInShims} says this in its own javadoc:
+         * "every check built on {@code Files.isExecutable} or on link
+         * resolution passes over it".
+         *
+         * <p>Never tolerable, for the same reason {@code FOREIGN_HOME} is not:
+         * the shim RUNS that path. The verdict is
+         * {@link HomeCloner#unsanctionedForeignHome} — the same gate
+         * {@code home repair} asks — so the two readers cannot come to
+         * disagree about one file again.
+         */
+        public static final String FOREIGN_PATH_IN_SHIM = "FOREIGN_PATH_IN_SHIM";
+
+        /**
          * A path that appears only inside a persisted error MESSAGE.
          *
          * <p>{@code installed/<unit>.json} carries an {@code errors[]} array,
@@ -1805,6 +1855,26 @@ public final class HomeCloner {
                 return;
             }
             if (!Files.isRegularFile(file)) return;
+            // DEF-104. THE WRAPPER HALF OF THE ISOLATION QUESTION.
+            //
+            // Everything above this line is about SYMLINKS, and until now that
+            // was the whole of "does any path in this home reach another one".
+            // A generated wrapper is a regular file that execs an absolute
+            // path; it resolves through no link, so the branch above never saw
+            // it and the branch below only ever looked for the SOURCE needle.
+            // The result was `home verify` exit 0 on a home whose shims ran
+            // another home's code, at every tier and with or without
+            // `--against`. See Leak#FOREIGN_PATH_IN_SHIM for the measurement
+            // that separates this from the tier-shaped explanation.
+            //
+            // Ahead of the needle logic, because the needle logic RETURNS when
+            // there is no source and this claim does not depend on one.
+            for (ForeignShimPath foreignInShim
+                    : foreignPathsInShimContent(rel, file, dstRoot)) {
+                leaks.add(new Leak(rel, Leak.FOREIGN_PATH_IN_SHIM,
+                        "runs " + foreignInShim.candidate() + ", which is inside the home at "
+                                + foreignInShim.foreign()));
+            }
             Surface surface = classify(rel);
             // Provisioning that never completed: a generated script naming a
             // path in THIS home that does not exist. Re-derived from the home
@@ -2024,6 +2094,81 @@ public final class HomeCloner {
         return sanctionedParentShim(rel, link, foreign, root, null,
                 new java.util.HashMap<>(), new java.util.HashMap<>())
                 ? null : foreign;
+    }
+
+    /**
+     * One absolute path a shim's CONTENT names that lands in another home.
+     *
+     * @param candidate the path the shim runs
+     * @param foreign   the home it lands in
+     */
+    public record ForeignShimPath(Path candidate, Path foreign) {}
+
+    /**
+     * Every unsanctioned foreign path named by the TEXT of a shim file — the
+     * one reader of that question, called by {@code home verify} and by
+     * {@code home repair}.
+     *
+     * <h2>Why it is one method and not two</h2>
+     *
+     * <p>DEF-104 is two commands disagreeing about one file. Fixing it by
+     * writing a second scanner beside {@code HomeRepair.foreignPathsInShims}
+     * would leave the two answers free to drift apart again on the next
+     * change, which is the failure being repaired, not a repair of it. So
+     * {@code HomeRepair} now calls this and adds only its remedy text; verify
+     * calls it and adds only its leak record. The extraction rule
+     * ({@link HomeRepair#absolutePathTokens}) and the verdict
+     * ({@link #unsanctionedForeignHome}) are both single-sourced.
+     *
+     * <h2>The scope is the two shim directories, deliberately</h2>
+     *
+     * <p>Not "every regular file in the home". Unit CONTENT legitimately
+     * quotes absolute paths — an authored README, a persisted error message,
+     * a history file — and {@code Surface.CONTENT} / {@code DIAGNOSTIC_TEXT}
+     * exist precisely because a byte scan over those produced findings about
+     * sentences (issues #133, #144). A shim is different in kind: it is a
+     * generated file whose whole content is a command line, and the path in
+     * it is EXECUTED. {@code HomeRepair} draws the boundary in the same place,
+     * and drawing it anywhere else would make the two verdicts differ again.
+     *
+     * @param rel      the file's location inside {@code homeRoot},
+     *                 {@code /}- or platform-separated
+     * @param file     the shim file to read
+     * @param homeRoot the home the shim belongs to
+     */
+    public static List<ForeignShimPath> foreignPathsInShimContent(
+            String rel, Path file, Path homeRoot) {
+        if (rel == null || file == null || homeRoot == null) return List.of();
+        if (!isShimEntry(rel)) return List.of();
+        List<ForeignShimPath> out = new ArrayList<>();
+        java.util.Set<Path> seen = new java.util.LinkedHashSet<>();
+        for (String token : HomeRepair.absolutePathTokens(file)) {
+            Path candidate;
+            try {
+                candidate = Path.of(token);
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            Path foreign = unsanctionedForeignHome(rel, candidate, homeRoot);
+            if (foreign == null || !seen.add(candidate)) continue;
+            out.add(new ForeignShimPath(candidate, foreign));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * True when {@code rel} names a file under one of the two shim
+     * directories. Prefix rather than exact depth: {@code home repair}
+     * collects those directories recursively, and a detector whose scope was
+     * one segment narrower than the repair's would be the disagreement again
+     * one level down.
+     */
+    static boolean isShimEntry(String rel) {
+        String normalized = rel.replace(java.io.File.separatorChar, '/');
+        for (String dir : SHIM_DIRS) {
+            if (normalized.startsWith(dir) && normalized.length() > dir.length()) return true;
+        }
+        return false;
     }
 
     /**

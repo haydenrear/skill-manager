@@ -70,8 +70,30 @@ rounds:
       C-manual: 6
   round_2:
     what: re-run after HIS-21 and HIS-22 land fixes AND regression assertions
-    when: pending
-    status: not started
+    when: "2026-08-24"
+    status: HIS-21's half COMPLETE; HIS-22's half pending
+    his_21_result: >
+      home-sync 19/19 GREEN (was 18/19, home.membership.law red).
+      home-integrity 18/18 GREEN, including three new real-CLI DEF-104
+      assertions on home.integrity.damaged.home.is.repairable.
+      jbang RunTests.java ALL PASSED with two new suites (9 new cases).
+      uv run pytest specs/ 169 passed.
+      SECOND GRAPH SET, run because the DEF-104 widening changes what
+      `home verify` says and HomeFixpointLaw runs `home verify` over every home
+      24 graphs produce -- so a false positive on a legitimately inherited
+      wrapper would redden them rather than this ticket: see
+      his_21_second_graph_set below.
+      NINE probes red-verified; every assertion this ticket adds was observed
+      failing without its fix. probes/his-21/vacuity-checks.md.
+    his_21_second_graph_set: >
+      checkout-home 8/8, ticket-lifecycle 14/14, project-child-home 13/13,
+      harness-smoke 14/14, home-clone 14/14 -- graphs_executed=5,
+      graphs_passed=5. Node counts read from the envelopes rather than from the
+      sweep's per-graph boolean (REG-003's lesson). Detail and the reason for
+      choosing these five:
+      tickets/HIS-21/second-graph-set.md + second-graph-set.json.
+      NOTE: running them CLOBBERED this epic's round-1 sweep.json, which
+      sweep.py writes by default. Recovered from HEAD; filed as DEF-111.
   round_3:
     what: HIS-6 terminal sweep and goal scorecard
     when: pending
@@ -143,6 +165,30 @@ findings:
     missed_by: [A-graph-sweep]
     owed_check: "a node asserting that `--help` for any verb is pure text: no project scan, no home mutation, no non-zero exit"
     status: open
+    fixed_in: HIS-21 (#253)
+    defect_id_assigned: DEF-102
+    fixed_how: >
+      `SkillManagerCli.completeExecution` now skips the closing report program
+      when `CommandHomeAccess.helpOrVersionRequested(pr)` is true. Asked of that
+      method rather than re-derived, because the confinement gate and the
+      scaffold gate already exempt exactly these invocations and a third
+      spelling of "was this help?" is the shape this epic keeps paying for.
+    regression_check: >
+      `HelpIsTextOnlyTest` (4 cases, RunHis21.java / RunTests.java). It drives
+      the REAL entry point, because the defect lives in the execution strategy
+      and a test driving the subcommand could not see it. Every "no banner"
+      assertion is paired with the SAME home under a non-help invocation, which
+      must print it -- and the spec adapter test pins the guard string as well
+      (`specs/current/tests/test_cli_help_program_model.py`).
+    red_observed: >
+      Probe V2/V2c: restore the unconditional `tryPrintOutstandingErrors()`.
+      FAILURES: 2 (`--help` and `--version`), with the positive control green.
+      The `--version` arm did NOT discriminate on the first attempt -- the
+      binding it used covered only the first of two invocations -- and was
+      re-written and re-run red. See probes/his-21/vacuity-checks.md.
+    round_2_result: >
+      GREEN. `jbang RunTests.java` ALL PASSED (with the two new suites);
+      `uv run pytest specs/` 169 passed.
 
   - id: REG-003
     caught_by: C-manual
@@ -197,6 +243,69 @@ findings:
       A node that plants a foreign path in shim CONTENT in a home with NO
       PARENT and asserts verify and repair return the same verdict.
     status: open
+    fixed_in: HIS-21 (#253)
+    fixed_how: >
+      `HomeCloner.verifyRoots` now asks the foreign-home question of a shim
+      file's CONTENT as well as of symlink targets, through a new
+      `HomeCloner.foreignPathsInShimContent` that `home repair` also calls --
+      one extraction rule (`HomeRepair.absolutePathTokens`) and one verdict
+      (`HomeCloner.unsanctionedForeignHome`) for both readers, because two
+      spellings of the question is what DEF-104 WAS. Scope is the two shim
+      directories, matching `home repair` exactly, so the verdicts cannot differ
+      by scope either. New leak kind `FOREIGN_PATH_IN_SHIM`, never tolerable,
+      and `home verify`'s remedy line now names `home repair --fix` for it --
+      `sync --force-scripts` reaches CliShimPruner, which prunes LINKS and walks
+      past a wrapper.
+    THE_MECHANISM_WAS_NOT_WHAT_THIS_ROW_SAYS: >
+      `why_A_missed_it` above says "the plausible mechanism is that verifyRoots
+      frames its foreign-home question against a home's source, so the branch
+      never runs" for a parentless home. MEASURED FALSE on the pre-fix tree, two
+      throwaway homes, A holding a wrapper that execs a path inside B:
+
+        home verify --home A               -> exit 0
+        home verify --home A --against C   -> exit 0    <- a source, still blind
+        home repair --home A               -> 1 finding
+        A's shim as a SYMLINK instead:
+        home verify --home A               -> exit 1  FOREIGN_HOME
+
+      The blindness was about the SURFACE, not the tier and not `--against`: the
+      question was asked only of symlinks, and for a regular file the walk
+      searched for the source needle and nothing else. A wrapper naming a THIRD
+      home was invisible at EVERY tier. The root home was simply where the
+      wrappers happened to be mis-pointed.
+
+      This matters for the fix, not only for the record: the mechanism as filed
+      implies "run the branch when srcRoot == null", which changes nothing --
+      that branch is the symlink branch and it already ran. A ticket that
+      implemented the stated mechanism would have shipped green tests and the
+      defect.
+    regression_check: >
+      TWO, at two levels. (1) `DamagedHomeIsRepairableTest` gains
+      "DEF-104: verify and repair return the SAME verdict on a wrapper shim",
+      which compares the SUBJECT SETS the two readers name and additionally
+      asserts the `--against` case, plus "the SANCTION survives the widening"
+      over a grandchild clone with its descent record deleted as the control.
+      (2) The `home-integrity` node `home.integrity.damaged.home.is.repairable`
+      gains three real-CLI invocations -- verify before, verify on the UNDAMAGED
+      copy, verify after -- and the assertions
+      DEF104_home_verify_names_the_same_wrapper_home_repair_does,
+      DEF104_home_verify_is_clean_once_home_repair_is,
+      DEF104_control_home_verify_is_silent_about_the_undamaged_copy.
+    red_observed: >
+      Probe V1 (unit): remove the `foreignPathsInShimContent` loop.
+      FAILURES: 2, the first reading "verify said []; repair said
+      [bin/cli/wrapper]" -- the disagreement itself.
+      Probe V9 (graph): the same mutation, node re-run:
+      "`home repair` names FOREIGN_PATH_IN_SHIM bin/cli/his13-wrapper and
+      `home verify` exits 0 without it".
+    measured_on_the_real_root_home: >
+      READ-ONLY, no repair run. `home verify --home ~/.skill-manager` now exits
+      1 with the SAME five FOREIGN_PATH_IN_SHIM findings `home repair` reports,
+      on bin/cli/{helm-deploy x2, monitoring x2, tla-spec-dev}. The root home is
+      NOT repaired; that is the owner's call.
+    round_2_result: >
+      GREEN. `home-integrity` 18/18 (run 20260824-200955), `home-sync` 19/19
+      (run 20260824-200253), `jbang RunTests.java` ALL PASSED.
 
   - id: REG-005
     caught_by: C-manual
@@ -224,6 +333,44 @@ findings:
       `home.policy.toml`; plus a node that plants the old filename and asserts
       the verb says so rather than silently defaulting.
     status: open
+    fixed_in: HIS-21 (#253)
+    THE_PREMISE_OF_THIS_ROW_IS_FALSE: >
+      "a hand-written security policy the product does not read" -- IT READS IT.
+      Measured on a throwaway home holding allowed_backends = ["tar"],
+      require_hash = true, allow_init_scripts = true: `skill-manager policy
+      show` printed back all three, from `Policy.load`, which resolves
+      `<store>/policy.toml`. `policy.toml` is the INSTALL/SECURITY policy
+      (dev.skillmanager.policy.Policy) and `home.policy.toml` is the LIVE/FROZEN
+      policy (dev.skillmanager.policy.HomePolicy). Two live files, two jobs, two
+      verbs. Neither is legacy and neither is unread.
+
+      The defect is narrower and worse than a stale file: two files in one
+      directory are both called policy, both govern that home, and NEITHER VERB
+      MENTIONED THE OTHER. An operator reading `home policy --home
+      ~/.skill-manager` and seeing "home.policy.toml (absent -- live by
+      default)" concludes the home declares no policy, with a live security
+      policy permitting init scripts sitting beside it.
+    fixed_how: >
+      `HomeCommand.PolicyCmd` prints an `install policy:` block naming
+      `Policy.FILENAME`, present or absent, in the house convention
+      `lazy_artifacts` already uses one line above. When present it quotes the
+      security-relevant values from `Policy.load` -- "there is another file"
+      sends the reader to another verb; "allow_init_scripts=true" makes them
+      look -- and says in words that this is a DIFFERENT policy from
+      home.policy.toml. Read-only: it never creates the file it reports on.
+    regression_check: >
+      `HomeReportsMarkWhatTheyInventTest`, two cases: the PRESENT arm (asserts
+      the values came from `Policy.load` and not from a template, by planting
+      allowed_backends=[tar] where the default is all five) and the ABSENT arm
+      (asserts the verb speaks anyway, and that the report did not create the
+      file).
+    red_observed: >
+      Probe V3: remove the `reportInstallPolicy(store)` call -> FAILURES: 2.
+      Probe V4: make it return early when the file is absent -> FAILURES: 1,
+      only the absent case, so the two rows really are two branches.
+    round_2_result: >
+      GREEN. `jbang RunTests.java` ALL PASSED; `uv run pytest specs/` 169
+      passed.
 
   - id: REG-006
     caught_by: C-manual
@@ -249,6 +396,44 @@ findings:
       A node asserting `home describe` marks synthesised fields, and that two
       homes never both report one gateway as owned.
     status: open
+    fixed_in: HIS-21 (#253)
+    the_open_question_answered: >
+      #253 asks whether a project home is SUPPOSED to have a
+      `home.runtime.json`. IT IS NOT, and this is decidable from the code rather
+      than from taste: `LaunchEnv.of` reads one when present and otherwise
+      DERIVES the same block from the home's layout, and only `home clone` and
+      `describe --write` ever persist one. So the project home is not
+      malformed -- `describe` computing a descriptor is the command working as
+      designed, and printing the computed answer in the same shape as a recorded
+      one is not.
+    fixed_how: >
+      `HomeCommand.renderHuman` marks provenance per field. A home with no
+      `home.runtime.json` gets a `descriptor:` line saying every field below is
+      DERIVED; `policy` is marked declared / "not declared -- default; no
+      home.policy.toml here"; `cli` carries its `CliSource` in words, because a
+      PINNED_ENV answer is a fact about the CALLER'S SHELL and read as a fact
+      about the home; and the gateway line NO LONGER SAYS `(owned)` for a home
+      with no gateway.properties -- it says the endpoint is the default and this
+      home claims no ownership of it.
+    deliberately_not_changed: >
+      (a) `--json`. It emits the descriptor itself, the thing `--write`
+      persists and bootstrap-home.sh consumes; marking a field "not recorded"
+      inside the file whose existence makes fields recorded is a contradiction.
+      (b) `GatewayConfig.owned()` still defaults to true -- changing the
+      RESOLUTION default changes what `gateway up`/`gateway down` do in every
+      undeclared home, which this ticket has no measurement for. The claim is
+      "two homes never both REPORT one gateway as owned", and it says report.
+    regression_check: >
+      `HomeReportsMarkWhatTheyInventTest`, three cases: the DERIVED banner, the
+      two-homes gateway case (a home that DID persist gateway.properties must
+      still report `(owned -- declared in gateway.properties)`, so the fix
+      cannot be "stop saying owned"), and the CLI provenance line.
+    red_observed: >
+      Probe V5: remove the descriptor-provenance line -> FAILURES: 1, only the
+      DERIVED case. Probe V6: restore `owned ? "owned" : ...` -> FAILURES: 1,
+      only the gateway case.
+    round_2_result: >
+      GREEN. `jbang RunTests.java` ALL PASSED; `home-integrity` 18/18.
 
 # ---------------------------------------------------------------------------
 # BATCHED INTO TICKETS, 2026-08-24 (schedule revision 10)
@@ -302,6 +487,47 @@ findings:
       staged unit. Do NOT drop the GAINED direction -- that is the direction
       that caught DEF-047.
     status: open
+    fixed_in: HIS-21 (#253)
+    fixed_how: >
+      THE FIXTURE DECLARES WHAT IT STAGED. `HomeSyncSupport.mkUnit` writes a
+      `.test-graph-staged` marker INSIDE the unit directory and
+      `HomeMembershipLaw` subtracts marked names from the GAINED direction only.
+      LOST is untouched. The marker lives inside the unit because it has to
+      TRAVEL: `hs-delta` is staged in the root home and propagated to the
+      project and worktree homes by a real `home sync`, arriving in both without
+      a record, so a per-home ledger would have covered one home of three.
+    the_stated_deeper_defect_is_not_the_cause: >
+      "SPEC declares NO dependsOn, so the runner schedules it wherever it likes
+      -- in these runs, third, BEFORE any sync executed." MEASURED FALSE, run
+      20260824-193907: home-sync wires the node
+      .dependsOn("home.sync.authored.agent.tree") and the planner ran it
+      [19/19], DEAD LAST. All 23 wirings declare a predecessor. The backlog
+      entry's own `detail` block contradicts the sentence too: the PROJECT home
+      it quotes holds hs-delta, which is staged into the ROOT home by node 4 and
+      reaches the project home only through a sync -- so the law cannot have run
+      third. Ordering could not have been the fix either: a staged unit is still
+      on disk at the end of the graph, which is exactly when a post-condition
+      looks. The latent hazard the sentence describes is real one graph from now
+      and is filed as DEF-109.
+    regression_check: >
+      The law's own self-test gains a FOURTH home holding a MARKED staged unit
+      AND an UNMARKED intruder, and requires the mark to excuse exactly one.
+      Published as
+      `an_unmarked_intruder_beside_a_marked_staged_unit_is_still_flagged`, with
+      a `stagedUnitsExcused` metric so an exclusion nobody counts cannot grow.
+      Measured on the green run: stagedUnitsExcused=5, homesChecked=4 -- the
+      exclusion is non-zero, so it is not vacuously satisfied.
+    red_observed: >
+      Probe V8: hide the markers in the sandbox homes and re-run the node ->
+      "GAINED [hs-delta, hs-epsilon]", three homes -- round 1's failure text,
+      reproduced in 36 s.
+      Probe V7b: switch the GAINED direction off for any home with a marked unit
+      -> "IT DID NOT FLAG AN UNMARKED INTRUDER standing beside a marked staged
+      unit -- the staging exclusion has swallowed the GAINED direction".
+    round_2_result: >
+      GREEN. `home-sync` 19/19, run 20260824-200253 (round 1 was 18/19 with
+      home.membership.law red, run 20260824-193907). home.fixpoint.law green in
+      both.
 
   - id: REG-008
     caught_by: A-graph-sweep

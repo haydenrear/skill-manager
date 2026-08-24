@@ -6,6 +6,7 @@ import dev.skillmanager.launch.LauncherShims;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.FrozenHomeException;
 import dev.skillmanager.policy.HomePolicy;
+import dev.skillmanager.policy.Policy;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.DriftGate;
 import dev.skillmanager.store.HomeCloseOut;
@@ -532,9 +533,22 @@ public final class HomeCommand {
         private static String isolationRemedy(List<HomeCloner.Leak> isolation, Path home) {
             boolean launcher = false;
             boolean other = false;
+            // HIS-21 / DEF-104. A wrapper naming a foreign path is a THIRD
+            // remedy, and printing either of the other two for it would be a
+            // remedy that runs and repairs nothing -- the defect one worse than
+            // having none, which this method's javadoc already says twice.
+            // `sync --force-scripts` reaches CliShimPruner, which prunes LINKS;
+            // a regular file execing another home is exactly what the pruner
+            // walks past (HomeRepair.foreignPathsInShims' own javadoc: measured
+            // on one clone, the symlink self-healed and the wrapper was skipped
+            // forever). `home repair --fix` rewrites the path, and it is the
+            // command that reported this finding before verify could.
+            boolean foreignShimContent = false;
             for (HomeCloner.Leak leak : isolation) {
                 String rel = leak.path().replace(java.io.File.separatorChar, '/');
-                if (rel.equals("bin/cli/skill-manager") || rel.startsWith("bin/launch/")) {
+                if (HomeCloner.Leak.FOREIGN_PATH_IN_SHIM.equals(leak.kind())) {
+                    foreignShimContent = true;
+                } else if (rel.equals("bin/cli/skill-manager") || rel.startsWith("bin/launch/")) {
                     launcher = true;
                 } else {
                     other = true;
@@ -545,6 +559,10 @@ public final class HomeCommand {
             if (launcher) {
                 commands.add(prefix + " home shims --home "
                         + HomeDescriptor.shellQuote(home.toString()));
+            }
+            if (foreignShimContent) {
+                commands.add(prefix + " home repair --home "
+                        + HomeDescriptor.shellQuote(home.toString()) + " --fix");
             }
             if (other || commands.isEmpty()) commands.add(prefix + " sync --force-scripts");
             return "complete it with: " + String.join(" && ", commands)
@@ -869,6 +887,7 @@ public final class HomeCommand {
                 System.out.println("file:   " + HomePolicy.file(store)
                         + (java.nio.file.Files.isRegularFile(HomePolicy.file(store))
                             ? "" : "  (absent — live by default)"));
+                reportInstallPolicy(store);
                 return 0;
             }
             HomePolicy next = HomePolicy.parse(policy, null);
@@ -879,6 +898,78 @@ public final class HomeCommand {
                 Log.ok("%s is now live", store.root());
             }
             return 0;
+        }
+
+        /**
+         * DEF-105. THE OTHER FILE IN THIS DIRECTORY THAT IS ALSO CALLED POLICY.
+         *
+         * <h2>What the issue said, and what is actually true</h2>
+         *
+         * <p>#253 filed this as "the root home carries a security policy the
+         * product does not read": {@code ~/.skill-manager/policy.toml},
+         * declaring {@code allowed_backends}, {@code require_hash} and an
+         * {@code init_script} flag its own comment calls "very dangerous",
+         * while {@code home policy} reported {@code home.policy.toml (absent —
+         * live by default)}.
+         *
+         * <p><b>The product reads it.</b> Measured on a throwaway home holding
+         * {@code allowed_backends = ["tar"], require_hash = true,
+         * allow_init_scripts = true}: {@code skill-manager policy show} printed
+         * back all three, from {@link Policy#load}, which resolves
+         * {@code <store>/policy.toml} — the same home. It is not legacy and it
+         * is not dead.
+         *
+         * <p>What is true is worse than a stale file and is the reason this is
+         * still a defect. <b>Two files in one directory are both called
+         * policy, they govern the same home, they are read by two different
+         * verbs, and neither verb mentions the other.</b> {@link HomePolicy}
+         * ({@code home.policy.toml}) decides whether the home may be MUTATED;
+         * {@link Policy} ({@code policy.toml}) decides what an install in it is
+         * ALLOWED TO RUN. An operator who asks {@code home policy --home
+         * ~/.skill-manager} and reads {@code (absent — live by default)}
+         * concludes this home declares no policy — with a live security policy
+         * permitting init scripts sitting in the same directory.
+         *
+         * <p>So the verb names both, in the house convention {@code
+         * lazy_artifacts} already uses one line above: declared is marked
+         * declared, and a default is marked as a default rather than printed as
+         * a fact. The security-relevant keys are named rather than summarised,
+         * because "there is another file" sends the reader to {@code policy
+         * show} while "it permits init scripts" is the sentence that makes
+         * them go and look.
+         *
+         * <p>Read-only, and it never creates the file: {@code policy init} is
+         * the verb that writes one, and a report verb that materialises what it
+         * is reporting on is the fail-open shape {@link #requireHome} exists to
+         * remove.
+         */
+        private static void reportInstallPolicy(SkillStore store) {
+            java.nio.file.Path file = store.root().resolve(Policy.FILENAME);
+            boolean present = java.nio.file.Files.isRegularFile(file);
+            if (!present) {
+                System.out.println("install policy: " + file
+                        + "  (absent — install defaults apply; `skill-manager policy show`)");
+                return;
+            }
+            String detail;
+            try {
+                Policy declared = Policy.load(store);
+                detail = "allowed_backends=" + declared.allowedBackends()
+                        + " require_hash=" + declared.requireHash()
+                        + " allow_init_scripts=" + declared.allowInitScripts()
+                        + " allow_docker=" + declared.allowDocker();
+            } catch (IOException unreadable) {
+                // Named, not swallowed. An unreadable policy file is the one
+                // state in which `policy show` and every install will refuse,
+                // and reporting it as absent would be the fail-open reading.
+                detail = "UNREADABLE — " + unreadable.getMessage();
+            }
+            System.out.println("install policy: " + file + "  (declared)");
+            System.out.println("                " + detail);
+            System.out.println("                this file is a DIFFERENT policy from "
+                    + HomePolicy.FILENAME + " above: it governs what an install here may "
+                    + "run, not whether this home may be mutated. Read it with "
+                    + "`skill-manager policy show`.");
         }
     }
 
@@ -1566,14 +1657,101 @@ public final class HomeCommand {
         return out;
     }
 
+    /**
+     * DEF-106. A DESCRIPTOR THIS HOME NEVER WROTE, PRINTED AS IF IT HAD.
+     *
+     * <h2>The open question, answered from the code rather than from taste</h2>
+     *
+     * <p>#253 asks whether a project home is SUPPOSED to have a
+     * {@code home.runtime.json}. It is not. {@code LaunchEnv.of} reads one if
+     * present and otherwise derives the same block from the home's layout, and
+     * only {@code home clone} and {@code describe --write} ever persist one. So
+     * a home with no descriptor is a normal home and {@code describe}
+     * COMPUTING one is the command working as designed.
+     *
+     * <p>What was wrong is that it printed the computed answer in the same
+     * shape as a recorded one. Measured on a home with no
+     * {@code home.runtime.json}, no {@code gateway.properties} and no
+     * {@code home.policy.toml}:
+     *
+     * <pre>
+     *   policy:      live
+     *   cli:         /Users/…/skill-manager
+     *   gateway:     http://127.0.0.1:51717 (owned)
+     * </pre>
+     *
+     * <p>Every one of those three is a default. {@code policy} is
+     * {@link HomePolicy#LIVE} because nothing was declared; {@code cli} came
+     * from the ambient {@code $SKILL_MANAGER_CLI} of whoever ran the command,
+     * not from the home; and {@code gateway} is {@link GatewayConfig#DEFAULT_URL}
+     * with {@code owned} defaulting to true — which is how the project home and
+     * the root home both reported {@code (owned)} on ONE port, with one process
+     * listening. Two homes cannot both own it, and only one of them had ever
+     * said anything.
+     *
+     * <p>{@code home policy} already had the convention — {@code (not declared
+     * — default for this tier)} — and this command did not follow it. It does
+     * now, per field, naming the file that would make each one a fact.
+     *
+     * <h2>Why the JSON is unchanged</h2>
+     *
+     * <p>{@code --json} emits the descriptor itself, which is the thing
+     * {@code --write} persists and {@code bootstrap-home.sh} consumes. Marking
+     * a field as "not recorded" INSIDE the file whose existence is what makes
+     * fields recorded is a contradiction, and widening a persisted interop
+     * schema is not what this defect is about. The synthesis marks live on the
+     * human surface, which is the surface the defect was measured on.
+     */
     private static void renderHuman(HomeDescriptor d, SkillStore store, boolean wrote) {
+        boolean recorded = java.nio.file.Files.isRegularFile(HomeDescriptor.file(store.root()));
         Log.info("  home root:   %s", d.homeRoot());
-        Log.info("  policy:      %s", d.policy());
+        Log.info("  descriptor:  %s", recorded
+                ? HomeDescriptor.file(store.root()) + " (recorded)"
+                : HomeDescriptor.file(store.root())
+                        + " (absent — every field below is DERIVED from this home's layout "
+                        + "and this process, not read from a descriptor. `--write` records it.)");
+        boolean policyDeclared =
+                java.nio.file.Files.isRegularFile(store.root().resolve(HomePolicy.FILENAME));
+        Log.info("  policy:      %s%s", d.policy(),
+                policyDeclared ? "  (declared)"
+                        : "  (not declared — default; no " + HomePolicy.FILENAME + " here)");
+        // The CLI's PROVENANCE, not just its path. CliSource already models
+        // exactly this distinction -- "three of these steps identify a build
+        // somebody deliberately associated with this home; the fourth is a
+        // guess that happens to be spelled absolutely" -- and printing the path
+        // alone threw that away at the last step. A PINNED_ENV answer is a fact
+        // about the CALLER's shell and reads here as a fact about the home.
+        HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
         Log.info("  cli:         %s", d.cli() == null || d.cli().skillManager() == null
                 ? "(unresolved — set SKILL_MANAGER_CLI or put skill-manager on PATH)"
-                : d.cli().skillManager());
-        Log.info("  gateway:     %s (%s)", d.gateway().url(),
-                d.gateway().owned() ? "owned" : "attached to a shared gateway");
+                : d.cli().skillManager() + "  (" + cliProvenance(spelling.source()) + ")");
+        boolean gatewayDeclared = java.nio.file.Files.isRegularFile(
+                store.root().resolve(GatewayConfig.FILE));
+        // The env var is a THIRD source and it is neither the file nor the
+        // default. Reporting it as "no gateway.properties here, so this is the
+        // default endpoint" would be a true sentence about a URL that is not
+        // the default — the same substitution this whole ticket is about, one
+        // branch further down.
+        String gatewayFromEnv = System.getenv(GatewayConfig.URL_ENV);
+        boolean gatewayEnv = gatewayFromEnv != null && !gatewayFromEnv.isBlank();
+        Log.info("  gateway:     %s%s", d.gateway().url(),
+                gatewayEnv
+                        ? "  (from $" + GatewayConfig.URL_ENV + " in this process — not a fact "
+                                + "about this home, and always attached)"
+                        : gatewayDeclared
+                        ? (d.gateway().owned()
+                                ? "  (owned — declared in " + GatewayConfig.FILE + ")"
+                                : "  (attached to a shared gateway — declared in "
+                                        + GatewayConfig.FILE + ")")
+                        // NOT "(owned)". This home has claimed nothing, and the
+                        // default is what let two homes report ownership of one
+                        // port. `gateway up` still applies the same default --
+                        // that is GatewayConfig's decision and changing it is a
+                        // behaviour change this defect does not ask for -- but
+                        // the REPORT stops stating it as a claim.
+                        : "  (no " + GatewayConfig.FILE + " here — this is the default "
+                                + "endpoint, "
+                                + "and this home claims no ownership of it)");
         Log.info("  env:");
         d.env().asMap().forEach((k, v) -> Log.info("    %-18s %s", k, v));
         if (!d.envContributions().isEmpty()) {
@@ -1582,6 +1760,18 @@ public final class HomeCommand {
         }
         Log.info("  units:       %d", d.units().size());
         if (wrote) Log.ok("wrote %s", HomeDescriptor.file(store.root()));
+    }
+
+    /** How much the located CLI is worth, in the words {@code CliSource} uses. */
+    private static String cliProvenance(HomeDescriptor.CliSource source) {
+        return switch (source) {
+            case PINNED_ENV -> "from $SKILL_MANAGER_CLI in this process — not a fact about "
+                    + "this home";
+            case HOME_ENTRYPOINT -> "this home's own bin/cli/skill-manager";
+            case RUNNING_BUILD -> "the build running this command — not recorded in this home";
+            case PATH_FALLBACK -> "found on PATH — nothing associates it with this home";
+            case UNRESOLVED -> "unresolved";
+        };
     }
 
     private static void print(HomeCloner.Report report, boolean json) {
