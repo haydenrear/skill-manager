@@ -3791,7 +3791,15 @@ tickets:
     title: "progressive disclosure has never been measured in either direction, and no tier says how a skill change reaches GitHub"
     phase: HIS
     status: planned
-    role: evaluation
+    role_note_revision_9: >
+      Typed `evaluation` when first written and corrected to `implementation`
+      before dispatch, by the plan validator. HIS-20 MEASURES and then CLOSES
+      the gaps it finds -- that is contribution, not adjudication. HIS-6 decides
+      GOAL-progressive-disclosure, as `evaluation_ticket` on the goal has said
+      all along. An evaluation ticket that also fixes what it measures would be
+      the DEF-067 hazard applied to a person: an observer that repairs is no
+      longer an observer.
+    role: implementation
     epic: home-integrity-sync
     github_issue: 247
     added_in_schedule_revision: 9
