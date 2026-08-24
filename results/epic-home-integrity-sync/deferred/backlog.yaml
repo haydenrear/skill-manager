@@ -6212,3 +6212,314 @@ findings:
     missed_by: [A-graph-sweep, C-manual]
     candidate_owner: a ticket against haydenrear/skill-publisher-skill
     status: open
+
+# ---------------------------------------------------------------------------
+# HIS-6 (#218), THE TERMINAL EVALUATION — 2026-08-24.
+#
+# Deferment policy for this ticket: mode batch, budget 5, blocking ESCALATE.
+# Seven findings; the policy is applied rather than the budget stretched:
+#
+#   ESCALATED (blocking, so they do NOT consume the budget of 5) —
+#     DEF-115  verify/repair disagree on a symlinked shim  -> GOAL-one-home-one-answer
+#              clause 1 FAILS. Reported as measured, NOT fixed: fixing it would be
+#              repairing the product to make this ticket's own goal pass.
+#     DEF-116  `home sync` arms no drift gate, and a javadoc claims it does
+#              -> narrows GOAL-gate-settles clause 2 to the operation the tests drive.
+#
+#   DEFERRED, 5 of 5 — DEF-117, DEF-118, DEF-119, DEF-120, DEF-121.
+#
+# Every one of these carries an `owed_check`, and DEF-115's check IS IN THE TREE
+# AND IS RED. Nothing here is a note without a consequence.
+# ---------------------------------------------------------------------------
+
+  - id: DEF-115
+    found_by: HIS-6 (#218) — issue agent on #110, confirmed independently by the epic-tip manual pass
+    found_at: "2026-08-24"
+    severity: blocking
+    short_label: "`home repair` cannot see a SYMLINKED shim into another home; `home verify` can. One home, one minute, two readers, two subject sets."
+    summary: >
+      DEF-104 with the mirror flipped. DEF-104 was: verify saw symlinks and was
+      blind to shim CONTENT; repair saw content. HIS-21 taught verify to read
+      content and declared "one extraction rule ... and one verdict ... for both
+      readers". The half never done is repair learning to read LINKS.
+      HomeRepair's foreign-shim detector consumes HomeCloner.scanShimDirs, which
+      extracts absolute paths out of a shim's TEXT. A symlink has no text.
+    reproduction: >
+      Two throwaway homes A and B, real CLI at 17648705e67b.
+      A holds a SYMLINK bin/cli/linktool -> <B>/bin/cli/realtool:
+        home verify --home A -> exit 1  FOREIGN_HOME bin/cli/linktool
+        home repair --home A -> exit 0  "nothing ... is damaged in a way this
+                                         command knows about (0 entries examined)"
+      CONTROL, A holds a WRAPPER naming the same path instead:
+        home verify --home A -> exit 1  FOREIGN_PATH_IN_SHIM bin/cli/wrappertool
+        home repair --home A -> exit 1  the same subject
+      BOTH in one home: verify names two, repair names one.
+      The control proves the readers CAN agree, so the disagreement is about the
+      surface and not about the fixture.
+    why_escalated_not_deferred: >
+      It decides a clause of a goal HIS-6 owns. GOAL-one-home-one-answer clause 1
+      is "no two readers disagree about the same path in the same home, with no
+      operator-supplied flag needed to make them agree". This is two readers
+      disagreeing about the same path in the same home with no flag involved.
+      HIS-6 is forbidden to repair the product to make its own goal pass, so the
+      clause is reported FAILED and the defect is handed up.
+    owed_check: >
+      IN THE TREE AND RED, on purpose:
+      src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java --
+      "DEF-115: verify and repair return the SAME verdict on a SYMLINKED shim into
+      another home". Two in-run controls (verify names the symlink; repair names
+      the wrapper) are GREEN, so the red is the claim rather than the setup. It
+      goes green when somebody teaches HomeRepair to read link targets through the
+      same HomeCloner.unsanctionedForeignHome verdict verify uses -- one rule, not
+      a third spelling.
+      ALSO OWED, and not written here: a graph node. Every existing comparison of
+      the two readers plants a wrapper, which is why nothing caught this.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep]
+    candidate_owner: a follow-on ticket in skill-manager, against HomeRepair
+    status: open
+
+  - id: DEF-116
+    found_by: HIS-6 (#218), manual pass with a positive control
+    found_at: "2026-08-24"
+    severity: blocking
+    short_label: "`home sync` records no drift gate in the destination, and HomeCloner's javadoc states in as many words that it does"
+    summary: >
+      DriftGate exists so "an agent cannot keep acting on a skill that moved
+      underneath it". `home sync` is the command by which a skill moves underneath
+      an agent in this epic, and it arms nothing. Exhaustive enumeration of every
+      DriftGate.<static> use in src/main/java (9 uses; control: "DriftGate."
+      matches 13 lines) gives TWO production recorders: ProjectSyncUseCase
+      ("project sync") and `home drift --record`. HomeSync.java touches neither
+      DriftGate nor HomeDigest. Neither does install, nor upgrade.
+    reproduction: >
+      ARM      home sync --from <proj> --to <root> --unit his6-probe  (bytes change)
+               home drift --home <root>          -> "no unread change"   exit 0
+      CONTROL  home drift --home <root> --record (same bytes, same minute)
+                                                 -> "1 unit(s) changed ...
+                                                     modified skill:his6-probe" exit 8
+      Same home, same bytes, two answers; the only difference is whether an
+      operation bothered to record.
+    the_false_claim: >
+      HomeCloner.rebaselineDrift's javadoc, justifying that a clone drops its
+      source's gate: "every later sync, pull, install or `home sync` into this copy
+      still diffs against this baseline and still records a pending change, and the
+      tests that assert that are untouched." Three of those four verbs record
+      nothing. DEF-021's family (javadoc drift) in the load-bearing position -- the
+      sentence is the ARGUMENT for a design decision, not a description.
+    why_escalated_not_deferred: >
+      GOAL-gate-settles clause 2 is "a change the agent has not seen still gates the
+      next launch". It holds for the operation the tests drive and not for the
+      promotion command Phase 3 exercises. HIS-6 reports the clause as narrowed and
+      hands the defect up rather than widening the gate itself, which would be
+      repairing the product to make its own goal pass.
+    owed_check: >
+      TWO, and the second is the more important:
+      (1) a unit case driving `home sync` END TO END -- the COMMAND, not
+          DriftGate.recordSince -- and asserting the destination has a pending gate
+          afterwards. Every existing HomeDriftGateTest case calls recordSince
+          itself, which is why many honest cases share one oracle and all of them
+          are blind here. That is HIS-22's "six honest probes sharing one oracle",
+          one layer out.
+      (2) an assertion, or a javadoc correction, that pins WHICH operations arm the
+          gate, so the sentence in rebaselineDrift cannot be false again silently.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep, B-issue-agents]
+    candidate_owner: a follow-on ticket in skill-manager, against HomeSync
+    status: open
+
+  - id: DEF-117
+    found_by: HIS-6 (#218), manual pass with a positive control
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "`list` / `show` / `show --json` print the recorded gitHash for a unit whose store working tree differs, with no marker"
+    summary: >
+      After a promotion moved new bytes into a home, every inventory reader still
+      prints the installed record's commit and nothing says the tree has moved off
+      it. `home sync` knows ("locally modified"); `skt status` knows ("[edited]");
+      `list` and `show` do not, and `list` is the first thing an agent runs.
+    reproduction: >
+      list -> "his6-probe skill - 3 e1f65e9 local_file"
+      git -C <home>/skills/his6-probe log --oneline -> e1f65e9 v1
+      git -C <home>/skills/his6-probe status --short ->  M SKILL.md
+      grep EDIT <home>/skills/his6-probe/SKILL.md -> "WORKTREE EDIT v2 ..."
+      show --json -> "sha": "e1f65e9372...", "shortSha": "e1f65e9"
+      CONTROL: his6-direct, a clean checkout in the same home at the same moment,
+      renders identically -- so the output cannot separate the two states.
+    why_deferred: >
+      It is a reporting defect in a surface HIS-6 does not own, and the fix is a
+      product change during a terminal evaluation. Same KIND as REG-002/004/005/006
+      -- a command reporting something that is not so -- which HIS-21 batched.
+    owed_check: >
+      A unit case asserting `list` and `show --json` distinguish a clean checkout
+      from a locally-modified one, with the CLEAN home as the control so the marker
+      cannot become unconditional noise (HIS-22's CASE 3 shape).
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep, B-issue-agents]
+    candidate_owner: a follow-on ticket in skill-manager
+    status: open
+
+  - id: DEF-118
+    found_by: HIS-6 (#218) — issue agent on #132
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "DEF-106 was fixed on ONE of three surfaces; --json, the persisted home.runtime.json and `gateway status` still say owned:true, and `gateway down`'s guard reads that flag"
+    summary: >
+      The regression ledger left this open with a justification -- "Latent today:
+      no in-repo consumer reads that field to decide anything. HIS-6 owns the goal
+      and should decide it." THE JUSTIFICATION IS FALSE. GatewayCommand's guard is
+      `if (!gw.owned() && !force)`, and GatewayConfig.loadOwned returns true when
+      gateway.properties is ABSENT, so the guard never fires for any home
+      bootstrap-home.sh produces.
+    reproduction: >
+      One home, one minute, no gateway.properties:
+        home describe        -> "(no gateway.properties here -- ... this home
+                                  claims no ownership of it)"
+        home describe --json -> "gateway": { ..., "owned": true }
+        home describe --write-> prints the human sentence AND writes owned:true
+        gateway status       -> mode: owner   owned: true   process: not running
+        gateway down --dry-run (undeclared home) -> exit 0, plans to stop the
+                                  operator's shared endpoint, no refusal
+      CONTROL, three scratch homes on a non-default port: declared-owner,
+      declared-attached, undeclared. The human surface has THREE states for three
+      facts; JSON has TWO states for three facts. JSON cannot express "undeclared"
+      and collapses it into "owner".
+    also_measured_read_only: >
+      The process actually listening on the shared endpoint on this machine is a
+      LEAKED TEST FIXTURE -- an HIS-14 sandbox home under /var/folders, alive since
+      2026-08-22, still growing a 17 MB gateway.log, serving tool_count: 0. The
+      root home's confident "(owned -- declared in gateway.properties)" names a PID
+      dead since before that. Three homes report status: up over a broker with no
+      tools. This is issue #132 reproduced literally.
+    why_deferred: >
+      The ledger says changing GatewayConfig.owned()'s default changes what
+      `gateway up`/`gateway down` do in every undeclared home, and HIS-6 has no
+      measurement for that either. Deferring is the same decision HIS-21 made, now
+      made with the "latent" premise removed.
+    owed_check: >
+      A case pairing `home describe` HUMAN with `home describe --json` for ONE home
+      in ONE run and requiring the same answer -- there is currently NO test that
+      pairs --json with the gateway at all. HomeReportsMarkWhatTheyInventTest
+      asserts only against r.out, while its own comment cites the JSON evidence.
+      Plus a case that `gateway down` refuses from a home that declared nothing.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: a follow-on ticket in skill-manager
+    status: open
+
+  - id: DEF-119
+    found_by: HIS-6 (#218) — three of four issue agents independently
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "bootstrap-home.sh's pick_cli() prefers `command -v skill-manager` over the checkout-local build, so the epic's own worktree front door does not run the epic's build"
+    summary: >
+      On this machine `command -v skill-manager` is the ROOT home's pinned shim,
+      which execs the main checkout's build. So the standard ticket procedure --
+      which exports SKILL_MANAGER_CLI AFTER running bootstrap -- provisions every
+      worktree home with a CLI that predates the epic.
+    reproduction: >
+      Same source home, same kind of destination:
+        PATH shim (main build)         -> exit 1, 5x FOREIGN_HOME on
+                                          bin/cli/{computeq,helm-deploy,monitoring,
+                                          tla-spec-dev,tlc2}, no home.provenance.json,
+                                          no .claude/.codex/.gemini
+        SKILL_MANAGER_CLI=<checkout>/skill-manager
+                                       -> exit 0, provenance written with
+                                          parentStores, the same five shims
+                                          SANCTIONED, home verify exit 0
+      The epic's fix works. The epic's scaffolding cannot reach it.
+    why_deferred: >
+      bootstrap-home.sh lives in haydenrear/git-issue-workflow, not in this
+      repository, and HIS-6 is a read-and-report ticket for the product.
+    owed_check: >
+      pick_cli() prefers $ROOT/skill-manager for a linked worktree, or
+      bootstrap-home.sh REFUSES when the picked CLI resolves inside another home --
+      the second is better, because it fails loudly instead of silently using an
+      old build. Either way an assertion that the CLI a bootstrap used is the one
+      the checkout ships.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: a ticket against haydenrear/git-issue-workflow
+    status: open
+
+  - id: DEF-120
+    found_by: HIS-6 (#218) — issue agent on #182, reproduced in the manual pass
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "a `home sync` that reconciled NOTHING exits 0 under a header that says it did; and `--unit` matches on name ACROSS KINDS"
+    summary: >
+      Two hazards in one command. (1) With one unit selected and that unit held
+      back, the run prints "unit: X (only this unit was reconciled; the rest of the
+      home was not visited)" and "0 unchanged, 0 updated, ... 1 held back", then
+      exits 0. Whole-home syncs do the same: "! 1 unit(s) were not reconciled and
+      were left exactly as they were", exit 0. The counts line is correct; the exit
+      code and the header are not. (2) `--unit test-graph` reconciles
+      skill:test-graph AND plugin:test-graph under the same "only this unit"
+      header, and the --json `unit` field carries the bare name with no kind.
+    why_deferred: >
+      Reachable by hand rather than through `skt publish`, which always passes
+      --merge; and the kind-collision is documented in HomeSync.unitsToVisit's
+      javadoc, so changing it is a decision rather than a repair.
+    owed_check: >
+      An assertion that a sync which reconciled nothing does not exit 0 under a
+      "reconciled" header, and that the --json scope record names the KIND, so
+      issue #182 point 5 ("automation can prove nothing else was eligible to move")
+      is literally provable from the document.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep]
+    candidate_owner: a follow-on ticket in skill-manager
+    status: open
+
+  - id: DEF-121
+    found_by: HIS-6 (#218) — observed as a containment breach by its own issue agent on #111
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "`skt publish` writes one tier up BEFORE validating the arguments its second leg needs, does not roll the write back, and has no --dry-run"
+    summary: >
+      `skt publish` derives its destination from the git worktree topology
+      (`git worktree list --porcelain`, main working tree) rather than from
+      SKILL_MANAGER_HOME. That is deliberate. The defect is the ORDER: run()
+      performs `home sync ... --to <parent>` and only afterwards computes
+      `ticket = ticket or _infer_ticket(start)`. A run missing --ticket therefore
+      fails a pure argument check AFTER an irreversible write into another home,
+      and the tier-up write is not rolled back. There is no --dry-run and no prompt
+      on a command whose first act is to write a home the caller did not name.
+    reproduction: >
+      From a worktree home with SKILL_MANAGER_HOME correctly pinned to that home:
+        skt publish eval-skill        -> exit 1
+        "synced: this home -> /Users/hayde/IdeaProjects/skill-manager/.skill-manager
+         (eval-skill only; one tier up; teardown-safe)"
+        "error: unit publish for eval-skill failed (exit 1)"
+        "a ticket is required to publish a unit: pass --ticket <id> ..."
+      The operator's PROJECT home is left holding a foreign unit.
+    and_neither_reader_notices: >
+      Read-only on the resulting home, at the epic tip:
+        home verify --home <project home> -> exit 0  "every reference ... resolves"
+        home repair --home <project home> -> exit 0  "nothing ... is damaged
+                                                      (16 entries examined)"
+      The home holds a unit in skills/ with a .materialization/skill/<unit>.json
+      record and NO installed/<unit>.json -- a shape neither reader looks for. This
+      is a live counterexample to GOAL-no-destructive-recovery clause 2's ambition
+      that a damaged home be "detectable by a command rather than by an operator
+      noticing": it was detected by an operator noticing.
+    operator_action_required: >
+      NOT PERFORMED BY HIS-6, because writing that home is exactly what this ticket
+      is forbidden to do and because the bytes are the evidence. Preserved read-only
+      at results/epic-home-integrity-sync/tickets/HIS-6/evidence/containment-breach-project-home.txt.
+      Remedy (.materialization/ and installed/ must agree, so a raw rm is not the
+      whole job):
+        skill-manager remove eval-skill --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager
+    owed_check: >
+      (1) `skt publish` validates every argument the publish leg needs BEFORE the
+          sync leg runs -- a test that a ticketless publish writes nothing.
+      (2) `skt publish --dry-run`.
+      (3) In skill-manager rather than skt: `home verify` / `home repair` notice a
+          unit present in skills/ and in .materialization/ but absent from
+          installed/. That is the half that would have caught this from the product
+          side, and it is the one worth building.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: >
+      a ticket against haydenrear/skill-publisher-skill for (1) and (2); a ticket
+      in skill-manager for (3)
+    status: open

@@ -2659,6 +2659,391 @@
       ],
       "errors": [],
       "verdict": "recorded"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-6",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T23:53:49.078687+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-22",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the pre-change TLC output",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the post-change TLC output",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the behavior-test output",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the before/after descriptor comparison",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": false,
+        "outcome": "",
+        "detail": "",
+        "measured": false,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [
+        "REJECTED -- no recursive refinement record. Every close carries either an approved recommendation with evidence, or an explicit 'searched, found none'. Set `refinement.searched: true` and record the outcome.",
+        "REJECTED -- no `narrative:` recorded. The ledger's machine-checked core is deliberately narrow; the narrative carries the reasoning, the measured alternatives, and any finding the core cannot express."
+      ],
+      "verdict": "rejected"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "HIS-6",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-24T23:54:51.452595+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "HIS-22",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "green",
+          "classification": "retained",
+          "evidence": "SPEC_REQUIRE_TLC=1 uv run pytest specs/desired_program_model/tests/test_tlc_expected_violations.py -- 25 passed, and specs/current/... -- 25 passed. Both include test_the_model_checking_half_is_not_silently_skipped, which PASSED, so TLC really ran rather than skipping. results/epic-home-integrity-sync/tickets/HIS-6/evidence/tlc-expected-violations.txt",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "green",
+          "classification": "retained",
+          "evidence": "IDENTICAL RUN. This ticket changed no .tla and no .cfg -- `git diff --stat` over specs/current and specs/desired_program_model is empty apart from ticket_plan.yaml's status field. before and after are the same tree, and saying so is the honest form of this row.",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "pass",
+          "classification": "retained",
+          "evidence": "jbang RunTests.java -- 1423 passed, 1 failed, with the five home vars UNSET (DEF-074). THE ONE FAILURE IS THIS TICKET'S OWN DELIBERATELY-RED ASSERTION for DEF-115; both of its in-run controls are GREEN. results/epic-home-integrity-sync/tickets/HIS-6/evidence/unit-suite.txt. Plus uv run pytest specs/ -- 88 passed. Plus the 26-graph sweep: graphs_executed=26, graphs_passed=24.",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "recorded",
+          "classification": "retained",
+          "evidence": "results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md -- nineteen clauses, one verdict each, with the build and the env configuration stated for every number.",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=green (retained)",
+        "tlc_after=green (retained)",
+        "behavior_tests=pass (retained)",
+        "descriptor_comparison=recorded (retained)"
+      ],
+      "refinement": {
+        "searched": true,
+        "outcome": "none",
+        "detail": "SEARCHED, FOUND NONE, and the search is worth recording because it had a candidate. The model is unchanged by this ticket (variables=38, actions=9, delta direction zero against HIS-22), so there is no new representation to refine. The candidate considered and REJECTED: DEF-112 records that CloseOutIsSafe cannot express HIS-22's self-obtainable disjunct without a new variable and a constant in ~25 cfgs. That is a REFINEMENT OPPORTUNITY IN THE OPPOSITE DIRECTION -- it would INCREASE complexity to close a modelling gap -- and an evaluation ticket is the wrong place to take it: it would change what GOAL-home-invariants is measured against, in the ticket that measures it. Recorded here so the option is visible to whoever schedules the follow-on, rather than lost because the field only has a slot for decreases.\n",
+        "measured": false,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "HIS-6 IS AN EVALUATION TICKET AND CHANGES NO MODEL AND NO PRODUCTION SOURCE. Complexity delta is zero in every metric. What follows is the part the machine-checked core cannot express.\nTHE HEADLINE IS A FAILED CLAUSE THAT WAS NOT FIXED. GOAL-one-home-one-answer clause 1 fails at the epic tip: `home verify` and `home repair` name DIFFERENT SUBJECT SETS for a shim reaching another home when the reach is spelled as a SYMLINK -- verify exit 1 FOREIGN_HOME, repair exit 0 \"nothing is damaged (0 entries examined)\" -- with a wrapper control in the same fixture proving the two readers CAN agree. That is DEF-104 with the mirror flipped. HIS-21 taught verify to read shim CONTENT and declared \"one extraction rule ... one verdict ... for both readers\"; repair was never taught to read LINKS, and every existing comparison of the two readers plants a wrapper, which is exactly why nothing caught it. The fix is obvious and available and WAS NOT MADE, because an evaluation ticket that repairs the product to turn its own FAIL into a PASS has falsified its own measurement. Filed as DEF-115 with the assertion IN THE TREE AND RED, which is why the behavior_tests row above reads 1423/1.\nTWO NUMBERS THAT MUST NOT BE ADDED TOGETHER. The sweep as measured is graphs_executed=26, graphs_passed=24. The harness repair of the stale DEF-108 assertion then makes that graph pass, verified by re-running it alone to its own --out: 12 of 12 nodes, all 7 assertions green. The first number is what the epic is graded on; the second is evidence the repair works.\nWHAT THE SWEEP FOUND THAT WAS NEW: NOTHING -- and that is informative rather than embarrassing. Five of the seven defects this ticket filed live in surfaces no node touches. What only a full sweep could settle is three things: DEF-107 fixed on the INTEGRATED tip (round 2 measured it still red from HIS-22's branch), DEF-043 resolved by re-measurement rather than inference, and DEF-108 triaged as a STALE ASSERTION -- a core graph that had been requiring the product to STRAND a unit in MERGE_CONFLICT, which is the exact condition GOAL-symlink-merge-settles exists to remove.\nTHE MEASURED ALTERNATIVE FOR PHASE 1. `run.py --all` cannot do this: it refuses resume options outright, and Gradle stops the chain at the first red task. The sweep was therefore driven per graph by sweep.py, one at a time, in registered order, with resumption AVAILABLE AND UNUSED -- no graph was re-run and the sweep was never restarted. `--out` names a HIS-6 path because the default path is the canonical round-1 sweep.json (DEF-111); both rounds are on disk side by side.\nAND THE EPIC'S OWN INSTRUMENT BROKE CONTAINMENT. An evaluation agent's `skt publish` wrote a foreign unit into the operator's PROJECT home from a CORRECTLY PINNED session -- the destination comes from `git worktree list`, not from SKILL_MANAGER_HOME -- then failed on an argument check it could have made first, with no rollback. Both `home verify` and `home repair` call the result CLEAN, because a unit present in skills/ and .materialization/ but absent from installed/ is a fifth damage shape the enumeration does not name. That is a live counterexample to GOAL-no-destructive-recovery clause 2's ambition, found by an operator noticing, which is the thing the clause says should not be how damage is found. DEF-121; the bytes are preserved read-only rather than cleaned up, because cleaning them is another write to the same forbidden home.\nFull reasoning: results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md, new-defects.md, instrument-comparison.md, promotion-paths.md, judged-read-root.md.",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [],
+      "verdict": "recorded"
     }
   ]
 }

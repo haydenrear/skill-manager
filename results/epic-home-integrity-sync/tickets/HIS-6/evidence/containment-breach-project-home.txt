@@ -1,0 +1,81 @@
+# Containment breach — evidence, recorded read-only 2026-08-24T23:18:23Z
+
+## Project home inventory (ls -la skills/)
+total 0
+drwxr-xr-x@  7 hayde  staff   224 Aug 24 19:15 .
+drwxr-xr-x@ 19 hayde  staff   608 Aug 20 11:43 ..
+drwxr-xr-x@ 35 hayde  staff  1120 Aug 20 08:58 deploy-helm
+drwxr-xr-x@  4 hayde  staff   128 Aug 24 19:15 eval-skill
+drwxr-xr-x@ 34 hayde  staff  1088 Aug 20 11:43 spec-double-compiler
+drwxr-xr-x@ 15 hayde  staff   480 Jul 31 18:44 test-graph
+drwxr-xr-x@ 10 hayde  staff   320 Jul 31 18:44 tracing-observability
+
+## eval-skill tree
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/config
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/description
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/HEAD
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/applypatch-msg.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/commit-msg.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/fsmonitor-watchman.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/post-update.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/pre-applypatch.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/pre-commit.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/pre-merge-commit.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/pre-push.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/pre-rebase.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/pre-receive.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/prepare-commit-msg.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/push-to-checkout.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/sendemail-validate.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/hooks/update.sample
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/index
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/info
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/info/exclude
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/logs
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/logs/HEAD
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/logs/refs
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/objects
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/packed-refs
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/refs
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/refs/heads
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/refs/remotes
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git/refs/tags
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/SKILL.md
+
+## eval-skill/SKILL.md
+---
+name: eval-skill
+description: Minimal skill for issue 111 evaluation of harness composition and publish paths.
+version: 0.1.0
+---
+
+# eval-skill
+
+MARKER_SKILL_V1
+LOCAL_EDIT_EVAL_111 skill
+
+## eval-skill git log
+e22a0f9 v1
+
+## installed/ records naming eval-skill
+deploy-helm.json
+deploy-helm.projections.json
+spec-double-compiler.json
+spec-double-compiler.projections.json
+test-graph.json
+test-graph.projections.json
+tracing-observability.json
+tracing-observability.projections.json
+
+## paths in the project home modified since 18:45 UTC-7
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/.materialization
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/.materialization/.home.lock
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/.materialization/skill
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/.materialization/skill/eval-skill.json
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/.git
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/eval-skill/SKILL.md

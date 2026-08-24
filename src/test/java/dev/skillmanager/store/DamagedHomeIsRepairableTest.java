@@ -874,6 +874,134 @@ public final class DamagedHomeIsRepairableTest {
                                     + v.isolationFailures() + "; repair said " + repairSubjects);
                 })
 
+                .test("DEF-115: verify and repair return the SAME verdict on a SYMLINKED shim "
+                        + "into another home", () -> {
+                    // HIS-6, the terminal evaluation. THIS ASSERTION IS RED ON
+                    // THE TREE THAT SHIPS IT, deliberately, and that is the
+                    // whole point of it. HIS-6 is forbidden to repair the
+                    // product to make its own goal pass, and it is equally
+                    // forbidden to leave a found bug without a check. So the
+                    // check lands red, the goal is reported as measured, and
+                    // whoever fixes DEF-115 turns this green.
+                    //
+                    // WHAT WAS MEASURED, at epic tip 17648705e67b, on two
+                    // throwaway homes, through the REAL CLI:
+                    //
+                    //   A holds a symlink bin/cli/linktool -> a file in B
+                    //     home verify --home A  -> exit 1  FOREIGN_HOME bin/cli/linktool
+                    //     home repair --home A  -> exit 0  "nothing ... is damaged
+                    //                                       in a way this command
+                    //                                       knows about (0 entries examined)"
+                    //
+                    //   CONTROL, A holds a WRAPPER instead (regular file, same target)
+                    //     home verify --home A  -> exit 1  FOREIGN_PATH_IN_SHIM bin/cli/wrappertool
+                    //     home repair --home A  -> exit 1  FOREIGN_PATH_IN_SHIM bin/cli/wrappertool
+                    //
+                    // The control is what makes the arm readable: the two
+                    // readers CAN agree, so the disagreement is about the
+                    // surface and not about the fixture. Run with BOTH shapes
+                    // in one home, verify names two subjects and repair names
+                    // one -- the subject SETS differ, which is the sharpest
+                    // form of GOAL-one-home-one-answer's failure.
+                    //
+                    // WHY IT IS STRUCTURAL, not incidental. HomeRepair's
+                    // foreign-shim detector consumes HomeCloner.scanShimDirs,
+                    // which extracts absolute paths out of a shim's TEXT. A
+                    // symlink has no text. So `home repair` cannot report a
+                    // symlinked shim into another home at all -- while
+                    // `home repair --help` advertises, unqualified, "shims
+                    // pointing into another home", and `home verify`'s own
+                    // header tells the reader "`home repair` reads the same two
+                    // directories". True of the directories, false of the
+                    // conclusion.
+                    //
+                    // THE RELATIONSHIP TO DEF-104, which is the reason this is
+                    // worth an assertion rather than a note. DEF-104 was the
+                    // MIRROR IMAGE: verify saw symlinks and was blind to
+                    // content, repair saw content. HIS-21 taught verify to read
+                    // content and declared "one extraction rule, one verdict"
+                    // for both readers. The half that was never done is repair
+                    // learning to read LINKS. The epic closed the asymmetry in
+                    // one direction and left it open in the other, and no graph
+                    // and no unit case compared the two readers on a symlink,
+                    // because every existing comparison plants a wrapper.
+                    //
+                    // THE BRANCH THIS EXERCISES: HomeCloner.verifyRoots' SYMLINK
+                    // arm versus HomeRepair's text-extraction arm. Distinct from
+                    // the DEF-104 case (both readers, regular-file arm) and from
+                    // MAJOR-1 (both readers, regular-file arm reached through a
+                    // linked DIRECTORY). Three cases, three branch pairs.
+                    Fixture fx = Fixture.build("def115");
+
+                    // A THIRD home, deliberately NOT fx.other: fx.other is a
+                    // recorded parent store, so a path into it is SANCTIONED
+                    // and this case would assert about the sanction rather than
+                    // about the surface. Mechanism B, and it is the obvious way
+                    // to get this fixture wrong.
+                    Path third = Files.createTempDirectory("def115-third-")
+                            .resolve(".skill-manager");
+                    Files.createDirectories(third.resolve("bin/cli"));
+                    Files.createDirectories(third.resolve("skills"));
+                    Files.createDirectories(third.resolve("installed"));
+                    Path thirdTool = third.resolve("bin/cli").resolve("realtool");
+                    Files.writeString(thirdTool, "#!/bin/sh\nexit 0\n", StandardCharsets.UTF_8);
+                    thirdTool.toFile().setExecutable(true);
+                    assertTrue(LaunchEnv.looksLikeStoreRoot(third),
+                            "precondition: the link target is inside something the product "
+                                    + "recognises AS A HOME -- otherwise neither reader has "
+                                    + "anything to disagree about; got " + third);
+                    assertFalse(HomeProvenance.recordedParentStores(fx.store)
+                                    .contains(third.toString()),
+                            "precondition: the third home is NOT a recorded parent store, so "
+                                    + "a path into it is unsanctioned and both readers are "
+                                    + "supposed to refuse it");
+
+                    // BOTH shapes, in one home, in one run: a symlink and a
+                    // wrapper naming the same third home. The wrapper is the
+                    // in-run control -- if the readers agreed about NOTHING the
+                    // comparison below would be uninformative.
+                    Files.createSymbolicLink(
+                            fx.store.resolve("bin/cli").resolve("linktool"), thirdTool);
+                    Path wrapper = fx.store.resolve("bin/cli").resolve("wrappertool");
+                    Files.writeString(wrapper,
+                            "#!/usr/bin/env bash\nexec \"" + thirdTool + "\" \"$@\"\n",
+                            StandardCharsets.UTF_8);
+                    wrapper.toFile().setExecutable(true);
+
+                    List<String> repairSubjects = HomeRepair.detect(fx.store, fx.pin).findings()
+                            .stream()
+                            .map(HomeRepair.Finding::subject)
+                            .filter(sub -> sub.startsWith("bin/cli/linktool")
+                                    || sub.startsWith("bin/cli/wrappertool"))
+                            .distinct().sorted().toList();
+                    assertTrue(repairSubjects.contains("bin/cli/wrappertool"),
+                            "IN-RUN CONTROL: repair still names the WRAPPER, so the reader ran "
+                                    + "and the comparison below is about the symlink and not "
+                                    + "about a detector that saw nothing; got " + repairSubjects);
+
+                    HomeCloner.Verification v = HomeCloner.verify(fx.store, false);
+                    List<String> verifySubjects = v.isolationFailures().stream()
+                            .map(HomeCloner.Leak::path)
+                            .filter(pth -> pth.startsWith("bin/cli/linktool")
+                                    || pth.startsWith("bin/cli/wrappertool"))
+                            .distinct().sorted().toList();
+                    assertTrue(verifySubjects.contains("bin/cli/linktool"),
+                            "IN-RUN CONTROL: verify names the SYMLINK -- this is the arm that "
+                                    + "was always correct, and if it stopped firing the claim "
+                                    + "below would go green for the wrong reason; got "
+                                    + verifySubjects);
+
+                    assertEquals(verifySubjects, repairSubjects,
+                            "THE CLAIM, and it is RED at epic tip 17648705e67b (DEF-115): "
+                                    + "one home, one moment, two readers, and they must name "
+                                    + "the same set of shims that reach another home -- "
+                                    + "whether the reach is spelled as a symlink or as text "
+                                    + "inside a wrapper. verify said " + verifySubjects
+                                    + "; repair said " + repairSubjects
+                                    + ". `home repair` reads shim TEXT, and a symlink has "
+                                    + "none, so it can never report this shape.");
+                })
+
                 .runAll();
     }
 

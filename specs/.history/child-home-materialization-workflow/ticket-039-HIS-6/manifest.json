@@ -1,0 +1,763 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/HIS-6",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/ticket-039-HIS-6 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json",
+    "git_commit": "git commit -m 'record spec history for HIS-6'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/ticket-039-HIS-6"
+  },
+  "complexity_delta": {
+    "direction": "zero",
+    "metrics": {
+      "actions": {
+        "after": 9,
+        "before": 9,
+        "delta": 0,
+        "percent": 0.0
+      },
+      "bound": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "depth": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "distinct_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "generated_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "variables": {
+        "after": 38,
+        "before": 38,
+        "delta": 0,
+        "percent": 0.0
+      }
+    },
+    "previous_scope_id": "HIS-22"
+  },
+  "complexity_ledger": {
+    "coverage_audit": {
+      "in_scope_gaps": null,
+      "passing": false,
+      "report": "",
+      "scope_source": "",
+      "status": "not_run"
+    },
+    "delta": {
+      "direction": "zero",
+      "metrics": {
+        "actions": {
+          "after": 9,
+          "before": 9,
+          "delta": 0,
+          "percent": 0.0
+        },
+        "bound": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "depth": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "distinct_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "generated_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "variables": {
+          "after": 38,
+          "before": 38,
+          "delta": 0,
+          "percent": 0.0
+        }
+      },
+      "previous_scope_id": "HIS-22"
+    },
+    "errors": [],
+    "input_path": "specs/tickets/HIS-6/results/complexity_ledger.yaml",
+    "justification": "",
+    "ledger_path": "specs/results/complexity_ledger.json",
+    "metrics": {
+      "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+      "actions": 9,
+      "actions_from_fallback_heuristic": false,
+      "bound": null,
+      "bound_complete": false,
+      "bound_resolved_variables": 0,
+      "bound_unresolved_variables": [
+        "cli_store_units",
+        "cli_doc_repos",
+        "cli_harness_templates",
+        "cli_harness_instances",
+        "cli_installed_records",
+        "cli_lock_units",
+        "cli_agent_projections",
+        "cli_bindings",
+        "cli_projection_rows",
+        "cli_managed_copies",
+        "cli_import_directives",
+        "cli_projection_conflicts",
+        "cli_tool_records",
+        "cli_cli_lock",
+        "cli_skill_scripts_run",
+        "cli_errors",
+        "cli_gateway_url_configured",
+        "cli_registry_url_configured",
+        "cli_gateway_mcp_snapshot",
+        "effect_status",
+        "effect_continuation",
+        "program_halted",
+        "always_after_ran",
+        "rollback_journal",
+        "gateway_catalog",
+        "gateway_dynamic_servers",
+        "gateway_global_deployments",
+        "gateway_session_deployments",
+        "gateway_tools",
+        "gateway_disclosures",
+        "gateway_errors",
+        "gateway_last_init",
+        "server_registry_units",
+        "server_versions",
+        "server_packages",
+        "server_authenticated_users",
+        "project_model",
+        "result"
+      ],
+      "budget_utilization": {},
+      "depth": null,
+      "distinct_states": null,
+      "gate_passed": false,
+      "gate_violations": [
+        "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+        "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      ],
+      "generated_states": null,
+      "modularity": 0.0,
+      "variables": 38
+    },
+    "narrative": "HIS-6 IS AN EVALUATION TICKET AND CHANGES NO MODEL AND NO PRODUCTION SOURCE. Complexity delta is zero in every metric. What follows is the part the machine-checked core cannot express.\nTHE HEADLINE IS A FAILED CLAUSE THAT WAS NOT FIXED. GOAL-one-home-one-answer clause 1 fails at the epic tip: `home verify` and `home repair` name DIFFERENT SUBJECT SETS for a shim reaching another home when the reach is spelled as a SYMLINK -- verify exit 1 FOREIGN_HOME, repair exit 0 \"nothing is damaged (0 entries examined)\" -- with a wrapper control in the same fixture proving the two readers CAN agree. That is DEF-104 with the mirror flipped. HIS-21 taught verify to read shim CONTENT and declared \"one extraction rule ... one verdict ... for both readers\"; repair was never taught to read LINKS, and every existing comparison of the two readers plants a wrapper, which is exactly why nothing caught it. The fix is obvious and available and WAS NOT MADE, because an evaluation ticket that repairs the product to turn its own FAIL into a PASS has falsified its own measurement. Filed as DEF-115 with the assertion IN THE TREE AND RED, which is why the behavior_tests row above reads 1423/1.\nTWO NUMBERS THAT MUST NOT BE ADDED TOGETHER. The sweep as measured is graphs_executed=26, graphs_passed=24. The harness repair of the stale DEF-108 assertion then makes that graph pass, verified by re-running it alone to its own --out: 12 of 12 nodes, all 7 assertions green. The first number is what the epic is graded on; the second is evidence the repair works.\nWHAT THE SWEEP FOUND THAT WAS NEW: NOTHING -- and that is informative rather than embarrassing. Five of the seven defects this ticket filed live in surfaces no node touches. What only a full sweep could settle is three things: DEF-107 fixed on the INTEGRATED tip (round 2 measured it still red from HIS-22's branch), DEF-043 resolved by re-measurement rather than inference, and DEF-108 triaged as a STALE ASSERTION -- a core graph that had been requiring the product to STRAND a unit in MERGE_CONFLICT, which is the exact condition GOAL-symlink-merge-settles exists to remove.\nTHE MEASURED ALTERNATIVE FOR PHASE 1. `run.py --all` cannot do this: it refuses resume options outright, and Gradle stops the chain at the first red task. The sweep was therefore driven per graph by sweep.py, one at a time, in registered order, with resumption AVAILABLE AND UNUSED -- no graph was re-run and the sweep was never restarted. `--out` names a HIS-6 path because the default path is the canonical round-1 sweep.json (DEF-111); both rounds are on disk side by side.\nAND THE EPIC'S OWN INSTRUMENT BROKE CONTAINMENT. An evaluation agent's `skt publish` wrote a foreign unit into the operator's PROJECT home from a CORRECTLY PINNED session -- the destination comes from `git worktree list`, not from SKILL_MANAGER_HOME -- then failed on an argument check it could have made first, with no rollback. Both `home verify` and `home repair` call the result CLEAN, because a unit present in skills/ and .materialization/ but absent from installed/ is a fifth damage shape the enumeration does not name. That is a live counterexample to GOAL-no-destructive-recovery clause 2's ambition, found by an operator noticing, which is the thing the clause says should not be how damage is found. DEF-121; the bytes are preserved read-only rather than cleaned up, because cleaning them is another write to the same forbidden home.\nFull reasoning: results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md, new-defects.md, instrument-comparison.md, promotion-paths.md, judged-read-root.md.",
+    "notes": [
+      "NOTE: TLC reports incomplete; comparison skipped.",
+      "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+    ],
+    "recorded_at_utc": "2026-08-24T23:54:51.452595+00:00",
+    "refinement": {
+      "applied": false,
+      "approved_by": "",
+      "detail": "SEARCHED, FOUND NONE, and the search is worth recording because it had a candidate. The model is unchanged by this ticket (variables=38, actions=9, delta direction zero against HIS-22), so there is no new representation to refine. The candidate considered and REJECTED: DEF-112 records that CloseOutIsSafe cannot express HIS-22's self-obtainable disjunct without a new variable and a constant in ~25 cfgs. That is a REFINEMENT OPPORTUNITY IN THE OPPOSITE DIRECTION -- it would INCREASE complexity to close a modelling gap -- and an evaluation ticket is the wrong place to take it: it would change what GOAL-home-invariants is measured against, in the ticket that measures it. Recorded here so the option is visible to whoever schedules the follow-on, rather than lost because the field only has a slot for decreases.\n",
+      "measured": false,
+      "outcome": "none",
+      "searched": true
+    },
+    "retention": {
+      "effect_conformance": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "external_coverage": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "kill_rate": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "retention_summary": [
+      "kill_rate=not_run (UNVERIFIED)",
+      "effect_conformance=not_run (UNVERIFIED)",
+      "external_coverage=not_run (UNVERIFIED)"
+    ],
+    "schema_version": 1,
+    "scope": "ticket",
+    "scope_id": "HIS-6",
+    "tlc_findings": [
+      {
+        "level": "NOTE",
+        "message": "TLC reports incomplete; comparison skipped."
+      }
+    ],
+    "transition_diff": "",
+    "validated_refactor": {
+      "behavior_tests": {
+        "classification": "retained",
+        "evidence": "jbang RunTests.java -- 1423 passed, 1 failed, with the five home vars UNSET (DEF-074). THE ONE FAILURE IS THIS TICKET'S OWN DELIBERATELY-RED ASSERTION for DEF-115; both of its in-run controls are GREEN. results/epic-home-integrity-sync/tickets/HIS-6/evidence/unit-suite.txt. Plus uv run pytest specs/ -- 88 passed. Plus the 26-graph sweep: graphs_executed=26, graphs_passed=24.",
+        "status": "pass",
+        "value": null
+      },
+      "descriptor_comparison": {
+        "classification": "retained",
+        "evidence": "results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md -- nineteen clauses, one verdict each, with the build and the env configuration stated for every number.",
+        "status": "recorded",
+        "value": null
+      },
+      "tlc_after": {
+        "classification": "retained",
+        "evidence": "IDENTICAL RUN. This ticket changed no .tla and no .cfg -- `git diff --stat` over specs/current and specs/desired_program_model is empty apart from ticket_plan.yaml's status field. before and after are the same tree, and saying so is the honest form of this row.",
+        "status": "green",
+        "value": null
+      },
+      "tlc_before": {
+        "classification": "retained",
+        "evidence": "SPEC_REQUIRE_TLC=1 uv run pytest specs/desired_program_model/tests/test_tlc_expected_violations.py -- 25 passed, and specs/current/... -- 25 passed. Both include test_the_model_checking_half_is_not_silently_skipped, which PASSED, so TLC really ran rather than skipping. results/epic-home-integrity-sync/tickets/HIS-6/evidence/tlc-expected-violations.txt",
+        "status": "green",
+        "value": null
+      }
+    },
+    "validated_refactor_summary": [
+      "tlc_before=green (retained)",
+      "tlc_after=green (retained)",
+      "behavior_tests=pass (retained)",
+      "descriptor_comparison=recorded (retained)"
+    ],
+    "verdict": "recorded",
+    "workflow": "child-home-materialization-workflow"
+  },
+  "created_at_utc": "2026-08-24T23:54:51.542127+00:00",
+  "entry_name": "ticket-039-HIS-6",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "git": {
+    "branch": "feature/218-his-6",
+    "commit": "1764870",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": {
+    "bypassed": [],
+    "flags": [],
+    "model_action": "CloseTicket",
+    "note": "RC-01: a close taken under a guard-weakening flag is a different modeled state from one taken under the guard. Recorded, never refused.",
+    "weakened": false
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.cfg",
+            "relative": "ClaimantRefreshExternal.cfg",
+            "source": "specs/tickets/HIS-6/desired/ClaimantRefreshExternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.tla",
+            "relative": "ClaimantRefreshExternal.tla",
+            "source": "specs/tickets/HIS-6/desired/ClaimantRefreshExternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal_regression.cfg",
+            "relative": "ClaimantRefreshExternal_regression.cfg",
+            "source": "specs/tickets/HIS-6/desired/ClaimantRefreshExternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.cfg",
+            "relative": "ClaimantRefreshInternal.cfg",
+            "source": "specs/tickets/HIS-6/desired/ClaimantRefreshInternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.tla",
+            "relative": "ClaimantRefreshInternal.tla",
+            "source": "specs/tickets/HIS-6/desired/ClaimantRefreshInternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal_regression.cfg",
+            "relative": "ClaimantRefreshInternal_regression.cfg",
+            "source": "specs/tickets/HIS-6/desired/ClaimantRefreshInternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.cfg",
+            "relative": "HomeIntegrityInternal.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.tla",
+            "relative": "HomeIntegrityInternal.tla",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal.tla"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_guard_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_disposalreach.cfg",
+            "relative": "HomeIntegrityInternal_probe_disposalreach.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_probe_disposalreach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_reach.cfg",
+            "relative": "HomeIntegrityInternal_probe_reach.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_probe_reach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_blindobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_blindobserver.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_blindobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "relative": "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_collapsedgateadmits.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "relative": "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_everythingdisposable.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_foreignprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_gaterefires.cfg",
+            "relative": "HomeIntegrityInternal_regression_gaterefires.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_gaterefires.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "relative": "HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_halfboundhome.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_narrowprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "relative": "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfrepend.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfrepend.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_selfrepend.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_silentdrift.cfg",
+            "relative": "HomeIntegrityInternal_regression_silentdrift.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_silentdrift.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleack.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleack.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_staleack.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleerror.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleerror.cfg",
+            "source": "specs/tickets/HIS-6/desired/HomeIntegrityInternal_regression_staleerror.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/HIS-6/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/HIS-6/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/HIS-6/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/HIS-6/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/HIS-6/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/claimant_refresh_actions.yml",
+            "relative": "claimant_refresh_actions.yml",
+            "source": "specs/tickets/HIS-6/desired/claimant_refresh_actions.yml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/HIS-6/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/ClaimantRefreshInternal.dot",
+            "relative": "generated/spec-unit/ClaimantRefreshInternal.dot",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/ClaimantRefreshInternal.dot"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/__init__.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "relative": "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/case_coverage.json"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/cases.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/cases.py",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/cases.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/docs.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/docs.md",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/docs.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/doubles.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/types.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/types.py",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/types.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/validators.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/validators.py",
+            "source": "specs/tickets/HIS-6/desired/generated/spec-unit/claimant_refresh_cases/validators.py"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/HIS-6/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/HIS-6/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/HIS-6/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/HIS-6/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_claimant_refresh_program_model.py",
+            "relative": "tests/test_claimant_refresh_program_model.py",
+            "source": "specs/tickets/HIS-6/desired/tests/test_claimant_refresh_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/HIS-6/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/HIS-6/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/HIS-6/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/HIS-6/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/HIS-6/desired/tests/test_program_model_contract.py"
+          },
+          {
+            "destination": "specs/current/tests/test_tlc_expected_violations.py",
+            "relative": "tests/test_tlc_expected_violations.py",
+            "source": "specs/tickets/HIS-6/desired/tests/test_tlc_expected_violations.py"
+          }
+        ],
+        "operation": "promote ticket desired onto project current, preserving unseeded current-only paths",
+        "preserved": [
+          "tests/test_current_ticket_workflow.py"
+        ],
+        "removed": [],
+        "role": "current",
+        "seed_basis": "seed manifest recorded at open; removing only seeded paths the ticket dropped",
+        "seed_recorded": true,
+        "source": "specs/tickets/HIS-6/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/HIS-6"
+  },
+  "refinement_record": {
+    "applied": false,
+    "approved_by": "",
+    "detail": "SEARCHED, FOUND NONE, and the search is worth recording because it had a candidate. The model is unchanged by this ticket (variables=38, actions=9, delta direction zero against HIS-22), so there is no new representation to refine. The candidate considered and REJECTED: DEF-112 records that CloseOutIsSafe cannot express HIS-22's self-obtainable disjunct without a new variable and a constant in ~25 cfgs. That is a REFINEMENT OPPORTUNITY IN THE OPPOSITE DIRECTION -- it would INCREASE complexity to close a modelling gap -- and an evaluation ticket is the wrong place to take it: it would change what GOAL-home-invariants is measured against, in the ticket that measures it. Recorded here so the option is visible to whoever schedules the follow-on, rather than lost because the field only has a slot for decreases.\n",
+    "measured": false,
+    "outcome": "none",
+    "searched": true
+  },
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-039-HIS-6/results/sweep.json",
+      "source": "results/epic-home-integrity-sync/tickets/HIS-6/sweep/sweep.json"
+    }
+  ],
+  "retention_evidence": {
+    "effect_conformance": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "external_coverage": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "kill_rate": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    }
+  },
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 9,
+    "close_out_entry": "Close-out ticket HIS-6",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/wt-218-his-6/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-039-HIS-6/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-039-HIS-6/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-039-HIS-6/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-039-HIS-6/ticket",
+      "source": "specs/tickets/HIS-6"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "TERMINAL EVALUATION: 26 executed / 24 passed; GOAL-one-home-one-answer clause 1 FAILS on DEF-115 and was NOT fixed; DEF-108 triaged as a stale assertion and repaired in the harness; seven new defects, five deferred and two escalated.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "DEF-011 IS CLOSED BEFORE THE SWEEP IS TRUSTED. `run.py --all` completes over every non-excluded graph, red ones included, and `graphs_executed` is READ from the artifact rather than inferred from a green build. A sweep that stopped at the first failure is not a sweep and must not be reported as one.",
+        "Every goal is reported baseline -> measured -> target with ONE VERDICT PER CLAUSE, never one token per goal.",
+        "GOAL-sync-quiet is reported with BOTH of its numbers -- the retrodiction and the forward-going measurement -- per the plan's measurement_caveat_added_2026_08_22. Conflating them is a reporting defect.",
+        "The build that produced every home measured is stated, per this ticket's own warning (2), because a home built by the released CLI measures the old product.",
+        "The deferred backlog is RECONCILED before any count is reported: statuses are re-measured, not inherited. DEF-043 is the known-stale entry.",
+        "`run.py --all` is driven with RESUMPTION. On a failure, fix or record the node and resume from THAT node (`--resume-from-node` / `--resume-from-build` / `--run-only-node`). Restarting from the beginning is forbidden; iterate until every graph has executed.",
+        "ALL FOUR PROMOTION PATHS are exercised with a case each: worktree->project, project->root, root->project, project->worktree. project->root was never exercised before 2026-08-24 and hit DEF-103 on its first run.",
+        "A direct ROOT update still works. The enforced direction is project->root; the owner requires the root remain updatable, so both halves carry a case.",
+        "The evaluation agents are ISSUE-SCOPED and validate their OWN worktree. Not whole-epic agents. Owner's instruction, 2026-08-24.",
+        "EVERY bug an agent found that `--all` did NOT is left behind as a test assertion, and as a model update where it is a property rather than a case. A found bug without a check is not closed.",
+        "The scorecard reports the regressions caught and the fixes made, and argues a judgment on how well the architecture and the validation did -- naming what the validation MISSED as plainly as what it caught."
+      ]
+    },
+    "blocks": [],
+    "conflict_keys": {
+      "adapters": [],
+      "production": [],
+      "test_graph": [],
+      "tla": [],
+      "workflow_data": []
+    },
+    "delivered_in": "branch feature/218-his-6, PR into epic/home-integrity-sync",
+    "depends_on": [
+      "HIS-1",
+      "HIS-2",
+      "HIS-3",
+      "HIS-4",
+      "HIS-5",
+      "HIS-7",
+      "HIS-8",
+      "HIS-9",
+      "HIS-10",
+      "HIS-11",
+      "HIS-12",
+      "HIS-13",
+      "HIS-14",
+      "HIS-15",
+      "HIS-16",
+      "HIS-17",
+      "HIS-18",
+      "HIS-19",
+      "HIS-20",
+      "HIS-21",
+      "HIS-22"
+    ],
+    "epic": "home-integrity-sync",
+    "evaluation_design_revision_9b": "SET BY THE OWNER 2026-08-24, after the epic PR and before dispatch. This REPLACES the \"run every goal's harness\" shape with an ordered pipeline, because the point is not to produce nine verdicts -- it is to find what breaks at release and to leave a check behind for each thing found. PHASE 1 -- THE SWEEP, WITH RESUMPTION, AND `--all` CANNOT DO IT. Established by measurement 2026-08-24 before dispatch: `run.py` REFUSES the combination outright -- if args.run_all and (args.resume_from_build or replay_node_count): parser.error(\"resume options apply to one graph; pass <graph> instead of --all\") Resumption is PER GRAPH. So \"sweep everything\" and \"resume from the failing node\" cannot both be asked of `--all`, and the owner's instruction -- never restart from the beginning -- requires driving the graphs individually. DEF-011's fix and the resumption requirement turn out to be THE SAME FIX. That driver is `skills/test_graph/scripts/sweep.py`. One graph at a time; a red graph does NOT stop the sweep; every outcome recorded red or green; `graphs_executed` and `graphs_passed` written as SEPARATE numbers so neither can be inferred from the other; and `--retry-failed-from` re-runs only the failures, resuming each from its own first FAILED node. IT IS VALIDATED IN BOTH DIRECTIONS, and the selftest found a defect in it: the first version classified any node not `passed` as failing, which lumped `skipped` in with `failed`. On artifact-dag that reported THREE failing nodes where there is ONE -- `uninstall.prunes.the.subgraph` failed, and `home.fixpoint.law` / `home.membership.law` are downstream with spawnExitCode -1 and zero assertions. It would have told this evaluation that the cross-cutting laws were broken. Failed and skipped are now separate, and the distinction also matters for resumption: a skipped node has no saved input context to resume from. PHASE 2 -- SMALL AGENTS ON REAL ISSUES, NOT WHOLE-EPIC AGENTS. The owner: \"I don't want you to deploy whole agents. Instead, deploy agents on gh issues to validate their own worktree.\" So each evaluation agent takes ONE GitHub issue, works in ITS OWN worktree, and validates THAT worktree. Small and issue-scoped. This is the shape the epic used for tickets; it is now the shape of the evaluation. PHASE 3 -- THE PROMOTION PATHS, ALL OF THEM, INCLUDING THE ONE WE MISSED. The owner: \"we're also going to have to evaluate the promotion to skill manager root from project root. I think previously we missed that.\" Correct -- every close-out gate in this epic ran worktree -> project, and NOTHING exercised project -> root until 2026-08-24, when it was run by hand and immediately hit DEF-103. The paths to evaluate: worktree home -> project home      (close-out; exercised all epic) project home  -> root home         (MISSED; DEF-103 lives here) root home     -> project home      (downward: clone/inherit) project home  -> worktree home     (downward: bootstrap) The owner's direction on the middle pair: \"we need to be enforcing change management of the root skill manager from project home. However, we should still be able to update the root.\" So project -> root is the ENFORCED direction, and a direct root update must remain possible. Both halves get a case. PHASE 4 -- THE PROGRESSIVE DISCLOSURE GRAPH is validated during this, not as a separate exercise. HIS-20 measured it at ONE tier only; the other two corpora existed nowhere on disk. Now that the leaf PRs are merged and the root home is synced (docs coverage 0 of 4 -> 4 OF 4 on the real machine), root is measurable for the first time. PHASE 5 -- CLOSE THE LOOP, AND THIS IS THE PART THAT OUTLIVES THE EPIC. Every bug the AGENTS found that `--all` did NOT becomes (a) a new or widened test assertion, and (b) where it is a property rather than a case, a model update. The owner: \"we use the missing bugs to add as test assertions and updates to our model so that the same regressions get caught in the future.\" A bug found by an agent and not left behind as a check is a bug that will return. PHASE 6 -- THE SCORECARD. Nine goals, one verdict per clause, PLUS the regressions caught and the fixes made, PLUS a judgment -- argued, not asserted -- on how well the architecture and the validation actually did. The owner asked for \"solid judgment\", which means naming what the validation MISSED as plainly as what it caught.\n",
+    "github_issue": 218,
+    "goals": [
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-no-spurious-holdback",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-sync-quiet",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-gate-settles",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-symlink-merge-settles",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-home-invariants",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-mechanism-documented",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta. HIS-20 measures it; this ticket reports the verdict and must NOT re-run the judged reads selectively",
+        "goal": "GOAL-progressive-disclosure",
+        "local_signal": "N/A: this ticket is the measurement"
+      }
+    ],
+    "id": "HIS-6",
+    "objective": "This ticket's slice IS the measurement, run as the six-phase pipeline above. It reports baseline -> measured -> target with ONE VERDICT PER CLAUSE. Every goal has at least two clauses; a single token per goal would have to choose which clause it referred to, and it would choose the flattering one.\n",
+    "owns_goals": [
+      "GOAL-no-spurious-holdback",
+      "GOAL-sync-quiet",
+      "GOAL-gate-settles",
+      "GOAL-symlink-merge-settles",
+      "GOAL-home-invariants",
+      "GOAL-mechanism-documented",
+      "GOAL-one-home-one-answer",
+      "GOAL-no-destructive-recovery",
+      "GOAL-progressive-disclosure"
+    ],
+    "owns_the_terminal_sweep": "SET BY THE OWNER AT THE WAVE-3 GATE, 2026-08-21: \"--all takes forever. We'll do it once at the end with the goal/evals/scorecard.\" So this ticket owns the ONE `run.py --all`, run on the integrated tip alongside the scorecard, and no wave before it owes a full sweep. See the root `validation_policy` block, which is canonical. TWO THINGS THIS TICKET MUST NOT ASSUME. (1) THE SWEEP IS A CHAIN. Gradle stops at the first failing task, so a red graph at position 1 yields \"stopped at 1\" -- output that is indistinguishable from \"only 1 graph exists\". Measured 2026-08-21: one lost teardown race in `smoke`, the first graph, meant 1 of 24 executed and 23 never ran. Because this is now the epic's ONLY full run, there is no earlier complete sweep to fall back on, and a scorecard that dies on graph 1 is no scorecard. DEF-011's second half is therefore a PREREQUISITE, not cleanup. Read `graphs_executed` -- do not infer it from a green build. (2) WHICH BUILD PRODUCED THE HOMES IT MEASURES. `skt` and bootstrap-home.sh resolve their CLI from the root home's pin, which DEF-006 measured as Homebrew 0.23.0 -- a release predating this epic. A home built through the documented front door is built by code that has none of these fixes, so a goal measured over such a home measures the old product. State the build for every number, or the terminal verdicts are about something other than this epic.\n",
+    "phase": "HIS",
+    "promotion_order": 22,
+    "promotion_predecessor": "HIS-22",
+    "re_measurement_note": "GOAL-sync-quiet and GOAL-no-spurious-holdback are re-measured against the COMMITTED baseline fixtures under results/epic-home-integrity-sync/ baseline/, not against the operator's homes, which have moved since. GOAL-symlink-merge-settles is measured on HIS-4's synthetic fixture, because its live instance was cleared at kickoff -- say so in the report rather than presenting the synthetic number as the same measurement.\n",
+    "rescheduled_in_revision_10": "Wave 14 -> 16, promotion 20 -> 22, behind HIS-21 and HIS-22. The manual sweep that was meant to PREPARE this evaluation found six defects the 26-graph sweep missed, and the owner chose to fix them and leave regression assertions behind BEFORE the terminal measurement rather than report them as findings against it. That makes the validation ITERATIVE, which is the point: round 1 is the sweep plus the manual pass; HIS-21 and HIS-22 fix what it found and add the assertions; round 2 re-runs the sweep against the fixed tree, which both confirms the fixes and gives the new assertions their first real exercise. HIS-6 then decides nine goals against a tree validated twice. The ID and plan ordinal are unchanged, per rule 3; only the schedule moved. This is the second time HIS-6 has moved for exactly this reason.\n",
+    "rescheduled_in_revision_9": "Wave 12 -> 14, promotion 18 -> 20. Revision 9 inserted HIS-19 (the versioned CLI pin) and HIS-20 (progressive disclosure in both directions, and change management through GitHub) ahead of it. HIS-6 stays LAST by construction: it is the measurement, and a measurement that runs before the last change measures something else. The ID and plan ordinal are unchanged, per rule 3; only the schedule moved.\n",
+    "role": "evaluation",
+    "rules": "DOES NOT FIX GOALS. A goal that comes out short is reported short and is a decision for the owner. Never edits a target so a result passes; never re-runs selectively until a number passes. IT DOES FIX THE HARNESS, and that is the one exception, added in revision 9b: phase 5 REQUIRES adding assertions and model updates for every bug the agents found that the sweep missed. Repairing the PRODUCT to make a goal pass is forbidden; leaving a found bug without a check is also forbidden. Where the two conflict -- a bug whose fix would change a measured number -- file the fix and report the number as measured, then say so.\n",
+    "status": "closed",
+    "ticket_agent_note": "THE HEADLINE IS A FAILED CLAUSE, AND IT WAS NOT FIXED. GOAL-one-home-one-answer clause 1 FAILS at the epic tip: `home verify` and `home repair` name DIFFERENT SUBJECT SETS for a shim that reaches another home when the reach is spelled as a SYMLINK. That is DEF-104 with the mirror flipped -- HIS-21 taught verify to read shim CONTENT and declared \"one extraction rule ... one verdict ... for both readers\", and repair was never taught to read LINKS. Every existing comparison of the two readers plants a wrapper, which is exactly why nothing caught it. The fix is obvious and available. It was NOT MADE, because making it would turn a FAIL into a PASS on a goal this ticket grades. Filed as DEF-115 with the assertion in the tree AND RED. THE SWEEP FOUND NOTHING NEW, and that is informative rather than embarrassing. Five of the seven defects HIS-6 filed live in surfaces no node touches. What the sweep DID settle, and nothing else could: DEF-107 is fixed on the INTEGRATED tip (round 2 measured it still red from HIS-22's branch); DEF-043, `blocking/open` in the backlog, is RESOLVED by re-measurement rather than inference; and DEF-108 is TRIAGED -- it is a STALE ASSERTION, reproduced deterministically at a tip two tickets later, requiring the CLI to STRAND a unit in MERGE_CONFLICT, which is the exact condition GOAL-symlink-merge-settles exists to remove. A core graph had been asserting the pre-goal behaviour since whichever ticket changed it, and only a full sweep can find an assertion that has gone out of date with the product. DEF-096'S REMEDY HAS STILL NOT BEEN RUN. The project home holds four skills, no plugins and an empty projects/ against a manifest declaring `skt` and `skill-manager`, so HIS-20's AFTER readings at the project and worktree tiers remain COUNTERFACTUAL on the real machine. GOAL-progressive-disclosure clause 1 passes at root and fails at the other two tiers, and the root tier is measurable for the first time only because the leaf PRs merged. AND THE EPIC'S OWN INSTRUMENT BROKE CONTAINMENT. An evaluation agent's `skt publish` wrote a foreign unit into the operator's PROJECT home from a CORRECTLY PINNED session -- the destination comes from `git worktree list`, not from SKILL_MANAGER_HOME -- and failed afterwards on an argument check it could have made first, with no rollback. Both `home verify` and `home repair` call the result CLEAN. DEF-121.\n",
+    "title": "TERMINAL EVALUATION -- decide every goal on the integrated epic tip",
+    "wave": 16
+  },
+  "ticket_id": "HIS-6",
+  "ticket_index": 39,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/child-home-materialization-workflow/ticket-039-HIS-6/ticket",
+    "source": "specs/tickets/HIS-6"
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

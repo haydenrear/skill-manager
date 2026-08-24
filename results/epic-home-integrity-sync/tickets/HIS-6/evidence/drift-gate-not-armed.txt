@@ -1,0 +1,50 @@
+# DEF-116 — `home sync` arms no drift gate, with a positive control
+# build: skill-manager 0.24.0+g17648705e67b
+
+######## ARM — a sync that CHANGED the destination
+$ skill-manager home sync --from <proj> --to <root> --unit his6-probe
+    updated  skill:his6-probe — the destination holds no local work, so a sync
+             replaces it with the source copy
+  ✓ reconciled <root> (unit his6-probe only)                       EXIT=0
+$ grep 'EDIT v' <root>/skills/his6-probe/SKILL.md
+  WORKTREE EDIT v3 — the drift-gate probe                          (bytes DID move)
+
+$ skill-manager home drift --home <root>
+  ✓ no unread change in <root>                                     EXIT=0
+
+######## POSITIVE CONTROL — the SAME disk state, asked a different way
+$ skill-manager home drift --home <root> --record
+  ! 1 unit(s) changed in <root> (home drift --record) and have not been read:
+  ✗   modified  skill:his6-probe  93348d43  (1 file)
+  ✗   1 unit, 1 file changed — `home drift --detail` for the paths, ...
+  !   run `... home drift --ack --home <root>` once you have taken it in
+                                                                   EXIT=8
+
+  ==> Same home, same bytes, same minute. The gate CAN fire here; `home sync`
+      simply does not arm it.
+
+######## GOAL-gate-settles, measured on that gate
+  surface 1 (full)      4 lines  484 chars  EXIT=8
+  surface 2             1 line   345 chars  EXIT=8  "1 unit still unread — ... --ack ... to clear"
+  surface 3             1 line   345 chars  EXIT=8
+  surface 4 --detail    4 lines  382 chars  EXIT=8  the explicit ask still answers in full
+  --ack                 2 lines             EXIT=0
+  after ack             1 line              EXIT=0  "no unread change"
+
+######## THE ENUMERATION BEHIND THE CLAIM
+$ command grep -arn "DriftGate\.[a-zA-Z]*(" src/main/java     # control: "DriftGate." matches 13 lines
+  ProjectSyncUseCase.java  -> DriftGate.recordSince(store, before, "project sync")
+  ExecCommand.java         -> DriftGate.pending / markSurfaced / acknowledge
+  HomeCommand.java         -> DriftGate.recordSince(store, baseline, "home drift --record")
+  HomeCommand.java         -> DriftGate.acknowledge / pending / markSurfaced
+  HomeCloner.java          -> DriftGate.file(copy)
+
+  TWO production recorders. HomeSync.java touches neither DriftGate nor
+  HomeDigest. Neither does install, nor upgrade.
+
+######## THE JAVADOC THAT SAYS OTHERWISE
+  HomeCloner.rebaselineDrift, justifying that a clone drops its source's gate:
+    "every later sync, pull, install or `home sync` into this copy still diffs
+     against this baseline and still records a pending change, and the tests
+     that assert that are untouched."
+  Three of those four verbs record nothing.

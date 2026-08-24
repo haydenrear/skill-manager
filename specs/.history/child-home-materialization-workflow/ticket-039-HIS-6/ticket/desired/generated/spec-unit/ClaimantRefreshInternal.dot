@@ -1,0 +1,10 @@
+strict digraph DiskGraph {
+nodesep=0.35;
+subgraph cluster_graph {
+color="white";
+5443867627986022932 [label="/\\ claimant_parent_revision = \"A\"\n/\\ claimant_phase = \"selected\"\n/\\ claimant_child_revision = \"A\"\n/\\ claimant_selected_revision = \"A\"\n/\\ claimant_trunk_revision = \"B\"\n/\\ claimant_fetches = 0",style = filled]
+5443867627986022932 -> -5872759604132347719 [label="ReconcileClaimingProjectFromSelectedParent",color="black",fontcolor="black"];
+-5872759604132347719 [label="/\\ claimant_parent_revision = \"A\"\n/\\ claimant_phase = \"complete\"\n/\\ claimant_child_revision = \"A\"\n/\\ claimant_selected_revision = \"A\"\n/\\ claimant_trunk_revision = \"B\"\n/\\ claimant_fetches = 0"];
+{rank = same; 5443867627986022932;}
+}
+}

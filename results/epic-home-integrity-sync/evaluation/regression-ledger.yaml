@@ -138,8 +138,45 @@ rounds:
         as clean when it is not, and not read as HIS-22's when it is not.
   round_3:
     what: HIS-6 terminal sweep and goal scorecard
-    when: pending
-    status: not started
+    when: "2026-08-24"
+    status: COMPLETE
+    driven_how: >
+      python skills/test_graph/scripts/sweep.py --scope full
+      --out results/epic-home-integrity-sync/tickets/HIS-6/sweep
+      with the five home vars UNSET (DEF-074), GRADLE_OPTS="-Dorg.gradle.daemon=false
+      -Djava.net.preferIPv6Addresses=true", COMPOSE_PROJECT_NAME=skill-manager.
+      `--out` is a HIS-6 path on purpose: writing the default path would have
+      CLOBBERED round 1's canonical sweep.json, which is DEF-111 and which HIS-21
+      did by accident. Round 1's baseline is intact and both rounds are readable
+      side by side.
+    result: SEE round_3_numbers BELOW -- read graphs_executed from the artifact.
+    what_round_3_settled_that_round_1_could_not:
+      - >
+        DEF-107 is FIXED ON THE INTEGRATED TIP, not only on HIS-21's branch.
+        home-sync PASSED. Round 2 measured home-sync still red on
+        `home.membership.law` FROM HIS-22's BRANCH, which is HIS-21's node and
+        pre-dated the merge; the integrated tree is green, which is the number
+        that was actually in doubt.
+      - >
+        DEF-043 is RESOLVED, re-measured rather than inferred. It is
+        `severity: blocking, status: open` in the backlog and names
+        `ticket-lifecycle`, which PASSED. The reconciliation note at the top of
+        backlog.yaml predicted exactly this and refused to close it on inference;
+        round 3 is the measurement it was waiting for.
+      - >
+        DEF-108 is TRIAGED, and it is neither a defect nor a flake. See REG-008's
+        round_3_result.
+    honest_limits:
+      - >
+        A green sweep is a statement about the nodes that exist. Five of the seven
+        defects HIS-6 filed are in surfaces NO node touches, and instrument A
+        missed every one of them at full green.
+      - >
+        The backlog cannot be re-measured by this sweep. 96 of 119 findings are
+        `open`; only 9 of those name a graph the sweep decides, and 87 name none.
+        Any count of "open findings" is a count of unreconciled bookkeeping, not
+        of live defects, and this ticket did not close that gap -- it measured how
+        big it is.
 
 instruments:
   A-graph-sweep:
@@ -596,6 +633,181 @@ findings:
       versus defaulted). Renamed to "a home that declared no gateway does not
       report the default as OWNED". Review of PR #256, minor 3.
 
+  - id: REG-009
+    caught_by: B-issue-agents
+    caught_at: "2026-08-24"
+    defect: DEF-115
+    severity: blocking
+    one_line: >
+      `home verify` and `home repair` disagree about a SYMLINKED shim into
+      another home. DEF-104 with the mirror flipped, and it survived the fix that
+      was declared to close it.
+    how_it_surfaced: >
+      An evaluation agent on issue #110, working in its own worktree, ran all four
+      readers over one home and compared them -- which is the thing the goal asks
+      for and which nothing automated does. Confirmed independently by the epic-tip
+      manual pass, in a sharper form the agent did not run: BOTH hazards in ONE
+      home, where verify names two subjects and repair names one.
+    why_A_missed_it: >
+      EVERY existing comparison of the two readers plants a WRAPPER. DEF-104's
+      case, the SANCTION case, and the review's MAJOR-1 case all reach the
+      detector through shim TEXT; MAJOR-1 gets one link closer by making the shim
+      DIRECTORY a symlink and still compares a regular file inside it. No node and
+      no unit case has ever compared verify and repair on a symlinked SHIM. The
+      coverage grew along the axis the last defect was found on.
+    why_B_found_it: >
+      Because the agent was told to run every reader over ONE home and diff the
+      verdicts, rather than to test a mechanism. That is the shape of instrument B
+      that instrument A cannot imitate: it asks the goal's question instead of a
+      node's question.
+    missed_by: [A-graph-sweep]
+    owed_check: >
+      DELIVERED AND RED. DamagedHomeIsRepairableTest gains "DEF-115: verify and
+      repair return the SAME verdict on a SYMLINKED shim into another home", with
+      two in-run controls that are GREEN, so the red is the claim and not the
+      setup. STILL OWED: a graph node, since the blindness is exactly that no node
+      compares the readers on this surface.
+    not_fixed_and_why: >
+      HIS-6 is forbidden to repair the product to make a goal it owns pass, and
+      this decides GOAL-one-home-one-answer clause 1. The clause is reported FAILED
+      and the defect handed up. The fix, when it is made, is repair asking the same
+      HomeCloner.unsanctionedForeignHome question of a LINK TARGET -- one rule,
+      not a third spelling, which is what DEF-104 was about in the first place.
+    status: open
+
+  - id: REG-010
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    defect: DEF-116
+    severity: blocking
+    one_line: >
+      `home sync` -- the promotion command this epic exists for -- arms no drift
+      gate in the destination, and HomeCloner's javadoc states in as many words
+      that it does.
+    how_it_surfaced: >
+      Driving Phase 3's four promotion paths by hand and then asking the home what
+      it thought had happened to it. `home drift` said "no unread change" over
+      bytes that had just moved.
+    why_A_and_B_missed_it: >
+      Every HomeDriftGateTest case calls DriftGate.recordSince ITSELF, or drives
+      `project sync`, which is the one production verb that records. Many honest
+      cases, one oracle, and the oracle sits downstream of the RECORDING rather
+      than of the COMMAND. That is HIS-22's "six honest probes sharing one oracle"
+      one layer out, and it is the reason this is worth a ledger row rather than a
+      backlog line: the epic named this mechanism and then shipped an instance of
+      it in the suite that decides one of its goals.
+    missed_by: [A-graph-sweep, B-issue-agents]
+    owed_check: >
+      (1) A unit case driving the COMMAND end to end and asserting the destination
+      carries a pending gate afterwards. (2) An assertion pinning WHICH operations
+      arm the gate, so rebaselineDrift's sentence cannot be false again silently.
+      Neither is written by HIS-6: both change what the product is asserted to do
+      on a clause HIS-6 grades.
+    status: open
+
+  - id: REG-011
+    caught_by: B-issue-agents
+    caught_at: "2026-08-24"
+    defect: DEF-118
+    severity: major
+    one_line: >
+      DEF-106 was fixed on ONE of three surfaces, and THE LEDGER'S OWN REASON FOR
+      LEAVING THE REST IS FALSE.
+    how_it_surfaced: >
+      An evaluation agent on issue #132 asked `home describe` and `home describe
+      --json` the same question about the same home three seconds apart.
+    the_correction_that_matters: >
+      REG-006 recorded the divergence and left it open with: "Latent today: no
+      in-repo consumer reads that field to decide anything. HIS-6 owns the goal and
+      should decide it." MEASURED FALSE. GatewayCommand's guard is
+      `if (!gw.owned() && !force)` and GatewayConfig.loadOwned returns TRUE when
+      gateway.properties is absent, so the guard never fires for any home
+      bootstrap-home.sh produces: `gateway down --dry-run` from an undeclared
+      worktree home exits 0 and plans to stop the operator's shared endpoint.
+      The field is load-bearing, and "latent" was the premise the deferral rested on.
+    why_A_missed_it: >
+      NO TEST PAIRS --json WITH THE GATEWAY. HomeReportsMarkWhatTheyInventTest --
+      the DEF-106 suite -- asserts only against r.out, and its own comment cites the
+      JSON evidence ("Two homes cannot both own a port") before never asserting on
+      it. The bug the test's prose diagnoses is the bug the test does not cover.
+    missed_by: [A-graph-sweep, C-manual]
+    owed_check: >
+      A case pairing HUMAN and --json for one home in one run and requiring the same
+      answer, plus a case that `gateway down` refuses from a home that declared
+      nothing. Filed as DEF-118; not written here.
+    status: open
+
+  - id: REG-012
+    caught_by: B-issue-agents
+    caught_at: "2026-08-24"
+    defect: DEF-119
+    severity: major
+    one_line: >
+      The epic's own worktree front door does not run the epic's build:
+      bootstrap-home.sh's pick_cli() prefers `command -v skill-manager`, which is
+      the ROOT home's pin, which execs the main-branch build.
+    how_it_surfaced: >
+      THREE of the four evaluation agents hit it independently, on their first
+      command, in a repository where every ticket begins with that script.
+    why_A_and_C_missed_it: >
+      A: no graph runs bootstrap-home.sh; the graphs build their own homes.
+      C: the epic agent and every ticket agent were HANDED the pin as a
+      hand-written brief line, so no human-driven run ever took the unpinned path.
+      The defect is invisible to anyone who already knows the workaround -- which
+      is the exact population that has been running this epic.
+    missed_by: [A-graph-sweep, C-manual]
+    what_this_says_about_the_instrument: >
+      This is the clearest thing B did that neither other instrument could. B's
+      agents were fresh: they had the brief and not the habit. Instrument C cannot
+      find a defect whose symptom is "you must already know X", because C is run by
+      someone who knows X. Worth carrying into the scorecard as an argument for
+      fresh agents over more nodes, in the specific class of onboarding defects --
+      which is also GOAL-progressive-disclosure's whole subject.
+    owed_check: >
+      pick_cli prefers the checkout-local build for a linked worktree, or
+      bootstrap-home.sh REFUSES when the picked CLI resolves inside another home.
+      The refusal is the better half: it fails loudly instead of silently using an
+      old build. Filed as DEF-119 against haydenrear/git-issue-workflow.
+    status: open
+
+  - id: REG-013
+    caught_by: B-issue-agents
+    caught_at: "2026-08-24"
+    defect: DEF-121
+    severity: major
+    one_line: >
+      `skt publish` wrote into the operator's PROJECT home from a correctly-pinned
+      worktree session, and then failed on an argument check it could have made
+      first. Neither `home verify` nor `home repair` notices the result.
+    how_it_surfaced: >
+      NOT AS A TEST. An evaluation agent, under a brief forbidding it in bold, ran
+      `skt publish` and it wrote one tier up. The epic agent found it by accident
+      an hour later, because a later `home clone` inherited the foreign unit and an
+      inventory came back one line longer than expected.
+    the_mechanism_is_not_a_lost_pin: >
+      The agent's SKILL_MANAGER_HOME WAS pinned, inline, in the same shell. The
+      destination does not come from the environment: skt's _parent_home resolves a
+      worktree's parent from `git worktree list --porcelain`, the MAIN working
+      tree. That is deliberate. The defect is the ORDER -- the cross-home write
+      happens before `ticket = ticket or _infer_ticket(start)` -- and the absence of
+      a rollback and of a --dry-run.
+    why_A_and_C_missed_it: >
+      No graph drives skt publish end to end against a real tier pair; and the
+      manual pass never runs a command it expects to fail an argument check.
+    missed_by: [A-graph-sweep, C-manual]
+    and_the_readers_agree_it_is_clean: >
+      home verify -> exit 0; home repair -> exit 0, "16 entries examined". The home
+      holds a unit in skills/ with a .materialization record and NO installed/
+      record, which neither reader looks for. A live counterexample to
+      GOAL-no-destructive-recovery clause 2's ambition that a damaged home be
+      detectable by a command rather than by an operator noticing.
+    owed_check: >
+      In skt: validate every publish-leg argument BEFORE the sync leg; add
+      --dry-run. In skill-manager, and this is the half worth building: verify and
+      repair notice a unit present in skills/ and .materialization/ but absent from
+      installed/. Filed as DEF-121.
+    status: open
+
 # ---------------------------------------------------------------------------
 # BATCHED INTO TICKETS, 2026-08-24 (schedule revision 10)
 #
@@ -708,7 +920,47 @@ findings:
       Determine whether it reproduces. A flake joins the declared exclusions
       with its reason; a defect is a defect. An undeclared flake in a 26-graph
       sweep is a number nobody can read.
-    status: open
+    round_3_result: >
+      TRIAGED, AND IT IS NEITHER. It reproduced identically at a tip two tickets
+      later, in a third of the time (42.9 s against round 1's 133.2 s), with the
+      same four assertion outcomes -- so it is deterministic and not a flake:
+
+        failureMessage: "rc=8 conflict=true markers=false UU=false"
+          exited_with_rc_8               passed
+          conflict_logged_with_filename  passed
+          conflict_markers_in_skill_md   FAILED
+          working_tree_shows_unmerged    FAILED
+
+      IT IS A STALE ASSERTION, AND THE EPIC'S OWN FIX IS WHAT REDDENED IT. The
+      two failing assertions require the CLI to STRAND the unit's repository in a
+      merge conflict -- the condition GOAL-symlink-merge-settles exists to remove,
+      and whose baseline is two units in the operator's project home permanently
+      stuck in MERGE_CONFLICT. The CLI now rolls the merge back and prints a
+      remedy: "nothing was changed -- the merge was rolled back, so the store is
+      exactly where it was".
+
+      So a CORE graph was asserting, since whichever ticket changed the behaviour,
+      that the product still had the defect the epic was closing. Nothing noticed
+      because `run.py --all` had never completed a sweep. THIS IS THE SECOND-BEST
+      ARGUMENT IN THE EPIC FOR RUNNING THE FULL SWEEP, after DEF-107 -- and it is
+      a different argument: DEF-107 was a latent-red detector, this is a latent-red
+      SPECIFICATION. A sweep catches assertions that have gone out of date with the
+      product, which no amount of running the graphs you happen to have touched can.
+    fixed_in: >
+      HIS-6 (#218), as a HARNESS fix -- the one repair this ticket is permitted and
+      required to make. test_graph/sources/git-latest-source-tracking/GlsConflict.java
+      now asserts the current contract. The two assertions that were always right
+      are unchanged; the two that encoded the stranding are inverted, and each is
+      paired with a control, because "no markers" is exactly what a fixture that
+      never conflicted also reports:
+        precondition_both_sides_diverged   -- blind to what the CLI did
+        DEF108_store_holds_no_conflict_markers
+        DEF108_store_bytes_unchanged_by_the_refused_merge
+        DEF108_working_tree_has_no_unmerged_path
+        DEF108_remedy_names_the_store_directory
+      THIS CHANGES graphs_passed, and HIS-6 reports the as-measured number and the
+      post-fix number as two separate numbers rather than one.
+    status: closed
 
 # ---------------------------------------------------------------------------
 # WHAT ROUND 1 GOT WRONG, and it is the most important line in this file.
