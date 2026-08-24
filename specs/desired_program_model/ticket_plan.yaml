@@ -671,6 +671,32 @@ epic_goals:
       its answers recorded under the evidence root beside the count. Read
       together, not combined: a link count cannot show that the prose is
       right, and a judged read of one agent is not a statistic.
+    instrument_caveat_added_2026_08_23: >
+      (a) DOES NOT DECIDE CLAUSE 1, and its own docstring used to claim it did.
+      Established by the adversarial review of PR #248 and corrected at source
+      in the script.
+
+      check-docs-coverage.py counts TERM HITS PER UNIT. A unit that LINKS to the
+      contract and a unit that RESTATES it in full score identically -- in fact
+      the restating unit scores HIGHER, because it holds more of the terms. The
+      instrument is not merely blind to "stated once, linked not restated"; it
+      is biased in the wrong direction and reports a copy as better coverage
+      than a pointer.
+
+      MEASURED INSTANCE: at 4-of-4, skt/SKILL.md carried a nine-line blockquote
+      of the whole contract including a machine-specific "13 stale of 39", and
+      git-issue-workflow restated it twice more -- while the script reported the
+      same 4-of-4 it would report for four pure pointers.
+
+      HIS-6 MUST therefore decide clause 1 BY READING THE PROSE. This script
+      decides one narrower thing: is the contract REACHABLE from each
+      instructing unit. Reporting its number as clause 1's verdict would report
+      this epic's signature defect as a pass.
+
+      SEPARATELY, and HIS-6 must state it: the pointer resolves in the ROOT home
+      only. The project home holds zero plugins and none of the four units, and
+      every worktree home is a clone of it -- so "reachable" is true for
+      root-home sessions and false where this epic's own ticket agents stand.
     baseline:
       value: >
         `skill-manager build` in 0 md files; cold shim / ColdArtifact in 0;

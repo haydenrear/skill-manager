@@ -21,8 +21,30 @@ mechanism: the first blamed the clone/verify sanction rule, the second proposed
 eager rebuilds. Both were wrong and both were caught by the owner, not by a test.
 
 A count cannot show the prose is RIGHT — that is the judged half of the goal.
-What it can show is whether the contract is stated at all, and whether it is
-stated ONCE rather than copied into four units that will drift apart.
+What it can show is whether the contract is stated at all.
+
+WHAT IT CANNOT SHOW, CORRECTED 2026-08-23
+-----------------------------------------
+This docstring used to end "...and whether it is stated ONCE rather than copied
+into four units that will drift apart."  THAT WAS FALSE and it was measured
+false by the adversarial review of PR #248.
+
+This script counts TERM HITS PER UNIT.  A unit that links to the contract and a
+unit that restates it in full score IDENTICALLY — in fact the restating unit
+scores HIGHER, because it contains more of the terms.  So the instrument is not
+merely blind to clause 1; it is biased in the wrong direction, and reports a
+copy as better coverage than a link.
+
+Measured instance: at 4-of-4, `skt/SKILL.md` carried a nine-line blockquote of
+the whole contract including a machine-specific "13 stale of 39", and
+`git-issue-workflow` restated it twice more — while this script reported the
+same 4-of-4 it would have reported for four pure pointers.
+
+CONSEQUENCE FOR HIS-6: this script decides "is the contract reachable from each
+instructing unit", nothing more.  GOAL-mechanism-documented's CLAUSE 1 — stated
+once, linked not restated — must be decided by READING THE PROSE, not by this
+number.  Reporting this number as clause 1's verdict would report the epic's own
+signature defect as a pass.
 """
 
 from __future__ import annotations
