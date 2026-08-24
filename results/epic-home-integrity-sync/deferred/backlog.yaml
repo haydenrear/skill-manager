@@ -5332,3 +5332,62 @@ findings:
       agent gets a different answer depending on which unit it opens first.
     candidate_owner: whoever next opens skill-manager-skill or skill-publisher-skill
     status: open
+
+  - id: DEF-103
+    found_by: epic agent, syncing the seven merged leaf PRs into the ROOT home at the owner's instruction
+    found_at: "2026-08-24"
+    severity: blocking
+    escalated: true
+    short_label: "one registered project's durability defect blocks EVERY unit sync into the root home"
+    summary: >
+      `skt sync <unit>` into the ROOT home FAILS FOR EVERY UNIT with
+      PROJECT_SYNC_FAILED, naming a project that has nothing to do with the unit
+      being synced. Six projects are registered in the root home; ONE of them
+      (`meta-harness`) has three vendored symlinks spelled absolutely, and that
+      one project's condition refuses all four units.
+    detail: >
+      MEASURED 2026-08-24 on the root home, four units, four identical failures:
+
+        skt sync git-issue-workflow  -> PROJECT_SYNC_FAILED: meta-harness
+        skt sync git-epic-workflow   -> PROJECT_SYNC_FAILED: meta-harness
+        skt sync skill-manager       -> PROJECT_SYNC_FAILED: meta-harness
+        skt sync skt                 -> PROJECT_SYNC_FAILED: meta-harness
+
+      "> fix the named project sync failure, then re-run `skill-manager sync` --
+      a project sync that succeeds clears this from every unit it claims."
+
+      THE CHECK ITSELF IS CORRECT AND SHOULD NOT BE WEAKENED. Its own detail
+      line states the reason: "absolute symlink into this project's own tree: it
+      resolves today but does not survive a move, a clone, or a worktree." That
+      is EXACTLY the durability principle HIS-19 (#246) shipped for the CLI pin
+      -- a path that resolves at write time and not at read time. The epic agent
+      first mis-read this as a cosmetic spelling check because the link and its
+      expected target resolve to the identical path today; the `resolves:` line
+      is equal on both sides and that equality is the trap, not the defect.
+
+      THE DEFECT IS THE BLAST RADIUS. A durability warning about ONE project
+      becomes a hard refusal of change management for EVERY unit in the tier
+      above it, including units that neither name that project nor are named by
+      it.
+    consequence: >
+      RELEASE-RELEVANT, and the reason it was found: the owner's instruction was
+      "we need to be enforcing change management of the root skill manager from
+      project home." That direction is currently unavailable on this machine.
+      Any operator with six registered projects needs all six durability-clean
+      before ANY unit reaches their root home, and the failure names a project
+      they may not have touched in months.
+    remedy_available: >
+      `skill-manager project resolve --repair-vendored` on the offending
+      project, which re-points the three links relatively. Legitimate, small and
+      reversible -- but it is a write to an UNRELATED REPOSITORY, so the epic
+      agent stopped and asked rather than running it.
+    candidate_fix: >
+      Scope the refusal to the units the failing project actually claims, or
+      degrade a durability finding in an unrelated project to a WARNING that
+      names the risk without refusing the sync. Compare HIS-9's confinement,
+      which refuses the write it can attribute rather than every write.
+    also_observed: >
+      `skill-manager sync --help` PRINTS the project failure banner. Help output
+      should not run project checks.
+    candidate_owner: HIS-6 to record; a follow-up ticket for the scoping fix
+    status: open
