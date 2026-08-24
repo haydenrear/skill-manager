@@ -5382,10 +5382,38 @@ findings:
       reversible -- but it is a write to an UNRELATED REPOSITORY, so the epic
       agent stopped and asked rather than running it.
     candidate_fix: >
-      Scope the refusal to the units the failing project actually claims, or
-      degrade a durability finding in an unrelated project to a WARNING that
-      names the risk without refusing the sync. Compare HIS-9's confinement,
-      which refuses the write it can attribute rather than every write.
+      SUPERSEDED -- see `correction_2026_08_24` below. The fix proposed here was
+      already shipped and already guarded.
+    correction_2026_08_24: >
+      THE EPIC AGENT'S FRAMING OF THIS FINDING WAS FALSE, and HIS-22 measured it
+      false before writing any code.
+
+      This entry said the refusal named "a project unrelated to the unit being
+      synced". IT IS NOT UNRELATED. `meta-harness`'s own
+      `.skill-manager/projects/meta-harness/project-lock.toml` CLAIMS ALL FOUR
+      UNITS by name -- skill-manager, git-epic-workflow, git-issue-workflow, skt
+      -- verified independently by the epic agent at merge. The refusal was
+      already scoped by units. It refused all four because the project claims
+      all four.
+
+      Worse, the fix this entry prescribed -- "scope the refusal to the units the
+      failing project actually claims" -- SHIPPED IN #144 and is guarded by
+      `ProjectDependencyResolverTest`'s "project sync failures are recorded only
+      on units claiming the failed project". HIS-22 built the acceptance node
+      this entry's text demanded, reverted the whole fix, and THE NODE STAYED
+      GREEN. An acceptance criterion written from this entry would have been
+      vacuous -- mechanism C, in a ticket brief rather than a probe.
+
+      WHAT IS ACTUALLY WRONG is the KIND of failure, not the units-per-project
+      scope. A vendored-durability finding is a FORWARD-LOOKING warning -- "this
+      resolves today but will not survive a move" -- and it produced a HARD
+      REFUSAL of a sync that would have worked today. HIS-22's fix is a typed
+      `ProjectVendoredDurabilityException` that yields a named skip carrying the
+      `--repair-vendored` remedy, instead of stamping the unit as failed.
+
+      The observed symptom in this entry is real and unchanged. The diagnosis
+      was wrong. Kept in full rather than rewritten, because a ledger that hides
+      where its author reasoned badly is worth less than one that shows it.
     also_observed: >
       `skill-manager sync --help` PRINTS the project failure banner. Help output
       should not run project checks.

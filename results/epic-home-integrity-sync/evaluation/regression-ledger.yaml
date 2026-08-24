@@ -113,9 +113,22 @@ findings:
       had never been executed by any instrument until it was run by hand.
     missed_by: [A-graph-sweep]
     owed_check: >
-      A node that registers two projects, breaks the durability of ONE, and
-      asserts that a unit sync naming NEITHER still succeeds -- or fails with a
-      refusal scoped to the project that owns it.
+      SUPERSEDED. The check named here was measured VACUOUS by HIS-22: it was
+      built, the whole fix was reverted, and it stayed green -- because the
+      behaviour it asserts shipped in #144 and is already guarded.
+    diagnosis_corrected: >
+      The epic agent's diagnosis was wrong and HIS-22 falsified it before
+      writing code. `meta-harness` CLAIMS all four units in its own
+      project-lock.toml, so the refusal was already unit-scoped. The real defect
+      is the KIND of failure: a forward-looking durability warning produced a
+      hard refusal of a sync that would have worked today. See DEF-103's
+      `correction_2026_08_24`.
+    what_this_says_about_the_instrument: >
+      C-manual caught a REAL symptom and reasoned to a WRONG cause, and nothing
+      in instrument C could have told the difference -- a hand-driven sweep sees
+      what failed, not why. It took a ticket agent reading project-lock.toml to
+      close it. Worth carrying into the scorecard: C's findings need a
+      confirming read before they become acceptance text.
     status: open
 
   - id: REG-002
