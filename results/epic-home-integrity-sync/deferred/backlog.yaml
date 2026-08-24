@@ -5947,3 +5947,268 @@ findings:
     missed_by: [C-manual]
     candidate_owner: HIS-6 to triage
     status: open
+
+  # -------------------------------------------------------------------------
+  # HIS-22 (#254). NUMBERING COLLISION EXPECTED AND DISCLOSED IN PLACE: the
+  # brief said the highest id was DEF-108 and to start at DEF-109, and that
+  # HIS-21 is filing concurrently from the same base. If DEF-109/110/111 appear
+  # twice at merge, these are HIS-22's; the epic agent adjudicates. They are
+  # NOT renumbered here, because renumbering by guess is how the epic's founding
+  # defect -- a pointer that is false and dangling -- gets reproduced.
+  - id: DEF-109
+    found_by: HIS-22 (#254), by its own tooling failing silently mid-ticket
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "the agent `grep` wrapper silently omits any source file containing a NUL byte"
+    summary: >
+      `grep` in a Claude Code shell is a function wrapping ugrep with `-I`
+      (skip binary). Two tracked Java sources in this repo contain a literal
+      NUL char used as a map-key separator, so `file` calls them "data" and the
+      wrapper returns NOTHING for them -- no match, no warning, exit 0. One of
+      them is `src/main/java/dev/skillmanager/project/ProjectVendoredResolver.java`,
+      which is the class at the centre of DEF-103.
+    detail: >
+      Reproduced during this ticket: `grep -n "enum Status" <that file>` returned
+      nothing while the enum is on line 86, and `grep -c "class" <that file>`
+      printed nothing at all rather than 0. `command grep` reports
+      "Binary file ... matches". The two files are
+      src/main/java/dev/skillmanager/project/ProjectVendoredResolver.java line 271
+      (a NUL used as the separator in `key(Entry)`) and
+      src/test/java/dev/skillmanager/artifacts/LazyArtifactHomeTest.java.
+      This is vacuity-ledger mechanism C in a fifth medium -- not a mutation, a
+      search pattern, a fixture or a measurement arm, but a CORPUS one file
+      smaller than the agent believes it is. Three of this ticket's early
+      "no matches" conclusions were false because of it, including one about the
+      exact durability wording issue #254 quotes.
+    owed_check: >
+      Either replace the two NUL separators with a multi-character sequence that
+      cannot occur in a path and keeps the files textual, or add a repo-level
+      check that no tracked source contains a NUL. The second is the durable one:
+      it fails loudly at the moment somebody adds the third such file, where the
+      first only holds until then. Note the DEF-035-shaped hazard underneath it:
+      an agent that greps and gets zero has no way to tell "absent" from
+      "unreadable", which is this epic's ninth instance of an output carrying no
+      way to detect its own invalidity.
+    fixed_in: >
+      PR #255, at review, and SPLIT INTO ITS TWO HALVES because only one of them
+      is ours.
+      OURS, FIXED: both raw NULs are now written as the escape `\0`, which
+      compiles to the same byte and keeps the files textual. A byte-level scan of
+      all 5253 tracked files confirmed the reviewer's count (12 NUL-bearing files,
+      2 of them tracked Java sources); after the fix it is 11 and 0. Measured
+      before/after on ProjectVendoredResolver.java:
+        before: `file` -> "data";  wrapper `grep -c "enum Status"` -> no output, exit 1
+        after:  `file` -> "Java source, Unicode text, UTF-8 text";  same grep -> 1
+      AND IT CANNOT RECUR SILENTLY: SourcesAreGreppableTest walks the tree with
+      Files.readAllBytes -- which has no opinion about binaries, so the instrument
+      cannot suffer the defect it looks for -- and fails naming the offender. It
+      carries its own positive control (a canary file with a real NUL must fire,
+      the escaped form must not) and asserts the walk reached >500 files, because
+      an empty offender list is worth nothing otherwise.
+      NOT OURS, STILL OPEN: the `grep` wrapper's silent-drop behaviour. It
+      returns exit 1 with no output and no warning for a skipped file, so an
+      agent cannot distinguish "absent from the tree" from "unreadable by this
+      tool". THE REVIEWER OF #255 WAS BLINDED BY IT TOO -- its own first
+      NUL-hunting command was a wrapper grep and reported "no NUL-bearing files".
+      Three readers, one instrument, three times. That belongs to whoever owns
+      the harness, not to this repository.
+    caught_by_instrument: C-manual (an implausible result -- `grep -c` printing nothing)
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: the harness owner, for the wrapper half only
+    status: repo-half-fixed-pending-review; wrapper half open
+
+  - id: DEF-110
+    found_by: HIS-22 (#254), while fixing DEF-103
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "sync's exit code still contradicts its own stated rule for project-sync failures"
+    summary: >
+      `SyncUseCase.report()` counts a PARTIAL `SyncClaimingProjects` receipt as
+      an error, so a failure in a downstream project child-home refresh sets
+      `sync <unit>`'s exit code. Thirty lines above, in the same method, the
+      rule is stated: "SYNC'S EXIT CODE DESCRIBES THE CONTENT SYNC. A gateway
+      must not roll a content refresh back, and by the same argument it must not
+      fail one either" -- the argument that removed `RegisterMcp` from the count.
+    detail: >
+      HIS-22 fixed the durability case by giving it a typed exception and a
+      warning path, so that cause never becomes PARTIAL. Every OTHER project
+      sync failure still does: a missing registration snapshot, a closure import
+      violation, a child-home path collision. Each of those is at least arguably
+      about the project rather than about the unit's bytes, and the same argument
+      that exempted the gateway applies to them. Not widened into this ticket
+      because the per-unit PROJECT_SYNC_FAILED record is the right place for a
+      genuinely attributable failure, and deciding which of the remaining causes
+      are attributable is a design call rather than a bug fix.
+    owed_check: >
+      Enumerate the causes `syncClaimingProjects` can produce, decide per cause
+      whether it belongs in the exit code or only in the record, and assert the
+      decision. The regression assertion already exists in shape:
+      ProjectToRootPromotionTest CASE 4 drives the real SyncCommand and reads the
+      exit code, and the graph node home.sync.project.to.root.change.management
+      reads it end to end.
+    caught_by_instrument: C-manual (reading the method while fixing DEF-103)
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6 to schedule
+    status: open
+
+  - id: DEF-111
+    found_by: HIS-22 (#254), while fixing DEF-096 and DEF-101
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "a home does not record its own project root, so two new readers derive it by convention"
+    summary: >
+      `ProjectManifestRealization` (DEF-096) and `HomeCloseOut`'s
+      self-obtainable rule (DEF-101) both need to know which project manifest is
+      this home's, and neither can ask. `home.provenance.json` records the CLONE
+      chain, not a project root; `projects/<name>/registration.toml` is written
+      only by `project register`, which on the home that motivated DEF-096 had
+      never run. Both therefore read `<home>/../skill-project.toml` by convention.
+    detail: >
+      The convention is the one the whole product is built on
+      (`<repoRoot>/.skill-manager`) and it is correct for every home in this
+      epic, so this is a durability finding rather than a live defect -- the same
+      shape as HIS-19's CLI pin: it resolves today. A home reached through a
+      symlink, or a home deliberately placed somewhere other than beside its
+      repo, gets the wrong answer or no answer, and the failure is quiet:
+      "no manifest found" and "manifest found and satisfied" both answer
+      `clean() == true`, which is exactly why `hasManifest()` exists and is
+      asserted separately in ProjectManifestRealizationTest CASE 3.
+    owed_check: >
+      Record the project root in the home when one is known -- at
+      `project resolve`, at `home clone --to <repo>/.skill-manager`, or in
+      `home.runtime.json` -- and have both readers prefer the recorded answer,
+      falling back to the convention. The regression assertion: a project home
+      MOVED away from its manifest must report the same verdict it reported
+      before the move, or say plainly that it cannot.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6 to schedule
+    status: open
+
+  - id: DEF-112
+    found_by: HIS-22 (#254), deciding what its own spec workflow owed
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "close-out's self-obtainable rule (DEF-101) is not expressible in External.tla as it stands"
+    summary: >
+      `CloseOutIsSafe` in specs/desired_program_model/External.tla is
+      `SyncStatusOf(WorktreeHome, ProjectHome, TRUE) = "unchanged"`. HIS-22 adds
+      a second way for the gate to clear -- status "new", the destination's own
+      manifest declares the unit, and the worktree's copy has a materialization
+      record and is not locally modified. The model has no notion of a
+      destination manifest, so the disjunct cannot be written without a new
+      variable and a new constant, and every one of the ~25 cfgs would have to
+      define it.
+    detail: >
+      HIS-22's assignment says `tlc: N/A unless the fix states a new invariant`,
+      and the fix states a WEAKENING of an existing safety predicate rather than
+      a new invariant, so the ticket did not change the model. That is a
+      deliberate, disclosed decision and not an oversight -- but it leaves the
+      model and the product disagreeing about one branch of the gate, which is
+      exactly the class of drift specs/ exists to prevent. The behaviour IS
+      asserted at two layers below the model: HomeCloseOutSelfObtainableTest
+      (4 cases, one fix and three guards) and, end to end, nothing yet at the
+      graph layer for the DEF-101 half specifically.
+    owed_check: >
+      Add `destination_declares` (or a CloseOutObtainableRule constant with an
+      OFF value that reproduces today's behaviour), extend `CloseOutIsSafe` with
+      the guarded disjunct, and add a regression cfg that turns the rule to
+      "CLEAR_UNCONDITIONALLY" and watches `NoWorkIsLost` fail -- with the
+      test_tlc_expected_violations.py row naming WHICH invariant, per
+      vacuity-ledger row 15. Also worth a graph node: the DEF-101 half currently
+      has no end-to-end coverage, only unit coverage.
+    caught_by_instrument: C-manual
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6 to schedule
+    status: open
+
+  # -------------------------------------------------------------------------
+  # Filed at the REVIEW of PR #255, at the reviewer's direction. This takes
+  # HIS-22 to SIX deferred findings against a budget of five. Stated rather
+  # than hidden: four were filed during implementation (DEF-109..112) and two
+  # are review findings, one of which is fixed in the same PR. The epic agent
+  # decides whether review findings count against a ticket's implementation
+  # budget; they are not renumbered or merged to make the count look right.
+  - id: DEF-113
+    found_by: the reviewer of PR #255, driving the real CLI
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "close-out's DEF-101 exemption cleared a unit whose commits were on no remote"
+    summary: >
+      HIS-22's first version of the self-obtainable rule cleared a NEW unit on
+      "the destination declares it" plus "the worktree has not modified it since
+      its materialization record was written". The reviewer built a home whose
+      clone-time baseline had been stamped OVER unpushed commits, and the gate
+      printed `"safe":true` with the remedy "nothing in this worktree's copy
+      exists only here" IN THE SAME DOCUMENT where the CLI printed
+      `NO_GIT_REMOTE: git-tracked but no origin remote configured` for that unit.
+      Two readers, one wrong answer, inside a gate whose entire job is to refuse
+      when work would be destroyed.
+    detail: >
+      BOUNDED HONESTLY, and the bounds are the reviewer's own. The ordinary flow
+      is defended: `gitHistoryMovedOn` fires, `safe=false`, exit 1. The source
+      home still blocks, so the reviewer could not construct actual byte loss and
+      said so. What makes it major anyway is the precondition, which is not
+      exotic: `recordCloneBaselines` stamps `gitStateOf(dir)` over whatever is in
+      the tree, and `home clone` is how `bootstrap-home.sh` makes every ticket
+      worktree home in this epic.
+      A record says nobody TOUCHED the unit. It says nothing about whether what
+      arrived exists anywhere else, and the exemption's whole claim is that it
+      does.
+    fixed_in: >
+      PR #255, at review. `GitOps.publishedRefContaining` asks for POSITIVE
+      evidence -- is HEAD reachable from a `refs/remotes/**` ref -- and
+      HomeCloseOut refuses the exemption without it, including for a unit that is
+      not a git checkout at all ("cannot tell" blocks). The remedy text no longer
+      asserts what the gate does not verify: it names the ref the claim rests on,
+      and names the declared coordinate as the DESTINATION's claim rather than a
+      checked fact. No network call is made or implied.
+    regression_check: >
+      UNIT: HomeCloseOutSelfObtainableTest -- "a declared unit whose commits are
+      on no remote still blocks" and "the exemption states only what it verified,
+      and names the ref". Probe V7 removes the publication check and the first of
+      those goes RED.
+      GRAPH: the new node `home.sync.close.out.self.obtainable`, whose arm 3 is
+      the assertion that would have caught this: the gate's verdict and the
+      closing error report must never disagree about the same unit in the same
+      document. It carries a positive control, because an implication is
+      trivially true when its antecedent never holds.
+    residual_risk: >
+      NOT closed by the fix: the gate still cannot verify the DECLARED COORDINATE
+      is fetchable. `github:example/declared-unit`, the fixture in HIS-22's own
+      CASE 1, does not exist. Nothing offline can promise a coordinate resolves,
+      so the wording was changed to stop implying it -- but an operator can still
+      be handed a `project resolve` that fails for a reason the gate could not
+      see. A network-checking variant belongs to whoever schedules DEF-112.
+    caught_by_instrument: B-issue-agents (the reviewer of #255, running the real CLI)
+    missed_by: [A-graph-sweep, B-unit-suite]
+    candidate_owner: HIS-6 for the residual risk only
+    status: fixed-pending-review
+
+  - id: DEF-114
+    found_by: the reviewer of PR #255
+    found_at: "2026-08-24"
+    severity: minor
+    short_label: "`skt ticket sweep` never renders close-out's selfObtainable, so the exemption is invisible where worktrees are actually retired"
+    summary: >
+      `plugins/skt/src/skt/sweep.py` renders `blockers` and reads `safe` / `clean`
+      only. It has no `selfObtainable` branch. So HIS-22's "reported, never
+      silent" holds at the skill-manager CLI and is LOST at the layer this epic's
+      own workflow uses to retire worktrees en masse.
+    detail: >
+      An operator sweeping ticket worktrees sees a clean verdict and no
+      indication that a unit was cleared because the destination declares it --
+      which is precisely the decision they would want to see before a directory
+      is deleted. Not a correctness defect in the gate; a reporting defect in the
+      consumer. NOT FIXED HERE: skt is a separate repository
+      (haydenrear/skill-publisher-skill), and this ticket's slice is skill-manager.
+    owed_check: >
+      A `selfObtainable` branch in sweep.py's renderer, and an assertion in skt's
+      own test_graph that a close-out verdict carrying an exemption is rendered
+      with it. Note the shape while filing: this is the same defect class as the
+      one HIS-22 fixed -- a downstream reader that cannot express a distinction
+      its upstream now makes.
+    caught_by_instrument: B-issue-agents (the reviewer of #255)
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: a ticket against haydenrear/skill-publisher-skill
+    status: open

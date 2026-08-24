@@ -71,6 +71,7 @@ rounds:
   round_2:
     what: re-run after HIS-21 and HIS-22 land fixes AND regression assertions
     when: "2026-08-24"
+<<<<<<< HEAD
     status: HIS-21's half COMPLETE; HIS-22's half pending
     his_21_result: >
       home-sync 19/19 GREEN (was 18/19, home.membership.law red).
@@ -94,6 +95,46 @@ rounds:
       tickets/HIS-21/second-graph-set.md + second-graph-set.json.
       NOTE: running them CLOBBERED this epic's round-1 sweep.json, which
       sweep.py writes by default. Recovered from HEAD; filed as DEF-111.
+=======
+    status: PARTIAL -- HIS-22's half only; HIS-21 files separately from the same base
+    result: >
+      HIS-22's declared set plus the second set its edits touch, run one graph at
+      a time from feature/254-his-22 with the five home vars UNSET (DEF-074):
+      home-sync, checkout-home, home-clone, project-child-home, project-resolve,
+      ticket-lifecycle.
+      GRAPHS EXECUTED 6, GRAPHS PASSED 5, GRAPHS FAILED 1.
+      RE-RUN AFTER THE REVIEW OF PR #255 (run 20260824-210901): home-sync is now
+      21 nodes, 20 green. The one failure is still `home.membership.law` alone,
+      and its attribution was VERIFIED rather than assumed -- the failure text
+      names only `hs-delta` and `hs-epsilon`, the fixture units staged by
+      pre-existing nodes, and does not mention either unit the two HIS-22 nodes
+      create. That is DEF-107, HIS-21's. That node is DEF-107 and it is
+      HIS-21's. The other five ran through sweep.py and were 5/5:
+      checkout-home 20260824-200314, home-clone 20260824-200433,
+      project-child-home 20260824-200624, project-resolve 20260824-200719,
+      ticket-lifecycle 20260824-200804.
+      Second set and why: home-clone and checkout-home share
+      `home.cloned.into.project`, which this ticket edited for DEF-096;
+      project-child-home and project-resolve exercise
+      ProjectDependencyResolver, whose checkVendored now throws a typed
+      exception; ticket-lifecycle is the only graph that drives
+      `home close-out` end to end, which DEF-101 changed.
+    his22:
+      unit_suite: "jbang RunTests.java -- 1408 passed, 0 failed (ALL PASSED)"
+      spec_suite: "uv run pytest specs/ -- 88 passed"
+      new_assertions: >
+        11 new unit cases in 3 suites (ProjectToRootPromotionTest 4,
+        ProjectManifestRealizationTest 3, HomeCloseOutSelfObtainableTest 4), plus
+        7 new graph assertions in home.sync.project.to.root.change.management and
+        3 in home.cloned.into.project. Six vacuity probes, each observed RED,
+        recorded in results/epic-home-integrity-sync/probes/his-22/vacuity-checks.md.
+      inherited_red: >
+        home-sync fails on `home.membership.law` ONLY -- the law flagging
+        deliberate fixture staging (hs-delta, hs-epsilon). That is DEF-107 and it
+        belongs to HIS-21 (#253). The other 19 of 20 home-sync nodes PASSED,
+        including the new one. It is stated here so HIS-22's result is not read
+        as clean when it is not, and not read as HIS-22's when it is not.
+>>>>>>> origin/feature/254-his-22
   round_3:
     what: HIS-6 terminal sweep and goal scorecard
     when: pending
@@ -151,7 +192,52 @@ findings:
       what failed, not why. It took a ticket agent reading project-lock.toml to
       close it. Worth carrying into the scorecard: C's findings need a
       confirming read before they become acceptance text.
-    status: open
+    fixed_in: >
+      HIS-22 (#254), branch feature/254-his-22. A typed
+      ProjectVendoredDurabilityException is thrown by
+      ProjectDependencyResolver.checkVendored and caught SPECIFICALLY by
+      LiveInterpreter.syncClaimingProjects, which emits a
+      ContextFact.ProjectSyncSkippedNonDurable naming the project, the finding
+      count and the repair command instead of stamping PROJECT_SYNC_FAILED on the
+      unit. `project resolve` / `project sync` are byte-for-byte unchanged in what
+      they refuse and what they print.
+    two_agents_one_correction: >
+      The epic agent and HIS-22 reached `diagnosis_corrected` INDEPENDENTLY and
+      the two texts were merged at rebase, not one copied from the other. HIS-22
+      adds the part instrument C could not supply: the superseded owed_check was
+      BUILT and RUN. It is ProjectToRootPromotionTest CASE 3, and probe V1 --
+      the entire fix reverted -- leaves it GREEN. "Measured vacuous" above is a
+      measurement, and this is where it was taken. It is kept as a labelled
+      control rather than deleted, so the fact that the prescription had already
+      shipped stays testable instead of becoming a remark.
+      One further overstatement in `why_A_missed_it`, corrected by HIS-22:
+      `home.sync.project.to.root` HAS covered `home sync --from <project> --to
+      <root>` since #43. What no graph covered is `skill-manager sync <unit>` at
+      the root home -- the command `skt sync` shells out to, and the one that
+      broke.
+    regression_check: >
+      UNIT: src/test/java/dev/skillmanager/project/ProjectToRootPromotionTest.java
+      -- CASE 1 (the fix: exit/receipt/no-stamp/named-with-remedy), CASE 2 (the
+      guard: the owning project's own resolve still refuses), CASE 3 (the control
+      above), CASE 4 (the owner's second sentence: a direct root update still
+      works AND the bytes move). Run `jbang RunHis22.java`.
+      GRAPH: test_graph/sources/home-sync/HomeSyncProjectToRootChangeManagement.java
+      -- node `home.sync.project.to.root.change.management`, 7 assertions, one of
+      which is a POSITIVE CONTROL proving the log can carry the
+      PROJECT_SYNC_FAILED string that another assertion claims is absent.
+    round_2_result: >
+      GREEN. Unit: 1408 passed / 0 failed with the five home vars unset.
+      Graph run 20260824-195838: the node PASSED with syncExitCode=0 and
+      ownResolveExitCode=1 -- the promotion path works and the check still
+      refuses, in one run. 19 of 20 home-sync nodes passed; the 20th is
+      `home.membership.law` / DEF-107, which is HIS-21's.
+      Vacuity: probe V1 (fix reverted) reddens CASE 1 and CASE 4; probe V2 (check
+      deleted) reddens CASE 2 AND CASE 1 -- reproduced INDEPENDENTLY by the
+      reviewer of PR #255 with a different mutation
+      (`if (false && !report.fatalProblems().isEmpty())`). Deleting the check
+      does not satisfy the fix case.
+    status: fixed-pending-review
+
 
   - id: REG-002
     caught_by: C-manual
@@ -660,3 +746,92 @@ findings:
 # and why every one of these was caught before it cost anything.
 # ---------------------------------------------------------------------------
 
+
+# ---------------------------------------------------------------------------
+# HIS-22's two CARRIED findings. Recorded here by defect id rather than as new
+# REG-00N rows, because HIS-21 is filing into this same file from the same base
+# and a guessed REG number is a dangling pointer -- the epic's founding defect,
+# reproduced inside the bookkeeping that reports it (vacuity-ledger row 20).
+# The epic agent may promote these to REG ids at merge.
+
+carried_findings_his22:
+  - defect: DEF-096
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    one_line: >
+      The project home never realized its own manifest. skill-project.toml
+      declares [plugins.skt] and [skills.skill-manager]; the home held neither
+      and projects/ was empty. Every worktree in this epic is a clone of it.
+    why_A_missed_it: >
+      No graph asserted anything about a home against the manifest sitting
+      beside it. `home verify` answers "is this home internally consistent" and
+      `home clone` answers "did the copy come across", and a home can pass both
+      while being short every unit it declares.
+    fixed_in: >
+      HIS-22 (#254). New reader
+      src/main/java/dev/skillmanager/project/ProjectManifestRealization.java --
+      compares the manifest beside a home against what the home holds, using the
+      resolver's OWN name resolution (ProjectDependencyResolver.installedUnitName,
+      widened from private to package-private so there is one answer rather than
+      two). Wired into `home clone`: human mode warns with the denominator, the
+      missing units, their declared sources and the remedy; --json gains a
+      "manifestShortfall" object INSIDE the existing document, so stdout is still
+      exactly one JSON document (#235's purity rule).
+      NOT a gate: it reports, it never refuses, and it installs nothing.
+    regression_check: >
+      UNIT: src/test/java/dev/skillmanager/project/ProjectManifestRealizationTest.java
+      -- CASE 1 the reader, CASE 2 the surface (`home clone`, human and --json,
+      driven through picocli), CASE 3 THE GUARD: a realized home and a home with
+      no manifest both report NOTHING, so the diagnostic cannot become
+      unconditional noise.
+      GRAPH: the DEF-096 arm of home.cloned.into.project (checkout-home and
+      home-clone), 3 assertions, one of them a POSITIVE CONTROL -- a clone of a
+      home with no manifest beside it must NOT print the notice.
+    round_2_result: >
+      GREEN. checkout-home PASS (run 20260824-200314); the three new assertions
+      passed, positive control included. Vacuity: probe V5 (silence the clone
+      report) reddens CASE 2; probe V6 (never compute the shortfall) reddens
+      CASE 1 AND CASE 2 from one mutation, which is the evidence that the two
+      surfaces read one mechanism.
+    status: fixed-pending-review
+
+  - defect: DEF-101
+    caught_by: C-manual
+    caught_at: "2026-08-24"
+    one_line: >
+      close-out cannot express "the destination can obtain this from its own
+      manifest at a published ref", so it blocks on units that are unmodified
+      checkouts the destination itself declares.
+    why_A_missed_it: >
+      Every close-out node in this epic drives worktree -> project with units the
+      project home already had or the worktree authored. None of them puts a
+      DECLARED-but-absent unit on the worktree side, because until DEF-096 nobody
+      knew a project home could be short of its own manifest.
+    fixed_in: >
+      HIS-22 (#254). HomeCloseOut gains a SelfObtainable record and a narrow
+      predicate: status NEW, the destination's own manifest declares the unit,
+      the worktree has a materialization record for it, and the worktree copy is
+      not locally modified. Reported in the verdict and in --json under
+      "selfObtainable", never silent. Verdict gains a sixth component with a
+      5-arg convenience constructor so existing call sites still read.
+    regression_check: >
+      UNIT: src/test/java/dev/skillmanager/store/HomeCloseOutSelfObtainableTest.java
+      -- CASE 1 the fix; CASE 2 an UNDECLARED new unit still blocks; CASE 3 a
+      DECLARED but locally-edited unit still blocks; CASE 4 a destination with no
+      manifest exempts nothing. Three guards to one fix, because the cheapest way
+      to pass CASE 1 is to stop blocking on NEW, which deletes the gate.
+    round_2_result: >
+      GREEN. 4/4 in the unit suite, inside 1408 passed / 0 failed. Vacuity: probe
+      V4 makes selfObtainable return null unconditionally -- CASE 1 red, CASES
+      2-4 green, which is what makes it a scoped exemption rather than a removed
+      gate.
+      GAP CLOSED AT REVIEW: the graph-layer coverage this row used to record as
+      missing now exists -- `home.sync.close.out.self.obtainable`, 7 assertions,
+      run 20260824-210901 PASSED. It was not optional. The reviewer of PR #255
+      found MAJOR 1 (now DEF-113) precisely because four in-process unit cases
+      cannot observe a second reader they never invoke: the gate printed
+      `"safe":true` in the same document where the CLI printed NO_GIT_REMOTE.
+      The node's arm 3 is that comparison, with a positive control.
+      STILL GAPPED: the TLA+ change. CloseOutIsSafe cannot express the disjunct
+      without a new variable and a constant in ~25 cfgs -- DEF-112.
+    status: fixed-pending-review

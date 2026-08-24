@@ -107,6 +107,7 @@ import dev.skillmanager.project.ProjectResolveAtomicClosureTest;
 import dev.skillmanager.project.ProjectEnvMaterializerTest;
 import dev.skillmanager.project.ProjectLibResolverTest;
 import dev.skillmanager.project.ProjectVendoredResolverTest;
+import dev.skillmanager.project.ProjectToRootPromotionTest;
 import dev.skillmanager.project.ProjectorRegistryTest;
 import dev.skillmanager.project.SkillProjectRegistryTest;
 import dev.skillmanager.effects.RefreshHarnessPluginsTest;
@@ -224,6 +225,8 @@ public class RunTests {
         failures += ProjectEnvMaterializerTest.run();
         failures += ProjectLibResolverTest.run();
         failures += ProjectVendoredResolverTest.run();
+        failures += ProjectToRootPromotionTest.run();
+        failures += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
         failures += HomeRefreshPluginsTest.run();

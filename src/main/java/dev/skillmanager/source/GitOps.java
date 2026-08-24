@@ -193,6 +193,58 @@ public final class GitOps {
         return r.exit == 0 ? r.stdout : null;
     }
 
+    /**
+     * Is this checkout's HEAD reachable from a <b>remote-tracking</b> ref?
+     *
+     * <h2>Why "unmodified" was not enough — MAJOR 1 of PR #255's review</h2>
+     *
+     * <p>{@code home close-out}'s DEF-101 exemption cleared a unit on the
+     * strength of "the destination declares it" plus "the worktree has not
+     * modified it since its materialization record was written". The reviewer
+     * built the case that defeats it with the real CLI: a home whose
+     * clone-time baseline was stamped OVER commits that were never pushed. The
+     * gate printed <em>"nothing in this worktree's copy exists only here"</em>
+     * in the same document where the CLI printed
+     * {@code NO_GIT_REMOTE: git-tracked but no origin remote configured}. Two
+     * readers, one wrong answer, inside a gate whose entire job is to refuse
+     * when work would be destroyed.
+     *
+     * <p>The precondition is ordinary rather than exotic:
+     * {@code recordCloneBaselines} stamps {@code gitStateOf(dir)} over whatever
+     * is in the tree, and {@code home clone} is how {@code bootstrap-home.sh}
+     * makes every ticket worktree home in this epic.
+     *
+     * <p>So this asks for POSITIVE EVIDENCE OF PUBLICATION instead: is HEAD an
+     * ancestor of, or equal to, some {@code refs/remotes/**} ref. That is a
+     * local question with a local answer — no fetch, no network, no
+     * availability assumption — and it is the strongest thing that can honestly
+     * be claimed offline. It deliberately does NOT prove the remote is
+     * reachable or that the declared coordinate resolves; a gate cannot promise
+     * that without a network call, and the remedy text says only what was
+     * checked.
+     *
+     * @return the remote-tracking ref that contains HEAD, or {@code null} when
+     *         nothing does — including when this is not a git checkout at all,
+     *         which is "cannot show it is published" and never "it is fine"
+     */
+    public static String publishedRefContaining(Path dir) {
+        if (!isGitRepo(dir)) return null;
+        String head = headHash(dir);
+        if (head == null || head.isBlank()) return null;
+        Result r = run(dir, List.of("git", "for-each-ref",
+                "--format=%(objectname) %(refname)", "refs/remotes/"));
+        if (r.exit != 0 || r.stdout == null || r.stdout.isBlank()) return null;
+        for (String line : r.stdout.split("\n")) {
+            String[] parts = line.trim().split("\\s+", 2);
+            if (parts.length != 2) continue;
+            // isAncestor is reflexive here by design: HEAD == the remote tip is
+            // the commonest published case, and `git merge-base --is-ancestor X X`
+            // answers true.
+            if (isAncestor(dir, head, parts[0])) return parts[1];
+        }
+        return null;
+    }
+
     public static String porcelainStatus(Path dir) {
         Result r = run(dir, List.of("git", "status", "--porcelain"));
         return r.exit == 0 ? r.stdout : "";

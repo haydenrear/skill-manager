@@ -4163,7 +4163,25 @@ tickets:
   - id: HIS-22
     title: "the promotion path the owner asked to enforce -- project home to root home -- does not work"
     phase: HIS
-    status: planned
+    status: delivered
+    delivered_in: "branch feature/254-his-22, PR into epic/home-integrity-sync (open at time of writing)"
+    ticket_agent_note: >
+      TWO CLAIMS IN THIS TICKET'S OWN ISSUE ARE FALSE AND THE TICKET MEASURED
+      THEM SO. (1) `meta-harness` is NOT unrelated to the four units that failed
+      -- its project-lock.toml claims all four. (2) The prescribed fix, scoping
+      the refusal to units the failing project claims, SHIPPED IN #144 and is
+      already guarded by a test; the acceptance node written to that
+      prescription is GREEN AGAINST THE UNFIXED BUILD, proved by probe V1. It is
+      kept as ProjectToRootPromotionTest CASE 3 and labelled a control. The real
+      scope is KIND OF FAILURE: a project's [[vendored]] durability finding is a
+      fact about that project's checkout, not about the unit whose bytes moved,
+      and it is now typed
+      (ProjectVendoredDurabilityException) and handled as a named, remedied skip
+      by the post-sync child-home refresh -- while `project resolve` and
+      `project sync` refuse exactly as before. Also: `home.sync.project.to.root`
+      HAS covered `home sync --from <project> --to <root>` since #43; what had no
+      coverage is `skill-manager sync <unit>` at the root home.
+      The TLA+ model is deliberately unchanged -- see DEF-112.
     epic: home-integrity-sync
     github_issue: 254
     added_in_schedule_revision: 10

@@ -1,0 +1,162 @@
+# Complexity ledger input -- MF-019 standing objective. HIS-22 (#254).
+#
+# THE MODEL IS UNCHANGED BY THIS TICKET. specs/tickets/HIS-22/desired is
+# byte-identical to specs/tickets/HIS-22/current (`diff -rq` clean at close), so
+# there is no complexity delta to license, justify, or refine. Every field below
+# is filled with the honest value for that situation rather than a value that
+# makes a gate pass.
+
+validated_refactor:
+  tlc_before:
+    status: "not_run"
+    evidence: >
+      No TLA+ file, .cfg, generated case set or adapter changed in this ticket.
+      `diff -rq specs/tickets/HIS-22/current specs/tickets/HIS-22/desired` is
+      clean. A TLC run before and after an unchanged model would compare a file
+      with itself, which is not evidence of anything -- recording `not_run` keeps
+      that distinguishable from a run that happened and was green.
+  tlc_after:
+    status: "not_run"
+    evidence: "as above -- the model is byte-identical before and after"
+  behavior_tests:
+    status: "pass"
+    evidence: >
+      `env -u SKILL_MANAGER_HOME -u CLAUDE_CONFIG_DIR -u CLAUDE_HOME -u
+      CODEX_HOME -u GEMINI_HOME jbang RunTests.java` -- 1408 passed, 0 failed,
+      ALL PASSED, on feature/254-his-22. Includes the 11 new cases this ticket
+      added across ProjectToRootPromotionTest,
+      ProjectManifestRealizationTest and HomeCloseOutSelfObtainableTest.
+      `uv run pytest specs/` -- 88 passed. Graphs: home-sync run 20260824-195838
+      (19/20 nodes green; the 20th is home.membership.law / DEF-107, which is
+      HIS-21's inherited red), checkout-home run 20260824-200314 PASS, home-clone
+      run 20260824-200433 PASS.
+  descriptor_comparison:
+    status: "not_applicable"
+    evidence: >
+      A descriptor comparison witnesses behavior retention across a MODEL change.
+      There is no model change. No complexity decrease is claimed, so nothing
+      here is being licensed.
+
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+coverage_audit:
+  status: "not_run"
+  report: ""
+  in_scope_gaps: null
+  scope_source: ""
+
+# Complexity did not increase in the MODEL. It did increase in the PRODUCT, and
+# that is recorded here rather than left to be inferred from the diff.
+justification: >
+  No model complexity increase: the TLA+ tree is unchanged.
+
+  PRODUCT complexity increased by one new exception type
+  (ProjectVendoredDurabilityException), one new context fact
+  (ProjectSyncSkippedNonDurable), one new reader class
+  (ProjectManifestRealization) and one new record on an existing verdict
+  (HomeCloseOut.SelfObtainable). Each carries essential behavior that the
+  existing representation could not express:
+
+  - The exception type exists because a bare IOException made "this project's
+    declared paths do not survive a move" indistinguishable from "the unit sync
+    broke". That conflation is DEF-103: it made the promotion direction the
+    owner asked to enforce unusable for every unit any broken project claims.
+    The alternative -- inspecting the message string -- is the shape #187 was
+    filed against and #229's review rejected at the neighbouring call site.
+
+  - The fact type exists because the fix must not be silent. Reusing
+    ProjectSyncFailed would have made "your project needs repairing" and "the
+    unit sync broke" read identically again, which is the defect one layer out.
+
+  - The reader class exists because DEF-096 and DEF-101 need the SAME question
+    answered -- "what does this home's own manifest declare, and does the home
+    hold it" -- on two different surfaces. Two spellings of one rule is how the
+    --json and human close-out paths diverged once already (HomeCloseOut's own
+    cliInvocation javadoc records that). It reuses
+    ProjectDependencyResolver.installedUnitName rather than re-deriving name
+    resolution, which is why that method was widened from private to
+    package-private and not copied.
+
+  - The verdict component exists because "nothing is at risk" and "nothing to
+    say" are different answers, and a gate that silently stopped blocking would
+    be worse than the hold-back it removed.
+
+refinement:
+  searched: true
+  outcome: "none"
+  detail: >
+    Searched for a way to express DEF-103's scoping WITHOUT a new type. Three
+    candidates, all rejected on evidence:
+
+    (1) Match on the exception MESSAGE in syncClaimingProjects. Rejected: that is
+        exactly the loss-of-type #187 was filed about, and the branch immediately
+        above in the same method exists because #229's review refused it there.
+
+    (2) Make ProjectVendoredResolver's finding non-fatal generally, i.e. flip
+        on_invalid's default. Rejected and PROVED wrong by probe V2: with the
+        check weakened, ProjectToRootPromotionTest CASE 2 goes red AND CASE 1
+        goes red, because CASE 1 asserts the project is still named. The brief's
+        instruction -- "fix the blast radius, not the check" -- is measurable,
+        and this is the measurement.
+
+    (3) Pass a "reconcile only" flag down through
+        ProjectSyncUseCase -> ProjectDependencyResolver -> checkVendored so the
+        resolver knows who is asking. Rejected on the resolver's own documented
+        reasoning: checkVendored sits at ONE seam precisely so the rule cannot be
+        true of one command and not another, and a caller-identity parameter
+        re-introduces exactly that. The typed exception moves the decision to the
+        CALLER, where "is this finding attributable to what I was asked to do" is
+        answerable, and leaves the rule single-sited.
+
+    Also searched for a way to fold DEF-101 into the existing SyncStatus enum
+    (a "new-but-obtainable" status). Rejected: SyncStatus is a verdict about two
+    trees, and "the destination's manifest declares this" is a fact about neither
+    tree. Putting it in the enum would make ChildHomeMaterializer -- which has no
+    business reading project manifests -- the place the rule lives.
+  measured: false
+  applied: false
+  approved_by: ""
+
+transition_diff: ""
+
+narrative: >
+  Full narrative: results/epic-home-integrity-sync/tickets/HIS-22/goal-contribution.md
+  Vacuity record: results/epic-home-integrity-sync/probes/his-22/vacuity-checks.md
+
+  THE FINDING THIS TICKET CONSIDERS ITS MOST VALUABLE OUTPUT is that its own
+  issue is wrong on two counts, both measured before implementation:
+  (1) `meta-harness`, the project #254 calls "unrelated" to the four units that
+  failed, CLAIMS ALL FOUR in its project-lock.toml; and (2) the fix #254
+  prescribes -- scoping the refusal to units the failing project claims --
+  SHIPPED IN #144 and is already guarded by a test. The acceptance node written
+  to that prescription is green against the UNFIXED build; probe V1 reverts the
+  whole fix and watches it stay green. It is kept as
+  ProjectToRootPromotionTest CASE 3 and labelled a control, not evidence.
+
+  The real scope is KIND OF FAILURE, not units-per-project. A project's
+  [[vendored]] durability finding is a fact about that project's checkout: true
+  before the unit sync, true after, and no byte the sync moved can cause or cure
+  it. It is now typed and handled by the post-sync child-home refresh as a named
+  skip carrying its own repair command, while `project resolve` and
+  `project sync` refuse on exactly the same condition with exactly the same
+  message and exit code.
+
+  DELIBERATELY NOT DONE, and filed rather than hidden: External.tla's
+  CloseOutIsSafe still reads `SyncStatusOf(...) = "unchanged"`, and DEF-101 adds
+  a second way for the gate to clear that the model cannot express without a new
+  variable plus a constant in ~25 cfgs. The assignment reads
+  `tlc: N/A unless the fix states a new invariant`, and this states a WEAKENING
+  of an existing safety predicate. DEF-112 carries the exact model change and
+  the regression cfg it owes, including the
+  test_tlc_expected_violations.py row naming which invariant must fall --
+  vacuity-ledger row 15's countermeasure. DEF-110 and DEF-111 carry the two
+  other things this ticket found and did not widen into.

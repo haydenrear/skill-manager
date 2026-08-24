@@ -306,6 +306,40 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         project.activeProfile(),
                         result.bindingsRemoved(),
                         result.resolved().lock().resolvedUnits().size()));
+            } catch (dev.skillmanager.project.ProjectVendoredDurabilityException durability) {
+                // DEF-103. THE BLAST RADIUS, not the check.
+                //
+                // This handler is documented on SyncClaimingProjects as a
+                // "best-effort project child-home refresh", and it is: the
+                // operator asked to sync a UNIT at THIS home, and refreshing
+                // the child homes of projects that happen to claim that unit is
+                // a courtesy performed afterwards. A durability finding about
+                // one of those projects' own [[vendored]] declarations is not
+                // attributable to the unit whose bytes just moved — it was true
+                // before the sync and it will be true after — so recording
+                // PROJECT_SYNC_FAILED on the unit and failing the sync makes
+                // the promotion direction the owner asked to enforce
+                // (project home -> root home) unusable for every unit that any
+                // broken project claims. Measured: six projects registered at
+                // the root home, ONE non-durable, and 4 of 4 unit syncs
+                // refused.
+                //
+                // NOT WEAKENED, and this is the part a reviewer should check:
+                // `project resolve` and `project sync` -- the two commands
+                // whose subject IS this project -- still refuse on exactly this
+                // condition with exactly this message, because
+                // ProjectDependencyResolver.checkVendored still throws before
+                // materializing a single binding. What changes is only who is
+                // allowed to be failed by it. The project is named here, with
+                // the count and the repair command, so nothing is swallowed;
+                // what it does not do is stamp an error on a unit that is fine.
+                // Rendered by ConsoleProgramRenderer from the fact, not printed
+                // twice from here: the import-violation branch above sets that
+                // precedent, and a handler that logs AND emits produces the
+                // same sentence on two lines of one run.
+                String message = durability.advisory();
+                facts.add(new ContextFact.ProjectSyncSkippedNonDurable(
+                        projectName, durability.fatalCount(), message));
             } catch (dev.skillmanager.project.ProjectImportViolationException imports) {
                 // M7 of #229's review: the THIRD caller of ProjectSyncUseCase.sync,
                 // and the one no CLI is standing in front of. The generic branch
