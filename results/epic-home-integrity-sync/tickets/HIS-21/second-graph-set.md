@@ -74,3 +74,48 @@ sources that mention gateway ownership (`OnboardingCloneIsHonest`,
 `HomeTripwireWorkload`) read `gateway.properties` and `home clone` output, and
 `HomeMembershipLaw` reads `home describe --json`, which is untouched. Recorded
 rather than re-run, and named here so a reviewer can disagree.
+
+
+---
+
+# Re-run after the review of PR #256
+
+MAJOR-1 changed what `home verify` enumerates — it now follows a symlinked
+`bin/cli`, which `home repair` always did — so the whole set was run again,
+plus `home-sync`, which the first pass covered under its own `run.py`.
+
+**This time with `--out`**, which is DEF-111's own lesson applied: the canonical
+`results/epic-home-integrity-sync/sweep/sweep.json` is byte-identical to HEAD
+after this run (`git status` clean on that path), and these numbers live here.
+
+| graph | result | run | nodes (from the envelopes) |
+| --- | --- | --- | --- |
+| `home-sync` | **PASS** 230.0s | `20260824-215327` | 19/19 |
+| `checkout-home` | **PASS** 68.0s | `20260824-215710` | 8/8 |
+| `ticket-lifecycle` | **PASS** 214.7s | `20260824-215822` | 14/14 |
+| `project-child-home` | **PASS** 63.0s | `20260824-220156` | 13/13 |
+| `harness-smoke` | **PASS** 94.6s | `20260824-220259` | 14/14 |
+| `home-clone` | **PASS** 103.6s | `20260824-220434` | 14/14 |
+
+`graphs_executed=6 graphs_passed=6 graphs_failed=0`, **82 nodes, 82 passed** —
+counted from the envelopes rather than from the sweep's per-graph boolean, for
+REG-003's reason.
+
+`harness-smoke` and `project-child-home` are the two that matter most here:
+they are the graphs whose child homes carry real mirrored shims, and the
+MAJOR-1 widening is exactly the change that could have started calling those
+foreign. It did not.
+
+**And `home-integrity` was re-run separately: 18/18** (`run.py home-integrity`),
+carrying the new MAJOR-1 and MAJOR-2 assertions.
+
+## The frame this file used was wrong, and DEF-112 records the right one
+
+The table above and its predecessor are still the graphs most LIKELY to be
+affected. They are not the population the change can reach: **24 graphs carry
+`HomeFixpointLaw`/`HomeMembershipLaw`**, and the reviewer of #256 was right to
+say so. Between this ticket (7) and that review (9), **16 of the 24 are run and
+green**; 2 skip the law behind a pre-existing upstream failure; and **6 are
+unrun by anyone** — `smoke`, `plugin-smoke`, `skill-dev-smoke`,
+`source-tracking`, `onboard`, `project-profiles`. Named in DEF-112 so HIS-6
+inherits the list rather than the search.

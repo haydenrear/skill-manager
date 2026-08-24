@@ -1,6 +1,7 @@
 # HIS-21 — vacuity checks
 
-**Nine probes over four production files and one graph node.** Every row names
+**Eleven probes over five production files and one graph node.** V10 and V11 were
+added at the review of PR #256, for the two majors it found. Every row names
 **which branch it moves** and **which assertion reddened**, and every red below
 was observed by running it — no row here is an argument about what would happen.
 
@@ -23,6 +24,8 @@ eats uncommitted work (DEF-035, five agents in this epic).
 | **V7** | `HomeMembershipLaw.stagedUnits` | the marker test — made to return **every** unit directory | node red | the law's own self-test: `IT DID NOT FLAG AN UNMARKED INTRUDER standing beside a marked staged unit` |
 | **V8** | `HomeSyncSupport.mkUnit` | the `STAGED_MARKER` write (i.e. DEF-107's fix, removed) | node red | `home.membership.law`: `GAINED [hs-delta, hs-epsilon]`, three homes — the round-1 failure, reproduced on demand |
 | **V9** | `DamagedHomeIsRepairable` (graph) | run against the **pre-fix** `HomeCloner` (V1 applied) | node red | `DEF104_home_verify_names_the_same_wrapper_home_repair_does` |
+| **V10** | `HomeCloner.verifyRoots` | the shared `scanShimDirs` call, replaced by the per-file check **inside the walk** — i.e. the PR-#256 state | `FAILURES: 1` | only `MAJOR-1: verify and repair agree when bin/cli IS A SYMLINK`. **Both DEF-104 cases stayed GREEN**, which is the proof the two exercise different branches — one link apart |
+| **V11** | `HomeCommand.print` | the `cloneFailureRemedy(report)` call | `FAILURES: 1` | `MAJOR-2: a refused `home clone` names a remedy…`. The refusal itself still prints, so a test asserting only "clone refuses" stays green |
 
 ---
 
@@ -131,12 +134,12 @@ The brief states the deeper defect as *"`HomeMembershipLaw.SPEC` declares no
 
 Measured, run `20260824-193907`: `home-sync` wires the node
 `.dependsOn("home.sync.authored.agent.tree")` and the planner ran it
-**`[19/19]`, dead last**. All twenty-three wirings in `build.gradle.kts` declare
+**`[19/19]`, dead last**. All twenty-four wirings in `build.gradle.kts` declare
 a predecessor. Ordering was never the cause, and it could not have been the fix
 either — the staged units are still on disk at the end of the graph, which is
 exactly when a post-condition looks. A `dependsOn` on `SPEC` itself is also
 unimplementable as stated: the node has a *different* predecessor in each of the
-twenty-three graphs, so a SPEC-level declaration would name a node most of them
+twenty-four graphs, so a SPEC-level declaration would name a node most of them
 do not contain.
 
 What is true is that `SPEC` declaring no `dependsOn` leaves a **future** graph
@@ -162,3 +165,92 @@ than fixed here.
   branch it cannot reach. `PINNED_ENV` was observed by hand:
   `cli: …/skill-manager  (from $SKILL_MANAGER_CLI in this process — not a fact
   about this home)`.
+
+
+---
+
+# Addendum — review of PR #256
+
+Three findings came back, no blockers. All three reproduced before being fixed.
+
+## MAJOR-1 — the scope was declared twice, and it reached the verdict
+
+The PR claimed *"one extraction rule, one verdict, one scope"*. **Two of three
+were true.**
+
+```
+HomeRepair.java:128    List.of("bin/cli",  "bin/mcp")
+HomeCloner.java:2071   List.of("bin/cli/", "bin/mcp/")
+```
+
+and they **enumerated** differently: `Files.newDirectoryStream` follows a
+symlinked `bin/cli`, `Files.walkFileTree` does not. Reproduced on the fixed
+tree, `bin/cli` a link at a directory outside the home that is not itself a
+home:
+
+```
+home verify --home X   -> exit 0, "no path in it reaches any other Skill Manager home"
+home repair --home X   -> exit 1, FOREIGN_PATH_IN_SHIM bin/cli/wrapper
+```
+
+That is V1's red shape, on the fixed tree — DEF-104 **not fully removed**, one
+*link* down instead of one *segment* down.
+
+**Fixed by moving the enumeration to where the rule and the verdict already
+were**: `HomeCloner.scanShimDirs` is now the single enumerator, `HomeRepair`
+consumes it (keeping only its remedy text and its unrepairable-container
+finding), `SHIM_DIR_NAMES` is declared once and the prefix spelling is derived
+from it, and `HomeRepair.collectRegularFiles` / `shimDirLinkedOutOfHome` were
+deleted rather than left as a second copy. Controls: the clean home still
+verifies clean, and a `bin/cli` that links into another **home** is still
+reported **once** (from the walk's symlink arm) and not twice.
+
+## MAJOR-2 — a refusal with no remedy, on the command that leaves a directory behind
+
+`home clone` verifies its copy with the same check, so it inherited the new
+refusal and printed **nothing to do about it**, while leaving a populated
+destination that fails its own `home verify`.
+
+Fixed: `cloneFailureRemedy` names the **source** first — re-anchoring rewrites
+paths naming the source, and these name a *third* home, so repairing only the
+copy leaves the next clone failing identically — offers the repair-in-place
+exit second, and says out loud that the copy was left and why (deleting it is
+the walk-back-that-destroys shape of #186).
+
+**And the remedy was run as printed, which is the epic's actual standard:**
+
+```
+1. clone            -> exit 1, remedy printed
+2. eval "$REMEDY"   -> exit 0, "repaired 1 of 1 finding(s)"
+3. re-clone         -> exit 0, "cloned home to …"
+```
+
+## MAJOR-3 — recorded, not fixed: DEF-112
+
+An **unrepairable** `FOREIGN_PATH_IN_SHIM` gives `HomeFixpointLaw` a remedy
+that cannot converge. Filed with the blast radius measured independently rather
+than taken from the review — 24 carriers, 16 run green (7 mine, 9 the
+reviewer's), 2 skipping the law via a pre-existing upstream failure, and **6
+unrun by anyone: `smoke`, `plugin-smoke`, `skill-dev-smoke`, `source-tracking`,
+`onboard`, `project-profiles`.**
+
+The reviewer is right that "five clone-heavy graphs" was the wrong frame. It
+understated the radius by naming the graphs I judged most *likely* to break
+rather than the population the change can reach.
+
+One thing the review did not have: the operator's real root home is **fully
+repairable**. Measured read-only (`home repair`, no `--fix`), all five findings
+print `repair: rewrite that path to /Users/hayde/.skill-manager/...`. So the
+non-converging case has no known real instance.
+
+## The minors, and what was done
+
+| minor | done |
+| --- | --- |
+| the success sentence is universal and the scope is not | one `isolationScopeCaveat()` appended to all three verify sentences and to clone's, naming the boundary in the OUTPUT rather than in a pull request nobody reads |
+| DEF-105 fixed one direction only | `policy show` now names `home.policy.toml` and what it governs — the filed defect was *"neither verb names the other"* |
+| a test name asserting a universal the code does not hold | renamed to *"a home that declared no gateway does not report the default as OWNED"*, which is what the body drives |
+| describe human vs `--json` disagree | recorded in the ledger entry as a known, latent divergence with no in-repo consumer |
+| shared extraction blind spots | written into `pathTokensIn`'s javadoc: `$`-interpolation, relative escapes, and spaces — with the note that the spaces case is the only one that can report something FALSE rather than nothing |
+| "twenty-three wirings" | **24**, counted; and 24 of 24 declare `dependsOn`, so the argument survives. Corrected in the law's javadoc, the backlog and the ledger |
+| a spec pin that matches its own inversion | the pin now includes `if (!` and asserts the inverted spelling is **absent**; proved to discriminate |

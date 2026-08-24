@@ -154,6 +154,40 @@ Result recorded in §6.
 
 See `results/epic-home-integrity-sync/tickets/HIS-21/second-graph-set.md`.
 
+## 6b. What the review of PR #256 changed
+
+Three findings, no blockers, all three reproduced before being touched.
+
+**MAJOR-1 — clause 1 was not actually met.** The PR said "one extraction rule,
+one verdict, one scope". The scope was declared **twice**, in two spellings, and
+the two **enumerated** differently: a directory stream follows a symlinked
+`bin/cli`, `walkFileTree` does not. On the *fixed* tree, `home verify` exit 0 /
+`home repair` exit 1 — DEF-104's shape one **link** down.
+`HomeCloner.scanShimDirs` is now the single enumerator for both readers, and
+`HomeRepair`'s copies were deleted rather than left beside it. Clause 1 holds
+now; it did not before.
+
+**MAJOR-2 — `home clone` broke, with no remedy.** It verifies its copy with the
+same check, inherited the refusal, printed nothing to do about it, and left a
+populated destination that fails its own `home verify`. The refusal now names
+the SOURCE repair (these paths name a *third* home, so the clone does not
+re-anchor them and the next clone copies them through unchanged), offers
+repair-in-place, and says the copy was left and why. **The remedy was run as
+printed and cleared the gate**: clone exit 1 → remedy exit 0 "repaired 1 of 1"
+→ re-clone exit 0.
+
+**MAJOR-3 — recorded as DEF-112, not fixed.** An *unrepairable*
+`FOREIGN_PATH_IN_SHIM` gives `HomeFixpointLaw` a remedy that cannot converge.
+**The reviewer is right that §5's frame was wrong**: the population is not "five
+clone-heavy graphs", it is the **24 graphs that carry the law**. Measured
+independently from `build.gradle.kts`: 24 carriers, **16 run green** (7 mine, 9
+the reviewer's), 2 skipping the law via a pre-existing upstream failure, and
+**6 unrun by anyone — `smoke`, `plugin-smoke`, `skill-dev-smoke`,
+`source-tracking`, `onboard`, `project-profiles`**. No instance observed, and
+the operator's real root home is **fully repairable** (measured read-only: all
+five findings print `repair: rewrite that path to <this home>/…`), so the
+non-converging case has no known real instance.
+
 ## 7. What I am not confident about
 
 1. **Scope of the widening.** It covers `bin/cli/**` and `bin/mcp/**` only,
@@ -170,6 +204,24 @@ See `results/epic-home-integrity-sync/tickets/HIS-21/second-graph-set.md`.
    sync copies the unit tree. A sync that started filtering dotfiles would turn
    the graph red rather than silently blind, which is the safe direction, but it
    would be a confusing red.
-4. **`--json` for `home describe` is unchanged.** A consumer parsing the JSON
-   still sees `"owned": true` for a home that has declared nothing. Argued in
-   the ledger; not asserted away.
+4. **`--json` for `home describe` is unchanged, and it now openly disagrees
+   with the human output.** Human says "this home claims no ownership"; `--json`
+   says `"owned": true`, same command, same home, same run. That is
+   GOAL-one-home-one-answer's own shape inside the fix for it. Left open
+   deliberately — the JSON is a persisted interop document and
+   `GatewayConfig.owned()`'s default governs `gateway up`/`gateway down` — and
+   latent, because no in-repo consumer reads that field to decide anything.
+   HIS-6 owns the goal and should decide it.
+5. **`home clone` now refuses where it used to succeed**, on any source holding
+   a wrapper that names a third home — which is the operator's root home today.
+   It prints a remedy, and that remedy was measured to clear the gate, but this
+   is a second command whose behaviour changed and it was not in the ticket's
+   original scope statement. Found by the reviewer, not by me.
+6. **The unrepairable case still has no good answer** (DEF-112). `home verify`
+   prints `home repair --fix` for a finding `home repair` may then decline to
+   repair, and `HomeFixpointLaw` reads a remedy that does not clear as a law
+   failure. Structural; no instance in 16 graphs; six graphs unrun by anyone.
+7. **The scope caveat is now long.** Every `home verify` success line carries a
+   parenthetical naming the boundary. It is honest and it is verbose, and a
+   verbose verdict is its own way of not being read — issue #133's subject. I
+   chose accuracy; a reviewer may reasonably want it shortened.

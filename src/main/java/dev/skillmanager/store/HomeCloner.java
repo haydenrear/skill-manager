@@ -1855,26 +1855,6 @@ public final class HomeCloner {
                 return;
             }
             if (!Files.isRegularFile(file)) return;
-            // DEF-104. THE WRAPPER HALF OF THE ISOLATION QUESTION.
-            //
-            // Everything above this line is about SYMLINKS, and until now that
-            // was the whole of "does any path in this home reach another one".
-            // A generated wrapper is a regular file that execs an absolute
-            // path; it resolves through no link, so the branch above never saw
-            // it and the branch below only ever looked for the SOURCE needle.
-            // The result was `home verify` exit 0 on a home whose shims ran
-            // another home's code, at every tier and with or without
-            // `--against`. See Leak#FOREIGN_PATH_IN_SHIM for the measurement
-            // that separates this from the tier-shaped explanation.
-            //
-            // Ahead of the needle logic, because the needle logic RETURNS when
-            // there is no source and this claim does not depend on one.
-            for (ForeignShimPath foreignInShim
-                    : foreignPathsInShimContent(rel, file, dstRoot)) {
-                leaks.add(new Leak(rel, Leak.FOREIGN_PATH_IN_SHIM,
-                        "runs " + foreignInShim.candidate() + ", which is inside the home at "
-                                + foreignInShim.foreign()));
-            }
             Surface surface = classify(rel);
             // Provisioning that never completed: a generated script naming a
             // path in THIS home that does not exist. Re-derived from the home
@@ -1951,6 +1931,36 @@ public final class HomeCloner {
             Log.detail("verify: %s names the home this copy descends from — every occurrence "
                     + "accounted for by its recorded clonedFrom/parentStores, so it is a "
                     + "statement about descent and not a path into that home", record);
+        }
+        // DEF-104. THE WRAPPER HALF OF THE ISOLATION QUESTION.
+        //
+        // Everything in the walk above is about SYMLINKS, and until HIS-21 that
+        // was the whole of "does any path in this home reach another one". A
+        // generated wrapper is a regular file that execs an absolute path; it
+        // resolves through no link, so the walk's symlink arm never saw it and
+        // its regular-file arm only ever looked for the SOURCE needle. The
+        // result was `home verify` exit 0 on a home whose shims ran another
+        // home's code, at every tier and with or without `--against`. See
+        // Leak#FOREIGN_PATH_IN_SHIM for the measurement that separates this
+        // from the tier-shaped explanation.
+        //
+        // OUTSIDE THE WALK, and that is review of PR #256's MAJOR-1. The first
+        // version asked this question per-file INSIDE walkFileTree, which does
+        // not follow a symlinked `bin/cli` while `home repair`'s directory
+        // stream does -- so the two readers still disagreed, one link down.
+        // scanShimDirs is now the single enumerator for both.
+        //
+        // outwardLink is deliberately NOT reported here: a `bin/cli` that is a
+        // link into another home is already a FOREIGN_HOME leak from the walk's
+        // symlink arm above, and naming it twice would inflate one broken
+        // directory into two findings -- the reporting defect issue #133 is
+        // about, inside the fix for issue #253.
+        for (ShimDirScan scan : scanShimDirs(dstRoot)) {
+            for (ForeignShimPath found : scan.foreign()) {
+                leaks.add(new Leak(found.rel(), Leak.FOREIGN_PATH_IN_SHIM,
+                        "runs " + found.candidate() + ", which is inside the home at "
+                                + found.foreign()));
+            }
         }
         List<String> declaredNotBuilt = partitionDeclared(dstRoot, dangling, unresolved);
         List<String> danglingCliPins = danglingCliPinIn(dstRoot);
@@ -2065,10 +2075,27 @@ public final class HomeCloner {
     }
 
     /**
-     * The two shim directories a child home is allowed to mirror from its
-     * parent store, in the {@code <rel>} spelling {@link SimpleWalker} reports.
+     * THE shim directories. One list, and the reason it is one list is review
+     * of PR #256, MAJOR-1.
+     *
+     * <p>This class declared {@code List.of("bin/cli/", "bin/mcp/")} and
+     * {@code HomeRepair} declared {@code List.of("bin/cli", "bin/mcp")}, and
+     * HIS-21's own PR claimed the two readers shared "one extraction rule, one
+     * verdict, one scope". Two of three were true. The scope was declared
+     * twice, and the duplication was not cosmetic — see
+     * {@link #scanShimDirs}, which now owns the enumeration as well as the
+     * name.
      */
-    private static final List<String> SHIM_DIRS = List.of("bin/cli/", "bin/mcp/");
+    public static final List<String> SHIM_DIR_NAMES = List.of("bin/cli", "bin/mcp");
+
+    /**
+     * {@link #SHIM_DIR_NAMES} in the {@code <rel>} PREFIX spelling
+     * {@link SimpleWalker} reports and {@link #sanctionedParentShim} tests
+     * against. Derived rather than written out, so the two spellings cannot
+     * drift apart again.
+     */
+    private static final List<String> SHIM_DIRS =
+            SHIM_DIR_NAMES.stream().map(d -> d + "/").toList();
 
     /**
      * The other Skill Manager home {@code link} resolves into and is NOT
@@ -2099,10 +2126,117 @@ public final class HomeCloner {
     /**
      * One absolute path a shim's CONTENT names that lands in another home.
      *
+     * @param rel       the shim's location inside the home, {@code /}-separated
      * @param candidate the path the shim runs
      * @param foreign   the home it lands in
      */
-    public record ForeignShimPath(Path candidate, Path foreign) {}
+    public record ForeignShimPath(String rel, Path candidate, Path foreign) {}
+
+    /**
+     * What one shim directory holds, as BOTH readers see it.
+     *
+     * @param dir         the directory's home-relative name
+     * @param outwardLink the foreign home this directory IS a link into, or
+     *                    null. When non-null nothing was descended into and
+     *                    {@code foreign} is empty — see {@link #scanShimDirs}
+     * @param examined    how many entries were looked at, so a caller can tell
+     *                    "clean" from "found nothing to look at"
+     * @param foreign     every foreign path named by the CONTENT of a shim here
+     */
+    public record ShimDirScan(String dir, Path outwardLink, int examined,
+                              List<ForeignShimPath> foreign) {}
+
+    /**
+     * Walk this home's shim directories and report every foreign path their
+     * CONTENT names. <b>The one enumerator, called by {@code home verify} and
+     * by {@code home repair}.</b>
+     *
+     * <h2>Why this exists — review of PR #256, MAJOR-1</h2>
+     *
+     * <p>HIS-21 gave the two readers one extraction rule
+     * ({@link HomeRepair#absolutePathTokens}) and one verdict
+     * ({@link #unsanctionedForeignHome}) and left them two enumerations.
+     * {@code HomeRepair} listed with {@code Files.newDirectoryStream}, which
+     * FOLLOWS a symlinked {@code bin/cli}; {@code verifyRoots} listed with
+     * {@code Files.walkFileTree}, which does not. Measured on the FIXED tree,
+     * with {@code bin/cli} a symlink at a directory outside the home:
+     *
+     * <pre>
+     *   home verify --home X  -&gt; exit 0, "no path in it reaches any other
+     *                            Skill Manager home"
+     *   home repair --home X  -&gt; exit 1, FOREIGN_PATH_IN_SHIM bin/cli/wrapper
+     * </pre>
+     *
+     * <p>That is DEF-104's shape again, one <em>link</em> down rather than one
+     * segment down — and the shape is one this codebase meets in the wild:
+     * {@link HomeRepair} carries a whole branch for it, citing a measured
+     * HIS-9 case. So the enumeration moved here with the rule and the verdict,
+     * and the javadoc sentence that claimed a shared scope is now true.
+     *
+     * <h2>A shim directory that IS a link into another home is not descended</h2>
+     *
+     * <p>{@code outwardLink} reports it and {@code foreign} is empty, which is
+     * {@code HomeRepair}'s pre-existing behaviour and its reasons are its:
+     * descending would list the OTHER home's entries and report them under this
+     * home's spelling. Each caller says what it wants about that state —
+     * {@code home repair} names it unrepairable, and {@code home verify}
+     * already reports it from the symlink arm of its own walk, so it consumes
+     * only {@code foreign} and does not report it twice.
+     */
+    public static List<ShimDirScan> scanShimDirs(Path homeRoot) {
+        if (homeRoot == null) return List.of();
+        Path root = homeRoot.toAbsolutePath().normalize();
+        List<ShimDirScan> out = new ArrayList<>();
+        for (String dir : SHIM_DIR_NAMES) {
+            Path shimDir = root.resolve(dir);
+            if (!Files.isDirectory(shimDir)) continue;
+            Path outward = Files.isSymbolicLink(shimDir)
+                    ? unsanctionedForeignHome(dir, shimDir, root)
+                    : null;
+            if (outward != null) {
+                out.add(new ShimDirScan(dir, outward, 1, List.of()));
+                continue;
+            }
+            List<Path> files = new ArrayList<>();
+            collectShimFiles(shimDir, files);
+            List<ForeignShimPath> foreign = new ArrayList<>();
+            for (Path file : files) {
+                String rel = relativeTo(root, file);
+                foreign.addAll(foreignPathsInShimContent(rel, file, root));
+            }
+            out.add(new ShimDirScan(dir, null, files.size(), List.copyOf(foreign)));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * {@code HomeRepair.collectRegularFiles}, moved here whole so there is one
+     * of it. Entries that are symlinks are skipped — they are the OTHER
+     * reader's business, judged by link resolution — but the directory handed
+     * in may itself be one, and following it is the point (see
+     * {@link #scanShimDirs}).
+     */
+    private static void collectShimFiles(Path dir, List<Path> out) {
+        try (java.nio.file.DirectoryStream<Path> entries = Files.newDirectoryStream(dir)) {
+            for (Path entry : entries) {
+                if (Files.isSymbolicLink(entry)) continue;
+                if (Files.isDirectory(entry)) collectShimFiles(entry, out);
+                else if (Files.isRegularFile(entry)) out.add(entry);
+            }
+        } catch (IOException cannotList) {
+            Log.detail("shim scan: could not list %s (%s)", dir, cannotList.getMessage());
+        }
+    }
+
+    /** {@code base}-relative, {@code /}-separated, or the absolute path. */
+    private static String relativeTo(Path base, Path path) {
+        Path abs = path.toAbsolutePath().normalize();
+        try {
+            return base.relativize(abs).toString().replace(java.io.File.separatorChar, '/');
+        } catch (IllegalArgumentException notUnderIt) {
+            return abs.toString();
+        }
+    }
 
     /**
      * Every unsanctioned foreign path named by the TEXT of a shim file — the
@@ -2151,7 +2285,7 @@ public final class HomeCloner {
             }
             Path foreign = unsanctionedForeignHome(rel, candidate, homeRoot);
             if (foreign == null || !seen.add(candidate)) continue;
-            out.add(new ForeignShimPath(candidate, foreign));
+            out.add(new ForeignShimPath(rel, candidate, foreign));
         }
         return List.copyOf(out);
     }

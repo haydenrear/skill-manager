@@ -46,8 +46,19 @@ def test_program_model_help_model_has_production_help_hooks() -> None:
     # assertions above are all about what help SAYS, and this is the one about
     # what rendering it may DO. A model of "help" that says nothing about its
     # side effects is a model of half of it.
-    assert "helpOrVersionRequested(pr)) tryPrintOutstandingErrors();" in cli, (
+    # THE NEGATION MUST NOT MATCH. Review of PR #256, minor 7: the first
+    # spelling of this pin was `"helpOrVersionRequested(pr)) tryPrint…"`, which
+    # is a substring of BOTH the fix and its inversion (the same guard with the
+    # `!` dropped). A pin that cannot see its own negation reads as coverage and
+    # is not -- this ledger's own subject. The `if (!` is what discriminates,
+    # and the second assertion says so out loud rather than relying on it.
+    guarded = "if (!CommandHomeAccess.helpOrVersionRequested(pr)) tryPrintOutstandingErrors();"
+    inverted = "if (CommandHomeAccess.helpOrVersionRequested(pr)) tryPrintOutstandingErrors();"
+    assert guarded in cli, (
         "the closing report must be skipped for help and version invocations"
+    )
+    assert inverted not in cli, (
+        "the guard must SKIP the report for help, not run it only for help"
     )
 
     spec = importlib.util.spec_from_file_location(

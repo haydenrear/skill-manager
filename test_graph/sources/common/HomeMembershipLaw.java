@@ -323,7 +323,7 @@ public final class HomeMembershipLaw {
      *       "runs mid-scenario and calls an intermediate state final". Measured
      *       in the same run: {@code home-sync} wires it
      *       {@code .dependsOn("home.sync.authored.agent.tree")} and the planner
-     *       ran it {@code [19/19]}, dead last. Every one of the twenty-three
+     *       ran it {@code [19/19]}, dead last. Every one of the twenty-four
      *       wirings in {@code build.gradle.kts} declares a predecessor. Ordering
      *       was never the cause and could not have been the fix: the staged
      *       units are still on disk at the end of the graph, which is exactly

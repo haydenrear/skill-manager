@@ -306,6 +306,53 @@ findings:
     round_2_result: >
       GREEN. `home-integrity` 18/18 (run 20260824-200955), `home-sync` 19/19
       (run 20260824-200253), `jbang RunTests.java` ALL PASSED.
+    review_of_pr_256: >
+      MAJOR-1: THE FIRST FIX WAS INCOMPLETE AND ITS OWN SENTENCE OVERSTATED.
+      "one extraction rule, one verdict, one scope" was two of three -- the
+      scope was declared twice (`HomeRepair` "bin/cli", `HomeCloner` "bin/cli/")
+      and the two ENUMERATED differently: a directory stream follows a symlinked
+      `bin/cli`, walkFileTree does not. Reproduced on the FIXED tree: verify
+      exit 0, repair exit 1, FOREIGN_PATH_IN_SHIM bin/cli/wrapper -- DEF-104's
+      shape one LINK down. Fixed by moving the enumeration to
+      `HomeCloner.scanShimDirs`, which both readers now call;
+      `HomeRepair.collectRegularFiles` and `shimDirLinkedOutOfHome` deleted
+      rather than left as a second copy. Regression: "MAJOR-1: verify and repair
+      agree when bin/cli IS A SYMLINK", red under probe V10 -- under which BOTH
+      DEF-104 cases stay green, which is what proves the two branches differ.
+
+      MAJOR-2: `home clone` inherited the new refusal and printed NO REMEDY,
+      leaving a populated destination that fails its own `home verify`. Fixed:
+      the refusal names the SOURCE repair first (these paths name a THIRD home,
+      so the clone does not re-anchor them and the next clone copies them
+      through unchanged), offers repair-in-place second, and says the copy was
+      left and why. The remedy was RUN as printed and cleared the gate:
+      clone exit 1 -> remedy exit 0 "repaired 1 of 1" -> re-clone exit 0.
+      Regression: "MAJOR-2: a refused `home clone` names a remedy...", red under
+      probe V11.
+
+      MAJOR-3: recorded as DEF-112, not fixed. An UNREPAIRABLE
+      FOREIGN_PATH_IN_SHIM gives HomeFixpointLaw a remedy that cannot converge.
+      24 graphs carry the law, not the five this ticket framed the risk around;
+      16 are run and green (7 mine, 9 the reviewer's), 2 skip the law via a
+      pre-existing upstream failure, and 6 are unrun by anyone: smoke,
+      plugin-smoke, skill-dev-smoke, source-tracking, onboard, project-profiles.
+      No instance observed. The operator's real root home is FULLY REPAIRABLE
+      (measured read-only: all five findings print `repair: rewrite that path
+      to <this home>/...`), so the non-converging case has no known real
+      instance.
+
+      MINOR: the verify/clone success sentences now carry the scope caveat in
+      the OUTPUT rather than only in the pull request.
+    round_2_re_run_after_review: >
+      Everything re-run after the MAJOR-1 rework, because it changed what
+      `home verify` ENUMERATES. jbang RunTests.java ALL PASSED (+2 cases);
+      uv run pytest specs/ 88 passed; home-integrity 18/18 carrying the new
+      MAJOR-1 and MAJOR-2 assertions; and the six-graph set green again --
+      home-sync 19/19, checkout-home 8/8, ticket-lifecycle 14/14,
+      project-child-home 13/13, harness-smoke 14/14, home-clone 14/14. 82 nodes,
+      82 passed, counted from the envelopes. Written to
+      tickets/HIS-21/round2b/ via `--out`, so the canonical round-1 sweep.json
+      was NOT clobbered this time -- DEF-111's lesson applied to DEF-111.
 
   - id: REG-005
     caught_by: C-manual
@@ -371,6 +418,12 @@ findings:
     round_2_result: >
       GREEN. `jbang RunTests.java` ALL PASSED; `uv run pytest specs/` 169
       passed.
+    review_of_pr_256: >
+      FIXED IN ONE DIRECTION ONLY, and the filed defect is symmetric. `home
+      policy` named `policy.toml`; `policy show` still never named
+      `home.policy.toml`. `PolicyCommand.Show` now prints it, its declared
+      value, and the sentence that separates the two: this file decides what an
+      install here may RUN, that one decides whether the home may be MUTATED.
 
   - id: REG-006
     caught_by: C-manual
@@ -434,6 +487,27 @@ findings:
       only the gateway case.
     round_2_result: >
       GREEN. `jbang RunTests.java` ALL PASSED; `home-integrity` 18/18.
+    known_divergence_not_closed: >
+      `home describe` HUMAN says "no gateway.properties here -- this is the
+      default endpoint, and this home claims no ownership of it"; `home describe
+      --json` says `"owned": true` for the same home in the same run. One
+      command, one home, two answers -- GOAL-one-home-one-answer's own shape,
+      inside the fix for it.
+
+      LEFT OPEN DELIBERATELY and recorded rather than argued away. The JSON is
+      the document `--write` persists and bootstrap-home.sh consumes; widening
+      the human marking into it would change a persisted interop schema, and
+      changing `GatewayConfig.owned()`'s default would change what `gateway up`
+      and `gateway down` do in every undeclared home, which this ticket has no
+      measurement for. Latent today: no in-repo consumer reads that field to
+      decide anything. HIS-6 owns the goal and should decide it.
+    test_name_corrected: >
+      The shipped case was named "two homes never both report one gateway as
+      OWNED", which the code does not hold -- two homes that each PERSIST
+      gateway.owned=true for one port both print `(owned -- declared in
+      gateway.properties)` and always did. The BODY was always correct (declared
+      versus defaulted). Renamed to "a home that declared no gateway does not
+      report the default as OWNED". Review of PR #256, minor 3.
 
 # ---------------------------------------------------------------------------
 # BATCHED INTO TICKETS, 2026-08-24 (schedule revision 10)
@@ -501,7 +575,9 @@ findings:
       -- in these runs, third, BEFORE any sync executed." MEASURED FALSE, run
       20260824-193907: home-sync wires the node
       .dependsOn("home.sync.authored.agent.tree") and the planner ran it
-      [19/19], DEAD LAST. All 23 wirings declare a predecessor. The backlog
+      [19/19], DEAD LAST. All 24 wirings declare a predecessor (24, not 23 --
+      counted at review of PR #256; the argument survives the correction, the
+      number did not). The backlog
       entry's own `detail` block contradicts the sentence too: the PROJECT home
       it quotes holds hs-delta, which is staged into the ROOT home by node 4 and
       reaches the project home only through a sync -- so the law cannot have run

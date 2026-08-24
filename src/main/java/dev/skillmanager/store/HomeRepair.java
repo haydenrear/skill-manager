@@ -124,8 +124,14 @@ public final class HomeRepair {
     /** The agent subdirectories a home projects units into. */
     private static final List<String> PROJECTED_DIRS = List.of("skills", "plugins");
 
-    /** The shim directories, home-relative, in the spelling findings report. */
-    private static final List<String> SHIM_DIRS = List.of("bin/cli", "bin/mcp");
+    /**
+     * The shim directories, home-relative, in the spelling findings report.
+     *
+     * <p>{@link HomeCloner#SHIM_DIR_NAMES}, not a second copy. Review of PR
+     * #256, MAJOR-1: this class and {@code HomeCloner} each declared the list,
+     * in different spellings, and the divergence reached the verdict.
+     */
+    private static final List<String> SHIM_DIRS = HomeCloner.SHIM_DIR_NAMES;
 
     /** Bigger than this and it is not a shim script; do not read it. */
     private static final long TEXT_LIMIT = 1024L * 1024L;
@@ -395,9 +401,17 @@ public final class HomeRepair {
      */
     private static int foreignPathsInShims(Path store, List<Finding> findings) {
         int examined = 0;
-        for (String dir : SHIM_DIRS) {
-            Path shimDir = store.resolve(dir);
-            if (!Files.isDirectory(shimDir)) continue;
+        // HIS-21, revised at review of PR #256 (MAJOR-1). The ENUMERATION now
+        // lives in HomeCloner.scanShimDirs beside the extraction rule and the
+        // verdict, because listing with a directory stream here and with
+        // walkFileTree there made the two readers disagree about a home whose
+        // bin/cli is a symlink -- DEF-104's shape one link down. What is left
+        // in this method is what is genuinely this command's own: the remedy
+        // text, and what it says about a shim directory it will not descend.
+        for (HomeCloner.ShimDirScan scan : HomeCloner.scanShimDirs(store)) {
+            String dir = scan.dir();
+            examined += scan.examined();
+            Path outward = scan.outwardLink();
             // THE SHIM DIRECTORY ITSELF IS A LINK OUT OF THE HOME.
             //
             // HIS-9's disclosed limitation, and it is this ticket's declared
@@ -426,9 +440,7 @@ public final class HomeRepair {
             // ticket serves under. So it is REPORTED, with the two exits a
             // person can take, and HIS-9's sentence stays true with the word
             // "invisible" removed from it.
-            Path outward = shimDirLinkedOutOfHome(shimDir, store, dir);
             if (outward != null) {
-                examined++;
                 findings.add(new Finding(Kind.FOREIGN_PATH_IN_SHIM, dir,
                         "is not a directory in this home at all — it is a link at "
                                 + outward + ", so every shim this home appears to hold "
@@ -441,50 +453,21 @@ public final class HomeRepair {
                         false, null));
                 continue;
             }
-            List<Path> files = new ArrayList<>();
-            collectRegularFiles(shimDir, files);
-            for (Path file : files) {
-                examined++;
-                String rel = relative(store, file);
-                // HIS-21 / DEF-104. The extraction AND the verdict now live in
-                // HomeCloner, because `home verify` had to ask the identical
-                // question and two spellings of it is what DEF-104 WAS. This
-                // loop keeps only what is this command's own: the remedy.
-                for (HomeCloner.ForeignShimPath found
-                        : HomeCloner.foreignPathsInShimContent(rel, file, store)) {
-                    Path candidate = found.candidate();
-                    Path foreign = found.foreign();
-                    Path mine = mappedIntoThisHome(foreign, candidate, store);
-                    boolean fixable = mine != null;
-                    findings.add(new Finding(Kind.FOREIGN_PATH_IN_SHIM, rel,
-                            "runs " + candidate + ", which is inside the home at " + foreign,
-                            fixable ? "rewrite that path to " + mine
-                                    : "no path under this home stands where " + candidate
-                                            + " does — rebuild the entry point with "
-                                            + "`skill-manager build`, or re-install its unit",
-                            fixable, mine));
-                }
+            for (HomeCloner.ForeignShimPath found : scan.foreign()) {
+                Path candidate = found.candidate();
+                Path foreign = found.foreign();
+                Path mine = mappedIntoThisHome(foreign, candidate, store);
+                boolean fixable = mine != null;
+                findings.add(new Finding(Kind.FOREIGN_PATH_IN_SHIM, found.rel(),
+                        "runs " + candidate + ", which is inside the home at " + foreign,
+                        fixable ? "rewrite that path to " + mine
+                                : "no path under this home stands where " + candidate
+                                        + " does — rebuild the entry point with "
+                                        + "`skill-manager build`, or re-install its unit",
+                        fixable, mine));
             }
         }
         return examined;
-    }
-
-    /**
-     * The foreign home {@code shimDir} is a link into, or null.
-     *
-     * <p>Uses the CONTAINER rule — the directory itself resolved — because
-     * that is the question being asked. {@code WriteConfinement} records why
-     * the distinction matters and that getting it wrong is silent: with the
-     * entry rule, {@code <home>/bin} resolves perfectly well inside the home
-     * and the check passes while every entry then listed lives somewhere else.
-     * The verdict itself is {@link HomeCloner#unsanctionedForeignHome}, as
-     * everywhere else here — a {@code bin/cli} DIRECTORY is not a
-     * {@code bin/cli/<name>} entry, so the child-home shim sanction cannot
-     * apply to it and does not.
-     */
-    private static Path shimDirLinkedOutOfHome(Path shimDir, Path store, String rel) {
-        if (!Files.isSymbolicLink(shimDir)) return null;
-        return HomeCloner.unsanctionedForeignHome(rel, shimDir, store);
     }
 
     /**
@@ -1027,17 +1010,6 @@ public final class HomeRepair {
         }
     }
 
-    private static void collectRegularFiles(Path dir, List<Path> out) {
-        try (DirectoryStream<Path> entries = Files.newDirectoryStream(dir)) {
-            for (Path entry : entries) {
-                if (Files.isSymbolicLink(entry)) continue;
-                if (Files.isDirectory(entry)) collectRegularFiles(entry, out);
-                else if (Files.isRegularFile(entry)) out.add(entry);
-            }
-        } catch (IOException cannotList) {
-            Log.detail("home repair: could not list %s (%s)", dir, cannotList.getMessage());
-        }
-    }
 
     /**
      * Absolute path-shaped tokens in a text file.
@@ -1068,6 +1040,39 @@ public final class HomeRepair {
      * postcondition (which judges bytes not yet written) cannot disagree about
      * what a path token is. Two scanners would be this epic's own defect
      * inside the guard against it.
+     */
+    /**
+     * WHAT THIS SCANNER CANNOT SEE. Review of PR #256, minor 5.
+     *
+     * <p>Written down because both readers now share it, so a blind spot here
+     * is a blind spot in {@code home verify} AND {@code home repair} at once —
+     * consistent, which is the goal, and consistently wrong, which is worth a
+     * sentence. Three, all reproduced:
+     *
+     * <ul>
+     *   <li><b>Interpolation.</b> {@code exec "$SM_HOME/bin/x"} carries no
+     *       literal path, so nothing is extracted. Deliberate: a scanner that
+     *       guessed at variable values would report paths the shim does not
+     *       run.</li>
+     *   <li><b>Relative escapes.</b> {@code exec ../../../B/bin/x} is not
+     *       absolute and this scans from {@code '/'}. The SYMLINK arm of
+     *       {@code home verify} resolves relative targets and catches the link
+     *       form; the wrapper form is not covered.</li>
+     *   <li><b>Spaces.</b> The token stops at whitespace, so
+     *       {@code /Some Home/.skill-manager/x} truncates to {@code /Some}.
+     *       Usually that names nothing and the finding is simply missed —
+     *       but where the truncation happens to EXIST and to sit inside another
+     *       home, the finding names a path the shim does not run. That is the
+     *       one case here that reports something false rather than nothing,
+     *       and it is why this list is in the code rather than in a pull
+     *       request.</li>
+     * </ul>
+     *
+     * <p>Not widened here. The stop set is {@code HomeCloner.scanFor}'s
+     * because a shim QUOTES its paths and a scanner that swallows the closing
+     * quote reports a path that does not exist — the reason this method's own
+     * comment gives — and every widening trades a missed finding for a false
+     * one. Recorded so the next reader knows the boundary was chosen.
      */
     static List<String> pathTokensIn(String text) {
         Set<String> found = new LinkedHashSet<>();

@@ -3,6 +3,7 @@ package dev.skillmanager.store;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.commands.HomeCommand;
+import dev.skillmanager.launch.LaunchEnv;
 import dev.skillmanager.launch.LauncherShims;
 import dev.skillmanager.policy.HomePolicy;
 import picocli.CommandLine;
@@ -807,6 +808,70 @@ public final class DamagedHomeIsRepairableTest {
                                     + "verdict above came from production's sanction and not "
                                     + "from verify being blind again; got "
                                     + unsanctioned.isolationFailures());
+                })
+
+                .test("MAJOR-1: verify and repair agree when bin/cli IS A SYMLINK", () -> {
+                    // Review of PR #256, MAJOR-1. HIS-21's own claim was "one
+                    // extraction rule, one verdict, ONE SCOPE". Two of three
+                    // were true. The scope was declared twice --
+                    // HomeRepair `List.of("bin/cli","bin/mcp")`, HomeCloner
+                    // `List.of("bin/cli/","bin/mcp/")` -- and the two ENUMERATED
+                    // differently: a directory stream FOLLOWS a symlinked
+                    // bin/cli, walkFileTree does not.
+                    //
+                    // THE BRANCH THIS EXERCISES: HomeCloner.scanShimDirs'
+                    // collectShimFiles, entered on a shim directory that is
+                    // itself a link. Not the same branch as the DEF-104 case
+                    // above, which reaches the identical detector through a
+                    // REAL directory -- the two differ by one link, which is
+                    // exactly how far apart the readers had drifted.
+                    //
+                    // MEASURED ON THE FIXED TREE before this change:
+                    //   home verify --home X -> exit 0, "no path in it reaches
+                    //                          any other Skill Manager home"
+                    //   home repair --home X -> exit 1, FOREIGN_PATH_IN_SHIM
+                    // which is DEF-104's shape one link down.
+                    //
+                    // MUTATION THAT REDDENS IT: point verifyRoots back at a
+                    // per-file check inside the walk. The repair half stays
+                    // green, which is the disagreement.
+                    Fixture fx = Fixture.build("major1");
+                    Path realDir = Files.createTempDirectory("major1-outside-");
+                    Path moved = realDir.resolve("wrapper");
+                    Files.writeString(moved, "#!/usr/bin/env bash\nexec \""
+                            + fx.other.resolve("venvs/v/bin/wrapper") + "\" \"$@\"\n",
+                            StandardCharsets.UTF_8);
+                    moved.toFile().setExecutable(true);
+                    // bin/cli becomes a LINK at a directory outside the home
+                    // that is NOT itself a home -- so neither the container
+                    // rule nor verify's symlink arm fires, and only the
+                    // enumeration decides.
+                    Path binCli = fx.store.resolve("bin/cli");
+                    HomeIntegrityDelete.deleteRecursive(binCli);
+                    Files.createSymbolicLink(binCli, realDir);
+                    assertFalse(LaunchEnv.looksLikeStoreRoot(realDir),
+                            "precondition: the link target is NOT itself a home — otherwise "
+                                    + "the container rule fires and this asserts about a "
+                                    + "branch that was already correct");
+
+                    List<String> repairSubjects = HomeRepair.detect(fx.store, fx.pin).findings()
+                            .stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.FOREIGN_PATH_IN_SHIM)
+                            .map(HomeRepair.Finding::subject)
+                            .distinct().sorted().toList();
+                    assertEquals(List.of("bin/cli/wrapper"), repairSubjects,
+                            "precondition: repair follows the linked directory and names the "
+                                    + "wrapper inside it");
+
+                    HomeCloner.Verification v = HomeCloner.verify(fx.store, false);
+                    List<String> verifySubjects = v.isolationFailures().stream()
+                            .filter(l -> HomeCloner.Leak.FOREIGN_PATH_IN_SHIM.equals(l.kind()))
+                            .map(HomeCloner.Leak::path)
+                            .distinct().sorted().toList();
+                    assertEquals(repairSubjects, verifySubjects,
+                            "THE CLAIM: one scope, so the two readers name the same file "
+                                    + "through a symlinked shim directory too. verify said "
+                                    + v.isolationFailures() + "; repair said " + repairSubjects);
                 })
 
                 .runAll();

@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import static dev.skillmanager._lib.test.Tests.assertContains;
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
+import static dev.skillmanager._lib.test.Tests.assertTrue;
 
 /**
  * <b>A home report never states a default as a fact, and never answers about a
@@ -152,7 +153,17 @@ public final class HomeReportsMarkWhatTheyInventTest {
                                     + "command did not follow");
                 })
 
-                .test("DEF-106: two homes never both report one gateway as OWNED", () -> {
+                .test("DEF-106: a home that declared no gateway does not report the default as OWNED", () -> {
+                    // NAMED FOR WHAT IT ASSERTS. Review of PR #256, minor 3:
+                    // this case was called "two homes never both report one
+                    // gateway as OWNED", and the code does not hold that.
+                    // TWO homes that each PERSIST gateway.owned=true for one
+                    // port both print `(owned — declared in gateway.properties)`
+                    // and always did. What this ticket changed is the
+                    // DECLARED-versus-DEFAULTED distinction, which is what the
+                    // body below actually drives, and a name that overreaches
+                    // its body is a claim a reader takes on trust.
+                    //
                     // The measured half. The root home's descriptor declares
                     // {"gateway": {"owned": true}} for 127.0.0.1:51717 and the
                     // project home -- which has no gateway.properties at all --
@@ -213,6 +224,58 @@ public final class HomeReportsMarkWhatTheyInventTest {
                     assertContains(r.out, "this home's own bin/cli/skill-manager",
                             "THE CLAIM: the report says WHERE the CLI answer came from. got:\n"
                                     + r.out);
+                })
+
+                .test("MAJOR-2: a refused `home clone` names a remedy and says where the copy went", () -> {
+                    // Review of PR #256, MAJOR-2. HIS-21 widened `home verify`
+                    // to see a wrapper shim; `home clone` verifies its copy
+                    // with the same check, so it inherited the refusal and
+                    // printed NO REMEDY AT ALL, on the one command whose
+                    // failure leaves a populated directory behind. This epic's
+                    // standing rule is that a refusal with no remedy is the
+                    // #142 class.
+                    //
+                    // BRANCH: HomeCommand.cloneFailureRemedy, the
+                    // FOREIGN_PATH_IN_SHIM arm.
+                    // MUTATION THAT REDDENS IT: delete the cloneFailureRemedy
+                    // call from print()'s failure branch. The refusal itself
+                    // still prints -- exit 1 and the finding -- so a test that
+                    // only asserted "clone refuses" would stay green. These
+                    // assert the REMEDY.
+                    Path source = bareHome("clone-remedy-src");
+                    Path third = bareHome("clone-remedy-third");
+                    Files.createDirectories(third.resolve("skills").resolve("tool"));
+                    Files.writeString(third.resolve("skills/tool/run.sh"), "echo hi\n",
+                            StandardCharsets.UTF_8);
+                    Path shim = source.resolve("bin").resolve("cli").resolve("thirdparty");
+                    Files.createDirectories(shim.getParent());
+                    Files.writeString(shim, "#!/usr/bin/env bash\nexec bash \""
+                            + third.resolve("skills/tool/run.sh") + "\" \"$@\"\n",
+                            StandardCharsets.UTF_8);
+                    shim.toFile().setExecutable(true);
+                    Path dest = Files.createTempDirectory("clone-remedy-dest-")
+                            .resolve("copy").resolve(".skill-manager");
+
+                    Result r = capture(() -> new CommandLine(new HomeCommand.CloneCmd())
+                            .execute("--from", source.toString(), "--to", dest.toString()));
+
+                    assertEquals(1, r.rc(), "precondition: the clone is refused at all");
+                    assertContains(r.out(), "FOREIGN_PATH_IN_SHIM",
+                            "precondition: refused for the reason this ticket introduced");
+                    assertTrue(Files.isDirectory(dest),
+                            "precondition: the half-made copy really is left on disk — the "
+                                    + "sentence below would otherwise be false");
+                    assertContains(r.out(), "was LEFT IN PLACE",
+                            "THE CLAIM 1: the operator is told the copy exists and does not "
+                                    + "pass its own verify. got:\n" + r.out());
+                    assertContains(r.out(), "repair the SOURCE and clone again",
+                            "THE CLAIM 2: a remedy is printed at all");
+                    assertContains(r.out(), "home repair --home " + source,
+                            "and it names the SOURCE — re-anchoring rewrites paths naming the "
+                                    + "source, and these name a THIRD home, so repairing only "
+                                    + "the copy leaves the next clone failing identically");
+                    assertContains(r.out(), "home repair --home " + dest,
+                            "with the repair-in-place exit offered too");
                 })
 
                 .runAll();

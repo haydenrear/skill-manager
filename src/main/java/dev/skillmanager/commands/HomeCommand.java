@@ -250,7 +250,8 @@ public final class HomeCommand {
                 Log.info("NOT CHECKED: whether a reference back to the home this one was copied "
                         + "from survives — pass `--against <source home>` for that half. "
                         + "Checked below: every link and generated script in %s resolves, and "
-                        + "no path in it reaches any other Skill Manager home.", home);
+                        + "no path in it reaches any other Skill Manager home%s.",
+                        home, isolationScopeCaveat());
             }
             // Tolerated references are still references. Reporting only the
             // leak list would let "0 leaks" read as "nothing survives" while
@@ -454,13 +455,13 @@ public final class HomeCommand {
                 // be wrong.
                 Log.ok("every reference in %s resolves, and no path in it reaches any other "
                         + "Skill Manager home%s (source-reference check not run — "
-                        + "see NOT CHECKED above)", home, except);
+                        + "see NOT CHECKED above)%s", home, except, isolationScopeCaveat());
                 return 0;
             }
             Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
-                            + "other Skill Manager home%s",
+                            + "other Skill Manager home%s%s",
                     mentions.isEmpty() && diagnostics.isEmpty() ? "" : "repairable ",
-                    against, home, except);
+                    against, home, except, isolationScopeCaveat());
             return 0;
         }
 
@@ -530,6 +531,37 @@ public final class HomeCommand {
          * a home has both kinds the two commands are chained, so the single
          * line stays runnable as printed.
          */
+        /**
+         * WHAT "no path in it reaches any other Skill Manager home" ACTUALLY
+         * COVERS, appended to every sentence that says it.
+         *
+         * <h2>Review of PR #256, minor 1</h2>
+         *
+         * <p>HIS-21 widened the check to a shim's CONTENT and left the verdict
+         * sentence universal. It is not universal, and three cases were
+         * reproduced at review that print it at <b>exit 0</b>: a foreign path
+         * in {@code bin/launch/claude}; a {@code venvs/<x>/bin/<y>} console
+         * script whose shebang names another home's interpreter — the
+         * {@code cp -a} / rsync shape {@code HomeRepair} exists for; and any
+         * generated script outside the two shim directories.
+         *
+         * <p>The scope was disclosed in the pull request and not in the
+         * OUTPUT, which is the same substitution this whole ticket is about:
+         * an operator does not read the pull request. Content scanning is
+         * bounded to {@code bin/cli} and {@code bin/mcp} because that is where
+         * {@code home repair} is bounded, and the two verdicts must not differ
+         * by scope (MAJOR-1) — so the honest move is to say where the boundary
+         * is, not to widen one reader past the other.
+         */
+        private static String isolationScopeCaveat() {
+            return " (LINK targets are checked everywhere in this home; script"
+                    + " CONTENT is read only under " + String.join(" and ",
+                            HomeCloner.SHIM_DIR_NAMES)
+                    + ", so a generated script elsewhere — bin/launch, a venv"
+                    + " console-script shebang — is not covered by this line."
+                    + " `home repair` reads the same two directories)";
+        }
+
         private static String isolationRemedy(List<HomeCloner.Leak> isolation, Path home) {
             boolean launcher = false;
             boolean other = false;
@@ -1914,8 +1946,10 @@ public final class HomeCommand {
             // so the clause narrows to what it still covers: file CONTENT,
             // which is not rewritten, and links that resolve nowhere in
             // particular.
-            Log.ok("cloned home to %s — checked: nothing in it resolves back to %s; no path in "
-                    + "it reaches another Skill Manager home; no record or link in it names "
+            Log.ok("cloned home to %s — checked: nothing in it resolves back to %s; no LINK in "
+                    + "it reaches another Skill Manager home and no script under "
+                    + String.join(" or ", HomeCloner.SHIM_DIR_NAMES) + " NAMES one; no record "
+                    + "or link in it names "
                     + "another home's agent directories (.claude, .codex, .gemini); no binding, "
                     + "child-home record or registration in it claims a path outside this home. "
                     + "NOT checked: mentions inside unit content, and anything reached by a "
@@ -1927,7 +1961,77 @@ public final class HomeCommand {
             List<String> leaks = new java.util.ArrayList<>();
             for (HomeCloner.Leak leak : report.leaks()) leaks.add(leak.toString());
             Log.errorList("    ", leaks);
+            cloneFailureRemedy(report);
         }
+    }
+
+    /**
+     * WHAT THE OPERATOR DOES NEXT AFTER A FAILED CLONE, and where the half-made
+     * copy went.
+     *
+     * <h2>Review of PR #256, MAJOR-1's sibling: a remedy that does not exist</h2>
+     *
+     * <p>HIS-21 widened {@code home verify} to see a wrapper shim whose text
+     * execs another home. {@code home clone} verifies its copy with the same
+     * check, so it inherited the new refusal — and it printed <b>no remedy at
+     * all</b>, on a command whose failure leaves a populated directory behind:
+     *
+     * <pre>
+     *   $ skill-manager home clone --from S1 --to C1
+     *     copied:      8 dirs, 1 files, 0 links
+     *   ✗ clone verification FAILED — 1 path(s) reach outside this copy
+     *   ✗     FOREIGN_PATH_IN_SHIM bin/cli/thirdparty (runs …/B/skills/tool/run.sh …)
+     *   exit 1
+     * </pre>
+     *
+     * <p>This epic's standing rule is that a refusal with no remedy is the
+     * #142 class, and {@code home verify}'s own verdict branch was fixed for
+     * exactly that. Reproduced on a throwaway pair; the operator's root home
+     * has the shape ({@code home verify} names five of them there), so
+     * {@code home clone --from ~/.skill-manager} is refused on that machine
+     * until the source is repaired.
+     *
+     * <h2>The remedy names the SOURCE, not the copy</h2>
+     *
+     * <p>Re-anchoring rewrites paths naming the SOURCE. These name a THIRD
+     * home, so they are not re-anchored — they are copied through unchanged,
+     * and they will be copied through unchanged again by the next clone.
+     * Repairing the destination leaves the source broken and the next clone
+     * failing identically, so the source is what the first line names. The
+     * second line is offered because a copy that already exists can be repaired
+     * where it stands.
+     *
+     * <h2>The destination is LEFT, deliberately, and is now said out loud</h2>
+     *
+     * <p>Deleting it would be a walk-back that destroys bytes the operator may
+     * have waited minutes for, which is precisely
+     * {@code GOAL-no-destructive-recovery}'s subject — {@code Executor}'s
+     * empty pre-state compensation (#186) is this epic's founding instance of
+     * a cleanup that removed more than it made. So the copy stays and the
+     * refusal NAMES it, rather than leaving an operator to discover a
+     * populated home that fails its own {@code home verify}.
+     */
+    private static void cloneFailureRemedy(HomeCloner.Report report) {
+        boolean foreignShim = report.leaks().stream()
+                .anyMatch(l -> HomeCloner.Leak.FOREIGN_PATH_IN_SHIM.equals(l.kind()));
+        Log.error("  the copy at %s was LEFT IN PLACE and does not pass `home verify` — "
+                + "nothing was deleted, because a clone that walks itself back destroys "
+                + "bytes it did not make", report.dest());
+        if (!foreignShim) {
+            Log.error("  inspect it with: %s home verify --home %s",
+                    VerifyCmd.homeEnvPrefix(report.dest()),
+                    HomeDescriptor.shellQuote(report.dest().toString()));
+            return;
+        }
+        Log.error("  repair the SOURCE and clone again: %s home repair --home %s --fix",
+                VerifyCmd.homeEnvPrefix(report.source()),
+                HomeDescriptor.shellQuote(report.source().toString()));
+        Log.error("    (the source is what to fix: these paths name a THIRD home, so the "
+                + "clone does not re-anchor them and the next clone copies them through "
+                + "unchanged. To repair the copy where it stands instead: %s home repair "
+                + "--home %s --fix)",
+                VerifyCmd.homeEnvPrefix(report.dest()),
+                HomeDescriptor.shellQuote(report.dest().toString()));
     }
 
     /**

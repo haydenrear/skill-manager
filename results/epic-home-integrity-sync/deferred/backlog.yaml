@@ -5676,6 +5676,9 @@ findings:
       its sentence: `hs-delta` reaches the PROJECT home only via a sync, so the
       law cannot have run before the syncs.
 
+      Measured on run 20260824-193907, branch feature/253-his-21: `home-sync`
+      wires the node `.dependsOn("home.sync.authored.agent.tree")`.
+
       A SPEC-level `dependsOn` is also unimplementable: the predecessor differs
       per graph.
 
@@ -5758,7 +5761,7 @@ findings:
     severity: minor
     short_label: "HomeMembershipLaw.SPEC declares no dependsOn, so a future graph can wire the law mid-scenario"
     summary: >
-      Every one of the twenty-three current wirings of
+      Every one of the twenty-four current wirings of
       `sources/common/HomeMembershipLaw.java` in `test_graph/build.gradle.kts`
       declares a predecessor, so the law runs last today. Nothing ENFORCES that.
       A graph added tomorrow with a bare `node("sources/common/HomeMembershipLaw.java")`
@@ -5824,6 +5827,63 @@ findings:
     caught_by_instrument: B-issue-agents
     missed_by: [A-graph-sweep, C-manual]
     candidate_owner: HIS-6 -- it owns round 3 and reads this file
+    status: open
+
+  - id: DEF-112
+    found_by: review of PR #256 (MAJOR-3), reproduced and re-measured by HIS-21
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "an UNREPAIRABLE FOREIGN_PATH_IN_SHIM gives HomeFixpointLaw a remedy that cannot converge"
+    summary: >
+      `HomeFixpointLaw` parses the remedy out of a `home verify` refusal, RUNS
+      it, and re-verifies; "the remedy it printed did not clear it" is its
+      failure predicate. HIS-21 made `home verify` refuse a foreign path in a
+      shim's CONTENT. When that finding is UNREPAIRABLE -- no path under this
+      home stands where the foreign one does -- the loop cannot converge:
+
+        verify exit 1 -> remedy -> `repaired 0 of 1`, `1 cannot be repaired`
+                      -> verify exit 1 -> the law fails.
+
+      Before this PR `home verify` was blind to the condition, so the law
+      passed. The combined remedy `home repair --fix && sync --force-scripts`
+      short-circuits on the repair's non-zero exit precisely in the unfixable
+      case.
+    blast_radius_measured: >
+      24 graphs carry the law -- counted from build.gradle.kts, not estimated;
+      all 24 wirings declare a `dependsOn`. HIS-21's PR framed the risk around
+      "five clone-heavy graphs", which was the wrong frame and understated it.
+
+      RUN AND GREEN: 16. HIS-21 ran 7 (home-sync, home-integrity,
+      checkout-home, ticket-lifecycle, project-child-home, harness-smoke,
+      home-clone); the reviewer ran 9 more (onboarding 23/23, home-tripwire
+      8/8, project-smoke, doc-smoke, project-env, project-libs, project-resolve,
+      project-manifest, spec-conformance). No graph reddened and no home was
+      repaired by the law in any of the 16.
+
+      SKIP THE LAW via a pre-existing upstream failure, both red in round 1 on
+      the base: artifact-dag, git-latest-source-tracking.
+
+      UNRUN BY ANYONE, by name so HIS-6 does not rediscover them:
+        smoke, plugin-smoke, skill-dev-smoke, source-tracking, onboard,
+        project-profiles.
+    why_it_is_not_a_blocker: >
+      The condition needs a home whose shim names a foreign path for which THIS
+      home has no counterpart. Every fixture that plants one plants a
+      counterpart too, and the operator's own root home -- the only real
+      instance in this epic -- is FULLY REPAIRABLE: measured read-only, all
+      five findings print `repair: rewrite that path to <this home>/...`. So the
+      risk is structural and no instance has been observed in 16 graphs.
+    owed_check: >
+      Either (a) `home verify` prints a remedy only when the finding is
+      fixable, and says plainly that it is not otherwise -- the shape
+      `HomeRepair` already uses for its own unrepairable findings; or (b)
+      `HomeFixpointLaw` distinguishes "the remedy failed" from "the remedy said
+      this cannot be repaired by a command" and reports the second as a NAMED
+      unrepairable state rather than as a law failure. (b) is the better fix and
+      is the same DEF-067 boundary the law already lives on.
+    caught_by_instrument: B-issue-agents
+    missed_by: [A-graph-sweep, C-manual]
+    candidate_owner: HIS-6
     status: open
 
   - id: DEF-110
