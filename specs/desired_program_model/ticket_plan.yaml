@@ -1,7 +1,7 @@
 # Desired program model + ticket plan for the child-home materialization epic.
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
-schedule_revision: 9
+schedule_revision: 10
 name: child-home-materialization-workflow
 updated: "2026-08-07"
 purpose: >
@@ -3325,11 +3325,26 @@ tickets:
     role: evaluation
     epic: home-integrity-sync
     github_issue: 218
-    wave: 14
-    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18, HIS-19, HIS-20]
+    wave: 16
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18, HIS-19, HIS-20, HIS-21, HIS-22]
     blocks: []
-    promotion_order: 20
-    promotion_predecessor: HIS-20
+    promotion_order: 22
+    promotion_predecessor: HIS-22
+    rescheduled_in_revision_10: >
+      Wave 14 -> 16, promotion 20 -> 22, behind HIS-21 and HIS-22. The manual
+      sweep that was meant to PREPARE this evaluation found six defects the
+      26-graph sweep missed, and the owner chose to fix them and leave
+      regression assertions behind BEFORE the terminal measurement rather than
+      report them as findings against it.
+
+      That makes the validation ITERATIVE, which is the point: round 1 is the
+      sweep plus the manual pass; HIS-21 and HIS-22 fix what it found and add
+      the assertions; round 2 re-runs the sweep against the fixed tree, which
+      both confirms the fixes and gives the new assertions their first real
+      exercise. HIS-6 then decides nine goals against a tree validated twice.
+
+      The ID and plan ordinal are unchanged, per rule 3; only the schedule moved.
+      This is the second time HIS-6 has moved for exactly this reason.
     rescheduled_in_revision_9: >
       Wave 12 -> 14, promotion 18 -> 20. Revision 9 inserted HIS-19 (the
       versioned CLI pin) and HIS-20 (progressive disclosure in both directions,
@@ -3863,7 +3878,7 @@ tickets:
     added_in_schedule_revision: 9
     wave: 12
     depends_on: [HIS-12, HIS-13]
-    blocks: [HIS-20, HIS-6]
+    blocks: [HIS-20, HIS-21, HIS-6]
     promotion_order: 18
     promotion_predecessor: HIS-5
     conflict_keys:
@@ -3973,7 +3988,7 @@ tickets:
     added_in_schedule_revision: 9
     wave: 13
     depends_on: [HIS-8, HIS-13, HIS-19]
-    blocks: [HIS-6]
+    blocks: [HIS-21, HIS-22, HIS-6]
     promotion_order: 19
     promotion_predecessor: HIS-19
     conflict_keys:
@@ -4041,6 +4056,168 @@ tickets:
         contribution: guard
         expected_effect: "must close gaps by LINKING to HIS-8's single statement, never by restating it in a second place"
         local_signal: "uv run .github/scripts/check-docs-coverage.py"
+
+  # -------------------------------------------------------------------------
+  # Schedule revision 10. Added after the manual sweep (instrument C) that
+  # preceded HIS-6, at the owner's instruction:
+  #
+  #   "capture these findings and batch them into a couple of tickets. Then
+  #    we'll restart the validation process after we fix them and add
+  #    assertions to capture similar regressions in the future. This way, we
+  #    fix them, we test the regression assertion, and we get multiple rounds
+  #    of validation."
+  #
+  # SO THE VALIDATION IS NOW ITERATIVE, and that is the point. Round 1 is the
+  # sweep + the manual pass that produced DEF-102..DEF-106. These two tickets
+  # fix what round 1 found AND leave a regression assertion behind for each.
+  # Round 2 re-runs the sweep against the fixed tree, which both confirms the
+  # fixes and gives the assertions their own first real exercise. HIS-6 then
+  # decides the goals against a tree that has been validated twice.
+  #
+  # THE BATCHING IS BY KIND, not by file. HIS-21 is every finding where a
+  # command REPORTS SOMETHING THAT IS NOT SO. HIS-22 is every finding where the
+  # PROJECT -> ROOT promotion path does not work. One is about what the product
+  # says; the other about what it does.
+  # -------------------------------------------------------------------------
+
+  - id: HIS-21
+    title: "four commands report something that is not so, and three of them about the operator's real root home"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: null
+    added_in_schedule_revision: 10
+    wave: 15
+    depends_on: [HIS-13, HIS-19, HIS-20]
+    blocks: [HIS-6]
+    promotion_order: 20
+    promotion_predecessor: HIS-20
+    conflict_keys:
+      production: [HomeCommand.describe, HomeCommand.policy, HomeCloner.verifyRoots, HomePolicy, CliMetadata.help]
+      tla: []
+      adapters: []
+      test_graph: [home-integrity/EveryShimResolves]
+      workflow_data: []
+    found_by: >
+      The manual sweep (instrument C) run by the epic agent on 2026-08-24, in
+      preparation for HIS-6. Every one of these was missed by the 26-graph
+      sweep, and the reason is the same in each case: no fixture exercises the
+      condition.
+    root_cause: >
+      A DIAGNOSTIC THAT CANNOT BE TRUSTED IS WORSE THAN NO DIAGNOSTIC. Each of
+      these four is a reader answering confidently about a state it did not
+      check, and three of them are answering about the ROOT home -- the tier
+      this epic's own record says was damaged twice and the tier every other
+      reader is weakest at.
+    slice: >
+      DEF-104 -- `home verify` reports the root home clean while three of its
+      shims execute code inside the project home. `home repair` catches all
+      five paths. Same home, same minute, two answers. Plausible mechanism, to
+      be confirmed: verifyRoots frames its foreign-home question against a
+      home's SOURCE, and the root home has no parent, so the branch never runs.
+
+      DEF-105 -- the root home carries `policy.toml`, hand-written, headed
+      "guards against hostile skills", and the product reads `home.policy.toml`
+      and runs on defaults. `home policy` prints `live` whether the policy is
+      absent or merely unread. This is vacuity-ledger row 8 on a real home.
+
+      DEF-106 -- `home describe` prints a full descriptor for the project home,
+      which holds no descriptor files at all, including a gateway marked
+      (owned) that the root home also claims. `home policy` marks its defaults;
+      `home describe` does not follow that convention.
+
+      DEF-102 -- `skill-manager sync --help` runs project checks and prints a
+      project-failure banner. Help output should be pure text.
+
+      NOT IN SCOPE: the promotion path itself (HIS-22), and repairing the
+      operator's root home, which is the owner's call to make.
+    acceptance:
+      assertions:
+        - "DEF-104: verify and repair return the SAME verdict on a home with NO PARENT whose shim CONTENT names a foreign path. The regression node plants exactly that and fails when the widened check is removed."
+        - "DEF-105: the policy verb reports a legacy policy.toml sitting beside an absent home.policy.toml, rather than silently defaulting. A node plants the old filename and asserts the verb says so."
+        - "DEF-106: describe MARKS synthesised fields distinctly from recorded ones, and two homes never both report one gateway as owned."
+        - "DEF-102: --help for any verb performs no project scan, no home mutation, and exits 0."
+        - Every new assertion is vacuity-checked in writing, naming the branch it exercises and the mutation that reddens it.
+        - "ROUND 2: the graphs these nodes live in are re-run after the fix, and the result is recorded in the regression ledger against round 1."
+    goals:
+      - goal: GOAL-one-home-one-answer
+        contribution: direct
+        expected_effect: "verify and repair stop disagreeing about the root tier; describe stops inventing a fifth answer about which home owns what"
+        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+      - goal: GOAL-no-destructive-recovery
+        contribution: guard
+        expected_effect: "a home whose damage verify cannot see is a home nobody repairs; closing the gap is what makes HIS-13's detector reachable from the ordinary verb"
+        local_signal: "jbang RunTests.java"
+
+  - id: HIS-22
+    title: "the promotion path the owner asked to enforce -- project home to root home -- does not work"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: null
+    added_in_schedule_revision: 10
+    wave: 15
+    depends_on: [HIS-13, HIS-16, HIS-20]
+    blocks: [HIS-6]
+    promotion_order: 21
+    promotion_predecessor: HIS-21
+    conflict_keys:
+      production: [SyncUseCase, ProjectCommand.resolve, HomeCloseOut, ChildHomeRegistry]
+      tla: []
+      adapters: []
+      test_graph: [home-sync/ProjectToRoot, checkout-home/HomeClonedIntoProject]
+      workflow_data: []
+    found_by: >
+      The owner, 2026-08-24: "we need to be enforcing change management of the
+      root skill manager from project home. However, we should still be able to
+      update the root." The first attempt to exercise that direction by hand
+      failed immediately.
+    root_cause: >
+      NOTHING EVER EXERCISED project -> root. Every close-out gate in this epic
+      ran worktree -> project. The direction the owner wants enforced was never
+      executed by any instrument until 2026-08-24, and it failed on its first
+      run.
+    slice: >
+      DEF-103 -- one registered project's durability defect refuses EVERY unit
+      sync into the root home, naming a project unrelated to the unit being
+      synced. Six projects were registered; one had three absolutely-spelled
+      vendored links; all four unit syncs failed. THE CHECK IS CORRECT AND MUST
+      NOT BE WEAKENED -- its reasoning is HIS-19's, a path that resolves at write
+      time and not after a move. Fix the BLAST RADIUS: scope the refusal to the
+      units the failing project actually claims, or degrade an unrelated
+      project's durability finding to a warning that names the risk.
+
+      DEF-096 -- the project home never realized its own manifest.
+      skill-project.toml declares [plugins.skt] and [skills.skill-manager]; the
+      home held neither and projects/ was empty. Every worktree in this epic is
+      a clone of that home, so every ticket agent worked without the two units
+      that document the thing they were working on.
+
+      DEF-101 -- close-out cannot express "the destination can obtain this from
+      its own manifest at a published ref", so it must block on units that are
+      unmodified checkouts the destination itself declares.
+
+      AND THE SECOND HALF OF THE OWNER'S SENTENCE IS AN ACCEPTANCE ITEM, not a
+      footnote: a direct root update must still work. A design that makes the
+      enforced path work by making direct root updates impossible has failed.
+    acceptance:
+      assertions:
+        - "DEF-103: a unit sync into the root home SUCCEEDS while a registered project unrelated to that unit is durability-broken. The node registers two projects, breaks one, and syncs a unit the broken one does not claim."
+        - "DEF-103 guard: a durability defect in a project that DOES claim the unit still refuses. The check is not weakened, only scoped."
+        - "DEF-096: a project home that declares units in its manifest either holds them or says plainly that it does not. A worktree cloned from an unresolved project home is not silently short two units."
+        - "DEF-101: close-out distinguishes 'the destination lacks this and cannot get it' from 'the destination lacks this and its own manifest declares it at a published ref'."
+        - "BOTH DIRECTIONS: project -> root is enforced AND a direct root update still works. Two cases, both green, and the second fails if the first is implemented by forbidding root writes."
+        - Every new assertion is vacuity-checked in writing, naming the branch and the mutation that reddens it.
+        - "ROUND 2: re-run after the fix and record against round 1 in the regression ledger."
+    goals:
+      - goal: GOAL-one-home-one-answer
+        contribution: direct
+        expected_effect: "the promotion direction the owner asked to enforce becomes usable, and a project that claims nothing stops speaking for units it does not claim"
+        local_signal: "python skills/test_graph/scripts/run.py home-sync"
+      - goal: GOAL-no-spurious-holdback
+        contribution: guard
+        expected_effect: "scoping a refusal must not become a new hold-back: a project that DOES claim the unit still refuses"
+        local_signal: "jbang RunTests.java"
 
   - id: HIS-9
     title: "nothing refuses a write outside the home SKILL_MANAGER_HOME names -- the class behind repeated root-home damage"
@@ -4492,7 +4669,7 @@ tickets:
     added_in_schedule_revision: 4
     wave: 9
     depends_on: [HIS-9, HIS-10, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
-    blocks: [HIS-5, HIS-6, HIS-8, HIS-19, HIS-20]
+    blocks: [HIS-19, HIS-20, HIS-21, HIS-22, HIS-5, HIS-6, HIS-8]
     promotion_order: 15
     promotion_predecessor: HIS-17
     rescheduled_in_revision_5: >
@@ -4800,7 +4977,7 @@ tickets:
     added_in_schedule_revision: 7
     wave: 7
     depends_on: [HIS-9, HIS-15]
-    blocks: [HIS-13, HIS-5, HIS-6, HIS-8]
+    blocks: [HIS-13, HIS-22, HIS-5, HIS-6, HIS-8]
     promotion_order: 12
     promotion_predecessor: HIS-15
     conflict_keys:
