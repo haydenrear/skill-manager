@@ -3455,7 +3455,38 @@ tickets:
   - id: HIS-8
     title: "the derived-artifact contract is undocumented, so agents read the source and get it wrong"
     phase: HIS
-    status: planned
+    status: delivered
+    delivered_in: >
+      PR #248, merged into epic/home-integrity-sync. The DELIVERABLE IS IN FOUR
+      OTHER REPOSITORIES and is NOT carried by this branch -- the epic's PR
+      carries nothing from a gitignored home. Published as open PRs, none
+      merged, all based on main:
+        skt                 skill-publisher-skill#34    9a2371a
+        skill-manager       skill-manager-skill#4       66dd000
+        git-issue-workflow  git-issue-workflow-skill#23 f68b03b
+        git-epic-workflow   git-epic-skill#16           fdb2fb4
+      Every SHA verified against its live remote by the epic agent at merge.
+      UNTIL THOSE FOUR MERGE AND ARE SYNCED, the real root home still measures
+      0 of 4 -- HIS-6 must state which corpus each coverage number came from.
+    delivery_note: >
+      Review returned no blockers and the prose survived hard attack: of ~two
+      dozen falsifiable claims a reviewer could execute, one did not manifest.
+      In one place the page CORRECTS its source -- skt's own docstring says
+      `rebuildable` means "stale, on disk", but the code keys on `materialized`.
+      Judged read 0/3 -> 3/3, then re-judged twice more on the shipped bytes.
+
+      THREE INSTANCES OF ONE SHAPE, all in this ticket, all self-caught by
+      running a control rather than by reading the artefact: a sweep whose
+      `grep -E` pattern contained a literal `\|` and returned confident
+      all-zeros; a clause-1 metric that scored a routing pointer as an
+      explainer; and A FABRICATED COMMIT SHA in a PR comment, expanded from a
+      short hash by inventing 33 characters. The agent corrected the last in a
+      follow-up comment rather than editing it away, on the grounds that a
+      well-formed SHA looks equally authoritative whether or not the object
+      exists. All 15 forty-hex SHAs in the evidence were then resolved with
+      `git rev-parse --verify`. The vacuity ledger's mechanism C was widened
+      from probes to INSTRUMENTS on the strength of it: an output that carries
+      no way to detect its own invalidity.
     epic: home-integrity-sync
     github_issue: 224
     added_in_schedule_revision: 3
