@@ -5490,8 +5490,23 @@ findings:
       different question -- "does any shim's content name a path inside another
       home" -- and does not depend on there being a parent.
 
-      IF THAT MECHANISM IS RIGHT, `home verify` IS WEAKEST EXACTLY AT THE ROOT
-      TIER, which is the tier that keeps taking the damage.
+      THAT MECHANISM WAS WRONG, and HIS-21 measured it wrong before building to
+      it. On the pre-fix tree, two throwaway homes, A holding a wrapper execing
+      into B:
+
+        home verify --home A               -> exit 0
+        home verify --home A --against C   -> exit 0    <- a SOURCE, still blind
+        home repair --home A               -> 1 finding
+        the same target as a SYMLINK       -> exit 1  FOREIGN_HOME
+
+      So it is NOT about the tier and NOT about having a parent. THE QUESTION
+      WAS ASKED ONLY OF SYMLINKS. A regular-file wrapper naming another home was
+      invisible at EVERY tier, parent or no parent.
+
+      This mattered: the mechanism as filed implies the fix "run the branch when
+      srcRoot == null", and that branch ALREADY RAN. Building to the filed
+      mechanism would have shipped green tests and left the defect. The entry is
+      kept as written above so the wrong inference stays visible.
     consequence: >
       RELEASE-RELEVANT. An operator whose project home is deleted, moved or
       renamed loses three ROOT-tier CLIs with no warning, and `home verify` will
@@ -5543,11 +5558,34 @@ findings:
       It does print "(absent -- live by default)". It does NOT say "there is a
       `policy.toml` in this directory and you probably meant that one." A
       one-line hint would have closed this the first time anybody ran the verb.
+    correction_2026_08_24: >
+      THE PREMISE OF THIS ENTRY IS FALSE. HIS-21 measured it false and the epic
+      agent confirmed it independently:
+
+        $ SKILL_MANAGER_HOME=~/.skill-manager skill-manager policy show
+        policy file:          /Users/hayde/.skill-manager/policy.toml
+        allowed_backends:     [brew, npm, tar, pip, skill-script]
+        require_hash:         false
+        allow_init_scripts:   true
+
+      THE PRODUCT READS `policy.toml`. The operator's settings are IN EFFECT.
+      There is no unread security policy and no home silently running on
+      defaults. The entry said otherwise and the epic agent reported it to the
+      owner as a security finding. That was wrong.
+
+      WHAT IS ACTUALLY TRUE, and it is a real but much milder defect: there are
+      TWO live policy files with confusingly similar names, read by TWO
+      different verbs, and NEITHER NAMES THE OTHER.
+        policy.toml       the INSTALL / SECURITY policy   -> `policy show`
+        home.policy.toml  the LIVE / FROZEN home policy   -> `home policy`
+      `home policy` reports "(absent -- live by default)" about
+      home.policy.toml, which is correct, and says nothing about the
+      policy.toml sitting beside it. A reader who runs only `home policy`
+      concludes the home has no policy at all. That is what the epic agent did.
     consequence: >
-      SECURITY POSTURE, and release-relevant. Any operator who wrote a policy
-      before the rename has an inert file and a home running on defaults, with
-      no warning. `require_hash = false` and the backend allow-list are exactly
-      the settings a cautious operator would have edited by hand.
+      DOWNGRADED from "security posture" to "two verbs, two files, neither names
+      the other". The confusion is real and cost a false alarm; the settings are
+      live.
     owed_check: >
       (a) `home policy` warns when a legacy `policy.toml` is present beside an
       absent `home.policy.toml`; (b) a graph node that plants the OLD filename
@@ -5630,13 +5668,21 @@ findings:
 
       The law's rule is "a unit present with no installed record is a unit
       nobody installed." That is exactly what a staged fixture looks like.
-    the_deeper_defect: >
-      `HomeMembershipLaw.SPEC` declares NO `dependsOn`. It is an unordered
-      assertion node, so the runner schedules it wherever it likes -- in these
-      runs, third, after the fixture staged units and BEFORE any sync executed.
-      A post-condition that can run mid-scenario is measuring an intermediate
-      state and calling it final. Same family as DEF-048: "a post-condition that
-      runs once cannot hold a snapshot of a home it never saw at the start."
+    the_deeper_defect_WITHDRAWN: >
+      THIS PARAGRAPH WAS WRONG. It claimed the law declares no `dependsOn` and
+      therefore ran mid-scenario. HIS-21 measured otherwise: `home-sync` wires
+      the law WITH a `dependsOn` and ran it [19/19] -- DEAD LAST -- and all 23
+      wirings declare a predecessor. The entry's own quoted output contradicts
+      its sentence: `hs-delta` reaches the PROJECT home only via a sync, so the
+      law cannot have run before the syncs.
+
+      A SPEC-level `dependsOn` is also unimplementable: the predecessor differs
+      per graph.
+
+      The epic agent inferred the ordering from the report's row order rather
+      than from the wiring. The FINDING stands -- the law flags deliberate
+      fixture staging -- but the mechanism was invented. Kept visible rather
+      than rewritten.
     why_nothing_caught_it_until_now: >
       HIS-16 added the law in wave 7. The last `home-sync` run before today was
       the wave-5 sweep on 2026-08-22, which PREDATES the law. So the law has

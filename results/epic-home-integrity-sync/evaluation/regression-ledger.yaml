@@ -321,3 +321,40 @@ findings:
       sweep is a number nobody can read.
     status: open
 
+# ---------------------------------------------------------------------------
+# WHAT ROUND 1 GOT WRONG, and it is the most important line in this file.
+#
+# Instrument C (the epic agent driving skt/skill-manager by hand) produced SIX
+# findings. Every SYMPTOM was real and reproducible. FOUR OF THE DIAGNOSES WERE
+# WRONG, and all four were falsified by a ticket agent BEFORE it wrote code:
+#
+#   DEF-103  "a project unrelated to the unit"      -> meta-harness CLAIMS all
+#                                                      four units; the refusal
+#                                                      was already unit-scoped,
+#                                                      and the prescribed fix
+#                                                      had shipped in #144
+#   DEF-104  "verify is blind at the ROOT tier"     -> blind at EVERY tier; the
+#                                                      question was only ever
+#                                                      asked of SYMLINKS
+#   DEF-105  "an unread security policy"            -> `policy.toml` IS read by
+#                                                      `policy show`; the
+#                                                      settings are live
+#   DEF-107  "the law declares no dependsOn"        -> it does, and ran DEAD
+#                                                      LAST, 19 of 19
+#
+# THE PATTERN: a hand-driven sweep sees WHAT failed. It does not see WHY, and
+# the epic agent supplied a mechanism from inference each time -- from row
+# order, from a filename, from which tier was in front of it. Two of the four
+# would have produced VACUOUS acceptance criteria if a ticket agent had built
+# to them; DEF-103's was built and stayed green with the whole fix reverted.
+#
+# This is mechanism C from the vacuity ledger, one level up from a probe: not
+# "the mutation never reached the code" but "the SPECIFICATION never reached
+# the defect". It has no ledger row yet and it should have one.
+#
+# FOR THE SCORECARD: C's yield is high and its diagnoses are not evidence.
+# A C finding is a SYMPTOM REPORT. It earns acceptance text only after a
+# confirming read of the code -- which is exactly what the ticket agents did,
+# and why every one of these was caught before it cost anything.
+# ---------------------------------------------------------------------------
+
