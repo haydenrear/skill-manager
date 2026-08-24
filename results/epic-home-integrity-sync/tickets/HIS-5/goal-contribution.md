@@ -517,10 +517,22 @@ it.
 fallback `java -cp "$TLA2TOOLS_JAR"`, so the whole change is three lines of
 workflow:
 
-| measured, CI-shaped (`env -i`, no `tlc2` on PATH) | result |
+| measured, CI-shaped locally (`env -i`, no `tlc2` on PATH) | result |
 | --- | --- |
 | without the jar | **34 passed, 18 skipped** |
 | with `TLA2TOOLS_JAR` set | **52 passed, 0 skipped**, ~18 s |
+
+**And then measured on the real runner, which is the number that decides it:**
+
+| GitHub Actions `unit-tests` | spec suites | whole job |
+| --- | --- | --- |
+| before (run `32685766836`) | `34 passed, 18 skipped in 2.55s` | 105 s |
+| **after** (run `32686231779`) | **`52 passed in 25.54s`** — 0 skipped | **120 s** |
+
+**The 18 invariants that were skipping now run on every push and pull request,
+for +15 seconds on a 105-second job.** The fetch step itself is sub-second
+(start and end stamps are the same), and its log line is `tla2tools.jar: OK` —
+the digest check, passing.
 
 `ci.yml`'s `unit-tests` job now fetches `tla2tools.jar` v1.7.4, **verifies its
 SHA-256**, exports `TLA2TOOLS_JAR`, and runs the spec suites with
@@ -548,20 +560,29 @@ same command shape over the same corpus. The cross-check sweep in particular
 fourteen greens are a measurement and not a pattern that cannot match. A sweep
 that cannot fail is the same defect as an assertion that cannot fail.
 
-**And the mechanism kept happening, four times in two days, to four different
+**And the mechanism kept happening — five times in two days, to four different
 readers.** HIS-8's `grep -E` carried a literal `\|` and returned a confident
-all-zeros. The reviewer of this PR had its first cross-check show 14 *reds*
-because zsh does not word-split an unquoted `$ALL`, so the target was never
-removed — it caught that itself and said so. And while finishing these
-corrections I wrote a wait-loop for the two long suites whose pattern was
-`FAILED`, which matched `[PASS] … AGENT_SYNC_FAILED` and returned "done" while
-both suites were still running.
+all-zeros. This ticket's own subject: a cfg can refute a *neighbour* and read
+identically in every transcript. The reviewer of this PR had its first
+cross-check show 14 *reds* because zsh does not word-split an unquoted `$ALL` —
+it caught that itself and said so. While finishing these corrections I wrote a
+wait-loop whose pattern `FAILED` matched `[PASS] … AGENT_SYNC_FAILED` and
+returned "done" with both suites still running. **And then, waiting on the very
+CI run that closes DEF-087, I wrote
+`gh pr checks | grep 'unit tests' | awk '{print $2}'` — the check's NAME contains
+spaces, so `$2` was `unit`, never the status, and the loop's condition could not
+be false.** It exited immediately, twice.
 
-Three of those four were caught only because the result was *implausible* — all
-zeros, all reds, done-too-soon. **None was caught by a check.** That is the
-argument for §3(d) existing at all: the one countermeasure in this ticket that
-does not depend on a human finding the number surprising is the test that
-asserts the invariant TLC named.
+**Four of those five were caught only because the result was implausible** — all
+zeros, all reds, done-too-soon, done-too-soon-again. **None was caught by a
+check.**
+
+The fifth happened *after* the fourth was written down, in the same session, to
+the author who wrote it — the same shape as vacuity-ledger row 12, mechanism D
+recurring one ticket after being named. That is the argument for §3(d) and §3(e)
+existing at all, and the common repair in both cases was structural rather than
+attentional: **ask the tool for typed output** — `gh pr checks --json`, and TLC's
+named invariant asserted by a test — **instead of parsing its prose.**
 
 ---
 
@@ -729,8 +750,8 @@ suite genuinely ran inside it** — read for the case count, not the colour.
 
 | runner measurement | result |
 | --- | --- |
-| **before** the jar step (PR #249, first push) | `34 passed, 18 skipped in 2.55s` — exactly the number the local `env -i` simulation predicted |
-| **after** the jar step | see the run linked in the PR — the number, not the colour |
+| **before** the jar step (run `32685766836`) | `34 passed, 18 skipped in 2.55s` — exactly the number the local `env -i` simulation predicted |
+| **after** the jar step (run `32686231779`) | **`52 passed in 25.54s`, 0 skipped**, with `tla2tools.jar: OK` from the digest check |
 
 **Checking that the job passed would not have shown either of these.** A suite
 that fails to collect at all also reports no failures, so the pass/fail signal

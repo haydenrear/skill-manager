@@ -56,14 +56,24 @@ looking for* — occurred **four times in two days, to four different readers**:
 | 2 | HIS-5 | the expected-violation cfgs themselves | a cfg can refute a **neighbour** and read identically in every transcript (row 15) |
 | 3 | reviewer of #249 | `zsh` not word-splitting an unquoted `$ALL` | the target was never removed; **all-reds** |
 | 4 | HIS-5 | a wait-loop grepping `FAILED` | matched `[PASS] … AGENT_SYNC_FAILED` and reported **"done" with both suites still running** |
+| 5 | HIS-5 | `gh pr checks \| awk '{print $2}'` | the check's NAME contains spaces, so `$2` was `unit`, never the status — the until-loop's condition **could not be false** and it exited immediately, twice |
 
-**Three of the four were caught only because the result was *implausible* — all
-zeros, all reds, done-too-soon. None of them was caught by a check.** That is
-precisely why row 15's countermeasure had to be built inside the ticket rather
-than filed to the backlog: an enumerated list of ways instruments lie is itself
-an enumerated list, and this epic's founding observation is that nobody re-reads
-those. The only countermeasure here that does not depend on a human finding a
-number surprising is the test that asserts *which* invariant TLC named.
+**Four of the five were caught only because the result was *implausible* — all
+zeros, all reds, done-too-soon, done-too-soon-again. None of them was caught by
+a check.** That is precisely why row 15's countermeasure had to be built inside
+the ticket rather than filed to the backlog: an enumerated list of ways
+instruments lie is itself an enumerated list, and this epic's founding
+observation is that nobody re-reads those. The only countermeasure here that
+does not depend on a human finding a number surprising is the test that asserts
+*which* invariant TLC named.
+
+**Row 5 happened AFTER row 4 was written down, in the same session, to the
+author who wrote it.** That is the same shape as row 12 — mechanism D recurring
+one ticket after being named — and it is the sharpest available evidence for the
+ledger's own standing conclusion: **writing a mechanism down does not prevent
+it.** The fix in both cases was structural rather than attentional: ask the tool
+for typed output (`gh pr checks --json`, `tlc2`'s named invariant) instead of
+parsing its prose.
 
 **Rows 12 and 13 are the more useful pair, and they should be read together.**
 Both are HIS-13's, the ticket that shipped the epic's only *repairer*, written
