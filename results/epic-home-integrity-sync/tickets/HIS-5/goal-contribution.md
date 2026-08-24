@@ -501,11 +501,43 @@ Two things were done about that rather than leaving it implicit.
 `specs/current/spec_manifest.yaml` **gained the tables**, because the tree CI
 actually collects had no declaration of what its own configurations are for —
 my own guard caught that within a minute of the mirror landing. And
-`SPEC_REQUIRE_TLC=1` turns the skip into a **failure**, which the local
-pre-merge signal sets, so a skip is a gap that says so rather than an unbroken
-row of dots. The residue — `tla2tools.jar` on the runner, a workflow change with
-a network fetch in it — is narrowed in DEF-087 and left to whoever owns CI
-policy.
+`SPEC_REQUIRE_TLC=1` turns the skip into a **failure**, so a skip is a gap that
+says so rather than an unbroken row of dots.
+
+**Then the residue was closed rather than deferred — §3(e).**
+
+### (e) DEF-087 closed: the invariants are now enforced in CI, not just the bookkeeping
+
+I first wrote the `tlc2`-on-the-runner half up as residue for whoever owns CI
+policy. That was wrong, and the epic owner sent it back with the right
+instruction: *decide it on a number, not an assumption.* The number said close
+it.
+
+**It is a jar download, not a skill install.** `run_tlc.sh` already carried the
+fallback `java -cp "$TLA2TOOLS_JAR"`, so the whole change is three lines of
+workflow:
+
+| measured, CI-shaped (`env -i`, no `tlc2` on PATH) | result |
+| --- | --- |
+| without the jar | **34 passed, 18 skipped** |
+| with `TLA2TOOLS_JAR` set | **52 passed, 0 skipped**, ~18 s |
+
+`ci.yml`'s `unit-tests` job now fetches `tla2tools.jar` v1.7.4, **verifies its
+SHA-256**, exports `TLA2TOOLS_JAR`, and runs the spec suites with
+`SPEC_REQUIRE_TLC=1` so a lost jar **fails** instead of skipping.
+
+**The pinned digest is not decoration.** `936a2620…` is byte-identical to the
+jar `spec-double-compiler` installs locally — I downloaded the release and
+compared, same 2,274,532 bytes and same digest. So a green CI run and a green
+local run are the **same model checker**, not two that happen to agree.
+
+**Ordering.** `Set up JDK 21` was hoisted above the spec suites, because TLC is
+a jar. JBang and Maven resolution still run after, so the step's stated intent —
+*a broken spec model is reported before the runner spends minutes resolving
+Maven artifacts* — is preserved. Its claim that *"both suites finish in well
+under a second"* is now false (the TLC half adds ~18 s) and was **corrected in
+the comment rather than left standing**; 18 seconds is still far less than Maven
+resolution, so the argument survives its number changing.
 
 **Validating the instrument before believing it (HIS-8's lesson).** The
 classifier is one `grep -E "^Error: Invariant|No error has been found"`. It was
@@ -609,9 +641,11 @@ the one terminal sweep — owner's instruction, recorded in the assignment block
 
 1. **That nine invariants over a model is worth what it costs.** This ticket
    added 18 variables and 24,000 states to a view nothing executes against the
-   product. **The enforcement half is now real** — §3(d) — but only structurally
-   in CI; the model-checking half runs locally. HIS-6 should decide whether
-   `tla2tools.jar` belongs on the runner.
+   product. **The enforcement half is now real and runs in CI** — §3(d) and
+   §3(e); DEF-087 is closed, not deferred. What remains true is that these are
+   statements about a MODEL: if the model and the product drift, the suite stays
+   green. The `home-integrity` graph is the only thing checking these relations
+   against real homes, and this ticket did not extend it.
 2. **The HIS-11 omission** — upheld at review, with my citation corrected. §4.
 3. **Invariant 11's fidelity.** `hi_store_write = hi_agent_write` is a two-state
    model of a contract HIS-14 delivered across **twelve** verbs — v1 said seven,
@@ -664,6 +698,12 @@ the one terminal sweep — owner's instruction, recorded in the assignment block
 
 ## 7. CI on this PR, read rather than assumed
 
+**Both answered by the epic owner.** `Lint PR title`: *keep* `feat(HIS-5): …` —
+nothing downstream depends on the bare `HIS-N:` shape, and the original
+instruction described a past failure whose title began with a digit. `DCO`:
+leave it red — it is a legal attestation, it fails on every PR in this epic, and
+the owner carries it as a known disclosed state on the epic PR.
+
 `Lint PR title` was RED and is now green. The title carried no
 conventional-commit type prefix at all, so
 `amannn/action-semantic-pull-request`'s `headerPattern` failed before its
@@ -685,13 +725,16 @@ Escalated rather than silently satisfied.
 The rest: `Lint release signal for rebase merge` pass, GitGuardian pass, graph
 jobs `skipping` (expected — suspended on push and PR, per CLAUDE.md), and
 `skill-manager unit tests (RunTests.java + spec models)` **passed, and §3(d)'s
-suite genuinely ran inside it** — the job log reads `34 passed, 18 skipped in
-2.55s`, exactly the number the local `env -i` simulation predicted. So the split
-is confirmed on the real runner rather than merely modelled: the six structural
-checks execute on every push and pull request, and the eighteen model-checking
-cases skip there for want of `tlc2`. That is DEF-087's residue, measured on the
-machine it applies to.
+suite genuinely ran inside it** — read for the case count, not the colour.
 
-**Checking that the job passed would not have shown this.** A suite that failed
-to collect at all also reports no failures — so the log was read for the case
-count, not the colour.
+| runner measurement | result |
+| --- | --- |
+| **before** the jar step (PR #249, first push) | `34 passed, 18 skipped in 2.55s` — exactly the number the local `env -i` simulation predicted |
+| **after** the jar step | see the run linked in the PR — the number, not the colour |
+
+**Checking that the job passed would not have shown either of these.** A suite
+that fails to collect at all also reports no failures, so the pass/fail signal
+cannot distinguish "18 invariants enforced" from "18 invariants skipped" from
+"the file was never imported". That is the same defect this whole ticket is
+about, sitting in the harness rather than in the model — which is why the count
+is quoted from the log every time.

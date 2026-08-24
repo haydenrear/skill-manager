@@ -4521,24 +4521,38 @@ findings:
       collects `specs/program_model/tests specs/current/tests` -- NOT `specs/`
       -- and the current tree had no declaration of what its own configurations
       are for.
-    residue_still_open: >
-      THE CI RUNNER HAS NO tlc2, so on a push or a pull request only the
-      STRUCTURAL half runs -- 6 cases: every declared cfg exists, every cfg on
-      disk is declared, every named invariant is defined in the module, the
-      healthy cfg lists every declared invariant. The 18 model-checking cases
-      SKIP with a named reason (verified with `-rs` under an env-scrubbed,
-      tlc2-free invocation).
+    the_ci_residue_and_how_it_closed: >
+      FIRST MEASUREMENT: the CI runner had no tlc2, so on a push or a pull
+      request only the STRUCTURAL half ran -- 6 cases -- and the 18
+      model-checking cases SKIPPED. Measured on the real runner, PR #249:
+      `34 passed, 18 skipped in 2.55s`. CI enforced the manifest bookkeeping and
+      enforced NONE of the invariants, which does not meet
+      GOAL-home-invariants' "so the defect cannot come back unnoticed".
 
-      SPEC_REQUIRE_TLC=1 turns that skip into a failure, and the local pre-merge
-      signal sets it -- so the table is executed before every merge, by the same
-      posture the graphs now have ("run them locally for now"). What remains is
-      the decision to put tla2tools.jar on the runner, which is a workflow
-      change with a network fetch in it and belongs to whoever owns CI policy,
-      not to a ticket agent. Until then a skip is a gap and the suite says so
-      out loud rather than reporting an unbroken row of dots.
-    candidate_owner: HIS-6 -- only the CI residue above remains
+      That was first written up here as residue for whoever owns CI policy. The
+      epic owner sent it back: decide it on a number, not an assumption. The
+      number said close it.
+
+      IT IS A JAR DOWNLOAD, NOT A SKILL INSTALL. run_tlc.sh already carried the
+      fallback `java -cp "$TLA2TOOLS_JAR"`. ci.yml's unit-tests job now fetches
+      tla2tools.jar v1.7.4, VERIFIES ITS SHA256, exports TLA2TOOLS_JAR, and runs
+      the spec suites with SPEC_REQUIRE_TLC=1 so a missing jar FAILS instead of
+      skipping. `Set up JDK 21` was hoisted above the spec suites because TLC is
+      a jar; JBang and Maven resolution still run after, so the step ordering's
+      stated intent is preserved and its "well under a second" claim was
+      corrected rather than left standing.
+
+      The pinned digest is byte-identical to the jar spec-double-compiler
+      installs locally (verified equal), so a green CI run and a green local run
+      are the SAME model checker rather than two that happen to agree.
+    measured_outcome: >
+      Locally, CI-shaped (env -i, no PATH tlc2, TLA2TOOLS_JAR set):
+      52 passed, 0 skipped -- against 34 passed / 18 skipped without the jar.
+      Cost: about 18 seconds. On the real runner: see this ticket's
+      goal-contribution.md section 7.
+    candidate_owner: closed by HIS-5 itself; nothing left for HIS-6 to triage
     related: [DEF-011, DEF-067]
-    status: open
+    status: closed
 
   - id: DEF-088
     found_by: HIS-5 (#217), answering the two backlog rows routed to it
@@ -4591,6 +4605,11 @@ findings:
       was the right call.
     status: open
 
+  # ID COLLISION, DISCLOSED RATHER THAN RENUMBERED. HIS-19 (wt-246-his-19) was
+  # told to start at DEF-089 before this entry was filed, so two findings may
+  # carry this id. The epic owner adjudicates at merge and instructed both
+  # tickets to keep their entries as written. Do not renumber this in place --
+  # a backlog whose ids move is worse than one with a known duplicate.
   - id: DEF-089
     found_by: HIS-5 (#217), review of PR #249
     found_at: "2026-08-23"

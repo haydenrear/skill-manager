@@ -41,9 +41,29 @@ the finding — and row 11 was the first one no existing mechanism described.
 same pull request**, and that is the only reason it is worth more than a count.
 Every other row above is enforced by care. Row 15's is enforced by
 `specs/*/tests/test_tlc_expected_violations.py`, which asserts the invariant TLC
-NAMES is the one the manifest declared, runs in `uv run pytest specs/`, and was
-proved to discriminate by pointing a row at a neighbour and watching it go red.
-See "What is already mechanised" below, where it is now the fourth entry.
+NAMES is the one the manifest declared, runs in CI on every push and pull
+request, and was proved to discriminate by pointing a row at a neighbour and
+watching it go red. See "What is already mechanised" below, where it is now the
+fourth entry.
+
+**AND HERE IS THE ARGUMENT FOR MECHANISING IT AT ALL, which is stronger than the
+row.** The same shape — *a search or a wait that cannot report what it was
+looking for* — occurred **four times in two days, to four different readers**:
+
+| | who | the instrument | what it did |
+| --- | --- | --- | --- |
+| 1 | HIS-8 | `grep -E` with a literal `\|` | searched for a string that cannot occur; confident **all-zeros** |
+| 2 | HIS-5 | the expected-violation cfgs themselves | a cfg can refute a **neighbour** and read identically in every transcript (row 15) |
+| 3 | reviewer of #249 | `zsh` not word-splitting an unquoted `$ALL` | the target was never removed; **all-reds** |
+| 4 | HIS-5 | a wait-loop grepping `FAILED` | matched `[PASS] … AGENT_SYNC_FAILED` and reported **"done" with both suites still running** |
+
+**Three of the four were caught only because the result was *implausible* — all
+zeros, all reds, done-too-soon. None of them was caught by a check.** That is
+precisely why row 15's countermeasure had to be built inside the ticket rather
+than filed to the backlog: an enumerated list of ways instruments lie is itself
+an enumerated list, and this epic's founding observation is that nobody re-reads
+those. The only countermeasure here that does not depend on a human finding a
+number surprising is the test that asserts *which* invariant TLC named.
 
 **Rows 12 and 13 are the more useful pair, and they should be read together.**
 Both are HIS-13's, the ticket that shipped the epic's only *repairer*, written
