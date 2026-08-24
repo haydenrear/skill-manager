@@ -1,6 +1,6 @@
 # Vacuity ledger — every assertion this epic caught passing against broken code
 
-**Tracked for HIS-6.** Eighteen instances, four mechanisms. The owner's
+**Tracked for HIS-6.** Twenty instances, four mechanisms. The owner's
 instruction at the wave-6 status review:
 
 > *"Each of them should have updated assertions so that the test graph catches. It's
@@ -13,7 +13,7 @@ whether it exists yet.
 
 ---
 
-## The eighteen instances
+## The twenty instances
 
 | # | ticket | what happened | caught by |
 | --- | --- | --- | --- |
@@ -35,9 +35,11 @@ whether it exists yet.
 | 16 | HIS-19 | the probe for the **version gate** pointed `PATH` at the keg's own `bin/`, whose `skill-manager` **is** the located path — so the candidate was refused by the *identity* gate one line earlier and the version gate never ran. Green, and about nothing. Mechanism **D**, in the ticket whose brief said in bold that D was the one most likely to catch it | author |
 | 17 | HIS-19 | `transcript.sh`'s pin-rewriting instrument failed to compile its regex; the script ran under `set -u` without `-e`, carried on, and printed **"the two homes are indistinguishable … both exit 0"**. Both sentences were true of a fixture that had never been made. Mechanism **C**/row-14 in a third medium — not a mutation, not a search, but a **fixture that never reached the disk** | author |
 | 18 | HIS-19 | **a javadoc claiming "four separately-decided gates, each with its own control" over two branches that are VERDICT-NEUTRAL.** The identity gate and the unresolvable-located short-circuit could each be deleted with the suite fully green — and the probe *named after one of them* passed with it removed, because its fixture used an empty `PATH` and could never have distinguished. Mechanism **D** again, and the third instance in ONE ticket | **reviewer** |
+| 19 | HIS-20 | **an arm that never ran, while BOTH ITS POSITIVE CONTROLS WERE GREEN.** The DEF-098 replication passed `--home` to `skill-manager home clone`, which takes `--from`. The arm exited **2**, produced **zero files**, and still printed `C delta = -13.7 MB` — a number that reads as *better than clonefile*, the most favourable possible result. The clonefile control and the true-copy control both fired correctly in that same run and separated by 267x, so **control health said the instrument was sound and it was: the instrument was fine and the ARM was void.** Mechanism **C** in a fourth medium — not a mutation, not a search, not a fixture, but a **measurement arm that never reached the subject**. See the lesson below | author |
+| 20 | HIS-20 | the sweep for dangling defect ids used `grep DEF-0`, **which cannot match `DEF-101`** — a search one character narrower than the corpus it was trusted to decide. It reported four bad references; there were **nine**, five of them in transcript grader notes carrying an unreconciled earlier numbering. Mechanism **C**, and the same shape as row 14 one layer up: this epic's founding defect (a pointer that is false and dangling) reproduced *inside the bookkeeping that reports it* | **reviewer**, extent by author |
 
-**Twelve of eighteen were caught by the ticket's own author**, six by a reviewer
-or the epic agent. That ratio is the process working. The rate not falling is
+**Thirteen of twenty were caught by the ticket's own author**, seven by a
+reviewer or the epic agent. That ratio is the process working. The rate not falling is
 the finding — and row 11 was the first one no existing mechanism described.
 
 **Row 15 is the first row that arrived with its countermeasure mechanised in the
@@ -51,7 +53,7 @@ fourth entry.
 
 **AND HERE IS THE ARGUMENT FOR MECHANISING IT AT ALL, which is stronger than the
 row.** The same shape — *a search or a wait that cannot report what it was
-looking for* — occurred **four times in two days, to four different readers**:
+looking for* — has now occurred **eight times, to seven different readers**:
 
 | | who | the instrument | what it did |
 | --- | --- | --- | --- |
@@ -60,10 +62,52 @@ looking for* — occurred **four times in two days, to four different readers**:
 | 3 | reviewer of #249 | `zsh` not word-splitting an unquoted `$ALL` | the target was never removed; **all-reds** |
 | 4 | HIS-5 | a wait-loop grepping `FAILED` | matched `[PASS] … AGENT_SYNC_FAILED` and reported **"done" with both suites still running** |
 | 5 | HIS-5 | `gh pr checks \| awk '{print $2}'` | the check's NAME contains spaces, so `$2` was `unit`, never the status — the until-loop's condition **could not be false** and it exited immediately, twice |
+| 6 | HIS-20 | `home clone --home` where the flag is `--from` | the arm exited 2 and produced **zero files**, and still printed `C delta = -13.7 MB` — better than clonefile. **Both positive controls were green in that same run** (row 19) |
+| 7 | HIS-20 | `grep DEF-0`, which cannot match `DEF-101` | a search one character narrower than the corpus it decided; reported four bad references where there were nine (row 20) |
+| 8 | reviewer of #251 | `zsh` not word-splitting, again | its own first sweep returned confident **all-zeros**; it caught itself and then **backed every subsequent zero with a positive control**. Reported by the epic agent from that review's containment section |
 
-**Four of the five were caught only because the result was *implausible* — all
-zeros, all reds, done-too-soon, done-too-soon-again. None of them was caught by
-a check.** That is precisely why row 15's countermeasure had to be built inside
+**Five of the eight were caught only because the result was *implausible* — all
+zeros, all reds, done-too-soon, done-too-soon-again, all-zeros-again.**
+
+Note rows 3 and 8: **the same `zsh` word-splitting failure, to two different
+reviewers, ten tickets apart.** It is written down in this file and it happened
+again anyway — the ledger's own standing conclusion about itself.
+
+**Row 6 is the first one in this ledger caught BY A CHECK**, and it is the only
+reason it belongs in the argument rather than the anecdotes. The probe printed a
+per-arm output count beside every delta, so `armC: 0 files` sat directly under
+`C delta = -13.7 MB`. The implausible number and the check agreed, but only the
+check was unambiguous — a negative free-space delta is explicable as measurement
+noise on a live filesystem, and would have been explained away.
+
+**And row 6 is the reason the countermeasure is not "add controls".** This epic
+has been writing that prescription since row 14. Row 6 had two positive
+controls, they were correct, they separated by **267x**, and they said nothing
+about the defect, because:
+
+> ### Controls verify the INSTRUMENT. They do not verify the ARM.
+>
+> A control proves the measuring apparatus can tell A from B. It cannot prove
+> that the arm you care about was ever applied to the subject. A run can be
+> simultaneously **well-controlled and void**, and it will not look suspicious —
+> it will look rigorous.
+
+The countermeasure that would have caught row 6 is not another control. It is
+requiring **every arm to emit a positive assertion that it did work at all** —
+files written, rows returned, exit 0 — and refusing to print its measurement
+otherwise. The re-run does exactly that: it aborts with `!! ARM C VOID —
+refusing to report a delta for it` when an arm produces fewer than 1000 files.
+That is the shape to generalise, and it is cheap: one line per arm.
+
+**Rows 6 and 8 are the ledger's own argument turning on itself.** Row 6 was
+caught by a check its author had built; row 8's reviewer caught itself and then
+hardened every later zero with a control. Both are the process working. But row
+7 shows the reach of a check is bounded by whoever wrote it — a sweep for
+dangling ids that could not see the ids it was written the same hour to find —
+and rows 3 and 8 are the *same* `zsh` failure ten tickets apart, in a file that
+names it. So the count not falling remains the finding.
+
+That is precisely why row 15's countermeasure had to be built inside
 the ticket rather than filed to the backlog: an enumerated list of ways
 instruments lie is itself an enumerated list, and this epic's founding
 observation is that nobody re-reads those. The only countermeasure here that
