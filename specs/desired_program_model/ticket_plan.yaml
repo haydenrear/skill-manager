@@ -1,7 +1,7 @@
 # Desired program model + ticket plan for the child-home materialization epic.
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
-schedule_revision: 8
+schedule_revision: 9
 name: child-home-materialization-workflow
 updated: "2026-08-07"
 purpose: >
@@ -810,6 +810,79 @@ epic_goals:
       GOAL-no-spurious-holdback's fixture, which must not regress.
     evaluation_ticket: HIS-6
     evidence_root: results/epic-home-integrity-sync/goals/GOAL-no-destructive-recovery
+
+  # ---------------------------------------------------------------- rev 9 ---
+  # Added in schedule revision 9, at the owner's instruction after reading the
+  # epic PR: "deploy a few small agents to make sure the progressive disclosure
+  # is good for root home -> project home -> worktree home, and then worktree
+  # home -> project home -> root home. Also for managing change in all skills
+  # with github."
+  #
+  # It is a NEW goal rather than a clause on GOAL-mechanism-documented because
+  # that goal asks whether ONE contract is written down once. This one asks
+  # whether an agent standing at a TIER can get what it needs by following what
+  # is in front of it -- a different question, with a different failure mode,
+  # and one this epic has evidence about.
+
+  - id: GOAL-progressive-disclosure
+    kind: quality
+    statement: >
+      An agent dropped at any tier -- root home, project home, worktree home --
+      finds what it needs by following what is in front of it, in BOTH
+      directions: DOWNWARD (root -> project -> worktree), which is how work is
+      handed out, and UPWARD (worktree -> project -> root), which is how work is
+      handed back. And from any tier it can find out how a change to any skill
+      reaches its GitHub repository.
+    metric: >
+      (a) judged reads -- one fresh agent per tier per direction, given NO
+      repository access beyond what that tier's home puts in front of it,
+      answering a fixed question set; scored correct / partial / wrong per
+      question.
+      (b) the count of questions whose correct answer required reading SOURCE
+      rather than documentation.
+      (c) for change management: whether an agent can name, for each installed
+      change-managed unit, the command that publishes a local edit to that
+      unit's GitHub repository and the tier it must run it from.
+    harness: >
+      A judged read, run by HIS-20: small agents, one per (tier, direction),
+      each with its home pinned and no access to this repository's source. Their
+      transcripts and answers are recorded under the evidence root beside the
+      score. This is a judged read of a handful of agents, not a statistic --
+      report it as such, the way GOAL-mechanism-documented's clause 2 is
+      reported.
+    baseline:
+      value: >
+        NOT YET MEASURED. HIS-20 must measure it BEFORE it changes any
+        documentation, and record the before-transcripts -- the same discipline
+        HIS-4 was held to when it was told to redden its node before fixing.
+
+        What predicts it, from this epic's own record, is not encouraging and is
+        the reason the goal exists. Every ticket agent in this epic needed a
+        hand-written brief from the epic agent carrying facts that appear in NO
+        unit's documentation: that a home has TWO axes and pinning
+        SKILL_MANAGER_HOME alone is not enough (HIS-14/#232); that the CLI on
+        PATH is the wrong build and SKILL_MANAGER_CLI must be pinned (DEF-006,
+        re-measured as DEF-068); that `bootstrap-home.sh` now exits 79 where it
+        used to sync (DEF-018); that a command the assignment block PRINTS has
+        never worked (DEF-069/DEF-072). Four facts an agent needed at tier
+        boundaries, none of them disclosed by the tier.
+      measured_at: "TO BE MEASURED BY HIS-20"
+      evidence: results/epic-home-integrity-sync/goals/GOAL-progressive-disclosure
+    target: >
+      CLAUSE 1 (downward): an agent at each of the three tiers answers, without
+      source access, what tier it is in, what that tier inherits from the tier
+      above, what it may change locally, and what it must NOT touch above it.
+      CLAUSE 2 (upward): an agent in a worktree home answers how its change
+      reaches the project home, how the project home's reaches the root home,
+      what is carried by git and what is NOT (the gitignored home), and what
+      the close-out gate decides.
+      CLAUSE 3 (change management): for every installed change-managed unit, an
+      agent can name the command that publishes a local edit to that unit's
+      GitHub repository, and the tier to run it from.
+      In all three clauses, a question answered only by reading source is a
+      FAILURE of the clause, not a pass with a caveat.
+    evaluation_ticket: HIS-6
+    evidence_root: results/epic-home-integrity-sync/goals/GOAL-progressive-disclosure
 
 tickets:
   - id: CHM-1
@@ -3089,11 +3162,18 @@ tickets:
     role: evaluation
     epic: home-integrity-sync
     github_issue: 218
-    wave: 12
-    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
+    wave: 14
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18, HIS-19, HIS-20]
     blocks: []
-    promotion_order: 18
-    promotion_predecessor: HIS-5
+    promotion_order: 20
+    promotion_predecessor: HIS-20
+    rescheduled_in_revision_9: >
+      Wave 12 -> 14, promotion 18 -> 20. Revision 9 inserted HIS-19 (the
+      versioned CLI pin) and HIS-20 (progressive disclosure in both directions,
+      and change management through GitHub) ahead of it. HIS-6 stays LAST by
+      construction: it is the measurement, and a measurement that runs before
+      the last change measures something else. The ID and plan ordinal are
+      unchanged, per rule 3; only the schedule moved.
     owns_goals:
       - GOAL-no-spurious-holdback
       - GOAL-sync-quiet
@@ -3103,6 +3183,7 @@ tickets:
       - GOAL-mechanism-documented
       - GOAL-one-home-one-answer
       - GOAL-no-destructive-recovery
+      - GOAL-progressive-disclosure
     owns_the_terminal_sweep: >
       SET BY THE OWNER AT THE WAVE-3 GATE, 2026-08-21: "--all takes forever.
       We'll do it once at the end with the goal/evals/scorecard." So this ticket
@@ -3134,6 +3215,13 @@ tickets:
       adapters: []
       test_graph: []
       workflow_data: []
+    acceptance:
+      assertions:
+        - "DEF-011 IS CLOSED BEFORE THE SWEEP IS TRUSTED. `run.py --all` completes over every non-excluded graph, red ones included, and `graphs_executed` is READ from the artifact rather than inferred from a green build. A sweep that stopped at the first failure is not a sweep and must not be reported as one."
+        - Every goal is reported baseline -> measured -> target with ONE VERDICT PER CLAUSE, never one token per goal.
+        - "GOAL-sync-quiet is reported with BOTH of its numbers -- the retrodiction and the forward-going measurement -- per the plan's measurement_caveat_added_2026_08_22. Conflating them is a reporting defect."
+        - The build that produced every home measured is stated, per this ticket's own warning (2), because a home built by the released CLI measures the old product.
+        - "The deferred backlog is RECONCILED before any count is reported: statuses are re-measured, not inherited. DEF-043 is the known-stale entry."
     objective: >
       This ticket's slice IS the measurement. It runs each goal's harness on
       the integrated epic tip, from a fresh start, and reports
@@ -3176,6 +3264,10 @@ tickets:
       - goal: GOAL-mechanism-documented
         contribution: guard
         expected_effect: "decides the goal; adds no behavioural delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-progressive-disclosure
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioural delta. HIS-20 measures it; this ticket reports the verdict and must NOT re-run the judged reads selectively"
         local_signal: "N/A: this ticket is the measurement"
 
   - id: HIS-7
@@ -3328,7 +3420,7 @@ tickets:
     added_in_schedule_revision: 3
     wave: 10
     depends_on: [HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
-    blocks: [HIS-6]
+    blocks: [HIS-6, HIS-20]
     promotion_order: 16
     promotion_predecessor: HIS-13
     rescheduled_in_revision_4: >
@@ -3423,6 +3515,157 @@ tickets:
   #           terminal evaluation would attach a goal to something with no
   #           agreed target.
   # -------------------------------------------------------------------------
+
+  # -------------------------------------------------------------------------
+  # Schedule revision 9. Added after the owner read the epic PR (#245) and
+  # declined to merge it until the epic finishes. Three instructions:
+  #
+  #   1. The things the PR flagged as "fix before merging" must be IN the epic,
+  #      not in its recommendations. DEF-011 is now an explicit acceptance
+  #      assertion on HIS-6; DEF-027 becomes HIS-19.
+  #   2. Progressive disclosure must be validated in BOTH directions by small
+  #      agents, together with change management for every skill through
+  #      GitHub. That is HIS-20, and it carries the new
+  #      GOAL-progressive-disclosure.
+  #   3. HIS-6 stays LAST and owns the multi-hour `run.py --all`.
+  #
+  # HIS-6's promotion order moves 18 -> 20 and its wave 12 -> 14. Its ID and
+  # its plan ordinal are unchanged, per rule 3; only the schedule moves.
+  # -------------------------------------------------------------------------
+
+  - id: HIS-19
+    title: "a home's CLI pin is an absolute VERSIONED path, so every upgrade breaks the home and `home verify` says it is fine"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: null
+    added_in_schedule_revision: 9
+    wave: 12
+    depends_on: [HIS-12, HIS-13]
+    blocks: [HIS-20, HIS-6]
+    promotion_order: 18
+    promotion_predecessor: HIS-5
+    conflict_keys:
+      production: [LauncherShims.write, HomeDescriptor.resolveCli, CliArtifact.pin, HomeRepair.danglingCliPin]
+      tla: []
+      adapters: []
+      test_graph: [home-integrity/EveryShimResolves]
+      workflow_data: []
+    found_by: >
+      Observed LIVE on the operator's machine during this epic's own 0.24.0
+      release. `brew upgrade` deleted the Cellar directory the root home's pin
+      named; the home broke; `home verify` returned EXIT 0. Filed as DEF-012,
+      whose resolution half HIS-12 took and whose detection half HIS-13 took.
+      DEF-027 is the part NEITHER of them took and it is the cause.
+    root_cause: >
+      THE PIN NAMES A VERSION. `LauncherShims` writes the resolved CLI as an
+      absolute path into the Homebrew Cellar --
+      /opt/homebrew/Cellar/skill-manager/<VERSION>/libexec/bin/skill-manager --
+      so the pin is correct exactly until the next upgrade and wrong forever
+      after. HIS-13 now DETECTS it (`DANGLING_CLI_PIN`) and repairs it, but the
+      product still WRITES it that way, so every upgrade re-creates the damage
+      that HIS-13 then repairs. Detection plus repair of a defect the product
+      re-introduces on a schedule is not a fix.
+    slice: >
+      Write a pin that survives an upgrade: a versionless path, the resolver,
+      or a recorded intent re-derived on read -- the same shape HIS-10 chose for
+      descent ("the record is a pointer, not a grant"). Migrate existing homes
+      through HIS-13's repair rather than a second mechanism.
+      NOT IN SCOPE: detection (HIS-13 owns it) and the release packaging itself.
+    acceptance:
+      assertions:
+        - A home pinned before a simulated version change still resolves its CLI after it, proved by a fixture that fails when the pin is written versioned.
+        - HIS-13's `DANGLING_CLI_PIN` finding does NOT fire on a home pinned by the new writer after that version change.
+        - "`home verify` no longer returns exit 0 on a home whose pin does not resolve -- the exit-0-on-broken case from the 0.24.0 incident is a regression test."
+        - Every assertion is vacuity-checked in writing, naming the branch it exercises (mechanism D) and the mutation that reddens it.
+    goals:
+      - goal: GOAL-no-destructive-recovery
+        contribution: direct
+        expected_effect: "a defect the product re-creates on every upgrade -> a pin that survives one; HIS-13 stops being the only thing standing between an upgrade and a broken home"
+        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+      - goal: GOAL-one-home-one-answer
+        contribution: guard
+        expected_effect: "the pin must be re-derived by the reader HIS-10 made canonical, not become a fifth answer to which build this home runs"
+        local_signal: "jbang RunTests.java"
+
+  - id: HIS-20
+    title: "progressive disclosure has never been measured in either direction, and no tier says how a skill change reaches GitHub"
+    phase: HIS
+    status: planned
+    role: evaluation
+    epic: home-integrity-sync
+    github_issue: null
+    added_in_schedule_revision: 9
+    wave: 13
+    depends_on: [HIS-8, HIS-13, HIS-19]
+    blocks: [HIS-6]
+    promotion_order: 19
+    promotion_predecessor: HIS-19
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow_data: [skt, skill-manager-skill, git-issue-workflow, git-epic-workflow, skill-publisher-skill]
+    found_by: >
+      The owner, reading the epic PR: "deploy a few small agents to make sure
+      the progressive disclosure is good for root home -> project home ->
+      worktree home, and then worktree home -> project home -> root home. Also
+      for managing change in all skills with github."
+    objective: >
+      This epic spent eighteen tickets making the three tiers behave correctly
+      and never once asked whether an agent standing in one can FIND OUT what
+      it needs. The evidence says no: every ticket agent needed a hand-written
+      brief carrying four facts no unit documents -- the two axes (HIS-14), the
+      CLI pin (DEF-006/DEF-068), bootstrap's exit 79 (DEF-018), and a printed
+      command that never worked (DEF-069/DEF-072). Those briefs came from the
+      epic agent. Nothing in the product produces them.
+    slice: >
+      MEASURE FIRST, THEN FIX, AND RECORD BOTH. In that order, and the
+      before-transcripts are committed before any documentation changes -- the
+      same discipline HIS-4 was held to.
+
+      (1) DOWNWARD -- root -> project -> worktree. One small agent per tier,
+      home pinned, NO access to this repository's source. Ask: which tier am I
+      in; what does it inherit from above; what may I change here; what must I
+      not touch above me.
+
+      (2) UPWARD -- worktree -> project -> root. One small agent per tier. Ask:
+      how does my change reach the tier above; what does git carry and what does
+      it NOT (the home is gitignored); what does close-out decide; what happens
+      to a held-back or conflicted unit.
+
+      (3) CHANGE MANAGEMENT THROUGH GITHUB. For every installed change-managed
+      unit, can an agent name the command that publishes a local edit to that
+      unit's GitHub repository, and the tier to run it from? Cover
+      `skill-manager home sync`, `skt sync`, `unit publish` / `skt publish`, and
+      what `skt check` compares.
+
+      Then close the gaps the reads expose -- in the units that instruct agents,
+      linking rather than restating, per GOAL-mechanism-documented's clause 1 --
+      and RE-RUN the reads with fresh agents. Both sets of transcripts ship.
+    method_note: >
+      A judged read of a handful of agents is not a statistic and must not be
+      reported as one. Report per-question, name every question answered only
+      by reading source as a FAILURE, and keep the before-transcripts even where
+      the after-transcripts are better. An agent that guessed correctly is not
+      a pass; ask it where it got the answer.
+    acceptance:
+      assertions:
+        - Before-transcripts for all six (tier x direction) reads are committed BEFORE any documentation change.
+        - After-transcripts exist for the same six and the delta is reported per question, not in aggregate.
+        - Every question answered only from source is named as a failure of its clause.
+        - For every installed change-managed unit, the publish command and its tier are documented and an agent names both without source access.
+        - Nothing is restated that another unit already states; links only, per GOAL-mechanism-documented clause 1.
+    goals:
+      - goal: GOAL-progressive-disclosure
+        contribution: direct
+        expected_effect: "unmeasured -> measured in both directions at all three tiers, with the gaps closed and re-measured"
+        local_signal: "the six before/after judged reads under the goal's evidence root"
+      - goal: GOAL-mechanism-documented
+        contribution: guard
+        expected_effect: "must close gaps by LINKING to HIS-8's single statement, never by restating it in a second place"
+        local_signal: "uv run .github/scripts/check-docs-coverage.py"
 
   - id: HIS-9
     title: "nothing refuses a write outside the home SKILL_MANAGER_HOME names -- the class behind repeated root-home damage"
@@ -3796,7 +4039,7 @@ tickets:
     added_in_schedule_revision: 4
     wave: 4
     depends_on: [HIS-7]
-    blocks: [HIS-14, HIS-17, HIS-5, HIS-6, HIS-8]
+    blocks: [HIS-14, HIS-17, HIS-19, HIS-5, HIS-6, HIS-8]
     promotion_order: 8
     promotion_predecessor: HIS-9
     conflict_keys:
@@ -3874,7 +4117,7 @@ tickets:
     added_in_schedule_revision: 4
     wave: 9
     depends_on: [HIS-9, HIS-10, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
-    blocks: [HIS-5, HIS-6, HIS-8]
+    blocks: [HIS-5, HIS-6, HIS-8, HIS-19, HIS-20]
     promotion_order: 15
     promotion_predecessor: HIS-17
     rescheduled_in_revision_5: >

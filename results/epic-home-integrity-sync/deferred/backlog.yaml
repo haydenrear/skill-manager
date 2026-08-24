@@ -709,6 +709,13 @@ findings:
       - results/epic-home-integrity-sync/probes/wave-3/smoke-failed-twice.txt
     candidate_owner: HIS-6
     status: triaged
+    promoted_to_ticket: HIS-6
+    promoted_at: "2026-08-23"
+    promotion_note: >
+      Schedule revision 9 made this an EXPLICIT ACCEPTANCE ASSERTION on HIS-6
+      rather than a prerequisite mentioned in prose. HIS-6 owns the epic's one
+      full sweep; a sweep that stops at the first failing task is not a sweep,
+      and there is no earlier complete run to fall back on.
 
   - id: DEF-012
     found_by: wave-3 close-out, upgrading the root home after the v0.24.0 release re-run
@@ -928,8 +935,15 @@ findings:
       returning exit 0 on a home whose own CLI is gone, because
       missingReferencesIn only considers references UNDER the home root. HIS-12
       changes nothing there. DEF-027 is the third piece: the writing half.
-    candidate_owner: unassigned (LauncherShims / release packaging)
     status: open
+    candidate_owner: HIS-19 (schedule revision 9) -- promoted from unassigned to a ticket
+    promoted_to_ticket: HIS-19
+    promoted_at: "2026-08-23"
+    promotion_note: >
+      The owner declined to merge the epic PR with this open. HIS-13 DETECTS and
+      REPAIRS the damage; HIS-19 stops the product re-creating it on every
+      upgrade. Detection plus repair of a defect re-introduced on a schedule is
+      not a fix.
 
   - id: DEF-028
     found_by: HIS-12 (#161), running ticket-lifecycle as its second graph
