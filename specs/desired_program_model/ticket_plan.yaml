@@ -922,6 +922,39 @@ epic_goals:
       GitHub repository, and the tier to run it from.
       In all three clauses, a question answered only by reading source is a
       FAILURE of the clause, not a pass with a caveat.
+    measurement_caveat_added_2026_08_24: >
+      TWO THINGS HIS-6 MUST NOT REPORT NAIVELY. Both established by the
+      adversarial review of PR #251, which built the arm HIS-20 did not.
+
+      (1) THE MOVEMENT IS PROVISIONING, NOT PROSE. Measured on the real worktree
+      home after `project resolve` with both units at their PRE-TICKET GitHub
+      main -- resolve, zero prose -- 9 of the 11 improved cells reach PASS with
+      NO documentation change at all. One stays PARTIAL (C-Q1) and exactly ONE
+      (F-Q2) required the prose. The converse is a PROOF rather than an
+      estimate: every line HIS-20 wrote lands in `skill-manager` and `skt`, and
+      neither unit exists at the project or worktree tier before resolve, so
+      prose-without-provisioning is BYTE-IDENTICAL to the baseline at 2 of 3
+      tiers. Report the split, not the aggregate.
+
+      (2) THE JUDGED READS ARE NOT BLIND. Three channels inject the answers into
+      every subagent regardless of corpus: the operator's auto-memory MEMORY.md
+      (whose bullets answer F-Q1 and F-Q2 standalone -- two readers quoted it
+      unprompted), the skill listing (which states the three-tier model verbatim
+      and names bootstrap-home.sh by path), and the injected gitStatus block
+      (recent commit subjects carrying close-out and exit-code behaviour). The
+      four cells HIS-20 certified CLEAN are the contaminated ones, because the
+      facts worth writing into memory are the same facts worth testing. DISCOUNT
+      them; do not strike them -- the citations are real and the corpus does now
+      contain the text.
+
+      GOAL-mechanism-documented NEEDS THE SAME WARNING. HIS-8's judged reads had
+      the same exposure. Whether those memory bullets predate HIS-8 must be
+      CHECKED, not assumed, before its 0/3 -> 3/3 is counted.
+
+      AND THE GOAL IS MET AT EXACTLY ONE TIER on this machine -- the worktree --
+      because that is the only home actually changed. Root waits on two open leaf
+      PRs plus a sync; project waits on DEF-096. Both lower-tier AFTER corpora
+      exist NOWHERE ON DISK. Any "3 of 3 tiers" reading is false.
     evaluation_ticket: HIS-6
     evidence_root: results/epic-home-integrity-sync/goals/GOAL-progressive-disclosure
 
