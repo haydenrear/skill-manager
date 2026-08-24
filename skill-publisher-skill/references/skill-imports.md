@@ -45,10 +45,13 @@ an already-installed or separately bundled unit. For plugins, put real
 install-time references on the contained skill that needs the dependency
 or at plugin level when the whole plugin owns that dependency.
 
-The units installed during onboarding — `skill-manager`,
-`skill-publisher`, and `skill-dev` — are always present, so imports that
-point at them never need a `skill_references` entry. See skill-manager
-`references/skill-imports.md` for the canonical rule.
+The units installed during onboarding — `skill-manager`, the `skt`
+plugin, and `skill-dev` — need no `skill_references` entry **in a home
+that was onboarded**. They are not inherited: a project or worktree home
+holds what its parent held when it was cloned, so an import can point at
+an onboarding-bundled unit that is simply not there. skill-manager's
+`references/skill-imports.md` is the canonical rule and carries the
+measurement; do not restate it here.
 
 For doc-repos, imports are valid in any declared source markdown, but
 doc-repo manifests do not currently carry transitive references. Make

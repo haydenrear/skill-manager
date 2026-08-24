@@ -1,0 +1,173 @@
+# Complexity ledger input -- MF-019 standing objective.
+#
+# `close ticket` refuses until this is filled in. That refusal is the mechanism:
+# the standing objective is a required close-out step, not a stance.
+#
+# The delta is computed for you from `analyze complexity` and the TLC report.
+# What you supply is the part a tool cannot know: whether behavior was retained,
+# what the refinement search found, and why any increase is essential.
+
+# Validated-refactor basis -- CD-09 (owner-approved 2026-07-22). This is what
+# LICENSES a complexity DECREASE: TLC green on the model before AND after the
+# change, behavior tests green, and the before/after descriptor comparison
+# recorded. Absent, unknown, or degraded evidence REJECTS a decrease: an
+# unmeasured constraint cannot witness retention. (The fourth obligation, the
+# inspected transition-level diff, is `transition_diff:` below and is demanded
+# whenever the MF-020 red flag fires.)
+#
+#   tlc_before:            green | fail        -- TLC on the pre-change model
+#   tlc_after:             green | fail        -- TLC on the post-change model
+#   behavior_tests:        pass | fail         -- the repository behavior tests
+#   descriptor_comparison: recorded            -- before/after descriptor doc
+validated_refactor:
+  tlc_before:
+    status: "TODO"
+    evidence: "TODO -- path to the pre-change TLC output"
+  tlc_after:
+    status: "TODO"
+    evidence: "TODO -- path to the post-change TLC output"
+  behavior_tests:
+    status: "TODO"
+    evidence: "TODO -- path to the behavior-test output"
+  descriptor_comparison:
+    status: "TODO"
+    evidence: "TODO -- path to the before/after descriptor comparison"
+
+# Fuzzing-era retention members -- RECORDED at every close, non-gating since
+# CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs
+# floor 0.8, 0/9 content bugs caught). `not_run` is the honest value; fill in a
+# measured verdict only when one of them actually ran.
+#
+#   kill_rate:           pass | below_floor | incomplete_catalog | not_run   (MF-016)
+#   effect_conformance:  clean | gaps | dead_surface | unobservable | not_run (MF-013/MF-027)
+#   external_coverage:   pass | gaps | incomplete | not_run                  (MF-015)
+#
+# NOTE: `unobservable` IS NOT `clean`. MF-027 made the effect oracle refuse
+# targets it cannot see; the record keeps that distinction even though the
+# member no longer gates.
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+# Coverage audit -- MF-026. The completeness REVIEW, distinct from the three
+# retention members above, which are all FIDELITY measures bounded to what is
+# already modeled. Unmodeled surface is invisible to every one of them, and this
+# is the only sweep that looks at it.
+#
+#   status: pass | fail | incomplete | not_run
+#
+# RECORDED, NEVER REFUSING (2026-08-04, owner direction). It was a hard gate at
+# workflow close with no override; it is now an optional agent-run review whose
+# verdict is written down and read by a person. `incomplete` IS STILL NOT
+# `pass`, because a sweep that did not walk the surface says nothing about it --
+# what was withdrawn is the refusal, not the distinction.
+#
+# Procedure: prompts/coverage_audit.md   Doctrine: references/coverage_audit.md
+coverage_audit:
+  status: "not_run"
+  report: ""          # path to the filled templates/coverage_audit_report.md
+  in_scope_gaps: null # count; in-scope gaps are HARD -- model it or change the program
+  scope_source: ""    # plan file:lines the declared scope was READ from, never chosen
+
+# Required if complexity INCREASED. Name the new essential behavior the added
+# representation carries. This documents real behavior; it does not waive the
+# increase, which is recorded and reported either way.
+justification: ""
+
+# The recursive refinement loop -- REQUIRED at every close.
+# Either an approved recommendation with evidence, or "searched, found none".
+# Recommendations are advisory and user-approved, never auto-applied.
+refinement:
+  searched: true
+  outcome: "none"
+  detail: >
+    Searched, found none, and structurally rather than as a judgement call.
+    HIS-20 changes no TLA+ module, no .cfg, no adapter and no spec double: its
+    ticket `current/` and `desired/` are byte-identical (verified by `diff -rq`,
+    zero output). The plan's validation block records
+    `tlc: "N/A: HIS-5 carries the model work for this epic"` and empty
+    `tla`/`adapters`/`production`/`test_graph` conflict keys. The whole slice is
+    twelve judged reads and markdown in two units that live in two OTHER
+    repositories, reached by pull request rather than by this branch.
+    A refinement recommendation would have to be about a representation this
+    ticket neither adds nor moves. Recording one would be inventing work to
+    satisfy a field.
+  measured: false      # no TLC run: the model is byte-identical before and after
+  applied: false       # if true, approved_by is required
+  approved_by: ""
+
+# Required only if a generated-states drop at constant distinct states is
+# detected. That is a RED FLAG (deleted self-loop, MF-020), not a win -- record
+# the inspected transition-level diff here to accept it.
+transition_diff: ""
+
+# REQUIRED. The narrative ledger: reasoning, measured alternatives, findings the
+# machine-checked core above cannot express. Path to a document, or prose.
+narrative: >
+  HIS-20 (issue #247) is a MEASUREMENT-AND-DOCUMENTATION ticket with a zero-delta
+  model, so the machine-checked core above is uninformative by construction.
+  WHAT WAS MEASURED. Six judged reads before any documentation change and six
+  after, twelve different agents, one per (tier, direction, phase). Each was
+  sandboxed to a read-only copy of ONE home tier's unit markdown, forbidden to
+  read source or run any skill-manager/skt command, and required to cite a file
+  and a quoted sentence per answer or say NOT ANSWERABLE FROM THE CORPUS.
+  Transcripts, per-question scoring and the change-management table:
+  results/epic-home-integrity-sync/tickets/HIS-20/judged-read/.
+  THE FINDING UNDERNEATH EVERY SCORE, and it is not a documentation finding.
+  Two of the three home tiers put ZERO units in front of an agent that document
+  the tier model. The project home and every worktree cloned from it held
+  deploy-helm, spec-double-compiler, test-graph and tracing-observability, and
+  no plugins -- not skt, not skill-manager, not git-issue-workflow. Every correct
+  answer both lower-tier BEFORE readers gave about tiers traces to ~18 lines of
+  spec-double-compiler/references/runtime_requirements.md, a consumer skill
+  documenting the home system incidentally to explain where tlc2 comes from.
+  And this repository's own skill-project.toml ALREADY DECLARED skt and
+  skill-manager; the home had simply never been resolved against it, projects/
+  empty in both. One `project resolve` closed it and turned eleven PARTIAL/FAIL
+  cells into PASS. So the lower-tier gap is PROVISIONING, not prose, and no
+  documentation change this ticket could make would have closed it: this ticket
+  owns no unit those homes held. Escalated as DEF-096.
+  WHAT THE PROSE ACTUALLY CLOSED, separately from that. Exit 79 ("refusing to
+  run against a home you did not name", DEF-018) appeared in ZERO of the four
+  instructing units' markdown -- measured with a validated grep, 0 files against
+  a control term matching 19 -- and the root BEFORE read answered the question
+  confidently with exits 5 and 6 instead. It is now stated once. DEF-077's
+  conflict between the documented publish route and every epic brief's
+  containment rule is stated as a SPLIT rather than a block, and the AFTER
+  worktree read walked it exactly, including the reporting obligation. And the
+  unit-name-to-repository mapping, which no command prints, now names where it
+  is recorded.
+  THE READS CHANGED THE FIX, WHICH IS THE POINT OF RUNNING THEM. Two AFTER
+  readers were invited to say the expansion went too far and both did, naming
+  the same passages. One found that the measurement sentence this ticket had
+  just added was true of the home BEFORE `project resolve` and false of the home
+  the reader was standing in -- the epic's founding defect reproduced inside the
+  fix for it, in under a day. Another found that the false half of the skt PATH
+  claim lived inside the snippet skt tells you to paste into every project's
+  AGENTS.md, so the correction stayed at root while the falsehood travelled.
+  Both fixed. A third of the recent expansion was cut on their evidence,
+  including a section of workflows.md that re-derived projects.md sentence for
+  sentence while itself saying "point there, do not re-derive it".
+  A SENTENCE THIS TICKET WROTE AND THEN MEASURED WRONG. Its first draft said the
+  repository URL "lives in units.lock.toml and in installed/<unit>.json". Root
+  records origin for 29 of 29 lock entries; a resolved worktree home for 4 of 6,
+  the two missing being exactly the units `project resolve` installed. Corrected
+  to name the per-unit record; the CLI gap filed as DEF-100.
+  HONEST LIMITS. The doc-only sandbox is not airtight: every subagent's system
+  prompt carries a ~40-skill listing in which skt's own description states the
+  three-tier model verbatim. All six AFTER readers were asked to itemize that
+  contamination and did. n = 1 per condition. Two of the three AFTER corpora
+  exist nowhere on disk -- the root overlay is a sandbox until two leaf PRs merge
+  and sync, and the project corpus is an explicitly labelled counterfactual.
+  Four cells stay PARTIAL or FAIL after the fix and are named as failures.
+  NOT DONE. Ticket current == desired, so promotion carries nothing.
+  refinement.measured is false because the model is byte-identical before and
+  after, and running TLC to reproduce a number that cannot have changed would be
+  evidence theatre.

@@ -42,8 +42,12 @@ dedicated front door and this skill stays the plumbing underneath:
 Raw `skill-manager` remains authoritative for install / bind / project /
 home plumbing below. The three-tier home model itself (root → project →
 worktree, copies not links, one-tier sync, publish for cross-machine) is
-stated once in git-issue-workflow's `references/skill-homes.md` and
-summarized live by `skt status` — point there, do not re-derive it.
+stated in this unit's `references/projects.md` — point there, do not
+re-derive it. `git-issue-workflow`'s `references/skill-homes.md` carries
+the deeper account of the *scripts* around it (`bootstrap-home.sh`, the
+CLI pin, the exclusion rules); prefer it when you have it, but note it is
+a different unit and a project or worktree home may not have it installed.
+`skt status` summarizes the model live, in homes carrying the skt plugin.
 
 - Install only when the user wants bytes in the skill-manager store and
   default agent exposure is enough.
@@ -187,25 +191,14 @@ is deleted with the directory.
 Route by what you are trying to guarantee, because the two commands answer
 different questions and neither substitutes for the other:
 
-1. **"Will removing this checkout destroy it?"** →
-   `skill-manager home sync --from <child>/.skill-manager --to <parent>/.skill-manager --merge`.
-   Moves the edit up exactly one tier, on this machine. Without `--merge` an edited
-   destination unit is held back and reported rather than overwritten; with
-   `--merge` conflicts are reported, never resolved, and a conflicted unit writes
-   nothing. `--dry-run` reports and writes nothing at all.
-2. **"Will anyone else ever get it?"** →
-   `skill-manager unit publish <unit> --ticket <t>`. Commits to
-   `skill/<ticket>-<unit>` in the unit's own repository and opens a PR. This is the
-   only route that reaches a sibling project or outlives this machine.
-3. **Before discarding a worktree home at all** →
-   `skill-manager home close-out --home <worktree>/.skill-manager --into <project>/.skill-manager`.
-   Writes nothing, exits non-zero while work would be lost, and prints a literal
-   remedy per blocking unit. Run it *before* `git worktree remove`; afterwards
-   there is nothing to save. It has no `--force` — the override belongs to the
-   caller that decides whether to obey the verdict.
+1. **"Will removing this checkout destroy it?"** → `skill-manager home sync`.
+2. **"Will anyone else ever get it?"** → `skill-manager unit publish`.
+3. **Before discarding a worktree home at all** → `skill-manager home close-out`.
 
-Read the verdict, not the exit code alone: a `LINKED` blocker means the gate cannot
-determine whose bytes a symlink target is, and "cannot tell" blocks by design.
+**`references/projects.md` states all three** — the flags, the held-back and
+conflicted outcomes, the close-out exit ladder, why there is no `--force`, what
+`unit publish` can and cannot publish, and where a unit's repository is recorded.
+Go there rather than working from this list; this list exists to get you there.
 
 These flows are not yet keyed in the modeled coverage table above; the `home` and
 `unit` command families are absent from the CLI metadata catalog's workflow ids.

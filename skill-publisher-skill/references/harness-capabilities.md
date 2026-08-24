@@ -22,8 +22,11 @@ Bind this via skill-manager's doc mechanisms (managed imports) or paste
 it into the project's agent file for harnesses without a hook runtime:
 
 ```markdown
-Before starting work in this checkout, run `skt status` (on PATH in
-every skill-manager home) and read its report: loaded skills/plugins,
+Before starting work in this checkout, run `skt status` — it is on
+PATH in a home that installed the skt plugin, at `<home>/bin/cli/skt`.
+If it is not there, this checkout's home does not carry skt; use
+`skill-manager list` and `skill-manager home describe --json` instead,
+and see the skt skill for the rest of the fallbacks. Read its report: loaded skills/plugins,
 which home tier this session writes, ticket/epic state, and pending
 gates. Run `skt check` to learn about stale units before relying on a
 skill.

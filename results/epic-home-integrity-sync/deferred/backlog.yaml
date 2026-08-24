@@ -4880,3 +4880,294 @@ findings:
       silently repaired by it. Intended.
     candidate_owner: whoever takes DEF-067
     status: closed-by-decision
+
+  - id: DEF-096
+    found_by: HIS-20 (#247), building the corpora for the six judged reads
+    found_at: "2026-08-24"
+    severity: major
+    escalated: true
+    summary: >
+      This repository's project home does not realize its own
+      `skill-project.toml`, and never has. The manifest declares the `skt` plugin
+      and the `skill-manager` skill; the project home holds NEITHER, and holds
+      three units the manifest explicitly and deliberately does not declare.
+      `projects/` is empty in both the project home and every worktree cloned
+      from it, so `project resolve` has never run against this manifest.
+    detail: >
+      Measured 2026-08-24, read-only:
+
+        <repo>/.skill-manager/skills   -> deploy-helm, spec-double-compiler,
+                                          test-graph, tracing-observability
+        <repo>/.skill-manager/plugins  -> (empty)
+        <repo>/.skill-manager/projects -> (empty)
+        <repo>/.claude/skills          -> the same four, as symlinks
+
+      A worktree home cloned from it is byte-identical in this respect.
+
+      `skill-project.toml` declares `[skills.spec-double-compiler]`,
+      `[plugins.skt]` and `[skills.skill-manager]`, and its own comments explain
+      at length why `test-graph` is deliberately NOT declared. So the home
+      contains the complement of its manifest almost exactly.
+
+      THE CONSEQUENCE IS THIS TICKET'S HEADLINE. Two of the three home tiers put
+      ZERO units in front of an agent that document the tier model -- not `skt`,
+      not `skill-manager`, not `git-issue-workflow`, not `git-epic-workflow`.
+      Every correct answer both lower-tier BEFORE readers gave about tiers traces
+      to ~18 lines of `spec-double-compiler/references/runtime_requirements.md`,
+      a consumer skill documenting the home system incidentally in order to
+      explain where `tlc2` comes from. Both readers said so unprompted.
+
+      It also makes `skill-manager/references/skill-imports.md`'s "always present
+      in the store once a user has onboarded" false at those tiers: the installed
+      `spec-double-compiler` declares imports at `skill-manager:
+      references/cli.md` and `skt: references/skills.md`, and NEITHER TARGET
+      EXISTS IN EITHER HOME. Nothing reports the dead edge, because import
+      validation runs on install/publish/sync and not on `home clone`.
+
+      One `skill-manager project resolve --project-dir . --skip-gateway` against
+      the HIS-20 worktree home installed both units, cost no measurable free
+      space, and turned eleven PARTIAL/FAIL cells in the judged reads into PASS.
+    why_deferred: >
+      Escalated, not silently deferred: it is a provisioning change to the
+      OPERATOR'S project home, which every brief in this epic forbids a ticket
+      agent from writing. The remedy is one command and the owner should run it.
+      Filing rather than doing it is the containment rule working.
+
+      A SECOND HALF THE OWNER HAS TO DECIDE, WHICH IS WHY THIS IS NOT PURELY
+      MECHANICAL. Resolving the manifest as written still leaves
+      `git-issue-workflow` uninstalled at both lower tiers -- and that unit owns
+      `references/skill-homes.md`, which is where the two-axes fact, the CLI-pin
+      resolution order and `bootstrap-home.sh`'s exits 5/6 are stated. Declaring
+      it would pull `test_graph_skill`, `tla-spec-dev` and `deploy-cdc`
+      transitively, and `skill-project.toml` carries a reasoned, explicit refusal
+      to declare `test-graph` (a fifth copy of the SDK; deploy-helm's three
+      skill-script venvs measured at 1.6 GB of cache/). So the choice is between
+      an argued design decision and the disclosure goal, and a ticket agent
+      should not overturn the first to serve the second.
+    fix: >
+      Minimum: run `skill-manager project resolve --project-dir <repo>
+      --skip-gateway` with SKILL_MANAGER_HOME pinned at <repo>/.skill-manager, so
+      the project home matches its own manifest and every future `wt new` /
+      `skt ticket new` inherits skt and skill-manager for free.
+
+      Then decide the second half deliberately: either declare
+      `github:haydenrear/git-issue-workflow-skill` and accept the transitive
+      cost, or record that the lower tiers deliberately do not carry the ticket
+      lifecycle docs and that a ticket agent gets them from the brief.
+    consequence: >
+      Until the first half is done, `GOAL-progressive-disclosure` clauses 1 and 2
+      are unmeetable at two of three tiers by any documentation change, because
+      no unit that could carry the documentation is installed there.
+    candidate_owner: epic owner (project home is not a ticket agent's to write)
+    evidence:
+      - results/epic-home-integrity-sync/tickets/HIS-20/judged-read/before/
+      - results/epic-home-integrity-sync/tickets/HIS-20/judged-read/README.md
+    status: open
+
+  - id: DEF-097
+    found_by: HIS-20 (#247), BEFORE upward-root read; reproduced by the AFTER upward-root and AFTER upward-project reads
+    found_at: "2026-08-24"
+    severity: major
+    summary: >
+      `git-issue-workflow/references/skill-homes.md` names `skill-manager project
+      sync` as the route that sends a home edit to a unit's own repository,
+      "trunk-style", and says to push "from the main checkout". `project sync`
+      is a PULL, and three other pages name `unit publish` and designate the
+      worktree tier. Two independent judged readers found it without being
+      pointed at it; a third, asked directly whether every page agrees, called it
+      "the single most consequential defect in the corpus".
+    detail: >
+      skill-homes.md, the push-back table:
+
+        | To | ... | That skill's own repo, trunk-style, via `skill-manager
+          project sync` (see the skill-manager skill and the skt plugin's
+          unit-authoring skill) |
+
+      Measured against the CLI, 2026-08-24:
+
+        skill-manager project sync --help
+          -> "Pull each project unit's trunk and reconcile the project
+              realization in place. Units with local edits are held back..."
+
+      That is inbound. It is not a publishing command, and no other page in any
+      installed unit describes it as one.
+
+      Three compounding problems, in the readers' words:
+        (a) the command differs from every other page's `unit publish`;
+        (b) "trunk-style" contradicts the PR-branch shape everyone else
+            documents -- `plugin-repository/references/lifecycle.md` explicitly
+            corrects an earlier draft on exactly this point ("So the edit is on a
+            PR branch of the plugin repo, not on its trunk");
+        (c) the same page says "push from the MAIN CHECKOUT. From a worktree the
+            skill's upstream is the wrong target", while
+            `git-epic-workflow/references/worktree-lifecycle.md`,
+            `git-issue-workflow/references/complete.md` and
+            `git-issue/references/regression-close.md` all make the worktree tier
+            the canonical -- and inside an epic the ONLY -- place a ticket agent
+            may run it.
+
+      It sits on the page most likely to be read at teardown, which is the moment
+      the answer decides whether work survives.
+    why_deferred: >
+      `skill-homes.md` lives in the `git-issue-workflow-skill` repository, which
+      this ticket does not carry and whose HIS-8 PR (#23) is still open. Stacking
+      a second unreviewed branch on it, on the last implementation ticket of the
+      epic, is worse than filing it. HIS-20 corrected the two pages it does own
+      (skill-manager-skill#5, skill-publisher-skill#35).
+    fix: >
+      In skill-homes.md: replace `skill-manager project sync` with
+      `skill-manager unit publish <unit> --ticket <t>`, drop "trunk-style" in
+      favour of the `skill/<ticket>-<unit>` + PR shape, and reconcile the tier
+      sentence with the three pages that permit the worktree tier -- or state
+      why this page overrides them.
+    consequence: >
+      An agent following skill-homes.md at teardown runs a pull where it meant a
+      push, sees a green report, and discards a worktree home believing its edit
+      was published. `GOAL-progressive-disclosure` clause 3's tier answer is
+      genuinely ambiguous until this is settled -- which is why HIS-20 scores
+      C-Q1's tier column PARTIAL at root even after its fix.
+    candidate_owner: whoever next opens git-issue-workflow-skill
+    status: open
+
+  - id: DEF-098
+    found_by: HIS-20 (#247), AFTER downward-root judged read
+    found_at: "2026-08-24"
+    severity: major
+    extends: DEF-084
+    summary: >
+      Two sibling pages in `git-issue-workflow` disagree, both citing
+      measurements on the same host, about whether `skill-manager home clone` is
+      copy-on-write at all. This is not DEF-084's question (is a `du` figure
+      inflated?) -- it is the premise DEF-084 rests on.
+    detail: >
+      `references/skill-homes.md`:
+
+        "The three-tier model ... is affordable because a clone is COPY-ON-WRITE,
+         not a copy. `Files.copy` with `COPY_ATTRIBUTES` takes the JDK's
+         `clonefile(2)` path on APFS ... Measured on this host by free-space
+         delta on a dedicated volume: a `home clone` of a 189 MB home consumes
+         7.22 MB -- 3.8%."
+
+      `references/worktrees.md`, same unit:
+
+        "Two thirds of it is `skill-manager home clone` ... and IT IS COPYING
+         RATHER THAN CLONING: measured on the same 696 MB subtree of the same
+         home, `cp -Rc` (APFS `clonefile`) takes 11.2 s and `cp -R` takes 26.0 s,
+         and `home clone` runs at the second speed. Copy-on-write would take
+         ~17 s per worktree off every `wt new` on this machine."
+
+      `skt/skills/skt/SKILL.md` sides with the first ("These homes are cloned
+      copy-on-write ... `du` ... over-reports by roughly 30x").
+
+      The two use DIFFERENT INSTRUMENTS -- free-space delta versus wall clock --
+      which may well be the resolution: a clone can be fast-path for most bytes
+      and still walk the tree at copy speed. NOBODY SAYS SO, and a reader
+      deciding "what does a worktree home cost?" gets 3.8% or 100% depending on
+      which sibling page they open.
+
+      NOT the same as the pair the AFTER upward-root read checked and cleared:
+      3.8% in skill-homes.md versus 3.1% in worktree-lifecycle.md ARE explicitly
+      cross-cited as different homes and are not in conflict. Naming the wrong
+      pair here would make this row worthless, so the pair is named exactly.
+    why_deferred: >
+      Settling it needs one measurement neither page took: free-space delta AND
+      wall clock on the same tree, with `home clone` and `cp -Rc` side by side.
+      Both pages are pre-existing prose in a unit this ticket does not carry.
+    fix: >
+      Take the one measurement; then state in ONE of the two pages whether
+      `home clone` takes the `clonefile` path, and make the other cite it. If it
+      does not, DEF-084's "the burden has moved -- assume any home-size figure is
+      an inflated `du` figure" needs revisiting, because it assumes CoW.
+    consequence: >
+      HIS-6 reports disk arithmetic for this epic. Whether a home per ticket
+      worktree costs 3.8% or 100% of its parent is decided by which of these two
+      pages is right, and the epic currently has both on record.
+    candidate_owner: HIS-6, or whoever next opens git-issue-workflow-skill
+    status: open
+
+  - id: DEF-099
+    found_by: HIS-20 (#247), verifying DEF-077 in the worktree home
+    found_at: "2026-08-24"
+    severity: major
+    extends: DEF-077
+    summary: >
+      `skill-manager unit publish`'s refusal for a unit THIS HOME DID NOT INSTALL
+      is byte-identical to its refusal for a name that is not a unit at all, and
+      the remedy it names -- `--checkout` -- is not a flag `unit publish` accepts.
+    detail: >
+      Measured in the HIS-20 worktree home, 2026-08-24, before `project resolve`:
+
+        $ skill-manager unit publish skt --dry-run --ticket 247-his-20
+        ✗ skt: not a git checkout at <home>/skills/skt -- reinstall the unit from
+          a git source, or materialize it into the child home with --checkout, to
+          publish from it
+        $ echo $?
+        1
+
+        $ skill-manager unit publish zzz-no-such-unit --dry-run --ticket 247-his-20
+        ✗ zzz-no-such-unit: not a git checkout at <home>/skills/zzz-no-such-unit
+          -- reinstall the unit from a git source, or materialize it into the
+          child home with --checkout, to publish from it
+        $ echo $?
+        1
+
+      Same text, same exit, name substituted. So "this home never installed that
+      unit" (DEF-077's case, and the normal case for a worktree home) and "you
+      mistyped" cannot be told apart from the output. `unit publish --help` lists
+      `--child-home`, not `--checkout`; `--checkout` belongs to `project sync`.
+
+      A positive control was run in the same session: `unit publish test-graph
+      --dry-run` exits 0 and reports the branch it would push, so the instrument
+      discriminates.
+    why_deferred: >
+      Production change to `UnitPublish`'s diagnosis, in a repo whose only
+      remaining ticket is the terminal evaluation. HIS-20's slice is saying
+      plainly what does and does not work, which it has done in
+      `skill-manager-skill/references/projects.md`.
+    fix: >
+      Distinguish the two cases before the git check: if the unit is not in
+      `units.lock.toml` / `installed/`, say "not installed in this home" and name
+      `skill-manager list` plus the `skill-project.toml` + `project resolve`
+      route. Replace `--checkout` with `--child-home`, or drop the clause.
+    consequence: >
+      DEF-077's diagnosis took a measurement to reach because the tool's own
+      message points away from the cause. Every ticket agent in an epic hits this
+      case, since a worktree home holds only what the project home held.
+    candidate_owner: whoever next opens `unit publish`
+    status: open
+
+  - id: DEF-100
+    found_by: HIS-20 (#247), self-checking a sentence it had just written
+    found_at: "2026-08-24"
+    severity: minor
+    summary: >
+      `skill-manager project resolve` writes `units.lock.toml` entries with no
+      `origin` field for the units it installs, while the same home's
+      `installed/<unit>.json` records it correctly.
+    detail: >
+      Measured 2026-08-24. The operator's root home records `origin` for 29 of
+      29 lock entries. The HIS-20 worktree home, after `project resolve`
+      installed `skill-manager` and `skt`, records it for 4 of 6 -- the two
+      missing being exactly the two units resolve installed. Their
+      `installed/<unit>.json` files both carry the correct `origin`
+      (`skill-manager-skill`, `skill-publisher-skill`).
+
+      This was found because HIS-20's own new documentation said "The repository
+      URL lives in `<home>/units.lock.toml` and in `<home>/installed/<unit>.json`
+      (`origin`) -- read one of those rather than guessing", and the sentence was
+      checked against the home it was written in. It was half wrong. The page now
+      names the per-unit record as the reliable source and says what a lock entry
+      with no `origin` means. The CLI half is this row.
+    why_deferred: >
+      Production change to the lock writer, on the last implementation ticket.
+      The documentation was corrected instead, which is HIS-20's slice.
+    fix: >
+      Have `project resolve` populate `origin` (and `ref`/`resolved_sha`) on the
+      lock entries it writes, as `install` does.
+    consequence: >
+      An agent told to read `units.lock.toml` for a unit's repository gets
+      nothing for exactly the units a project manifest declares -- and "no
+      origin" is indistinguishable from "not git-backed", which is the predicate
+      `skt publish` uses to decide whether a unit is publishable at all.
+    candidate_owner: whoever next opens `project resolve`
+    status: open
