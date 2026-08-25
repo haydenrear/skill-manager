@@ -1,0 +1,18 @@
+{
+  "graphs_selected": 1,
+  "graphs_executed": 1,
+  "graphs_passed": 1,
+  "results": [
+    {
+      "graph": "git-latest-source-tracking",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-235112",
+      "seconds": 63.9,
+      "log": "results/epic-home-integrity-sync/tickets/HIS-6/sweep-def108-recheck/logs/git-latest-source-tracking.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    }
+  ]
+}

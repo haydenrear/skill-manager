@@ -590,3 +590,81 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket HIS-6
+
+- close_scope: ticket
+- close_id: HIS-6
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T23:54:51+00:00
+- summary: TERMINAL EVALUATION: 26 executed / 24 passed; GOAL-one-home-one-answer clause 1 FAILS on DEF-115 and was NOT fixed; DEF-108 triaged as a stale assertion and repaired in the harness; seven new defects, five deferred and two escalated.
+- feedback_status: items-recorded
+
+### SF-008 — promotion drops the executable bit (SF-003, THIRD occurrence, on a ticket that changed no spec file whatsoever)
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs open|close ticket HIS-6`
+- detail: >
+    Reproduced verbatim for the third time, and this occurrence is the strongest
+    evidence available for SF-003's diagnosis, because HIS-6 is an EVALUATION
+    ticket: it edited no `.tla`, no `.cfg`, no adapter, no test under `specs/`.
+    Its only spec-tree edit is one `status:` field in
+    `desired_program_model/ticket_plan.yaml`. And still:
+
+      $ git status --short specs/current
+       M specs/current/run_tlc.sh
+      $ git diff --stat specs/current
+       specs/current/run_tlc.sh | 0
+       1 file changed, 0 insertions(+), 0 deletions(-)
+
+    Zero changed lines, file modified: mode 100755 -> 100644.
+
+    THE PART WORTH ADDING, since the diagnosis needs no revision: this is now
+    THREE tickets, three different content profiles -- HIS-20 changed spec files,
+    HIS-22 changed none, HIS-6 changed none and is not even a modelling ticket --
+    and all three produced it. It is a property of open/close, not of the ticket.
+    SF-007 called it deterministic on n=2; n=3 with a null-change ticket settles it.
+
+    And its dangerous property still holds: a content-only diff shows the trees
+    identical, so `diff -rq` and every "current == desired" check pass while the
+    model checker's own entrypoint is left non-executable. An instrument that
+    reports clean over a real difference -- which is the vacuity ledger's subject,
+    inside the toolchain that runs the model checker.
+- forced_workaround: `chmod +x specs/current/run_tlc.sh` after the close, before committing
+- data_loss: no (mode only; recoverable and recovered)
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/289 (SF-003's ticket; THIRD occurrence)
+- status: filed
+
+### SF-009 — `close ticket` accepts only `status: closed`, so a ticket that stops at PR open must misstate its own status (SF-006, next occurrence, and this time the OTHER workaround was taken)
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-6`
+- detail: >
+    `close ticket` refused with:
+
+      ERROR: ticket HIS-6 is not closed in ticket_plan.yaml: status=delivered
+
+    `delivered` is this epic's convention for a ticket whose agent stops at PR
+    open, and it is the honest value: the work is delivered, the merge is the
+    owner's decision. SF-006 recorded this and took `--allow-open`.
+
+    RECORDED AGAIN BECAUSE THIS TICKET TOOK THE OTHER FORK, and the two are not
+    equivalent. `--allow-open` snapshots a ticket whose status is not closed and
+    the history says so; setting `status: closed` writes a claim into the plan
+    that is FALSE at the moment it is written -- HIS-6 has not merged and will
+    not merge itself. I chose it because HIS-6 is the LAST ticket in the epic and
+    the plan is about to be read as the epic's final record, where an
+    `--allow-open` history entry for the terminal evaluation would be the more
+    confusing artifact. That is a judgement, not a right answer, and it is
+    recorded here rather than left to be inferred from the diff.
+
+    The underlying defect is unchanged and is now on its sixth occurrence: the
+    tool models exactly one reason a ticket stops, and the epic workflow it is
+    used by has two.
+- forced_workaround: set `status: closed` in `desired_program_model/ticket_plan.yaml` before closing, and say so here and in the PR body
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002/SF-006's ticket; SIXTH occurrence, first one taking the status-edit fork rather than `--allow-open`)
+- status: filed
+

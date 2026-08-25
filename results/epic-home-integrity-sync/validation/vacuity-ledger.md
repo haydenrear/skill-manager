@@ -1,6 +1,9 @@
 # Vacuity ledger — every assertion this epic caught passing against broken code
 
-**Tracked for HIS-6.** Twenty instances, four mechanisms. The owner's
+**Closed out by HIS-6, 2026-08-24: twenty-six instances, six mechanisms.** Rows
+21–26 and mechanisms **E** and **F** are HIS-6's, and are at the bottom under
+"What the terminal evaluation added". The four counts the epic reported until now —
+twenty instances, four mechanisms. The owner's
 instruction at the wave-6 status review:
 
 > *"Each of them should have updated assertions so that the test graph catches. It's
@@ -372,6 +375,84 @@ hand-written table.
 not a new failure; it was a failure mode that had no name, so nothing looked for
 it. That is worth more to HIS-6 than the count: a ledger of mechanisms is itself
 an enumerated list, and enumerated lists are what this epic keeps catching out.
+
+---
+
+## What the terminal evaluation added — rows 21–24, mechanisms E and F
+
+HIS-6 was told to consider adding two mechanisms the four do not cover. Both earned
+their place, and the ticket produced two further instances of its own while looking.
+
+| # | ticket | what happened | caught by |
+| --- | --- | --- | --- |
+| 21 | HIS-22 | **six honest probes, one oracle, all six blind.** V1–V6 each reddened its claim — mutation reached the code, fixture rich enough, claim and not precondition, right branch — and every one called `HomeCloseOut.inspect` **in process**, while the defect lived *between two readers*. The gate printed `"safe":true` in the same document where the CLI printed `NO_GIT_REMOTE`. It took a **reviewer** adding a node that runs both readers to see it | **reviewer** of #255 |
+| 22 | epic agent | **four wrong diagnoses in six findings, none of which any probe could have caught,** because the failure was upstream of every probe: the *acceptance text* never reached the defect. Two would have produced vacuous criteria; DEF-103's was **built, and stayed green with the whole fix reverted** | ticket agents, each before writing code |
+| 23 | HIS-6 | **the epic's own evaluation printed `PASS` as `FAIL` for every assertion it read.** Reading the `gls.conflict` envelope, `'PASS' if a.get('passed')` — the field is `status`. All four assertions read as failures, including the two that passed, and the first triage of DEF-108 was "all four fail". Caught only because the number was *implausible*: the node log plainly contained both strings the passing assertion tests for | author |
+| 25 | HIS-6 | **the clause-1 verdict for "the contract is stated ONCE" was reached by a search narrower than the corpus it decided.** The per-unit "links, does not restate" table was built by reading each unit's `SKILL.md` and never opening `references/`. `git-issue-workflow/references/skill-homes.md:354-361` carries the same six-item skip list, the same `pm/` exception and the same `uv` rationale as the canonical page — three lines before saying *"is stated once and is not repeated here"*. Mechanism **C**, in the ticket that closes this ledger, on the clause about not restating things | **reviewer** |
+| 26 | HIS-6 | **a remedy aimed at the operator's real home, published in three places, never executed once.** `remove --home` — a flag neither `remove` nor `uninstall` has (exit 2); env-pinned it leaves `.materialization/` behind, which is the half the prose claimed a raw `rm` would miss, so its own verification step would have failed; and it writes an `installed/` record before removing anything. **Not an assertion that could not fail — an INSTRUCTION that could not run.** Mechanism **C** at its outermost radius: not a mutation, a search, a fixture, or a measurement arm, but a **prescription that never reached a shell** | **reviewer** |
+| 24 | HIS-6 | **the evaluation's four parallel agents shared one scratchpad path.** Two wrote `env.sh` to it; one overwrote the other between write and read, and an agent's first `home describe` ran **against a sibling agent's home**. Caught only because the command echoes its resolved paths | an evaluation agent, about itself |
+
+### E — every honest probe shares one oracle, and the oracle cannot express the defect
+Row **21**, and row **13** is its ancestor. Mechanism D says a probe can point at the
+wrong branch. E is worse and quieter: **every probe points at the right branch, and
+they all ask the same reader.** All four of A–D's tests pass. The suite is large, the
+reds are genuine, the coverage is nil — because the defect is a *disagreement between
+two readers* and every probe invokes one of them.
+
+**The tell is structural and cheap to check:** count the **distinct entry points** the
+probes call, not the probes. Six probes through `HomeCloseOut.inspect` is one oracle.
+HIS-6 found a live instance of exactly this in the suite that grades one of its own
+goals — every `HomeDriftGateTest` case calls `DriftGate.recordSince` itself or drives
+`project sync`, so nothing in it could notice that **`home sync` arms no gate at all**
+(DEF-116).
+
+**The assertion:** a claim about what a COMMAND does is asserted through the command.
+A claim about two readers agreeing is asserted by running both. Where a suite's cases
+all enter through one method, that method is named in the suite's javadoc as its
+oracle, and the ticket says what a defect *outside* it would look like.
+
+### F — the specification never reached the defect
+Row **22**. Not "the mutation never reached the code" (C) but one level further out:
+**the acceptance text was written from an inferred mechanism, and the mechanism was
+wrong.** Every symptom was real and reproducible; the cause was supplied from row
+order, from a filename, from whichever tier happened to be in front of the operator.
+An agent building faithfully to that text ships green tests and the defect.
+
+This is the mechanism that makes a **hand-driven sweep's yield a symptom report and
+not evidence.** Instrument C caught six real things and got four causes wrong. What
+saved every one of them was a ticket agent reading the code before writing the
+assertion — a step nothing in the process requires.
+
+**The assertion:** a finding's `mechanism` is a separate field from its `symptom`, and
+acceptance text may be written only from a mechanism that has had a **confirming read**
+— a named file and line, or a differential measurement — recorded beside it. A
+mechanism inferred from a symptom is labelled as inferred and is not allowed to become
+a target.
+
+### And the honest reading of rows 23 and 24, which is the same reading as before
+
+Row 23 is mechanism **C** in the medium this ledger added last — *an output that
+carries no way to detect its own invalidity* — and it happened to **the agent whose
+brief quoted the two earlier instances of it in bold.** That is now the fourth time a
+mechanism has recurred to a reader who had just been told about it (rows 3/8, 12, 15,
+23). Row 24 is a new medium for the same thing: **two instruments sharing one mutable
+path**, where nothing in either transcript would have said so.
+
+**Row 26 widens the mechanism one last time, and the widening is the ledger's closing
+observation.** Every row before it is about a *check* that could not fail — an
+assertion, a probe, a search, a fixture, a measurement arm, an instrument. Row 26 is a
+**remedy** that could not run: prose, addressed to a human, aimed at the operator's own
+home, published in three places, and never once typed into a shell. It is the same
+defect at the outermost radius the epic reaches, and it is the one with the least
+excuse, because executing it cost sixty seconds. **The rule generalises past software:
+anything this epic emits that claims to work — an assertion, a probe, a sweep, or a
+sentence telling somebody what to type — is a claim, and a claim nobody exercised is not
+evidence.**
+
+**Twelve instances of "an output that carries no way to detect its own invalidity" is
+now fifteen.** The countermeasure that has ever worked is not the list. It is asking
+the tool for typed output, and giving every zero a positive control — and row 23 is a
+reminder that this applies to reading a JSON envelope, not only to `grep`.
 
 ---
 

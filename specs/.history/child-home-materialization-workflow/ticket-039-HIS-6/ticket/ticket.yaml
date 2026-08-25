@@ -1,0 +1,201 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket HIS-6",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "HomeIntegrityInternal.cfg",
+      "HomeIntegrityInternal.tla",
+      "HomeIntegrityInternal_guard_repairingobserver.cfg",
+      "HomeIntegrityInternal_probe_disposalreach.cfg",
+      "HomeIntegrityInternal_probe_reach.cfg",
+      "HomeIntegrityInternal_regression_blindobserver.cfg",
+      "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+      "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+      "HomeIntegrityInternal_regression_foreignprojection.cfg",
+      "HomeIntegrityInternal_regression_gaterefires.cfg",
+      "HomeIntegrityInternal_regression_halfboundhome.cfg",
+      "HomeIntegrityInternal_regression_narrowprojection.cfg",
+      "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+      "HomeIntegrityInternal_regression_repairingobserver.cfg",
+      "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+      "HomeIntegrityInternal_regression_selfrepend.cfg",
+      "HomeIntegrityInternal_regression_silentdrift.cfg",
+      "HomeIntegrityInternal_regression_staleack.cfg",
+      "HomeIntegrityInternal_regression_staleerror.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "generated/spec-unit/ClaimantRefreshInternal.dot",
+      "generated/spec-unit/claimant_refresh_cases/__init__.py",
+      "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+      "generated/spec-unit/claimant_refresh_cases/cases.py",
+      "generated/spec-unit/claimant_refresh_cases/docs.md",
+      "generated/spec-unit/claimant_refresh_cases/doubles.py",
+      "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+      "generated/spec-unit/claimant_refresh_cases/types.py",
+      "generated/spec-unit/claimant_refresh_cases/validators.py",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_claimant_refresh_program_model.py",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py",
+      "tests/test_tlc_expected_violations.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/wt-218-his-6/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/wt-218-his-6/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-218-his-6/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "DEF-011 IS CLOSED BEFORE THE SWEEP IS TRUSTED. `run.py --all` completes over every non-excluded graph, red ones included, and `graphs_executed` is READ from the artifact rather than inferred from a green build. A sweep that stopped at the first failure is not a sweep and must not be reported as one.",
+        "Every goal is reported baseline -> measured -> target with ONE VERDICT PER CLAUSE, never one token per goal.",
+        "GOAL-sync-quiet is reported with BOTH of its numbers -- the retrodiction and the forward-going measurement -- per the plan's measurement_caveat_added_2026_08_22. Conflating them is a reporting defect.",
+        "The build that produced every home measured is stated, per this ticket's own warning (2), because a home built by the released CLI measures the old product.",
+        "The deferred backlog is RECONCILED before any count is reported: statuses are re-measured, not inherited. DEF-043 is the known-stale entry.",
+        "`run.py --all` is driven with RESUMPTION. On a failure, fix or record the node and resume from THAT node (`--resume-from-node` / `--resume-from-build` / `--run-only-node`). Restarting from the beginning is forbidden; iterate until every graph has executed.",
+        "ALL FOUR PROMOTION PATHS are exercised with a case each: worktree->project, project->root, root->project, project->worktree. project->root was never exercised before 2026-08-24 and hit DEF-103 on its first run.",
+        "A direct ROOT update still works. The enforced direction is project->root; the owner requires the root remain updatable, so both halves carry a case.",
+        "The evaluation agents are ISSUE-SCOPED and validate their OWN worktree. Not whole-epic agents. Owner's instruction, 2026-08-24.",
+        "EVERY bug an agent found that `--all` did NOT is left behind as a test assertion, and as a model update where it is a property rather than a case. A found bug without a check is not closed.",
+        "The scorecard reports the regressions caught and the fixes made, and argues a judgment on how well the architecture and the validation did -- naming what the validation MISSED as plainly as what it caught."
+      ]
+    },
+    "blocks": [],
+    "conflict_keys": {
+      "adapters": [],
+      "production": [],
+      "test_graph": [],
+      "tla": [],
+      "workflow_data": []
+    },
+    "depends_on": [
+      "HIS-1",
+      "HIS-2",
+      "HIS-3",
+      "HIS-4",
+      "HIS-5",
+      "HIS-7",
+      "HIS-8",
+      "HIS-9",
+      "HIS-10",
+      "HIS-11",
+      "HIS-12",
+      "HIS-13",
+      "HIS-14",
+      "HIS-15",
+      "HIS-16",
+      "HIS-17",
+      "HIS-18",
+      "HIS-19",
+      "HIS-20",
+      "HIS-21",
+      "HIS-22"
+    ],
+    "epic": "home-integrity-sync",
+    "evaluation_design_revision_9b": "SET BY THE OWNER 2026-08-24, after the epic PR and before dispatch. This REPLACES the \"run every goal's harness\" shape with an ordered pipeline, because the point is not to produce nine verdicts -- it is to find what breaks at release and to leave a check behind for each thing found. PHASE 1 -- THE SWEEP, WITH RESUMPTION, AND `--all` CANNOT DO IT. Established by measurement 2026-08-24 before dispatch: `run.py` REFUSES the combination outright -- if args.run_all and (args.resume_from_build or replay_node_count): parser.error(\"resume options apply to one graph; pass <graph> instead of --all\") Resumption is PER GRAPH. So \"sweep everything\" and \"resume from the failing node\" cannot both be asked of `--all`, and the owner's instruction -- never restart from the beginning -- requires driving the graphs individually. DEF-011's fix and the resumption requirement turn out to be THE SAME FIX. That driver is `skills/test_graph/scripts/sweep.py`. One graph at a time; a red graph does NOT stop the sweep; every outcome recorded red or green; `graphs_executed` and `graphs_passed` written as SEPARATE numbers so neither can be inferred from the other; and `--retry-failed-from` re-runs only the failures, resuming each from its own first FAILED node. IT IS VALIDATED IN BOTH DIRECTIONS, and the selftest found a defect in it: the first version classified any node not `passed` as failing, which lumped `skipped` in with `failed`. On artifact-dag that reported THREE failing nodes where there is ONE -- `uninstall.prunes.the.subgraph` failed, and `home.fixpoint.law` / `home.membership.law` are downstream with spawnExitCode -1 and zero assertions. It would have told this evaluation that the cross-cutting laws were broken. Failed and skipped are now separate, and the distinction also matters for resumption: a skipped node has no saved input context to resume from. PHASE 2 -- SMALL AGENTS ON REAL ISSUES, NOT WHOLE-EPIC AGENTS. The owner: \"I don't want you to deploy whole agents. Instead, deploy agents on gh issues to validate their own worktree.\" So each evaluation agent takes ONE GitHub issue, works in ITS OWN worktree, and validates THAT worktree. Small and issue-scoped. This is the shape the epic used for tickets; it is now the shape of the evaluation. PHASE 3 -- THE PROMOTION PATHS, ALL OF THEM, INCLUDING THE ONE WE MISSED. The owner: \"we're also going to have to evaluate the promotion to skill manager root from project root. I think previously we missed that.\" Correct -- every close-out gate in this epic ran worktree -> project, and NOTHING exercised project -> root until 2026-08-24, when it was run by hand and immediately hit DEF-103. The paths to evaluate: worktree home -> project home      (close-out; exercised all epic) project home  -> root home         (MISSED; DEF-103 lives here) root home     -> project home      (downward: clone/inherit) project home  -> worktree home     (downward: bootstrap) The owner's direction on the middle pair: \"we need to be enforcing change management of the root skill manager from project home. However, we should still be able to update the root.\" So project -> root is the ENFORCED direction, and a direct root update must remain possible. Both halves get a case. PHASE 4 -- THE PROGRESSIVE DISCLOSURE GRAPH is validated during this, not as a separate exercise. HIS-20 measured it at ONE tier only; the other two corpora existed nowhere on disk. Now that the leaf PRs are merged and the root home is synced (docs coverage 0 of 4 -> 4 OF 4 on the real machine), root is measurable for the first time. PHASE 5 -- CLOSE THE LOOP, AND THIS IS THE PART THAT OUTLIVES THE EPIC. Every bug the AGENTS found that `--all` did NOT becomes (a) a new or widened test assertion, and (b) where it is a property rather than a case, a model update. The owner: \"we use the missing bugs to add as test assertions and updates to our model so that the same regressions get caught in the future.\" A bug found by an agent and not left behind as a check is a bug that will return. PHASE 6 -- THE SCORECARD. Nine goals, one verdict per clause, PLUS the regressions caught and the fixes made, PLUS a judgment -- argued, not asserted -- on how well the architecture and the validation actually did. The owner asked for \"solid judgment\", which means naming what the validation MISSED as plainly as what it caught.\n",
+    "github_issue": 218,
+    "goals": [
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-no-spurious-holdback",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-sync-quiet",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-gate-settles",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-symlink-merge-settles",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-home-invariants",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta",
+        "goal": "GOAL-mechanism-documented",
+        "local_signal": "N/A: this ticket is the measurement"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "decides the goal; adds no behavioural delta. HIS-20 measures it; this ticket reports the verdict and must NOT re-run the judged reads selectively",
+        "goal": "GOAL-progressive-disclosure",
+        "local_signal": "N/A: this ticket is the measurement"
+      }
+    ],
+    "id": "HIS-6",
+    "objective": "This ticket's slice IS the measurement, run as the six-phase pipeline above. It reports baseline -> measured -> target with ONE VERDICT PER CLAUSE. Every goal has at least two clauses; a single token per goal would have to choose which clause it referred to, and it would choose the flattering one.\n",
+    "owns_goals": [
+      "GOAL-no-spurious-holdback",
+      "GOAL-sync-quiet",
+      "GOAL-gate-settles",
+      "GOAL-symlink-merge-settles",
+      "GOAL-home-invariants",
+      "GOAL-mechanism-documented",
+      "GOAL-one-home-one-answer",
+      "GOAL-no-destructive-recovery",
+      "GOAL-progressive-disclosure"
+    ],
+    "owns_the_terminal_sweep": "SET BY THE OWNER AT THE WAVE-3 GATE, 2026-08-21: \"--all takes forever. We'll do it once at the end with the goal/evals/scorecard.\" So this ticket owns the ONE `run.py --all`, run on the integrated tip alongside the scorecard, and no wave before it owes a full sweep. See the root `validation_policy` block, which is canonical. TWO THINGS THIS TICKET MUST NOT ASSUME. (1) THE SWEEP IS A CHAIN. Gradle stops at the first failing task, so a red graph at position 1 yields \"stopped at 1\" -- output that is indistinguishable from \"only 1 graph exists\". Measured 2026-08-21: one lost teardown race in `smoke`, the first graph, meant 1 of 24 executed and 23 never ran. Because this is now the epic's ONLY full run, there is no earlier complete sweep to fall back on, and a scorecard that dies on graph 1 is no scorecard. DEF-011's second half is therefore a PREREQUISITE, not cleanup. Read `graphs_executed` -- do not infer it from a green build. (2) WHICH BUILD PRODUCED THE HOMES IT MEASURES. `skt` and bootstrap-home.sh resolve their CLI from the root home's pin, which DEF-006 measured as Homebrew 0.23.0 -- a release predating this epic. A home built through the documented front door is built by code that has none of these fixes, so a goal measured over such a home measures the old product. State the build for every number, or the terminal verdicts are about something other than this epic.\n",
+    "phase": "HIS",
+    "promotion_order": 22,
+    "promotion_predecessor": "HIS-22",
+    "re_measurement_note": "GOAL-sync-quiet and GOAL-no-spurious-holdback are re-measured against the COMMITTED baseline fixtures under results/epic-home-integrity-sync/ baseline/, not against the operator's homes, which have moved since. GOAL-symlink-merge-settles is measured on HIS-4's synthetic fixture, because its live instance was cleared at kickoff -- say so in the report rather than presenting the synthetic number as the same measurement.\n",
+    "rescheduled_in_revision_10": "Wave 14 -> 16, promotion 20 -> 22, behind HIS-21 and HIS-22. The manual sweep that was meant to PREPARE this evaluation found six defects the 26-graph sweep missed, and the owner chose to fix them and leave regression assertions behind BEFORE the terminal measurement rather than report them as findings against it. That makes the validation ITERATIVE, which is the point: round 1 is the sweep plus the manual pass; HIS-21 and HIS-22 fix what it found and add the assertions; round 2 re-runs the sweep against the fixed tree, which both confirms the fixes and gives the new assertions their first real exercise. HIS-6 then decides nine goals against a tree validated twice. The ID and plan ordinal are unchanged, per rule 3; only the schedule moved. This is the second time HIS-6 has moved for exactly this reason.\n",
+    "rescheduled_in_revision_9": "Wave 12 -> 14, promotion 18 -> 20. Revision 9 inserted HIS-19 (the versioned CLI pin) and HIS-20 (progressive disclosure in both directions, and change management through GitHub) ahead of it. HIS-6 stays LAST by construction: it is the measurement, and a measurement that runs before the last change measures something else. The ID and plan ordinal are unchanged, per rule 3; only the schedule moved.\n",
+    "role": "evaluation",
+    "rules": "DOES NOT FIX GOALS. A goal that comes out short is reported short and is a decision for the owner. Never edits a target so a result passes; never re-runs selectively until a number passes. IT DOES FIX THE HARNESS, and that is the one exception, added in revision 9b: phase 5 REQUIRES adding assertions and model updates for every bug the agents found that the sweep missed. Repairing the PRODUCT to make a goal pass is forbidden; leaving a found bug without a check is also forbidden. Where the two conflict -- a bug whose fix would change a measured number -- file the fix and report the number as measured, then say so.\n",
+    "status": "planned",
+    "title": "TERMINAL EVALUATION -- decide every goal on the integrated epic tip",
+    "wave": 16
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-218-his-6/specs/tickets/HIS-6",
+  "ticket_id": "HIS-6",
+  "ticket_index": 39,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-218-his-6/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-218-his-6/specs/tickets"
+}

@@ -1,0 +1,72 @@
+# DEF-121 — the operator remedy, RUN before being published.
+# build: skill-manager 0.24.0+g17648705e67b
+# The version HIS-6 first published was never executed. It failed three ways.
+
+############ WHAT THE PUBLISHED REMEDY ACTUALLY DID ############
+$ skill-manager remove eval-probe --home <home>
+    Unknown options: '--home', '<home>'
+    EXIT=2      <- the flag does not exist on `remove` OR on `uninstall`
+    home unchanged: skills/ still holds eval-probe, .materialization/ still holds its record
+
+$ SKILL_MANAGER_HOME=<home> skill-manager remove eval-probe
+    reconcile: onboarded=1 cleared=0        <- A WRITE, before anything is removed
+    ✓ removed eval-probe from store
+    EXIT=0
+    .materialization/skill/eval-probe.json  STILL THERE
+    -> the published verification step (`ls .materialization/skill -> no eval-skill.json`)
+       would have FAILED on the operator's home.
+
+############ AND THE PREVIEW IS NOT SAFE EITHER — DEF-122 ############
+$ skill-manager remove eval-probe --dry-run     # "without mutating filesystem or gateway"
+    EXIT=0
+    path delta caused by the DRY RUN:   > ./installed/eval-probe.json
+    CONTROL: the same --dry-run on a properly-installed unit in the same home
+             changes 0 paths. The trigger is the ABSENT installed/ record.
+
+######## THE REMEDY, RUN VERBATIM AGAINST A SYNTHETIC HOME ########
+# reproduction: skills/eval-probe + .materialization/skill/eval-probe.json,
+#               NO installed/eval-probe.json — DEF-121's exact shape.
+
+--- STEP 0: scope it. Nothing else may name the unit. ---
+$ grep -rl eval-probe <home> --exclude-dir=.git
+    <home>/skills/eval-probe/SKILL.md
+    <home>/.materialization/skill/eval-probe.json
+$ grep -c eval-probe <home>/units.lock.toml
+    0   (control: 1 unit row(s) in the file)
+
+--- STEP 1: remove the two paths. No CLI verb: see the note below. ---
+$ rm -rf <home>/skills/eval-probe <home>/.materialization/skill/eval-probe.json
+    EXIT=0
+
+--- STEP 2: verify. Every line must read 'yes'. ---
+    unit directory gone .................. yes
+    materialization record gone .......... yes
+    no installed/ record manufactured .... yes
+    nothing in the home still names it ... yes
+    CONTROL resident/ still installed .... yes
+    CONTROL resident bytes unchanged ..... yes
+    CONTROL units.lock.toml untouched .... yes
+
+--- STEP 3: both readers agree the home is clean ---
+    home verify EXIT=0
+        log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-202
+    home repair EXIT=0
+      ✓ nothing in <home> is damaged in a way this command knows about (3 entries examined)
+
+--- NEGATIVE CONTROL: the SAME verification on the UNREPAIRED home ---
+    unit directory gone .................. NO  <- the check can fail
+    materialization record gone .......... NO  <- the check can fail
+    (both must read NO here, or the verification above proves nothing)
+
+--- WHY STEP 3 IS NOT THE CHECK, and step 2 is ---
+    `home verify` and `home repair` exit 0 on the DAMAGED home too. That is
+    DEF-121 itself: a unit in skills/ + .materialization/ with no installed/
+    record is a shape neither reader looks for. Step 3 is recorded because a
+    remedy that left the home failing its own verifiers would be worse; it is
+    NOT evidence the remedy worked. The file-level checks in step 2, with the
+    negative control above, are.
+
+--- WHAT WAS NOT DONE ---
+    This ran against a SYNTHETIC reproduction under the HIS-6 worktree, never
+    against the operator's project home. That home still holds the foreign unit,
+    read-only-preserved as evidence. Running the remedy there is the owner's act.

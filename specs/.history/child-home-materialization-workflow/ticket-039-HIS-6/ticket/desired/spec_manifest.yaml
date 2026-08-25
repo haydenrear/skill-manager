@@ -1,0 +1,449 @@
+module: SkillManager
+package: current_program_cases
+
+# The close-time complexity ledger must keep measuring the accepted monolith;
+# adding standalone claimant views must not change model discovery by filename.
+model:
+  tla: SkillManager.tla
+  cfg: MC.cfg
+
+status:
+  workflow: ticket
+  active_ticket: ISSUE-168
+  active_ticket_title: "Make clean-home project resolution atomic across mutually importing units"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-08-12"
+  current_slice:
+    name: atomic_project_resolve_closure
+    status: implemented
+    note: >
+      ResolveProjectDependencies now states the staged-closure semantics
+      explicitly: markdown skill-imports are validated once against the
+      candidate closure (everything about to publish plus everything
+      installed), a genuinely missing import is a typed
+      PROJECT_IMPORT_MISSING reject with all state UNCHANGED, and the
+      publish branch remains one atomic step over the whole declared
+      closure. New operators UnitMarkdownImportEdges,
+      ProjectImportCandidates, ProjectMissingMarkdownImports; no state
+      variable added, no invariant changed.
+    refines:
+      - SkillManager.ResolveProjectDependencies
+    implemented_actions:
+      - ResolveProjectDependencies (staged-closure import validation + typed reject)
+    validation:
+      unit:
+        - jbang RunTests.java (ProjectResolveAtomicClosureTest)
+      tlc:
+        - bash run_tlc.sh SkillManager.tla MC.cfg
+        - bash run_tlc.sh SkillManager.tla MC_program_promotion.cfg
+      graph:
+        - project-resolve
+        - project-smoke
+        - onboarding
+        - spec-conformance
+  previous_slice:
+    name: claimant_refresh_revision_coherence
+    status: validated
+    note: >
+      SkillManager.tla and its accepted metadata remain the authoritative,
+      byte-identical whole-program baseline. ISSUE-166 adds two uniquely named,
+      bounded semantic views for the revision identity intentionally abstracted
+      at the automatic claimant-refresh seam. These views do not promote or
+      replace the pending child-home Internal/External migration.
+    refines:
+      - SkillManager.SyncClaimingProjectChildHomes
+      - SkillManager.SyncUnit
+    implemented_actions:
+      - ReconcileClaimingProjectFromSelectedParent
+      - PublicNamedSyncPinnedRevision
+    validation:
+      unit:
+        status: passed
+        suites: 114
+        tests: 985
+      tlc:
+        status: passed
+        desired_views: 2
+        expected_violations: 2
+      graph:
+        status: passed
+        full_graphs: [project-smoke, spec-conformance]
+      evidence:
+        - ../results/validation-2026-08-07.md
+        - ../results/model-descriptors-2026-08-07.md
+  home_integrity_slice:
+    name: home_integrity_invariants
+    ticket: ARTI-22
+    issue: skill-manager-integration-repository#124
+    status: validated
+    note: >
+      A third uniquely named bounded semantic view, added the same way and for
+      the same reason as the ISSUE-166 claimant views above: SkillManager.tla
+      and its accepted metadata remain byte-identical, and this view neither
+      promotes nor replaces the pending child-home Internal/External migration.
+      It states what a healthy Skill Manager home IS -- the record/store
+      relation, the drift/digest relation, and the projection-source relation
+      -- after the artifact-DAG epic surfaced ten defects in the operator's own
+      homes with nothing anywhere asserting any of them.
+    deviation: >
+      This ticket was asked to scaffold the EPIC'S SHARED spec workflow, on the
+      grounds that ARTI-02 (#103) had repaired the baseline that blocked it.
+      That baseline is indeed repaired. It was NOT scaffolded, because
+      specs/current and specs/desired_program_model are occupied by a live,
+      unpromoted workflow -- child-home-materialization-workflow, active ticket
+      CHM-1, with 17 of 34 tickets not closed (1 next, 7 planned, 6 open, 2
+      blocked_on_owner, 1 blocked_on_prerequisite). tla-spec-dev's scaffold writes
+      if-missing, so a scaffold would have silently no-opped on all seven
+      template files while appearing to succeed; with --force it would have
+      clobbered that 36-ticket plan, which is the exact class of damage ARTI-02
+      spent a whole ticket repairing. Recorded on #124 rather than half-done.
+    refines:
+      - SkillManager.SyncUnit
+      - SkillManager.RecordHomeDrift
+    implemented_actions:
+      - SyncAdvancesStoreAndRecord
+      - SyncConflictsAndRecordsTheError
+      - MaterializeIntoRegisteredChild
+      - AcknowledgeCurrentDigest
+      # HIS-5 (#217), epic/home-integrity-sync.
+      - RefreshTheUnitFromEvidenceOnDisk
+      - ResolveTheConflictAndRederiveTheRecord
+      - SyncDetectsAChange
+      - TheGateIsSurfacedInFull
+      - TheGateIsSurfacedCollapsed
+      - TheGateIsAcknowledged
+      - ALaunchProceedsThroughAClearGate
+      - ACloneRecordsADescentTheParentClaims
+      - ACloneRecordsADescentNoParentClaims
+      - TheParentRevokesItsClaim
+      - ACommandBindsBothAxesAndWrites
+      - ACommandWithNoHomeNamedUsesTheAmbientHome
+      - TheHomeTakesDamage
+      - AnObserverReportsWhatItFound
+      - ARepairRunsAsItsOwnCommand
+    # HIS-5 (#217). THE TABLE, DECLARED BESIDE THE CONFIGURATIONS IT DESCRIBES.
+    # It was in ../desired_program_model/spec_manifest.yaml only, and this
+    # directory holds byte-identical copies of every configuration -- so the
+    # tree that CI actually collects (specs/current/tests) had no declaration
+    # of what its own files are for. That is the shape ARTI-22 already shipped
+    # once and #103 spent a whole ticket repairing.
+    #
+    # tests/test_tlc_expected_violations.py EXECUTES all three tables and
+    # asserts the invariant TLC names is the one declared here.
+    expected_violations:
+      HomeIntegrityInternal_regression_silentdrift.cfg: RecordDescribesItsStoreOrSaysWhy
+      HomeIntegrityInternal_regression_staleack.cfg: AckIsNotStaleOnArrival
+      HomeIntegrityInternal_regression_selfrepend.cfg: AckWritesFallInsideItsBaseline
+      HomeIntegrityInternal_regression_foreignprojection.cfg: ProjectionSourceIsDecidable
+      HomeIntegrityInternal_regression_narrowprojection.cfg: ProjectionResolvesInsideThisHome
+      HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg: AnIdenticalTreeIsDisposableWhateverItsRecordNames
+      HomeIntegrityInternal_regression_everythingdisposable.cfg: ADivergentTreeIsNeverSilentlyReplaced
+      HomeIntegrityInternal_regression_gaterefires.cfg: OneGateIsSurfacedInFullAtMostOnce
+      HomeIntegrityInternal_regression_collapsedgateadmits.cfg: AnUnacknowledgedGateStillRefusesALaunch
+      HomeIntegrityInternal_regression_staleerror.cfg: ARecordedErrorIsAFunctionOfTheLiveTree
+      HomeIntegrityInternal_regression_selfcertifyingdescent.cfg: SanctionIsRederivedFromTheParentsOwnStore
+      HomeIntegrityInternal_regression_halfboundhome.cfg: AHomesTwoAxesNameOneHome
+      HomeIntegrityInternal_regression_repairingobserver.cfg: AnObservationNeverRepairsWhatItObserved
+      HomeIntegrityInternal_regression_blindobserver.cfg: ADamagedHomeIsNeverReportedClean
+    reachability_probes:
+      HomeIntegrityInternal_probe_disposalreach.cfg: NoRefreshedTreeEverHadAForeignRecord
+      HomeIntegrityInternal_probe_reach.cfg: NoHomeReachesEveryStateTheseInvariantsAreAbout
+    witness_dependence:
+      witness_dependent:
+        AnObservationNeverRepairsWhatItObserved:
+          witness: hi_observer_repaired
+          guard_config: HomeIntegrityInternal_guard_repairingobserver.cfg
+    invariants:
+      - RecordDescribesItsStoreOrSaysWhy
+      - AckIsNotStaleOnArrival
+      - AckWritesFallInsideItsBaseline
+      - ProjectionSourceIsDecidable
+      - AnIdenticalTreeIsDisposableWhateverItsRecordNames
+      - ADivergentTreeIsNeverSilentlyReplaced
+      - OneGateIsSurfacedInFullAtMostOnce
+      - AnUnacknowledgedGateStillRefusesALaunch
+      - ARecordedErrorIsAFunctionOfTheLiveTree
+      - SanctionIsRederivedFromTheParentsOwnStore
+      - AHomesTwoAxesNameOneHome
+      - AnObservationNeverRepairsWhatItObserved
+      - ADamagedHomeIsNeverReportedClean
+    his_5_extension: >
+      HIS-5 (#217) states this epic's behavioural fixes as invariants a
+      deliberately broken model violates. ARTI-22's four invariants and five
+      regression configurations are unchanged and all five still FAIL on their
+      own invariant; nine invariants, nine expected-violation configurations,
+      one guard configuration and two reachability probes are added. The
+      authoritative per-invariant declaration -- including witness-dependence,
+      what is deliberately NOT stated, and the cross-check that each
+      counterexample violates exactly one invariant -- is in
+      ../desired_program_model/spec_manifest.yaml, ticket_slices.ARTI-22.
+    corrections_after_review: >
+      Four numbers in the first version of this slice were wrong and are
+      corrected here rather than quietly edited. (1) The CHM plan has 34
+      tickets with 17 not closed; I wrote "16 of 36". The premise -- that the
+      slots are occupied by a live workflow -- is unaffected and load-bearing,
+      but the count is in a durable artifact and was also in a commit body.
+      (2) "Would forbid the brew, npm and pip backends" is wrong by two: only
+      BrewBackend links outside the home; NpmBackend, PipBackend and TarBackend
+      all write into store.cliBinDir(). Brew alone makes #124's wording false,
+      which is all an invariant needs. (3) "27 of 27" mixed two denominators --
+      27 declaration rows across 22 distinct on_path binaries; the check
+      iterates the 22. (4) ProjectionSourceIsDecidable had no expected-violation
+      configuration and none was constructible, because "foreign" was never
+      assigned -- TLC could not distinguish it from TRUE. That was this
+      ticket's headline correction sitting on the one invariant with no
+      executable refutation, against this repo's own regression_config_rule.
+      MaterializeIntoUnregisteredHome and ..._regression_foreignprojection.cfg
+      are the repair. AckWritesFallInsideItsBaseline was added at the same time,
+      because dropping AckIsStable's second clause was right but left #124's
+      defect 4 asserted by nothing.
+    dropped_from_the_proposed_invariants: >
+      #124 proposed nine candidate invariants and said the list was a starting
+      point rather than a specification. Three did not survive the argument in
+      the form proposed: EveryShimResolves ("inside this home or a sanctioned
+      parent store") is FALSE of a healthy home because a brew-backed shim
+      legitimately points at /opt/homebrew; RecordedBinaryIsProduced is false
+      by design because CliPresence.alreadyProvided deliberately writes no shim
+      for a tool the machine already has; and ProjectionSourceIsDecidable's
+      narrow reading reports 51 correctly-registered child-home projections as
+      defects. NoPhantomAhead and defect 3 collapse into one home-level fact
+      and are merged. AckIsStable's second clause is dropped as a demand that
+      the gate fail open. The two corrections expressible in this model are
+      kept as regression configurations rather than as prose.
+    validation:
+      tlc:
+        status: passed
+        views: 1
+        # HIS-5 (#217): was 6 configurations / 5 expected violations.
+        configurations: 18
+        expected_violations: 14
+        guard_configurations: 1
+        reachability_probes: 2
+        healthy_run: 158801 states generated, 24000 distinct, depth 14
+        commands:
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_silentdrift.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_staleack.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_selfrepend.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_foreignprojection.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_narrowprojection.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_everythingdisposable.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_gaterefires.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_collapsedgateadmits.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_staleerror.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_selfcertifyingdescent.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_halfboundhome.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_repairingobserver.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_blindobserver.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_guard_repairingobserver.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_probe_disposalreach.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_probe_reach.cfg
+      graph:
+        status: passed
+        full_graphs: [home-integrity]
+        nodes: 12
+        assertions: 59
+  next:
+    - Fill in whole-program current state fields, actions, invariants, and adapters after the first production slice lands.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+    - Propose the budgets below to the user, ask which to adjust for this program, and record a one-line rationale per changed value.
+
+# Per-program complexity and case budgets -- advisory thresholds read by
+# analyze complexity (which warns with facts and never blocks) and by the
+# EXPERIMENTAL fuzzing surface (case generation, the adapter runner, the
+# mutation kill test). Defaults come from references/modular_fuzzing.md;
+# doctrine: SKILL.md "Complexity Budgets Are Advisory".
+budgets:
+  tlc_seconds: 120                          # hard external timeout per TLC run
+  max_distinct_states: 50000                # reachable states TLC may find, per component model
+  max_state_space_bound: 1000000            # static declared-representation ceiling; see modular_fuzzing.md
+  max_internal_cases_per_component: 200     # spec-unit case cap per component
+  max_external_cases_per_action: 50         # Test Graph case cap per external action
+  kill_rate_floor: 0.8                      # minimum mutation kill rate (EXPERIMENTAL fuzzing surface; optional)
+  max_component_variables: 6                # component-size heuristic
+  max_component_actions: 8                  # component-size heuristic
+  max_symmetric_instances: 2                # component-size heuristic (EXPERIMENTAL fuzzing surface; optional)
+  source: defaults
+  rationale: {}
+
+# Optional dead-weight audit (advisory): add a justification: table linking
+# every declared variable to what depends on it. Schema: one mapping per
+# variable with at least one NON-EMPTY list among invariants/effects/
+# kill_tests. Prose strings are not linkage -- a prose-only entry leaves the
+# variable flagged DEAD WEIGHT. Example:
+#   justification:
+#     orders:
+#       invariants: [SafetyInv]
+#       effects: [order_submitted]
+#       kill_tests: [test_order_cap]
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_monolith: ../program_model/SkillManager.tla
+  # ../program_model has no Core.tla / Internal.tla / External.tla. The scaffold
+  # template's keys pointing at them were removed rather than left dangling.
+  # See ../desired_program_model/ticket_plan.yaml phase MIG.
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+# Whole-program generated-case indexes remain empty because the accepted
+# SkillManager monolith is still planned. ISSUE-166's actually generated,
+# bounded corpus is indexed under ticket_slices.ISSUE-166.views.internal.
+state_fields: []
+actions: []
+ports: {}
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: current_program_cases
+  accepted_monolith: SkillManager.tla is carried forward byte-identical
+  accepted_metadata: specs/program_model remains unchanged by ISSUE-166
+
+# These names are carried by the byte-identical accepted monolith. Listing
+# them here keeps the ticket-local contract tests targeted at this model
+# directory rather than silently reaching into specs/program_model.
+modeled_catalogs:
+  - CliCommandCatalog
+  - CliWorkflowCatalog
+carried_forward_invariants:
+  - CliRootHelpStaysProgressive
+  - CliCommandHelpCoversCatalog
+  - CliSkillDocsCoverWorkflowCatalog
+  - CliAgentContextCoversWorkflowCatalog
+
+# Scoped semantic views owned by ISSUE-166. They own state, transitions, and
+# invariants and therefore are model views, not case_modules. The top-level
+# module identity intentionally remains SkillManager for close-time complexity
+# accounting against the accepted monolith.
+ticket_slices:
+  ISSUE-166:
+    complexity_ledger_model:
+      module: SkillManager.tla
+      config: MC.cfg
+      identity: SkillManager
+      rule: accepted_whole_program_identity_unchanged
+    refinement:
+      baseline_module: SkillManager.tla
+      internal_refines: SkillManager.SyncClaimingProjectChildHomes
+      external_refines:
+        - SkillManager.SyncUnit
+        - SkillManager.SyncClaimingProjectChildHomes
+      scope: bounded_revision_identity_at_automatic_claimant_refresh_seam
+      non_replacement: true
+    views:
+      internal:
+        module: ClaimantRefreshInternal.tla
+        desired_config: ClaimantRefreshInternal.cfg
+        regression_config: ClaimantRefreshInternal_regression.cfg
+        specification: ClaimantRefreshSpec
+        regression_specification: ClaimantRefreshRegressionSpec
+        actions:
+          - ReconcileClaimingProjectFromSelectedParent
+        invariants:
+          - TypeOK
+          - AutomaticClaimantRefreshDoesNotPullTrunk
+          - AutomaticClaimantRefreshUsesSelectedParentRevision
+        generates: spec_unit
+        adapter_mapping: case_adapters.toml
+        actions_metadata: claimant_refresh_actions.yml
+        case_codegen:
+          generation_status: generated
+          package: claimant_refresh_cases
+          source_module: ClaimantRefreshInternal
+          source_view: internal
+          actions_metadata: claimant_refresh_actions.yml
+          cases_dir: generated/spec-unit/claimant_refresh_cases
+          cases: 1
+          reachable_states: 2
+          transitions: 1
+        state_fields:
+          - claimant_selected_revision
+          - claimant_parent_revision
+          - claimant_trunk_revision
+          - claimant_child_revision
+          - claimant_fetches
+          - claimant_phase
+        ports:
+          SkillManagerCli.sync_claiming_projects:
+            action: ReconcileClaimingProjectFromSelectedParent
+            adapter: specs.claimant_refresh_adapter:ClaimantRefreshPolicyAdapter
+      external:
+        module: ClaimantRefreshExternal.tla
+        desired_config: ClaimantRefreshExternal.cfg
+        regression_config: ClaimantRefreshExternal_regression.cfg
+        specification: NamedSyncSpec
+        regression_specification: NamedSyncRegressionSpec
+        actions:
+          - PublicNamedSyncPinnedRevision
+        invariants:
+          - TypeOK
+          - SuccessfulNamedSyncHasOneSelectedRevision
+          - AutomaticClaimantRefreshPerformsNoSourceSelection
+        generates: testgraph
+        adapter_mapping: testgraph_bindings.yml
+    justification:
+      claimant_selected_revision:
+        invariants: [AutomaticClaimantRefreshUsesSelectedParentRevision]
+      claimant_parent_revision:
+        effects: [ReconcileClaimingProjectFromSelectedParent]
+        invariants: [AutomaticClaimantRefreshUsesSelectedParentRevision]
+      claimant_trunk_revision:
+        kill_tests: [ClaimantRefreshInternal_regression.cfg]
+      claimant_child_revision:
+        effects: [ReconcileClaimingProjectFromSelectedParent]
+        invariants: [AutomaticClaimantRefreshUsesSelectedParentRevision]
+      claimant_fetches:
+        invariants: [AutomaticClaimantRefreshDoesNotPullTrunk]
+      claimant_phase:
+        effects: [ReconcileClaimingProjectFromSelectedParent]
+      named_selected_revision:
+        invariants: [SuccessfulNamedSyncHasOneSelectedRevision]
+      named_checkout_revision:
+        invariants: [SuccessfulNamedSyncHasOneSelectedRevision]
+      named_installed_revision:
+        invariants: [SuccessfulNamedSyncHasOneSelectedRevision]
+      named_units_lock_revision:
+        invariants: [SuccessfulNamedSyncHasOneSelectedRevision]
+      named_registration_revision:
+        invariants: [SuccessfulNamedSyncHasOneSelectedRevision]
+      named_child_revision:
+        effects: [PublicNamedSyncPinnedRevision]
+        invariants: [SuccessfulNamedSyncHasOneSelectedRevision]
+      named_trunk_revision:
+        kill_tests: [ClaimantRefreshExternal_regression.cfg]
+      named_fetches:
+        invariants: [AutomaticClaimantRefreshPerformsNoSourceSelection]
+      named_receipt:
+        effects: [PublicNamedSyncPinnedRevision]
+        invariants: [SuccessfulNamedSyncHasOneSelectedRevision]
+    validation:
+      desired_internal:
+        status: passed
+        states_generated: 2
+        distinct_states: 2
+        depth: 2
+      regression_internal:
+        status: passed_expected_violation
+        invariant: AutomaticClaimantRefreshDoesNotPullTrunk
+      desired_external:
+        status: passed
+        states_generated: 2
+        distinct_states: 2
+        depth: 2
+      regression_external:
+        status: passed_expected_violation
+        invariant: SuccessfulNamedSyncHasOneSelectedRevision
+      spec_unit:
+        status: passed
+        generated_cases: 1
+      graph:
+        status: passed
+        run_ids: [20260807-231027, 20260807-231142]
+      evidence: ../results/validation-2026-08-07.md

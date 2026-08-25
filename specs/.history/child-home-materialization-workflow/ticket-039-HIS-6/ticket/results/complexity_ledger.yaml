@@ -1,0 +1,183 @@
+# Complexity ledger input -- MF-019 standing objective.
+#
+# `close ticket` refuses until this is filled in. That refusal is the mechanism:
+# the standing objective is a required close-out step, not a stance.
+#
+# The delta is computed for you from `analyze complexity` and the TLC report.
+# What you supply is the part a tool cannot know: whether behavior was retained,
+# what the refinement search found, and why any increase is essential.
+
+# Validated-refactor basis -- CD-09 (owner-approved 2026-07-22). This is what
+# LICENSES a complexity DECREASE: TLC green on the model before AND after the
+# change, behavior tests green, and the before/after descriptor comparison
+# recorded. Absent, unknown, or degraded evidence REJECTS a decrease: an
+# unmeasured constraint cannot witness retention. (The fourth obligation, the
+# inspected transition-level diff, is `transition_diff:` below and is demanded
+# whenever the MF-020 red flag fires.)
+#
+#   tlc_before:            green | fail        -- TLC on the pre-change model
+#   tlc_after:             green | fail        -- TLC on the post-change model
+#   behavior_tests:        pass | fail         -- the repository behavior tests
+#   descriptor_comparison: recorded            -- before/after descriptor doc
+validated_refactor:
+  # NOTHING TO LICENSE. This is an EVALUATION ticket: the model is byte-identical
+  # before and after, delta direction is `zero`, and no decrease is being claimed.
+  # The fields are filled with what was actually run rather than left TODO,
+  # because "we changed no model" is a claim that should carry its evidence too.
+  tlc_before:
+    status: "green"
+    evidence: "SPEC_REQUIRE_TLC=1 uv run pytest specs/desired_program_model/tests/test_tlc_expected_violations.py -- 25 passed, and specs/current/... -- 25 passed. Both include test_the_model_checking_half_is_not_silently_skipped, which PASSED, so TLC really ran rather than skipping. results/epic-home-integrity-sync/tickets/HIS-6/evidence/tlc-expected-violations.txt"
+  tlc_after:
+    status: "green"
+    evidence: "IDENTICAL RUN. This ticket changed no .tla and no .cfg -- `git diff --stat` over specs/current and specs/desired_program_model is empty apart from ticket_plan.yaml's status field. before and after are the same tree, and saying so is the honest form of this row."
+  behavior_tests:
+    status: "pass"
+    evidence: "jbang RunTests.java -- 1423 passed, 1 failed, with the five home vars UNSET (DEF-074). THE ONE FAILURE IS THIS TICKET'S OWN DELIBERATELY-RED ASSERTION for DEF-115; both of its in-run controls are GREEN. results/epic-home-integrity-sync/tickets/HIS-6/evidence/unit-suite.txt. Plus uv run pytest specs/ -- 88 passed. Plus the 26-graph sweep: graphs_executed=26, graphs_passed=24."
+  descriptor_comparison:
+    status: "recorded"
+    evidence: "results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md -- 21 clauses, one verdict each (the ticket first wrote 'nineteen'; corrected at review of PR #257), with the build and the env configuration stated for every number."
+
+# Fuzzing-era retention members -- RECORDED at every close, non-gating since
+# CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs
+# floor 0.8, 0/9 content bugs caught). `not_run` is the honest value; fill in a
+# measured verdict only when one of them actually ran.
+#
+#   kill_rate:           pass | below_floor | incomplete_catalog | not_run   (MF-016)
+#   effect_conformance:  clean | gaps | dead_surface | unobservable | not_run (MF-013/MF-027)
+#   external_coverage:   pass | gaps | incomplete | not_run                  (MF-015)
+#
+# NOTE: `unobservable` IS NOT `clean`. MF-027 made the effect oracle refuse
+# targets it cannot see; the record keeps that distinction even though the
+# member no longer gates.
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+# Coverage audit -- MF-026. The completeness REVIEW, distinct from the three
+# retention members above, which are all FIDELITY measures bounded to what is
+# already modeled. Unmodeled surface is invisible to every one of them, and this
+# is the only sweep that looks at it.
+#
+#   status: pass | fail | incomplete | not_run
+#
+# RECORDED, NEVER REFUSING (2026-08-04, owner direction). It was a hard gate at
+# workflow close with no override; it is now an optional agent-run review whose
+# verdict is written down and read by a person. `incomplete` IS STILL NOT
+# `pass`, because a sweep that did not walk the surface says nothing about it --
+# what was withdrawn is the refusal, not the distinction.
+#
+# Procedure: prompts/coverage_audit.md   Doctrine: references/coverage_audit.md
+coverage_audit:
+  status: "not_run"
+  report: ""
+  in_scope_gaps: null
+  scope_source: ""
+  # NOT RUN, and the honest note is that this ticket did the audit's JOB by other
+  # means and should say so rather than claim the audit. MF-026 exists because the
+  # three fidelity oracles are bounded to what is modeled and report green over
+  # unmodeled surface. FIVE OF THE SEVEN DEFECTS HIS-6 FILED ARE EXACTLY THAT:
+  # unmodeled, untested surface -- a symlinked shim compared across two readers, a
+  # --json field nothing pairs with its human line, a shell script in another repo,
+  # an argument-ordering bug in a Python front door, and a drift gate never armed.
+  # They were found by fresh agents and by hand, not by a coverage sweep, and the
+  # sweep would not have found the four outside this repository at all. `not_run`
+  # is the value; the finding is that the completeness question got answered
+  # anyway, by a different instrument, and the answer was "there is a lot out
+  # there". See results/epic-home-integrity-sync/tickets/HIS-6/instrument-comparison.md.
+
+# Required if complexity INCREASED. Name the new essential behavior the added
+# representation carries. This documents real behavior; it does not waive the
+# increase, which is recorded and reported either way.
+justification: ""   # complexity delta is ZERO; nothing to justify
+
+# The recursive refinement loop -- REQUIRED at every close.
+# Either an approved recommendation with evidence, or "searched, found none".
+# Recommendations are advisory and user-approved, never auto-applied.
+refinement:
+  searched: true
+  outcome: "none"
+  detail: >
+    SEARCHED, FOUND NONE, and the search is worth recording because it had a
+    candidate. The model is unchanged by this ticket (variables=38, actions=9,
+    delta direction zero against HIS-22), so there is no new representation to
+    refine. The candidate considered and REJECTED: DEF-112 records that
+    CloseOutIsSafe cannot express HIS-22's self-obtainable disjunct without a new
+    variable and a constant in ~25 cfgs. That is a REFINEMENT OPPORTUNITY IN THE
+    OPPOSITE DIRECTION -- it would INCREASE complexity to close a modelling gap --
+    and an evaluation ticket is the wrong place to take it: it would change what
+    GOAL-home-invariants is measured against, in the ticket that measures it.
+    Recorded here so the option is visible to whoever schedules the follow-on,
+    rather than lost because the field only has a slot for decreases.
+  measured: false
+  applied: false
+  approved_by: ""
+
+# Required only if a generated-states drop at constant distinct states is
+# detected. That is a RED FLAG (deleted self-loop, MF-020), not a win -- record
+# the inspected transition-level diff here to accept it.
+transition_diff: ""
+
+# REQUIRED. The narrative ledger: reasoning, measured alternatives, findings the
+# machine-checked core above cannot express. Path to a document, or prose.
+narrative: >
+  HIS-6 IS AN EVALUATION TICKET AND CHANGES NO MODEL AND NO PRODUCTION SOURCE.
+  Complexity delta is zero in every metric. What follows is the part the
+  machine-checked core cannot express.
+
+  THE HEADLINE IS A FAILED CLAUSE THAT WAS NOT FIXED. GOAL-one-home-one-answer
+  clause 1 fails at the epic tip: `home verify` and `home repair` name DIFFERENT
+  SUBJECT SETS for a shim reaching another home when the reach is spelled as a
+  SYMLINK -- verify exit 1 FOREIGN_HOME, repair exit 0 "nothing is damaged
+  (0 entries examined)" -- with a wrapper control in the same fixture proving the
+  two readers CAN agree. That is DEF-104 with the mirror flipped. HIS-21 taught
+  verify to read shim CONTENT and declared "one extraction rule ... one verdict
+  ... for both readers"; repair was never taught to read LINKS, and every existing
+  comparison of the two readers plants a wrapper, which is exactly why nothing
+  caught it. The fix is obvious and available and WAS NOT MADE, because an
+  evaluation ticket that repairs the product to turn its own FAIL into a PASS has
+  falsified its own measurement. Filed as DEF-115 with the assertion IN THE TREE
+  AND RED, which is why the behavior_tests row above reads 1423/1.
+
+  TWO NUMBERS THAT MUST NOT BE ADDED TOGETHER. The sweep as measured is
+  graphs_executed=26, graphs_passed=24. The harness repair of the stale DEF-108
+  assertion then makes that graph pass, verified by re-running it alone to its own
+  --out: 12 of 12 nodes, all 7 assertions green. The first number is what the epic
+  is graded on; the second is evidence the repair works.
+
+  WHAT THE SWEEP FOUND THAT WAS NEW: NOTHING -- and that is informative rather than
+  embarrassing. Five of the seven defects this ticket filed live in surfaces no
+  node touches. What only a full sweep could settle is three things: DEF-107 fixed
+  on the INTEGRATED tip (round 2 measured it still red from HIS-22's branch),
+  DEF-043 resolved by re-measurement rather than inference, and DEF-108 triaged as
+  a STALE ASSERTION -- a core graph that had been requiring the product to STRAND a
+  unit in MERGE_CONFLICT, which is the exact condition GOAL-symlink-merge-settles
+  exists to remove.
+
+  THE MEASURED ALTERNATIVE FOR PHASE 1. `run.py --all` cannot do this: it refuses
+  resume options outright, and Gradle stops the chain at the first red task. The
+  sweep was therefore driven per graph by sweep.py, one at a time, in registered
+  order, with resumption AVAILABLE AND UNUSED -- no graph was re-run and the sweep
+  was never restarted. `--out` names a HIS-6 path because the default path is the
+  canonical round-1 sweep.json (DEF-111); both rounds are on disk side by side.
+
+  AND THE EPIC'S OWN INSTRUMENT BROKE CONTAINMENT. An evaluation agent's
+  `skt publish` wrote a foreign unit into the operator's PROJECT home from a
+  CORRECTLY PINNED session -- the destination comes from `git worktree list`, not
+  from SKILL_MANAGER_HOME -- then failed on an argument check it could have made
+  first, with no rollback. Both `home verify` and `home repair` call the result
+  CLEAN, because a unit present in skills/ and .materialization/ but absent from
+  installed/ is a fifth damage shape the enumeration does not name. That is a live
+  counterexample to GOAL-no-destructive-recovery clause 2's ambition, found by an
+  operator noticing, which is the thing the clause says should not be how damage is
+  found. DEF-121; the bytes are preserved read-only rather than cleaned up, because
+  cleaning them is another write to the same forbidden home.
+
+  Full reasoning: results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md,
+  new-defects.md, instrument-comparison.md, promotion-paths.md, judged-read-root.md.

@@ -1,0 +1,19 @@
+# GOAL-sync-quiet — the committed baseline record rendered through DriftReport
+# build: skill-manager 0.24.0+g17648705e67b   home vars UNSET
+
+units            = 7
+ROLLUP  lines    = 8
+ROLLUP  chars    = 473
+DETAIL  lines    = 896
+DETAIL  chars    = 88308
+char reduction   = 99.4644%
+line reduction   = 99.1071%
+--- the rollup, verbatim ---
+  modified  skill:deploy-helm  no-digest  (20 files)
+  modified  skill:git-epic-workflow  no-digest  (14 files)
+  modified  skill:git-issue  no-digest  (5 files)
+  modified  skill:git-issue-workflow  no-digest  (2 files)
+  added     skill:plugin-repository  no-digest  (25 files)
+  modified  plugin:skt  no-digest  (47 files)
+  modified  skill:spec-double-compiler  no-digest  (776 files)
+  7 units, 889 files changed — `home drift --detail` for the paths, `home drift --json` for the data
