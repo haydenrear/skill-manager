@@ -1133,3 +1133,83 @@ carried_findings_his22:
       STILL GAPPED: the TLA+ change. CloseOutIsSafe cannot express the disjunct
       without a new variable and a constant in ~25 cfgs -- DEF-112.
     status: fixed-pending-review
+
+# ---------------------------------------------------------------------------
+# AFTER DELIVERY, 2026-08-25. All 22 tickets are delivered and the terminal
+# evaluation is committed; this row is therefore NOT part of any round. It is
+# recorded here anyway, because the ledger's whole subject is "how well did the
+# validation do", and a blocking defect found by the owner READING the
+# scorecard -- after three rounds and three instruments -- is data about the
+# instruments, not an afterthought.
+# ---------------------------------------------------------------------------
+
+  - id: REG-014
+    caught_by: D-owner-reading-the-scorecard
+    caught_at: "2026-08-25"
+    defect: DEF-122
+    severity: blocking
+    one_line: >
+      `--dry-run` was classified WRITES_HOME, so the CLI's startup reconcile ran
+      ahead of every preview and ONBOARDED each unit holding no installed/
+      record -- writing the records it was about to describe, into whatever home
+      resolved, which with no home variable set is the operator's ROOT home.
+    the_question_that_found_it: >
+      Not a probe. The owner read HIS-6's write-up and asked one question of it:
+      "is it writing to the root home?" The ticket had measured the mutation in
+      a SYNTHETIC home and reported it as a mutation of "the home it is only
+      supposed to preview" -- true, and it stopped one step short of naming
+      which home that is by default. It is $HOME/.skill-manager
+      (SkillStore.defaultStore falls back there when SKILL_MANAGER_HOME is
+      unset). Measured on ee1cbf8, every home variable unset, HOME redirected
+      to a scratch tree: NINE paths written -- installed/probe-unit.json,
+      bin/, bin/cli/, bin/mcp/, cache/, npm/, projects/, venvs/ -- plus
+      installed/control-unit.json rewritten in place, and then the line
+      "DRY RUN — no changes will be made".
+    why_all_three_instruments_missed_it: >
+      A: no graph asserts the byte-identity of a home across a --dry-run; the
+      flag is used in graphs to keep fixtures clean, never as the subject.
+      B: an issue agent runs the real command, not the preview.
+      C: the manual pass DID reach it -- HIS-6 filed DEF-122 -- but only while
+      probing a remedy the epic agent had already published wrong. Nobody
+      probed the preview verb for its own sake.
+      The class-wide scope was missed by all four readers until the fix: TWENTY
+      commands declare --dry-run and every one of them describes it as writing
+      nothing. This was never a `remove` defect.
+    missed_by: [A-graph-sweep, B-issue-agents]
+    fixed_in: >
+      CommandHomeAccess.PREVIEW_OPTION -- `--dry-run` matched at the LEAF makes
+      the invocation READ_ONLY whatever its row says. INIT_GATED's mirror: that
+      map is "READ unless the invocation asked to create", this is "WRITE unless
+      the invocation promised to create nothing". General rather than a remove
+      special case, and it therefore also moves the two rows whose comments
+      previously said --dry-run deliberately did NOT move them (`build`,
+      `artifacts prune`); those comments were answering "what permission does
+      this command need" and this table is asked "are bytes written".
+      matchedAtLeaf gained a findOption guard, because PREVIEW_OPTION asks every
+      leaf and most declare no such flag.
+    regression_check: >
+      UNIT: LazyHomeScaffoldTest, three new cases in a suite that went 61 -> 64.
+      (1) `remove --dry-run` over a POPULATED home -- one unit with an
+      installed/ record, one without -- leaves it byte-identical, compared by
+      SHA-256 per path rather than by a path count, because reconcile REWRITES
+      the recorded unit's file in place and adds no path.
+      (2) THE CONTROL, and it is what stops (1) passing for the wrong reason:
+      the same home, the same planted unit, one ordinary writing command
+      (`policy init`), and installed/probe-unit.json appears. The mutation is
+      real, reachable, and suppressed only by the flag.
+      (3) the classification itself, including that --init and --fix still win
+      where no preview was asked for.
+    measured: >
+      Same fixture, same command, after the fix: 0 paths changed, digests
+      identical, exit 0, the preview still printed. Unit suite 1426 passed /
+      1 failed -- the +3 are these cases and the 1 is DEF-115's deliberate red.
+    what_this_says_about_the_validation: >
+      The epic built a fence between "commands that may create a home" and
+      "commands that may not", and put a second, unrelated permission behind the
+      same gate: tryReconcile reads the SAME declaration. One classification,
+      two consequences, and the second one was never enumerated -- so every
+      argument in CommandHomeAccess's comments about where a row belongs was
+      reasoning about scaffolding while silently deciding onboarding too. That
+      is this epic's founding shape a third time: not two readers disagreeing,
+      but one answer serving two questions nobody wrote down as two.
+    status: fixed

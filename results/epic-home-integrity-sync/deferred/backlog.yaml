@@ -6699,7 +6699,57 @@ findings:
     caught_by_instrument: C-manual (probing a reviewer finding, not the original sweep)
     missed_by: [A-graph-sweep, B-issue-agents]
     candidate_owner: a follow-on ticket in skill-manager
-    status: open
+    status: fixed
+    fixed_at: "2026-08-25"
+    fixed_by: >
+      Direct commit on epic/home-integrity-sync, after all 22 tickets were
+      delivered, on the owner's instruction. NOT a ticket, and recorded as such:
+      the workflow is closed and inventing a 23rd ticket would put a fix into a
+      schedule that has already been evaluated.
+    which_home_it_writes: >
+      THE OWNER'S QUESTION, answered by measurement rather than by reading the
+      code. This entry said "the home it is only supposed to preview" and did
+      not name which home that is when nobody names one.
+      SkillStore.defaultStore() resolves SKILL_MANAGER_HOME and falls back to
+      $HOME/.skill-manager -- so with no home variable set, the answer is the
+      operator's ROOT home. Re-measured on ee1cbf8 with every home variable
+      unset and HOME redirected to a scratch tree: NINE paths written, not one.
+        installed/probe-unit.json          (the record, as filed)
+        bin/ bin/cli/ bin/mcp/ cache/ npm/ projects/ venvs/   (SkillStore.init)
+        installed/control-unit.json        REWRITTEN in place, adding no path
+      The last line is why the check below compares digests and not a file
+      count: the count misses it.
+    the_defect_was_wider_than_this_entry: >
+      Filed as a `remove` defect. It is a CLASS defect. The gate is
+      SkillManagerCli.tryReconcile, which reads the same HomeScaffold
+      declaration CommandHomeAccess sets -- so it applied to every one of the
+      TWENTY commands that declare --dry-run, each of which describes the flag
+      as writing nothing ("change nothing", "without writing anything",
+      "without touching the filesystem or ledger").
+    the_fix: >
+      CommandHomeAccess.PREVIEW_OPTION: `--dry-run` matched at the leaf makes
+      the invocation READ_ONLY whatever its row says -- INIT_GATED's mirror.
+      This also moves `build` and `artifacts prune`, whose comments previously
+      said --dry-run deliberately did not move them; both comments are rewritten
+      rather than deleted, because they were answering a different question than
+      the one this table decides.
+      COST, stated rather than discovered later: a preview no longer runs
+      reconciliation, so it previews the home AS IT IS rather than as the real
+      command's own reconcile pass would leave it. For a preview whose plan
+      depends on records reconcile would have manufactured, the preview is now
+      NARROWER than the run. That is the safe direction; the alternative is a
+      preview that mutates.
+    owed_check_status: >
+      DONE, and shaped as this entry asked -- byte-identity with the
+      properly-installed unit as the in-fixture control. LazyHomeScaffoldTest,
+      61 -> 64 cases: (1) byte-identity across `remove --dry-run` over a
+      populated home; (2) the control -- the same home, the same planted unit,
+      `policy init` instead, and the record appears, so (1) cannot pass by the
+      reconcile step never having anything to do; (3) the classification,
+      including that --init and --fix still win where no preview was asked for.
+      `uninstall --dry-run` is covered at the classification layer in (3); it
+      shares tryReconcile, so the gate is the same one.
+      Unit suite: 1426 passed / 1 failed -- the +3 are these, the 1 is DEF-115.
 
   - id: DEF-123
     found_by: the reviewer of PR #257, in HIS-6's own DEF-108 recheck log

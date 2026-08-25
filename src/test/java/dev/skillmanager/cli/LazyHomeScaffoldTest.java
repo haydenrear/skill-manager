@@ -237,6 +237,81 @@ public final class LazyHomeScaffoldTest {
             assertTrue(new SkillStore(decoy).isHome(), "the home now exists");
         });
 
+        // -------------------------------------------- a preview is not a write
+        // DEF-122. The oracle above measures a home that does not exist; this
+        // one measures a home that DOES, because that is where the defect
+        // lived: `--dry-run` was classified WRITES_HOME, so
+        // SkillManagerCli.tryReconcile ran ahead of the preview and ONBOARDED
+        // every unit holding no installed/ record -- writing the very records
+        // it was about to describe, into whatever home resolved. With every
+        // home variable unset that is $HOME/.skill-manager, the operator's
+        // root home, and the printed line "DRY RUN — no changes will be made"
+        // came AFTER the writes.
+        suite.test("`remove --dry-run` over a populated home changes no bytes", () -> {
+            Path home = populatedHome();
+            List<String> before = snapshot(home);
+
+            Run r = runCli(home, "remove", "probe-unit", "--dry-run");
+
+            assertEquals(HomeScaffold.Access.READ_ONLY, r.declared,
+                    "--dry-run makes the invocation read-only whatever the row says");
+            assertContains(r.output, "DRY RUN", "the preview still printed");
+            assertEquals(before, snapshot(home),
+                    "the home is byte-identical after a preview");
+            assertTrue(!Files.exists(home.resolve("installed").resolve("probe-unit.json")),
+                    "the preview did not manufacture the record it was previewing");
+        });
+
+        suite.test("the same mutation is real and reachable without --dry-run", () -> {
+            // The control, and it is what stops the assertion above from
+            // passing for the wrong reason. A byte-identical home proves
+            // nothing unless SOMETHING in this fixture is capable of writing
+            // that record -- so the same home, the same planted unit, one
+            // ordinary writing command, and the record appears.
+            Path home = populatedHome();
+            Path record = home.resolve("installed").resolve("probe-unit.json");
+            assertTrue(!Files.exists(record), "the fixture starts with no record for probe-unit");
+
+            Run r = runCli(home, "policy", "init");
+
+            assertEquals(HomeScaffold.Access.WRITES_HOME, r.declared, "policy init writes");
+            assertTrue(Files.exists(record),
+                    "a writing command still reconciles: reconcile onboards the unrecorded "
+                            + "unit, which is exactly the write --dry-run must not perform");
+        });
+
+        suite.test("--dry-run outranks the command's own row, everywhere", () -> {
+            assertEquals(HomeScaffold.Access.WRITES_HOME, access("remove", "some-unit"),
+                    "a real remove still writes");
+            assertEquals(HomeScaffold.Access.READ_ONLY, access("remove", "some-unit", "--dry-run"),
+                    "DEF-122, at the classification");
+            assertEquals(HomeScaffold.Access.READ_ONLY,
+                    access("uninstall", "some-unit", "--dry-run"),
+                    "uninstall shares remove's reconcile and its promise");
+            // The two rows whose comments used to say --dry-run deliberately
+            // did NOT move them. Both move now; see the DEF-122 section of
+            // CommandHomeAccess for why that reasoning was answering a
+            // different question.
+            assertEquals(HomeScaffold.Access.READ_ONLY, access("build", "--dry-run"),
+                    "\"print what would be built and change nothing\" is a promise about bytes");
+            assertEquals(HomeScaffold.Access.READ_ONLY, access("artifacts", "prune", "--dry-run"),
+                    "the strongest writer in the table still previews without writing");
+            // A leaf that does not declare the option must answer 'no' rather
+            // than throw: PREVIEW_OPTION asks EVERY leaf, and most have no
+            // --dry-run at all.
+            assertEquals(HomeScaffold.Access.WRITES_HOME, access("install", "demo"),
+                    "a leaf with no --dry-run is unaffected");
+            assertEquals(HomeScaffold.Access.READ_ONLY, access("list"),
+                    "a read-only leaf with no --dry-run is unaffected");
+            // And the init gate still wins where no preview was asked for.
+            assertEquals(HomeScaffold.Access.WRITES_HOME, access("home", "describe", "--init"),
+                    "--init still asks to create");
+            assertEquals(HomeScaffold.Access.WRITES_HOME, access("home", "repair", "--fix"),
+                    "--fix still writes");
+            assertEquals(HomeScaffold.Access.READ_ONLY, access("home", "repair"),
+                    "and the bare observer is still an observer");
+        });
+
         // ------------------------------------- the mode is scoped, not sticky
         suite.test("a read-only invocation does not pin the JVM read-only", () -> {
             // Instrument floor #1: the reader can tell the two modes apart. If
@@ -528,6 +603,68 @@ public final class LazyHomeScaffoldTest {
     private static HomeScaffold.Access access(String... argv) {
         CommandLine cmd = new CommandLine(new SkillManagerCli());
         return CommandHomeAccess.of(cmd.parseArgs(argv));
+    }
+
+    /**
+     * A real home holding two units: {@code probe-unit}, present in
+     * {@code skills/} with NO {@code installed/} record — DEF-121's damage
+     * shape, and the thing reconcile onboards — and {@code control-unit},
+     * which has one. The second unit is not decoration: it keeps the home from
+     * being a shape where reconcile has nothing to do at all, which is how a
+     * clean run could mean "never looked".
+     */
+    private static Path populatedHome() throws Exception {
+        Path home = freshDecoy();
+        HomeScaffold.declare(HomeScaffold.Access.WRITES_HOME);
+        try {
+            new SkillStore(home).init();
+        } finally {
+            HomeScaffold.reset();
+        }
+        plantUnit(home, "probe-unit", "A unit with no installed/ record.");
+        plantUnit(home, "control-unit", "A unit that has one.");
+        Files.writeString(home.resolve("installed").resolve("control-unit.json"),
+                "{\"name\":\"control-unit\",\"kind\":\"LOCAL_DIR\","
+                        + "\"installSource\":\"UNKNOWN\","
+                        + "\"installedAt\":\"2026-08-25T00:00:00Z\","
+                        + "\"errors\":[],\"unitKind\":\"SKILL\"}\n");
+        return home;
+    }
+
+    private static void plantUnit(Path home, String name, String description) throws Exception {
+        Path dir = home.resolve("skills").resolve(name);
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("SKILL.md"),
+                "---\nname: " + name + "\ndescription: " + description + "\n---\n# " + name + "\n");
+    }
+
+    /**
+     * Every path under {@code root} with a digest of its bytes — the oracle
+     * for "changed nothing", which a path count alone cannot be: reconcile
+     * REWRITES {@code installed/control-unit.json} in place, adding no path.
+     *
+     * <p>Throws rather than returning an empty list when the tree cannot be
+     * walked, for the reason {@link #countEntries} does.
+     */
+    private static List<String> snapshot(Path root) throws Exception {
+        if (!Files.isDirectory(root)) {
+            throw new IllegalStateException("home is missing or not a directory: " + root);
+        }
+        List<String> out = new ArrayList<>();
+        try (Stream<Path> walk = Files.walk(root)) {
+            for (Path p : (Iterable<Path>) walk.filter(x -> !x.equals(root))::iterator) {
+                String rel = root.relativize(p).toString();
+                if (Files.isDirectory(p)) {
+                    out.add(rel + "  <dir>");
+                } else {
+                    byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                            .digest(Files.readAllBytes(p));
+                    out.add(rel + "  " + java.util.HexFormat.of().formatHex(digest));
+                }
+            }
+        }
+        out.sort(java.util.Comparator.naturalOrder());
+        return out;
     }
 
     /**

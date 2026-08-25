@@ -136,6 +136,59 @@ import java.util.Set;
  * paths in the table above changed exit code, as designed. Read the sentence
  * as scoped to its own list.
  *
+ * <h2>A preview must not be the write (DEF-122)</h2>
+ *
+ * <p>Every row above answers "may this command create a home?". That question
+ * turned out to have a second reader: {@code SkillManagerCli.tryReconcile}
+ * gates itself on the declared access too, and reconciliation is not
+ * {@code init()} — it ONBOARDS, writing an {@code installed/<unit>.json}
+ * record for every unit present in the home without one. So a WRITES_HOME row
+ * grants two permissions, and a {@code --dry-run} invocation was exercising
+ * the second one before its own preview printed.
+ *
+ * <p>Measured on {@code ee1cbf8}, against a home holding one unit WITH an
+ * {@code installed/} record and one WITHOUT — and with every home variable
+ * UNSET, so the store resolved through {@code $HOME/.skill-manager}, the
+ * operator's ROOT home:
+ *
+ * <pre>{@code
+ * $ skill-manager remove probe-unit --dry-run
+ * reconcile: onboarded=2 cleared=0
+ *
+ * DRY RUN — no changes will be made          <-- printed AFTER the writes
+ * ...
+ * 9 paths added: installed/probe-unit.json, bin/, bin/cli/, bin/mcp/,
+ *                cache/, npm/, projects/, venvs/
+ * and installed/control-unit.json REWRITTEN in place.
+ * }</pre>
+ *
+ * <p>The stray record is the small half. The large half is that {@code
+ * --dry-run} is what a careful operator reaches for to CHECK an instruction
+ * before running it, so the mutation happened at exactly the moment someone
+ * was being careful — and it converts the damage shape being inspected (a unit
+ * with no {@code installed/} record) into a different one, so the home read
+ * after the preview is not the home that was asked about.
+ *
+ * <p>Hence {@link #PREVIEW_OPTION}: {@code --dry-run} matched at the leaf makes
+ * the invocation READ_ONLY, whatever the row says. It is {@link #INIT_GATED}'s
+ * mirror — that map is "READ unless the invocation asked to create", this is
+ * "WRITE unless the invocation promised to create nothing" — and it is general
+ * rather than a {@code remove} special case because all twenty commands
+ * declaring the flag describe it as writing nothing ("change nothing",
+ * "without writing anything", "without touching the filesystem or ledger").
+ * Two rows above previously carried a comment saying {@code --dry-run}
+ * deliberately did NOT move them; those comments were answering "what
+ * permission does this command need", and this table is asked "are bytes
+ * written". Both now move.
+ *
+ * <p>What this costs, stated rather than discovered later: a preview no longer
+ * runs reconciliation, so it previews the home AS IT IS rather than as it
+ * would be after the real command's own reconcile pass. For {@code remove}
+ * that is the correct answer and the whole point. For a preview whose plan
+ * depends on records reconcile would have manufactured, the preview can be
+ * narrower than the run — which is the safe direction, and the alternative is
+ * a preview that mutates.
+ *
  * <h2>Completeness</h2>
  *
  * <p>Every path in {@link CliMetadata#commandPaths()} appears below;
@@ -212,15 +265,18 @@ public final class CommandHomeAccess {
         m.put("ads delete", WRITE);
         m.put("artifacts record", WRITE);
         // `artifacts prune` DELETES from the home, so it is the strongest
-        // WRITE in this table, and --dry-run does not move it for the same
-        // reason it does not move `build`: access is the permission the
-        // command needs, not the bytes one invocation happened to write.
+        // WRITE in this table. --dry-run now moves it, along with every other
+        // row that declares the flag -- see PREVIEW_OPTION and the DEF-122
+        // section of this class comment for why the earlier note here ("access
+        // is the permission the command needs, not the bytes one invocation
+        // happened to write") was answering a different question than the one
+        // this table is asked.
         m.put("artifacts prune", WRITE);
         m.put("bind", WRITE);
-        // `build` re-derives artifacts into the home; --dry-run does not make
-        // it READ_ONLY, for the reason the `home` family is classified as a
-        // family — access is the permission the command needs, not the bytes
-        // one invocation of it happened to write.
+        // `build` re-derives artifacts into the home. Its --dry-run row is the
+        // same one PREVIEW_OPTION now decides for every previewing command:
+        // "Print what would be built and change nothing" is a promise about
+        // bytes, and this table is what decides whether bytes are written.
         m.put("build", WRITE);
         m.put("create", WRITE);
         m.put("create-account", WRITE);
@@ -343,6 +399,23 @@ public final class CommandHomeAccess {
      * is deliberately NOT made here: neither is on any path this ticket reads,
      * and each needs its own measurement of what it writes without the flag.
      */
+    /**
+     * The option that turns any row into {@link HomeScaffold.Access#READ_ONLY}.
+     *
+     * <p>{@link #INIT_GATED} handles the per-command case "READ unless the
+     * invocation asked to create"; this is the whole-table mirror, "WRITE
+     * unless the invocation promised to create nothing". Read the DEF-122
+     * section of this class comment for the measurement — a {@code --dry-run}
+     * that wrote nine paths into the operator's root home before printing
+     * "no changes will be made".
+     *
+     * <p>Matched at the LEAF only, by the same {@link #matchedAtLeaf} the
+     * init gate uses: {@code skill-manager --dry-run install} is not a thing
+     * picocli accepts, and a parent that happened to declare the name should
+     * not silently disarm a writing leaf.
+     */
+    static final String PREVIEW_OPTION = "--dry-run";
+
     private static final Map<String, String> INIT_GATED =
             Map.of("home describe", "--init",
                    // Not an --init at all, which is why the NAME of this map is
@@ -377,15 +450,29 @@ public final class CommandHomeAccess {
         if (parseResult == null) return WRITE;
         if (helpRequested(parseResult)) return READ;
         String path = CliAgentContext.commandPath(parseResult);
+        // Ahead of INIT_GATED deliberately, though nothing exercises the
+        // overlap today: no command in the tree declares both an --init-style
+        // option and --dry-run, and if one ever does, the flag that promises
+        // to write nothing is the one that should win.
+        if (matchedAtLeaf(parseResult, PREVIEW_OPTION)) return READ;
         String creates = path == null ? null : INIT_GATED.get(path.trim());
         if (creates != null && matchedAtLeaf(parseResult, creates)) return WRITE;
         return of(path);
     }
 
-    /** Whether the LEAF parse matched {@code option}. */
+    /**
+     * Whether the LEAF parse matched {@code option}.
+     *
+     * <p>{@code hasMatchedOption} throws for a name the leaf command does not
+     * declare, which was harmless while the only callers were INIT_GATED rows
+     * asking about their own command's flag. {@link #PREVIEW_OPTION} asks
+     * every leaf, and most of them have no {@code --dry-run}, so the absent
+     * case is now the common one and answering "no" is the whole job.
+     */
     private static boolean matchedAtLeaf(CommandLine.ParseResult parseResult, String option) {
         CommandLine.ParseResult leaf = parseResult;
         while (leaf.hasSubcommand()) leaf = leaf.subcommand();
+        if (leaf.commandSpec().findOption(option) == null) return false;
         return leaf.hasMatchedOption(option);
     }
 
