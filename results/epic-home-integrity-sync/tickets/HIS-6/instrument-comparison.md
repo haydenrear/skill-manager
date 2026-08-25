@@ -6,12 +6,37 @@ carries the per-finding provenance; this page is what it adds up to.
 
 ## Round 3's yield, by instrument
 
-| | A — graph sweep | B — issue agents | C — manual |
-| --- | --- | --- | --- |
-| what it is | `sweep.py --scope full`, 26 graphs, one at a time | four agents, one GitHub issue each, each validating its OWN worktree | the epic tip driven by hand across three tiers and four promotion paths |
-| new defects found | **0** | **4** (DEF-115, DEF-118, DEF-119, DEF-121) | **3** (DEF-116, DEF-117, and DEF-115 confirmed independently in a sharper form) |
-| things it SETTLED that nothing else could | DEF-107 fixed on the *integrated* tip; DEF-043 resolved; **DEF-108 triaged** | — | — |
-| what it was blind to | every one of the seven | conditions needing a second session or a real upgrade | anything the operator does not think to try |
+> **This table was WRONG in the first version of this page, in the one document whose
+> entire value is attribution.** Corrected at the review of PR #257 (M4). What it got
+> wrong, against this ticket's own `new-defects.md` "Caught by" lines: it **omitted
+> DEF-120** from B; it **credited DEF-121 to B**, when B *caused* it and nobody
+> *detected* it; and it **counted DEF-115 in both** B and C, so `0 + 4 + 3 = 7` read as a
+> partition and was not one. The fourth column below did not exist, and it is the most
+> important column on the page.
+
+| | A — graph sweep | B — issue agents | C — manual | **nobody** |
+| --- | --- | --- | --- | --- |
+| what it is | `sweep.py --scope full`, 26 graphs, one at a time | four agents, one GitHub issue each, each validating its OWN worktree | the epic tip driven by hand across three tiers and four promotion paths | — |
+| **new defects found** | **0** | **4** | **2** | **1** |
+| which | — | DEF-115, DEF-118, DEF-119, DEF-120 | DEF-116, DEF-117 | **DEF-121** |
+| things it SETTLED that nothing else could | DEF-107 fixed on the *integrated* tip; **DEF-108 triaged**; DEF-043's close | — | DEF-115 independently reproduced in a sharper two-hazards-one-home form | — |
+| what it was blind to | all seven | conditions needing a second session or a real upgrade | anything the operator does not think to try | — |
+
+**0 + 4 + 2 + 1 = 7. It is a partition now.** DEF-115 is booked to B, which found it;
+C's independent reproduction is recorded as a confirming read, not as a second finding.
+
+### And two more arrived after this table was first written
+
+Both from the **review**, which is a fifth reader this ledger has never had a column
+for, and both worth noting because of *how* they were found:
+
+- **DEF-122** — `remove --dry-run` writes an `installed/` record into the home it is
+  only previewing. Found by **probing a reviewer's finding**, not by any instrument.
+- **DEF-123** — `sync --git-latest --merge` prints two contradictory remedies, the
+  second instructing the operator into a mid-merge state the first says was rolled back.
+  Found by **the reviewer reading a transcript this ticket had already captured,
+  published, and cited as evidence for the very goal the defect violates.** Nothing was
+  re-run. The evidence had been sitting in the PR.
 
 **A found zero new defects at 25 of 26 green, and that is not a failure of A.** It is
 the shape of what A is: a statement about the nodes that exist. Five of the seven
@@ -79,8 +104,20 @@ a confirming read rather than more hands.**
 | instrument | findings | of which mis-diagnosed | blind to |
 | --- | --- | --- | --- |
 | A — graph sweep | 3 (REG-003, REG-007/DEF-107, REG-008/DEF-108) | 0 | anything nobody wrote a node for — which is where 5 of HIS-6's 7 live |
-| B — issue agents | 5 (REG-009, 011, 012, 013, plus DEF-114 from a reviewer) | 0 | conditions needing a second session or a real upgrade |
-| C — manual | 8 (REG-001, 002, 004, 005, 006, 010, DEF-117, DEF-096/101 carried) | **4 of 6 in round 1**, 0 in round 3 | anything the operator does not think to try |
+| B — issue agents | 5 (REG-009, 011, 012, plus DEF-120, plus DEF-114 from a reviewer) | 0 | conditions needing a second session or a real upgrade |
+| C — manual | 7 (REG-001, 002, 004, 005, 006, 010, DEF-117; DEF-096/101 carried) | **4 of 6 in round 1**, 0 in round 3 | anything the operator does not think to try |
+| **review** | 3 (DEF-114, DEF-123, and the B1/M3/M4/M5/M6/M7 corrections to this ticket) | 0 | it reads what was written, so it cannot see what was never attempted |
+| **nobody** | 1 (DEF-121) | — | — |
+
+**A fifth reader, which this ledger never had a column for, and which HIS-6 is the
+evidence for.** The review of PR #257 returned one blocker and ten majors on a ticket
+whose own numbers survived verification — the sweep artifact, the two-number discipline,
+the suite counts and `GOAL-home-invariants` clause 2 all held. What it found instead was
+**an unrunnable remedy aimed at the operator, wrong clause arithmetic, a mis-attributed
+instrument table, two grades a conjunction did not support, and an unfiled defect
+sitting inside this ticket's own published evidence.** Every one of those is a defect in
+the *report* rather than in the product, and no instrument in this table looks at
+reports. That is the argument for the column.
 
 **Three readings a reviewer should attack, because they are the load-bearing ones:**
 
@@ -93,7 +130,8 @@ a confirming read rather than more hands.**
    instrument.** Four agents, one issue each, four defects, three of them in surfaces
    with no coverage at all. That is an argument for making issue-scoped agents a
    standing instrument rather than a terminal-evaluation trick.
-3. **B is also the instrument that broke containment.** One of the four wrote into the
+3. **B is also the instrument that broke containment, and this is the sharpest thing
+   in the comparison.** One of the four wrote into the
    operator's project home (DEF-121). The finding is real and valuable — it is how
    `skt publish`'s ordering bug was found — and it was found by an agent doing the
    thing it was told not to do, with a correctly pinned environment. An instrument that
@@ -102,6 +140,33 @@ a confirming read rather than more hands.**
 
 ## What every instrument missed, and still misses
 
+**Start with the one that has a name.** *The fifth damage shape was found by none of A,
+B or C — a human compared two line counts.* DEF-121 — a unit present in `skills/` and
+`.materialization/` but absent from `installed/` — is called **clean** by `home verify`
+and by `home repair`, is asserted by no node, and was noticed only because a later
+`home clone` inherited it and an inventory came back one line longer than expected. The
+instrument that found the epic's most serious live defect was **surprise at a number**.
+
+**And the detector for it already exists, which is sharper than the gap.**
+`HomeMembershipLaw.java:384` emits exactly this verdict — *"GAINED [x] — present in the
+home, and no installed/ record names them"* — and it **ran in 24 of the 26 graphs of
+this ticket's own sweep**, green, every time. The rule that would have named this damage
+was written in wave 7, is exercised two dozen times per sweep, and lives entirely on the
+**test** side of the fence: no product command asks it about a real home. HIS-6 first
+called building it *"the half worth building"*. It is not a build; **it is a port**, and
+the correction is the finding: *we wrote the detector, ran it two dozen times, and left
+it where no operator can reach it.*
+
+That is the epic's founding shape one level up. The epic is about two readers of one
+home giving two answers. Here there is a **third reader that gives the right answer** and
+is not wired to anything an operator can run.
+
+- **No `home verify` / `home repair` verdict on the operator's real root home appeared
+  anywhere in the first version of this ticket** — the epic nearly closed with graded
+  verdicts on `GOAL-one-home-one-answer` and `GOAL-no-destructive-recovery` and no
+  measurement of the tier both were written about. Raised at review (M9) and now taken:
+  **5 `FOREIGN_PATH_IN_SHIM` over 3 shims, both readers agreeing, all repairable, and
+  every leak pointing from the ROOT home INTO the PROJECT home.** See the scorecard.
 - **Nothing measured a real upgrade.** Every home here was built by one build or
   cloned from one. `brew upgrade` across a version boundary — DEF-012's shape — is
   covered by a unit fixture and by nothing else.

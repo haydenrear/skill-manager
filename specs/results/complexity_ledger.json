@@ -3005,7 +3005,7 @@
         "descriptor_comparison": {
           "status": "recorded",
           "classification": "retained",
-          "evidence": "results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md -- nineteen clauses, one verdict each, with the build and the env configuration stated for every number.",
+          "evidence": "results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md -- 21 clauses, one verdict each (the ticket first wrote 'nineteen'; corrected at review of PR #257), with the build and the env configuration stated for every number.",
           "value": null
         }
       },

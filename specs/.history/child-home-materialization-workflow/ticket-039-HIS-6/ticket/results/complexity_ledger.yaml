@@ -35,7 +35,7 @@ validated_refactor:
     evidence: "jbang RunTests.java -- 1423 passed, 1 failed, with the five home vars UNSET (DEF-074). THE ONE FAILURE IS THIS TICKET'S OWN DELIBERATELY-RED ASSERTION for DEF-115; both of its in-run controls are GREEN. results/epic-home-integrity-sync/tickets/HIS-6/evidence/unit-suite.txt. Plus uv run pytest specs/ -- 88 passed. Plus the 26-graph sweep: graphs_executed=26, graphs_passed=24."
   descriptor_comparison:
     status: "recorded"
-    evidence: "results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md -- nineteen clauses, one verdict each, with the build and the env configuration stated for every number."
+    evidence: "results/epic-home-integrity-sync/tickets/HIS-6/scorecard.md -- 21 clauses, one verdict each (the ticket first wrote 'nineteen'; corrected at review of PR #257), with the build and the env configuration stated for every number."
 
 # Fuzzing-era retention members -- RECORDED at every close, non-gating since
 # CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs

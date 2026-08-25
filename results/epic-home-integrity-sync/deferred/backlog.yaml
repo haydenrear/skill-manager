@@ -2616,7 +2616,32 @@ findings:
       the lock question with DEF-041 -- scale the timeout to the work, or queue
       rather than refuse.
     candidate_owner: HIS-11's surface — HIS-13, or whoever takes DEF-041
-    status: open
+    closed_by: HIS-6 (#218), the terminal evaluation, 2026-08-24
+    closed_because: >
+      RE-MEASURED GREEN. `ticket-lifecycle` PASSED in HIS-6's round-3 full sweep,
+      run 20260824-233447, 215.8 s, on the integrated epic tip 17648705e67b with
+      the five home vars unset. That is the third green measurement, not the
+      first -- see the correction below.
+
+      CLOSING IT IS THE POINT. This file's own reconciliation note names DEF-043
+      as the known-stale entry and says why it stayed open: "closing is a
+      deliberate act nothing schedules". HIS-6 is the last actor in the epic who
+      can perform that act, and the first version of HIS-6's PR reported the
+      entry as resolved and then LEFT IT `open` -- reproducing the exact omission
+      the note was written about, inside the ticket that quoted the note. Caught
+      at review of PR #257 (M5).
+    a_correction_to_how_his6_first_reported_this: >
+      HIS-6's PR called this "blocking, open, NEVER RE-MEASURED". The second half
+      is false, and this file says so eleven lines from the top: `ticket-lifecycle`
+      measured BUILD SUCCESSFUL in the wave-5 sweep on 2026-08-22T20:50Z, after
+      HIS-15 (7437c72) landed. What was missing was the CLOSE, not the
+      measurement. The distinction matters for the scorecard because HIS-6
+      credited instrument A with "resolving DEF-043 by re-measurement rather than
+      inference", and A is credited with exactly three things -- so one third of
+      the sweep's claimed unique yield was really a bookkeeping act that any
+      reader of this file could have performed. The sweep confirmed a known
+      green; it did not discover one.
+    status: closed
 
   - id: DEF-044
     found_by: HIS-15 (#235)
@@ -5418,7 +5443,7 @@ findings:
       `skill-manager sync --help` PRINTS the project failure banner. Help output
       should not run project checks.
     candidate_owner: HIS-6 to record; a follow-up ticket for the scoping fix
-    status: open
+    status: closed
     resolution_on_this_machine: >
       UNBLOCKED 2026-08-24 at the owner's instruction, and the finding stands.
       `project resolve --repair-vendored --skip-gateway` was run against
@@ -5441,6 +5466,27 @@ findings:
       refuses every unit sync in the tier above it. The next operator with a
       stale project hits the same wall, and the failure will name a repository
       they have not touched in months.
+    closed_by: HIS-6 (#218), the terminal evaluation, 2026-08-24
+    closed_because: >
+      FIXED AND RE-MEASURED. HIS-22 (#254, merged) replaced the hard refusal with
+      a typed ProjectVendoredDurabilityException caught by
+      LiveInterpreter.syncClaimingProjects, and HIS-6 measured the path it broke:
+        - UNIT: ProjectToRootPromotionTest, all 4 cases green inside
+          `jbang RunTests.java` -- 1423 passed, and the sole failure is HIS-6's
+          own deliberately-red DEF-115 assertion, not this;
+        - GRAPH: `home-sync` PASSED in HIS-6's round-3 sweep, run
+          20260824-233043, carrying home.sync.project.to.root.change.management;
+        - BY HAND, which is what DEF-103 was found by: a synthetic three-tier
+          stack promoted one unit worktree -> project -> ROOT with
+          `home sync --unit`, exit 0, bytes verified at the root home, root home
+          still `home verify` clean; and a DIRECT root update -- `install` and
+          `skill-manager sync <unit>` at the root tier, the exact command this
+          entry says failed for every unit -- both landed.
+      Closed here rather than left `blocking/open` for the same reason DEF-043
+      was: HIS-6 is the last actor who can perform the close, and an entry that
+      is fixed, re-measured and still reading `blocking/open` is what this file's
+      reconciliation note exists to warn about. Caught at review of PR #257 (M5)
+      after HIS-6 closed DEF-043 and not this one.
     still_open_here: >
       The root home's pinned CLI predates the artifact graph -- `skt check`
       reports "artifacts not checked (unsupported): this home's skill-manager
@@ -6506,20 +6552,214 @@ findings:
       NOT PERFORMED BY HIS-6, because writing that home is exactly what this ticket
       is forbidden to do and because the bytes are the evidence. Preserved read-only
       at results/epic-home-integrity-sync/tickets/HIS-6/evidence/containment-breach-project-home.txt.
-      Remedy (.materialization/ and installed/ must agree, so a raw rm is not the
-      whole job):
-        skill-manager remove eval-skill --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager
+
+      THE REMEDY BELOW REPLACES THE ONE HIS-6 FIRST PUBLISHED, WHICH WAS WRONG IN
+      THREE WAYS AND HAD NEVER BEEN RUN. The first version read
+      `skill-manager remove eval-skill --home <project home>`. Measured against a
+      synthetic home carrying this exact shape:
+        - `--home` IS NOT A FLAG of `remove` or `uninstall`  -> "Unknown options:
+          '--home'", EXIT 2, nothing happens;
+        - dropping the flag and pinning SKILL_MANAGER_HOME DOES remove the unit
+          but LEAVES `.materialization/skill/<unit>.json` behind -- the very half
+          the prose claimed a raw `rm` would miss, so its own verification step
+          would have failed;
+        - and it WRITES FIRST: `reconcile: onboarded=1` manufactures an
+          `installed/<unit>.json` record in the target home before removing
+          anything (see DEF-122, where a `--dry-run` leaves that record behind
+          permanently).
+      A remedy aimed at the operator's home that had never been executed is
+      exactly what #142 is about. Filed by the reviewer of PR #257 as BLOCKER B1.
+
+      THE CORRECTED REMEDY, RUN VERBATIM against a synthetic reproduction before
+      being written here, with controls and a negative control -- transcript at
+      tickets/HIS-6/evidence/def121-remedy-transcript.txt:
+
+        # 0. scope it. On the operator's real project home this returns exactly
+        #    two paths, and units.lock.toml does not name the unit (0 hits,
+        #    control: 4 unit rows; control term `deploy-helm` hits 21,781 files).
+        grep -rl eval-skill <project home> --exclude-dir=.git
+        grep -c  eval-skill <project home>/units.lock.toml
+
+        # 1. remove the two paths. There is NO CLI verb for this shape: the unit
+        #    was never installed, so nothing in installed/ or units.lock.toml has
+        #    to be kept in agreement, and `remove`/`uninstall` would MANUFACTURE
+        #    a record in order to delete it.
+        rm -rf <project home>/skills/eval-skill \
+               <project home>/.materialization/skill/eval-skill.json
+
+        # 2. verify. Every line must be true.
+        #    - skills/eval-skill gone
+        #    - .materialization/skill/eval-skill.json gone
+        #    - installed/eval-skill.json ABSENT (nothing manufactured one)
+        #    - grep -rl returns nothing
+        #    - CONTROL: the four resident units still installed and byte-unchanged
+        #    - CONTROL: units.lock.toml still has its 4 rows
+
+      NOTE, so step 2 is not over-read: `home verify` and `home repair` exit 0 on
+      the DAMAGED home as well as the repaired one. They are not a check on this
+      remedy -- that is the defect itself -- which is why step 2 is a file-level
+      verification with its own controls.
     owed_check: >
       (1) `skt publish` validates every argument the publish leg needs BEFORE the
           sync leg runs -- a test that a ticketless publish writes nothing.
       (2) `skt publish --dry-run`.
-      (3) In skill-manager rather than skt: `home verify` / `home repair` notice a
-          unit present in skills/ and in .materialization/ but absent from
-          installed/. That is the half that would have caught this from the product
-          side, and it is the one worth building.
+      (3) `home verify` / `home repair` notice a unit present in skills/ and in
+          .materialization/ but absent from installed/.
+    the_detector_for_(3)_ALREADY_EXISTS_and_this_is_the_sharpest_thing_in_the_entry: >
+      HIS-6 first wrote that (3) was "the half worth BUILDING". IT IS NOT A BUILD;
+      IT IS A PORT, and the correction is worth more than the entry.
+      `test_graph/.../HomeMembershipLaw.java:384` already emits exactly this
+      verdict -- `GAINED [x] -- present in the home, and no installed/ record
+      names them` -- and it RAN IN 24 OF THE 26 GRAPHS of HIS-6's own round-3
+      sweep, green, against homes the graphs built. The rule that would have
+      named this damage was written in wave 7, is exercised two dozen times per
+      sweep, and lives entirely on the TEST side of the fence: no product command
+      asks it about a real home.
+
+      That is the epic's founding shape one level up. The epic is about two
+      readers of one home giving two answers; here there is a THIRD reader that
+      gives the RIGHT answer and is not wired to anything an operator can run.
+      Whoever takes (3) should port the predicate, not invent one -- and should
+      note that HomeMembershipLaw's own javadoc records that its only reader once
+      MANUFACTURED the records it was about to audit, which is precisely what
+      DEF-122 shows `remove` still doing.
+    review_of_pr_257: >
+      The reviewer also corrected HIS-6's attribution of this finding. HIS-6's
+      instrument table counted DEF-121 under instrument B. B CAUSED it; nobody
+      DETECTED it. It surfaced because a later `home clone` inherited the foreign
+      unit and a human noticed an inventory line count was one longer than
+      expected. Corrected in tickets/HIS-6/instrument-comparison.md, which now
+      carries a fourth column for exactly this.
     caught_by_instrument: B-issue-agents
     missed_by: [A-graph-sweep, C-manual]
     candidate_owner: >
       a ticket against haydenrear/skill-publisher-skill for (1) and (2); a ticket
       in skill-manager for (3)
+    status: open
+
+# ---------------------------------------------------------------------------
+# FILED AT THE REVIEW OF PR #257, 2026-08-24. BOTH EXCEED HIS-6's BATCH BUDGET
+# OF 5, and that is stated rather than hidden by renumbering: the budget governs
+# what a ticket may defer from its OWN work, and these are findings the reviewer
+# directed the ticket to file. DEF-122 is blocking and would be escalated in any
+# case; DEF-123 is filed on instruction. Both were reproduced before filing.
+# ---------------------------------------------------------------------------
+
+  - id: DEF-122
+    found_by: HIS-6 (#218), probing the reviewer's BLOCKER B1 against a synthetic home
+    found_at: "2026-08-24"
+    severity: blocking
+    short_label: "`remove --dry-run` WRITES an installed/<unit>.json record into the home it is only supposed to preview"
+    summary: >
+      `--dry-run` is documented as "Print the effects the program would run
+      WITHOUT MUTATING FILESYSTEM OR GATEWAY". On a unit that is present in
+      `skills/` with NO `installed/` record -- DEF-121's damage shape -- the
+      reconcile step manufactures a full `installed/<unit>.json` before the
+      preview is printed, AND LEAVES IT THERE. The operator who prudently
+      previews the remedy has already mutated the home.
+    reproduction: >
+      Synthetic home: skills/eval-probe + .materialization/skill/eval-probe.json,
+      no installed/eval-probe.json, plus one properly-installed resident unit.
+
+        before --dry-run : installed/eval-probe.json  absent
+        $ skill-manager remove eval-probe --dry-run          EXIT=0
+        after  --dry-run : installed/eval-probe.json  PRESENT
+        full path delta caused by the dry run: exactly one path added,
+          > ./installed/eval-probe.json
+        and its content is a real record:
+          { "name":"eval-probe", "kind":"GIT", "installSource":"UNKNOWN",
+            "gitHash":"c7e1dc9...", "installedAt":"2026-08-25T00:25:04Z",
+            "errors":[{"kind":"NO_GIT_REMOTE", ...}] }
+
+      CONTROL, and it is what makes the finding narrow rather than a blanket
+      claim about --dry-run: the SAME command on the properly-installed resident
+      unit in the same home changes ZERO paths. The trigger is precisely the
+      absent installed/ record.
+    why_it_is_blocking: >
+      Not because of the stray file, which is small, but because of what it does
+      to every instruction built on it. HIS-6 published an operator remedy aimed
+      at the operator's project home; the safe way to check such an instruction
+      is `--dry-run`; and `--dry-run` is the step that writes. A preview verb an
+      operator cannot trust is worse than no preview verb, because it is
+      trusted. It also silently converts DEF-121's damage shape into a
+      DIFFERENT shape -- once the record exists, the unit reads as installed --
+      so the home an operator inspects after previewing is not the home they
+      were asked to look at.
+    the_same_mutation_the_epic_already_documented: >
+      `HomeMembershipLaw`'s javadoc records that "the law's ONLY reader was
+      manufacturing the very records it was about to audit". This is that
+      mutation, in a product verb rather than in a test, reached through the
+      flag whose contract forbids it.
+    owed_check: >
+      A unit case: `remove --dry-run` over a home holding a unit with NO
+      installed/ record asserts the home's file set is BYTE-IDENTICAL before and
+      after, with the properly-installed unit in the same home as the control so
+      the assertion cannot pass by the reconcile step never running. Then the
+      same assertion for `uninstall --dry-run`, which shares the reconcile.
+    caught_by_instrument: C-manual (probing a reviewer finding, not the original sweep)
+    missed_by: [A-graph-sweep, B-issue-agents]
+    candidate_owner: a follow-on ticket in skill-manager
+    status: open
+
+  - id: DEF-123
+    found_by: the reviewer of PR #257, in HIS-6's own DEF-108 recheck log
+    found_at: "2026-08-24"
+    severity: major
+    short_label: "`sync --git-latest --merge` prints TWO CONTRADICTORY remedies for one conflict; the second instructs the operator into a state the first says was rolled back"
+    summary: >
+      One command, one conflict, one output, two mutually exclusive
+      instructions:
+
+        ✗ nothing was changed — the merge was rolled back, so the store is
+          exactly where it was ... Commit or drop the local work in <store>
+          (`git status`), then `skill-manager sync <unit> --home <home>`
+        ✗ conflicted — in each unit's store directory: `git status` says which —
+          resolve + `git add` + `git commit` MID-MERGE, or `git reset` to drop a
+          failed stash pop
+
+      The second remedy tells the operator to resolve and commit mid-merge. There
+      is no merge in progress: the first line says it was rolled back, and
+      HIS-6's own graph assertions confirm it -- no conflict markers, no `UU`
+      entry, the store byte-identical to its pre-sync state. An operator
+      following the second line finds nothing to resolve and no merge to commit.
+    where: >
+      src/main/java/dev/skillmanager/app/ReportUseCase.java:249-251 -- NOT
+      `dev/skillmanager/reporting/`, which does not exist; the path in the review
+      was wrong and is corrected here after reading the file.
+    the_mechanism_is_narrower_than_two_code_paths: >
+      The contradictory sentence is the `storeDir == null` FALLBACK. The method
+      already branches correctly for a genuine mid-merge (GitOps.isMidMerge, :253)
+      and for a failed stash pop (:257). The bad line fires only when the reporter
+      does not know which directory to name -- and the rollup line in the SAME
+      output names it ("Commit or drop the local work in <store>"). The
+      information existed in the run and did not reach this reader.
+      That is DEF-104 / DEF-115's family: two readers of one condition, one better
+      informed, no channel between them. Third instance in HIS-6 alone, which is
+      the argument for treating it as a class.
+    why_this_one_stings: >
+      `GOAL-symlink-merge-settles` is, in its own words, about a merge conflict
+      "that its own printed remedy cannot clear". This is a printed remedy that
+      cannot clear the condition it names -- the literal wording of the goal --
+      and it was sitting in the evidence log HIS-6 captured TO DEMONSTRATE that
+      goal's PASS. The rollup line and the per-unit line are produced by
+      different code paths and neither knows the other ran.
+    scope_note: >
+      This does NOT overturn the goal. The goal's clause 1 is "0 units left in
+      MERGE_CONFLICT", and 0 units are: the rollback works and the FIRST remedy
+      is correct and runnable. What fails is the second line's accuracy. Recorded
+      as a reporting defect, not as a verdict change, and HIS-6's scorecard says
+      so in the same words.
+    owed_check: >
+      An assertion that a rolled-back merge emits ONE remedy, and that the
+      generic conflicted-unit line is suppressed or reworded when the merge was
+      rolled back. The natural home is the `gls.conflict` node HIS-6 already
+      repaired, as an eighth assertion on the same captured output -- which is
+      cheap, because that node already holds the whole body in a string.
+    caught_by_instrument: >
+      the reviewer of PR #257 -- reading HIS-6's evidence log rather than running
+      anything. Worth recording as its own line in the instrument comparison:
+      nobody's instrument found this, a person read a transcript that had already
+      been captured, published and cited.
+    missed_by: [A-graph-sweep, B-issue-agents, C-manual]
+    candidate_owner: a follow-on ticket in skill-manager
     status: open

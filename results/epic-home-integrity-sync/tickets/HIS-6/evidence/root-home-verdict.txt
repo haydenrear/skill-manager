@@ -1,0 +1,57 @@
+# THE OPERATOR'S REAL ROOT HOME — read-only, no --fix, no writes.
+# Added at the review of PR #257 (M9): the first version of HIS-6 graded
+# GOAL-one-home-one-answer and GOAL-no-destructive-recovery and contained NO
+# verdict on the tier both goals were written about.
+#
+# measured 2026-08-24 with the CLI at 0.24.0+g17648705e67b (the epic tip),
+# NOT with the build this home is pinned at (released 0.24.0, artifact
+# f61e97a46579, 2026-08-21) -- which is the point: it is the epic's readers
+# being pointed at the operator's home.
+
+$ skill-manager home verify --home /Users/hayde/.skill-manager
+  EXIT=1
+  ✗ 5 path(s) in /Users/hayde/.skill-manager resolve into another Skill Manager home
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/helm-deploy   (runs <project home>/skills/deploy-helm)
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/helm-deploy   (runs <project home>/cache/skill-script-deploy-helm-helm-deploy/venv/bin/helm-deploy)
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/monitoring    (runs <project home>/skills/deploy-helm)
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/monitoring    (runs <project home>/cache/skill-script-deploy-helm-monitoring/venv/bin/monitoring)
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/tla-spec-dev  (runs <project home>/skills/spec-double-compiler/scripts/tla_spec_dev.py)
+
+$ skill-manager home repair --home /Users/hayde/.skill-manager      # NO --fix
+  EXIT=1
+  ✗ 5 finding(s) in /Users/hayde/.skill-manager, of 71 entries examined
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/tla-spec-dev — ...
+  ✗       repair: rewrite that path to /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/tla_spec_dev.py
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/monitoring   — ... (x2, both with a rewrite)
+  ✗   FOREIGN_PATH_IN_SHIM bin/cli/helm-deploy  — ... (x2, both with a rewrite)
+
+DO THE TWO READERS AGREE ON THIS HOME?
+  verify subjects: ['bin/cli/helm-deploy', 'bin/cli/monitoring', 'bin/cli/tla-spec-dev']
+  repair subjects: ['bin/cli/helm-deploy', 'bin/cli/monitoring', 'bin/cli/tla-spec-dev']
+  AGREE — same subjects, same count (5 findings over 3 shims), same verdict.
+
+WHAT THIS SETTLES, and it cuts three ways.
+
+1. GOAL-one-home-one-answer clause 1 FAILS in general (DEF-115) and HOLDS on the
+   operator's root home. Every finding here is the WRAPPER/CONTENT shape --
+   FOREIGN_PATH_IN_SHIM -- which is exactly the shape HIS-21 taught `home verify`
+   to read and where the two readers now agree. NOT ONE is the SYMLINK shape
+   DEF-115 is about. So the failing clause has no known instance in the home the
+   goal was written about. That narrows the FAIL; it does not remove it, because
+   a clone that links into a parent store is the normal case and is precisely
+   where a naive fix would start reporting false positives.
+
+2. All five are REPAIRABLE -- every one prints `repair: rewrite that path to
+   <this home>/...`. So DEF-112's non-converging FOREIGN_PATH_IN_SHIM (a finding
+   HomeFixpointLaw could not clear) still has NO known real instance.
+
+3. THE LEAK POINTS THE WRONG WAY, and that is the finding worth carrying.
+   The ROOT home's shims execute code inside the PROJECT home. Not the reverse.
+   The tier that is supposed to be the parent of everything is, for three of its
+   tools, a client of a repository checkout that can be deleted, rebased, or
+   have its home rebuilt by any ticket agent. This is the epic's founding defect
+   in its most consequential direction, alive, on the machine, at the tip.
+
+NOT REPAIRED. `home repair --fix` on the operator's root home is the owner's
+call and has been left alone deliberately for the whole epic. Confirmed
+afterwards that nothing under ~/.skill-manager was written by these two reads.

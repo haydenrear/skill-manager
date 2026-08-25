@@ -269,15 +269,58 @@ command rather than by an operator noticing"*. This one was detected by an opera
 noticing, and the operator was this ticket, by accident, because a later `home clone`
 inherited the foreign unit and an inventory came back one line longer than expected.
 
-**Remedy for the owner, not run here** — `.materialization/` and `installed/` must agree,
-so a raw `rm -rf` is not the whole job:
+### The remedy — CORRECTED, and this time it was run before it was written
+
+**The version first published here was wrong in three ways and had never been executed
+against anything.** It read `skill-manager remove eval-skill --home <project home>`.
+Measured against a synthetic home carrying this exact shape:
+
+| what was published | what it does |
+| --- | --- |
+| `remove … --home <home>` | **`--home` is not a flag** of `remove` or of `uninstall`. `Unknown options: '--home'`, **exit 2**, nothing happens. |
+| drop the flag, pin `SKILL_MANAGER_HOME` | removes the unit, but **leaves `.materialization/skill/<unit>.json` behind** — the exact half the prose claimed a raw `rm` would miss, so its own verification step would have failed |
+| either form | **writes first**: `reconcile: onboarded=1` manufactures an `installed/<unit>.json` in the target home before removing anything |
+
+A remedy aimed at the operator's home that had never been run is what issue #142 is
+about, and this one had been published in three places. It was the single blocker at the
+review of PR #257.
+
+**Worse, and new: the safe way to check such an instruction is not safe.**
+`remove --dry-run` — documented as *"Print the effects the program would run **without
+mutating filesystem or gateway**"* — **writes `installed/<unit>.json` and leaves it
+there**, on precisely this damage shape. Control: the same `--dry-run` on a
+properly-installed unit in the same home changes **zero** paths, so the trigger is the
+absent `installed/` record. Filed as **DEF-122**, blocking.
+
+**The corrected remedy, run verbatim against a synthetic reproduction, with controls and
+a negative control** — full transcript in `evidence/def121-remedy-transcript.txt`:
 
 ```
-skill-manager remove eval-skill --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager
-# then confirm
-ls <project home>/skills                      -> deploy-helm spec-double-compiler test-graph tracing-observability
-ls <project home>/.materialization/skill      -> no eval-skill.json
+# 0. scope it. On the operator's real project home this returns EXACTLY two paths,
+#    and units.lock.toml does not name the unit: 0 hits, control 4 unit rows,
+#    and the control term `deploy-helm` hits 21,781 files, so the grep works.
+grep -rl eval-skill <project home> --exclude-dir=.git
+grep -c  eval-skill <project home>/units.lock.toml
+
+# 1. remove the two paths. There is NO CLI verb for this shape: the unit was never
+#    installed, so nothing in installed/ or units.lock.toml has to be kept in
+#    agreement — and `remove`/`uninstall` would MANUFACTURE a record to delete it.
+rm -rf <project home>/skills/eval-skill \
+       <project home>/.materialization/skill/eval-skill.json
+
+# 2. verify. Every line must be true.
+#    unit directory gone · materialization record gone · installed/ record ABSENT ·
+#    grep -rl returns nothing · CONTROL the four resident units still installed and
+#    byte-unchanged · CONTROL units.lock.toml still has its 4 rows
 ```
+
+**Do not over-read the absence of a CLI check in step 2.** `home verify` and
+`home repair` exit 0 on the **damaged** home as well as the repaired one — that is
+DEF-121 itself — so they are not a check on this remedy. The file-level verification,
+with the negative control showing those same lines reading `NO` on an unrepaired home,
+is.
+
+**Still not performed on the operator's home.** That is the owner's act.
 
 Filed as **DEF-121**.
 
@@ -322,10 +365,87 @@ merge back and prints a remedy:
     was … then `skill-manager sync git-latest-fixture --home …`
 ```
 
-So a core graph was asserting, since whichever ticket changed the behaviour, that the
-product still had the defect the epic was closing — and nothing noticed, because
+So a core graph was asserting the pre-goal behaviour and nothing noticed, because
 `run.py --all` had never completed a sweep (DEF-011). **This is the second-best argument
 in the epic for running the full sweep**, after DEF-107.
+
+### Four corrections to that argument, from the review of PR #257
+
+The conclusion survives all four and the accounting was exact, but the reasoning was
+loose in four places and a terminal evaluation should not be:
+
+1. **The goal was misquoted, twice.** `GOAL-symlink-merge-settles` is about *an in-unit
+   symlink whose dereference leaves a merge conflict its own printed remedy cannot
+   clear*. `gls.conflict` appends conflicting lines to `SKILL.md` — no symlink — and the
+   node clears the state itself with `git merge --abort`. The node exercises the same
+   **rollback-versus-strand** behaviour the goal is about; it is not an instance of the
+   goal. "Evidence the behaviour changed" is right; "a second witness for that goal" was
+   too strong.
+2. **The commit was nameable and I wrote "whichever ticket changed it" twice.**
+   `git log -S "rolled back"` gives **`f993ae7`**, *"fix(sync): a dereferenced store
+   link is the materializer's work, not an author's"* — HIS-4's commit, for this very
+   goal, and its body names the goal's own baseline (*"2 of 21 change-managed units
+   stuck for nine days"*). Resolved with `git rev-parse --verify f993ae7^{commit}`
+   before being written here, per the ledger's rule about SHAs in evidence. One command,
+   and a vague claim becomes a checkable one.
+3. **The control I named does not discriminate.** I said each inverted assertion is
+   "paired with a control" and pointed at `precondition_both_sides_diverged` — which
+   re-reads files the *node itself* wrote and is, by its own comment, *"blind to what
+   the CLI did"*. It proves the fixture was built; it cannot tell a rollback from a
+   strand. **The real protection is the two assertions I booked as "unchanged"** —
+   `exited_with_rc_8` and `conflict_logged_with_filename`. A fixture that never
+   conflicted fails both. That is what stops the inverted assertions passing vacuously,
+   and I credited the wrong thing.
+4. **And the asymmetry, which is the criticism worth taking.** For DEF-115 — the finding
+   that would move a grade **FAIL → PASS** — I refused to touch the subject. For
+   DEF-108 I **rewrote a core graph's assertions** and then cited the rewritten graph as
+   a witness for that goal's **PASS**. Same session, opposite discipline, and *the
+   relaxation happened on the goal that stayed green.*
+
+   **The defence, and it is a real one:** the two acts differ in kind. DEF-108 changed a
+   *test* that had gone out of date with the product; DEF-115 would have changed the
+   *product* to move a verdict. The rule permits the first and forbids the second,
+   deliberately. **The criticism lands anyway**, because I did not notice the asymmetry,
+   did not price it, and then leaned on the rewritten node as *supporting evidence* for
+   the goal it sits under — which is the step that should have been refused.
+   **Correction:** the `gls.conflict` repair is reported as a harness fix only, and
+   `GOAL-symlink-merge-settles` is decided by `sync-settles` and its TLC invariant
+   **alone**. The repaired node is not cited for it.
+
+### And an unfiled defect was sitting in this ticket's own evidence
+
+The reviewer found it by reading the recheck log I had already published — nothing was
+re-run:
+
+```
+✗ nothing was changed — the merge was rolled back, so the store is exactly where it was
+✗ conflicted — … resolve + `git add` + `git commit` mid-merge, or `git reset` …
+```
+
+Two contradictory remedies in one output. The second instructs the operator into a
+mid-merge state the first says was rolled back, and my own graph assertions confirm
+there is no merge in progress. **A printed remedy that cannot clear the condition it
+names is the literal wording of `GOAL-symlink-merge-settles`** — sitting in HIS-6's own
+evidence for that goal. Filed as **DEF-123**.
+
+**And the mechanism is narrower and more familiar than "two code paths".** Read at
+`src/main/java/dev/skillmanager/app/ReportUseCase.java:249-251` (not
+`…/reporting/…`, which does not exist): the contradictory sentence is the
+**`storeDir == null` fallback**. The method already has correct branches — one for a
+genuine mid-merge (`GitOps.isMidMerge`, line 253) and one for a failed stash pop (line
+257). The bad line fires only when the reporter **does not know which directory to
+name**. Yet the rollup line in the very same output names it:
+*"Commit or drop the local work in `/var/…/skills/git-latest-fixture`"*.
+
+So the information existed in the run and did not reach this reader. That is the
+DEF-104 / DEF-115 family again — **two readers of one condition, one of them
+better-informed, and no channel between them** — which makes it the third instance in
+this ticket alone and the argument for treating it as a class rather than as three
+defects.
+
+It does not overturn the goal: clause 1 is *"0 units left in `MERGE_CONFLICT`"*, and 0
+units are — the rollback works and the **first** remedy is correct and runnable. What
+fails is the second line's accuracy.
 
 **Harness fix, made.** `GlsConflict.java` now asserts the current contract. The two
 assertions that were always right are unchanged; the two that encoded the stranding are

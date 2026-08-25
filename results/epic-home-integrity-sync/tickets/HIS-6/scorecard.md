@@ -1,4 +1,4 @@
-# HIS-6 — the scorecard. Nine goals, one verdict per clause.
+# HIS-6 — the scorecard. Nine goals, **21 clauses**, one verdict per clause.
 
 **Ticket:** #218. **Tree measured:** `feature/218-his-6` at `17648705e67b`, which is
 `epic/home-integrity-sync` @ `1764870` plus this ticket's harness fix and its one
@@ -109,7 +109,7 @@ The rollup is one line per unit plus one total — exactly the target's shape.
 > which is a rendering ratio over one committed record. All three are real; conflating
 > any two is a reporting defect.
 
-## GOAL-gate-settles — **PASS / PASS, with clause 2's scope narrowed by DEF-116**
+## GOAL-gate-settles — **PASS / PARTIAL**
 
 Measured on a real CLI against a real gate, with a positive control:
 
@@ -125,11 +125,43 @@ after ack               1 line                EXIT=0   "no unread change"
 | clause | verdict | note |
 | --- | --- | --- |
 | 1 — 2nd and later surfacings are one line naming the count and the ack command | **PASS** | measured above and in `HomeDriftGateTest`'s *"the second surfacing of one gate is a line, and a new change re-opens it"* |
-| 2 — a change the agent has not seen still gates the next launch, and `DriftGate`'s reason for not clearing on digest refresh still holds | **PASS as specified, and NARROWER than it reads** | the regression the rationale cites is still caught (*"a second measurement does not retire an unread change"*, *"a change arriving on top of an unread one is added, not substituted"* — both PASS). **But `home sync` arms no gate at all** (DEF-116), so "the next launch" is gated for `project sync` and for `home drift --record`, and not for the promotion command this epic is about. |
+| 2 — a change the agent has not seen still gates the next launch, **and** `DriftGate`'s reason for not clearing on digest refresh still holds | **PARTIAL** | second conjunct **PASS**; **first conjunct FALSE for `home sync`** |
 
-**Clause 2 passes and the goal is weaker than the clause.** Reported as measured; not
-repaired, because repairing it would be changing the product to widen a goal this
-ticket grades.
+**Clause 2 is PARTIAL, and the first version of this page said PASS.** Changed at
+the review of PR #257 (M7), and the reviewer's argument is right: a headline table
+cannot read PASS while the same deliverable grades the condition underneath it
+**blocking** (DEF-116). My cell TEXT was accurate; my GRADE was not.
+
+The clause is a conjunction. The second half holds — the regression `DriftGate`'s
+rationale cites is still caught (*"a second measurement does not retire an unread
+change"*, *"a change arriving on top of an unread one is added, not
+substituted"*). The first half is *"a change the agent has not seen still gates
+the **next launch**"*, and my original evidence stopped at `home drift`, **which
+is not a launch**. Measured at the launch:
+
+```
+home sync --from <src> --to <dst> --unit his6x     EXIT=0,  bytes moved: yes
+exec --home <dst> -- no-such-binary                EXIT=127   NOT GATED
+                                                   (127 = the binary is missing,
+                                                    i.e. the launch proceeded)
+
+POSITIVE CONTROL — same home, same bytes, gate armed by --record:
+home drift --home <dst> --record                   EXIT=8
+exec --home <dst> -- no-such-binary                EXIT=8     GATED
+   "✗ refusing to launch: … changed and the change has not been read."
+```
+
+The control is what makes the arm readable: the gate **can** fire at that exact
+launch. And the source-level claim, with its own control:
+
+```
+git log -S DriftGate -- .../store/HomeSync.java          0 commits
+git log -S DriftGate -- .../commands/HomeCommand.java    2 commits
+```
+
+**`HomeSync` has never referenced `DriftGate` in its history.** Pre-existing, not
+a regression of this epic — and not repaired here, because widening the gate is
+changing the product to improve a goal this ticket grades.
 
 ## GOAL-symlink-merge-settles — **PASS / PASS**
 
@@ -138,11 +170,23 @@ ticket grades.
 | 1 — 0 units left in `MERGE_CONFLICT` by the synthetic fixture, `skt sync` completes for both | **PASS** | `sync-settles` PASSED in the round-3 sweep |
 | 2 — an installed-record error is re-derived from the live tree | **PASS** | `sync-settles` PASSED; `ARecordedErrorIsAFunctionOfTheLiveTree`'s expected-violation cfg still refutes exactly that invariant under TLC |
 
-**And the goal has a second, unplanned witness: DEF-108.** `gls.conflict` is red
-*because* the product stopped stranding a unit's repository in a merge conflict. The
-node still requires `<<<<<<<` markers and `UU SKILL.md`; the CLI now rolls the merge
-back and prints a remedy that works. A graph asserting the pre-goal behaviour is the
-strongest evidence available that the behaviour changed.
+> **A citation withdrawn at review (M10).** The first version of this page offered
+> DEF-108 as *"a second, unplanned witness"* for this goal. **It is not, and citing it
+> was the wrong step.** Two reasons, and the second is the one that matters:
+>
+> 1. `gls.conflict` is not an instance of this goal. The goal is about an **in-unit
+>    symlink** whose dereference leaves a conflict *its own printed remedy cannot
+>    clear*. The node appends conflicting lines to `SKILL.md` — no symlink — and clears
+>    the state itself with `git merge --abort`. It exercises the same
+>    rollback-versus-strand behaviour; it does not instance the goal.
+> 2. **I rewrote that node's assertions in this same session and then cited the
+>    rewritten node as evidence for the goal it sits under.** That is
+>    self-certification, and it is the exact step I refused for DEF-115.
+>
+> **This clause is decided by `sync-settles` and its TLC invariant alone.** The
+> `gls.conflict` repair is reported as a harness fix and is not evidence for any goal.
+> DEF-108 remains what it is: proof the *behaviour* changed, and the second-best
+> argument in the epic for running a full sweep.
 
 ## GOAL-home-invariants — **PASS / PASS, held partly by hand**
 
@@ -168,7 +212,7 @@ cfgs above are outside it, so clause 2 is currently held by a human running five
 commands. That is precisely the condition HIS-5 built the runner to end, and it should
 be extended, not celebrated.
 
-## GOAL-mechanism-documented — **PASS / PASS at the root tier; unreachable at the other two**
+## GOAL-mechanism-documented — **PARTIAL / PASS at the root tier**
 
 **Clause 1 — decided by READING THE PROSE, not by the count.** The count is
 `4 of 4 instructing units reach the contract` (`uv run .github/scripts/check-docs-coverage.py`
@@ -180,10 +224,33 @@ than a linking one. So:
 | --- | --- | --- |
 | `skt` | **states the contract**, once, in `references/derived-artifacts.md`. `SKILL.md` points at it three times and carries no copy — the machine-specific "13 stale of 39" example now lives inside the contract page where it belongs | the single statement |
 | `skill-manager` | *"are **not** documented here. The contract is stated once, in the skt plugin, at …"* + the GitHub fallback for a home without skt | **links** |
-| `git-issue-workflow` | *"Go to `…/plugins/skt/skills/skt/references/derived-artifacts.md` … not to the source"* + the fallback | **links** |
-| `git-epic-workflow` | *"skt owns it; this skill does not restate it, and it is absent in a home without skt"* | **links, and says so** |
+| `git-issue-workflow` | `SKILL.md` links correctly. **But `references/skill-homes.md:354-361` restates part of the contract** | **links, and partly restates** |
+| `git-epic-workflow` | *"skt owns it; this skill does not restate it"* — **and then defines "derived artifact" four lines later** | **links, and partly restates** |
 
-**PASS.** Stated once, linked three times, no copy anywhere.
+**PARTIAL — the first version of this page said PASS, "no copy anywhere", and
+that is false on the real corpus.** Found at the review of PR #257 (M6), verified
+here:
+
+- `git-issue-workflow/references/skill-homes.md:354-361` carries the **same
+  six-item skip list** (`cache/`, `tmp/`, `logs/`, `venvs/`, `tools/`, `npm/`),
+  the **same `pm/` exception**, and the **same rationale** — *"a home that cannot
+  run `uv` cannot rebuild anything"* — as the canonical page's lines 159-160.
+  Three lines later it says *"is stated once and is not repeated here"*.
+- `git-epic-workflow/SKILL.md:441-444` says *"skt owns it; this skill does not
+  restate it"* and then defines *"A **derived artifact** is a thing a Skill
+  Manager home produced — a CLI shim, a venv, a projection"*.
+
+**Not FAIL.** The clause's named failure mode is *restating it in four places*;
+this is two partial restatements, both adjacent to a correct pointer, in units
+that do send the reader to the canonical page for everything that decides
+anything. But "stated ONCE" is not what the corpus does, so PASS is wrong.
+
+**How I got it wrong is the more useful half.** I built that table by reading
+each unit's `SKILL.md` and never opening `references/`. That is the same defect
+as HIS-20's `grep DEF-0` and HIS-8's `grep -E "a\|b"` — **a search narrower than
+the corpus it was trusted to decide** — committed by the ticket that closes the
+ledger recording it, in the clause about not restating things. Vacuity mechanism
+C, row 25.
 
 **Clause 2 — the judged read.** **PASS at the root tier**, and this is the cell whose
 contamination audit came back cleanest, so it is the one to trust.
@@ -237,9 +304,62 @@ one verdict … for both readers, because two spellings of the question is what 
 WAS."* Repair was never taught to read *links*. Every existing comparison of the two
 readers plants a wrapper, which is exactly why nothing caught it.
 
-**Not fixed here, on purpose.** Fixing it would be repairing the product to make a goal
-this ticket grades come out green. Filed as DEF-115 with the assertion in the tree
-**and red**.
+**Not fixed here, and the rule is the weakest of the three reasons.** The review of
+PR #257 supplied two better ones and they belong on the record:
+
+1. **A naive fix trades one wrong answer for a louder one.** `home verify`'s remedy for
+   the symlink shape is `sync --force-scripts`, not `repair --fix`. Teaching `repair` to
+   read link targets *without also threading the parent-store sanction* would flip
+   exit 0 → exit 1 on **every clone that legitimately links into its parent store** —
+   which is the normal case, and which clause 3 of this very goal requires to keep
+   working. The fix is real work with a real blast radius, not a one-liner.
+2. **The fix would have been graded by the only test that compares the readers on a
+   symlink, which is the test I wrote in the same session.** Self-certification. An
+   evaluation ticket that writes the oracle, fails it, fixes the product, and then
+   reports its own oracle green has produced no evidence at all.
+
+The rule — *an evaluation ticket does not repair the product to make its own goal pass*
+— is the third reason and the least interesting. Filed as DEF-115 with the assertion in
+the tree **and red**.
+
+### And the one measurement the first version of this page was missing
+
+**No `home verify` or `home repair` verdict on the operator's REAL root home appeared
+anywhere in HIS-6** — the epic closed with graded verdicts on this goal and on
+`GOAL-no-destructive-recovery` and no measurement of the tier both were written about,
+the tier this repository's own fixture javadoc calls *"the one that keeps taking the
+damage — 24 links, then 38."* Raised at review as M9. Taken, read-only, no `--fix`:
+
+```
+home verify --home ~/.skill-manager   EXIT=1   5 FOREIGN_PATH_IN_SHIM over 3 shims
+home repair --home ~/.skill-manager   EXIT=1   5 finding(s), of 71 entries examined
+
+verify subjects: [bin/cli/helm-deploy, bin/cli/monitoring, bin/cli/tla-spec-dev]
+repair subjects: [bin/cli/helm-deploy, bin/cli/monitoring, bin/cli/tla-spec-dev]
+                 AGREE
+```
+
+Three things follow, and they cut in different directions:
+
+- **Clause 1 fails in general and HOLDS on this home.** Every finding is the
+  wrapper/content shape HIS-21 taught verify to read, where the readers now agree.
+  **Not one is the symlink shape DEF-115 is about.** The failing clause has no known
+  instance in the home the goal was written about. That narrows the FAIL; it does not
+  remove it, and point 1 above is why a careless fix would make this home worse.
+- **All five are repairable** — every one prints `repair: rewrite that path to <this
+  home>/…` — so DEF-112's non-converging `FOREIGN_PATH_IN_SHIM` still has no known real
+  instance.
+- **The leak points the wrong way, and this is the finding to carry out of the epic.**
+  The ROOT home's shims execute code inside the PROJECT home — `helm-deploy`,
+  `monitoring` and `tla-spec-dev` all run scripts and venvs under
+  `<repo>/.skill-manager`. Not the reverse. The tier that is supposed to be the parent
+  of everything is, for three of its tools, a **client of a repository checkout** that
+  any ticket agent can delete, rebase, or rebuild. That is the epic's founding defect in
+  its most consequential direction, alive, on the machine, at the tip.
+
+Not repaired: `home repair --fix` on the operator's root home is the owner's call and
+has been left alone deliberately for the whole epic. Transcript:
+`evidence/root-home-verdict.txt`.
 
 ## GOAL-no-destructive-recovery — **PASS / PASS-with-a-live-counterexample / PASS**
 
@@ -342,17 +462,34 @@ documentation. The list did not get shorter during this epic; it got one longer.
 | --- | --- | --- | --- |
 | GOAL-no-spurious-holdback | PASS | PASS | — |
 | GOAL-sync-quiet | PASS | PASS | — |
-| GOAL-gate-settles | PASS | PASS *(narrowed by DEF-116)* | — |
+| GOAL-gate-settles | PASS | **PARTIAL** *(DEF-116)* | — |
 | GOAL-symlink-merge-settles | PASS | PASS | — |
 | GOAL-home-invariants | PASS | PASS *(held by hand for 5 cfgs)* | — |
-| GOAL-mechanism-documented | PASS | PASS *(root tier only)* | — |
+| GOAL-mechanism-documented | **PARTIAL** *(two partial restatements)* | PASS *(root tier)* | — |
 | GOAL-one-home-one-answer | **FAIL** *(DEF-115)* | PASS | PASS |
 | GOAL-no-destructive-recovery | PASS | PASS *(live counterexample, DEF-121)* | PASS |
-| GOAL-progressive-disclosure | **PASS at root, FAIL at project + worktree** | PARTIAL | PARTIAL |
+| GOAL-progressive-disclosure | **FAIL** *(passes at root only)* | PARTIAL | PARTIAL |
 
-**Nineteen clauses. Fifteen PASS, two FAIL, two PARTIAL** — and four of the fifteen
-passes carry a qualification stated above rather than a footnote.
+### **21 clauses — 15 PASS, 2 FAIL, 4 PARTIAL.**
 
-**No target was edited, no goal was repaired, and nothing was re-run selectively until
-a number passed.** The one product-side defect that decides a clause (DEF-115) is filed
+**The arithmetic was wrong in the first version of this page and the correction is
+worth stating precisely, because this is the epic's terminal number.**
+
+It read *"Nineteen clauses. Fifteen PASS, two FAIL, two PARTIAL."* Counted from
+`ticket_plan.yaml`'s `epic_goals` targets — six goals with two `CLAUSE n` markers and
+three with three — the total is **21**, and the summary table above has always rendered
+21 cells. Before the two grade moves in this round, those cells read **17 PASS**, not
+15. So the first version **undercounted its own passes by two while overstating nothing**
+— an error that ran against the ticket's interest, which is the only reason it is a
+clerical failure rather than a reporting one. It was asserted in four places
+(`scorecard.md`, the spec-history manifest, `complexity_ledger.yaml`, and the PR body)
+and all four are corrected.
+
+Then M6 and M7 move two of those 17 PASS cells to PARTIAL, giving **15 PASS / 2 FAIL /
+4 PARTIAL of 21**. The "15" is the same number as before **by coincidence**: the total
+and the PARTIAL count were both wrong, and two independent errors happened to leave the
+PASS count where it started.
+
+**No target was edited, no goal was repaired, and nothing was re-run selectively until a
+number passed.** The one product-side defect that decides a clause (DEF-115) is filed
 with its assertion in the tree and red.

@@ -60,11 +60,16 @@ Two files changed, both in the harness, and both required by Phase 5:
   unit fixture and nothing else.
 - **No second session was measured.** The drift gate exists for the boundary between
   sessions, and every measurement here is single-session.
-- **The backlog was not reconciled.** 96 of 119 findings are `open`; only 9 name a
-  graph this sweep decides and 87 name none. Two were re-measured and are resolved
-  (DEF-043 via `ticket-lifecycle` PASS; DEF-103 via `ProjectToRootPromotionTest` plus
-  the hand-run project→root promotion). The other 94 are unreconciled bookkeeping, and
-  this ticket measured the size of that gap rather than closing it.
+- **The backlog is still not reconciled.** 121 findings, **96 open**; only 9 name a
+  graph this sweep decides and 87 name none. DEF-043 and DEF-103 are now **closed** with
+  their evidence — but 94 entries remain unfalsifiable by any instrument this epic has,
+  and this ticket measured the size of that gap rather than closing it.
+- **The detector for the epic's own worst live defect was already written and left on
+  the test side of the fence.** `HomeMembershipLaw.java:384` emits exactly the verdict
+  DEF-121 needs — *"GAINED [x] — present in the home, and no `installed/` record names
+  them"* — and it ran in **24 of the 26 graphs** of this sweep, green, every time. No
+  product command asks it about a real home. Correcting this ticket's own estimate:
+  closing DEF-121's product half is **a port, not a build**.
 - **The judged reads are still not blind.** Four inbound channels are documented and
   none is closed; a subagent dispatched from this session inherits all four by
   construction. The root-tier read run here is evidence about the corpus, not about a

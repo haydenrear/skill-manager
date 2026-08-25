@@ -178,6 +178,43 @@ rounds:
         of live defects, and this ticket did not close that gap -- it measured how
         big it is.
 
+review_of_pr_257:
+  when: "2026-08-24"
+  verdict: >
+    ONE BLOCKER, TEN MAJORS, EIGHT MINORS, AND NO PRODUCTION CODE TO CHANGE.
+    Every number HIS-6 reported survived independent verification -- the sweep
+    artifact (26 results, 24 passed, all resumed_from null, seconds summing to
+    2942.4), round 1's canonical sweep.json byte-identical to HEAD, the two
+    numbers never added anywhere, 88/25+25/1423-with-one-red, and
+    GOAL-home-invariants clause 2's five cfgs. The central FAIL was reproduced
+    independently on all three arms and its mechanism confirmed at source
+    (HomeCloner.collectShimFiles:2219 opens `if (Files.isSymbolicLink(entry))
+    continue;`).
+  what_it_found_instead: >
+    Defects in the REPORT, which no instrument in this ledger looks at: an
+    operator remedy that had never been run (BLOCKER), wrong clause arithmetic
+    asserted in four places, a mis-attributed instrument table in the document
+    whose only value is attribution, two grades a conjunction did not support,
+    two backlog entries reported resolved and left `blocking/open`, and an
+    unfiled defect sitting inside HIS-6's own published evidence.
+  the_argument_for_a_fifth_column: >
+    A, B and C all read the SYSTEM. Nothing in this ledger reads the REPORT --
+    and a terminal evaluation is almost entirely report. Round 3's own numbers
+    were sound and its prose was not, which is the strongest argument this epic
+    produced for review being an instrument rather than a formality.
+  it_also_strengthened_the_ticket_twice: >
+    (1) It supplied a better reason than the rule for refusing to fix DEF-115:
+    `home verify`'s remedy for the symlink shape is `sync --force-scripts`, not
+    `repair --fix`, so teaching repair to read links WITHOUT threading the
+    sanction path would flip exit 0 -> exit 1 on every clone that legitimately
+    links into a parent store -- trading one wrong answer for a louder one. And
+    a fix would have been graded by the only test comparing the readers on a
+    symlink, which HIS-6 wrote in the same session: self-certification.
+    (2) It named the asymmetry HIS-6 had not noticed -- refusing to touch the
+    subject for the finding that would move a grade to PASS, while rewriting a
+    core graph's assertions and citing the rewritten graph as a witness for a
+    goal that stayed green. The citation is withdrawn.
+
 instruments:
   A-graph-sweep:
     command: python skills/test_graph/scripts/sweep.py --scope full
@@ -803,9 +840,17 @@ findings:
       detectable by a command rather than by an operator noticing.
     owed_check: >
       In skt: validate every publish-leg argument BEFORE the sync leg; add
-      --dry-run. In skill-manager, and this is the half worth building: verify and
-      repair notice a unit present in skills/ and .materialization/ but absent from
-      installed/. Filed as DEF-121.
+      --dry-run. In skill-manager: verify and repair notice a unit present in
+      skills/ and .materialization/ but absent from installed/. Filed as DEF-121.
+      CORRECTED at the review of PR #257: this row first called that third item
+      "the half worth BUILDING". IT IS A PORT, NOT A BUILD.
+      HomeMembershipLaw.java:384 already emits the exact verdict -- "GAINED [x] --
+      present in the home, and no installed/ record names them" -- and it RAN IN
+      24 OF THE 26 GRAPHS of round 3, green, every time. The rule that would have
+      named this damage was written in wave 7, is exercised two dozen times per
+      sweep, and lives entirely on the TEST side of the fence. That is the epic's
+      founding shape one level up: not two readers disagreeing, but a THIRD reader
+      that is right and is wired to nothing an operator can run.
     status: open
 
 # ---------------------------------------------------------------------------
