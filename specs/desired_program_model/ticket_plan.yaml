@@ -3321,7 +3321,58 @@ tickets:
   - id: HIS-6
     title: "TERMINAL EVALUATION -- decide every goal on the integrated epic tip"
     phase: HIS
-    status: closed
+    status: delivered
+    delivered_in: "PR #257, merged into epic/home-integrity-sync as de14aa4"
+    terminal_verdict: >
+      21 CLAUSES -- 15 PASS, 2 FAIL, 4 PARTIAL.
+      Sweep: graphs_selected=26, graphs_executed=26, graphs_passed=24, driven
+      one graph at a time with per-graph resumption available and unused, 2942s.
+      Round 1 was 26/23; the delta is DEF-107, green on the integrated tip.
+
+      THE CLAUSE THAT FAILED WAS NOT FIXED, DELIBERATELY.
+      GOAL-one-home-one-answer clause 1: for a SYMLINKED shim into another home,
+      `home verify` exits 1 with FOREIGN_HOME while `home repair` exits 0 saying
+      "nothing is damaged, 0 entries examined", with a wrapper control proving
+      the two CAN agree. DEF-104 with the mirror flipped -- HIS-21 taught verify
+      to read shim CONTENT and declared "one verdict for both readers"; repair
+      was never taught links. Mechanism confirmed at source:
+      HomeCloner.collectShimFiles opens `if (Files.isSymbolicLink(entry))
+      continue;`. Reproduced independently by review on all three arms.
+
+      Not fixed for two reasons, the second stronger than the first: repairing
+      the product to make a goal this ticket grades pass is forbidden; AND
+      verify's remedy for the symlink shape is `sync --force-scripts`, not
+      `repair --fix`, so teaching repair to read links without threading the
+      sanction path would flip exit 0 -> exit 1 on EVERY clone that legitimately
+      links into a parent store. A terminal evaluation is the worst moment to
+      take that. DEF-115 ships with its assertion IN THE TREE AND RED --
+      1423 passed / 1 failed, both in-run controls green.
+
+      AND THE FAILING CLAUSE HAS NO KNOWN INSTANCE ON THE REAL MACHINE: the root
+      home read read-only shows 5 FOREIGN_PATH_IN_SHIM over 3 shims, both readers
+      AGREEING, all repairable, and not one of DEF-115's symlink shape.
+    arithmetic_correction: >
+      The first scorecard said "19 clauses, 15 PASS". Both wrong: the plan
+      carries 21 clauses and the ticket's own table always rendered 21 cells
+      reading 17 PASS -- so the error UNDER-reported its own passes. Review then
+      moved two grades down (mechanism-documented c1 and gate-settles c2, both
+      PASS -> PARTIAL), taking 17 back to 15. "15 PASS" surviving is a
+      coincidence of two independent errors, and the ticket says so.
+    instrument_comparison: >
+      A (graph sweep) 0 new defects, B (issue agents) 4, C (manual) 2,
+      NOBODY 1 -- a partition, 0+4+2+1=7. The first table double-counted
+      DEF-115, dropped DEF-120, and credited B with DEF-121, which B CAUSED and
+      no instrument DETECTED. A fifth row was added for REVIEW, because every
+      number here survived verification and what review found were defects in
+      the REPORT, which no instrument in the ledger reads.
+
+      THE MOST IMPORTANT ROW IS THE FOURTH: the fifth damage shape was found by
+      none of A, B or C -- a human compared two line counts. And the detector
+      for it ALREADY EXISTS: HomeMembershipLaw emits
+      "GAINED [x] -- present in the home, and no installed/ record names them"
+      and RAN IN 24 OF THE 26 GRAPHS in this very sweep. It is a PORT from the
+      test side, not a build. We wrote the detector, ran it two dozen times, and
+      left it on the test side of the fence.
     delivered_in: "branch feature/218-his-6, PR into epic/home-integrity-sync"
     ticket_agent_note: >
       THE HEADLINE IS A FAILED CLAUSE, AND IT WAS NOT FIXED.
