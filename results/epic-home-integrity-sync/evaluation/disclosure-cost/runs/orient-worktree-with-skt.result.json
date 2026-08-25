@@ -1,0 +1,36 @@
+{
+  "task": "orient-worktree-with-skt",
+  "rc": 0,
+  "wall_s": 404.4,
+  "is_error": false,
+  "num_turns": 21,
+  "cost_usd": 0.5323642,
+  "corpus_bytes": 3291,
+  "corpus_tokens": 823,
+  "other_read_bytes": 68338,
+  "total_tokens": 1094116,
+  "output_tokens": 11638,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/tier-worktree/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/tier-worktree/home.policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1409,
+      "target": "<fixture>/tier-worktree/home.runtime.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 553,
+      "target": "<fixture>/tier-worktree/cache/skt-check.json"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project tier\",\"source\":\"$SKILL_MANAGER_HOME/cache/skt-check.json\",\"quote\":\"\\\"tier\\\": \\\"project\\\"\"},\n \"q2\":{\"answer\":\"This home is a clone of /Users/hayde/IdeaProjects/skill-manager/.skill-manager (its recorded parent store is /Users/hayde/.skill-manager). From that source it inherits the entry points (CLI shims) the source home already held as links into a parent store \u2014 confirmed on disk: $SKILL_MANAGER_HOME/bin/cli/computeq is a symlink to /Users/hayde/.skill-manager/bin/cli/computeq. Per fixtures/tier-root/plugins/skt/skills/skt/references/derived-artifacts.md: 'A clone inherits the entry points its source home already held \u2014 they stay usable, reachable through links in the clone's own `bin/`.' Everything else is only declared, not copied.\",\"source\":\"$SKILL_MANAGER_HOME/home.provenance.json\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\"\"},\n \"q3\":{\"answer\":\"(a) To move the edit up one tier: `skill-manager home sync --from=$SKILL_MANAGER_HOME --to=/Users/hayde/.skill-manager --unit=<skill-name>` (the parent store recorded in home.provenance.json's parentStores). (b) To reach the skill's own git repository: `skill-manager unit publish <skill-name>`. This home has no `skt` binary installed (no bin/cli/skt, no plugins/skt/), so the raw skill-manager subcommands are used directly rather than the `skt publish` wrapper; skill-manager --help in this home confirms `unit` is 'Work with an installed unit as source: publish home edits back to its repo.'\",\"source\":\"fixtures/tier-root/plugins/skt/skills/skt/SKILL.md\",\"quote\":\"`home sync` moves it one tier up (and no further), `unit publish` is the only route to the skill's own repository and to other machines.\"},\n \"q4\":{\"answer\":\"$SKILL_MANAGER_HOME/home.provenance.json must never be hand-edited by this session. It only records the descent chain for reporting/repair and is never consulted to grant a sanction, so writing to it changes nothing about what is actually sanctioned \u2014 it would just make the record lie.\",\"source\":\"fixtures/tier-root/plugins/skt/skills/skt/references/derived-artifacts.md\",\"quote\":\"Do not hand-edit `home.provenance.json` to \\\"fix\\\" a sanction. Nothing reads it as authority.\"}}\n```"
+}
