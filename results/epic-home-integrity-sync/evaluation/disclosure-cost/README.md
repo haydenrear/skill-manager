@@ -100,6 +100,46 @@ correct, sourced to `home.provenance.json` (212 B), `home.policy.toml`, and skt'
 documentation rather than its source. The agent even noticed on its own that the home
 had no `skt` binary and adapted its answer accordingly.
 
+## The quick fix was tried end to end, and it did NOT work
+
+`[plugins.skt]` was **already declared** in this repository's `skill-project.toml`.
+The project home had simply never realized its own manifest — DEF-096 — so the
+10,879-token orientation cost is DEF-096's price, measured.
+
+So the fix was applied for real: `skt` and its imported `skill-manager` unit were
+installed into the project home (all four axes pinned at the checkout), a worktree
+home was cloned from it, and the same prompt re-run.
+
+| run | corpus tokens |
+| --- | --- |
+| `orient-worktree` — before | 10,879 |
+| `orient-worktree-with-skt` — controlled, skt projected onto the tier's own units | **823** |
+| `orient-worktree-fixed` — **real clone of the fixed project home** | **9,460** |
+
+**13% better, not 13×.** The controlled run is not reproducible by installing the
+unit, and the reason is visible in one line of the read log:
+
+    25,706 B  skills/skill-manager/SKILL.md      ← 6,426 tokens, 3.2x the budget, one Read
+       611 B  cache/skt-check.json
+       ...
+    skt invocations: 0
+
+**The agent never ran `skt status`. Not once.** It read skt's reference *pages* and
+`skill-manager`'s 25 kB SKILL.md instead. Installing the front door and satisfying
+skt's `skill-imports` also installed a document that outweighs the command by
+26:1 — and the agent read the document.
+
+The controlled run scored 823 because the skill set it saw happened to be lean, not
+because skt was present. That is a difference the first version of this page did not
+distinguish, and the end-to-end run is what caught it.
+
+**What the fix actually is, then:** not "install the front door" but "make the cheap
+command the first thing an agent is told to do, and stop shipping SKILL.md files that
+outweigh it." That is design work, and it is scheduled as a goal in the next epic
+rather than patched here. The install stays — it is the manifest being realized, it
+is correct on its own terms, and it buys 13% — but it is not the fix and this page
+does not claim it is.
+
 ## Honest limits
 
 - **n = 1 per cell, one model (Sonnet).** The 13× direction is far larger than
@@ -109,10 +149,11 @@ had no `skt` binary and adapted its answer accordingly.
   the agent invoked `$SKILL_MANAGER_CLI` without naming the home path, so the
   attribution rule misses it. Its ~0 means "read no documentation", which is the
   finding; it does not mean "consumed nothing".
-- **The root run had skt projected and still cost 21,186.** The front door is
-  necessary, not sufficient: when skt's Python source sits *inside* the home being
-  inspected, the agent greps the source instead of the docs. Removing that temptation
-  is a separate change from installing the front door.
+- **The front door is necessary and demonstrably not sufficient**, twice over. The
+  root run had skt projected and still cost 21,186, because skt's Python source sits
+  inside the home and the agent grepped it. The end-to-end worktree run had skt
+  installed and cost 9,460, because a 25 kB SKILL.md arrived with it and the agent
+  read that instead of running the command. Availability is not use.
 - **Tier is classified from path shape**, so a home copied to a scratch path reports
   the tier its *path* implies, not the tier its provenance records. Both fixtures were
   therefore answered as `project`, and the agents were right to say so. Cost is
