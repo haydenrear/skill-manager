@@ -984,7 +984,7 @@ epic_goals:
 # runs alongside it rather than on top of it.
 #
 # Fourth instance in one day of one shape -- a record written by one component
-# and read by none. See results/epic-effects-everywhere/baseline/README.md §3.
+# and read by none. See results/epic-effects-everywhere/baseline/README.md 3.
 # ---------------------------------------------------------------------------
 
 tickets:
@@ -992,18 +992,16 @@ tickets:
     title: "Child home units materialize by copy, not by symlink"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        ChildHomeMaterializer materializes units by COPY; the symlink path is gone.
-        Never dispatched: no issue was ever published for this id, so no assignment is
-        being revoked. `carried` claims NOTHING about whether the work was done; it says
-        the question moves to the successor workflow with its acceptance intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-000-CHM-1/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: superseded
+    retirement_receipt: >
+      ChildHomeMaterializer materializes units by COPY; the symlink path is gone.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: []
     production_status: implemented_spec_pending
     objective: >
@@ -1057,19 +1055,16 @@ tickets:
     title: "Per-unit materialization record as the local-change baseline"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        The per-unit materialization record exists and is the local-change baseline at
-        <home>/.materialization/skill/<unit>.json. Never dispatched: no issue was ever
-        published for this id, so no assignment is being revoked. `carried` claims
-        NOTHING about whether the work was done; it says the question moves to the
-        successor workflow with its acceptance intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-001-CHM-2/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: superseded
+    retirement_receipt: >
+      The per-unit materialization record exists and is the local-change baseline at <home>/.materialization/skill/<unit>.json.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: [CHM-1]
     production_status: implemented_spec_pending
     objective: >
@@ -1125,19 +1120,16 @@ tickets:
     title: "Hold back and report locally modified units on resolve and sync"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        Hold-back shipped and is exercised daily; `home sync` printed 'has extra local
-        changes' across nine homes on 2026-08-26. Never dispatched: no issue was ever
-        published for this id, so no assignment is being revoked. `carried` claims
-        NOTHING about whether the work was done; it says the question moves to the
-        successor workflow with its acceptance intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-002-CHM-3/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: superseded
+    retirement_receipt: >
+      Hold-back shipped and is exercised daily; `home sync` printed 'has extra local changes' across nine homes on 2026-08-26.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: [CHM-2]
     production_status: implemented_spec_pending
     objective: >
@@ -1192,19 +1184,16 @@ tickets:
     title: "Prune holds back modified units it no longer claims"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: carried
-      reason: >
-        Prune's hold-back for units it no longer claims was never separately
-        demonstrated. Never dispatched: no issue was ever published for this id, so no
-        assignment is being revoked. `carried` claims NOTHING about whether the work was
-        done; it says the question moves to the successor workflow with its acceptance
-        intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-003-CHM-4/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: carried
+    retirement_receipt: >
+      Prune's hold-back for units it no longer claims was never separately demonstrated.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: [CHM-3]
     production_status: implemented_spec_pending
     objective: >
@@ -1252,19 +1241,16 @@ tickets:
     title: "Dereference in-unit symlinks that point into the parent store"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        src/main/java/dev/skillmanager/source/DereferencedStoreLinks.java;
-        GOAL-symlink-merge-settles graded PASS/PASS in HIS-6. Never dispatched: no issue
-        was ever published for this id, so no assignment is being revoked. `carried`
-        claims NOTHING about whether the work was done; it says the question moves to
-        the successor workflow with its acceptance intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-004-CHM-5/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: superseded
+    retirement_receipt: >
+      src/main/java/dev/skillmanager/source/DereferencedStoreLinks.java; GOAL-symlink-merge-settles graded PASS/PASS in HIS-6.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: [CHM-1]
     production_status: implemented_spec_pending
     objective: >
@@ -1317,19 +1303,16 @@ tickets:
     title: "Staged, atomically swapped materialization"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        src/main/java/dev/skillmanager/source/MaterializationEscrow.java staged,
-        atomically swapped materialization. Never dispatched: no issue was ever
-        published for this id, so no assignment is being revoked. `carried` claims
-        NOTHING about whether the work was done; it says the question moves to the
-        successor workflow with its acceptance intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-005-CHM-6/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: superseded
+    retirement_receipt: >
+      src/main/java/dev/skillmanager/source/MaterializationEscrow.java staged, atomically swapped materialization.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: [CHM-2]
     production_status: implemented_spec_pending
     objective: >
@@ -1379,19 +1362,16 @@ tickets:
     title: "harness instantiate --child-home-dir goes through the same materializer"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: carried
-      reason: >
-        `harness instantiate --child-home-dir` going through the same materializer was
-        never demonstrated. Never dispatched: no issue was ever published for this id,
-        so no assignment is being revoked. `carried` claims NOTHING about whether the
-        work was done; it says the question moves to the successor workflow with its
-        acceptance intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-006-CHM-7/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: carried
+    retirement_receipt: >
+      `harness instantiate --child-home-dir` going through the same materializer was never demonstrated.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: [CHM-3, CHM-6]
     production_status: implemented_spec_pending
     objective: >
@@ -1436,19 +1416,16 @@ tickets:
     title: "Spec-unit adapters and Test Graph bindings for the new views"
     phase: CHM
     status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: carried
-      reason: >
-        Spec-unit adapters and Test Graph bindings for the new views were never closed
-        against this ticket's own acceptance. Never dispatched: no issue was ever
-        published for this id, so no assignment is being revoked. `carried` claims
-        NOTHING about whether the work was done; it says the question moves to the
-        successor workflow with its acceptance intact.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-007-CHM-8/manifest.json"
-      affected_goals: []
+    retired: "2026-08-26"
+    retired_by: "close of child-home-materialization-workflow"
+    retirement_resolution: carried
+    retirement_receipt: >
+      Spec-unit adapters and Test Graph bindings for the new views were never closed against this ticket's own acceptance.
+    retirement_note: >
+      Never dispatched: no issue was ever published for this id, so no
+      assignment is being revoked. `carried` claims NOTHING about whether
+      the work was done; it says the question moves to the successor
+      workflow with its acceptance intact.
     depends_on: [CHM-1, CHM-2, CHM-3, CHM-4, CHM-5, CHM-6, CHM-7]
     objective: >
       Wire case_adapters.toml (Internal -> spec-unit) and testgraph_bindings.yml
@@ -1516,22 +1493,7 @@ tickets:
   - id: CHM-9
     title: "A fast-forward makes the destination a pristine copy of a home that may be gone"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-9. The plan entry was hand-edited to
-        status: closed inside implementation commit 2e17c55 (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 8. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-008-CHM-9/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-27"
     resolved_with: [CHM-10, the stale-baseline finding]
     depends_on: []
@@ -1590,22 +1552,7 @@ tickets:
   - id: CHM-10
     title: "mergeBase picks a baseline newer than the common ancestor, and reverts work without a conflict"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-10. The plan entry was hand-edited to
-        status: closed inside implementation commit 2e17c55 (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 9. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-009-CHM-10/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-27"
     resolved_with: [CHM-9, the stale-baseline finding]
     depends_on: []
@@ -1687,22 +1634,7 @@ tickets:
   - id: CHM-11
     title: "`home sync` and `home close-out` have no out-of-process coverage"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-11. The plan entry was hand-edited to
-        status: closed inside implementation commit 6262bca (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 10. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-010-CHM-11/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-27"
     closed_by: ea03c22
     opened_and_closed_the_same_day: true
@@ -1734,22 +1666,7 @@ tickets:
   - id: CHM-12
     title: "A merge records the source's whole tree as the shared baseline, and the next reconcile overwrites the work"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-12. The plan entry was hand-edited to
-        status: closed inside implementation commit 115df69 (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 11. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-011-CHM-12/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-28"
     found_by: manual exploratory testing of the ordinary three-tier round trip
     objective: >
@@ -1825,22 +1742,7 @@ tickets:
   - id: CHM-15
     title: "`project resolve` refreshes from the store over a tree a worktree just merged in"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-15. The plan entry was hand-edited to
-        status: closed inside implementation commit 137564a (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 12. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-012-CHM-15/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-28"
     found_by: asking which OTHER writers destroy bytes in a home, after CHM-9/10/12 closed home sync
     objective: >
@@ -1909,22 +1811,7 @@ tickets:
   - id: CHM-16
     title: "Three writers delete hand-authored skills out of an agent tree, and one of them writes the licence for another"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-16. The plan entry was hand-edited to
-        status: closed inside implementation commit 137564a (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 13. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-013-CHM-16/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-28"
     found_by: enumerating every writer into a home that does not go through ChildHomeMaterializer
     objective: >
@@ -1985,22 +1872,7 @@ tickets:
   - id: CHM-17
     title: "close-out compares build and tool state inside a unit as if it were unit content"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-17. The plan entry was hand-edited to
-        status: closed inside implementation commit c2d535c (2026-07-29); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 14. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-014-CHM-17/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-29"
     github_issue: 41
     found_by: running a worktree's own tooling once, on three real repositories
@@ -2086,22 +1958,7 @@ tickets:
   - id: CHM-18
     title: "`--dry-run` creates a directory and a lock file in the destination it promised not to write"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-18. The plan entry was hand-edited to
-        status: closed inside implementation commit c2d535c (2026-07-29); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 15. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-015-CHM-18/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-29"
     github_issue: 42
     found_by: measuring what a dry run left behind in the operator's own read-only home
@@ -2150,22 +2007,7 @@ tickets:
   - id: CHM-19
     title: "project -> root is a silent no-op against the only destination an operator has"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-19. The plan entry was hand-edited to
-        status: closed inside implementation commit c2d535c (2026-07-29); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 16. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-016-CHM-19/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-29"
     github_issue: 43
     found_by: running the documented upward sync against the real root home
@@ -2244,22 +2086,7 @@ tickets:
   - id: CHM-20
     title: "the home's CLI entrypoint could never find a CLI, and the assertion covering it was one-sided"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-20. The plan entry was hand-edited to
-        status: closed inside implementation commit c2d535c (2026-07-29); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 17. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-017-CHM-20/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-29"
     found_by: an operator running the shim on a machine with a working CLI on PATH
     objective: >
@@ -2326,22 +2153,7 @@ tickets:
   - id: CHM-21
     title: "a git-sourced unit's .git was digested as unit content, so it was held back forever -- and skipping it destroys commits"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-21. The plan entry was hand-edited to
-        status: closed inside implementation commit 402e3aa (2026-07-29); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 18. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-018-CHM-21/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-29"
     github_issue: 29
     found_by: end-to-end home-sync graph coverage, then TLC three times over on the model of the fix
@@ -2685,22 +2497,7 @@ tickets:
   - id: CHM-22
     title: "RECORD_SCHEMA_VERSION was not bumped when the digest scope changed, so a stale record held a unit back with no cause an operator could act on"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-22. The plan entry was hand-edited to
-        status: closed inside implementation commit 402e3aa (2026-07-29); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 22. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-022-CHM-22/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-29"
     github_issue: 46
     found_by: review of #41's fix
@@ -2797,22 +2594,7 @@ tickets:
   - id: CHM-23
     title: "audit.log was written by install and not by sync -- no trail for the command that touches the most files"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-23. The plan entry was hand-edited to
-        status: closed inside implementation commit 402e3aa (2026-07-29); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 23. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-023-CHM-23/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-29"
     github_issue: 45
     found_by: attributing a real-home change during the sync-blocker work, which is exactly what an audit log is for
@@ -2869,22 +2651,7 @@ tickets:
   - id: CHM-13
     title: "`home close-out` clears a teardown for a path that is not a home at all"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-13. The plan entry was hand-edited to
-        status: closed inside implementation commit 115df69 (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 24. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-024-CHM-13/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-28"
     found_by: manual exploratory testing
     objective: >
@@ -2932,22 +2699,7 @@ tickets:
   - id: CHM-14
     title: "A symlinked unit or kind directory is invisible to the enumerator and reported clean"
     phase: CHM
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for CHM-14. The plan entry was hand-edited to
-        status: closed inside implementation commit 115df69 (2026-07-27); close_ticket
-        was never run, so specs/.history/child-home-materialization-workflow holds no
-        receipt for immutable ordinal 25. The work itself is in merged code. This
-        retirement records the disposition that actually occurred: the ticket leaves the
-        workflow superseded by that merge, and the workflow makes no validated close
-        claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-025-CHM-14/manifest.json"
-      affected_goals: []
+    status: closed
     closed: "2026-07-28"
     found_by: manual exploratory testing
     objective: >
@@ -3234,22 +2986,7 @@ tickets:
   - id: HIS-1
     title: "copyUnit holds back a tree it can see is identical, because it asks the record instead of the source"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-1. The plan entry was set to status:
-        delivered by epic bookkeeping commit d54218b (2026-08-20), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 34. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-034-HIS-1/manifest.json"
-      affected_goals: []
+    status: delivered
     epic: home-integrity-sync
     github_issue: 214
     wave: 1
@@ -3331,22 +3068,7 @@ tickets:
   - id: HIS-2
     title: "DriftReport.render() prints every changed path, and re-prints it on every pass"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-2. The plan entry was set to status:
-        delivered by epic bookkeeping commit d54218b (2026-08-20), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 35. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-035-HIS-2/manifest.json"
-      affected_goals: []
+    status: delivered
     epic: home-integrity-sync
     github_issue: 212
     wave: 1
@@ -3396,22 +3118,7 @@ tickets:
   - id: HIS-3
     title: "the drift gate re-fires instead of settling -- the safety is right, the re-emission is not"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-3. The plan entry was set to status:
-        delivered by epic bookkeeping commit de7f0f2 (2026-08-20), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 36. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-036-HIS-3/manifest.json"
-      affected_goals: []
+    status: delivered
     epic: home-integrity-sync
     github_issue: 213
     wave: 2
@@ -3501,22 +3208,7 @@ tickets:
   - id: HIS-4
     title: "a scaffolded gitignored tree strands the installed baseline, and the unit is never syncable again"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-4. The plan entry was set to status:
-        delivered by epic bookkeeping commit a20edcc (2026-08-21), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 37. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-037-HIS-4/manifest.json"
-      affected_goals: []
+    status: delivered
     epic: home-integrity-sync
     status_note_delivered: >
       DELIVERED, and the hard acceptance item was met -- the graph went RED
@@ -4103,22 +3795,7 @@ tickets:
   - id: HIS-7
     title: "`build` reports a shim it did not write, because presence is decided by what runs rather than what this home owns"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-7. The plan entry was set to status:
-        delivered by epic bookkeeping commit 58692cf (2026-08-21), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 40. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-040-HIS-7/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #225, merged into epic/home-integrity-sync as 23e35c7"
     delivered_scope: >
       HALF OF THE DECLARED SLICE, DELIBERATELY. Adversarial review found the
@@ -4868,22 +4545,7 @@ tickets:
   - id: HIS-9
     title: "nothing refuses a write outside the home SKILL_MANAGER_HOME names -- the class behind repeated root-home damage"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-9. The plan entry was set to status:
-        delivered by epic bookkeeping commit a20edcc (2026-08-21), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 46. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-046-HIS-9/manifest.json"
-      affected_goals: []
+    status: delivered
     epic: home-integrity-sync
     status_note_delivered: >
       DELIVERED. WriteConfinement + WriteOutsideHomeException, enforced at the
@@ -5044,22 +4706,7 @@ tickets:
       the ARBITRARY grant. This adds no new class of in-home forgery, because
       ChildHomeLink already accepts a materialization record inside the judged
       home -- that pre-existing trust is named, not widened.
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-10. The plan entry was set to status:
-        delivered by epic bookkeeping commit fab28e0 (2026-08-21), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 47. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-047-HIS-10/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #228, merged into epic/home-integrity-sync as 22b947c"
     wave: 3
     depends_on: [HIS-7]
@@ -5161,22 +4808,7 @@ tickets:
   - id: HIS-11
     title: "compensation for CommitUnitsToStore is delete-only, so a failed install destroys the bytes it overwrote"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-11. The plan entry was set to status:
-        delivered by epic bookkeeping commit d6a99a1 (2026-08-22), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 48. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-048-HIS-11/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #233, merged into epic/home-integrity-sync as d40c39f"
     epic: home-integrity-sync
     github_issue: 186
@@ -5236,22 +4868,7 @@ tickets:
   - id: HIS-12
     title: "a refusal names a home you were not in and a build that cannot run the remedy, and project sync loses the typed refusal entirely"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-12. The plan entry was set to status:
-        delivered by epic bookkeeping commit ddca9be (2026-08-21), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 49. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-049-HIS-12/manifest.json"
-      affected_goals: []
+    status: delivered
     epic: home-integrity-sync
     status_note_delivered: >
       DELIVERED, after a review that sent it back and a design decision the
@@ -5354,22 +4971,7 @@ tickets:
   - id: HIS-13
     title: "no command can tell a damaged home from a healthy one, so homes already damaged stay damaged"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-13. The plan entry was set to status:
-        delivered by epic bookkeeping commit efce822 (2026-08-23), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 50. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-050-HIS-13/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #244, merged into epic/home-integrity-sync as 2b19163"
     delivery_note: >
       Two BLOCKERS were found by adversarial review and both were real,
@@ -5447,22 +5049,7 @@ tickets:
   - id: HIS-14
     title: "`--home` binds one of a home's two axes, so a remedy edits the operator's real agent directories"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-14. The plan entry was set to status:
-        delivered by epic bookkeeping commit d6a99a1 (2026-08-22), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 51. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-051-HIS-14/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #234, merged into epic/home-integrity-sync as c44a2a0"
     epic: home-integrity-sync
     github_issue: 232
@@ -5554,22 +5141,7 @@ tickets:
   - id: HIS-15
     title: "`home close-out --json` emits no JSON when it fails, so the `wt close` gate loses every verdict"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-15. The plan entry was set to status:
-        delivered by epic bookkeeping commit d6a99a1 (2026-08-22), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 52. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-052-HIS-15/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #236, merged into epic/home-integrity-sync as 7437c72"
     epic: home-integrity-sync
     github_issue: 235
@@ -5697,22 +5269,7 @@ tickets:
   - id: HIS-16
     title: "a command that resolves its target from the working directory escapes every sandbox this repo has"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-16. The plan entry was set to status:
-        delivered by epic bookkeeping commit a978bb0 (2026-08-23), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 53. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-053-HIS-16/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #241, merged into epic/home-integrity-sync as a527221"
     status_note_delivered: >
       DELIVERED after four blockers, each reproduced before it was fixed.
@@ -5844,22 +5401,7 @@ tickets:
   - id: HIS-17
     title: "four graphs each keep their own copy of \"nothing in a clone names its source\", and HIS-10 moved the rule"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-17. The plan entry was set to status:
-        delivered by epic bookkeeping commit 6ee45b1 (2026-08-23), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 54. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-054-HIS-17/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #242, merged into epic/home-integrity-sync as d548f62; docs follow-up PR #243 as e35e4a5"
     epic: home-integrity-sync
     github_issue: 238
@@ -5941,22 +5483,7 @@ tickets:
   - id: HIS-18
     title: "a scaffolded re-derivable tree is still hashed, so the drift report's input never shrank"
     phase: HIS
-    status: retired
-    retirement:
-      schedule_revision: 11
-      resolution: superseded
-      reason: >
-        No close receipt was ever written for HIS-18. The plan entry was set to status:
-        delivered by epic bookkeeping commit a978bb0 (2026-08-23), which is the epic
-        delivery protocol and not a spec close; close_ticket was never run, so
-        specs/.history/child-home-materialization-workflow holds no receipt for
-        immutable ordinal 55. This retirement records the disposition that actually
-        occurred: the ticket leaves the workflow superseded by its merged PR, and the
-        workflow makes no validated close claim for it.
-      decided_by: "hayden.rear"
-      decided_at: "2026-08-26"
-      receipt: "specs/.history/child-home-materialization-workflow/retired-ticket-055-HIS-18/manifest.json"
-      affected_goals: []
+    status: delivered
     delivered_in: "PR #240, merged into epic/home-integrity-sync as 3a4ce09"
     status_note_delivered: >
       DELIVERED. HIS-4's undelivered slice (1), finished because that ticket
