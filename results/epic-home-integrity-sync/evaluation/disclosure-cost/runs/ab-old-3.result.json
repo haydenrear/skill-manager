@@ -1,0 +1,26 @@
+{
+  "task": "ab-old-3",
+  "rc": 0,
+  "wall_s": 143.7,
+  "is_error": false,
+  "num_turns": 23,
+  "cost_usd": 0.4813156,
+  "corpus_bytes": 1329,
+  "corpus_tokens": 332,
+  "other_read_bytes": 59599,
+  "total_tokens": 929869,
+  "output_tokens": 10264,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/skt-old/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/skt-old/home.policy.toml"
+    }
+  ],
+  "answer": "Now I have everything grounded in evidence. Compiling final answer.\n\n```json\n{\"q1\":{\"answer\":\"project\",\"evidence\":\"Ran `skt status`, whose output line began with 'home'\",\"quote\":\"home       /private/tmp/.../scratchpad/eval/fixtures/skt-old \u2014 tier: project, policy: live\"},\n\"q2\":{\"answer\":\"This home is a clone of the project-tier home /Users/hayde/IdeaProjects/skill-manager/.skill-manager, and its recorded ancestry chain (parentStores) is /Users/hayde/.skill-manager (the root/operator home). Per the skt SKILL.md three-tier model, a home cloned this way inherits its installed units, CLI locks, and policy snapshot from that lineage \u2014 it is a full copy, not a symlink.\",\"evidence\":\"Read /private/tmp/.../fixtures/skt-old/home.provenance.json\",\"quote\":\"{\\\"schemaVersion\\\":1,\\\"clonedFrom\\\":\\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\",\\\"clonedAt\\\":\\\"2026-08-26T00:09:12.298967Z\\\",\\\"parentStores\\\":[\\\"/Users/hayde/.skill-manager\\\"]}\"},\n\"q3\":{\"answer\":\"(a) To reach the tier above (root, /Users/hayde/.skill-manager): `skill-manager home sync --from $SKILL_MANAGER_HOME --to /Users/hayde/.skill-manager --unit <skill-name>` (equivalently, the guided `skt publish <skill-name>` runs this as its first leg). (b) To then reach the skill's own git repository: `skill-manager unit publish <skill-name>` \u2014 commits the home's edits on a branch, pushes it, and opens a PR against the unit's trunk (skt publish's second leg).\",\"evidence\":\"skt skill SKILL.md table + `skill-manager home sync --help` + `skill-manager unit publish --help`\",\"quote\":\"`skt publish <unit>` | `skill-manager home sync` then `skill-manager unit publish` (the two legs below) ... home sync moves it one tier up (and no further), unit publish is the only route to the skill's own repository\"},\n\"q4\":{\"answer\":\"/Users/hayde/.skill-manager (the root-tier store named in home.provenance.json's parentStores). This session's writable home is the project-tier copy under $SKILL_MANAGER_HOME; the root store lies outside it and, per the three-tier table, is 'Updated by operator installs; skt sync' \u2014 reached from a project home only through the guided `skt publish` (home sync leg), never by direct file edits from this session.\",\"evidence\":\"skt SKILL.md three-tier table + home.provenance.json parentStores field\",\"quote\":\"root | `~/.skill-manager` | operator installs; `skt sync` | publish local edits globally (`skt check` prompts here)\"}}\n```"
+}

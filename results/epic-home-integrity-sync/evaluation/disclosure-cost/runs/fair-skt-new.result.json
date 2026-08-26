@@ -1,0 +1,66 @@
+{
+  "task": "fair-skt-new",
+  "rc": 0,
+  "wall_s": 263.3,
+  "is_error": false,
+  "num_turns": 28,
+  "cost_usd": 0.5339144,
+  "corpus_bytes": 41177,
+  "corpus_tokens": 10294,
+  "other_read_bytes": 34829,
+  "total_tokens": 1076212,
+  "output_tokens": 10735,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/skt-new/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/skt-new/home.policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1846,
+      "target": "<fixture>/skt-new/home.runtime.json"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 169,
+      "target": "<fixture>/skt-new/plugins/skt/skills/skt/SKI"
+    },
+    {
+      "tool": "Read",
+      "bytes": 127,
+      "target": "<fixture>/skt-new/gateway.properties"
+    },
+    {
+      "tool": "Read",
+      "bytes": 4599,
+      "target": "<fixture>/skt-new/plugins/skt/skills/skt/SKI"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 5587,
+      "target": "grep -rn \"must never write\\|never write\\|root ~/.skill-manager\\|tier above\\|home tier\" \"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969"
+    },
+    {
+      "tool": "Read",
+      "bytes": 13761,
+      "target": "<fixture>/skt-new/plugins/skt/src/skt/status"
+    },
+    {
+      "tool": "Read",
+      "bytes": 265,
+      "target": "<fixture>/skt-new/bin/cli/skt"
+    },
+    {
+      "tool": "Read",
+      "bytes": 13494,
+      "target": "<fixture>/skt-new/plugins/skt/src/skt/publis"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project tier\",\"evidence\":\"Ran `skt status` (also the SessionStart hook already showed this). Also confirmed via `skt status --json`.\",\"quote\":\"home <fixture>/skt-new \u2014 tier: project, policy: live\"},\n \"q2\":{\"answer\":\"This home is a clone/copy of the project's own .skill-manager store (/Users/hayde/IdeaProjects/skill-manager/.skill-manager), and it declares a parent store of the operator root home (/Users/hayde/.skill-manager). It inherits its installed units (skills/plugins and their pinned versions/shas) from that clone source.\",\"evidence\":\"Read $SKILL_MANAGER_HOME/home.provenance.json\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\", \\\"clonedAt\\\" : \\\"2026-08-26T00:09:12.298967Z\\\", \\\"parentStores\\\" : [ \\\"/Users/hayde/.skill-manager\\\" ]\"},\n \"q3\":{\"answer\":\"(a) To reach the tier above (root, /Users/hayde/.skill-manager): `skill-manager home sync --from $SKILL_MANAGER_HOME --to /Users/hayde/.skill-manager --merge --unit <skill-name>`. (b) To then reach the skill's own git repository: `skill-manager unit publish <skill-name> --ticket <ticket>`. Both steps together are run in that exact order by the single wrapper command `skt publish <skill-name>`.\",\"evidence\":\"Read $SKILL_MANAGER_HOME/plugins/skt/src/skt/publish.py, functions _sync_one_tier_up (lines 192-195) and run() (lines 267-270), plus the module docstring (lines 1-14).\",\"quote\":\"_run_cli(home, \\\"home\\\", \\\"sync\\\", \\\"--from\\\", str(home), \\\"--to\\\", str(parent), \\\"--merge\\\", \\\"--unit\\\", unit_name) ... publish_args = [\\\"unit\\\", \\\"publish\\\", unit_name]; if ticket: publish_args += [\\\"--ticket\\\", ticket]\"},\n \"q4\":{\"answer\":\"/Users/hayde/.skill-manager (the parent/root Skill Manager home) \u2014 this session must never write to it by hand, only via `skill-manager home sync` / `skt publish`.\",\"evidence\":\"Read $SKILL_MANAGER_HOME/plugins/skt/src/skt/status.py, function _promotion_lines\",\"quote\":\"f\\\"writes     this session writes {home}. Never write {parent}, or any other \\\" \\\"home, by hand.\\\"\"}}\n```"
+}

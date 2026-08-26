@@ -1,0 +1,41 @@
+{
+  "task": "ab-new-2",
+  "rc": 0,
+  "wall_s": 42.5,
+  "is_error": false,
+  "num_turns": 8,
+  "cost_usd": 0.17480880000000001,
+  "corpus_bytes": 4570,
+  "corpus_tokens": 1142,
+  "other_read_bytes": 684,
+  "total_tokens": 345806,
+  "output_tokens": 3381,
+  "reads": [
+    {
+      "tool": "Bash",
+      "bytes": 31,
+      "target": "SMH=\"<fixture>/skt-new\"; find \"$SMH\" -iname "
+    },
+    {
+      "tool": "Bash",
+      "bytes": 1364,
+      "target": "SMH=\"<fixture>/skt-new\"; ls -la \"$SMH\" 2>&1 "
+    },
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/skt-new/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/skt-new/home.policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1846,
+      "target": "<fixture>/skt-new/home.runtime.json"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project\",\"evidence\":\"SessionStart hook output (skt status)\",\"quote\":\"home       /private/tmp/.../scratchpad/eval/fixtures/skt-new \u2014 tier: project, policy: live\"},\n \"q2\":{\"answer\":\"It is a clone of /Users/hayde/IdeaProjects/skill-manager/.skill-manager (itself descended from parent store /Users/hayde/.skill-manager); it inherits that parent's installed units/skills and syncs back to it.\",\"evidence\":\"Read of $SKILL_MANAGER_HOME/home.provenance.json\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\", \\\"clonedAt\\\" : \\\"2026-08-26T00:09:12.298967Z\\\", \\\"parentStores\\\" : [ \\\"/Users/hayde/.skill-manager\\\" ]\"},\n \"q3\":{\"answer\":\"Edit the file at $SKILL_MANAGER_HOME/skills/<skill>/SKILL.md, then run a single command: `skt publish <unit>` \u2014 this syncs the edit up to the parent tier (/Users/hayde/IdeaProjects/skill-manager/.skill-manager) first, then publishes it to the skill's own git repository. No separate command reaches the tier above vs. the git repo; both are internal steps of the one `skt publish` invocation.\",\"evidence\":\"SessionStart hook output line 'publish', confirmed by running `skt publish --help`\",\"quote\":\"publish    edited a unit here? `skt publish <unit>` \u2014 syncs it to the parent above, then publishes to the unit's own git repo. Nothing else carries an edit out of this home; git does not. | usage: skt publish [-h] [--check] [--ticket TICKET] [unit]\"},\n \"q4\":{\"answer\":\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager (the parent home) \u2014 and by extension any other Skill Manager home besides the one this session is bound to \u2014 must never be written by hand.\",\"evidence\":\"SessionStart hook output line 'writes'\",\"quote\":\"writes     this session writes /private/tmp/.../scratchpad/eval/fixtures/skt-new. Never write /Users/hayde/IdeaProjects/skill-manager/.skill-manager, or any other home, by hand.\"}}\n```"
+}

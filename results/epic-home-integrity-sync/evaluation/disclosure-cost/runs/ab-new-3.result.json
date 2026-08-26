@@ -1,0 +1,26 @@
+{
+  "task": "ab-new-3",
+  "rc": 0,
+  "wall_s": 31.1,
+  "is_error": false,
+  "num_turns": 8,
+  "cost_usd": 0.1483582,
+  "corpus_bytes": 2058,
+  "corpus_tokens": 514,
+  "other_read_bytes": 5505,
+  "total_tokens": 221746,
+  "output_tokens": 2686,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/skt-new/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1846,
+      "target": "<fixture>/skt-new/home.runtime.json"
+    }
+  ],
+  "answer": "Now I have direct command evidence for all four answers.\n\n```json\n{\"q1\":{\"answer\":\"project tier\",\"evidence\":\"ran `skt status`\",\"quote\":\"home       /private/tmp/.../scratchpad/eval/fixtures/skt-new \u2014 tier: project, policy: live\"},\n \"q2\":{\"answer\":\"This home is a clone of /Users/hayde/IdeaProjects/skill-manager/.skill-manager, and inherits parent stores from /Users/hayde/.skill-manager\",\"evidence\":\"read home.provenance.json in $SKILL_MANAGER_HOME\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\", \\\"parentStores\\\" : [ \\\"/Users/hayde/.skill-manager\\\" ]\"},\n \"q3\":{\"answer\":\"(a) and (b) are both accomplished by a single command: `skt publish <unit>` (e.g. `skt publish skill-manager`) \u2014 this syncs the edited unit up to the parent tier above, then publishes it to the unit's own git repository.\",\"evidence\":\"SessionStart hook 'publish' line, corroborated by `skt --help` and `skt publish --help`\",\"quote\":\"publish    edited a unit here? `skt publish <unit>` \u2014 syncs it to the parent above, then publishes to the unit's own git repo. Nothing else carries an edit out of this home; git does not.\"},\n \"q4\":{\"answer\":\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager (the parent home this session was cloned from) must never be written to by hand\",\"evidence\":\"SessionStart hook 'writes' line\",\"quote\":\"writes     this session writes /private/tmp/.../fixtures/skt-new. Never write /Users/hayde/IdeaProjects/skill-manager/.skill-manager, or any other home, by hand.\"}}\n```"
+}

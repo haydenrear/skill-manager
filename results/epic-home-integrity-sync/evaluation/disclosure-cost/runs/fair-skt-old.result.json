@@ -1,0 +1,31 @@
+{
+  "task": "fair-skt-old",
+  "rc": 0,
+  "wall_s": 94.1,
+  "is_error": false,
+  "num_turns": 11,
+  "cost_usd": 0.242896,
+  "corpus_bytes": 3175,
+  "corpus_tokens": 794,
+  "other_read_bytes": 20483,
+  "total_tokens": 378703,
+  "output_tokens": 7064,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/skt-old/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/skt-old/home.policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1846,
+      "target": "<fixture>/skt-old/home.runtime.json"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project\",\"evidence\":\"SessionStart hook output (skt status) and $SKILL_MANAGER_HOME/home.policy.toml / home.runtime.json\",\"quote\":\"home       <fixture>/skt-old \u2014 tier: project, policy: live (also home.runtime.json: \\\"policy\\\" : \\\"live\\\", homeRoot \\\"$SKILL_MANAGER_HOME\\\")\"},\n \"q2\":{\"answer\":\"It is a clone of the repo's own project home /Users/hayde/IdeaProjects/skill-manager/.skill-manager, and it lists /Users/hayde/.skill-manager as a parent store to inherit from/sync against.\",\"evidence\":\"$SKILL_MANAGER_HOME/home.provenance.json\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\", \\\"clonedAt\\\" : \\\"2026-08-26T00:09:12.298967Z\\\", \\\"parentStores\\\" : [ \\\"/Users/hayde/.skill-manager\\\" ]\"},\n \"q3\":{\"answer\":\"(a) To push the edit up to the tier above (the root parent store): `skill-manager home sync --from $SKILL_MANAGER_HOME --to /Users/hayde/.skill-manager --unit <skill-name>` (or the guided shortcut `skt publish <skill-name>`, described as 'guided home-sync + unit-publish for edited skills'). (b) To reach the skill's own git repository: `skill-manager unit publish <skill-name>` (optionally `--ticket <id>`), which commits and pushes a branch and opens a PR.\",\"evidence\":\"`skill-manager home sync --help` and `skill-manager unit publish --help` output, plus `skt --help` (skt publish command description)\",\"quote\":\"home sync: '--from=<from> Home to read from. Never written.' / '--to=<to> Home to reconcile. Written unless --dry-run.' ; unit publish: 'Commit this home's edits to a unit on skill/<ticket>-<unit>, push it, and open a pull request against the unit's trunk.' ; skt --help: 'publish  guided home-sync + unit-publish for edited skills'\"},\n \"q4\":{\"answer\":\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager \u2014 the home this one was cloned from.\",\"evidence\":\"$SKILL_MANAGER_HOME/home.provenance.json (clonedFrom field) plus `skill-manager home --help`'s description of the `clone` and `verify` subcommands\",\"quote\":\"home.provenance.json: \\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\" ; skill-manager home --help: 'clone  Copy this home to a new root (skipping cache/) and verify that nothing in the copy still points at the original.' and 'verify  Check that a home holds no absolute reference back to another home.' \u2014 this session's home is meant to be an independent copy, so writing back into its clone source would violate that independence guarantee.\"}}\n```"
+}

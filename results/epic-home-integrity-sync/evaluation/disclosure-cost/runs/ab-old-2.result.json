@@ -1,0 +1,46 @@
+{
+  "task": "ab-old-2",
+  "rc": 0,
+  "wall_s": 137.4,
+  "is_error": false,
+  "num_turns": 19,
+  "cost_usd": 0.547947,
+  "corpus_bytes": 33405,
+  "corpus_tokens": 8351,
+  "other_read_bytes": 70378,
+  "total_tokens": 709003,
+  "output_tokens": 12238,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/skt-old/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1846,
+      "target": "<fixture>/skt-old/home.runtime.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/skt-old/home.policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 2094,
+      "target": "<fixture>/skt-old/policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 25706,
+      "target": "<fixture>/skt-old/skills/skill-manager/refer"
+    },
+    {
+      "tool": "Read",
+      "bytes": 2430,
+      "target": "<fixture>/skt-old/plugins/skt/skills/skt/SKI"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project tier\",\"evidence\":\"SessionStart hook output of `skt status`\",\"quote\":\"home       /private/tmp/.../scratchpad/eval/fixtures/skt-old \u2014 tier: project, policy: live\"},\n \"q2\":{\"answer\":\"This home is a real copy (not a symlink) cloned from the project-tier home /Users/hayde/IdeaProjects/skill-manager/.skill-manager, and it lists /Users/hayde/.skill-manager as its parentStores (the root tier above that). It inherits that source's installed-unit snapshot (deploy-helm, eval-skill, skill-manager, skt, spec-double-compiler, test-graph, tracing-observability at the versions/SHAs recorded in home.runtime.json).\",\"evidence\":\"Read $SKILL_MANAGER_HOME/home.provenance.json\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\", \\\"parentStores\\\" : [ \\\"/Users/hayde/.skill-manager\\\" ]\"},\n \"q3\":{\"answer\":\"1) Edit $SKILL_MANAGER_HOME/skills/<name>/SKILL.md directly with your editor. 2) Reach the tier above: `skill-manager home sync --from $SKILL_MANAGER_HOME --to /Users/hayde/.skill-manager`. 3) Reach the skill's own git repo: `skill-manager unit publish <name>` (add --ticket T if applicable). (skt SKILL.md notes `skt publish` is shorthand for doing both legs in sequence.)\",\"evidence\":\"Read $SKILL_MANAGER_HOME/skills/skill-manager/references/projects.md sections 'Moving An Edit Up A Tier: home sync' and 'Publishing An Edit: unit publish'; and $SKILL_MANAGER_HOME/plugins/skt/skills/skt/SKILL.md three-tier table\",\"quote\":\"skill-manager home sync --from <worktree>/.skill-manager --to <repo>/.skill-manager [--merge] [--dry-run] [--json] ... skill-manager unit publish <name> [--ticket T] ... This commits the home's edits to that unit on `skill/<ticket>-<unit>`, pushes, and opens a pull request against the unit's trunk. | project | `<repo>/.skill-manager` | ... | pull-side by default \u2014 but an edit made *here* owes the same two legs as any other |\"},\n \"q4\":{\"answer\":\"The global/default agent config directory outside this home (e.g. the default ~/.claude, i.e. whatever CLAUDE_CONFIG_DIR/CLAUDE_HOME would resolve to without this home's override) \u2014 this session must use $SKILL_MANAGER_HOME/.claude instead.\",\"evidence\":\"Ran `skill-manager exec --help`; Read $SKILL_MANAGER_HOME/home.runtime.json env block\",\"quote\":\"exec ... export the home's env, put its bin/ first on PATH, and refuse a launch that would still read the global agent config. --- \\\"CLAUDE_CONFIG_DIR\\\" : \\\"$SKILL_MANAGER_HOME/.claude\\\", \\\"CLAUDE_HOME\\\" : \\\"$SKILL_MANAGER_HOME/.claude\\\"\"}}\n```"
+}
