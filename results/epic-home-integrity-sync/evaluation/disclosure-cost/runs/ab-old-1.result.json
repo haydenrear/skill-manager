@@ -1,0 +1,46 @@
+{
+  "task": "ab-old-1",
+  "rc": 0,
+  "wall_s": 123.7,
+  "is_error": false,
+  "num_turns": 20,
+  "cost_usd": 0.4774388,
+  "corpus_bytes": 61879,
+  "corpus_tokens": 15470,
+  "other_read_bytes": 23269,
+  "total_tokens": 788777,
+  "output_tokens": 10436,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/skt-old/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/skt-old/home.policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 2094,
+      "target": "<fixture>/skt-old/policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 11231,
+      "target": "<fixture>/skt-old/plugins/skt/skills/skt/SKI"
+    },
+    {
+      "tool": "Read",
+      "bytes": 33731,
+      "target": "<fixture>/skt-old/plugins/skt/skills/skt/ref"
+    },
+    {
+      "tool": "Read",
+      "bytes": 13494,
+      "target": "<fixture>/skt-old/plugins/skt/src/skt/publis"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project\",\"evidence\":\"SessionStart hook output of `skt status` for this session\",\"quote\":\"home       /private/tmp/.../scratchpad/eval/fixtures/skt-old \u2014 tier: project, policy: live\"},\n \"q2\":{\"answer\":\"This home is a clone of another project-tier home at /Users/hayde/IdeaProjects/skill-manager/.skill-manager (clonedFrom), with /Users/hayde/.skill-manager recorded as the further ancestor (parentStores). Per the skt reference, it inherits the bin/ entry points its immediate source home held (as symlinks into a still-re-deriving parent store, e.g. bin/cli/computeq, helm-deploy, monitoring, etc.) and units.lock.toml/artifacts.lock.toml identity rows; it does NOT inherit cache/, tmp/, logs/, venvs/, tools/, npm/ (skipped on clone), though pm/ is copied deliberately.\",\"evidence\":\"$SKILL_MANAGER_HOME/home.provenance.json; $SKILL_MANAGER_HOME/plugins/skt/skills/skt/references/derived-artifacts.md \u00a72\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\", \\\"parentStores\\\" : [ \\\"/Users/hayde/.skill-manager\\\" ]  ///  \\\"Cloning does not copy the parent's provisioned trees... It skips cache/, tmp/, logs/, venvs/, tools/ and npm/ outright \u2014 but not pm/... For an entry point the source home held as a link into a parent store, the clone's own bin/cli/<name> is a symlink at that store's copy.\\\"\"},\n \"q3\":{\"answer\":\"(a) reach the tier above (root, resolved from this project-tier home): `skill-manager home sync --from $SKILL_MANAGER_HOME --to /Users/hayde/.skill-manager --merge --unit <skill-name>`.  (b) reach the skill's own git repo: `skill-manager unit publish <skill-name> --ticket <ticket>`. (`skt publish <skill-name>` runs exactly these two in that order.)\",\"evidence\":\"$SKILL_MANAGER_HOME/plugins/skt/src/skt/publish.py (function _sync_one_tier_up calling `home sync --from --to --merge --unit`, then run() calling `unit publish <name> --ticket <ticket>`); _parent_home() resolves a 'project' tier to homes.root_home(); homes.root_home() in $SKILL_MANAGER_HOME/plugins/skt/src/skt/homes.py\",\"quote\":\"targeted = _run_cli(home, \\\"home\\\", \\\"sync\\\", \\\"--from\\\", str(home), \\\"--to\\\", str(parent), \\\"--merge\\\", \\\"--unit\\\", unit_name)  ///  proc = _run_cli(home, \\\"unit\\\", \\\"publish\\\", unit_name, \\\"--ticket\\\", ticket, ...)  ///  if tier == \\\"project\\\": root_h = homes.root_home() ...  ///  def root_home() -> Path: ... return Path(override) if override else Path.home() / \\\".skill-manager\\\"\"},\n \"q4\":{\"answer\":\"$SKILL_MANAGER_HOME/home.provenance.json must never be hand-edited.\",\"evidence\":\"$SKILL_MANAGER_HOME/plugins/skt/skills/skt/references/derived-artifacts.md, end of \u00a72 ('The descent record is a pointer, not a grant')\",\"quote\":\"Do not hand-edit `home.provenance.json` to \\\"fix\\\" a sanction. Nothing reads it as authority. You would change the pointer and not the answer.\"}}\n```"
+}

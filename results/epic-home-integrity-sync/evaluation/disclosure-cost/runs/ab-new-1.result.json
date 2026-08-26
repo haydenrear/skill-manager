@@ -1,0 +1,15 @@
+{
+  "task": "ab-new-1",
+  "rc": 0,
+  "wall_s": 15.3,
+  "is_error": false,
+  "num_turns": 1,
+  "cost_usd": 0.0725712,
+  "corpus_bytes": 0,
+  "corpus_tokens": 0,
+  "other_read_bytes": 0,
+  "total_tokens": 41406,
+  "output_tokens": 1070,
+  "reads": [],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project\",\"evidence\":\"SessionStart hook output of `skt status`\",\"quote\":\"home       /private/tmp/claude-501/.../fixtures/skt-new \u2014 tier: project, policy: live\"},\n \"q2\":{\"answer\":\"It is a clone of the parent project home /Users/hayde/IdeaProjects/skill-manager/.skill-manager, and it syncs back to that parent (i.e. it inherits the parent's units/config and pushes changes upward to it).\",\"evidence\":\"SessionStart hook output of `skt status`\",\"quote\":\"parent     /Users/hayde/IdeaProjects/skill-manager/.skill-manager (from this home's descent record) \u2014 this home was cloned from it and syncs back to it\"},\n \"q3\":{\"answer\":\"skt publish <unit>\",\"evidence\":\"SessionStart hook output of `skt status`\",\"quote\":\"publish    edited a unit here? `skt publish <unit>` \u2014 syncs it to the parent above, then publishes to the unit's own git repo. Nothing else carries an edit out of this home; git does not.\"},\n \"q4\":{\"answer\":\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager (the parent home) \u2014 must never be hand-written; this session only writes its own home, and edits reach the parent only via `skt publish`.\",\"evidence\":\"SessionStart hook output of `skt status`\",\"quote\":\"writes     this session writes /private/tmp/claude-501/.../fixtures/skt-new. Never write /Users/hayde/IdeaProjects/skill-manager/.skill-manager, or any other home, by hand.\"}}\n```"
+}
