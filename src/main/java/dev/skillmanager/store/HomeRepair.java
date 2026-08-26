@@ -466,6 +466,46 @@ public final class HomeRepair {
                                         + "`skill-manager build`, or re-install its unit",
                         fixable, mine));
             }
+            // DEF-115, and it is DEF-104 with the mirror flipped. DEF-104 was
+            // verify seeing symlinks and being blind to shim CONTENT while
+            // repair saw content; HIS-21 taught verify to read content and
+            // declared "one extraction rule and one verdict for both readers".
+            // The half never done was repair learning to read LINKS -- so a
+            // home holding `bin/cli/linktool -> <third home>/bin/cli/realtool`
+            // was reported by `home verify` (exit 1, FOREIGN_HOME) and by this
+            // command as "nothing is damaged ... 0 entries examined". Two
+            // readers, one home, one moment, DIFFERENT SUBJECT SETS, which is
+            // GOAL-one-home-one-answer clause 1 failing in its sharpest form.
+            //
+            // The verdict is not new and is deliberately not re-spelled here:
+            // `scanShimDirs` judges the link target with the same
+            // `unsanctionedForeignHome` the text arm above uses, so a link at a
+            // SANCTIONED parent store is accepted for exactly the reason the
+            // wrapper form of it is, and by the same code.
+            //
+            // REPORTED, NOT REPAIRED, and that is a decision. The only
+            // mechanical repair is to delete the link, which takes away the
+            // tool the home currently reaches without putting anything in its
+            // place -- the destructive recovery this class exists to refuse.
+            // `home verify` also only reports it. Agreement was the defect;
+            // agreement is the fix.
+            for (HomeCloner.ForeignShimPath link : scan.foreignLinks()) {
+                Path target = link.candidate();
+                Path foreign = link.foreign();
+                Path mine = mappedIntoThisHome(foreign, target, store);
+                findings.add(new Finding(Kind.FOREIGN_PATH_IN_SHIM, link.rel(),
+                        "is a symlink at " + target + ", which is inside the home at "
+                                + foreign,
+                        mine != null
+                                ? "this home holds " + mine + " — re-point the link there, "
+                                        + "or remove it and rebuild the entry point with "
+                                        + "`skill-manager build`"
+                                : "no path under this home stands where " + target
+                                        + " does — install the unit that provides it here, "
+                                        + "or remove the link and rebuild with "
+                                        + "`skill-manager build`",
+                        false, null));
+            }
         }
         return examined;
     }

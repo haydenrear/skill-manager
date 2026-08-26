@@ -6323,7 +6323,53 @@ findings:
     caught_by_instrument: B-issue-agents
     missed_by: [A-graph-sweep]
     candidate_owner: a follow-on ticket in skill-manager, against HomeRepair
-    status: open
+    status: fixed
+    fixed_at: "2026-08-25"
+    fixed_by: >
+      Direct commit on epic/home-integrity-sync, on the owner's instruction, so
+      that main is not merged red. The fix is where this entry said it would be:
+      HomeRepair learns to read LINKS, through the same verdict verify uses,
+      rather than by growing a third spelling of the question.
+    the_fix: >
+      HomeCloner.collectShimFiles used to DROP symlink entries with a comment
+      calling them "the OTHER reader's business, judged by link resolution".
+      That was true of `home verify`, which has its own symlink arm, and false of
+      `home repair`, which has none -- so the one method written to keep the two
+      readers in agreement was the place the disagreement lived. Symlink entries
+      are now collected alongside regular files and judged by the SAME
+      HomeCloner.unsanctionedForeignHome the text arm calls, so a link at a
+      SANCTIONED parent store is still accepted for exactly the reason the
+      wrapper form of it is.
+      They are surfaced as a SEPARATE ShimDirScan component (`foreignLinks`)
+      rather than folded into `foreign`, because verify already reports links
+      from its own arm and folding them in would make verify name every one
+      TWICE. One enumeration, two consumers, no double report.
+      REPORTED, NOT REPAIRED: the only mechanical repair is to delete the link,
+      which removes the tool the home currently reaches without replacing it --
+      the destructive recovery HomeRepair exists to refuse. `home verify` also
+      only reports it. Agreement was the defect; agreement is the fix.
+    measured_after: >
+      The live two-home reproduction from `reproduction` above, re-run through the
+      real CLI on the fixed tree:
+        home verify --home A -> FOREIGN_HOME bin/cli/linktool
+                                FOREIGN_PATH_IN_SHIM bin/cli/wrappertool
+        home repair --home A -> FOREIGN_PATH_IN_SHIM bin/cli/linktool
+                                FOREIGN_PATH_IN_SHIM bin/cli/wrappertool
+      The SUBJECT SETS now agree, which is what GOAL-one-home-one-answer clause 1
+      asks. Unit suite 1427 passed / 0 failed -- the assertion this epic shipped
+      deliberately red is green, and both of its in-run controls still hold.
+    what_is_NOT_fixed_and_is_not_claimed: >
+      The two readers still LABEL the symlink differently: verify calls it
+      FOREIGN_HOME, repair calls it FOREIGN_PATH_IN_SHIM. The clause is about the
+      subject sets and those agree, so the clause passes -- but a smaller version
+      of the same shape survives in the classification, and aligning it means
+      adding a Kind value that `--json` consumers and graph assertions read. That
+      is a separate, verifiable change and is deliberately not smuggled into this
+      one. Filed here rather than as a new DEF so it stays attached to its parent.
+    graph_coverage_still_owed: >
+      This entry's `owed_check` asked for a graph node as well, and it is still
+      owed. Every existing two-reader comparison in the graph layer plants a
+      WRAPPER, which is exactly why nothing caught this.
 
   - id: DEF-116
     found_by: HIS-6 (#218), manual pass with a positive control

@@ -2142,9 +2142,25 @@ public final class HomeCloner {
      * @param examined    how many entries were looked at, so a caller can tell
      *                    "clean" from "found nothing to look at"
      * @param foreign     every foreign path named by the CONTENT of a shim here
+     * @param foreignLinks every shim here that IS a symlink into an unsanctioned
+     *                    foreign home. Separate from {@code foreign} because the
+     *                    two readers need different things from it: {@code home
+     *                    repair} had no way to see this shape at all (DEF-115),
+     *                    and {@code home verify} already reports it from the
+     *                    symlink arm of its own walk, so folding links into
+     *                    {@code foreign} would make verify name every one twice.
+     *                    One enumeration, two consumers, no double report.
      */
     public record ShimDirScan(String dir, Path outwardLink, int examined,
-                              List<ForeignShimPath> foreign) {}
+                              List<ForeignShimPath> foreign,
+                              List<ForeignShimPath> foreignLinks) {
+
+        /** The pre-DEF-115 shape: no links reported. */
+        public ShimDirScan(String dir, Path outwardLink, int examined,
+                           List<ForeignShimPath> foreign) {
+            this(dir, outwardLink, examined, foreign, List.of());
+        }
+    }
 
     /**
      * Walk this home's shim directories and report every foreign path their
@@ -2198,29 +2214,53 @@ public final class HomeCloner {
                 continue;
             }
             List<Path> files = new ArrayList<>();
-            collectShimFiles(shimDir, files);
+            List<Path> links = new ArrayList<>();
+            collectShimFiles(shimDir, files, links);
             List<ForeignShimPath> foreign = new ArrayList<>();
             for (Path file : files) {
                 String rel = relativeTo(root, file);
                 foreign.addAll(foreignPathsInShimContent(rel, file, root));
             }
-            out.add(new ShimDirScan(dir, null, files.size(), List.copyOf(foreign)));
+            // DEF-115. The link arm, enumerated HERE so both readers get it from
+            // the same walk with the same verdict. `home repair` consumed only
+            // the text arm, and a symlink has no text -- so on a home holding a
+            // symlinked shim into a third home, verify exited 1 naming it and
+            // repair exited 0 saying "0 entries examined". Same home, same
+            // moment, two readers, two subject SETS.
+            List<ForeignShimPath> foreignLinks = new ArrayList<>();
+            for (Path link : links) {
+                String rel = relativeTo(root, link);
+                Path outsider = unsanctionedForeignHome(rel, link, root);
+                if (outsider != null) {
+                    foreignLinks.add(new ForeignShimPath(rel, link, outsider));
+                }
+            }
+            out.add(new ShimDirScan(dir, null, files.size() + links.size(),
+                    List.copyOf(foreign), List.copyOf(foreignLinks)));
         }
         return List.copyOf(out);
     }
 
     /**
      * {@code HomeRepair.collectRegularFiles}, moved here whole so there is one
-     * of it. Entries that are symlinks are skipped — they are the OTHER
-     * reader's business, judged by link resolution — but the directory handed
-     * in may itself be one, and following it is the point (see
-     * {@link #scanShimDirs}).
+     * of it. The directory handed in may itself be a symlink, and following it
+     * is the point (see {@link #scanShimDirs}).
+     *
+     * <p>Symlink ENTRIES used to be dropped on the floor here, with a comment
+     * calling them "the OTHER reader's business, judged by link resolution".
+     * That was true of {@code home verify}, which has its own symlink arm, and
+     * false of {@code home repair}, which has none — so the shape was visible
+     * to exactly one of the two readers this method exists to keep in
+     * agreement. DEF-115. They are now collected into {@code links} and judged
+     * by the same {@link #unsanctionedForeignHome} the text arm uses; who
+     * reports them is the caller's business, which is what it always should
+     * have been.
      */
-    private static void collectShimFiles(Path dir, List<Path> out) {
+    private static void collectShimFiles(Path dir, List<Path> out, List<Path> links) {
         try (java.nio.file.DirectoryStream<Path> entries = Files.newDirectoryStream(dir)) {
             for (Path entry : entries) {
-                if (Files.isSymbolicLink(entry)) continue;
-                if (Files.isDirectory(entry)) collectShimFiles(entry, out);
+                if (Files.isSymbolicLink(entry)) { links.add(entry); continue; }
+                if (Files.isDirectory(entry)) collectShimFiles(entry, out, links);
                 else if (Files.isRegularFile(entry)) out.add(entry);
             }
         } catch (IOException cannotList) {
