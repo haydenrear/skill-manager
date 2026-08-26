@@ -6859,3 +6859,88 @@ findings:
     missed_by: [A-graph-sweep, B-issue-agents, C-manual]
     candidate_owner: a follow-on ticket in skill-manager
     status: open
+
+# ---------------------------------------------------------------------------
+# FOUND 2026-08-26, during the machine-wide pin migration and cache reclamation
+# the owner asked for. Not a ticket's finding: it fell out of running `home
+# verify` over 80 homes instead of one.
+# ---------------------------------------------------------------------------
+
+  - id: DEF-124
+    found_by: the epic agent, verifying 80 homes after a machine-wide reclamation
+    found_at: "2026-08-26"
+    severity: blocking
+    short_label: "`home repair` cannot see a foreign or dangling symlink under `skills/`; `home verify` can. DEF-115's shape on a surface the DEF-115 fix does not cover."
+    summary: >
+      Three real homes on the operator's machine fail `home verify` (exit 1) and
+      are called clean by `home repair` (exit 0, "nothing is damaged in a way
+      this command knows about", 0 findings). The subject in every case is a
+      symlink under `<home>/skills/<unit>/test_graph/` -- the vendored SDK links
+      (`sdk`, `build-logic`, `standard-nodes`) that issues #21 and #40 are about.
+    the_scope_mismatch_is_structural: >
+      `home verify` says so in its own output: "LINK targets are checked
+      EVERYWHERE in this home; script CONTENT is read only under bin/cli and
+      bin/mcp". The sentence documents the CONTENT scope difference and is
+      silent about the LINK one -- and the link scopes differ too.
+      HomeRepair has exactly four detectors:
+        misanchoredAgentLinks  -> the AGENT dirs (.claude/, .codex/, .gemini/)
+        foreignPathsInShims    -> HomeCloner.SHIM_DIR_NAMES = [bin/cli, bin/mcp]
+        prunedInheritedEntries -> declared entry points
+        danglingCliPin         -> the CLI pin
+      None of them walks `<home>/skills/**` or `<home>/plugins/**`. So a link
+      inside a UNIT is visible to one reader and structurally invisible to the
+      other. (`PROJECTED_DIRS = ["skills","plugins"]` exists in HomeRepair and
+      is a red herring: it names the subdirectories to look for INSIDE an agent
+      dir, not inside the home.)
+    reproduction: >
+      Measured on the real machine, 2026-08-26, CLI 0.25.0:
+
+        commit-diff-context-parent/.skill-manager
+          home verify -> exit 1, 3x FOREIGN_HOME
+            skills/deploy-helm/test_graph/sdk
+              -> /Users/hayde/.skill-manager/skills/test-graph/project_sdk_sources/sdk
+              (i.e. it reaches into the operator's ROOT home)
+          home repair -> exit 0, "repaired 0 of 0", 62 entries examined
+
+        .../constituents/hyper-experiments-finance/.skill-manager
+        .../constituents/support-agent-rears/.skill-manager
+          home verify -> exit 1, 3x unresolved
+            skills/hyper-experiments/test_graph/sdk -> ../../test_graph/project_sdk_sources/sdk
+          home repair -> exit 0, "repaired 0 of 0", 18 entries examined
+
+      NOT caused by the reclamation that found it: zero of the failing targets
+      is under `cache/`, which was the only thing removed. Checked explicitly.
+    the_same_unit_shape_fails_two_different_ways: >
+      Worth its own line, because it explains why no fixture caught this. The
+      SAME vendored-SDK links are DANGLING in the two constituent homes (no
+      local test-graph sources) and FOREIGN_HOME in commit-diff-context-parent
+      (they resolve into the root home). One unit shape, two verify verdicts,
+      and repair blind to both.
+    relationship_to_DEF_115: >
+      Identical class, one surface over. DEF-115 was `home repair` reading shim
+      TEXT and being blind to shim LINKS under bin/cli; fixed 2026-08-25 by
+      teaching HomeCloner.scanShimDirs to collect symlink entries. That fix is
+      scoped to SHIM_DIR_NAMES by construction, so it does not and cannot reach
+      a link inside a unit. The epic closed the asymmetry at one directory and
+      left it open at every other.
+      This is the FOURTH instance of the epic's founding shape (DEF-104,
+      DEF-115, DEF-123, this) and the second one found AFTER the terminal
+      evaluation graded GOAL-one-home-one-answer. The goal's clause 1 is
+      "no two readers disagree about the same path in the same home, with no
+      operator-supplied flag" -- three live homes say it is still false.
+    owed_check: >
+      A unit case planting a dangling symlink and a foreign symlink under
+      `skills/<unit>/` and asserting verify and repair name the SAME subject
+      set, with a bin/cli case in the same fixture as the in-run control -- the
+      DEF-115 assertion's shape, one directory over. Then decide the repair
+      SCOPE deliberately: either HomeRepair walks the whole home for links (and
+      pays for it), or the two readers' scopes are stated in one place and the
+      difference is asserted rather than discovered.
+    caught_by_instrument: >
+      D-owner-directed operations. Neither the graph sweep, the issue agents nor
+      the manual pass ran `home verify` over EIGHTY homes; this needed a
+      machine-wide operation to surface, which is an argument for the fleet
+      check being an instrument in its own right.
+    missed_by: [A-graph-sweep, B-issue-agents, C-manual]
+    candidate_owner: the effects-interpreter epic, alongside the DEF-115 residue
+    status: open
