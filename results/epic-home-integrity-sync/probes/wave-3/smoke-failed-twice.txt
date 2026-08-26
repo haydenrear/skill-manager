@@ -1,0 +1,10 @@
+run 20260821-164405 (--all)   -> smoke FAILED: servers.down / registry_down; 1 of 24 graphs executed
+run 20260821-170159 (smoke)   -> smoke FAILED: servers.down / registry_down (same node, same assertion)
+registry.up envelope          -> pid 70183, port 52348, status passed
+after the run                 -> ps -p 70183 empty; 0 SkillRegistryApp processes
+conclusion                    -> the process died; the assertion sampled isAlive() before the reap
+
+AFTER THE FIX (ServersDown waits for the reap; graceful budget 20s; node timeout 90s)
+run 20260821-172xxx (smoke)   -> BUILD SUCCESSFUL in 16m 47s
+
+red, red, green -- same machine, same graph, the fix the only variable.

@@ -140,7 +140,7 @@ public final class HomeLock implements AutoCloseable {
             throw new IOException("interrupted waiting for the home lock on " + root, interrupted);
         }
         if (!held) {
-            throw new IOException(operation + ": " + root + " is locked by another "
+            throw new HomeContendedException(operation, root, "is locked by another "
                     + "operation in this process and did not free up within "
                     + DEFAULT_TIMEOUT.toMillis() + "ms");
         }
@@ -163,15 +163,18 @@ public final class HomeLock implements AutoCloseable {
         long waitMillis = timeout == null ? DEFAULT_TIMEOUT.toMillis() : timeout.toMillis();
 
         ReentrantLock jvmLock = IN_PROCESS.computeIfAbsent(root.toString(), key -> new ReentrantLock());
-        boolean held;
-        try {
-            held = jvmLock.tryLock(waitMillis, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            throw new IOException("interrupted waiting for the home lock on " + root, interrupted);
+        boolean held = jvmLock.tryLock();
+        if (!held) {
+            announceWait(operation, root, "another operation in this process");
+            try {
+                held = jvmLock.tryLock(waitMillis, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IOException("interrupted waiting for the home lock on " + root, interrupted);
+            }
         }
         if (!held) {
-            throw new IOException(operation + ": " + root + " is locked by another "
+            throw new HomeContendedException(operation, root, "is locked by another "
                     + "operation in this process and did not free up within " + waitMillis + "ms");
         }
         // The outer acquisition owns the OS lock; a nested one is already
@@ -184,6 +187,7 @@ public final class HomeLock implements AutoCloseable {
                     StandardOpenOption.WRITE);
             long deadline = System.currentTimeMillis() + waitMillis;
             FileLock fileLock = null;
+            boolean announced = false;
             while (fileLock == null) {
                 try {
                     fileLock = channel.tryLock();
@@ -191,8 +195,12 @@ public final class HomeLock implements AutoCloseable {
                     fileLock = null;
                 }
                 if (fileLock != null) break;
+                if (!announced) {
+                    announceWait(operation, root, "another skill-manager process");
+                    announced = true;
+                }
                 if (System.currentTimeMillis() >= deadline) {
-                    throw new IOException(operation + ": " + root + " is locked by another "
+                    throw new HomeContendedException(operation, root, "is locked by another "
                             + "skill-manager process (" + lockFile + ") and did not free up within "
                             + waitMillis + "ms");
                 }
@@ -216,6 +224,28 @@ public final class HomeLock implements AutoCloseable {
             jvmLock.unlock();
             throw failure;
         }
+    }
+
+    /**
+     * Say that this caller is <b>waiting</b>, at the moment it starts waiting.
+     *
+     * <h2>Why silence was not good enough</h2>
+     *
+     * <p>The two outcomes of contention are "waited and then ran" and "gave up
+     * and refused", and until this line only the second one said anything. A
+     * second resolve that queued behind a first was indistinguishable from a
+     * hung command for as long as it queued — up to
+     * {@link #DEFAULT_TIMEOUT} — and the operator's only evidence either way
+     * arrived after the fact, if at all. Now the wait announces itself when it
+     * begins and the refusal (an {@link IOException} naming this home and the
+     * timeout) ends it, so which of the two happened is always on the record.
+     *
+     * <p>Printed once per acquisition, not per poll: a 25ms poll loop over a
+     * two-minute timeout would otherwise emit ~4800 identical lines.
+     */
+    private static void announceWait(String operation, Path root, String holder) {
+        dev.skillmanager.util.Log.info("%s: waiting for %s — %s holds this home's lock",
+                operation, root, holder);
     }
 
     @Override

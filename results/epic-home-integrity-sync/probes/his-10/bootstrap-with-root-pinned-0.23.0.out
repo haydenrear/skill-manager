@@ -1,0 +1,18 @@
+log:       /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/bootstrap-home-6YiJa0.log
+
+== Bootstrapping a Skill Manager home for /Users/hayde/IdeaProjects/wt-227-his-10 ==
+  source:    /Users/hayde/IdeaProjects/skill-manager/.skill-manager  (the project home of /Users/hayde/IdeaProjects/skill-manager)
+  cli:       /Users/hayde/.skill-manager/bin/cli/skill-manager
+  close-out into: /Users/hayde/IdeaProjects/skill-manager/.skill-manager  (same home — issue #50)
+! Telemetry export unavailable; continuing without telemetry.
+  copied:      5876 dirs, 30406 files, 10 links (430181810 bytes; cache, logs, npm, tmp, tools, venvs skipped)
+  re-anchored: 0 links relativized, 4 records, 1 provisioned files
+!   2 reference(s) do not resolve in the copy (targets under a directory the clone skips) — `skill-manager home verify --home /Users/hayde/IdeaProjects/wt-227-his-10/.skill-manager` reports each one and refuses the home until they are re-provisioned
+✗ clone verification FAILED — 5 path(s) reach outside this copy
+✗     FOREIGN_HOME bin/cli/computeq (/Users/hayde/.skill-manager/bin/cli/computeq resolves into the home at /Users/hayde/.skill-manager)
+✗     FOREIGN_HOME bin/cli/helm-deploy (/Users/hayde/.skill-manager/bin/cli/helm-deploy resolves into the home at /Users/hayde/.skill-manager)
+✗     FOREIGN_HOME bin/cli/monitoring (/Users/hayde/.skill-manager/bin/cli/monitoring resolves into the home at /Users/hayde/.skill-manager)
+✗     FOREIGN_HOME bin/cli/tla-spec-dev (/Users/hayde/.skill-manager/bin/cli/tla-spec-dev resolves into the home at /Users/hayde/.skill-manager)
+✗     FOREIGN_HOME bin/cli/tlc2 (/Users/hayde/.skill-manager/bin/cli/tlc2 resolves into the home at /Users/hayde/.skill-manager)
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-clone-20260821-104110-962e.log
+error: home clone failed; /Users/hayde/IdeaProjects/wt-227-his-10/.skill-manager is not usable

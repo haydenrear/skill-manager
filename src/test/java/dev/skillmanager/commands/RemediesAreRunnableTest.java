@@ -92,7 +92,16 @@ public final class RemediesAreRunnableTest {
                             assertEquals(1, r.rc, "an unresolvable reference still refuses");
                             assertContains(r.err, "do not resolve",
                                     "and names the class of failure");
-                            assertContains(r.err, "sync --force-scripts",
+                            // ARTI-06: the remedy is the per-artifact repair the
+                            // per-instance diagnosis always implied, not the
+                            // whole-home `sync --force-scripts` it used to be.
+                            // This home has no cli-lock row behind its planted
+                            // shim, so the artifact join finds nothing and this
+                            // case exercises the FALLBACK spelling — still a
+                            // runnable command rather than a bare sentence.
+                            // ArtifactBuildTest covers the scoped spelling,
+                            // where the artifacts are named one by one.
+                            assertContains(r.err, "build --stale",
                                     "and prints the remedy that repairs it");
                         })
 

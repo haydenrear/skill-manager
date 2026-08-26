@@ -1,0 +1,23 @@
+id:              cli-shim:pip/jinja2-cli[yaml]
+kind:            cli-shim
+owner:           spec-double-compiler
+materialization: declared-only
+agreement:       unverifiable
+origin:          ledger-and-home
+source:          cli-lock.toml
+inputs:
+  spec:pip:jinja2-cli[yaml]==0.8.2
+  unit:spec-double-compiler
+outputs:
+  dangling   home     bin/cli/jinja2
+recorded:
+  install_fingerprint_kind = resolved
+  backend = pip
+  tool = jinja2-cli[yaml]
+  version = 0.8.2
+  spec = pip:jinja2-cli[yaml]==0.8.2
+  install_fingerprint_basis = declared spec + version 0.8.2 resolved into venvs/jinja2-cli
+  install_fingerprint = aa4da321244902f417f82288b715e6751f900ba19ee575848fe5ac9696bc47a0
+  binary = jinja2
+actual:
+  unusable_because = declared and not built — this home builds its artifacts on demand, and the entry point names the command that builds this one

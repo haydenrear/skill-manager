@@ -1,0 +1,20 @@
+BRANCH HOMEBREW_KEG: a keg-only formula falls to the opt alias
+BRANCH HOMEBREW_LINKED: the prefix's linked name wins, with no PATH at all
+BRANCH NO_DURABLE_ALIAS: with nothing versionless pointing at it, the versioned path is kept
+BRANCH NO_VERSION_TO_LOSE: a build that names no version is pinned as-is
+CLAIM 1 CONTROL: the SAME home with a versioned pin is dead after it
+CLAIM 1: a home pinned BEFORE a version change still runs a CLI after it
+CLAIM 2: HIS-13's DANGLING_CLI_PIN does not fire on the new writer's home
+CLAIM 3: `home verify` no longer exits 0 on a home whose pin is dead
+GATE: a build that does not resolve is left exactly as it was
+GATE: a versionless alias naming a DIFFERENT build is never taken
+GATE: an alias that ALSO names a version is not an improvement
+HONEST LIMIT: a package-manager alias FOLLOWS a deliberate downgrade
+IDEMPOTENT: feeding the chosen pin back in returns it unchanged
+MAJOR 1: `home shims` PRINTS the pin it wrote, byte for byte
+MAJOR 1: the --json `cli` field is the pin that was written too
+MIGRATION: `home repair --fix` re-pins an existing home DURABLY, so the next upgrade does not break it again
+ONE ANSWER: the repairer's target is the pin the writer would write
+the library verdict and the command agree about one home
+the version test errs narrow: a worktree, a temp dir and a bare number are not versions
+the writer records a VERSIONLESS pin, which is the mechanism claim 1 rests on

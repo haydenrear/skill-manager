@@ -88,6 +88,25 @@ public final class RunningCli {
     }
 
     /**
+     * {@link #locate()}, or null when the running build cannot be established.
+     *
+     * <p>For callers that are not writing the answer into a file. {@code home
+     * shims} must refuse rather than pin a guess, which is why {@link #locate()}
+     * throws; a REMEDY has a next candidate to try, so for it "not determinable"
+     * is a fact to move past rather than a failure. Added for
+     * {@link dev.skillmanager.store.HomeDescriptor#locateCli}, whose second step
+     * used to be a {@code ProcessHandle} basename test that no shipped launcher
+     * could satisfy — this class already knew the answer that step wanted (#161).
+     */
+    public static Path locateOrNull() {
+        try {
+            return locate();
+        } catch (UnknownLocationException notDeterminable) {
+            return null;
+        }
+    }
+
+    /**
      * The testable form. Every ambient input the resolution depends on is a
      * parameter, because {@code System.getenv} cannot be set from inside a JVM
      * and a resolution rule nobody can drive is a rule nobody can test — which
@@ -98,7 +117,8 @@ public final class RunningCli {
      * @param codeSource     the jar or class directory this class was loaded
      *                       from, or null
      */
-    static Path locate(Function<String, String> env, String processCommand, Path codeSource) {
+    public static Path locate(Function<String, String> env, String processCommand,
+                              Path codeSource) {
         Map<String, String> tried = new LinkedHashMap<>();
 
         // An explicit pin is intent, so the basename is NOT enforced on it: a

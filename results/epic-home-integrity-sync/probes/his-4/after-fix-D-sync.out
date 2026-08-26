@@ -1,0 +1,10 @@
+reconcile: backfilled 6 default-agent binding(s)
+✗ scaffolded-unit has extra local changes (working tree edits, or commits ahead of the installed baseline) — sync would overwrite them.
+✗   re-run with: /Users/hayde/.skill-manager/bin/cli/skill-manager sync scaffolded-unit --merge   (merges file://<SCRATCH>/fix-D/src/scaffolded-unit.git into <SCRATCH>/fix-D/project/.skill-manager/skills/scaffolded-unit)
+✓ resolve: 0 unit(s)
+! Telemetry export unavailable; continuing without telemetry.
+✓ units.lock.toml: wrote 2 unit(s) → <SCRATCH>/fix-D/project/.skill-manager/units.lock.toml
+✓ agents: 2 unit(s) linked into claude, codex, gemini
+✗ sync: 1 unit(s) need attention
+✗   extra local changes — `skill-manager sync <name> --merge`: scaffolded-unit
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260821-140951-1a15.log

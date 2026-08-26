@@ -1,0 +1,40 @@
+### attempt 1: plain close (plan status=planned)
+ERROR: ticket HIS-8 is not closed in ticket_plan.yaml: status=planned
+close_exit=1
+
+### attempt 2: close --allow-open, ledger unfilled
+VERDICT: REJECTED -- no recursive refinement record / no narrative: recorded
+close_exit=1
+
+### attempt 3: close --allow-open, ledger filled
+  validated-refactor basis (joint requirement -- licenses a decrease, CD-09):
+            tlc_before=(absent) (UNVERIFIED)
+            tlc_after=(absent) (UNVERIFIED)
+            behavior_tests=(absent) (UNVERIFIED)
+            descriptor_comparison=(absent) (UNVERIFIED)
+  retention (fuzzing-era, experimental -- recorded, non-gating since CD-09):
+            kill_rate=not_run (UNVERIFIED)
+            effect_conformance=not_run (UNVERIFIED)
+            external_coverage=not_run (UNVERIFIED)
+  refinement: searched, found none
+  coverage audit (completeness, MF-026): not_run  <-- does not pass (recorded, not refused)
+  note:     NOTE: TLC reports incomplete; comparison skipped.
+  note:     coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope.
+  VERDICT: recorded
+
+promotion -> specs/current
+  basis: seed manifest recorded at open; removing only seeded paths the ticket dropped
+  removed 0 paths
+  preserved 1 current-only path(s) the ticket never carried:
+    = tests/test_current_ticket_workflow.py
+complexity ledger: specs/results/complexity_ledger.json (delta zero vs ISSUE-168, refinement none)
+skill feedback -> /Users/hayde/IdeaProjects/wt-224-his-8/specs/results/skill_feedback.md
+  appended entry: Close-out ticket HIS-8
+  feedback NOT yet filed: declared_status=unreviewed, 0 finding(s) recorded
+  fill in the close-out entry and file each finding before the workflow closes
+recorded spec history entry: /Users/hayde/IdeaProjects/wt-224-his-8/specs/.history/child-home-materialization-workflow/ticket-041-HIS-8
+It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/ticket-041-HIS-8
+recommended next step:
+  git add specs/.history/child-home-materialization-workflow/ticket-041-HIS-8 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json
+  git commit -m 'record spec history for HIS-8'
+close_exit=

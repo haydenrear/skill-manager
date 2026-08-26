@@ -503,6 +503,17 @@ public final class HomePathsTest {
             Files.createSymbolicLink(store.cliBinDir().resolve(dep.name()), payload);
             return dev.skillmanager.cli.installer.InstallOutcome.INSTALLED;
         }
+        /**
+         * A stand-in with no declaration of its own to hash: the payload is
+         * this fixture's path, not anything {@code dep} declares. Says so
+         * rather than returning a digest that would be a fact about the test
+         * harness — which is what {@code fingerprint} having no default is for.
+         */
+        @Override public dev.skillmanager.lock.Fingerprint fingerprint(
+                CliDependency dep, SkillStore store, String unitName) {
+            return dev.skillmanager.lock.Fingerprint.gap(
+                    "test fixture backend: the artifact is a fixed payload, not a declared input");
+        }
     }
 
     private static ProjectionLedger ledger(Path home, Path dest) {

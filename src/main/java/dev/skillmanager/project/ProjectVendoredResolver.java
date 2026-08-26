@@ -267,8 +267,21 @@ public final class ProjectVendoredResolver {
         return entries;
     }
 
+    /**
+     * DEF-109: the separator is written as the ESCAPE {@code '\\0'} and must
+     * stay that way. It used to be a raw NUL BYTE in this source file, which
+     * is semantically identical to the compiler and catastrophic to every
+     * reader: {@code file} reports this file as {@code data}, and any grep
+     * with {@code -I} (which is the default for the wrapper agents in this
+     * repository use) SILENTLY SKIPS IT -- no match, no warning, exit 1.
+     * That made the class at the centre of DEF-103 invisible to search,
+     * and three conclusions in HIS-22 were false because of it. A search
+     * that cannot report what it was looking for is this epic's ninth
+     * instance of an output carrying no way to detect its own invalidity;
+     * see the vacuity ledger.
+     */
     private static String key(Entry entry) {
-        return entry.declaration() + ' ' + entry.declaredPath();
+        return entry.declaration() + '\0' + entry.declaredPath();
     }
 
     // ------------------------------------------------------------ classification

@@ -1,0 +1,130 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket HIS-8",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "HomeIntegrityInternal.cfg",
+      "HomeIntegrityInternal.tla",
+      "HomeIntegrityInternal_regression_foreignprojection.cfg",
+      "HomeIntegrityInternal_regression_narrowprojection.cfg",
+      "HomeIntegrityInternal_regression_selfrepend.cfg",
+      "HomeIntegrityInternal_regression_silentdrift.cfg",
+      "HomeIntegrityInternal_regression_staleack.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "generated/spec-unit/ClaimantRefreshInternal.dot",
+      "generated/spec-unit/claimant_refresh_cases/__init__.py",
+      "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+      "generated/spec-unit/claimant_refresh_cases/cases.py",
+      "generated/spec-unit/claimant_refresh_cases/docs.md",
+      "generated/spec-unit/claimant_refresh_cases/doubles.py",
+      "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+      "generated/spec-unit/claimant_refresh_cases/types.py",
+      "generated/spec-unit/claimant_refresh_cases/validators.py",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_claimant_refresh_program_model.py",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/wt-224-his-8/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/wt-224-his-8/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-224-his-8/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The contract is stated once, in skt, and the other three link rather than restate.",
+        "A fresh agent given only the docs answers what an artifact is, what a clone inherits versus declares, and when to rebuild.",
+        "The page states the LAZY contract explicitly, including why an eager rebuild is waste -- both wrong answers this epic produced are named and closed off.",
+        "Each touched unit is published and its commit recorded."
+      ]
+    },
+    "added_in_schedule_revision": 3,
+    "blocks": [
+      "HIS-6",
+      "HIS-20"
+    ],
+    "change_management": "Four separate repositories. Edits go through the home and reach their units by `skt publish` (home sync one tier up, then unit publish), not by this epic's branch -- the epic's own PR carries nothing from a gitignored home. Sequence leaf-to-parent per CLAUDE.md, and record each published unit's commit in the ticket evidence so the terminal evaluation can re-read exactly what was published.\n",
+    "conflict_keys": {
+      "adapters": [],
+      "production": [],
+      "test_graph": [],
+      "tla": [],
+      "workflow_data": [
+        "skt",
+        "skill-manager-skill",
+        "git-issue-workflow",
+        "git-epic-workflow"
+      ]
+    },
+    "depends_on": [
+      "HIS-7",
+      "HIS-9",
+      "HIS-10",
+      "HIS-11",
+      "HIS-12",
+      "HIS-13",
+      "HIS-14",
+      "HIS-15",
+      "HIS-16",
+      "HIS-17",
+      "HIS-18"
+    ],
+    "epic": "home-integrity-sync",
+    "found_by": "Two consecutive wrong diagnoses of HIS-7 by the epic agent, both from reading source because no document describes the mechanism. The first blamed the clone/verify sanction rule; the second proposed eager rebuilds. The owner corrected both.\n",
+    "github_issue": 224,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "0 md files documenting the contract -> stated once and linked from the four units that instruct agents about homes; judged read answers all three questions\n",
+        "goal": "GOAL-mechanism-documented",
+        "local_signal": "uv run .github/scripts/check-docs-coverage.py"
+      }
+    ],
+    "id": "HIS-8",
+    "objective": "MEASURED across every installed unit: `skill-manager build` appears in 0 markdown files, cold shim / ColdArtifact in 0, declared-only in 1. skt's SKILL.md -- the session-start front door an agent is told to read FIRST -- mentions artifacts once, inside a code comment, and the skill ships no references/ pages at all. Meanwhile skt/src/skt/check.py:877 prints artifact state into every session's opening context. So the tooling announces artifacts to every agent and nothing tells them what an artifact is, that `skill-manager build` exists, what a clone inherits, or when to rebuild. This is not a tidiness ticket. It is the direct cause of two wrong root-cause diagnoses in this epic's own wave 2, and the next agent will make the third.\n",
+    "phase": "HIS",
+    "promotion_order": 16,
+    "promotion_predecessor": "HIS-13",
+    "rescheduled_in_revision_4": "Moved from wave 3 to wave 6. HIS-8 documents the contract; revision 4 added five tickets that CHANGE the contract (what a clone records, what a remedy names, what a walk-back may delete, how a damaged home is repaired). Documenting it before those land would publish a page that is wrong within a wave, across four repositories, through `skt publish`.\n",
+    "slice": "State the contract ONCE, in skt, as a references page -- skt is the session-start front door and the one unit every agent is told to read. It must answer, in the agent's order of need: - what a derived artifact is, and that `artifacts list` names them; - what a clone INHERITS (the parent's artifacts, on PATH, usable) and what it DECLARES rather than builds -- and why building unchanged artifacts is waste; - when to rebuild: after YOU change the unit, not on arrival; - the exact command, `skill-manager build <artifact-id>`, and how to read `artifacts stale`. Then skill-manager, git-issue-workflow and git-epic-workflow LINK to it. They must not restate it: a copy is covered by nothing and will drift, which is the rule this epic already applies to judged rubrics.\n",
+    "status": "planned",
+    "title": "the derived-artifact contract is undocumented, so agents read the source and get it wrong",
+    "wave": 10
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets/HIS-8",
+  "ticket_id": "HIS-8",
+  "ticket_index": 41,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-224-his-8/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-224-his-8/specs/tickets"
+}

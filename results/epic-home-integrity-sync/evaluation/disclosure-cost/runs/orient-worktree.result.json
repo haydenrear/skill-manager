@@ -1,0 +1,106 @@
+{
+  "task": "orient-worktree",
+  "rc": 0,
+  "wall_s": 363.9,
+  "is_error": false,
+  "num_turns": 1,
+  "cost_usd": 0.6237186000000001,
+  "corpus_bytes": 43515,
+  "corpus_tokens": 10879,
+  "other_read_bytes": 5942,
+  "total_tokens": 81947,
+  "output_tokens": 68,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/tier-worktree/home.policy.toml"
+    },
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/tier-worktree/home.provenance.json"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1409,
+      "target": "<fixture>/tier-worktree/home.runtime.json"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 1256,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; ls -la \""
+    },
+    {
+      "tool": "Bash",
+      "bytes": 2334,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; cat \"$HO"
+    },
+    {
+      "tool": "Read",
+      "bytes": 4857,
+      "target": "<fixture>/tier-worktree/skills/tracing-obser"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 4891,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; find \"$H"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 1056,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; find \"$H"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 7161,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; find \"$H"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 1549,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; echo \"=="
+    },
+    {
+      "tool": "Bash",
+      "bytes": 4153,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; SKILL_MA"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 3054,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; echo \"=="
+    },
+    {
+      "tool": "Bash",
+      "bytes": 3521,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; echo \"=="
+    },
+    {
+      "tool": "Bash",
+      "bytes": 2381,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; grep -ri"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 2277,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; SKILL_MA"
+    },
+    {
+      "tool": "Read",
+      "bytes": 553,
+      "target": "<fixture>/tier-worktree/cache/skt-check.json"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 1607,
+      "target": "HOME_DIR=\"<fixture>/tier-worktree\"; SKILL_MA"
+    },
+    {
+      "tool": "Read",
+      "bytes": 127,
+      "target": "<fixture>/tier-worktree/gateway.properties"
+    }
+  ],
+  "answer": "That background `find` command (superseded by the more targeted checks I ran afterward) finished with a non-zero exit but doesn't change anything \u2014 I already answered the four questions using the files I actually read. No further action needed."
+}

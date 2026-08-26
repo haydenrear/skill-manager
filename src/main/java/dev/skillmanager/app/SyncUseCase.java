@@ -40,7 +40,81 @@ public final class SyncUseCase {
 
     private SyncUseCase() {}
 
-    /** All non-target sync flags as one record so the buildProgram signature stays small. */
+    /**
+     * All non-target sync flags as one record so the buildProgram signature
+     * stays small.
+     *
+     * <h2>{@code withMcp} and {@code startGateway} are two fields because they
+     * are two concerns (ARTI-21, #123)</h2>
+     *
+     * <p>They were one, and that one flag turned off four effects to fix a
+     * defect caused by exactly one of them.
+     *
+     * <p>{@code 7fce8ed} made MCP work opt-in because a content sync at a
+     * project or worktree home was being <b>rolled back</b> by the gateway
+     * preflight. That was a real defect and its reasoning still holds — but the
+     * preflight is {@code SkillEffect.EnsureGateway}, which builds a Python
+     * venv and STARTS a gateway process, and returns {@code failed} when it
+     * does not come up healthy. A {@code failed} receipt rolls the whole staged
+     * program back. <b>That is gateway provisioning, and it is the only MCP
+     * effect on the sync path that can do it.</b>
+     *
+     * <p>Every other MCP effect tolerates an absent gateway. <b>Corrected after
+     * review — the first version of this list was wrong twice and rested on the
+     * wrong question.</b>
+     *
+     * <p>The wrong question was "does this effect's continuation halt the
+     * program". <b>Rollback is decoupled from halt:</b> {@code Executor} sets
+     * {@code failed = true} on FAILED status <em>alone</em> and walks the
+     * compensation journal whenever {@code failed}, halting or not. So the
+     * property that matters is "can this effect return FAILED", and it must be
+     * asked of all five effects {@code withMcp} drives, not four:
+     *
+     * <ul>
+     *   <li>{@code RegisterMcp} pings first and returns
+     *       {@code skipped("gateway unreachable")} — but it was declared
+     *       {@code throws IOException} with its {@code ctx.addError} and
+     *       {@code registerAll} calls unguarded, so it COULD return FAILED,
+     *       in stage 2, after {@code CommitUnitsToStore}. That is fixed at
+     *       the handler; see its javadoc.</li>
+     *   <li>{@code UnregisterMcpOrphans} pings and skips the same way, and
+     *       catches its own exceptions.</li>
+     *   <li>{@code SnapshotMcpDeps} never touches a gateway — but it is
+     *       <b>not</b> harmless on failure, as this list first claimed: it
+     *       carries {@code continuationOnFail() == HALT} deliberately, because
+     *       orphan detection with no baseline mis-classifies live servers as
+     *       orphans. It is effect #1 of stage 1, so the journal is empty and a
+     *       halt there stops the sync before anything has been done — loud and
+     *       harmless to the store, which is the right behaviour and not the
+     *       "cannot fail" this list originally implied.</li>
+     *   <li>the {@code withMcp} arm of {@code PlanBuilder.addToolEnsures} emits
+     *       {@code EnsureTool}, which installs only BUNDLED tools and reports
+     *       an external one (docker) as {@code missingOnPath} rather than
+     *       failing.</li>
+     *   <li><b>the fifth, omitted from the first version:</b> {@code withMcp}
+     *       also drives {@code PlanBuilder.addMcp}, which adds a
+     *       {@code PlanAction.RegisterMcpServer} per dep. It is contained —
+     *       {@code runInstallPlan} runs the expanded plan as a SUB-program and
+     *       rolls its failures up into {@code ok}/{@code partial} on the parent
+     *       receipt, so a plan action cannot produce a parent FAILED — but that
+     *       containment is a property of {@code runInstallPlan}, not a
+     *       consequence of anything argued here. Stated so nobody inherits it
+     *       as a conclusion.</li>
+     * </ul>
+     *
+     * <p>So the opt-in was on the wrong half. It suppressed a registration path
+     * that was already safe, and the cost was not theoretical: {@code sync}
+     * stopped re-registering MCP servers for real users — a moved
+     * {@code mcp_dependencies} declaration stayed unapplied until an explicit
+     * command — and two test-graph nodes went red for three days with nobody
+     * seeing it, because the graphs were not running.
+     *
+     * <p>Split: {@code startGateway} carries {@code 7fce8ed}'s opt-in and gates
+     * the preflight ONLY; {@code withMcp} goes back to gating registration,
+     * which is what it always described. A home with a gateway already up
+     * registers on every sync, as it did before; a home without one skips
+     * cleanly and says so, which is what the rollback was really asking for.
+     */
     public record Options(
             String registryOverride,
             boolean gitLatest,
@@ -48,14 +122,31 @@ public final class SyncUseCase {
             boolean withMcp,
             boolean withAgents,
             boolean yesForFromDir,
-            boolean forceScripts) {
+            boolean forceScripts,
+            /**
+             * Ensure a gateway is RUNNING before the sync, starting one if it
+             * is not — the half {@code 7fce8ed} was right to make opt-in.
+             */
+            boolean startGateway) {
+        public Options(String registryOverride,
+                       boolean gitLatest,
+                       boolean merge,
+                       boolean withMcp,
+                       boolean withAgents,
+                       boolean yesForFromDir,
+                       boolean forceScripts) {
+            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+                    forceScripts, false);
+        }
+
         public Options(String registryOverride,
                        boolean gitLatest,
                        boolean merge,
                        boolean withMcp,
                        boolean withAgents,
                        boolean yesForFromDir) {
-            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir, false);
+            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+                    false, false);
         }
     }
 
@@ -159,7 +250,12 @@ public final class SyncUseCase {
                                           List<UnitReadProblem> initialReadProblems) throws IOException {
         UnitStore sources = new UnitStore(store);
         List<SkillEffect> effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, options.registryOverride(), options.withMcp()));
+                // startGateway, NOT withMcp: this preflight is the one effect
+                // on the sync path that can start a process and fail the whole
+                // program. Registration below is gateway-tolerant by its own
+                // handler and does not belong behind the same switch (#123).
+                ResolveContextUseCase.preflight(gw, options.registryOverride(),
+                        options.startGateway()));
         if (initialReadProblems != null && !initialReadProblems.isEmpty()) {
             effects.add(new SkillEffect.ReportUnitReadProblems(initialReadProblems));
         }
@@ -295,10 +391,27 @@ public final class SyncUseCase {
         effects.add(buildLockUpdate(store, liveUnits));
         List<String> projectSyncUnits = projectSyncUnitNames(targets);
         if (!projectSyncUnits.isEmpty()) {
+            // startGateway, NOT withMcp, and this one is load-bearing rather
+            // than tidy. This argument reaches a CHILD project's own install
+            // program through ProjectDependencyResolver ->
+            // InstallUseCase.buildProgramForStagedGraph, where ONE boolean
+            // still gates both the EnsureGateway preflight and the MCP work —
+            // the same conflation this ticket is splitting, one level down and
+            // NOT split here. Passing withMcp would put an EnsureGateway back
+            // into a project resolve, which is precisely the rollback 7fce8ed
+            // fixed and precisely the home tier it was reported at.
+            //
+            // The cost, stated rather than hidden: a claiming-project sync
+            // does not register MCP servers, where the parent home now does.
+            // That asymmetry is the SAME behaviour this path has had since
+            // 7fce8ed, so nothing regresses — but it does not go away until
+            // buildProgramForStagedGraph takes two booleans too. Deferred on
+            // #100's backlog rather than widened into here, because that
+            // signature is `install`'s and `project resolve`'s, not sync's.
             effects.add(new SkillEffect.SyncClaimingProjects(
                     projectSyncUnits,
-                    options.withMcp() ? gw : null,
-                    options.withMcp()));
+                    options.startGateway() ? gw : null,
+                    options.startGateway()));
         }
 
         Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
@@ -436,18 +549,48 @@ public final class SyncUseCase {
 
         for (EffectReceipt r : receipts) {
             // Each receipt counts at most once. PARTIAL counts on per-target
-            // sync (SyncGit / SyncFromLocalDir), RegisterMcp (some skills had
-            // MCP registration errors), and SyncAgents (per-(agent,skill)
-            // sync failures). Other PARTIAL paths are informational.
+            // sync (SyncGit / SyncFromLocalDir) and SyncAgents
+            // (per-(agent,skill) sync failures). Other PARTIAL paths are
+            // informational.
+            //
+            // `RegisterMcp` USED TO COUNT HERE and no longer does (ARTI-21
+            // review, measured A/B on one machine with one fixture and a LIVE
+            // gateway holding one server that fails `tools/list`):
+            //
+            //     base epic/artifact-dag : exit 0
+            //     with MCP on by default : exit 1     <-- regression
+            //
+            // The PR that turned registration back on claimed no exit-code
+            // change because a SKIPPED receipt is neither FAILED nor PARTIAL.
+            // That is true only for the gateway-ABSENT case. With a gateway
+            // PRESENT and any server failing to deploy, the receipt is PARTIAL
+            // — and PARTIAL was counted, so every sync at a home with one
+            // flaky MCP server started exiting 1 where it had exited 0. It was
+            // also the direct cause of `smoke`'s `sync_noop_exit_zero` and
+            // `sync_force_exit_zero` going red.
+            //
+            // The rule, and it is the same one `7fce8ed` established one level
+            // over: SYNC'S EXIT CODE DESCRIBES THE CONTENT SYNC. A gateway must
+            // not roll a content refresh back, and by the same argument it must
+            // not fail one either. Nothing is hidden by this — a failed
+            // registration is still recorded per unit as
+            // MCP_REGISTRATION_FAILED / GATEWAY_UNAVAILABLE, still printed by
+            // the renderer, and still surfaced by `report` with the remedy that
+            // fixes it. It moves from the exit code to the record, which is
+            // where a fact about the gateway belongs.
             boolean isSyncTarget = r.effect() instanceof SkillEffect.SyncGit
                     || r.effect() instanceof SkillEffect.SyncFromLocalDir;
-            boolean isMcpRegister = r.effect() instanceof SkillEffect.RegisterMcp;
             boolean isAgentSync = r.effect() instanceof SkillEffect.SyncAgents;
             boolean isProjectSync = r.effect() instanceof SkillEffect.SyncClaimingProjects;
+            // FAILED is deliberately NOT exempted for RegisterMcp. After the
+            // guard added to its handler it cannot return FAILED at all — and
+            // if some later change makes it able to again, that is a receipt
+            // that rolls the whole sync back, so the exit code is the least of
+            // it and it should count loudly rather than be quietly excused.
             if (r.status() == EffectStatus.FAILED) {
                 errorCount++;
             } else if (r.status() == EffectStatus.PARTIAL
-                    && (isSyncTarget || isMcpRegister || isAgentSync || isProjectSync)) {
+                    && (isSyncTarget || isAgentSync || isProjectSync)) {
                 errorCount++;
             }
             for (ContextFact f : r.facts()) {
@@ -490,7 +633,12 @@ public final class SyncUseCase {
         }
         if (!report.conflicted().isEmpty()) {
             System.err.println();
-            System.err.println("  Conflicted — resolve in the store dir, then `git commit` or `git merge --abort`:");
+            // Same one definition as ReportUseCase.hint and the console
+            // renderer; see MED-7. Three spellings of one remedy is how they
+            // come to disagree, and two of the three were still printing the
+            // mid-merge instruction for a state it cannot clear.
+            System.err.println("  Conflicted — "
+                    + ReportUseCase.mergeConflictRemedy(null, null, null) + ":");
             for (String n : report.conflicted()) System.err.println("    " + n);
         }
         System.err.println();

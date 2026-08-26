@@ -193,6 +193,58 @@ public final class GitOps {
         return r.exit == 0 ? r.stdout : null;
     }
 
+    /**
+     * Is this checkout's HEAD reachable from a <b>remote-tracking</b> ref?
+     *
+     * <h2>Why "unmodified" was not enough — MAJOR 1 of PR #255's review</h2>
+     *
+     * <p>{@code home close-out}'s DEF-101 exemption cleared a unit on the
+     * strength of "the destination declares it" plus "the worktree has not
+     * modified it since its materialization record was written". The reviewer
+     * built the case that defeats it with the real CLI: a home whose
+     * clone-time baseline was stamped OVER commits that were never pushed. The
+     * gate printed <em>"nothing in this worktree's copy exists only here"</em>
+     * in the same document where the CLI printed
+     * {@code NO_GIT_REMOTE: git-tracked but no origin remote configured}. Two
+     * readers, one wrong answer, inside a gate whose entire job is to refuse
+     * when work would be destroyed.
+     *
+     * <p>The precondition is ordinary rather than exotic:
+     * {@code recordCloneBaselines} stamps {@code gitStateOf(dir)} over whatever
+     * is in the tree, and {@code home clone} is how {@code bootstrap-home.sh}
+     * makes every ticket worktree home in this epic.
+     *
+     * <p>So this asks for POSITIVE EVIDENCE OF PUBLICATION instead: is HEAD an
+     * ancestor of, or equal to, some {@code refs/remotes/**} ref. That is a
+     * local question with a local answer — no fetch, no network, no
+     * availability assumption — and it is the strongest thing that can honestly
+     * be claimed offline. It deliberately does NOT prove the remote is
+     * reachable or that the declared coordinate resolves; a gate cannot promise
+     * that without a network call, and the remedy text says only what was
+     * checked.
+     *
+     * @return the remote-tracking ref that contains HEAD, or {@code null} when
+     *         nothing does — including when this is not a git checkout at all,
+     *         which is "cannot show it is published" and never "it is fine"
+     */
+    public static String publishedRefContaining(Path dir) {
+        if (!isGitRepo(dir)) return null;
+        String head = headHash(dir);
+        if (head == null || head.isBlank()) return null;
+        Result r = run(dir, List.of("git", "for-each-ref",
+                "--format=%(objectname) %(refname)", "refs/remotes/"));
+        if (r.exit != 0 || r.stdout == null || r.stdout.isBlank()) return null;
+        for (String line : r.stdout.split("\n")) {
+            String[] parts = line.trim().split("\\s+", 2);
+            if (parts.length != 2) continue;
+            // isAncestor is reflexive here by design: HEAD == the remote tip is
+            // the commonest published case, and `git merge-base --is-ancestor X X`
+            // answers true.
+            if (isAncestor(dir, head, parts[0])) return parts[1];
+        }
+        return null;
+    }
+
     public static String porcelainStatus(Path dir) {
         Result r = run(dir, List.of("git", "status", "--porcelain"));
         return r.exit == 0 ? r.stdout : "";
@@ -276,6 +328,94 @@ public final class GitOps {
         Result r = run(dir, List.of("git", "diff", "--name-only", "--diff-filter=U"));
         if (r.exit != 0 || r.stdout.isBlank()) return List.of();
         return List.of(r.stdout.trim().split("\\r?\\n"));
+    }
+
+    /** One row of {@code git ls-files --stage}: the tracked mode, object and path. */
+    public record IndexEntry(String mode, String objectId, String path) {}
+
+    /**
+     * Every tracked entry in {@code dir}'s index, with the MODE git records for
+     * it.
+     *
+     * <p>The mode is the point. {@code git status} tells you a path changed; it
+     * does not tell you that git holds it at {@code 120000} while the working
+     * tree holds a directory, which is the shape a dereferenced store link
+     * makes and the one no commit can reconcile. See
+     * {@link DereferencedStoreLinks}.
+     *
+     * <p>Stage-0 rows only. An unmerged path appears at stages 1-3 and is a
+     * different question, asked by {@link #unmergedFiles}; folding the two
+     * together would let a conflicted index masquerade as a materialization.
+     */
+    public static List<IndexEntry> indexEntries(Path dir) {
+        Result r = run(dir, List.of("git", "ls-files", "--stage"));
+        if (r.exit != 0 || r.stdout.isBlank()) return List.of();
+        List<IndexEntry> out = new java.util.ArrayList<>();
+        for (String line : r.stdout.split("\\r?\\n")) {
+            if (line.isBlank()) continue;
+            int tab = line.indexOf('\t');
+            if (tab < 0) continue;
+            String[] meta = line.substring(0, tab).trim().split("\\s+");
+            if (meta.length < 3) continue;
+            if (!"0".equals(meta[2])) continue;
+            out.add(new IndexEntry(meta[0], meta[1], line.substring(tab + 1)));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * The contents of a blob as text, or {@code null} when it cannot be read.
+     * Used to recover the TARGET of a symlink git still tracks after the
+     * working tree stopped holding one.
+     */
+    public static String blobText(Path dir, String objectId) {
+        if (objectId == null || objectId.isBlank()) return null;
+        Result r = run(dir, List.of("git", "cat-file", "-p", objectId));
+        return r.exit == 0 ? r.stdout : null;
+    }
+
+    /**
+     * Whether {@code dir} is in the middle of a merge — {@code MERGE_HEAD}
+     * exists.
+     *
+     * <p>Distinct from "are there unmerged paths", and the difference is the
+     * whole of HIS-4's link 2. The state measured on the operator's home had
+     * unmerged index stages and <b>no {@code MERGE_HEAD}</b>: residue of a
+     * failed {@code git stash pop}, not a merge in progress. The remedy printed
+     * for it — {@code git add} then {@code git commit} — is the remedy for a
+     * merge in progress, and it cannot clear a stash-pop residue.
+     */
+    public static boolean isMidMerge(Path dir) {
+        return Files.isRegularFile(gitDir(dir).resolve("MERGE_HEAD"));
+    }
+
+    /**
+     * {@code git checkout -- <paths>}: restore these paths in the working tree
+     * from the index. Best-effort; a path the index does not hold is simply not
+     * restored.
+     */
+    public static boolean checkoutPaths(Path dir, java.util.Collection<String> paths) {
+        if (paths == null || paths.isEmpty()) return true;
+        List<String> argv = new java.util.ArrayList<>(List.of("git", "checkout", "--"));
+        argv.addAll(paths);
+        return run(dir, argv).exit == 0;
+    }
+
+    /** Whether {@code dir} carries at least one stash entry. */
+    public static boolean hasStash(Path dir) {
+        Result r = run(dir, List.of("git", "stash", "list"));
+        return r.exit == 0 && !r.stdout.isBlank();
+    }
+
+    /**
+     * The repository's git directory. Usually {@code dir/.git}, but a store
+     * copy that was materialized from a worktree can carry a {@code .git} FILE
+     * naming somewhere else, and asking git is the only way to be right.
+     */
+    private static Path gitDir(Path dir) {
+        Result r = run(dir, List.of("git", "rev-parse", "--absolute-git-dir"));
+        if (r.exit == 0 && !r.stdout.isBlank()) return Path.of(r.stdout.trim());
+        return dir.resolve(".git");
     }
 
     /**

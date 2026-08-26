@@ -68,6 +68,26 @@ public final class SyncCommand implements Callable<Integer> {
                     + "Requires <name>.")
     public Path fromDir;
 
+    /**
+     * HIS-9. The one verb this was missing, and the omission was load-bearing.
+     *
+     * <p>{@code --home} was declared on {@code home}, {@code exec} and
+     * {@code unit} only, so {@code sync --home <x>} answered
+     * {@code Unknown option: '--home'} — and {@code sync} is what
+     * {@code bootstrap-home.sh} runs and what a pinned shim's home-mismatch
+     * refusal has to be able to recommend. A refusal whose remedy the product
+     * rejects is worse than no remedy.
+     *
+     * <p>Additive: it changes nothing about what a sync does, and an unset value
+     * still means {@code $SKILL_MANAGER_HOME} exactly as before. It also gives
+     * the pinned shim's refusal something to name, which is why the guard
+     * exempts a command line carrying this flag — intent is stated by the
+     * caller rather than guessed by the shim.
+     */
+    @Option(names = "--home",
+            description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+    java.nio.file.Path home;
+
     @Option(names = {"-y", "--yes"},
             description = "Skip the approval prompt for --from.")
     public boolean yes;
@@ -90,15 +110,30 @@ public final class SyncCommand implements Callable<Integer> {
             description = "Don't refresh agent symlinks or MCP-config entries.")
     public boolean skipAgents;
 
-    @Option(names = "--include-mcp",
-            description = "Also re-register MCP servers with the gateway. Gateway work is "
-                    + "OPT-IN for sync: a content refresh at a project or worktree home "
-                    + "must not be rolled back by a gateway that isn't running there.")
+    /**
+     * ARTI-21 (#123). This flag used to gate MCP REGISTRATION as well, and that
+     * was one switch over two concerns — see {@code SyncUseCase.Options} for
+     * the split and the evidence behind it. It now gates only the thing that
+     * motivated it: STARTING a gateway.
+     *
+     * <p>The name is kept because it is the flag that shipped, and its meaning
+     * is narrowed rather than repurposed: it still means "do the gateway work
+     * this sync would otherwise not do". What changed is that registering
+     * against a gateway that is ALREADY UP stopped counting as gateway work a
+     * sync has to be asked for, because that path has never been able to roll a
+     * sync back — it pings and skips.
+     */
+    @Option(names = {"--include-mcp", "--start-gateway"},
+            description = "Ensure the virtual-MCP gateway is running before syncing, "
+                    + "starting it if it is not. OPT-IN, because a content refresh at a "
+                    + "project or worktree home must not be rolled back by a gateway that "
+                    + "isn't there. Registering against a gateway that is ALREADY running "
+                    + "needs no flag and happens by default.")
     public boolean includeMcp;
 
     @Option(names = "--skip-mcp",
-            description = "Compatibility no-op: MCP registration is already skipped by "
-                    + "default. Overrides --include-mcp when both are given.")
+            description = "Don't re-register MCP servers with the gateway, and don't start "
+                    + "one. Wins over --include-mcp when both are given.")
     public boolean skipMcp;
 
     @Option(names = "--dry-run",
@@ -129,7 +164,11 @@ public final class SyncCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SkillStore store = injectedStore != null ? injectedStore : SkillStore.defaultStore();
+        SkillStore store = injectedStore != null
+                ? injectedStore
+                : home != null
+                    ? new SkillStore(home.toAbsolutePath().normalize())
+                    : SkillStore.defaultStore();
         store.init();
 
         // A frozen home refuses every mutation below, including --refresh:
@@ -177,8 +216,12 @@ public final class SyncCommand implements Callable<Integer> {
             return 0;
         }
 
+        // Two arguments, two concerns (#123). Registration is on by default
+        // again — it pings and skips when no gateway answers — while STARTING
+        // one stays opt-in, which is the half 7fce8ed was right about.
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, gitLatest, merge, includeMcp && !skipMcp, !skipAgents, yes, forceScripts);
+                registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes, forceScripts,
+                includeMcp && !skipMcp);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, resolved.targets(), resolved.readProblems());
         SyncUseCase.Report report;
@@ -391,7 +434,8 @@ public final class SyncCommand implements Callable<Integer> {
         List<SyncUseCase.Target> targets = new ArrayList<>();
         for (var b : diff.bumped()) targets.add(new SyncUseCase.Target.Git(b.before().name()));
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, /*gitLatest=*/false, merge, includeMcp && !skipMcp, !skipAgents, yes, forceScripts);
+                registryUrl, /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes, forceScripts,
+                includeMcp && !skipMcp);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targets, liveState.problems());
         SyncUseCase.Report report;

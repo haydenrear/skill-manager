@@ -1,0 +1,144 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket HIS-22",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "HomeIntegrityInternal.cfg",
+      "HomeIntegrityInternal.tla",
+      "HomeIntegrityInternal_guard_repairingobserver.cfg",
+      "HomeIntegrityInternal_probe_disposalreach.cfg",
+      "HomeIntegrityInternal_probe_reach.cfg",
+      "HomeIntegrityInternal_regression_blindobserver.cfg",
+      "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+      "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+      "HomeIntegrityInternal_regression_foreignprojection.cfg",
+      "HomeIntegrityInternal_regression_gaterefires.cfg",
+      "HomeIntegrityInternal_regression_halfboundhome.cfg",
+      "HomeIntegrityInternal_regression_narrowprojection.cfg",
+      "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+      "HomeIntegrityInternal_regression_repairingobserver.cfg",
+      "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+      "HomeIntegrityInternal_regression_selfrepend.cfg",
+      "HomeIntegrityInternal_regression_silentdrift.cfg",
+      "HomeIntegrityInternal_regression_staleack.cfg",
+      "HomeIntegrityInternal_regression_staleerror.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "generated/spec-unit/ClaimantRefreshInternal.dot",
+      "generated/spec-unit/claimant_refresh_cases/__init__.py",
+      "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+      "generated/spec-unit/claimant_refresh_cases/cases.py",
+      "generated/spec-unit/claimant_refresh_cases/docs.md",
+      "generated/spec-unit/claimant_refresh_cases/doubles.py",
+      "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+      "generated/spec-unit/claimant_refresh_cases/types.py",
+      "generated/spec-unit/claimant_refresh_cases/validators.py",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_claimant_refresh_program_model.py",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py",
+      "tests/test_tlc_expected_violations.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/wt-254-his-22/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/wt-254-his-22/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-254-his-22/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "DEF-103: a unit sync into the root home SUCCEEDS while a registered project unrelated to that unit is durability-broken. The node registers two projects, breaks one, and syncs a unit the broken one does not claim.",
+        "DEF-103 guard: a durability defect in a project that DOES claim the unit still refuses. The check is not weakened, only scoped.",
+        "DEF-096: a project home that declares units in its manifest either holds them or says plainly that it does not. A worktree cloned from an unresolved project home is not silently short two units.",
+        "DEF-101: close-out distinguishes 'the destination lacks this and cannot get it' from 'the destination lacks this and its own manifest declares it at a published ref'.",
+        "BOTH DIRECTIONS: project -> root is enforced AND a direct root update still works. Two cases, both green, and the second fails if the first is implemented by forbidding root writes.",
+        "Every new assertion is vacuity-checked in writing, naming the branch and the mutation that reddens it.",
+        "ROUND 2: re-run after the fix and record against round 1 in the regression ledger."
+      ]
+    },
+    "added_in_schedule_revision": 10,
+    "blocks": [
+      "HIS-6"
+    ],
+    "conflict_keys": {
+      "adapters": [],
+      "production": [
+        "SyncUseCase",
+        "ProjectCommand.resolve",
+        "HomeCloseOut",
+        "ChildHomeRegistry"
+      ],
+      "test_graph": [
+        "home-sync/ProjectToRoot",
+        "checkout-home/HomeClonedIntoProject"
+      ],
+      "tla": [],
+      "workflow_data": []
+    },
+    "depends_on": [
+      "HIS-13",
+      "HIS-16",
+      "HIS-20"
+    ],
+    "epic": "home-integrity-sync",
+    "found_by": "The owner, 2026-08-24: \"we need to be enforcing change management of the root skill manager from project home. However, we should still be able to update the root.\" The first attempt to exercise that direction by hand failed immediately.\n",
+    "github_issue": 254,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "the promotion direction the owner asked to enforce becomes usable, and a project that claims nothing stops speaking for units it does not claim",
+        "goal": "GOAL-one-home-one-answer",
+        "local_signal": "python skills/test_graph/scripts/run.py home-sync"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "scoping a refusal must not become a new hold-back: a project that DOES claim the unit still refuses",
+        "goal": "GOAL-no-spurious-holdback",
+        "local_signal": "jbang RunTests.java"
+      }
+    ],
+    "id": "HIS-22",
+    "phase": "HIS",
+    "promotion_order": 21,
+    "promotion_predecessor": "HIS-21",
+    "root_cause": "NOTHING EVER EXERCISED project -> root. Every close-out gate in this epic ran worktree -> project. The direction the owner wants enforced was never executed by any instrument until 2026-08-24, and it failed on its first run.\n",
+    "slice": "DEF-103 -- one registered project's durability defect refuses EVERY unit sync into the root home, naming a project unrelated to the unit being synced. Six projects were registered; one had three absolutely-spelled vendored links; all four unit syncs failed. THE CHECK IS CORRECT AND MUST NOT BE WEAKENED -- its reasoning is HIS-19's, a path that resolves at write time and not after a move. Fix the BLAST RADIUS: scope the refusal to the units the failing project actually claims, or degrade an unrelated project's durability finding to a warning that names the risk. DEF-096 -- the project home never realized its own manifest. skill-project.toml declares [plugins.skt] and [skills.skill-manager]; the home held neither and projects/ was empty. Every worktree in this epic is a clone of that home, so every ticket agent worked without the two units that document the thing they were working on. DEF-101 -- close-out cannot express \"the destination can obtain this from its own manifest at a published ref\", so it must block on units that are unmodified checkouts the destination itself declares. AND THE SECOND HALF OF THE OWNER'S SENTENCE IS AN ACCEPTANCE ITEM, not a footnote: a direct root update must still work. A design that makes the enforced path work by making direct root updates impossible has failed.\n",
+    "status": "planned",
+    "title": "the promotion path the owner asked to enforce -- project home to root home -- does not work",
+    "wave": 15
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-254-his-22/specs/tickets/HIS-22",
+  "ticket_id": "HIS-22",
+  "ticket_index": 45,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-254-his-22/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-254-his-22/specs/tickets"
+}

@@ -3,6 +3,7 @@ package dev.skillmanager.mcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.agent.Agent;
+import dev.skillmanager.lock.Fingerprint;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.store.SkillStore;
@@ -37,22 +38,44 @@ public final class McpWriter {
     private final ObjectMapper json = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     private final GatewayConfig gateway;
     private final GatewayClient client;
+    /**
+     * Where {@link McpRegistrationLock} is written, or null when this writer was
+     * built without a home — the agent-config half ({@link #writeAgentEntry})
+     * needs no home, and a writer that only does that must not be forced to
+     * name one.
+     */
+    private final Path homeRoot;
 
     public McpWriter(GatewayConfig gateway) {
-        this.gateway = gateway;
-        this.client = new GatewayClient(gateway);
+        this(gateway, (Path) null);
     }
 
     /**
-     * @deprecated runtime-tool bootstrap is now driven by
-     * {@code dev.skillmanager.tools.ToolInstallRecorder} via
-     * {@code PlanAction.EnsureTool} actions in the install plan. The
-     * {@code SkillStore} arg is no longer needed; this overload is kept
-     * for source compatibility and forwards to {@link #McpWriter(GatewayConfig)}.
+     * A writer that also RECORDS what it registered, into
+     * {@code <homeRoot>/mcp-lock.json}.
+     *
+     * <p>Every caller that reaches {@link #registerAll} should use this one: the
+     * spec digest is computed on the way past regardless, and the difference
+     * between recording it and dropping it is the difference between an
+     * artifact class that can answer "did my declaration move" offline and one
+     * that can only answer "a file mentions this name".
      */
-    @Deprecated
+    public McpWriter(GatewayConfig gateway, Path homeRoot) {
+        this.gateway = gateway;
+        this.client = new GatewayClient(gateway);
+        this.homeRoot = homeRoot == null ? null : homeRoot.toAbsolutePath().normalize();
+    }
+
+    /**
+     * The store form of {@link #McpWriter(GatewayConfig, Path)}.
+     *
+     * <p>Was deprecated as a no-op after runtime-tool bootstrap moved to
+     * {@code ToolInstallRecorder}. It is meaningful again for a different
+     * reason: the store names the home this writer records its registrations
+     * into.
+     */
     public McpWriter(GatewayConfig gateway, SkillStore store) {
-        this(gateway);
+        this(gateway, store == null ? null : store.root());
     }
 
     /**
@@ -68,11 +91,21 @@ public final class McpWriter {
             return List.of();
         }
         Map<String, McpDependency> merged = new LinkedHashMap<>();
-        for (Skill s : skills) for (McpDependency d : s.mcpDependencies()) merged.putIfAbsent(d.name(), d);
+        // Which unit's manifest each merged dep came from. Recorded beside the
+        // digest so a row in mcp-lock.json names the declaration it was built
+        // from — without it, "recompute the payload and compare" has nowhere to
+        // start. First declarer wins, matching the putIfAbsent merge below it.
+        Map<String, String> declaredBy = new LinkedHashMap<>();
+        for (Skill s : skills) {
+            for (McpDependency d : s.mcpDependencies()) {
+                merged.putIfAbsent(d.name(), d);
+                declaredBy.putIfAbsent(d.name(), s.name());
+            }
+        }
 
         java.util.List<InstallResult> results = new java.util.ArrayList<>();
         for (McpDependency d : merged.values()) {
-            results.add(installOne(d));
+            results.add(installOne(d, declaredBy.get(d.name())));
         }
         return results;
     }
@@ -116,7 +149,7 @@ public final class McpWriter {
      * Manifest-supplied {@code initialization_params} still apply; env
      * values override them.
      */
-    private InstallResult installOne(McpDependency dep) {
+    private InstallResult installOne(McpDependency dep, String declaringUnit) {
         String scope = dep.defaultScope();
 
         // Pull init values from the install process's environment. Any
@@ -142,6 +175,16 @@ public final class McpWriter {
             Log.info("gateway: %s init from env: %s", dep.name(), envInit.keySet());
         }
 
+        // Computed ONCE, here, rather than inside the idempotency branch it used
+        // to live in. It is the payload this home is asking the gateway to hold,
+        // so it describes what this home wants whether or not a describe call
+        // succeeds, whether or not the gateway already had it, and whether or
+        // not the register ends up being skipped. That is precisely the fact
+        // `mcp-lock.json` needs, and the old placement made it available only on
+        // the one path where it was about to be thrown away.
+        String desiredDigest = GatewayClient.specDigest(
+                client.registerPayload(dep, canAutoDeploy, envInit));
+
         // Idempotency: skip expensive re-registration when the gateway is
         // already in the state we want — same scope AND same spec_digest.
         // Digest drift (image bump, init_schema edit, transport change)
@@ -150,23 +193,24 @@ public final class McpWriter {
             var existing = client.describe(dep.name());
             if (existing.isPresent() && scope.equals(existing.get().defaultScope())) {
                 var state = existing.get();
-                String desiredDigest = GatewayClient.specDigest(
-                        client.registerPayload(dep, canAutoDeploy, envInit));
                 boolean digestMatches = state.specDigest() != null
                         && state.specDigest().equals(desiredDigest);
                 if (digestMatches) {
                     if (McpDependency.SCOPE_SESSION.equals(scope)) {
                         Log.ok("gateway: %s already registered (scope=session)", dep.name());
+                        recordRegistration(dep, declaringUnit, scope, desiredDigest);
                         return InstallResult.registered(dep.name(), scope,
                                 "already registered (session scope — agent deploys per session)");
                     }
                     if (state.deployed()) {
                         Log.ok("gateway: %s already deployed (%s)", dep.name(), scope);
+                        recordRegistration(dep, declaringUnit, scope, desiredDigest);
                         return InstallResult.deployed(dep.name(), scope, "already deployed");
                     }
                     if (!missing.isEmpty()) {
                         Log.warn("gateway: %s registered but not deployed — required init: %s",
                                 dep.name(), missing);
+                        recordRegistration(dep, declaringUnit, scope, desiredDigest);
                         return InstallResult.awaitingInit(dep.name(), scope, dep, missing);
                     }
                     // Registered, same scope, same digest, can deploy — fall through.
@@ -183,8 +227,14 @@ public final class McpWriter {
             Log.ok("gateway: registered %s (%s, scope=%s)", r.serverId(), dep.load().type(), scope);
             if (r.deployError() != null) {
                 Log.warn("gateway: deploy failed for %s: %s", dep.name(), r.deployError());
+                // Deliberately NOT recorded: the payload was posted but the
+                // server did not come up, and a row here means "this home's
+                // declaration is what the gateway was asked to hold". Writing
+                // one for a failed deploy would let the next pass compare
+                // equal and conclude there is nothing to do.
                 return InstallResult.error(dep.name(), scope, r.deployError());
             }
+            recordRegistration(dep, declaringUnit, scope, desiredDigest);
             if (r.deployed()) {
                 return InstallResult.deployed(dep.name(), scope, "registered and deployed");
             }
@@ -197,6 +247,33 @@ public final class McpWriter {
         } catch (IOException e) {
             Log.warn("gateway: failed to register %s: %s", dep.name(), e.getMessage());
             return InstallResult.error(dep.name(), scope, e.getMessage());
+        }
+    }
+
+    /**
+     * Persist what this home asked the gateway to hold for {@code dep}.
+     *
+     * <p>Graded {@link Fingerprint.Kind#DECLARED}, and the grade is asserted
+     * here because this is the only place that knows what went into the digest.
+     * See {@link McpRegistrationLock} for why {@code declared} rather than
+     * {@code resolved}, and for why the gateway's own digest is not copied in
+     * beside it.
+     *
+     * <p>Failing to write is a warning and never an error: this file is
+     * EVIDENCE about a registration, never an input to making one, so a
+     * read-only or full home must not turn a successful register into a failed
+     * install.
+     */
+    private void recordRegistration(McpDependency dep, String declaringUnit, String scope, String digest) {
+        if (homeRoot == null || digest == null || digest.isBlank()) return;
+        try {
+            McpRegistrationLock.read(homeRoot)
+                    .with(McpRegistrationLock.Entry.of(dep.name(), declaringUnit, scope,
+                            Fingerprint.declared(digest, McpRegistrationLock.BASIS)))
+                    .write(homeRoot);
+        } catch (IOException e) {
+            Log.warn("gateway: could not record the spec digest for %s in %s: %s",
+                    dep.name(), McpRegistrationLock.FILENAME, e.getMessage());
         }
     }
 

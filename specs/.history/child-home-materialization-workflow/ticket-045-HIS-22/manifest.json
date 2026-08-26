@@ -1,0 +1,703 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/HIS-22",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/ticket-045-HIS-22 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json",
+    "git_commit": "git commit -m 'record spec history for HIS-22'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/ticket-045-HIS-22"
+  },
+  "complexity_delta": {
+    "direction": "zero",
+    "metrics": {
+      "actions": {
+        "after": 9,
+        "before": 9,
+        "delta": 0,
+        "percent": 0.0
+      },
+      "bound": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "depth": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "distinct_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "generated_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "variables": {
+        "after": 38,
+        "before": 38,
+        "delta": 0,
+        "percent": 0.0
+      }
+    },
+    "previous_scope_id": "HIS-20"
+  },
+  "complexity_ledger": {
+    "coverage_audit": {
+      "in_scope_gaps": null,
+      "passing": false,
+      "report": "",
+      "scope_source": "",
+      "status": "not_run"
+    },
+    "delta": {
+      "direction": "zero",
+      "metrics": {
+        "actions": {
+          "after": 9,
+          "before": 9,
+          "delta": 0,
+          "percent": 0.0
+        },
+        "bound": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "depth": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "distinct_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "generated_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "variables": {
+          "after": 38,
+          "before": 38,
+          "delta": 0,
+          "percent": 0.0
+        }
+      },
+      "previous_scope_id": "HIS-20"
+    },
+    "errors": [],
+    "input_path": "specs/tickets/HIS-22/results/complexity_ledger.yaml",
+    "justification": "No model complexity increase: the TLA+ tree is unchanged.\nPRODUCT complexity increased by one new exception type (ProjectVendoredDurabilityException), one new context fact (ProjectSyncSkippedNonDurable), one new reader class (ProjectManifestRealization) and one new record on an existing verdict (HomeCloseOut.SelfObtainable). Each carries essential behavior that the existing representation could not express:\n- The exception type exists because a bare IOException made \"this project's\n  declared paths do not survive a move\" indistinguishable from \"the unit sync\n  broke\". That conflation is DEF-103: it made the promotion direction the\n  owner asked to enforce unusable for every unit any broken project claims.\n  The alternative -- inspecting the message string -- is the shape #187 was\n  filed against and #229's review rejected at the neighbouring call site.\n\n- The fact type exists because the fix must not be silent. Reusing\n  ProjectSyncFailed would have made \"your project needs repairing\" and \"the\n  unit sync broke\" read identically again, which is the defect one layer out.\n\n- The reader class exists because DEF-096 and DEF-101 need the SAME question\n  answered -- \"what does this home's own manifest declare, and does the home\n  hold it\" -- on two different surfaces. Two spellings of one rule is how the\n  --json and human close-out paths diverged once already (HomeCloseOut's own\n  cliInvocation javadoc records that). It reuses\n  ProjectDependencyResolver.installedUnitName rather than re-deriving name\n  resolution, which is why that method was widened from private to\n  package-private and not copied.\n\n- The verdict component exists because \"nothing is at risk\" and \"nothing to\n  say\" are different answers, and a gate that silently stopped blocking would\n  be worse than the hold-back it removed.",
+    "ledger_path": "specs/results/complexity_ledger.json",
+    "metrics": {
+      "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+      "actions": 9,
+      "actions_from_fallback_heuristic": false,
+      "bound": null,
+      "bound_complete": false,
+      "bound_resolved_variables": 0,
+      "bound_unresolved_variables": [
+        "cli_store_units",
+        "cli_doc_repos",
+        "cli_harness_templates",
+        "cli_harness_instances",
+        "cli_installed_records",
+        "cli_lock_units",
+        "cli_agent_projections",
+        "cli_bindings",
+        "cli_projection_rows",
+        "cli_managed_copies",
+        "cli_import_directives",
+        "cli_projection_conflicts",
+        "cli_tool_records",
+        "cli_cli_lock",
+        "cli_skill_scripts_run",
+        "cli_errors",
+        "cli_gateway_url_configured",
+        "cli_registry_url_configured",
+        "cli_gateway_mcp_snapshot",
+        "effect_status",
+        "effect_continuation",
+        "program_halted",
+        "always_after_ran",
+        "rollback_journal",
+        "gateway_catalog",
+        "gateway_dynamic_servers",
+        "gateway_global_deployments",
+        "gateway_session_deployments",
+        "gateway_tools",
+        "gateway_disclosures",
+        "gateway_errors",
+        "gateway_last_init",
+        "server_registry_units",
+        "server_versions",
+        "server_packages",
+        "server_authenticated_users",
+        "project_model",
+        "result"
+      ],
+      "budget_utilization": {},
+      "depth": null,
+      "distinct_states": null,
+      "gate_passed": false,
+      "gate_violations": [
+        "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+        "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      ],
+      "generated_states": null,
+      "modularity": 0.0,
+      "variables": 38
+    },
+    "narrative": "Full narrative: results/epic-home-integrity-sync/tickets/HIS-22/goal-contribution.md Vacuity record: results/epic-home-integrity-sync/probes/his-22/vacuity-checks.md\nTHE FINDING THIS TICKET CONSIDERS ITS MOST VALUABLE OUTPUT is that its own issue is wrong on two counts, both measured before implementation: (1) `meta-harness`, the project #254 calls \"unrelated\" to the four units that failed, CLAIMS ALL FOUR in its project-lock.toml; and (2) the fix #254 prescribes -- scoping the refusal to units the failing project claims -- SHIPPED IN #144 and is already guarded by a test. The acceptance node written to that prescription is green against the UNFIXED build; probe V1 reverts the whole fix and watches it stay green. It is kept as ProjectToRootPromotionTest CASE 3 and labelled a control, not evidence.\nThe real scope is KIND OF FAILURE, not units-per-project. A project's [[vendored]] durability finding is a fact about that project's checkout: true before the unit sync, true after, and no byte the sync moved can cause or cure it. It is now typed and handled by the post-sync child-home refresh as a named skip carrying its own repair command, while `project resolve` and `project sync` refuse on exactly the same condition with exactly the same message and exit code.\nDELIBERATELY NOT DONE, and filed rather than hidden: External.tla's CloseOutIsSafe still reads `SyncStatusOf(...) = \"unchanged\"`, and DEF-101 adds a second way for the gate to clear that the model cannot express without a new variable plus a constant in ~25 cfgs. The assignment reads `tlc: N/A unless the fix states a new invariant`, and this states a WEAKENING of an existing safety predicate. DEF-112 carries the exact model change and the regression cfg it owes, including the test_tlc_expected_violations.py row naming which invariant must fall -- vacuity-ledger row 15's countermeasure. DEF-110 and DEF-111 carry the two other things this ticket found and did not widen into.",
+    "notes": [
+      "NOTE: TLC reports incomplete; comparison skipped.",
+      "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+    ],
+    "recorded_at_utc": "2026-08-24T20:08:02.663298+00:00",
+    "refinement": {
+      "applied": false,
+      "approved_by": "",
+      "detail": "Searched for a way to express DEF-103's scoping WITHOUT a new type. Three candidates, all rejected on evidence:\n(1) Match on the exception MESSAGE in syncClaimingProjects. Rejected: that is\n    exactly the loss-of-type #187 was filed about, and the branch immediately\n    above in the same method exists because #229's review refused it there.\n\n(2) Make ProjectVendoredResolver's finding non-fatal generally, i.e. flip\n    on_invalid's default. Rejected and PROVED wrong by probe V2: with the\n    check weakened, ProjectToRootPromotionTest CASE 2 goes red AND CASE 1\n    goes red, because CASE 1 asserts the project is still named. The brief's\n    instruction -- \"fix the blast radius, not the check\" -- is measurable,\n    and this is the measurement.\n\n(3) Pass a \"reconcile only\" flag down through\n    ProjectSyncUseCase -> ProjectDependencyResolver -> checkVendored so the\n    resolver knows who is asking. Rejected on the resolver's own documented\n    reasoning: checkVendored sits at ONE seam precisely so the rule cannot be\n    true of one command and not another, and a caller-identity parameter\n    re-introduces exactly that. The typed exception moves the decision to the\n    CALLER, where \"is this finding attributable to what I was asked to do\" is\n    answerable, and leaves the rule single-sited.\n\nAlso searched for a way to fold DEF-101 into the existing SyncStatus enum (a \"new-but-obtainable\" status). Rejected: SyncStatus is a verdict about two trees, and \"the destination's manifest declares this\" is a fact about neither tree. Putting it in the enum would make ChildHomeMaterializer -- which has no business reading project manifests -- the place the rule lives.\n",
+      "measured": false,
+      "outcome": "none",
+      "searched": true
+    },
+    "retention": {
+      "effect_conformance": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "external_coverage": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "kill_rate": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "retention_summary": [
+      "kill_rate=not_run (UNVERIFIED)",
+      "effect_conformance=not_run (UNVERIFIED)",
+      "external_coverage=not_run (UNVERIFIED)"
+    ],
+    "schema_version": 1,
+    "scope": "ticket",
+    "scope_id": "HIS-22",
+    "tlc_findings": [
+      {
+        "level": "NOTE",
+        "message": "TLC reports incomplete; comparison skipped."
+      }
+    ],
+    "transition_diff": "",
+    "validated_refactor": {
+      "behavior_tests": {
+        "classification": "retained",
+        "evidence": "`env -u SKILL_MANAGER_HOME -u CLAUDE_CONFIG_DIR -u CLAUDE_HOME -u CODEX_HOME -u GEMINI_HOME jbang RunTests.java` -- 1408 passed, 0 failed, ALL PASSED, on feature/254-his-22. Includes the 11 new cases this ticket added across ProjectToRootPromotionTest, ProjectManifestRealizationTest and HomeCloseOutSelfObtainableTest. `uv run pytest specs/` -- 88 passed. Graphs: home-sync run 20260824-195838 (19/20 nodes green; the 20th is home.membership.law / DEF-107, which is HIS-21's inherited red), checkout-home run 20260824-200314 PASS, home-clone run 20260824-200433 PASS.\n",
+        "status": "pass",
+        "value": null
+      },
+      "descriptor_comparison": {
+        "classification": "unverified",
+        "evidence": "A descriptor comparison witnesses behavior retention across a MODEL change. There is no model change. No complexity decrease is claimed, so nothing here is being licensed.\n",
+        "status": "not_applicable",
+        "value": null
+      },
+      "tlc_after": {
+        "classification": "unverified",
+        "evidence": "as above -- the model is byte-identical before and after",
+        "status": "not_run",
+        "value": null
+      },
+      "tlc_before": {
+        "classification": "unverified",
+        "evidence": "No TLA+ file, .cfg, generated case set or adapter changed in this ticket. `diff -rq specs/tickets/HIS-22/current specs/tickets/HIS-22/desired` is clean. A TLC run before and after an unchanged model would compare a file with itself, which is not evidence of anything -- recording `not_run` keeps that distinguishable from a run that happened and was green.\n",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "validated_refactor_summary": [
+      "tlc_before=not_run (UNVERIFIED)",
+      "tlc_after=not_run (UNVERIFIED)",
+      "behavior_tests=pass (retained)",
+      "descriptor_comparison=not_applicable (UNVERIFIED)"
+    ],
+    "verdict": "recorded",
+    "workflow": "child-home-materialization-workflow"
+  },
+  "created_at_utc": "2026-08-24T20:08:02.773746+00:00",
+  "entry_name": "ticket-045-HIS-22",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "git": {
+    "branch": "feature/254-his-22",
+    "commit": "9c55c07",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": {
+    "bypassed": [
+      "snapshots a ticket whose ticket_plan.yaml status is not closed/done"
+    ],
+    "flags": [
+      "--allow-open"
+    ],
+    "model_action": "CloseTicketWeakened",
+    "note": "RC-01: a close taken under a guard-weakening flag is a different modeled state from one taken under the guard. Recorded, never refused.",
+    "weakened": true
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.cfg",
+            "relative": "ClaimantRefreshExternal.cfg",
+            "source": "specs/tickets/HIS-22/desired/ClaimantRefreshExternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.tla",
+            "relative": "ClaimantRefreshExternal.tla",
+            "source": "specs/tickets/HIS-22/desired/ClaimantRefreshExternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal_regression.cfg",
+            "relative": "ClaimantRefreshExternal_regression.cfg",
+            "source": "specs/tickets/HIS-22/desired/ClaimantRefreshExternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.cfg",
+            "relative": "ClaimantRefreshInternal.cfg",
+            "source": "specs/tickets/HIS-22/desired/ClaimantRefreshInternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.tla",
+            "relative": "ClaimantRefreshInternal.tla",
+            "source": "specs/tickets/HIS-22/desired/ClaimantRefreshInternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal_regression.cfg",
+            "relative": "ClaimantRefreshInternal_regression.cfg",
+            "source": "specs/tickets/HIS-22/desired/ClaimantRefreshInternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.cfg",
+            "relative": "HomeIntegrityInternal.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.tla",
+            "relative": "HomeIntegrityInternal.tla",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal.tla"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_guard_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_disposalreach.cfg",
+            "relative": "HomeIntegrityInternal_probe_disposalreach.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_probe_disposalreach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_reach.cfg",
+            "relative": "HomeIntegrityInternal_probe_reach.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_probe_reach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_blindobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_blindobserver.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_blindobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "relative": "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_collapsedgateadmits.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "relative": "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_everythingdisposable.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_foreignprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_gaterefires.cfg",
+            "relative": "HomeIntegrityInternal_regression_gaterefires.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_gaterefires.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "relative": "HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_halfboundhome.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_narrowprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "relative": "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfrepend.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfrepend.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_selfrepend.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_silentdrift.cfg",
+            "relative": "HomeIntegrityInternal_regression_silentdrift.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_silentdrift.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleack.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleack.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_staleack.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleerror.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleerror.cfg",
+            "source": "specs/tickets/HIS-22/desired/HomeIntegrityInternal_regression_staleerror.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/HIS-22/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/HIS-22/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/HIS-22/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/HIS-22/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/HIS-22/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/claimant_refresh_actions.yml",
+            "relative": "claimant_refresh_actions.yml",
+            "source": "specs/tickets/HIS-22/desired/claimant_refresh_actions.yml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/HIS-22/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/ClaimantRefreshInternal.dot",
+            "relative": "generated/spec-unit/ClaimantRefreshInternal.dot",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/ClaimantRefreshInternal.dot"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/__init__.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "relative": "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/case_coverage.json"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/cases.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/cases.py",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/cases.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/docs.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/docs.md",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/docs.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/doubles.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/types.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/types.py",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/types.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/validators.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/validators.py",
+            "source": "specs/tickets/HIS-22/desired/generated/spec-unit/claimant_refresh_cases/validators.py"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/HIS-22/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/HIS-22/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/HIS-22/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/HIS-22/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_claimant_refresh_program_model.py",
+            "relative": "tests/test_claimant_refresh_program_model.py",
+            "source": "specs/tickets/HIS-22/desired/tests/test_claimant_refresh_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/HIS-22/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/HIS-22/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/HIS-22/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/HIS-22/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/HIS-22/desired/tests/test_program_model_contract.py"
+          },
+          {
+            "destination": "specs/current/tests/test_tlc_expected_violations.py",
+            "relative": "tests/test_tlc_expected_violations.py",
+            "source": "specs/tickets/HIS-22/desired/tests/test_tlc_expected_violations.py"
+          }
+        ],
+        "operation": "promote ticket desired onto project current, preserving unseeded current-only paths",
+        "preserved": [
+          "tests/test_current_ticket_workflow.py"
+        ],
+        "removed": [],
+        "role": "current",
+        "seed_basis": "seed manifest recorded at open; removing only seeded paths the ticket dropped",
+        "seed_recorded": true,
+        "source": "specs/tickets/HIS-22/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/HIS-22"
+  },
+  "refinement_record": {
+    "applied": false,
+    "approved_by": "",
+    "detail": "Searched for a way to express DEF-103's scoping WITHOUT a new type. Three candidates, all rejected on evidence:\n(1) Match on the exception MESSAGE in syncClaimingProjects. Rejected: that is\n    exactly the loss-of-type #187 was filed about, and the branch immediately\n    above in the same method exists because #229's review refused it there.\n\n(2) Make ProjectVendoredResolver's finding non-fatal generally, i.e. flip\n    on_invalid's default. Rejected and PROVED wrong by probe V2: with the\n    check weakened, ProjectToRootPromotionTest CASE 2 goes red AND CASE 1\n    goes red, because CASE 1 asserts the project is still named. The brief's\n    instruction -- \"fix the blast radius, not the check\" -- is measurable,\n    and this is the measurement.\n\n(3) Pass a \"reconcile only\" flag down through\n    ProjectSyncUseCase -> ProjectDependencyResolver -> checkVendored so the\n    resolver knows who is asking. Rejected on the resolver's own documented\n    reasoning: checkVendored sits at ONE seam precisely so the rule cannot be\n    true of one command and not another, and a caller-identity parameter\n    re-introduces exactly that. The typed exception moves the decision to the\n    CALLER, where \"is this finding attributable to what I was asked to do\" is\n    answerable, and leaves the rule single-sited.\n\nAlso searched for a way to fold DEF-101 into the existing SyncStatus enum (a \"new-but-obtainable\" status). Rejected: SyncStatus is a verdict about two trees, and \"the destination's manifest declares this\" is a fact about neither tree. Putting it in the enum would make ChildHomeMaterializer -- which has no business reading project manifests -- the place the rule lives.\n",
+    "measured": false,
+    "outcome": "none",
+    "searched": true
+  },
+  "results": [],
+  "retention_evidence": {
+    "effect_conformance": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "external_coverage": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "kill_rate": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    }
+  },
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 7,
+    "close_out_entry": "Close-out ticket HIS-22",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/wt-254-his-22/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-045-HIS-22/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-045-HIS-22/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-045-HIS-22/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-045-HIS-22/ticket",
+      "source": "specs/tickets/HIS-22"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "DEF-103: a unit sync into the root home SUCCEEDS while a registered project unrelated to that unit is durability-broken. The node registers two projects, breaks one, and syncs a unit the broken one does not claim.",
+        "DEF-103 guard: a durability defect in a project that DOES claim the unit still refuses. The check is not weakened, only scoped.",
+        "DEF-096: a project home that declares units in its manifest either holds them or says plainly that it does not. A worktree cloned from an unresolved project home is not silently short two units.",
+        "DEF-101: close-out distinguishes 'the destination lacks this and cannot get it' from 'the destination lacks this and its own manifest declares it at a published ref'.",
+        "BOTH DIRECTIONS: project -> root is enforced AND a direct root update still works. Two cases, both green, and the second fails if the first is implemented by forbidding root writes.",
+        "Every new assertion is vacuity-checked in writing, naming the branch and the mutation that reddens it.",
+        "ROUND 2: re-run after the fix and record against round 1 in the regression ledger."
+      ]
+    },
+    "added_in_schedule_revision": 10,
+    "blocks": [
+      "HIS-6"
+    ],
+    "conflict_keys": {
+      "adapters": [],
+      "production": [
+        "SyncUseCase",
+        "ProjectCommand.resolve",
+        "HomeCloseOut",
+        "ChildHomeRegistry"
+      ],
+      "test_graph": [
+        "home-sync/ProjectToRoot",
+        "checkout-home/HomeClonedIntoProject"
+      ],
+      "tla": [],
+      "workflow_data": []
+    },
+    "delivered_in": "branch feature/254-his-22, PR into epic/home-integrity-sync (open at time of writing)",
+    "depends_on": [
+      "HIS-13",
+      "HIS-16",
+      "HIS-20"
+    ],
+    "epic": "home-integrity-sync",
+    "found_by": "The owner, 2026-08-24: \"we need to be enforcing change management of the root skill manager from project home. However, we should still be able to update the root.\" The first attempt to exercise that direction by hand failed immediately.\n",
+    "github_issue": 254,
+    "goals": [
+      {
+        "contribution": "direct",
+        "expected_effect": "the promotion direction the owner asked to enforce becomes usable, and a project that claims nothing stops speaking for units it does not claim",
+        "goal": "GOAL-one-home-one-answer",
+        "local_signal": "python skills/test_graph/scripts/run.py home-sync"
+      },
+      {
+        "contribution": "guard",
+        "expected_effect": "scoping a refusal must not become a new hold-back: a project that DOES claim the unit still refuses",
+        "goal": "GOAL-no-spurious-holdback",
+        "local_signal": "jbang RunTests.java"
+      }
+    ],
+    "id": "HIS-22",
+    "phase": "HIS",
+    "promotion_order": 21,
+    "promotion_predecessor": "HIS-21",
+    "root_cause": "NOTHING EVER EXERCISED project -> root. Every close-out gate in this epic ran worktree -> project. The direction the owner wants enforced was never executed by any instrument until 2026-08-24, and it failed on its first run.\n",
+    "slice": "DEF-103 -- one registered project's durability defect refuses EVERY unit sync into the root home, naming a project unrelated to the unit being synced. Six projects were registered; one had three absolutely-spelled vendored links; all four unit syncs failed. THE CHECK IS CORRECT AND MUST NOT BE WEAKENED -- its reasoning is HIS-19's, a path that resolves at write time and not after a move. Fix the BLAST RADIUS: scope the refusal to the units the failing project actually claims, or degrade an unrelated project's durability finding to a warning that names the risk. DEF-096 -- the project home never realized its own manifest. skill-project.toml declares [plugins.skt] and [skills.skill-manager]; the home held neither and projects/ was empty. Every worktree in this epic is a clone of that home, so every ticket agent worked without the two units that document the thing they were working on. DEF-101 -- close-out cannot express \"the destination can obtain this from its own manifest at a published ref\", so it must block on units that are unmodified checkouts the destination itself declares. AND THE SECOND HALF OF THE OWNER'S SENTENCE IS AN ACCEPTANCE ITEM, not a footnote: a direct root update must still work. A design that makes the enforced path work by making direct root updates impossible has failed.\n",
+    "status": "delivered",
+    "ticket_agent_note": "TWO CLAIMS IN THIS TICKET'S OWN ISSUE ARE FALSE AND THE TICKET MEASURED THEM SO. (1) `meta-harness` is NOT unrelated to the four units that failed -- its project-lock.toml claims all four. (2) The prescribed fix, scoping the refusal to units the failing project claims, SHIPPED IN already guarded by a test; the acceptance node written to that prescription is GREEN AGAINST THE UNFIXED BUILD, proved by probe V1. It is kept as ProjectToRootPromotionTest CASE 3 and labelled a control. The real scope is KIND OF FAILURE: a project's [[vendored]] durability finding is a fact about that project's checkout, not about the unit whose bytes moved, and it is now typed (ProjectVendoredDurabilityException) and handled as a named, remedied skip by the post-sync child-home refresh -- while `project resolve` and `project sync` refuse exactly as before. Also: `home.sync.project.to.root` HAS covered `home sync --from <project> --to <root>` since coverage is `skill-manager sync <unit>` at the root home. The TLA+ model is deliberately unchanged -- see DEF-112.\n",
+    "title": "the promotion path the owner asked to enforce -- project home to root home -- does not work",
+    "wave": 15
+  },
+  "ticket_id": "HIS-22",
+  "ticket_index": 45,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "delivered",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/child-home-materialization-workflow/ticket-045-HIS-22/ticket",
+    "source": "specs/tickets/HIS-22"
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

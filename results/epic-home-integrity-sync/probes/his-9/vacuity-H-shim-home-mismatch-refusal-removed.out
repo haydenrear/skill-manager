@@ -1,0 +1,5 @@
+# HIS-9 vacuity check: H-shim-home-mismatch-refusal-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] the cli entrypoint refuses a home it was not told to edit, naming both: it refuses with its own status, not the self-exec one and not 1: expected <79> but was <0>
+FAILURES: 1

@@ -1,0 +1,8 @@
+a7147f18470f2748d0c8c1b3b2e969da06a786031a95030c7c5b035f1b9837f1  ~/.claude/settings.json
+bc43350ab9b78b5ad2dbf277a064eb38488a6e3ed42957392460a3aef6779e66  ~/.claude/plugins/known_marketplaces.json
+73432608f00c5337bfb0c7d15a81b1fce0bc87b47d1352a64a2bd71daac80e84  ~/.codex/config.toml
+a2f0ab57a937d697804ad99b46b9e6d119087ef7e06eda343791b6778c817efc  ~/.gemini/settings.json
+NOT-IN-THE-BEFORE-SNAPSHOT                                        ~/.claude.json
+b7d3253b7f5acdb80bfa67f0c16e66cd182ad9c82bafe012dc5830a4faebc4de  ~/.claude/skills (names+targets)
+c94515dab41d662d93ee7f45c1a46940685b3f79a3dd505c9015b047b643d67e  ~/.codex/skills (names+targets)
+b7d3253b7f5acdb80bfa67f0c16e66cd182ad9c82bafe012dc5830a4faebc4de  ~/.gemini/skills (names+targets)

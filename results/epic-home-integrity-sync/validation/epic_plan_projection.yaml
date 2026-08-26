@@ -1,0 +1,2101 @@
+version: 1
+schedule_revision: 8
+name: child-home-materialization-workflow
+epic:
+  slug: home-integrity-sync
+  branch: epic/home-integrity-sync
+  base: 76434c7
+  repository: haydenrear/skill-manager
+  umbrella_issue: 215
+  ticket_prefix: HIS
+  validation: 'validate_epic_plan.py cannot be run against this file as a whole: it requires full epic
+    scheduling fields (wave, promotion_order, blocks, conflict_keys, goals) on EVERY ticket, and the 34
+    pre-epic CHM/COH/EFF/ ISSUE/MIG tickets predate the epic primitive and legitimately carry none. Running
+    it here reports those 34 and buries the epic''s own findings. The epic is validated against a generated
+    projection instead -- results/epic-home-integrity-sync/validation/epic_plan_projection.yaml, which
+    carries the epic blocks and the HIS-* tickets only. Regenerate it from this file after any schedule
+    change; this file stays canonical. Last run: OK, 6 tickets, 0 retired, 4 waves, 5 goals.
+
+    '
+  note: 'Branched from epic/artifact-dag and NOT closing it out. That branch is the constituent side of
+    integration-repository epic #100 (the derived-artifact DAG), which is open with ~31 ARTI tickets and
+    an unrun terminal evaluation (#117 / ARTI-16). Folding it in here would strand #100''s goal accounting,
+    so the branch stays intact and this epic simply starts from its tip.
+
+    '
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-home-integrity-sync/deferred/backlog.yaml
+  rule: 'A failure case a ticket agent finds outside its declared slice is appended to the backlog with
+    its reproduction and left there. Agents do not widen a ticket to fix it and do not chase a goal metric
+    by expanding scope. The epic agent triages the backlog with the owner at each wave review.
+
+    '
+review_policy:
+  cadence: wave
+  gate: true
+  merges: owner
+  walkthrough: required
+  artifact_root: results/epic-home-integrity-sync/reviews/
+  rule: 'The epic agent merges each wave''s ticket PRs into the epic branch in promotion order, reconciles
+    each ticket worktree''s home into the project home, writes the review artifact, walks the owner through
+    it, and then STOPS. No issue URL from the next wave is handed out until the owner has answered. Silence
+    is not approval.
+
+    '
+epic_goals:
+- id: GOAL-no-spurious-holdback
+  kind: integration
+  statement: 'A child home whose unit is byte-identical to the live parent store reconciles silently,
+    whatever its record says about where the bytes came from -- and a unit that genuinely differs is still
+    held back.
+
+    '
+  metric: 'units held back by copyUnit() whose tree is byte-identical to the live source outside .git,
+    over the 4 registered child homes
+
+    '
+  harness: 'jbang RunTests.java -- ProjectChildHomeMaterializationTest, the cases "a pristine unit whose
+    record names a store that is gone is not held back" (clause 1) and "a unit that genuinely differs
+    is still held back, foreign record or not" (clause 2); THEN python skills/test_graph/scripts/run.py
+    home-integrity for the integrated home. A re-count over results/epic-home-integrity-sync/baseline/holdback-records.txt
+    is SUPPORTING evidence about the operator''s homes, not the deciding run -- those homes have moved
+    since the baseline and must not be re-measured as if they had not.
+
+    '
+  baseline:
+    value: 16 of 18 records held back; 18 of 18 pristine by their own digest
+    measured_at: 76434c7
+    evidence: results/epic-home-integrity-sync/baseline/holdback-records.txt
+  target: 'CLAUSE 1: 0 of the 18 held back. CLAUSE 2: a unit whose content genuinely differs from the
+    live source is STILL held back, with the same message -- proved by a deliberately divergent fixture
+    in the same node.
+
+    '
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-no-spurious-holdback
+- id: GOAL-sync-quiet
+  kind: quality
+  statement: 'A sync tells the agent WHAT moved, not every path that moved. The per-file diff stops being
+    the default surface and becomes something you ask for.
+
+    '
+  metric: 'lines and characters DriftReport.render() emits over the recorded 7-unit baseline drift record
+
+    '
+  harness: 'jbang RunTests.java -- HomeDriftGateTest, the case "the committed baseline fixture renders
+    inside GOAL-sync-quiet''s bound", which reads results/epic-home-integrity-sync/baseline/root-home-drift.json
+    and asserts both clauses over the real record; plus the cases "the rollup is one line per unit, and
+    the paths are still reachable" and "`home drift` shows the pending change and exits non-zero" (clause
+    2, through the CLI).
+
+    '
+  baseline:
+    value: '896 lines, 88,308 characters (~22,077 tokens), re-emitted every sync / exec gate / home drift.
+      MEASURED by rendering the committed record through the product''s own renderer. An earlier figure
+      of "889 lines, 87,208 characters" appears in this epic''s first commits: 889 was the per-FILE line
+      count without the 7 per-unit headers, and 87,208 was an estimate (path length + 6 per line) rather
+      than a render. The rendered figure above is the one HIS-6 compares against; the estimate is superseded,
+      not deleted, so the record shows which number moved.
+
+      '
+    measured_at: 76434c7
+    evidence: results/epic-home-integrity-sync/baseline/root-home-drift.json
+  target: 'CLAUSE 1: at most one line per changed unit plus one total line -- at most 10 lines over this
+    fixture -- and at least a 99% character reduction. CLAUSE 2: the full per-file list is still reachable,
+    unchanged, through --json / the detail surface. Collapsing is a default, not a deletion.
+
+    '
+  measurement_caveat_added_2026_08_22: "TWO DIFFERENT NUMBERS, AND HIS-6 MUST NOT CONFLATE THEM. Established\
+    \ by HIS-18's adversarial review and reproduced independently by the ticket agent afterwards.\nRETRODICTION\
+    \ -- what the rule would have removed from the FROZEN baseline record, had it existed on 2026-08-19:\n\
+    \n  file lines            889 -> 124   (86.1%)\n  spec-double-compiler  776 ->  25\n  renderDetailed()\
+    \      896 / 88,309 -> 131 / 5,639   (93.6%)\n\nFORWARD-GOING -- what it removes from the operator's\
+    \ live store TODAY, measured over all 23 root-store units by running the predicate against each live\
+    \ tree:\n\n  acp-cdc-ai-python          8   (ACP session logs)\n  deploy-helm                7   (helm_deploy.egg-info/)\n\
+    \  hyper-experiments-finance  7   (.egg-info/)\n  everything else, INCLUDING spec-double-compiler\
+    \   0\n  WHOLE STORE               22 net-new exclusions\n\nspec-double-compiler is 87% of the retrodicted\
+    \ metric and its live entry count is UNCHANGED at 26,930, because the paths the baseline captured\
+    \ are in `removedFiles` precisely BECAUSE THEY WERE DELETED. A record generated today shrinks by single-digit\
+    \ lines.\nBoth numbers are real and neither is the other. The retrodiction shows the MECHANISM is\
+    \ real and not marginal over a record that captured those trees while they existed; it does not show\
+    \ that anything shrinks next week. The first version of HIS-18's goal contribution ran the two claims\
+    \ together and headlined the 86%; that is corrected at source.\nDEF-058 does not cover this -- it\
+    \ corrects WHICH paths the 776 were, not that they are gone.\n"
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-sync-quiet
+- id: GOAL-gate-settles
+  kind: integration
+  statement: 'An unacknowledged drift gate is reported once in full and thereafter as a one-line reminder.
+    A genuinely new change still gates.
+
+    '
+  metric: 'output size and exit code on the 2nd..Nth surfacing of one unacknowledged gate, with no new
+    change between passes
+
+    '
+  harness: 'python skills/test_graph/scripts/run.py home-integrity -- node home.integrity.ack.is.stable,
+    extended by HIS-3 to drive record -> surface -> surface -> ack; plus jbang RunTests.java -- HomeDriftGateTest
+    for the per-surface output shape.
+
+    '
+  baseline:
+    value: full report re-emitted on every pass; exec refuses with exit 8 each time
+    measured_at: 76434c7
+    evidence: results/epic-home-integrity-sync/baseline/root-home-drift.json
+  target: 'CLAUSE 1: the 2nd and later surfacing of the SAME unacknowledged gate is a single line naming
+    the count and the ack command. CLAUSE 2: a change the agent has not seen still gates the next launch,
+    and DriftGate''s documented reason for not clearing on digest refresh (DriftGate.java:39-49) still
+    holds -- the regression that rationale cites must stay caught.
+
+    '
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-gate-settles
+- id: GOAL-symlink-merge-settles
+  kind: integration
+  statement: 'Dereferencing an in-unit symlink does not put the unit''s git repository into a merge conflict
+    that its own printed remedy cannot clear.
+
+    '
+  metric: 'change-managed units left in MERGE_CONFLICT after a sync of a unit whose store copy contains
+    symlinks into the parent store
+
+    '
+  harness: 'python skills/test_graph/scripts/run.py sync-settles -- node sync.settles.scaffold.tree.does.not.strand.baseline.
+    That node EXISTS and currently PASSES on a root-tier fixture; HIS-4''s first acceptance item is to
+    make it red against the project-tier case before anything is fixed.
+
+    '
+  baseline:
+    value: '2 of 21 units in the project home permanently stuck (deploy-helm, spec-double-compiler), first
+      recorded 2026-08-11T22:23:41Z, printed remedy unable to clear it. CLEARED BY HAND at kickoff to
+      satisfy rule 11; the mechanism is unchanged, so HIS-4 must reproduce it synthetically rather than
+      from the live homes.
+
+      '
+    measured_at: 76434c7
+    evidence: results/epic-home-integrity-sync/baseline/README.md
+  target: 'CLAUSE 1: 0 units left in MERGE_CONFLICT by the synthetic fixture, and `skt sync` completes
+    for both. CLAUSE 2: an installed-record error is re-derived from the live tree, so a condition that
+    has cleared stops being reported without anyone editing the record by hand.
+
+    '
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-symlink-merge-settles
+- id: GOAL-mechanism-documented
+  kind: quality
+  statement: 'An agent can learn the derived-artifact contract from the documentation instead of from
+    the source, because the last two agents to need it read the source and got it wrong.
+
+    '
+  metric: '(a) markdown files across installed units documenting the contract; (b) whether a fresh agent,
+    given only the docs, answers three questions correctly: what a derived artifact is, what a clone inherits
+    versus declares, and when to rebuild
+
+    '
+  harness: '(a) uv run .github/scripts/check-docs-coverage.py, which re-runs the baseline measurement;
+    (b) a judged read -- one agent, no repository access beyond the units'' markdown, answering the three
+    questions above, its answers recorded under the evidence root beside the count. Read together, not
+    combined: a link count cannot show that the prose is right, and a judged read of one agent is not
+    a statistic.
+
+    '
+  baseline:
+    value: '`skill-manager build` in 0 md files; cold shim / ColdArtifact in 0; declared-only in 1; `home
+      clone` in 4. skt''s SKILL.md -- the session-start front door -- mentions artifacts once, in a code
+      comment, and ships no references/ pages, while skt/src/skt/check.py:877 prints artifact state to
+      the agent at every session start.
+
+      '
+    measured_at: 5aacfdf
+    evidence: results/epic-home-integrity-sync/baseline/docs-coverage.txt
+  target: 'CLAUSE 1: the contract is stated ONCE, and the units that instruct agents about homes -- skt,
+    skill-manager, git-issue-workflow, git-epic-workflow -- link to it rather than restate it. Restating
+    it in four places is the failure this epic already warns about for rubrics; a copy is covered by nothing
+    and will drift. CLAUSE 2: the judged read answers all three questions correctly from the docs alone.
+
+    '
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-mechanism-documented
+- id: GOAL-home-invariants
+  kind: quality
+  statement: 'Each behavioural fix above is stated as an invariant that a deliberately broken model violates,
+    so the defect cannot come back unnoticed.
+
+    '
+  metric: 'invariants over the home-integrity view, each carrying a regression cfg that must keep failing
+
+    '
+  harness: specs/program_model/run_tlc.sh and uv run pytest specs/
+  baseline:
+    value: 4 invariants, 5 regression cfgs (ARTI-22, HomeIntegrityInternal)
+    measured_at: 76434c7
+    evidence: specs/desired_program_model/spec_manifest.yaml
+  target: 'CLAUSE 1: every new invariant carries an expected-violation cfg that fails, per this file''s
+    regression_config_rule, and states whether it is witness-dependent (and carries a guard cfg if it
+    is). CLAUSE 2: all 5 pre-existing regression cfgs still fail. A regression cfg that starts passing
+    is a defect in the invariant, not a success.
+
+    '
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-home-invariants
+- id: GOAL-one-home-one-answer
+  kind: integration
+  statement: '"Which home is this path in, and does this home own it" has ONE answer. Every reader --
+    clone, verify, verify --against, sync''s shim pruner, presence, and every remedy that names a CLI
+    -- gives that same answer, for root, project and worktree tiers, and for every spelling of the same
+    path.
+
+    '
+  metric: 'distinct verdicts returned by the readers over one fixed scenario matrix (tier x reader x path
+    spelling); the target is one verdict per scenario
+
+    '
+  harness: 'python skills/test_graph/scripts/run.py home-integrity -- the reader- agreement node HIS-10
+    adds, which drives all four readers over ONE cloned home and fails if any two disagree; plus jbang
+    RunTests.java for the path-spelling cases (#206) over a symlinked home root.
+
+    '
+  baseline:
+    value: "FOUR READERS, THREE ANSWERS, on one cloned home. Measured 2026-08-21 on epic tip 23e35c7,\
+      \ cloning this repository's project home:\n  home clone            -> clean; \"no path in it reaches\
+      \ another Skill\n                           Manager home\"\n  home verify           -> exit 1; 5x\
+      \ FOREIGN_HOME on bin/cli/{computeq,\n                           helm-deploy,monitoring,tla-spec-dev,tlc2}\n\
+      \  home verify --against -> exit 0; \"5 sanctioned parent-store shim(s)\"\n  sync              \
+      \    -> PRUNES all five (\"not this home's parent\n                           store\") and re-provisions\
+      \ five toolchains\n                           locally, ~90s\nThe sanction therefore depends on an\
+      \ operator-supplied --against flag and on nothing durable in the clone. Separately, where a home\
+      \ is reached through a symlink whose spelling is not substring-compatible with its real path, the\
+      \ provisioned-file branch of HomeCloner.verifyRoots compares against the UNRESOLVED spelling and\
+      \ reports clean without having checked -- measured on one home addressed two ways, blind through\
+      \ the symlink and correct through the real path.\n"
+    measured_at: 23e35c7
+    evidence: results/epic-home-integrity-sync/probes/his-10/
+  target: 'CLAUSE 1: one verdict per scenario -- no two readers disagree about the same path in the same
+    home, with no operator-supplied flag needed to make them agree. CLAUSE 2: the verdict is spelling-invariant.
+    The same home reached through a symlinked path verifies identically, and the assertion proving it
+    FAILS when the resolution is removed. CLAUSE 3: the lazy contract holds -- a clone keeps its inherited
+    shims on PATH and declares them; nothing prunes and re-provisions a toolchain nobody changed.
+
+    '
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-one-home-one-answer
+- id: GOAL-no-destructive-recovery
+  kind: integration
+  statement: 'A home operation never destroys bytes it did not itself create -- not on success, and especially
+    not while walking back from a failure. A home that has ALREADY been damaged can be told apart from
+    a healthy one and repaired.
+
+    '
+  metric: '(a) pre-existing unit bytes surviving a failed resolve/install into a non-empty home; (b) whether
+    a damaged home is detectable by a command rather than by an operator noticing
+
+    '
+  harness: 'jbang RunTests.java -- the walk-back cases HIS-11 adds over Executor.preStateCompensations;
+    plus python skills/test_graph/scripts/run.py home-integrity for the detect-and-repair node HIS-13
+    adds.
+
+    '
+  baseline:
+    value: '(a) ZERO survive by construction: Executor.java:307 pairs CommitUnitsToStore with `List.of()`
+      -- an empty pre-state compensation -- so the walk-back deletes the destination it overwrote and
+      restores nothing. The previously installed version is gone. (#186) (b) NO detection and NO repair
+      exist. HomeCommand ships clone, verify, describe, policy, shims, drift, sync, close-out, refresh-plugins
+      and nothing that repairs. A root home mis-anchored by 0.20.0 (#159), or written through by a producer
+      following an inherited symlink (measured twice on the operator''s own root home during HIS-7), stays
+      damaged until somebody notices by hand.
+
+      '
+    measured_at: 23e35c7
+    evidence: results/epic-home-integrity-sync/probes/his-10/root-before.txt
+  target: 'CLAUSE 1: a failed resolve/install into a non-empty home leaves every previously installed
+    unit byte-identical to what it was before, proved by a fixture that fails when the move-aside is removed.
+    CLAUSE 2: one command names what is damaged in a home and what would repair it, and the repair is
+    idempotent. CLAUSE 3: the guard does not become a new hold-back -- a home that is merely STALE is
+    not reported as damaged. Measured against GOAL-no-spurious-holdback''s fixture, which must not regress.
+
+    '
+  evaluation_ticket: HIS-6
+  evidence_root: results/epic-home-integrity-sync/goals/GOAL-no-destructive-recovery
+tickets:
+- id: HIS-1
+  title: copyUnit holds back a tree it can see is identical, because it asks the record instead of the
+    source
+  phase: HIS
+  status: delivered
+  epic: home-integrity-sync
+  github_issue: 214
+  wave: 1
+  depends_on: []
+  blocks:
+  - HIS-4
+  - HIS-5
+  - HIS-6
+  promotion_order: 1
+  promotion_predecessor: null
+  conflict_keys:
+    production:
+    - ChildHomeMaterializer.copyUnit
+    - ChildHomeMaterializer.Disposal
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/ForeignRecordDoesNotHoldBackAnIdenticalTree
+    workflow_data: []
+  objective: 'MEASURED on the operator''s real homes: 16 of 18 per-unit materialization records name a
+    `source` that is not the root store, and all 18 are pristine by their own digest. Every one is held
+    back on every sync, printing a five-line paragraph about work that "may exist nowhere else" -- over
+    trees nobody has touched. Six of the 16 name a path that no longer exists at all: two deleted ticket
+    worktrees, and one /private/tmp scratchpad from a past evaluation session.
+
+    The root home is INSTALLED into and carries no per-unit record, so `sourceHeldTheseBytes` is unavailable;
+    the destination''s own record names a worktree rather than this store, so `recordIsAboutThisSource`
+    is false; `disposable()` is therefore false and copyUnit() refuses.
+
+    '
+  root_cause: "NOT the one issue #214 proposes. #214 asks for a \"root owns these bytes\" re-baselining\
+    \ path, which invents provenance -- exactly the move `sourceHeldTheseBytes`'s own javadoc argues against,\
+    \ at length, as the thing that would persist and be read as licence by the next reconcile in either\
+    \ direction.\nThe actual defect is a divergence between two paths this file already declares must\
+    \ agree. `reconcile()` -- the `home sync` path -- answers three questions from evidence on disk BEFORE\
+    \ it consults any record:\n\n  ChildHomeMaterializer.java:1164  src.digest().equals(dst.digest())\n\
+    \  ChildHomeMaterializer.java:1168  gitTwinsDifferOnlyInBookkeeping(source, dest)\n  ChildHomeMaterializer.java:1174\
+    \  gitSourceIsBehind(source, dest)\n\n`copyUnit()` -- the `project resolve` / root-sync path -- has\
+    \ NONE of them. It computes currentDigest at :2173 and hands it straight to disposal(). `gitTwinsDifferOnlyInBookkeeping`\
+    \ has exactly one caller in the codebase, at :1168.\nSo the comment at :2181 -- \"`home sync` and\
+    \ `project resolve` read the same value or they eventually disagree about the units that matter, which\
+    \ is what CHM-15 was\" -- is false again, in the opposite direction. home sync says UNCHANGED where\
+    \ copyUnit says HELD_BACK.\n"
+  slice: 'Give the baseline rule its THIRD showing, the one that needs no record at all: the source is
+    standing on exactly these bytes RIGHT NOW. Where that holds, refreshing is a byte-identical no-op,
+    so nothing can be destroyed -- whatever either record says, and whether or not the recorded source
+    still exists. Route copyUnit through the same three answers reconcile() already gives, from one shared
+    function, so the next divergence is a compile error rather than a paragraph.
+
+    Do NOT write a baseline into the record-less destination. Nothing is written by this showing; it is
+    a question asked and answered from evidence already on disk, once, per pass.
+
+    '
+  acceptance:
+    assertions:
+    - A unit byte-identical to the live source outside .git reconciles silently, whatever its record names.
+    - A unit whose content genuinely differs is still held back, with the message unchanged.
+    - copyUnit and reconcile answer the disposability question through ONE function, not two.
+    - No record is written by the new showing.
+  goals:
+  - goal: GOAL-no-spurious-holdback
+    contribution: direct
+    expected_effect: 16 of 18 held back -> 0, with the divergent-fixture clause still refusing
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+  - goal: GOAL-sync-quiet
+    contribution: enabling
+    expected_effect: none on its own -- removes 16 five-line paragraphs, which is most of the non-diff
+      noise HIS-2 then bounds
+    local_signal: 'N/A: enabling'
+- id: HIS-2
+  title: DriftReport.render() prints every changed path, and re-prints it on every pass
+  phase: HIS
+  status: delivered
+  epic: home-integrity-sync
+  github_issue: 212
+  wave: 1
+  depends_on: []
+  blocks:
+  - HIS-18
+  - HIS-3
+  - HIS-5
+  - HIS-6
+  promotion_order: 2
+  promotion_predecessor: HIS-1
+  conflict_keys:
+    production:
+    - DriftReport.render
+    - ProjectSyncUseCase.sync
+    - ExecCommand.launchGate
+    - HomeCommand.drift
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/DriftReportIsBounded
+    workflow_data: []
+  objective: 'MEASURED: the root home''s pending drift record is 87,054 bytes over 7 units. DriftReport.render()
+    emits one line per changed file -- 889 lines, ~87,208 characters, ~21,800 tokens -- and re-emits them
+    on every `project sync`, every `exec` launch gate, and every `home drift`. One unit, spec-double-compiler,
+    is 776 of the 889.
+
+    The per-unit SHA-256 the report wants already exists as HomeDigest.UnitDigest.digest(); DriftReport
+    keeps the file lists and throws the digest away.
+
+    '
+  slice: 'Collapse the default surface to at most one line per changed unit -- unit, kind, change, short
+    digest, changed-file COUNT -- plus one total line. Keep the full per-file list reachable and unchanged
+    behind --json and the detail surface. This is a default, not a deletion: an operator who wants the
+    paths must still be able to get exactly the paths they get today.
+
+    '
+  note: 'spec-double-compiler''s 776 "removed files" are the dereferenced in-unit symlink trees being
+    read as deletions -- HIS-4''s subject. Do not fix that here. Bound the report; let HIS-4 remove the
+    cause. If bounding it makes the 776 invisible before HIS-4 lands, say so in the PR, because a number
+    that disappears from view is not a number that got smaller.
+
+    '
+  acceptance:
+    assertions:
+    - The committed baseline fixture renders in at most 10 lines.
+    - Character count over that fixture falls by at least 99%.
+    - --json output over the same fixture is byte-identical to today's.
+  goals:
+  - goal: GOAL-sync-quiet
+    contribution: direct
+    expected_effect: 889 lines / 87,208 chars -> <=10 lines, >=99% char reduction, over the committed
+      fixture
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+- id: HIS-3
+  title: the drift gate re-fires instead of settling -- the safety is right, the re-emission is not
+  phase: HIS
+  status: delivered
+  epic: home-integrity-sync
+  github_issue: 213
+  wave: 2
+  depends_on:
+  - HIS-2
+  blocks:
+  - HIS-5
+  - HIS-6
+  promotion_order: 3
+  promotion_predecessor: HIS-2
+  conflict_keys:
+    production:
+    - DriftGate.record
+    - DriftGate.recordSince
+    - ExecCommand.launchGate
+    - ProjectSyncUseCase.sync
+    tla:
+    - HomeIntegrityInternal.AcknowledgeCurrentDigest
+    adapters: []
+    test_graph:
+    - home-integrity/AckIsStable
+    workflow_data: []
+  objective: 'A sync records drift; the next sync or launch finds the pending gate and re-warns or refuses
+    with exit 8; nothing retires the record except an explicit `home drift --ack`. DriftGate.record()
+    returns the EXISTING pending gate even when the incoming report is empty (DriftGate.java:86), so a
+    pass that changed nothing still hands its caller an unacknowledged gate.
+
+    '
+  why_the_intent_is_load_bearing: 'This is deliberate and the rationale is written down at DriftGate.java:39-49:
+    a gate that cleared when the digest was refreshed would let the SECOND recompute report "nothing to
+    acknowledge" while the change from the FIRST sync was still unread. That was reproduced as a false
+    pass -- prune_did_not_destroy_the_agent_edit failed while child_home_holds_only_claimed_or_held_back_units
+    passed vacuously.
+
+    So the ticket is NOT "clear the gate on refresh". Do not weaken the safety to make the noise stop.
+
+    '
+  slice: 'Separate FIRST surfacing from SUBSEQUENT surfacing of the same unacknowledged gate. First is
+    the full (now bounded, per HIS-2) report. Second and later, with no new change between them, is one
+    line: the count still unread and the ack command. A genuinely new change re-opens the full report
+    and still gates the next launch.
+
+    '
+  design_decision_to_make_before_coding: 'THERE IS NO FIELD TODAY THAT DISTINGUISHES THE TWO. home.drift.json
+    carries detectedAt, operation, acknowledged, acknowledgedAt and the report; nothing records that a
+    pass has SHOWN this gate. So "second surfacing" is not observable yet, and the ticket must choose
+    how it becomes observable. Two routes, and they are not equivalent:
+
+    (a) A PERSISTED MARKER on the gate -- surfacedAt / surfacedCount. Works across processes, which is
+    the case that actually bites: `exec` refuses, the operator runs `home drift`, then `exec` again, and
+    those are three processes. It is a schema change to home.drift.json, so it needs a schema version
+    and a decision about what an old record without the field means (proposal: absent == not yet surfaced,
+    which degrades to today''s behaviour rather than to silence). It also touches ack/re-pend, which AckIsNotStaleOnArrival
+    constrains -- a marker that survives an ack would let a re-pended gate open collapsed.
+
+    (b) A CALL-SITE DISTINCTION -- the caller decides, from whether the incoming report added anything,
+    whether this is a re-read. Writes no new state and cannot get stale, but it is per-process: it collapses
+    nothing across the exec -> drift -> exec sequence above, which is the sequence the complaint is about.
+
+    Write the choice and its reason into the ticket before any code. Recording it here because a decision
+    made silently inside an implementation is the one nobody can review, and this one changes a persisted
+    schema.
+
+    '
+  merge_interaction: 'DriftGate.record() MERGES a new report into the pending one and rewrites the gate
+    (DriftGate.java:87-95), so "a genuinely new change" and "the same gate again" are the same record,
+    differing only in content. Whichever route above is taken must define change against the UNION, not
+    against the record''s existence. The two failure modes to test for, both plausible: a gate that stays
+    collapsed across a real new change (the safety this ticket must not break), and one that never collapses
+    at all (the drag it exists to remove).
+
+    '
+  acceptance:
+    assertions:
+    - Second and later surfacing of one unacknowledged gate is a single line.
+    - A new unseen change still gates a launch and still exits 8.
+    - The regression DriftGate.java:39-49 cites is still caught.
+  goals:
+  - goal: GOAL-gate-settles
+    contribution: direct
+    expected_effect: full report every pass -> full once, one line thereafter; exit-8-on-new-change unchanged
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+  - goal: GOAL-sync-quiet
+    contribution: guard
+    expected_effect: must not reintroduce per-file output on any surface
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+- id: HIS-4
+  title: a scaffolded gitignored tree strands the installed baseline, and the unit is never syncable again
+  phase: HIS
+  status: delivered
+  epic: home-integrity-sync
+  status_note_delivered: 'DELIVERED, and the hard acceptance item was met -- the graph went RED before
+    it went green. The old node passed because THE ROOT TIER NEVER DEREFERENCES ANYTHING; only ChildHomeMaterializer
+    does, and only when a home is materialized from another home, so no root-tier fixture could reach
+    it.
+
+    TWO DEFECTS THE DIFF ITSELF CREATED were found by review and fixed before merge: `sync --from` began
+    DESTROYING the materialization it had previously refused to touch (exit 0, symlink restored, child
+    bytes gone) -- MaterializationEscrow is now a shared class used by BOTH sync paths, holding bytes
+    under <home>/cache/ rather than inside the units namespace; and every rolled-back conflict reported
+    "0 file(s)" and "already clear" with a record that erased itself on the next command.
+
+    CLAUSE 2 WAS ALREADY TRUE AND THAT IS THE DELIVERABLE. ReconcileUseCase -> ValidateAndClearError re-derives
+    the installed-record error on every command; adding a `resolvedAt` field would have been a second
+    answer to a question the code already answers.
+
+    HONEST NEGATIVE, corrected in review: slice (1), the digest side, was NOT DELIVERED and its acceptance
+    assertion is unmet. The plan is not wrong; the work is missing, and GOAL-sync-quiet is not advanced
+    by this ticket.
+
+    '
+  delivered_in: 'PR #231, merged into epic/home-integrity-sync as 15fd561'
+  github_issue: 216
+  wave: 4
+  depends_on:
+  - HIS-1
+  - HIS-7
+  - HIS-10
+  blocks:
+  - HIS-18
+  - HIS-5
+  - HIS-6
+  promotion_order: 6
+  promotion_predecessor: HIS-10
+  rescheduled_in_revision_4: 'Moved from wave 3 to wave 4 and given a dependency on HIS-10. HIS-4''s first
+    acceptance item needs a ticket WORKTREE HOME, and a clone''s first sync currently prunes the five
+    inherited parent-store shims and re-provisions five toolchains locally -- measured 2026-08-21, evidence
+    in results/epic-home-integrity-sync/probes/his-10/. HIS-10 is what makes a clone usable without that.
+
+    '
+  conflict_keys:
+    production:
+    - Rederivable
+    - ChildHomeMaterializer.materializedView
+    - SyncUseCase.merge
+    - InstalledRecord.errors
+    tla:
+    - HomeIntegrityInternal.RecordDescribesItsStoreOrSaysWhy
+    adapters: []
+    test_graph:
+    - sync-settles/ScaffoldTreeDoesNotStrandTheBaseline
+    workflow_data: []
+  objective: 'THE SINGLE BIGGEST CHANGE-MANAGEMENT DRAG THE HOME MECHANISM HAS PRODUCED, and the reason
+    this ticket is scoped wider than the issue that opened it. Two units in the operator''s project home
+    -- deploy-helm and spec-double-compiler -- sat permanently unsyncable for nine days. Every agent in
+    every worktree cloned from that home inherited both, which is why it reads as a productivity problem
+    rather than a bug.
+
+    '
+  the_chain: 'FOUR LINKS, and any one of them left in place reproduces the drag. This is why the ticket
+    is not "exclude the tree from the digest".
+
+    (1) THE TRIGGER. The test-graph scaffolder writes test_graph/{build-logic,sdk,standard-nodes} into
+    a consuming unit as SYMLINKS into the test-graph store copy, and ALSO writes the .gitignore that declares
+    all three not-content -- ensure_provider_binding_ignores, skills/test_graph/scripts/_common.py:318-346.
+
+    READ THAT CAREFULLY, because an earlier draft of this ticket got it wrong: the ignore lines are GENERATED
+    at bind time, not checked in. The repo''s own skills/test_graph/test_graph/.gitignore is 26 lines
+    and names none of the three. The installed copy in the operator''s project home is 33 lines and carries
+    them at 30-32. Any fixture that hand-writes a plausible .gitignore is testing the fixture; capture
+    what the scaffolder actually emits. CHM-5 dereferences them into real directories so the child home
+    is independent -- correct -- but Rederivable does not carry these names and the digest walk does not
+    read .gitignore, so they count as unit content. MEASURED: root store test_graph/ holds 10 entries,
+    the project home holds 13 and 12. Rederivable''s own membership test is "can a tool write it again
+    from content that is still here", and these pass it.
+
+    (2) THE MECHANISM. Sync reads that as a dirty tree, stashes, merges upstream -- THE MERGE COMMIT LANDS
+    -- then pops. The pop conflicts: the stash carries a change to a path upstream holds at mode 120000
+    and the working tree cannot hold both a directory and a symlink there. Sync aborts. MEASURED: index
+    stages 1 and 3 at 120000 for all three paths, stage 2 absent, no MERGE_HEAD, HEAD tracking none of
+    them.
+
+    (3) THE PERMANENCE, AND THE LOAD-BEARING LINK. The merge is committed; installed/<unit>.json is not
+    updated. MEASURED: record gitHash c72d03a6 written 2026-07-25, store HEAD at eab28837. HEAD is ahead
+    of the baseline FOREVER, so every later sync reports "extra local changes (working tree edits, or
+    commits ahead of the installed baseline)" and refuses. Fixing (1) and (2) does NOT release a home
+    already in this state -- which is the state the operator was actually in, and the reason a fix that
+    only excludes the tree would look right and change nothing.
+
+    (4) THE INVISIBILITY. errors[{kind: MERGE_CONFLICT}] carries no resolvedAt and is never re-derived,
+    so `skt check` kept reporting the conflict after the git state was clean.
+
+    '
+  slice: '(1) Decide whether a unit''s own .gitignore, or an extension to Rederivable, or both, keeps
+    scaffolded re-derivable trees out of the digest. Prefer the unit''s declaration over a global name
+    list: `sdk` and `standard-nodes` are generic enough to be real content in some other unit, and #180
+    already establishes that gitignored paths should be honoured on a neighbouring surface. Whatever is
+    chosen, the skip must be on BOTH sides -- not hashed, not copied, and NOT DELETED (carryOverUnownedTrees).
+    Excluding a path must make it invisible, not disposable.
+
+    (2) Make the merge and the record atomic, or compensated. A sync that leaves a merge committed and
+    the baseline unwritten is the generator of the permanent state; either roll the merge back on a failed
+    pop, or write the advanced baseline together with the recorded conflict.
+
+    (3) Re-derive an installed-record error from the live tree when it is read.
+
+    (4) Provide the release path for a home ALREADY stranded. Fixes (1)-(3) are prospective; the operator''s
+    two units were only recovered by hand.
+
+    '
+  manual_recovery_performed: '2026-08-20, recorded so the ticket is not measured against a state that
+    no longer exists. The deadlock was cleared by `git reset` (restoring the index from HEAD; working
+    trees untouched). That was NOT sufficient: both units still refused with "extra local changes" because
+    of link (3). They were released by removing the gitignored scaffold trees from the project home copies
+    -- which made the working tree clean -- and then `sync --merge`, which merged with no stash, no pop
+    and no conflict. Both tiers then reported `skt check: all current` for the first time. Backups of
+    the removed trees, the original indexes and the original installed records are in the session scratchpad.
+    THE PRODUCT WAS NOT CHANGED, so the mechanism is intact and will re-produce this state.
+
+    '
+  acceptance:
+    assertions:
+    - FIRST, reproduce it. sync-settles/ScaffoldTreeDoesNotStrandTheBaseline currently PASSES on a root-tier
+      install/sync fixture and does not reach the project-tier materialized case. Make it red against
+      the real defect before fixing anything.
+    - A unit carrying a scaffolded gitignored tree stays syncable, at every tier.
+    - A sync that fails partway never leaves the baseline behind a merge it already committed.
+    - An excluded path is not hashed, not copied, and not deleted.
+    - An installed-record error whose condition has cleared stops being reported, with no hand edit.
+    - A home already stranded has a documented, runnable release path that is not `git reset` plus manual
+      deletion.
+  goals:
+  - goal: GOAL-symlink-merge-settles
+    contribution: direct
+    expected_effect: 2 of 21 units permanently stuck -> 0; a stranded baseline becomes impossible rather
+      than manually recoverable
+    local_signal: python skills/test_graph/scripts/run.py sync-settles
+  - goal: GOAL-sync-quiet
+    contribution: enabling
+    expected_effect: none on its own -- removes the cause of 776 of the baseline's 889 lines
+    local_signal: 'N/A: enabling'
+- id: HIS-5
+  title: state the four fixes as invariants a broken model violates
+  phase: HIS
+  status: planned
+  epic: home-integrity-sync
+  github_issue: 217
+  wave: 11
+  depends_on:
+  - HIS-1
+  - HIS-2
+  - HIS-3
+  - HIS-4
+  - HIS-7
+  - HIS-9
+  - HIS-10
+  - HIS-11
+  - HIS-12
+  - HIS-13
+  - HIS-14
+  - HIS-15
+  - HIS-16
+  - HIS-17
+  - HIS-18
+  blocks:
+  - HIS-6
+  promotion_order: 17
+  promotion_predecessor: HIS-8
+  conflict_keys:
+    production: []
+    tla:
+    - HomeIntegrityInternal
+    adapters:
+    - specs/desired_program_model/tests
+    test_graph: []
+    workflow_data:
+    - spec_manifest.yaml
+  objective: 'ARTI-22 gave the home-integrity view 4 invariants and 5 regression cfgs. None of them state
+    the four properties this epic fixes, so all four can regress silently. Extend the view; do not restate
+    anything the legacy monolith already says (dual_representation_rule).
+
+    '
+  slice: "One invariant per fix, each with an expected-violation cfg that FAILS, and for each, an explicit\
+    \ statement of whether it is witness-dependent (guard_config_rule). Candidates, to be settled in the\
+    \ ticket:\n  - an identical tree is disposable regardless of what its record names;\n  - a divergent\
+    \ tree is not;\n  - an acknowledged gate is surfaced at most once in full;\n  - a recorded error is\
+    \ a function of the live tree, not of history.\nRe-run ALL pre-existing regression cfgs; a cfg that\
+    \ starts passing is a defect in the invariant, per regression_config_rule.\n"
+  goals:
+  - goal: GOAL-home-invariants
+    contribution: direct
+    expected_effect: 4 invariants / 5 cfgs -> one new invariant per fix, each with a failing cfg, all
+      5 originals still failing
+    local_signal: specs/program_model/run_tlc.sh
+- id: HIS-6
+  title: TERMINAL EVALUATION -- decide every goal on the integrated epic tip
+  phase: HIS
+  status: planned
+  role: evaluation
+  epic: home-integrity-sync
+  github_issue: 218
+  wave: 12
+  depends_on:
+  - HIS-1
+  - HIS-2
+  - HIS-3
+  - HIS-4
+  - HIS-5
+  - HIS-7
+  - HIS-8
+  - HIS-9
+  - HIS-10
+  - HIS-11
+  - HIS-12
+  - HIS-13
+  - HIS-14
+  - HIS-15
+  - HIS-16
+  - HIS-17
+  - HIS-18
+  blocks: []
+  promotion_order: 18
+  promotion_predecessor: HIS-5
+  owns_goals:
+  - GOAL-no-spurious-holdback
+  - GOAL-sync-quiet
+  - GOAL-gate-settles
+  - GOAL-symlink-merge-settles
+  - GOAL-home-invariants
+  - GOAL-mechanism-documented
+  - GOAL-one-home-one-answer
+  - GOAL-no-destructive-recovery
+  owns_the_terminal_sweep: 'SET BY THE OWNER AT THE WAVE-3 GATE, 2026-08-21: "--all takes forever. We''ll
+    do it once at the end with the goal/evals/scorecard." So this ticket owns the ONE `run.py --all`,
+    run on the integrated tip alongside the scorecard, and no wave before it owes a full sweep. See the
+    root `validation_policy` block, which is canonical.
+
+    TWO THINGS THIS TICKET MUST NOT ASSUME.
+
+    (1) THE SWEEP IS A CHAIN. Gradle stops at the first failing task, so a red graph at position 1 yields
+    "stopped at 1" -- output that is indistinguishable from "only 1 graph exists". Measured 2026-08-21:
+    one lost teardown race in `smoke`, the first graph, meant 1 of 24 executed and 23 never ran. Because
+    this is now the epic''s ONLY full run, there is no earlier complete sweep to fall back on, and a scorecard
+    that dies on graph 1 is no scorecard. DEF-011''s second half is therefore a PREREQUISITE, not cleanup.
+    Read `graphs_executed` -- do not infer it from a green build.
+
+    (2) WHICH BUILD PRODUCED THE HOMES IT MEASURES. `skt` and bootstrap-home.sh resolve their CLI from
+    the root home''s pin, which DEF-006 measured as Homebrew 0.23.0 -- a release predating this epic.
+    A home built through the documented front door is built by code that has none of these fixes, so a
+    goal measured over such a home measures the old product. State the build for every number, or the
+    terminal verdicts are about something other than this epic.
+
+    '
+  conflict_keys:
+    production: []
+    tla: []
+    adapters: []
+    test_graph: []
+    workflow_data: []
+  objective: 'This ticket''s slice IS the measurement. It runs each goal''s harness on the integrated
+    epic tip, from a fresh start, and reports baseline -> measured -> target with ONE VERDICT PER CLAUSE.
+    Every goal here has two clauses; a single token per goal would have to choose which clause it referred
+    to, and it would choose the flattering one.
+
+    '
+  rules: 'Does not fix anything. A goal that comes out short is reported short and is a decision for the
+    owner. Never edits a target so a result passes; never re-runs selectively until a number passes. Regressions
+    found are filed to the deferment backlog, not repaired here.
+
+    '
+  re_measurement_note: 'GOAL-sync-quiet and GOAL-no-spurious-holdback are re-measured against the COMMITTED
+    baseline fixtures under results/epic-home-integrity-sync/ baseline/, not against the operator''s homes,
+    which have moved since. GOAL-symlink-merge-settles is measured on HIS-4''s synthetic fixture, because
+    its live instance was cleared at kickoff -- say so in the report rather than presenting the synthetic
+    number as the same measurement.
+
+    '
+  goals:
+  - goal: GOAL-no-spurious-holdback
+    contribution: guard
+    expected_effect: decides the goal; adds no behavioural delta
+    local_signal: 'N/A: this ticket is the measurement'
+  - goal: GOAL-sync-quiet
+    contribution: guard
+    expected_effect: decides the goal; adds no behavioural delta
+    local_signal: 'N/A: this ticket is the measurement'
+  - goal: GOAL-gate-settles
+    contribution: guard
+    expected_effect: decides the goal; adds no behavioural delta
+    local_signal: 'N/A: this ticket is the measurement'
+  - goal: GOAL-symlink-merge-settles
+    contribution: guard
+    expected_effect: decides the goal; adds no behavioural delta
+    local_signal: 'N/A: this ticket is the measurement'
+  - goal: GOAL-home-invariants
+    contribution: guard
+    expected_effect: decides the goal; adds no behavioural delta
+    local_signal: 'N/A: this ticket is the measurement'
+  - goal: GOAL-mechanism-documented
+    contribution: guard
+    expected_effect: decides the goal; adds no behavioural delta
+    local_signal: 'N/A: this ticket is the measurement'
+- id: HIS-7
+  title: '`build` reports a shim it did not write, because presence is decided by what runs rather than
+    what this home owns'
+  phase: HIS
+  status: delivered
+  delivered_in: 'PR #225, merged into epic/home-integrity-sync as 23e35c7'
+  delivered_scope: 'HALF OF THE DECLARED SLICE, DELIBERATELY. Adversarial review found the first commit
+    (a7e7a5b) unmergeable and the owner split it. What landed is the build-path fix: `rebuildCliArtifact`
+    takes ownership of the shim it is about to write, so a producer''s `cat >` cannot follow an inherited
+    symlink into the parent home, and the link is restored if the producer fails. Vacuity-proved by home.integrity.parent.survives.child.build
+    on a three-tier fixture -- with the guard removed it fails with "the producer reported success and
+    replaced nothing".
+
+    WHAT DID NOT LAND: the ownership branch in CliArtifact.inspect. Two attempts failed for the same reason
+    -- a clone is a GRANDCHILD with no durable record of descent, so every reader calls its inherited
+    shims unsanctioned. The missing piece is clone-time provenance, which is HIS-10. Both failed attempts
+    are recorded in the source rather than deleted.
+
+    '
+  epic: home-integrity-sync
+  github_issue: 223
+  added_in_schedule_revision: 2
+  wave: 2
+  depends_on: []
+  blocks:
+  - HIS-10
+  - HIS-12
+  - HIS-4
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  - HIS-9
+  promotion_order: 4
+  promotion_predecessor: HIS-3
+  conflict_keys:
+    production:
+    - CliPresence.alreadyProvided
+    - CliArtifact.inHome
+    - HomeCloner.sanctionedParentShim
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/EveryShimResolves
+    workflow_data: []
+  found_by: 'Wave 2, attempting to provision HIS-4''s declared worktree; recorded as DEF-004 and escalated.
+    THE FIRST DIAGNOSIS WAS WRONG and was corrected by the owner''s sanity check -- see corrected_root_cause.
+    The original framing ("verify and clone disagree about a sanctioned shim") described a real symptom
+    but named the wrong cause and would have led to changing the sanction rule, which is not the defect.
+
+    '
+  superseded_diagnosis: 'Filed first as: home verify sanctions five bin/cli symlinks into the root home
+    while home clone refuses the same five as FOREIGN_HOME, so no ticket worktree can be built. Both halves
+    of that are TRUE and neither is the cause. The asymmetry is correct behaviour: the project home IS
+    a registered child of root, so its parent-store shims are sanctioned; a fresh clone is not yet anybody''s
+    child, so they are not. Root-pointing shims are BY DESIGN -- sanctionedParentShim exists to bless
+    them and the artifact graph models them as cli-shim:* artifacts with producers.
+
+    '
+  corrected_root_cause: "THE REBUILD IS A NO-OP AT THE SHIM, AND REPORTS SUCCESS.\nMeasured on a clone\
+    \ of this project home, with the raw epic build:\n\n  skill-manager build --force cli-shim:skill-script/tlc2\
+    \ cli-shim:skill-script/computeq\n  ✓ cli: installed computeq -> <clone>/.skill-manager/bin/cli/computeq\n\
+    \  ✓ built cli-shim:skill-script/computeq\n  2 selected: 2 built, 0 already current, 0 not buildable\
+    \ here\n\nand afterwards:\n\n  <clone>/bin/cli/computeq -> /Users/hayde/.skill-manager/bin/cli/computeq\n\
+    \nunchanged, still pointing into root, and `home verify` on the clone still refuses all five. The\
+    \ command announced a write it did not perform -- the same defect shape as #133 finding 3, one layer\
+    \ down.\nWHY. CliPresence.alreadyProvided (CliPresence.java:137-150) short-circuits on providedByThisHome,\
+    \ whose question is CliArtifact.inHome -- \"will this run from this home\". A symlink at <home>/bin/cli/<name>\
+    \ pointing into ANOTHER home runs. So it is \"provided by this home\", the installer skips the write,\
+    \ `build` reports built, and the one property that makes the shim wrong -- that it belongs to a different\
+    \ home -- is invisible to the check deciding whether to replace it.\nSo this is the epic's theme once\
+    \ more, in a new place: TWO ANSWERS TO ONE QUESTION. `inHome` answers \"runnable from here\"; `verify`\
+    \ and `clone` answer \"owned by here\"; nothing makes them agree, and a home can therefore be simultaneously\
+    \ complete (nothing to build) and unusable (five foreign paths).\n"
+  consequence: 'The state cannot self-heal. A cloned home carries shims it does not own, `build` refuses
+    to replace them because they run, and `home clone` refuses the home because they are foreign. bootstrap-home.sh
+    therefore fails and neither `wt new` nor `skt ticket new` can produce a ticket home in this repository
+    -- which is how the defect was found.
+
+    '
+  slice: 'TWO HALVES, and the owner settled the second one -- see the_contract_the_owner_stated.
+
+    (1) THE DEFECT. Make presence ask about OWNERSHIP as well as runnability. A path in this home''s bin/cli
+    that resolves into another Skill Manager home is not provided by THIS home, whatever it runs. Today
+    it is, so a change-driven rebuild silently does nothing and says it did something. This half is required
+    under either design and is the actual bug.
+
+    (2) THE CLONE. Do NOT build eagerly, and do NOT convert the inherited shims into cold refusals. The
+    clone keeps them usable -- they are the parent''s artifacts, they run, and the agent needs them on
+    PATH -- and DECLARES them: what artifacts this home has, which unit each belongs to, and the exact
+    command to rebuild one after changing that unit. Then `home clone` must stop refusing a home for holding
+    exactly what it was designed to inherit.
+
+    An earlier draft of this slice offered "either the clone rebuilds them locally, or it declares them
+    cold". Both are wrong: the first spends time rebuilding artifacts nobody changed, and the second takes
+    working tools off the agent''s PATH to prove a point about ownership.
+
+    '
+  the_contract_the_owner_stated: 'LAZY BY DESIGN, AND THE AGENT IS TOLD. "The whole point of introducing
+    artifacts into skt was to make the agent aware of the artifacts, the CLI, the things to be built.
+    So we clone, then we say: here are the artifacts for these skills on the path for you, and here is
+    how you rebuild them if you make a change. Why would we build them without the agent changing? That''s
+    just a waste of time. However, if the agent changes it, then they''ll rebuild."
+
+    So the clone is a DECLARATION, not a build, and the rebuild is CHANGE-DRIVEN. That is why (1) is the
+    whole defect: the change-driven rebuild is the only thing that ever replaces a shim, and it does not
+    work.
+
+    '
+  acceptance:
+    assertions:
+    - '`build --force` on a shim that points into another home replaces it, or says plainly that it cannot
+      and why.'
+    - No command reports an artifact built when the path it names is unchanged.
+    - bootstrap-home.sh produces a usable ticket home from this project home, and HIS-4's worktree can
+      be created.
+    - A CLI genuinely provided by the system, outside every home, is still not reinstalled — the existing
+      escape hatch survives.
+  goals:
+  - goal: GOAL-home-invariants
+    contribution: direct
+    expected_effect: 'one new invariant stating that an artifact reported built is an artifact whose output
+      this home owns, with a regression cfg that fails when a foreign path satisfies presence
+
+      '
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+  - goal: GOAL-no-spurious-holdback
+    contribution: guard
+    expected_effect: must not weaken the rule that stops a home reaching into another home's bytes
+    local_signal: jbang RunTests.java
+- id: HIS-8
+  title: the derived-artifact contract is undocumented, so agents read the source and get it wrong
+  phase: HIS
+  status: planned
+  epic: home-integrity-sync
+  github_issue: 224
+  added_in_schedule_revision: 3
+  wave: 10
+  depends_on:
+  - HIS-7
+  - HIS-9
+  - HIS-10
+  - HIS-11
+  - HIS-12
+  - HIS-13
+  - HIS-14
+  - HIS-15
+  - HIS-16
+  - HIS-17
+  - HIS-18
+  blocks:
+  - HIS-6
+  promotion_order: 16
+  promotion_predecessor: HIS-13
+  rescheduled_in_revision_4: 'Moved from wave 3 to wave 6. HIS-8 documents the contract; revision 4 added
+    five tickets that CHANGE the contract (what a clone records, what a remedy names, what a walk-back
+    may delete, how a damaged home is repaired). Documenting it before those land would publish a page
+    that is wrong within a wave, across four repositories, through `skt publish`.
+
+    '
+  conflict_keys:
+    production: []
+    tla: []
+    adapters: []
+    test_graph: []
+    workflow_data:
+    - skt
+    - skill-manager-skill
+    - git-issue-workflow
+    - git-epic-workflow
+  found_by: 'Two consecutive wrong diagnoses of HIS-7 by the epic agent, both from reading source because
+    no document describes the mechanism. The first blamed the clone/verify sanction rule; the second proposed
+    eager rebuilds. The owner corrected both.
+
+    '
+  objective: 'MEASURED across every installed unit: `skill-manager build` appears in 0 markdown files,
+    cold shim / ColdArtifact in 0, declared-only in 1. skt''s SKILL.md -- the session-start front door
+    an agent is told to read FIRST -- mentions artifacts once, inside a code comment, and the skill ships
+    no references/ pages at all.
+
+    Meanwhile skt/src/skt/check.py:877 prints artifact state into every session''s opening context. So
+    the tooling announces artifacts to every agent and nothing tells them what an artifact is, that `skill-manager
+    build` exists, what a clone inherits, or when to rebuild.
+
+    This is not a tidiness ticket. It is the direct cause of two wrong root-cause diagnoses in this epic''s
+    own wave 2, and the next agent will make the third.
+
+    '
+  slice: "State the contract ONCE, in skt, as a references page -- skt is the session-start front door\
+    \ and the one unit every agent is told to read. It must answer, in the agent's order of need:\n\n\
+    \  - what a derived artifact is, and that `artifacts list` names them;\n  - what a clone INHERITS\
+    \ (the parent's artifacts, on PATH, usable) and\n    what it DECLARES rather than builds -- and why\
+    \ building unchanged\n    artifacts is waste;\n  - when to rebuild: after YOU change the unit, not\
+    \ on arrival;\n  - the exact command, `skill-manager build <artifact-id>`, and how to\n    read `artifacts\
+    \ stale`.\n\nThen skill-manager, git-issue-workflow and git-epic-workflow LINK to it. They must not\
+    \ restate it: a copy is covered by nothing and will drift, which is the rule this epic already applies\
+    \ to judged rubrics.\n"
+  change_management: 'Four separate repositories. Edits go through the home and reach their units by `skt
+    publish` (home sync one tier up, then unit publish), not by this epic''s branch -- the epic''s own
+    PR carries nothing from a gitignored home. Sequence leaf-to-parent per CLAUDE.md, and record each
+    published unit''s commit in the ticket evidence so the terminal evaluation can re-read exactly what
+    was published.
+
+    '
+  acceptance:
+    assertions:
+    - The contract is stated once, in skt, and the other three link rather than restate.
+    - A fresh agent given only the docs answers what an artifact is, what a clone inherits versus declares,
+      and when to rebuild.
+    - The page states the LAZY contract explicitly, including why an eager rebuild is waste -- both wrong
+      answers this epic produced are named and closed off.
+    - Each touched unit is published and its commit recorded.
+  goals:
+  - goal: GOAL-mechanism-documented
+    contribution: direct
+    expected_effect: '0 md files documenting the contract -> stated once and linked from the four units
+      that instruct agents about homes; judged read answers all three questions
+
+      '
+    local_signal: uv run .github/scripts/check-docs-coverage.py
+- id: HIS-9
+  title: nothing refuses a write outside the home SKILL_MANAGER_HOME names -- the class behind repeated
+    root-home damage
+  phase: HIS
+  status: delivered
+  epic: home-integrity-sync
+  status_note_delivered: 'DELIVERED. WriteConfinement + WriteOutsideHomeException, enforced at the four
+    sites where measured damage occurred. DEF-007: with the guard removed homeA''s bin/cli went 2 -> 0
+    entries at exit 0; with it in force, 2 -> 2 and exit 1.
+
+    THE DESIGN POINT: writes, deletes and containers get DIFFERENT questions. A write follows the final
+    component, a delete does not, and a container about to be listed through needs the write rule anyway.
+    The first version got that wrong and REFUSED NOTHING on the exact fixture it was written for -- kept
+    as a vacuity row rather than quietly fixed.
+
+    REVIEW CAUGHT TWO THAT WOULD HAVE SHIPPED: the refusal printed a --home flag that did not exist on
+    `sync`, and the refusal was swallowed by a catch (Exception) so `sync` still exited 0 -- while the
+    exception''s own javadoc claimed being unchecked prevented exactly that.
+
+    THREE INERT ENTRY POINTS WERE DELETED rather than documented. Acceptance item 2 is met instead by
+    HomeCloner.unsanctionedForeignHome -- the predicate `home verify` itself uses, which cannot drift
+    from what the gate refuses.
+
+    DISCLOSED, NOT HIDDEN: a home whose bin/cli is a symlink at another home''s can no longer be synced
+    at all and nothing here repairs it (HIS-13''s test case); --force-scripts in a child home now rebuilds
+    locally, a deliberate partial narrowing of HIS-10 for that flag; LAUNCHER_PIN declared cut; acceptance
+    (d)''s READ path uncovered; the three prune "tiers" run byte-identical tier-blind code.
+
+    '
+  delivered_in: 'PR #230, merged into epic/home-integrity-sync as 62e91ea'
+  github_issue: 226
+  added_in_schedule_revision: 4
+  wave: 4
+  depends_on:
+  - HIS-7
+  blocks:
+  - HIS-11
+  - HIS-13
+  - HIS-14
+  - HIS-16
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 7
+  promotion_predecessor: HIS-4
+  conflict_keys:
+    production:
+    - LiveInterpreter.writeGuard
+    - SkillEffect
+    - InstallerRegistry.installOne
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/ParentHomeSurvivesAChildBuild
+    workflow_data: []
+  found_by: 'HIS-7, twice, on the operator''s real root home -- and the second time while measuring the
+    first. A producer in a cloned home wrote through an inherited symlink into ~/.skill-manager/bin/cli/computeq
+    and tlc2. tlc2 survived because its shim is BIN_DIR-relative; computeq was rewritten with scratchpad
+    paths and had to be repaired by hand.
+
+    '
+  root_cause: "HIS-7 FIXED ONE INSTANCE. THIS IS THE CLASS.\n`rebuildCliArtifact` now takes ownership\
+    \ of the one shim it is about to write, so that path is closed. Nothing generalises it. A producer\
+    \ is an arbitrary script handed $SKILL_MANAGER_BIN_DIR and $SKILL_MANAGER_HOME; it may write anywhere\
+    \ the process can write, and no layer between the effect and the filesystem asks whether the destination\
+    \ is inside the home the command was given. Every new producer, every new effect and every new output\
+    \ root is a fresh chance to be wrong, and root is the tier with no tests, so it is where being wrong\
+    \ is discovered last.\nFOUR known instances, all live:\n  (0) THE DESTRUCTIVE ONE, added in wave 3\
+    \ as DEF-007 and MEASURED:\n      CliShimPruner.prune opens store.cliBinDir() with Files.isDirectory\
+    \ +\n      Files.list, both of which FOLLOW a symlink. Where homeB/bin/cli is\n      itself a link\
+    \ at homeA/bin/cli, a `sync` in homeB decides each entry\n      correctly and deletes it IN THE WRONG\
+    \ HOME -- homeA/bin/cli went from\n      2 entries to 0. `home verify` SEES the shape and refuses\
+    \ it\n      (walkFileTree without FOLLOW_LINKS); the repair path follows it. Two\n      readers, disagreeing\
+    \ in the one direction that destroys bytes.\n      Nothing the product does creates this shape today\n\
+    \      (mirrorExistingShim mirrors ENTRIES, never the directory), so it is\n      reachable by hand\
+    \ or by a restored backup -- which is why it was\n      filed rather than allowed to stop HIS-10;\n\
+    \  (1) a producer following an inherited symlink out of the home -- fixed\n      for cli-shim rebuilds\
+    \ only;\n  (2) a home's PINNED bin/cli/skill-manager rebinding SKILL_MANAGER_HOME to\n      its own\
+    \ home, so `SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager`\n      edits y, not x (this is why scratch\
+    \ homes must be driven with the raw\n      build);\n  (3) bootstrap-home.sh and skt resolving their\
+    \ CLI from the ROOT home, so\n      a worktree bootstrap runs a root-pinned binary.\n"
+  slice: 'A write-confinement guard at the effect boundary: an effect declares the roots it may write
+    under, and a write outside every declared root is REFUSED with the offending path and the home it
+    escaped, not logged. Producers run with the guard in force. Instance (2) is in scope -- the pinned
+    shim must honour an explicitly-set SKILL_MANAGER_HOME or refuse and say which home it would have edited.
+    Instance (3) is a REPORT, not a fix: those live in git-issue-workflow and skt, and reaching them is
+    HIS-8''s publish path. Instance (0) is IN SCOPE and is the reason this ticket is no longer only preventative:
+    a delete path that follows a link out of the home is the same defect as a write path that does, and
+    the guard belongs in one place for every writer rather than bolted onto the pruner. NOT IN SCOPE:
+    repairing a home already damaged -- that is HIS-13.
+
+    '
+  acceptance:
+    assertions:
+    - A producer that writes outside the home is refused, and the refusal names the path and the home.
+    - 'DEF-007: a `sync` in homeB whose bin/cli is a symlink at homeA''s does not remove one byte from
+      homeA. Reproduced before the fix, refused after.'
+    - The confinement covers DELETES, not only writes -- the pruner is a writer for this purpose.
+    - The refusal is proved by a fixture that PASSES when the guard is removed -- vacuity checked, in
+      writing.
+    - '`SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager home describe` reports x or refuses; it never
+      silently reports y.'
+    - A legitimate write into a sanctioned parent store (an inherited toolchain a child is allowed to
+      read) is not broken by the guard.
+    - The root tier is covered, not just project and worktree.
+  goals:
+  - goal: GOAL-no-destructive-recovery
+    contribution: direct
+    expected_effect: 'the (a) half''s mechanism generalised: no effect can write outside its declared
+      roots, so a producer cannot damage a home it was not given
+
+      '
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+  - goal: GOAL-home-invariants
+    contribution: direct
+    expected_effect: an invariant stating a producer writes only inside the home SKILL_MANAGER_HOME names
+    local_signal: jbang RunTests.java
+- id: HIS-10
+  title: a clone records no durable descent, so three readers give three answers and its first sync discards
+    the inherited toolchain
+  phase: HIS
+  epic: home-integrity-sync
+  github_issue: 227
+  also_closes:
+  - 206
+  added_in_schedule_revision: 4
+  status_note_delivered: 'DELIVERED IN FULL, after a review round that sent it back. PR #228, merged into
+    epic/home-integrity-sync as 22b947c.
+
+    THE FIRST VERSION WAS UNMERGEABLE AND THE REVIEW WAS RIGHT. The provenance record was SELF-CERTIFYING:
+    a hand-written home.provenance.json flipped `home verify` from exit 1 to exit 0, and `clonedFrom:
+    /nowhere` -- a path that does not exist -- was accepted and printed as authoritative descent. Anything
+    that could write one file into a home switched that home''s isolation gate off permanently, and the
+    new verify output ADVERTISED the filename. A second case needed no hand-editing at all: revoking a
+    parent''s claim left `verify proj` = 1 and `verify wt1` = 0 on the same shim and the same parent,
+    and re-cloning re-minted the claim -- this goal''s own failure mode, recreated on the tier axis by
+    the fix for it.
+
+    WHAT LANDED INSTEAD: the record is a POINTER TO EVIDENCE, not the evidence. HomeProvenance.sanctions
+    walks `clonedFrom` hop by hop and asks ChildHomeLink.isChildOf LIVE at each hop, with a cycle guard
+    and MAX_HOPS = 16; parentStoresOf derives at WRITE time rather than copying the source''s set forward,
+    so nothing is carried between clones; `parentStores` survives only as a reporting/repair snapshot
+    that nothing consults; a relative `clonedFrom` is refused outright rather than resolved against the
+    process CWD.
+
+    THE COST IS STATED WHERE THE OLD JAVADOC PROMISED THE OPPOSITE. That javadoc chose this evidence because
+    it "needs no second home to be present, readable, or even to still exist when the question is asked."
+    Re-derivation gives that up, and it FAILS CLOSED: evidence that cannot be re-derived does not sanction.
+    Worst case is a worktree whose project home was deleted reverting to pre-HIS-10 behaviour.
+
+    NOT CLAIMED: forgery-proof. A writer can still name some other home that genuinely is a claimed child,
+    and the chain re-derives. What is gone is the ARBITRARY grant. This adds no new class of in-home forgery,
+    because ChildHomeLink already accepts a materialization record inside the judged home -- that pre-existing
+    trust is named, not widened.
+
+    '
+  status: delivered
+  delivered_in: 'PR #228, merged into epic/home-integrity-sync as 22b947c'
+  wave: 3
+  depends_on:
+  - HIS-7
+  blocks:
+  - HIS-13
+  - HIS-17
+  - HIS-4
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 5
+  promotion_predecessor: HIS-7
+  conflict_keys:
+    production:
+    - HomeCloner.sanctionedParentShim
+    - HomeCloner.verifyRoots
+    - ChildHomeLink.isChildOf
+    - CliShimPruner
+    - CliArtifact.usableInHome
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/EveryShimResolves
+    workflow_data: []
+  found_by: 'HIS-7''s adversarial review (findings HIGH-3, MED-4, MED-6, MED-7), then MEASURED end to
+    end on 2026-08-21 against epic tip 23e35c7. Evidence in results/epic-home-integrity-sync/probes/his-10/.
+
+    '
+  root_cause: "A CLONE IS A GRANDCHILD THAT RECORDS NOTHING ABOUT ITS DESCENT.\nThe project home is a\
+    \ REGISTERED CHILD of root: root holds child-homes/<id>/child-home.json, so ChildHomeLink.isChildOf\
+    \ can answer yes and the five bin/cli symlinks into root are sanctioned parent-store shims. A worktree\
+    \ home is a COPY of the project home. Nothing in the copy records that it descends from a home whose\
+    \ parent is root. So every reader that needs \"is this foreign path sanctioned\" has to guess, and\
+    \ they guess differently:\n\n  home clone            clean -- \"no path in it reaches another home\"\
+    \n  home verify           exit 1 -- 5x FOREIGN_HOME\n  home verify --against exit 0 -- \"5 sanctioned\
+    \ parent-store shim(s)\"\n  sync                  PRUNES all five, \"not this home's parent store\"\
+    ,\n                        then spends ~90s re-provisioning five toolchains\n\nFour readers, three\
+    \ answers, one home, same five paths. The only thing that makes the sanction visible is an operator\
+    \ typing --against, which is a flag, not a fact.\nTHE SYNC BEHAVIOUR IS THE EXPENSIVE ONE and it contradicts\
+    \ the contract the owner stated for HIS-7: \"we clone, then we say, here are the artifacts for these\
+    \ skills on the path for you, and here is how you rebuild them if you make a change. Why would we\
+    \ build them without the agent changing?\" Today every worktree rebuilds five toolchains nobody touched,\
+    \ on its first sync, silently.\nSECOND HALF, #206: the verdict is not even spelling-invariant. HomeCloner.verifyRoots\
+    \ resolves the destination root (`realOrSame(dstRoot)` at :1635) for the symlink branch but hands\
+    \ the UNRESOLVED spelling to the provisioned-file branch (`missingReferencesIn(file, dstRoot)` at\
+    \ :1691), and destReferences (:1428) does a raw `text.indexOf(dstRoot.toString())`. Where the home\
+    \ is reached through a symlink, that branch reports clean WITHOUT HAVING CHECKED. CliArtifact.usableInHome\
+    \ does the same string walk.\nMEASURED 2026-08-21, and the obvious fixture is VACUOUS -- see results/epic-home-integrity-sync/probes/his-10/path-spelling.md.\
+    \ The macOS temp case does NOT trigger it: \"/private/var/X\" CONTAINS the substring \"/var/X\", so\
+    \ indexOf accidentally matches and the reference IS found. 24 of 29 registered graphs wire HomeFixpointLaw\
+    \ and every test-graph home lives under /var/folders/.../T; they are saved by that accident, not by\
+    \ correctness. The defect bites only where the two spellings are not substring-compatible -- a symlinked\
+    \ intermediate directory, a symlinked $HOME or checkout, /Volumes/..., a symlinked worktree path:\n\
+    \n  --home <s>/link/homeC     -> \"every reference ... resolves\"       BLIND\n  --home <s>/realdir/homeC\
+    \  -> \"1 reference(s) ... do not resolve\"  CORRECT\n\none home, one broken file, two spellings.\
+    \ A fixture built on /var or /tmp would pass before AND after the fix, which would have been this\
+    \ epic's THIRD vacuous assertion.\n"
+  slice: '(1) PROVENANCE. A clone records its descent durably -- what it was cloned from, and what that
+    home''s parent store is -- so the sanction is a fact in the copy rather than a flag on the command
+    line. Every reader answers from that one record. (2) SPELLING. Resolve the home root ONCE and hand
+    the same spelling to every branch, in HomeCloner.verifyRoots and CliArtifact.usableInHome. (3) THE
+    PRUNER. CliShimPruner stops deleting an inherited shim that the provenance record sanctions. The clone
+    keeps it on PATH and DECLARES it, per the lazy contract. NOT IN SCOPE: the write-confinement guard
+    (HIS-9), and repairing homes already pruned (HIS-13).
+
+    '
+  acceptance:
+    assertions:
+    - All four readers give the SAME verdict on one cloned home, with no --against flag.
+    - A clone's first sync leaves its inherited parent-store shims in place, and provisions nothing that
+      was already provided.
+    - The reader-agreement assertion FAILS when the provenance record is removed -- vacuity checked, in
+      writing.
+    - A home reached through a symlinked path verifies identically to the same home reached through its
+      real path, and that assertion fails when the resolution is removed.
+    - 'A copy of an UNSANCTIONED home is still unsanctioned: cloning is not a laundering step. The existing
+      HomeCloner guard for this must still pass.'
+    - '`--against` no longer decides the answer; it may still explain it.'
+  goals:
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: four readers, three answers -> four readers, one answer, and spelling-invariant
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+  - goal: GOAL-home-invariants
+    contribution: direct
+    expected_effect: an invariant that a home's sanction set is a function of its recorded descent, not
+      of the command line
+    local_signal: jbang RunTests.java
+- id: HIS-11
+  title: compensation for CommitUnitsToStore is delete-only, so a failed install destroys the bytes it
+    overwrote
+  phase: HIS
+  status: delivered
+  delivered_in: 'PR #233, merged into epic/home-integrity-sync as d40c39f'
+  epic: home-integrity-sync
+  github_issue: 186
+  added_in_schedule_revision: 4
+  wave: 5
+  depends_on:
+  - HIS-9
+  blocks:
+  - HIS-15
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 9
+  promotion_predecessor: HIS-12
+  conflict_keys:
+    production:
+    - Executor.preStateCompensations
+    - Executor.runStaged
+    - Executor.runWithContext
+    - Compensation
+    - MaterializationEscrow
+    - HomeLock
+    - LiveInterpreter.runOne
+    tla: []
+    adapters: []
+    test_graph: []
+    workflow_data: []
+  found_by: revision-4 sweep of open issues against the owner's all-home-bugs instruction
+  root_cause: 'Executor.java:307 -- `case SkillEffect.CommitUnitsToStore e -> List.of();` An EMPTY pre-state
+    compensation, in an exhaustive switch, for the one effect that overwrites bytes already in the home.
+    The commit deletes the destination and copies the new tree in; the walk-back then deletes what it
+    finds and restores nothing, because nothing was captured. A publish or resolve that fails partway
+    into a NON-EMPTY home therefore leaves that unit absent rather than as it was. The severity scales
+    with the tier: root is the home with the most installed units and the least test coverage.
+
+    Second half, from the same issue: no HomeLock on the resolve/install path, so two concurrent resolves
+    interleave staging and commit. That is squarely per-home isolation and belongs with the first half
+    rather than after it.
+
+    '
+  slice: 'Capture the pre-image before the destructive commit and restore it on walk-back; take the home
+    lock for the resolve/install path. NOT IN SCOPE: any other effect''s compensation, and the compensation
+    FRAMEWORK''s shape.
+
+    '
+  acceptance:
+    assertions:
+    - A resolve that fails after CommitUnitsToStore leaves every previously installed unit byte-identical
+      to what it was.
+    - That assertion FAILS when the move-aside is removed -- vacuity checked, in writing.
+    - Two concurrent resolves into one home do not interleave; the second waits or refuses, and says which.
+    - The pre-image is cleaned up on success, so the guard does not grow the home without bound.
+  goals:
+  - goal: GOAL-no-destructive-recovery
+    contribution: direct
+    expected_effect: 0 pre-existing unit bytes survive a failed install -> all of them survive
+    local_signal: jbang RunTests.java
+- id: HIS-12
+  title: a refusal names a home you were not in and a build that cannot run the remedy, and project sync
+    loses the typed refusal entirely
+  phase: HIS
+  status: delivered
+  epic: home-integrity-sync
+  status_note_delivered: 'DELIVERED, after a review that sent it back and a design decision the EPIC AGENT
+    got wrong first.
+
+    The /usr/bin/env SKILL_MANAGER_HOME=... <build> binding came out entirely. Review measured three things
+    against it: it broke a remedy parser and put home-sync, a CORE graph, at 12-of-18-skipped BECAUSE
+    OF THE DIFF; it was not runnable verbatim, because a home path containing `$` is shell-expanded and
+    BINDS A DIFFERENT HOME -- DEF-002''s failure mode produced by DEF-002''s fix; and it did not defend
+    the head-token graph assertion but NEUTRALIZED it, turning three readers permanently green where a
+    bare `env` would have turned them visibly red.
+
+    The epic agent then proposed a replacement -- print the home''s own entrypoint and branch the guard
+    on absolute-vs-bare invocation -- and put it up to be attacked. IT LOST ON MEASUREMENT. `$0` cannot
+    carry "deliberate": a #! script never sees the typed word, so bare-via-PATH and absolute give identical
+    `$0`, and the only shape that differs is ./skill-manager, a human at a keyboard, which the rule would
+    have refused. And not every home has bin/cli/skill-manager -- it is written by `home shims` and nothing
+    else, so the premise was false.
+
+    WHAT SHIPPED IS THE PER-VERB RULE: verbs that already name their target bind nothing; verbs that take
+    --home carry it; sync and project sync were given it. The binding lives in --home rather than the
+    head token because EVERY CONSUMER FEELS ENTITLED TO REPLACE THE HEAD TOKEN -- remedyArgs and close-change.sh''s
+    run_cli both document doing exactly that.
+
+    A GUARD, NOT JUST A FIX. A source scan enforces the per-verb rule, and it fired on the integrated
+    tip against HIS-4''s three unbound remedies -- catching a cross-ticket drift that two reviews and
+    two green suites had missed. Its own vacuity check then found a GAP IN THE GUARD (the pattern missed
+    the assignment form), which was widened.
+
+    KNOWN LIMITATION, stated at the top of the goal contribution rather than as a footnote: --home binds
+    the STORE axis and not the AGENT axis. HIS-14 (#232) closes the other half, and that defect was found
+    by this ticket pasting its own remedy into a shell and looking at what it touched.
+
+    '
+  delivered_in: 'PR #229, merged into epic/home-integrity-sync as fb9205b'
+  github_issue: 161
+  also_closes:
+  - 187
+  added_in_schedule_revision: 4
+  wave: 4
+  depends_on:
+  - HIS-7
+  blocks:
+  - HIS-14
+  - HIS-17
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 8
+  promotion_predecessor: HIS-9
+  conflict_keys:
+    production:
+    - HomeDescriptor.resolveCli
+    - HomeDescriptor.cliSpelling
+    - ProjectCommand.SyncCmd
+    tla: []
+    adapters: []
+    test_graph: []
+    workflow_data: []
+  found_by: '#161 and #187 from the revision-4 sweep, joined to DEF-002 from this epic''s own kickoff
+    -- three faces of one surface, the refusal a home operation prints.
+
+    '
+  root_cause: 'A REMEDY IS AN INSTRUCTION, AND THESE ONES EDIT A DIFFERENT HOME THAN THE ONE YOU WERE
+    IN.
+
+    HomeDescriptor.resolveCli (:379-395) falls through to `onPath( "skill-manager")` with no version check,
+    so the printed remedy names an absolute path to whatever build PATH happened to find -- often an older
+    release that cannot run the remedy it is being named in. Step 2 of that same precedence (the current
+    process) is DEAD in every shipped launcher, because the process basename is jbang or java, so the
+    javadoc''s stated precedence is false as well.
+
+    DEF-002 is the same defect landing on the operator: a sync run against the PROJECT home prints `re-run
+    with: /Users/hayde/.skill-manager/bin/cli/skill-manager sync <unit> --merge`. Following that verbatim
+    edits the ROOT home.
+
+    #187 is the same surface losing its type: ProjectCommand.ResolveCmd catches ProjectImportViolationException
+    (:166) and renders it; SyncCmd does not, so the identical failure arrives as an untyped IOException
+    with a generic exit.
+
+    '
+  slice: 'Make the refusal name the home it is about and a build that can run it: mark the PATH-fallback
+    case rather than presenting it as authoritative, correct the javadoc''s precedence, spell the remedy
+    against the home the command was given, and give SyncCmd the typed catch ResolveCmd already has. NOT
+    IN SCOPE: changing what any of those operations DO.
+
+    '
+  acceptance:
+    assertions:
+    - A remedy printed by a command run against home X names X, never another home.
+    - A remedy resolved by the PATH fallback says so, rather than reading as authoritative.
+    - '`project sync` renders a ProjectImportViolationException with the same typed output and exit code
+      as `project resolve`.'
+    - The javadoc's stated precedence matches what the code does, proved by a test that walks it.
+  goals:
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: 'the remedy surface joins the readers that agree: a printed command names the home
+      the operator was in
+
+      '
+    local_signal: jbang RunTests.java
+- id: HIS-13
+  title: no command can tell a damaged home from a healthy one, so homes already damaged stay damaged
+  phase: HIS
+  status: planned
+  epic: home-integrity-sync
+  github_issue: 159
+  added_in_schedule_revision: 4
+  wave: 9
+  depends_on:
+  - HIS-9
+  - HIS-10
+  - HIS-14
+  - HIS-15
+  - HIS-16
+  - HIS-17
+  - HIS-18
+  blocks:
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 15
+  promotion_predecessor: HIS-17
+  rescheduled_in_revision_5: 'Moved behind HIS-14. DEF-029''s damage was to the operator''s real AGENT
+    directories rather than to a store, which makes it HIS-13''s sharpest test case -- and a detector
+    written before HIS-14 lands would be written against the two-axis bug rather than against the fixed
+    contract.
+
+    '
+  conflict_keys:
+    production:
+    - HomeCommand.repair
+    - HomeCloner.verifyRoots
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/EveryShimResolves
+    workflow_data: []
+  found_by: '#159 from the revision-4 sweep, and confirmed against this epic''s own history: the operator''s
+    root home was damaged TWICE during HIS-7 and both times the damage was found by an agent noticing
+    an odd path in a file, not by any command.
+
+    '
+  root_cause: 'EVERY OTHER TICKET IN THIS EPIC PREVENTS. NOTHING REPAIRS.
+
+    HIS-9 stops the next out-of-home write; HIS-10 stops the next clone from pruning its toolchain; neither
+    helps a home that already took the damage. HomeCommand ships clone, verify, describe, policy, shims,
+    drift, sync, close-out and refresh-plugins -- and nothing that repairs. 0.20.0 (#159) repointed and
+    deleted other homes'' agent skill links; the causes are fixed and the damage is not. `home verify`
+    finds SOME of it (a link that does not resolve) and none of the rest (a shim rewritten with another
+    home''s absolute paths, which resolves fine and is simply wrong).
+
+    '
+  slice: 'Detection then repair: name what is damaged in a home -- mis-anchored agent skill links, shims
+    whose content points into another home, entry points pruned that the provenance record says were inherited
+    -- and repair it idempotently. The repair must be able to run against the ROOT home, since that is
+    the tier that keeps taking the damage. NOT IN SCOPE: preventing the damage (HIS-9, HIS-10), and any
+    repair that cannot be verified by re-running detection.
+
+    '
+  acceptance:
+    assertions:
+    - A home damaged in each of the three known ways is reported as damaged, one line per finding, naming
+      the repair.
+    - Repair makes detection clean, and running it twice changes nothing the second time.
+    - A merely STALE home is NOT reported as damaged -- GOAL-no-spurious-holdback's fixture must not regress.
+    - Detection covers the root tier, and there is a test that runs it there.
+  goals:
+  - goal: GOAL-no-destructive-recovery
+    contribution: direct
+    expected_effect: no detection and no repair -> one command names the damage and one repairs it, idempotently
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+  - goal: GOAL-one-home-one-answer
+    contribution: guard
+    expected_effect: detection must use the same reader HIS-10 makes canonical, not a fourth one
+    local_signal: jbang RunTests.java
+- id: HIS-14
+  title: '`--home` binds one of a home''s two axes, so a remedy edits the operator''s real agent directories'
+  phase: HIS
+  status: delivered
+  delivered_in: 'PR #234, merged into epic/home-integrity-sync as c44a2a0'
+  epic: home-integrity-sync
+  github_issue: 232
+  added_in_schedule_revision: 5
+  wave: 5
+  depends_on:
+  - HIS-9
+  - HIS-12
+  blocks:
+  - HIS-13
+  - HIS-15
+  - HIS-17
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 10
+  promotion_predecessor: HIS-11
+  conflict_keys:
+    production:
+    - HomeCommand.homeEnvPrefix
+    - SyncCommand.home
+    - ProjectCommand.SyncCmd.home
+    - AgentHomes
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/EveryShimResolves
+    workflow_data: []
+  found_by: 'HIS-12 (#161), filed as DEF-029 -- by pasting its OWN printed remedy into a fresh shell and
+    then looking at what it had touched. Not by a check.
+
+    '
+  root_cause: "A HOME HAS TWO AXES AND `--home` PINS ONE.\nSKILL_MANAGER_HOME says where the UNITS live.\
+    \ CLAUDE_CONFIG_DIR, CODEX_HOME and GEMINI_HOME say where the AGENT CONFIGS live, and they are a separate\
+    \ axis. `--home` sets the first only, so the store half goes where it was told and the agent half\
+    \ resolves against the ambient environment.\nMEASURED, with SKILL_MANAGER_HOME unset and the root\
+    \ home's bin/cli first on PATH:\n\n  $ <build> sync probe-unit --merge --home <scratch>/project/.skill-manager\n\
+    \    ✓ units.lock.toml: wrote 1 unit(s) -> <scratch>/project/...\n    ✓ agents: 1 unit(s) linked into\
+    \ claude, codex, gemini   <-- WHICH claude?\n\nThe agent half landed in the OPERATOR'S REAL homes\
+    \ -- three dangling symlinks under ~/.claude, ~/.codex, ~/.gemini plus marketplace registrations in\
+    \ ~/.claude/settings.json, ~/.claude/plugins/known_marketplaces.json and ~/.codex/config.toml. The\
+    \ scratch directory was deleted afterwards, so `probe-unit` began appearing as a loadable skill IN\
+    \ AN UNRELATED AGENT SESSION. That is how it was found. Repaired by hand 2026-08-21; the config edits\
+    \ had to be approved by the owner because the permission layer correctly refused both the ticket agent\
+    \ and the epic agent.\nTHE CORRECT SHAPE IS ALREADY IN THE CODEBASE. HomeCommand.homeEnvPrefix binds\
+    \ all four variables and its own javadoc states the rule that was broken. `home verify`'s remedy is\
+    \ unaffected because of it. So this is not a missing design -- it is the epic's signature defect once\
+    \ more, TWO SPELLINGS OF ONE DECISION, where one spelling is right and the other is the one every\
+    \ other remedy uses.\n"
+  not_introduced_by_his_12: 'A bare `sync <unit> --merge` behaved identically and could not name a home
+    at all. What HIS-12''s per-verb contract changes is that the remedy now LOOKS bound while binding
+    half, which is worse than visibly unbound: it suppresses the doubt that would make a reader check.
+    The epic agent chose that contract, so this is a consequence of an epic-level decision rather than
+    a ticket-level mistake, and it is recorded that way.
+
+    '
+  slice: '(1) `--home` binds BOTH axes, or refuses and names the variable it cannot set -- on every verb
+    that accepts it: sync, project sync, home drift, home shims, home close-out, unit publish, exec. (2)
+    Every remedy printing `--home` is runnable without touching an unnamed home, PROVED BY EXECUTING the
+    printed string rather than asserting on its text. (3) A regression fixture that fails when the agent
+    axis is unbound -- the assertion this epic did not have, which is why the damage was found by an unrelated
+    agent session instead of by the suite. NOT IN SCOPE: write confinement (HIS-9, merged), clone provenance
+    (HIS-10, merged), detection and repair of homes already damaged (HIS-13).
+
+    '
+  acceptance:
+    assertions:
+    - A command carrying `--home <X>` writes no byte outside X and the agent directories X owns.
+    - That fixture FAILS when the agent axis is left unpinned -- vacuity checked, in writing.
+    - '`home verify`''s four-variable prefix and `--home` produce the SAME binding: one answer, not two
+      spellings.'
+    - A printed remedy is EXECUTED by a test, in a shell whose ambient agent variables name a different
+      home, and leaves that other home untouched.
+    - The root tier is covered by a synthetic root-shaped fixture, and NO test writes to the operator's
+      real agent homes -- the thing that caused this.
+  goals:
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: 'two spellings of "which home is this command about" -> one; the agent axis stops
+      resolving against whatever the shell happened to export
+
+      '
+    local_signal: jbang RunTests.java
+  - goal: GOAL-no-destructive-recovery
+    contribution: guard
+    expected_effect: must not weaken the sanctioned parent-store sharing HIS-10 landed
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
+- id: HIS-15
+  title: '`home close-out --json` emits no JSON when it fails, so the `wt close` gate loses every verdict'
+  phase: HIS
+  status: delivered
+  delivered_in: 'PR #236, merged into epic/home-integrity-sync as 7437c72'
+  epic: home-integrity-sync
+  github_issue: 235
+  added_in_schedule_revision: 6
+  wave: 6
+  depends_on:
+  - HIS-11
+  - HIS-14
+  blocks:
+  - HIS-13
+  - HIS-16
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 11
+  promotion_predecessor: HIS-14
+  conflict_keys:
+    production:
+    - HomeCloseOut
+    - HomeCommand.CloseOutCmd
+    - HomeLock.acquire
+    - Executor.runStaged
+    tla: []
+    adapters: []
+    test_graph:
+    - ticket-lifecycle/TicketLifecycleConcurrentCloseOut
+    workflow_data: []
+  found_by: 'The EPIC AGENT, verifying a blocker HIS-14 reported and could not attribute -- and it is
+    a regression from HIS-11 (#186), which the epic agent had merged an hour earlier on graphs measured
+    ON ITS OWN BRANCH.
+
+    '
+  root_cause_as_filed_was_WRONG: "THE EPIC AGENT FILED THIS AND GOT THE CAUSE WRONG. Corrected by the\
+    \ ticket agent, which measured instead of accepting the framing it was handed -- the third time in\
+    \ this epic that has happened, after HIS-7 and HIS-4.\nFILED AS: the losing invocation exits non-zero\
+    \ with its explanation on stderr and nothing on stdout.\nMEASURED, with a peer holding the project\
+    \ home's lock for 8s:\n\n  $ skill-manager home close-out --home <wt> --into <proj> --json\n  exit=0\
+    \                      <-- THE COMMAND SUCCEEDED\n  home sync --dry-run: waiting for /.../proj-home\
+    \ — another\n    skill-manager process holds this home's lock\n  {\"home\":\"...\",\"into\":\"...\"\
+    ,\"safe\":true,\"exitCode\":0,...}\n\nByte-identical to the error in the red node. The cause is HomeLock.announceWait\
+    \ -- the line HIS-11 added so a wait would not look like a hang -- going to STDOUT via Log.info. It\
+    \ corrupts the document on any run that waits, WHETHER OR NOT that run then fails. The failing run\
+    \ exited 0, so every word of the filed cause describing a non-zero exit with empty stdout is wrong\
+    \ about the graph.\n"
+  root_cause: "THREE DISTINCT BREAKS OF ONE CONTRACT, all measured:\n\n  (1) extra non-JSON on stdout\
+    \ (announceWait)   exit 0   unparseable\n      <- this is the red graph\n  (2) close-out's own not_a_home\
+    \ paths          exit 2   correct JSON already\n  (3) an exception escaping the command         exit\
+    \ 1   EMPTY stdout\n      <- the filed defect, real, but not the red one\n\nSo the contract is NOT\
+    \ \"emit JSON when you fail\". It is: UNDER --json, STDOUT CARRIES ONLY JSON -- exactly one document,\
+    \ and nothing else -- ON EVERY EXIT PATH. A fix aimed only at failure paths closes (3) and leaves\
+    \ (1), which is the one that is red.\nMEASURED on epic tip d40c39f, ticket.lifecycle.concurrent.close.out:\n\
+    \n  close-change-a:  run: <abs>/skill-manager home sync --from ... --to ...\n  close-change-b:  could\
+    \ not parse the verdict:\n                   Expecting value: line 1 column 1 (char 0)\n         \
+    \          FIX  .../close-change.sh TICKET-B --force\n\n`both_close_change_runs_were_refused_by_the_gate`\
+    \ PASSES -- the refusal is correct. What is lost is the VERDICT. 6 nodes skip behind the failure,\
+    \ home.fixpoint.law among them.\n"
+  why_this_is_a_product_defect: 'close-change.sh:440-447 is the `wt close` gate every ticket in this repository
+    runs, and it branches on stdout being parseable. On the unparseable path it downgrades to "re-run
+    with --force" -- advising the operator to DISCARD work the gate just refused to destroy. That is the
+    worst possible fallback for this specific command.
+
+    The HIS-14 reviewer predicted this same consumer harm independently, for a DIFFERENT cause (a new
+    exit code whose explanation is on stderr while stdout is discarded). Two causes, one hole -- which
+    makes it a CONTRACT GAP rather than a bug. `--json` is a promise of machine-readable output, and a
+    command that emits none on the failure path breaks it exactly when the consumer most needs the reason.
+
+    '
+  slice: '(1) `--json` always emits JSON, on every exit path, carrying the exit reason, the home, and
+    any blockers known at the point of failure. (2) The lock refusal is one of those structured reasons
+    rather than an unstructured stderr line. (3) close-change.sh distinguishes "the gate refused and told
+    me why" from "the gate produced nothing", and NEVER advises --force for the second. NOT IN SCOPE:
+    the lock''s scope or its 120s patience -- that is DEF-041, open and unassigned.
+
+    '
+  acceptance:
+    assertions:
+    - '`home close-out --json` emits parseable JSON on EVERY exit path, proved by driving the failure
+      paths and PARSING stdout rather than asserting on text.'
+    - Two concurrent close-outs — the loser emits a JSON verdict naming contention as the reason.
+    - That fixture FAILS when the failure-path JSON is removed — vacuity checked, in writing.
+    - 'GENERAL, not just this command: an assertion that holds for EVERY command declaring --json, so
+      the next one to grow a failure path is covered by a check that already exists.'
+    - ticket.lifecycle.concurrent.close.out is green and the 6 nodes behind it run.
+    - close-change.sh never prints --force as the remedy for an unparseable verdict.
+  the_assertion_that_was_missing: 'THIS IS THE POINT OF THE TICKET, stated separately because a fix without
+    it leaves the next instance uncaught.
+
+    The graph node DID catch this -- but only on the integrated tip, and only because somebody had written
+    that specific node. Nothing asserts the GENERAL contract, so every command that grows a `--json` failure
+    path is a fresh chance to break it silently, and the failure surfaces as a red graph in another ticket''s
+    wave rather than as a red unit test in the wave that caused it.
+
+    What is wanted is the shape HIS-12 shipped for remedies: a check over the CONVENTION, not over one
+    instance. Enumerate the commands declaring --json, drive each one''s failure paths, and parse stdout.
+    Cheap, runs in the unit lane every ticket already runs, and it fails in the wave that breaks it.
+
+    '
+  goals:
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: 'a machine-readable verdict and a human-readable refusal are currently two answers
+      and one of them is empty; after, one answer in two renderings
+
+      '
+    local_signal: python skills/test_graph/scripts/run.py ticket-lifecycle
+  - goal: GOAL-no-destructive-recovery
+    contribution: guard
+    expected_effect: the gate stops recommending --force, which discards work it just refused to destroy
+    local_signal: jbang RunTests.java
+- id: HIS-16
+  title: a command that resolves its target from the working directory escapes every sandbox this repo
+    has
+  phase: HIS
+  status: delivered
+  delivered_in: 'PR #241, merged into epic/home-integrity-sync as a527221'
+  status_note_delivered: 'DELIVERED after four blockers, each reproduced before it was fixed.
+
+    THE SLICE WAS HALF-SHIPPED and the re-diagnosis is the good part: --project-dir already existed on
+    all five project verbs and every graph node already passed it, so the escape was never "no way to
+    say which project" -- it was "NOTHING NOTICED THAT NOBODY HAD SAID".
+
+    THE MEMBERSHIP LAW''S OWN READER CREATED THE RECORDS IT AUDITED. `home describe` was classified WRITE,
+    so tryReconcile ran ahead of it and wrote installed/<name>.json for every unit lacking one -- making
+    the GAINED direction STRUCTURALLY UNREACHABLE against a real home, and making the law a mutator on
+    24 graphs. Fixed with INIT_GATED. Also: confined()/escapes() were computed and never enforced; a symlinked
+    confinement root false-refused its own contents on /tmp and java.io.tmpdir; and nothing armed it in
+    production. Now armed via AgentHomes.binding -- the arming point this plan''s own conflict_keys had
+    named and the epic agent then wrongly called over-declared.
+
+    THE LIMIT, STATED AT THE TOP OF THE GOAL CONTRIBUTION RATHER THAN THE BOTTOM: the law is 0-FOR-1 AGAINST
+    REAL DAMAGE and 3-for-3 against its own fixtures. On the only home in the evidence set genuinely damaged
+    -- by this ticket''s own control -- it returned PASS. It catches the residue form, and DEF-054 records
+    that this rests on a bug HIS-13 is pointed at.
+
+    '
+  epic: home-integrity-sync
+  github_issue: 237
+  added_in_schedule_revision: 7
+  wave: 7
+  depends_on:
+  - HIS-9
+  - HIS-15
+  blocks:
+  - HIS-13
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 12
+  promotion_predecessor: HIS-15
+  conflict_keys:
+    production:
+    - ProjectCommand
+    - ProjectRoot.resolve
+    - Confinement
+    - SandboxCommand
+    - EnvCommand
+    - SkillManagerCli
+    - CommandHomeAccess
+    - RunTests.java
+    tla: []
+    adapters: []
+    test_graph:
+    - common/HomeMembershipLaw
+    workflow_data: []
+  found_by: 'DEF-046 (HIS-15, the visible half) and DEF-047 (the wave-5 close-out gate, the rest of it).
+
+    '
+  root_cause: "EVERY HOME OVERRIDE IN THIS REPOSITORY PINS THE HOME AXIS. NONE PINS CWD.\nSKILL_MANAGER_HOME,\
+    \ CLAUDE_CONFIG_DIR, CODEX_HOME and GEMINI_HOME cover where units and agent configs live. The `project`\
+    \ family resolves its target from the WORKING DIRECTORY, which a JVM cannot change. So a test, a driver\
+    \ or an agent that pins all four and believes it is sandboxed is wrong in exactly one direction, silently.\n\
+    MEASURED. HIS-15 drove the project family in-process from its worktree; `project resolve --json` returned\
+    \ a real report for THIS repository and wrote the worktree home's .materialization. The close-out\
+    \ gate later found the rest:\n\n  worktree home BEFORE: deploy-helm, spec-double-compiler, test-graph,\n\
+    \                        tracing-observability\n  worktree home AFTER:  skill-manager, spec-double-compiler,\
+    \ test-graph,\n                        tracing-observability\n\ndeploy-helm GONE, skill-manager and\
+    \ skt INSTALLED at 13:06:18 -- this repository's project manifest realized into a home never meant\
+    \ to hold it. Confined to one worktree home, verified rather than assumed.\n"
+  why_three_instruments_missed_it: 'The ticket''s probes, its adversarial reviewer and the epic agent''s
+    containment check all asked "did it write where it should not?". The close-out gate asks "does this
+    home hold something the tier above does not?" -- and that is the only question that sees a unit QUIETLY
+    GOING AWAY. The epic''s recurring shape, now in the instruments rather than the product: a probe narrower
+    than the condition it is trusted to decide.
+
+    '
+  slice: '(1) A command whose target comes from CWD says so, or takes it from an override: either the
+    project verbs accept an explicit project root, or they refuse when the CWD-derived target is not the
+    home SKILL_MANAGER_HOME names. (2) A sandbox is ASSERTABLE -- one call answering "is this process
+    confined?", covering CWD, rather than four variables set by hand and hoped over. NOT IN SCOPE: write
+    confinement at the effect boundary (HIS-9, merged -- it guards PATHS, and this defect writes legitimate
+    paths in the wrong home), and repair of homes already re-realized (HIS-13).
+
+    '
+  where_the_assertions_go: 'A MEMBERSHIP LAW, ALONGSIDE HomeFixpointLaw, and this is the part that generalises.
+
+    HomeFixpointLaw is this project''s best instrument -- one post-condition, wired into 24 of 30 graphs,
+    asking "does every home this graph produced still verify?". IT WOULD NOT HAVE CAUGHT THIS, because
+    a re-realized home verifies fine: it is internally consistent and merely wrong about what it holds.
+
+    So add the second law with the gate''s question: for every home a graph produced or touched, its UNIT
+    MEMBERSHIP is what the graph intended -- no home gains a unit nobody installed, none loses one nobody
+    removed. Snapshot each discovered home''s unit set at first sight, re-read at the end, fail on an
+    unexplained delta. Structural discovery like HomeFixpointLaw''s so it cannot go stale as a list, and
+    a run that finds zero homes FAILS.
+
+    Plus a direct node: run a project verb from a worktree whose CWD is another repository, assert the
+    other home''s unit set is unchanged, and vacuity-check by removing the confinement.
+
+    '
+  acceptance:
+    assertions:
+    - A project verb run with SKILL_MANAGER_HOME naming home X, from a CWD inside project Y, modifies
+      neither X's nor Y's home — or refuses and names the conflict.
+    - The membership law fails when a home gains or loses a unit the graph did not ask for — vacuity-checked
+      against this exact escape.
+    - The law is wired into every graph that produces a home, discovered structurally, and a run finding
+      zero homes fails.
+    - A driver can ask "am I confined?" in one call, and that call covers the CWD axis.
+  goals:
+  - goal: GOAL-no-destructive-recovery
+    contribution: direct
+    expected_effect: a unit vanishing from a home nobody named is bytes destroyed by an operation that
+      reported success
+    local_signal: python skills/test_graph/scripts/run.py project-child-home
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: SKILL_MANAGER_HOME and the working directory stop being two answers to which project
+      this command is about
+    local_signal: jbang RunTests.java
+- id: HIS-17
+  title: four graphs each keep their own copy of "nothing in a clone names its source", and HIS-10 moved
+    the rule
+  phase: HIS
+  status: planned
+  epic: home-integrity-sync
+  github_issue: 238
+  added_in_schedule_revision: 7
+  wave: 8
+  depends_on:
+  - HIS-10
+  - HIS-12
+  - HIS-14
+  blocks:
+  - HIS-13
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 14
+  promotion_predecessor: HIS-18
+  conflict_keys:
+    production: []
+    tla: []
+    adapters: []
+    test_graph:
+    - home-clone/HomeClonedIntoProject
+    - home-clone/HomeCloneSupport
+    - artifact-dag/LazyCloneDeclaresWithoutBuilding
+    workflow_data: []
+  found_by: 'The wave-5 epic-relevant graph sweep -- the first time several of these graphs had been run
+    in this epic AT ALL. home-clone in particular had never been run, despite HomeCloner being the single
+    most-changed file.
+
+    '
+  root_cause: "MEASURED on epic tip 640080c:\n\n  home-clone     home.cloned.into.project\n          \
+    \       X independent_scan_finds_no_owned_surface_naming_the_source\n                   leakCount:\
+    \ 1\n  checkout-home  home.cloned.into.project   X same node, same assertion\n  artifact-dag   lazy.clone.declares.without.building\n\
+    \                 X home_verify_names_the_build_that_completes_the_clone\n\nThe leak is home.provenance.json,\
+    \ which HIS-10 added BY DESIGN so a clone's descent is a fact in the copy rather than a flag an operator\
+    \ types. Production exempts exactly that file, gated on byte accounting.\nTHIS IS THE THIRD AND FOURTH\
+    \ INSTANCE OF ONE DEFECT. TicketLifecycleSupport.filesNaming encoded the same rule, went red the day\
+    \ HIS-10 merged, took 11 skipped nodes with it, and was fixed in a4a95cb -- and NOBODY CHECKED WHETHER\
+    \ OTHER GRAPHS KEPT THEIR OWN COPY. They did: HomeCloneSupport.referencesTo, reached by two graphs,\
+    \ plus artifact-dag's verify-text expectation broken by HIS-12/HIS-14's remedy and caveat changes.\n\
+    Four bespoke spellings of a rule HomeCloner.verifyRoots already owns. The epic's signature defect\
+    \ living inside its own instruments, and patching each scan as it reddens is how a fifth gets written.\n"
+  slice: '(1) Fix the three red assertions -- the sanctioned descent record is not a leak. (2) AND make
+    each one cross-check production, the way a4a95cb did for ticket-lifecycle: alongside the bespoke scan,
+    require production''s own verdict. The scan stays as an independent reading; the cross-check is what
+    fails ON THE DAY the contract moves instead of a wave later. (3) SWEEP FOR THE FIFTH. Find every remaining
+    private implementation of "does anything here name another home" across test_graph/sources/ and either
+    delete it in favour of production''s answer or give it the same cross-check. Report the list even
+    where nothing changes. NOT IN SCOPE: production''s isolation rule or the exemption. Both are HIS-10''s
+    and both are correct.
+
+    '
+  also_in_this_sweep: 'onboard -> onboard.skills.installed ERRORED, timing out at 10s, TWICE. No assertion
+    failed; the budget expired. Same shape already fixed once this epic in ServersDown (a 5s budget for
+    a JVM shutdown). Either the budget is wrong for a real install or something in this epic made the
+    path slower -- HomeLock contention is the obvious suspect and is NOT CONFIRMED. Fold in only if it
+    is the same cause; otherwise file it.
+
+    '
+  acceptance:
+    assertions:
+    - The three assertions pass, and each FAILS when the exemption is removed from production — proving
+      they still test the rule rather than having been widened into uselessness.
+    - Every touched node also asserts production's verdict, and that assertion fails when production's
+      isolation check is disabled — vacuity-checked, in writing.
+    - The sweep's list of private implementations is in the goal contribution, with a disposition for
+      each.
+    - onboard.skills.installed is green, or its cause is filed with a measurement.
+  goals:
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: 'four readings of one rule, three of them in tests, become one reading plus three
+      cross-checks against it
+
+      '
+    local_signal: python skills/test_graph/scripts/run.py home-clone
+- id: HIS-18
+  title: a scaffolded re-derivable tree is still hashed, so the drift report's input never shrank
+  phase: HIS
+  status: delivered
+  delivered_in: 'PR #240, merged into epic/home-integrity-sync as 3a4ce09'
+  status_note_delivered: 'DELIVERED. HIS-4''s undelivered slice (1), finished because that ticket corrected
+    itself: "''the plan was wrong'' invites amending the plan; ''a slice was not delivered'' invites finishing
+    the work."
+
+    TWO NUMBERS, AND THEY ARE NOT INTERCHANGEABLE -- see GOAL-sync-quiet''s measurement_caveat. Retrodiction
+    889 -> 124 file lines (86.1%); forward-going 22 net-new exclusions across 23 live units, with spec-double-compiler
+    -- 87% of the retrodicted metric -- UNCHANGED at 26,930.
+
+    REVIEW FOUND TWO BLOCKERS, both created by the diff. The exclusion made an AGENT''S AUTHORED FILE
+    DISPOSABLE: treeDigest became ignore-aware and isLocallyModified reads it, so a worktree agent''s
+    results/findings.md in a unit whose .gitignore has results/ would be skipped by sync, cleared by close-out
+    and deleted by wt close. And a trailing-slash rule over an in-unit symlink made the two walkers disagree
+    permanently -- verbatim the failure mode this ticket''s own case 7 message names. The fix went deeper
+    than the review''s diagnosis: the SHAPE differs across the dereference, so directory-ness is now read
+    as the materialized view will have it.
+
+    Also: the vacuity record written to answer DEF-035 was NOT REPRODUCIBLE FROM ITSELF, and project-child-home''s
+    green was re-run because HIS-16 had added a node to that graph -- the earlier 73/73 was a run of a
+    graph that no longer existed.
+
+    '
+  epic: home-integrity-sync
+  github_issue: 239
+  added_in_schedule_revision: 8
+  wave: 8
+  rescheduled_in_revision_8: 'MOVED FROM WAVE 7 BY ITS OWN VALIDATOR, and the finding is the epic agent''s.
+    HIS-16 and HIS-18 were scheduled into wave 7 as disjoint. They are not: both touch RunTests.java and
+    deferred/backlog.yaml. That was invisible while the declared conflict_keys were wrong -- correcting
+    them after both reviews made validate_epic_plan.py refuse the schedule, which is the check doing exactly
+    its job one wave late.
+
+    Rule 6 says tickets may share a wave only when their conflict keys are disjoint. They shared one.
+    The measured cost was small -- the reviewer confirmed RunTests.java auto-merges with additions 28
+    lines apart and no semantic conflict, and backlog.yaml is an append/append conflict that HIS-18 resolves
+    on rebase, since promotion_order 12 -> 13 already serialized them. Small is not the same as declared,
+    and the wave is corrected rather than the rule bent.
+
+    '
+  depends_on:
+  - HIS-2
+  - HIS-4
+  blocks:
+  - HIS-13
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 13
+  promotion_predecessor: HIS-16
+  conflict_keys:
+    production:
+    - ChildHomeMaterializer.digest
+    - ChildHomeMaterializer.plainView
+    - ChildHomeMaterializer.isLocallyModified
+    - GitIgnoreRules
+    - RunTests.java
+    tla: []
+    adapters: []
+    test_graph:
+    - sync-settles/ScaffoldTreeDoesNotStrandTheBaseline
+    workflow_data: []
+  found_by: "HIS-4, ON ITSELF, and then corrected by HIS-4 a second time. It first reported the shortfall\
+    \ as a PLAN DEFECT (\"the plan assumed the digest question and the git question are one\"); review\
+    \ showed the plan states both halves separately and one simply was not done. The ticket agent rewrote\
+    \ it in its own words rather than being overruled:\n\n  \"'The plan was wrong' invites amending the\
+    \ plan, and 'a slice was not\n   delivered' invites finishing the work. Only the second is true here.\"\
+    \n\nThe plan stayed as written. This ticket is the work. The owner asked for it directly at the wave-5\
+    \ status review, having read exactly that line.\n"
+  root_cause: "A unit's scaffolded, re-derivable trees -- test_graph/build-logic, test_graph/sdk, test_graph/standard-nodes\
+    \ -- are HASHED AS CONTENT. Once ChildHomeMaterializer dereferences the in-unit symlinks into real\
+    \ directories, the child copy's digest diverges from the store's and every later read reports the\
+    \ difference.\nThat is the INPUT to the drift report. HIS-2 bounded the RENDERING -- 896 lines to\
+    \ 8 -- and the underlying record is untouched:\n\n  13 and 12 entries against the root store's 10\
+    \   UNCHANGED\n  776 of the baseline's 889 lines are one unit's dereferenced trees\n  GOAL-sync-quiet's\
+    \ enabling contribution            NOT DELIVERED\n\nSo the goal reads as met on the surface it renders\
+    \ and is short on the surface it measures. That is this epic's recurring shape -- a reading narrower\
+    \ than the condition it is trusted to decide -- and it must not reach the terminal evaluation unnamed.\n"
+  slice: 'HIS-4''s slice (1), unchanged. Decide whether a unit''s own .gitignore, or an extension to Rederivable,
+    or both, keeps scaffolded re-derivable trees out of the digest.
+
+    PREFER THE UNIT''S DECLARATION OVER A GLOBAL NAME LIST. `sdk` and `standard-nodes` are generic enough
+    to be real content in some other unit -- the plan''s own argument, and the reason HIS-4 deliberately
+    left Rederivable untouched. #180 already establishes that gitignored paths should be honoured on a
+    neighbouring surface.
+
+    WHATEVER IS CHOSEN, THE SKIP IS ON BOTH SIDES: not hashed, not copied, and NOT DELETED. Excluding
+    a path must make it INVISIBLE, not DISPOSABLE.
+
+    ALREADY DELIVERED, DO NOT REDO: the git-surface half of "not deleted" -- HIS-4''s MaterializationEscrow
+    and carryOverUnownedTrees. What is missing is the digest half. NOT IN SCOPE: the rendering bound (HIS-2,
+    delivered), merge atomicity (HIS-4 slice 2, delivered), detect-and-repair (HIS-13).
+
+    '
+  acceptance:
+    assertions:
+    - An excluded path is NOT HASHED — the child copy's digest matches the store's across a dereference
+      — and the fixture FAILS when the exclusion is removed.
+    - An excluded path is NOT COPIED.
+    - 'An excluded path is NOT DELETED: the exclusion makes it invisible to the digest without making
+      it disposable. This is the assertion HIS-4''s acceptance carried and did not get.'
+    - 'MEASURED AGAINST THE COMMITTED BASELINE, not a fixture alone: re-render baseline/root-home-drift.json
+      and report the new per-unit entry counts against `13 and 12 against 10`, and the new line count
+      against `776 of 889`.'
+    - A unit that legitimately contains a directory named `sdk` or `standard-nodes` is NOT excluded —
+      the reason a global name list was rejected, asserted rather than argued.
+  where_the_assertions_go: 'THREE SEPARATE UNIT CASES -- hashed, copied, deleted -- because one assertion
+    covering all three cannot say which half broke, and the "not deleted" half has a DELIVERED SIBLING
+    (the escrow) that could mask it.
+
+    Then sync-settles, which already drives the project-tier dereference HIS-4 made red and then green;
+    its fixture is the closest thing in the suite to this defect''s real shape.
+
+    AND THE GOAL MEASUREMENT IS PART OF THIS TICKET, not the evaluation''s problem. HIS-6 should inherit
+    a number, not an exercise.
+
+    '
+  goals:
+  - goal: GOAL-sync-quiet
+    contribution: enabling
+    expected_effect: 'the record''s INPUT shrinks, so the rollup describes fewer real changes rather than
+      the same changes more briefly; 776 of 889 lines and the 13/12-against-10 entry counts both move
+
+      '
+    local_signal: python skills/test_graph/scripts/run.py sync-settles
+  - goal: GOAL-no-spurious-holdback
+    contribution: guard
+    expected_effect: an excluded path must not become a new reason to hold a unit back
+    local_signal: jbang RunTests.java
+_note: 'GENERATED PROJECTION -- do not hand-edit, and REGENERATE IT AFTER EVERY SCHEDULE CHANGE with .github/scripts/regen-epic-projection.py.
+  Extracted from specs/desired_program_model/ticket_plan.yaml, which is canonical. It carries the epic
+  blocks and only the HIS-* tickets, because validate_epic_plan.py requires full epic scheduling fields
+  on EVERY ticket in a file and the pre-epic CHM/COH/EFF/ISSUE/MIG tickets legitimately have none. A stale
+  projection is worse than no projection: it is what validate_epic_plan.py actually runs against, so an
+  unregenerated copy silently validates a schedule nobody is working to. That happened once, between wave
+  1 and wave 2, which is why this file is generated and checkable.'

@@ -1,7 +1,9 @@
 package dev.skillmanager.cli;
 
 import dev.skillmanager.commands.AdsCommand;
+import dev.skillmanager.commands.ArtifactsCommand;
 import dev.skillmanager.commands.BindCommand;
+import dev.skillmanager.commands.BuildCommand;
 import dev.skillmanager.commands.BindingsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.HarnessCommand;
@@ -25,6 +27,7 @@ import dev.skillmanager.commands.RebindCommand;
 import dev.skillmanager.commands.RegistryCommand;
 import dev.skillmanager.commands.RemoveCommand;
 import dev.skillmanager.commands.ResetPasswordCommand;
+import dev.skillmanager.commands.SandboxCommand;
 import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
 import dev.skillmanager.commands.SyncCommand;
@@ -57,6 +60,8 @@ import picocli.CommandLine.Option;
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
                 ListCommand.class,
+                ArtifactsCommand.class,
+                BuildCommand.class,
                 LockCommand.class,
                 InstallCommand.class,
                 UninstallCommand.class,
@@ -87,6 +92,7 @@ import picocli.CommandLine.Option;
                 HarnessCommand.class,
                 HomeCommand.class,
                 ProjectCommand.class,
+                SandboxCommand.class,
                 UnitCommand.class
         })
 public final class SkillManagerCli implements Runnable {
@@ -147,7 +153,13 @@ public final class SkillManagerCli implements Runnable {
         }
     }
 
-    private static int execute(String[] args) {
+    /**
+     * Package-private rather than private: {@code JsonContractTest} drives
+     * every {@code --json} command through this exact entry point, so the
+     * guard exercises the real execution strategy — the json latch, the
+     * envelope, the exception handler — and not a reconstruction of it.
+     */
+    static int execute(String[] args) {
         dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
         // The mode this invocation displaced, so the finally below can put it
@@ -158,9 +170,21 @@ public final class SkillManagerCli implements Runnable {
         // would itself be a write to the global.
         dev.skillmanager.store.HomeScaffold.Access[] displaced = {null};
         boolean[] declared = {false};
+        // The agent-home overrides this invocation displaced, same shape and
+        // same reason as `displaced` above: scoped to the invocation, not to
+        // the JVM. Null until a --home was actually seen.
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, java.nio.file.Path>[] displacedBinding = new java.util.Map[]{null};
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
+            // Before anything can print: declare whether stdout belongs to a
+            // machine-readable document. Everything under this command --
+            // handlers, the store, HomeLock's contention notice -- routes its
+            // human lines to stderr from here on. #235.
+            Log.setJsonMode(jsonRequested(pr));
+            Log.clearLastError();
+            if (Log.isJsonMode()) JsonExitEnvelope.arm();
             // Armed as early as the parse allows, so the log holds everything
             // from here on. Lazy: no file exists until something is written.
             dev.skillmanager.util.RunLog.open(CliAgentContext.commandPath(pr));
@@ -171,6 +195,35 @@ public final class SkillManagerCli implements Runnable {
             displaced[0] = dev.skillmanager.store.HomeScaffold
                     .declare(CommandHomeAccess.of(pr));
             declared[0] = true;
+            // And before anything can RESOLVE one: if this command named a
+            // home, bind BOTH of that home's axes. Ahead of tryReconcile
+            // deliberately — see bindNamedHome.
+            Integer refused = bindNamedHome(pr, displacedBinding);
+            // THROUGH completeExecution, not around it. HIS-14 returned this
+            // refusal straight out of the strategy, which is the one exit path
+            // in the CLI that skips the --json envelope, the outstanding-error
+            // report, the observability close and the log naming. Under
+            // `--json` it therefore exited 13 with an empty stdout — the exact
+            // shape #235 is about, on a path that did not exist when #235 was
+            // filed. Asserted by JsonContractTest's exit-13 case.
+            if (refused != null) return completeExecution(root, pr, refused);
+            // THE CONFINEMENT, ENFORCED. Computed in one place and consulted in
+            // one place: a process that declared a confinement and whose store
+            // or agent roots resolve outside it is refused BEFORE anything
+            // reads or writes a home -- ahead of tryReconcile, which projects
+            // the ambient home's units into the ambient agent directories and
+            // is therefore itself one of the writes being confined.
+            //
+            // AFTER bindNamedHome deliberately: `--home X` rebinds every axis,
+            // so the state checked here is the state the command will actually
+            // run under rather than the one it was launched with.
+            //
+            // Review of #241, H2: `confined()` and `escapes()` were computed
+            // and never enforced. With every home axis unset under a declared
+            // confinement, `project resolve` exited 0 and scaffolded
+            // $HOME/.skill-manager -- the operator's real home.
+            Integer escaped = refuseIfConfinementEscapes(pr);
+            if (escaped != null) return completeExecution(root, pr, escaped);
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
@@ -182,6 +235,20 @@ public final class SkillManagerCli implements Runnable {
         // {@link #printFailure}; only a failure with nothing to say still
         // prints a trace.
         cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
+        // A PARSE failure never reaches the execution strategy, so the --json
+        // latch above never runs and the envelope is never armed: `bind
+        // no-such-unit --json` exited 2 with an empty stdout. The flag is still
+        // in the raw argv whether or not the parse succeeded, so that is what
+        // this consults. Found by JsonContractTest while driving the commands
+        // whose working directory cannot be sandboxed in-process.
+        CommandLine.IParameterExceptionHandler defaultParams = cmd.getParameterExceptionHandler();
+        cmd.setParameterExceptionHandler((ex, params) -> {
+            int rc = defaultParams.handleParseException(ex, params);
+            if (declaresJson(params)) {
+                JsonExitEnvelope.emit(rc, "usage", String.valueOf(ex.getMessage()));
+            }
+            return rc;
+        });
         try {
             return cmd.execute(args);
         } finally {
@@ -189,12 +256,156 @@ public final class SkillManagerCli implements Runnable {
             // Without this, an embedded caller (the server, a test harness, an
             // out-of-tree library user) that ran one READ_ONLY command left
             // every later SkillStore.init() in the process a silent no-op.
+            JsonExitEnvelope.disarm();
             if (declared[0]) dev.skillmanager.store.HomeScaffold.restore(displaced[0]);
+            if (displacedBinding[0] != null) {
+                dev.skillmanager.agent.AgentHomes.restoreOverrides(displacedBinding[0]);
+            }
+            // Scoped to the invocation, not the JVM -- same reason the access
+            // mode above is restored. An embedded caller that ran one --json
+            // command must not have every later command's output silently
+            // moved to stderr.
+            Log.setJsonMode(false);
         }
     }
 
+    /**
+     * <b>{@code --home <X>} means "this command is about X", on both of a
+     * home's axes.</b>
+     *
+     * <p>It used to mean it on one. {@code SKILL_MANAGER_HOME} says where the
+     * UNITS live and {@code CLAUDE_CONFIG_DIR} / {@code CODEX_HOME} /
+     * {@code GEMINI_HOME} say where the AGENT CONFIGS live; the flag set the
+     * first and left the second resolving against whatever the shell exported.
+     * So the store half went where it was told and the agent half went
+     * somewhere nobody named. Measured (DEF-029, this repository, 2026-08-21):
+     *
+     * <pre>{@code
+     * $ <build> sync probe-unit --merge --home <scratch>/project/.skill-manager
+     *   ✓ units.lock.toml: wrote 1 unit(s) → <scratch>/project/…
+     *   ✓ agents: 1 unit(s) linked into claude, codex, gemini
+     * }</pre>
+     *
+     * <p>…where "claude" was the operator's real {@code ~/.claude}. Three
+     * dangling symlinks and three edited config files later, the scratch unit
+     * was showing up in an unrelated agent session. That is how it was found —
+     * not by a check.
+     *
+     * <h2>Why here, and not in the seven verbs that take the flag</h2>
+     *
+     * <p>Because "N call sites, one rule" is the shape this epic keeps paying
+     * for, and the reason {@code HomeCommand.homeEnvPrefix} was right while
+     * every other remedy was wrong: the correct binding existed in ONE place
+     * and the flag was a second spelling of the same decision. There is now one
+     * applier, reading {@link dev.skillmanager.agent.AgentHomes#binding} — the
+     * same map that prefix renders — so a verb cannot be added to the tree with
+     * a {@code --home} that binds half. {@code sync}, {@code project sync},
+     * {@code home drift}, {@code home shims}, {@code home close-out},
+     * {@code unit publish} and {@code exec} are covered because they declare
+     * the option, not because they were listed.
+     *
+     * <h2>Why ahead of {@code tryReconcile}</h2>
+     *
+     * <p>{@link #tryReconcile()} projects the AMBIENT home's units into the
+     * AMBIENT agent directories, before the parsed command runs. Left after the
+     * binding it is unchanged in meaning — the ambient home IS the named home
+     * now, because {@code SkillStore.defaultStore()} resolves through the same
+     * override — so a {@code --home} invocation reconciles the home it named
+     * and touches no other. Left BEFORE it, a command carrying {@code --home}
+     * would still write into a home the operator never mentioned, which is
+     * most of what the flag is for.
+     *
+     * <h2>The refusal</h2>
+     *
+     * <p>Binding a variable is not the same as confining a write: an agent
+     * directory that symlinks OUT of the home writes wherever the link points.
+     * {@link dev.skillmanager.agent.AgentHomes#unbindable} finds those, and
+     * this refuses with {@link #UNBINDABLE_HOME_EXIT_CODE} naming each variable
+     * and where it actually lands, rather than running with a binding that is
+     * true of the environment and false of the filesystem.
+     *
+     * @param displaced one-element holder for the overrides displaced, so the
+     *                  caller's {@code finally} can put them back
+     * @return an exit code when the invocation must not proceed, else null
+     */
+    private static Integer bindNamedHome(CommandLine.ParseResult pr,
+                                         java.util.Map<String, java.nio.file.Path>[] displaced) {
+        java.nio.file.Path store = null;
+        java.nio.file.Path root = null;
+        for (CommandLine.ParseResult p = pr; p != null; p = p.subcommand()) {
+            try {
+                if (p.hasMatchedOption("--home")) {
+                    java.nio.file.Path v = p.matchedOptionValue("--home", (java.nio.file.Path) null);
+                    if (v != null) store = v;
+                }
+                if (p.hasMatchedOption("--home-root")) {
+                    java.nio.file.Path v =
+                            p.matchedOptionValue("--home-root", (java.nio.file.Path) null);
+                    if (v != null) root = v;
+                }
+            } catch (RuntimeException noSuchOption) {
+                // This level of the parse declares no such option. Not an
+                // error: most commands do not take a home.
+            }
+        }
+        if (store == null && root == null) return null;
+        // --home-root names the directory holding the agent config dirs when
+        // that is not the store's parent (the profile layout). It decides the
+        // AGENT axis and says nothing about where the units live.
+        //
+        // The first version derived a store from it -- <root>/.skill-manager --
+        // and bound that too, so `home describe --home-root <r>` silently moved
+        // the store to a home the operator had not named. A command about a
+        // directory layout is not a command about a different home. Found in
+        // review of #234 (MED-3).
+        java.nio.file.Path agentRoot = root != null
+                ? root
+                : dev.skillmanager.agent.AgentHomes.homeRootFor(store);
+        java.nio.file.Path named = store != null ? store : agentRoot;
+        java.util.Map<String, String> unbindable =
+                dev.skillmanager.agent.AgentHomes.unbindable(named, agentRoot);
+        if (!unbindable.isEmpty()) {
+            Log.error("refusing: this command names the home at %s, but %d of its agent "
+                            + "config director%s cannot be bound to it.",
+                    named, unbindable.size(), unbindable.size() == 1 ? "y" : "ies");
+            unbindable.forEach((var, why) -> Log.error("  %s: %s", var, why));
+            Log.error("  A home has two axes: SKILL_MANAGER_HOME says where the units live and "
+                    + "CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME say where the agent configs "
+                    + "live. Binding a variable that resolves outside the home would name one "
+                    + "home and edit another (#145). Replace the link with a real directory "
+                    + "inside the home, or run the command against the home the link points at.");
+            return UNBINDABLE_HOME_EXIT_CODE;
+        }
+        displaced[0] = store == null
+                // --home-root alone: the agent axis only. See above.
+                ? dev.skillmanager.agent.AgentHomes.bindAgents(agentRoot)
+                : dev.skillmanager.agent.AgentHomes.bind(store, agentRoot);
+        return null;
+    }
+
+    /**
+     * A command named a home whose agent config directories resolve outside
+     * it, so {@code --home} could not be honoured on both axes. Its own status
+     * because "the flag was refused" and "the command failed" are different
+     * things to an operator and to a script — the same reason
+     * {@code LauncherShims.HOME_MISMATCH_EXIT_CODE} is not 1.
+     */
+    public static final int UNBINDABLE_HOME_EXIT_CODE = 13;
+
+    /**
+     * The typed reason for the failure being handled, when there is one.
+     *
+     * <p>Set by {@link #handleExecutionException} from the exception's TYPE, so
+     * a {@code --json} consumer branches on {@code "home_locked"} rather than
+     * on a substring of an English sentence. Null for a command that returned
+     * a non-zero code without throwing — those get {@code "failed"}, which is
+     * honest: the CLI knows the command refused and does not know why.
+     */
+    private static String jsonErrorCode;
+
     static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
             throws Exception {
+        jsonErrorCode = classify(ex);
         AuthenticationRequiredException auth = unwrapCause(ex, AuthenticationRequiredException.class);
         if (auth != null) {
             return completeExecution(rootCommand(pr), pr, printAuthBanner(auth.getMessage()));
@@ -216,6 +427,19 @@ public final class SkillManagerCli implements Runnable {
         GitFetcherException gitErr = unwrapCause(ex, GitFetcherException.class);
         if (gitErr != null) {
             return completeExecution(rootCommand(pr), pr, printGitFetcherBanner(gitErr));
+        }
+        // A confined process asked for a target outside its confinement
+        // (#237). Handled here rather than at each of the six call sites so
+        // that adding a seventh command whose target comes from the working
+        // directory gets the typed exit for free -- the alternative is an
+        // enumeration that is correct for the cases someone imagined, which
+        // this file's own javadoc already calls out as a repeat defect.
+        dev.skillmanager.sandbox.ConfinementEscapeException escape =
+                unwrapCause(ex, dev.skillmanager.sandbox.ConfinementEscapeException.class);
+        if (escape != null) {
+            Log.error("%s", escape.getMessage());
+            return completeExecution(rootCommand(pr), pr,
+                    dev.skillmanager.sandbox.ConfinementEscapeException.EXIT_CODE);
         }
         // Everything else, which is where the REFUSALS live. This used to
         // `throw ex` into picocli's default handler.
@@ -267,6 +491,66 @@ public final class SkillManagerCli implements Runnable {
      *         default, i.e. the same non-zero the trace path produced. This
      *         changes what a refusal PRINTS, never what it returns.
      */
+    /**
+     * Refuse when this process declared a confinement its own axes escape.
+     *
+     * <p>{@code sandbox status} is exempt, and that exemption is the whole
+     * design rather than a carve-out: it is the command whose ANSWER is "you
+     * are not confined". A diagnostic that refuses to run in the state it
+     * exists to diagnose is useless, and an operator who cannot ask the
+     * question has no way to find out which axis is wrong. Help and version
+     * are exempt for the reason {@code CommandHomeAccess} exempts them.
+     *
+     * @return the exit code to return, or null to carry on
+     */
+    private static Integer refuseIfConfinementEscapes(CommandLine.ParseResult pr) {
+        String path = CliAgentContext.commandPath(pr);
+        // Exact paths, not a prefix: `startsWith("sandbox")` would also exempt
+        // a future `sandboxes` or `sandbox-anything`, and an exemption that
+        // grows by accident is how a guard stops guarding.
+        if ("sandbox".equals(path) || "sandbox status".equals(path)) return null;
+        if (CommandHomeAccess.helpOrVersionRequested(pr)) return null;
+        dev.skillmanager.sandbox.Confinement confinement =
+                dev.skillmanager.sandbox.Confinement.current();
+        if (!confinement.declared() || confinement.enforceableEscapes().isEmpty()) return null;
+        dev.skillmanager.sandbox.ConfinementEscapeException refusal =
+                dev.skillmanager.sandbox.ConfinementEscapeException.forAxes(
+                        path == null || path.isBlank() ? "skill-manager" : path, confinement);
+        jsonErrorCode = dev.skillmanager.sandbox.ConfinementEscapeException.ERROR_CODE;
+        Log.error("%s", refusal.getMessage());
+        return dev.skillmanager.sandbox.ConfinementEscapeException.EXIT_CODE;
+    }
+
+    /**
+     * A stable machine-readable reason for an exception, or {@code null}.
+     *
+     * <p>By TYPE, never by message. Extend it when a caller has a reason to
+     * branch on a failure -- an unclassified failure is reported as
+     * {@code "failed"} with the human message, which is correct and merely
+     * less useful.
+     */
+    private static String classify(Exception ex) {
+        if (unwrapCause(ex, dev.skillmanager.store.HomeContendedException.class) != null) {
+            return dev.skillmanager.store.HomeContendedException.ERROR_CODE;
+        }
+        if (unwrapCause(ex, dev.skillmanager.policy.FrozenHomeException.class) != null) {
+            return "home_frozen";
+        }
+        if (unwrapCause(ex, dev.skillmanager.store.NotAHomeException.class) != null) {
+            return "not_a_home";
+        }
+        if (unwrapCause(ex, dev.skillmanager.sandbox.ConfinementEscapeException.class) != null) {
+            return dev.skillmanager.sandbox.ConfinementEscapeException.ERROR_CODE;
+        }
+        if (unwrapCause(ex, AuthenticationRequiredException.class) != null) {
+            return "authentication_required";
+        }
+        if (unwrapCause(ex, RegistryUnavailableException.class) != null) {
+            return "registry_unavailable";
+        }
+        return null;
+    }
+
     static int printFailure(Exception ex, CommandLine c, CommandLine.ParseResult pr) {
         int rc = c == null ? 1 : c.getCommandSpec().exitCodeOnExecutionException();
         String message = describe(ex);
@@ -318,7 +602,40 @@ public final class SkillManagerCli implements Runnable {
     }
 
     private static int completeExecution(SkillManagerCli root, CommandLine.ParseResult pr, int rc) {
-        tryPrintOutstandingErrors();
+        // The --json safety net, before anything else prints: a failing
+        // --json invocation that produced no document gets one. See
+        // JsonExitEnvelope for why this is here and not at sixteen call sites.
+        if (rc != 0 && Log.isJsonMode() && !JsonExitEnvelope.wroteAnything()) {
+            String message = Log.lastError();
+            JsonExitEnvelope.emit(rc, jsonErrorCode == null ? "failed" : jsonErrorCode,
+                    message == null ? "the command failed and said nothing" : message);
+        }
+        jsonErrorCode = null;
+        // DEF-102. HELP IS TEXT, AND TEXT ONLY.
+        //
+        // `skill-manager sync --help` ran the closing report program: it
+        // resolved the AMBIENT home, called `store.init()`, walked every
+        // `installed/<unit>.json` and printed the outstanding-error banner
+        // under the usage text. Measured on a scratch home carrying one
+        // AGENT_SYNC_FAILED record: `--help`, `sync --help`, `install --help`
+        // and `home describe --help` each printed
+        // `! skills with outstanding errors (1)`.
+        //
+        // Three things are wrong with that and only the first is cosmetic.
+        // Someone reading `--help` did not ask about a home, so the banner is
+        // noise on the one output whose whole job is to be quotable. The read
+        // is not free -- it is a full walk of the home, on the command an
+        // agent runs when it does not yet know what the command does. And
+        // `store.init()` in there is a WRITE, held off today only by
+        // CommandHomeAccess.of classifying help as READ: a guard one
+        // classification away from `--help` creating a home nobody named.
+        //
+        // Asked of CommandHomeAccess.helpOrVersionRequested rather than
+        // re-derived here, for the reason that method exists -- the
+        // confinement gate and the scaffold gate already exempt exactly these
+        // invocations, and a third spelling of "was this help?" is the shape
+        // this epic keeps paying for.
+        if (!CommandHomeAccess.helpOrVersionRequested(pr)) tryPrintOutstandingErrors();
         String commandPath = CliAgentContext.commandPath(pr);
         CliObservability.completeCurrent(commandPath, rc);
         if (isAgentContextRequested(root)) {
@@ -352,6 +669,22 @@ public final class SkillManagerCli implements Runnable {
         if (log == null) return;
         if (jsonRequested(pr)) return;
         System.err.println("  log: " + log);
+    }
+
+    /**
+     * Whether {@code --json} is present in the raw argv.
+     *
+     * <p>The parsed-result form below cannot be used on a parse FAILURE —
+     * there is no usable parse result, which is the whole reason that path
+     * emitted nothing. Reading argv is exact here: {@code --json} is a flag on
+     * every command that has it, so its presence as a token is unambiguous,
+     * and a value that merely equals the string cannot occur because no option
+     * in this CLI takes {@code --json} as an argument.
+     */
+    private static boolean declaresJson(String[] argv) {
+        if (argv == null) return false;
+        for (String arg : argv) if ("--json".equals(arg)) return true;
+        return false;
     }
 
     /** Whether {@code --json} was matched anywhere in the parsed command chain. */
@@ -400,8 +733,39 @@ public final class SkillManagerCli implements Runnable {
      */
     private static void tryReconcile() {
         try {
+            // HIS-14, from review of #234 (HIGH-2). TWO GATES THAT WERE NOT
+            // HERE, and the second one is written down correctly ten lines
+            // away in ExecCommand.refreshHome -- two spellings of one
+            // decision, again, in the file that exists to remove one.
+            //
+            // (1) READ-ONLY. This ran before every parsed command, so a
+            //     command CommandHomeAccess classifies READ_ONLY reconciled
+            //     anyway. That gate governs SkillStore.init() and the
+            //     reconcile's writes are not init: UnitStore.migrateFromLegacy
+            //     moves a legacy sources/ tree and DELETES the directory,
+            //     BindingBackfill writes the ledger, and ReconcileUseCase
+            //     rewrites every projection. `home verify --home <X>` and
+            //     `home close-out --home <X>` -- whose own description reads
+            //     "Writes nothing; safe to run repeatedly", and which
+            //     close-change.sh runs as the `wt close` gate -- therefore
+            //     MUTATED the home they were asked to inspect.
+            //
+            // (2) FROZEN. A frozen home is not reconciled by `exec`, on the
+            //     reasoning that reconciliation writes. It is the same
+            //     reconciliation.
+            //
+            // Measured, not assumed: home-integrity is 15/15 with or without
+            // this gate, because no fixture plants a home whose reconcile has
+            // work to do. 15/15 was evidence that nothing asks.
+            //
+            // Before HIS-14 this aimed at the AMBIENT home. HIS-14 aims it at
+            // the home the operator named, which is what makes an ungated
+            // write this ticket's problem rather than an inherited one.
+            if (dev.skillmanager.store.HomeScaffold.declared()
+                    != dev.skillmanager.store.HomeScaffold.Access.WRITES_HOME) return;
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
             if (!store.isHome()) return;
+            if (dev.skillmanager.policy.HomePolicy.load(store).frozen()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw = dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
             dev.skillmanager.lifecycle.SkillReconciler.reconcile(store, gw);

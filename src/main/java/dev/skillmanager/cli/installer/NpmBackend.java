@@ -1,5 +1,9 @@
 package dev.skillmanager.cli.installer;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.lock.Fingerprints;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.pm.PackageManagerRuntime;
@@ -76,5 +80,77 @@ public final class NpmBackend implements InstallerBackend {
         }
         Log.ok("cli: installed npm %s → %s (linked into %s)", pkg, prefix, store.cliBinDir());
         return InstallOutcome.INSTALLED;
+    }
+
+    /**
+     * {@code npm-v1} over the declared spec and, when this home holds the
+     * per-unit prefix, the {@code version} in the installed package's own
+     * {@code package.json}.
+     *
+     * <p>npm specs are the case where the requested version is least often a
+     * pin: {@code npm:typescript@^5.4} and a bare {@code npm:@google/gemini-cli}
+     * both resolve to whatever the registry served on install day, and neither
+     * the spec nor {@code cli-lock.toml}'s {@code version} column records what
+     * that was. So the installed manifest is the only place the resolved
+     * identity exists, and it is read from the prefix this backend installed
+     * into rather than from anything on PATH — a tool the machine already
+     * provided is not this home's artifact and its version is not this home's
+     * input.
+     *
+     * <p>That is also why the prefix is keyed by the requesting unit: npm
+     * installs are per-unit here ({@code npm/<unit>}), so the same package
+     * requested by two units is two artifacts with two prefixes.
+     */
+    @Override
+    public Fingerprint fingerprint(CliDependency dep, SkillStore store, String unitName) {
+        String pkg = dep.packageRef();
+        if (pkg == null || pkg.isBlank()) {
+            return Fingerprint.gap("npm " + dep.name() + " has no package in its spec "
+                    + "(expected npm:<package>), so nothing declares what would be installed");
+        }
+        String resolved = unitName == null ? null : resolvedVersion(store, unitName, pkg);
+        String digest = Fingerprints.scheme("npm-v1")
+                .field("package", pkg)
+                .field("resolved", resolved)
+                .hex();
+        return resolved != null
+                ? Fingerprint.resolved(digest, "declared spec + version " + resolved
+                        + " installed into npm/" + unitName)
+                : Fingerprint.declared(digest, "declared spec only — this home holds no npm/"
+                        + unitName + " prefix for " + packageName(pkg) + ", so the installed "
+                        + "version is not observable here");
+    }
+
+    /** The {@code version} in {@code npm/<unit>/lib/node_modules/<pkg>/package.json}. */
+    private static String resolvedVersion(SkillStore store, String unitName, String packageRef) {
+        Path manifest = store.npmDir().resolve(unitName).resolve("lib").resolve("node_modules")
+                .resolve(packageName(packageRef)).resolve("package.json");
+        if (!Files.isRegularFile(manifest)) return null;
+        try {
+            JsonNode root = new ObjectMapper().readTree(manifest.toFile());
+            JsonNode version = root.get("version");
+            return version == null || !version.isTextual() ? null : version.asText();
+        } catch (IOException unreadable) {
+            return null;
+        }
+    }
+
+    /**
+     * The package name in an npm spec, with any trailing {@code @<version>}
+     * removed and a leading {@code @scope/} kept.
+     *
+     * <p>Local rather than {@code RequestedVersion.fromNpm} on purpose. That
+     * helper's job is to produce the lock KEY, it treats everything after the
+     * last {@code @} as a version whether or not it is one — the project home
+     * carries {@code ["npm"."google"] version = "gemini-cli"} from exactly that
+     * reading — and a fingerprint must not inherit a parse whose failure mode is
+     * to invent a version.
+     */
+    static String packageName(String packageRef) {
+        if (packageRef == null) return "";
+        String spec = packageRef.trim();
+        int at = spec.lastIndexOf('@');
+        if (at <= 0) return spec;
+        return spec.substring(0, at);
     }
 }

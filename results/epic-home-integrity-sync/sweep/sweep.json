@@ -1,0 +1,306 @@
+{
+  "graphs_selected": 26,
+  "graphs_executed": 26,
+  "graphs_passed": 23,
+  "results": [
+    {
+      "graph": "smoke",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172339",
+      "seconds": 282.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/smoke.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "onboard",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172759",
+      "seconds": 62.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/onboard.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "sponsored",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172904",
+      "seconds": 50.3,
+      "log": "results/epic-home-integrity-sync/sweep/logs/sponsored.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "source-tracking",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-172959",
+      "seconds": 117.8,
+      "log": "results/epic-home-integrity-sync/sweep/logs/source-tracking.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "git-latest-source-tracking",
+      "exit_code": 1,
+      "passed": false,
+      "run_id": "20260824-173152",
+      "seconds": 133.2,
+      "log": "results/epic-home-integrity-sync/sweep/logs/git-latest-source-tracking.log",
+      "resumed_from": null,
+      "failing_nodes": [
+        "gls.conflict"
+      ],
+      "skipped_nodes": [
+        "home.fixpoint.law",
+        "home.membership.law",
+        "servers.down"
+      ]
+    },
+    {
+      "graph": "plugin-smoke",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-173427",
+      "seconds": 296.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/plugin-smoke.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "harness-smoke",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-173904",
+      "seconds": 100.9,
+      "log": "results/epic-home-integrity-sync/sweep/logs/harness-smoke.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "doc-smoke",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174129",
+      "seconds": 172.3,
+      "log": "results/epic-home-integrity-sync/sweep/logs/doc-smoke.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "project-manifest",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174325",
+      "seconds": 33.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/project-manifest.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "project-resolve",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174359",
+      "seconds": 37.6,
+      "log": "results/epic-home-integrity-sync/sweep/logs/project-resolve.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "project-smoke",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174439",
+      "seconds": 82.2,
+      "log": "results/epic-home-integrity-sync/sweep/logs/project-smoke.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "spec-conformance",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174617",
+      "seconds": 57.6,
+      "log": "results/epic-home-integrity-sync/sweep/logs/spec-conformance.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "project-child-home",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174702",
+      "seconds": 64.2,
+      "log": "results/epic-home-integrity-sync/sweep/logs/project-child-home.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "home-clone",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174807",
+      "seconds": 106.0,
+      "log": "results/epic-home-integrity-sync/sweep/logs/home-clone.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "home-tripwire",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-174949",
+      "seconds": 59.4,
+      "log": "results/epic-home-integrity-sync/sweep/logs/home-tripwire.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "checkout-home",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-175049",
+      "seconds": 69.7,
+      "log": "results/epic-home-integrity-sync/sweep/logs/checkout-home.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "home-sync",
+      "exit_code": 1,
+      "passed": false,
+      "run_id": "20260824-175221",
+      "seconds": 335.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/home-sync.log",
+      "resumed_from": null,
+      "failing_nodes": [
+        "home.membership.law"
+      ],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "ticket-lifecycle",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-175737",
+      "seconds": 322.3,
+      "log": "results/epic-home-integrity-sync/sweep/logs/ticket-lifecycle.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "project-env",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-180254",
+      "seconds": 35.1,
+      "log": "results/epic-home-integrity-sync/sweep/logs/project-env.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "project-libs",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-180329",
+      "seconds": 32.2,
+      "log": "results/epic-home-integrity-sync/sweep/logs/project-libs.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "project-profiles",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-180401",
+      "seconds": 37.7,
+      "log": "results/epic-home-integrity-sync/sweep/logs/project-profiles.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "artifact-dag",
+      "exit_code": 1,
+      "passed": false,
+      "run_id": "20260824-180442",
+      "seconds": 90.6,
+      "log": "results/epic-home-integrity-sync/sweep/logs/artifact-dag.log",
+      "resumed_from": null,
+      "failing_nodes": [
+        "uninstall.prunes.the.subgraph"
+      ],
+      "skipped_nodes": [
+        "home.fixpoint.law",
+        "home.membership.law"
+      ]
+    },
+    {
+      "graph": "skill-dev-smoke",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-180625",
+      "seconds": 129.4,
+      "log": "results/epic-home-integrity-sync/sweep/logs/skill-dev-smoke.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "onboarding",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-180851",
+      "seconds": 289.5,
+      "log": "results/epic-home-integrity-sync/sweep/logs/onboarding.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "home-integrity",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-181317",
+      "seconds": 135.9,
+      "log": "results/epic-home-integrity-sync/sweep/logs/home-integrity.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    },
+    {
+      "graph": "sync-settles",
+      "exit_code": 0,
+      "passed": true,
+      "run_id": "20260824-181523",
+      "seconds": 32.9,
+      "log": "results/epic-home-integrity-sync/sweep/logs/sync-settles.log",
+      "resumed_from": null,
+      "failing_nodes": [],
+      "skipped_nodes": []
+    }
+  ]
+}

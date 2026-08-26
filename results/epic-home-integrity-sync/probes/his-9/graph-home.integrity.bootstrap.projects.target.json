@@ -1,0 +1,60 @@
+{
+  "nodeId" : "home.integrity.bootstrap.projects.target",
+  "status" : "passed",
+  "startedAt" : "2026-08-21T20:03:48.367798Z",
+  "endedAt" : "2026-08-21T20:03:51.245140Z",
+  "assertions" : [ {
+    "name" : "the_home_carries_its_own_cli_entrypoint",
+    "status" : "passed"
+  }, {
+    "name" : "the_shim_refuses_a_home_it_was_not_told_to_edit",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_both_homes",
+    "status" : "passed"
+  }, {
+    "name" : "the_shim_never_runs_against_an_inherited_home",
+    "status" : "passed"
+  }, {
+    "name" : "naming_a_home_with_the_flag_beats_the_shims_own_binding",
+    "status" : "passed"
+  }, {
+    "name" : "the_flag_does_not_silently_fall_back_to_the_shims_home",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "home-shims",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-226-his-9/skill-manager", "home", "shims" ],
+    "startedAt" : "2026-08-21T20:03:48.372229Z",
+    "endedAt" : "2026-08-21T20:03:49.674904Z",
+    "exitCode" : 0,
+    "pid" : 71084,
+    "log" : "node-logs/home.integrity.bootstrap.projects.target.home-shims.log",
+    "error" : null
+  }, {
+    "label" : "shim-with-inherited-env",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/home/bin/cli/skill-manager", "home", "describe" ],
+    "startedAt" : "2026-08-21T20:03:49.675473Z",
+    "endedAt" : "2026-08-21T20:03:49.882250Z",
+    "exitCode" : 79,
+    "pid" : 71130,
+    "log" : "node-logs/home.integrity.bootstrap.projects.target.shim-with-inherited-env.log",
+    "error" : null
+  }, {
+    "label" : "shim-with-home-flag",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/home/bin/cli/skill-manager", "home", "describe", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/scratch/bootstrap-target" ],
+    "startedAt" : "2026-08-21T20:03:49.884435Z",
+    "endedAt" : "2026-08-21T20:03:51.244334Z",
+    "exitCode" : 2,
+    "pid" : 71162,
+    "log" : "node-logs/home.integrity.bootstrap.projects.target.shim-with-home-flag.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "shimExitOnHomeMismatch" : 79,
+    "durationMs" : 2878
+  },
+  "logs" : [ "Defect 10 is bootstrap-home.sh's `env SKILL_MANAGER_HOME=<target> \"$CLI\" sync` meeting a shim that binds its own home. Since HIS-9 that composition exits 79 with both homes named instead of syncing the wrong one in silence. The last two assertions are the remedy: pass --home instead. The one-line fix is in the git-issue-workflow leaf and cannot land from this repository." ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-21T20:03:47.678565Z","executorEndedAt":"2026-08-21T20:04:06.906525Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.bootstrap.projects.target.stdout.log","inputContextFile":"context/home.integrity.bootstrap.projects.target.input.json","traceId":"2eed0cec8e76d9913d31e32d60e60dc4"}

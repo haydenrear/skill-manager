@@ -1,0 +1,11 @@
+NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager resolves, and no path in it reaches any other Skill Manager home.
+5 shim(s) in /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
+    bin/cli/computeq -> /Users/hayde/.skill-manager
+    bin/cli/helm-deploy -> /Users/hayde/.skill-manager
+    bin/cli/monitoring -> /Users/hayde/.skill-manager
+    … 2 more
+descent: /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/skill-manager/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home
+    /Users/hayde/.skill-manager  — re-derived, so its artifacts are shared by right
+✓ every reference in /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 5 sanctioned parent-store shim(s) above (source-reference check not run — see NOT CHECKED above)
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260823-203305-90a1.log
+verify-exit=0

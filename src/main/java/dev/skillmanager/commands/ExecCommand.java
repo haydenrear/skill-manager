@@ -156,7 +156,20 @@ public final class ExecCommand implements Callable<Integer> {
         if (drift != null && !ackDrift) {
             Log.error("refusing to launch: %s changed and the change has not been read.",
                     store.root());
-            for (String line : drift.report().render()) Log.error("  %s", line);
+            // The refusal repeats every time a launch is attempted, which is the
+            // loop #213 is about: exec refuses, the operator reads, exec refuses
+            // again. The first refusal carries the report; the rest carry the
+            // count and the remedy. The REFUSAL itself is unchanged -- this
+            // ticket changes how often the gate is printed in full, never when
+            // it is retired.
+            HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
+            if (drift.firstSurfacing()) {
+                for (String line : drift.report().render()) Log.error("  %s", line);
+            } else {
+                Log.error("  %s", drift.stillUnreadLine(
+                        spelling.binary(), spelling.homeArg()));
+            }
+            DriftGate.markSurfaced(store);
             // Bare `home drift` is the spelling that shows the pending change.
             // This line said `--show` for as long as the gate has existed, and
             // that option has never existed: it answered `Unknown option:
@@ -170,9 +183,13 @@ public final class ExecCommand implements Callable<Integer> {
             // top-level usage and exit 0 (#61): the operator sees success, the
             // gate refuses again, and nothing in the transcript says the remedy
             // was a no-op. Resolved against this home, same as close-out. #142.
-            String cli = HomeDescriptor.cliInvocation(store.root());
-            Log.error("  Read it with `%s home drift`, then clear the gate with", cli);
-            Log.error("  `%s home drift --ack` (or launch with --ack-drift).", cli);
+            String cli = spelling.binary();
+            String homeArg = spelling.homeArg();
+            Log.error("  Read it with `%s home drift %s`, then clear the gate with",
+                    cli, homeArg);
+            Log.error("  `%s home drift --ack %s` (or launch with --ack-drift).",
+                    cli, homeArg);
+            if (spelling.caveat() != null) Log.error("  note: %s", spelling.caveat());
             return DriftGate.EXIT_CODE;
         }
         if (drift != null) {
@@ -229,6 +246,12 @@ public final class ExecCommand implements Callable<Integer> {
             return;
         }
         Map<String, String> env = launch.env();
+        // Restored, not cleared. `exec --home <x>` now arrives here with the
+        // named home's binding already installed by the CLI (see
+        // SkillManagerCli.bindNamedHome), and clearing would delete it for
+        // everything that runs after this refresh — including, in an embedding
+        // process, the sandbox its harness installed. HIS-14.
+        Map<String, Path> displaced = AgentHomes.snapshotOverrides();
         try {
             applyOverride(env, AgentHomes.CLAUDE_CONFIG_DIR);
             applyOverride(env, AgentHomes.CLAUDE_HOME);
@@ -242,7 +265,7 @@ public final class ExecCommand implements Callable<Integer> {
             // dangerous cases (wrong home, frozen home) are handled above.
             Log.warn("could not refresh the agent symlinks for %s (%s)", store.root(), e.getMessage());
         } finally {
-            AgentHomes.clearOverrides();
+            AgentHomes.restoreOverrides(displaced);
         }
     }
 

@@ -116,6 +116,21 @@ public sealed interface ContextFact {
             implements ContextFact {}
     record ProjectSyncFailed(String projectName, String message) implements ContextFact {}
 
+    /**
+     * A claiming project was NOT refreshed after a parent-home unit sync,
+     * because that project's own declared vendored paths are not durable.
+     * Distinct from {@link ProjectSyncFailed} on purpose (DEF-103): the unit
+     * whose bytes moved is fine, no {@code PROJECT_SYNC_FAILED} is stamped on
+     * it, and the sync's exit code does not move — but the project is named,
+     * with the remedy, so the shortfall is stated rather than swallowed.
+     *
+     * @param projectName the project whose realization was skipped
+     * @param findings    how many declared paths are fatally non-durable
+     * @param message     the full advisory, including the repair command
+     */
+    record ProjectSyncSkippedNonDurable(String projectName, int findings, String message)
+            implements ContextFact {}
+
     // ---- Sync git ----
     record SyncGitUpToDate(String skillName, String label) implements ContextFact {}
     record SyncGitMerged(String skillName, String fetchedHash) implements ContextFact {}

@@ -1,0 +1,11 @@
+# The #228 review's own forgery repro, re-run against the re-derivation fix.
+# A record naming a source that does not exist now grants nothing, and the
+# report tells a CLAIM from a FACT.
+
+NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in <scratch>/forge/proj/.skill-manager resolves, and no path in it reaches any other Skill Manager home.
+descent: <scratch>/forge/proj/.skill-manager records that it was cloned from /nowhere; 0 of 1 recorded parent store(s) still re-derive as ancestors of this home
+    <scratch>/forge/parent  — NOT re-derivable: no live claim links this home to it, so its shims here are foreign again
+✗ 1 path(s) in <scratch>/forge/proj/.skill-manager resolve into another Skill Manager home
+✗   FOREIGN_HOME bin/cli/tool (<scratch>/forge/parent/bin/cli/tool resolves into the home at <scratch>/forge/parent)
+✗   complete it with: env SKILL_MANAGER_HOME=<scratch>/forge/proj/.skill-manager CLAUDE_CONFIG_DIR=<scratch>/forge/proj/.claude CODEX_HOME=<scratch>/forge/proj/.codex GEMINI_HOME=<scratch>/forge/proj/.gemini /Users/hayde/.skill-manager/bin/cli/skill-manager sync --force-scripts, then re-run this check
+! Telemetry export unavailable; continuing without telemetry.

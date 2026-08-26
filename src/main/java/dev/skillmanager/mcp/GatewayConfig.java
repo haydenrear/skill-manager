@@ -52,7 +52,24 @@ import java.util.Properties;
 public final class GatewayConfig {
 
     public static final String DEFAULT_URL = "http://127.0.0.1:51717";
-    private static final String FILE = "gateway.properties";
+
+    /**
+     * The file a home records its gateway decision in.
+     *
+     * <p>Public since HIS-21: {@code home describe} has to say whether the URL
+     * and the ownership it prints were DECLARED here or defaulted, and a second
+     * spelling of this filename at that call site is the shape this epic keeps
+     * filing findings about.
+     */
+    public static final String FILE = "gateway.properties";
+
+    /**
+     * The env var that overrides the URL, and always as ATTACHED. Named for
+     * the same reason {@link #FILE} is: {@code home describe} must not report
+     * "no gateway.properties here, so this is the default endpoint" about a URL
+     * that came from the environment.
+     */
+    public static final String URL_ENV = "SKILL_MANAGER_GATEWAY_URL";
     private static final String KEY = "gateway.url";
     private static final String OWNED_KEY = "gateway.owned";
 
@@ -85,7 +102,7 @@ public final class GatewayConfig {
     }
 
     public static GatewayConfig resolve(SkillStore store, String override) throws IOException {
-        String env = System.getenv("SKILL_MANAGER_GATEWAY_URL");
+        String env = System.getenv(URL_ENV);
         if (env != null && !env.isBlank()) {
             return new GatewayConfig(URI.create(env.trim()), false);
         }

@@ -1,0 +1,6 @@
+# sync-settles — the node GREEN with the fix
+
+runId 20260821-184449. `BUILD SUCCESSFUL in 1m 14s`, node `status: passed`, 20722 ms.
+
+Same node, same fixture, same machine as the red run; the five production files
+and `DereferencedStoreLinks.java` are the only difference.

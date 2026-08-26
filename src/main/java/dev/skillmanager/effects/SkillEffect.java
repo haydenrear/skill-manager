@@ -62,6 +62,8 @@ public sealed interface SkillEffect permits
         SkillEffect.SyncGit,
         SkillEffect.RemoveUnitFromStore,
         SkillEffect.PruneCliIfOrphan,
+        SkillEffect.RecordArtifactLedger,
+        SkillEffect.PruneOrphanArtifacts,
         SkillEffect.UnlinkAgentUnit,
         SkillEffect.UnlinkAgentMcpEntry,
         SkillEffect.ScaffoldSkill,
@@ -83,7 +85,9 @@ public sealed interface SkillEffect permits
         SkillEffect.MaterializeProjection,
         SkillEffect.UnmaterializeProjection,
         SkillEffect.SyncDocRepo,
-        SkillEffect.SyncHarness {
+        SkillEffect.SyncHarness,
+        SkillEffect.CheckBuildPolicyGate,
+        SkillEffect.RebuildCliArtifact {
 
     // ------------------------------------------------------------------
     // Per-outcome continuations. Effect declares what the program should
@@ -633,6 +637,78 @@ public sealed interface SkillEffect permits
     /** One per MCP dep: register the server with the gateway. */
     record RegisterMcpServer(String unitName, McpDependency dep, GatewayConfig gateway) implements SkillEffect {}
 
+    // ------------------------------------------------------------ ARTI-06 build
+
+    /**
+     * {@code build}'s policy gate: the same {@code policy.install} decision
+     * {@link CheckInstallPolicyGate} makes, taken from the selected dependencies
+     * instead of from a resolved graph and an install plan.
+     *
+     * <h2>Why this is not {@link CheckInstallPolicyGate}</h2>
+     *
+     * <p>That gate reads {@code ctx.resolvedGraph()} and {@code ctx.plan()} and
+     * returns {@code skipped} when either is absent — which is every {@code
+     * build} run, because {@code build} resolves no sources and plans no
+     * installs. Reusing it would have produced a gate that silently passed:
+     * exactly the "probe that did not finish, recorded as a clean verdict"
+     * failure this epic keeps finding. The DECISION is not duplicated — both
+     * handlers call {@link dev.skillmanager.policy.PolicyGate#violations} with
+     * the same {@code ! CLI} categorization line and the same
+     * {@code policy.install} flags, so there is one policy and two ways of
+     * arriving at its input.
+     *
+     * <p>A {@code skill-script} rebuild runs unbounded shell shipped by a unit
+     * ({@code PlanAction.RunCliInstall.severity()} is {@code DANGER} for that
+     * backend, always). {@code build} is a narrower verb than {@code sync}; it
+     * is not a quieter one.
+     *
+     * @param deps the dependencies the run would install, already narrowed to
+     *        the artifacts being rebuilt — so the gate describes THIS run and
+     *        not every dep the units happen to declare
+     * @param yes  as on {@code install}: not a bypass. It turns the prompt into
+     *        a refusal with exit 5 naming the {@code policy.install} flag.
+     */
+    record CheckBuildPolicyGate(List<CliDependency> deps, boolean yes) implements SkillEffect {
+        public CheckBuildPolicyGate {
+            deps = deps == null ? List.of() : List.copyOf(deps);
+        }
+    }
+
+    /**
+     * Rebuild ONE derived CLI artifact in place — {@code build}'s only writer.
+     *
+     * <h2>Why this is not {@link RunCliInstall}, which does the same work</h2>
+     *
+     * <p>Because of what happens when a LATER effect fails.
+     * {@code RunCliInstall} pairs with {@link
+     * dev.skillmanager.effects.Compensation.UninstallCliIfOrphan}, and
+     * {@code CliDependencyCleaner.pruneIfOrphan} excludes the rolled-back unit
+     * from the claimant set — so for a dep that only its own unit declares
+     * (every {@code skill-script} in a real home), rolling back removes the lock
+     * row AND deletes the shim and its tree. That is right for {@code install}:
+     * the unit should not be left half-installed. It is wrong for a repair: a
+     * {@code build} that repaired four shims and failed on the fifth would
+     * UNINSTALL the four it had just fixed, leaving the home strictly worse than
+     * before the remedy was run.
+     *
+     * <p>So this effect deliberately yields NO compensation, and the reason is
+     * not "rollback was inconvenient": there is no prior state to restore. The
+     * artifact is derived, the declaration that it should exist is untouched by
+     * this effect, and re-deriving it again is the only repair. The exhaustive
+     * switches in {@code Executor} are what forced this to be decided rather
+     * than inherited.
+     *
+     * @param artifactId the id this rebuild is FOR, carried so the receipt can
+     *        be joined back to the artifact without re-deriving the lock key
+     * @param force      the artifact-granularity {@code --force-scripts}
+     */
+    record RebuildCliArtifact(String artifactId, String unitName, CliDependency dep, boolean force)
+            implements SkillEffect {
+        // One failed rebuild must not stop the others: the whole point of the
+        // verb is repairing what it can and naming what it could not.
+        @Override public Continuation continuationOnFail() { return Continuation.CONTINUE; }
+    }
+
     // ----------------------------------------------------- store / agent removal
 
     /**
@@ -648,6 +724,32 @@ public sealed interface SkillEffect permits
      * identity, prune skill-manager-owned CLI artifacts too.
      */
     record PruneCliIfOrphan(String unitName, CliDependency dep) implements SkillEffect {}
+
+    /**
+     * Write {@code artifacts.lock.toml} from what the home holds RIGHT NOW.
+     *
+     * <p>Emitted before a removal, and the ordering is the whole point: a
+     * prune deletes only what the ledger recorded, and after the unit is gone
+     * there is nothing left to derive a record from. The tree
+     * {@code cache/skill-script-<unit>-<tool>/} is credited to its unit by
+     * containment from the shim that runs out of it, and the shim is one of
+     * the things the removal deletes — so the moment to write it down is
+     * while it is still knowable, which is here.
+     */
+    record RecordArtifactLedger() implements SkillEffect {}
+
+    /**
+     * Reverse-walk the artifact edges for {@code unitName} and remove what it
+     * alone owned.
+     *
+     * <p>The half {@link PruneCliIfOrphan} does not reach: it removes a lock
+     * claim and the DECLARED BINARY, and the tree the install actually wrote
+     * outlives it — there is no {@code skill-script} branch in
+     * {@code CliDependencyCleaner.removeArtifacts} at all. Every rule about
+     * what may be deleted, and the one about {@code .git} that must not bend,
+     * lives in {@link dev.skillmanager.artifacts.ArtifactPrune}.
+     */
+    record PruneOrphanArtifacts(String unitName) implements SkillEffect {}
 
     /**
      * Remove an agent's symlink (or copied dir) of {@code unitName}.

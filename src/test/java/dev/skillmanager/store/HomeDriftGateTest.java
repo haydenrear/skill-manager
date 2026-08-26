@@ -1,6 +1,7 @@
 package dev.skillmanager.store;
 
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.artifacts.ArtifactLedger;
 import dev.skillmanager.commands.ExecCommand;
 import dev.skillmanager.commands.HomeCommand;
 import dev.skillmanager.model.UnitKind;
@@ -111,6 +112,139 @@ public final class HomeDriftGateTest {
                     "and the untouched unit is not named at all");
         });
 
+        suite.test("the rollup is one line per unit, and the paths are still reachable", () -> {
+            // Issue #212, measured on the operator's root home: one pending
+            // record, 7 units, 87,054 bytes. The old rendering emitted one line
+            // per changed FILE -- 889 lines, ~87,200 characters, roughly 21,800
+            // tokens -- and re-emitted the whole block on every project sync,
+            // every exec launch gate and every home drift. One unit,
+            // spec-double-compiler, was 776 of the 889 on its own.
+            //
+            // The fixture below is that shape in miniature: one unit with many
+            // changed paths, one with few. The assertion is on the RATIO and the
+            // per-unit bound, not on an absolute character count, because the
+            // fixture is not the operator's home and a number copied from one to
+            // the other would be a measurement of nothing.
+            List<String> many = new ArrayList<>();
+            for (int i = 0; i < 200; i++) many.add("src/generated/file-" + i + ".txt");
+
+            DriftReport report = new DriftReport("aaa", "bbb", List.of(
+                    new DriftReport.UnitDrift("noisy-unit", "SKILL",
+                            DriftReport.Change.MODIFIED, "0123456789abcdef",
+                            many, List.of(), List.of("SKILL.md")),
+                    new DriftReport.UnitDrift("quiet-unit", "SKILL",
+                            DriftReport.Change.MODIFIED, "fedcba9876543210",
+                            List.of(), List.of(), List.of("notes.md"))));
+
+            List<String> rolled = report.render();
+            List<String> detailed = report.renderDetailed();
+
+            // CLAUSE 1: one line per unit, plus one total.
+            assertEquals(3, rolled.size(),
+                    "the rollup is one line per changed unit plus a total line");
+            assertTrue(rolled.get(0).contains("skill:noisy-unit"), "names the unit");
+            assertTrue(rolled.get(0).contains("01234567"),
+                    "carries the unit's short digest -- the thing asked for in place of the paths");
+            assertTrue(rolled.get(0).contains("201 files"),
+                    "states how many paths moved without listing them");
+            assertTrue(rolled.get(2).contains("2 units, 202 files changed"), "totals both units");
+
+            // No path escapes into the rollup. This is the actual regression:
+            // one stray `for (String rel : ...)` anywhere and the firehose is
+            // back, and the line count above would still pass if the paths were
+            // appended to the unit lines rather than emitted as their own.
+            for (String line : rolled) {
+                assertFalse(line.contains("src/generated/file-"),
+                        "no changed path appears in the rollup: " + line);
+            }
+
+            int rolledChars = String.join("\n", rolled).length();
+            int detailedChars = String.join("\n", detailed).length();
+            assertTrue(rolledChars * 20 < detailedChars,
+                    "the rollup is at least 20x smaller than the per-file list ("
+                            + rolledChars + " vs " + detailedChars + " chars)");
+
+            // CLAUSE 2: collapsing is a default, not a deletion. An operator who
+            // wants the paths gets exactly the paths they got before.
+            // 2 unit headers + 202 paths.
+            assertEquals(204, detailed.size(),
+                    "renderDetailed still emits a header per unit and a line per path");
+            assertTrue(detailed.contains("    + src/generated/file-0.txt"),
+                    "an added path is still listed verbatim");
+            assertTrue(detailed.contains("    ~ SKILL.md"),
+                    "a modified path is still listed verbatim");
+            assertTrue(detailed.get(0).startsWith("modified  skill:noisy-unit"),
+                    "the detailed header is unchanged");
+        });
+
+        suite.test("the committed baseline fixture renders inside GOAL-sync-quiet's bound", () -> {
+            // THE GOAL'S OWN MEASUREMENT, run against the real record rather
+            // than a fixture that resembles it. results/epic-home-integrity-sync/
+            // baseline/root-home-drift.json is a verbatim copy of the operator's
+            // ~/.skill-manager/home.drift.json as it stood at the epic base
+            // commit, before any ticket landed: 7 units, 87,054 bytes, and 889
+            // per-file lines out of the old rendering.
+            //
+            // Asserted here so the number cannot quietly regress between now and
+            // the terminal evaluation ticket. Skipped rather than failed when the
+            // file is absent, because a unit suite that depends on a results
+            // directory being present is a suite that breaks in a worktree.
+            Path fixture = Path.of("results/epic-home-integrity-sync/baseline/root-home-drift.json");
+            if (!Files.isRegularFile(fixture)) return;
+
+            com.fasterxml.jackson.databind.JsonNode root =
+                    new com.fasterxml.jackson.databind.ObjectMapper()
+                            .readTree(Files.readString(fixture));
+            DriftReport report = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .treeToValue(root.get("report"), DriftReport.class);
+
+            assertEquals(7, report.units().size(), "the baseline record holds 7 units");
+
+            List<String> rolled = report.render();
+            List<String> detailed = report.renderDetailed();
+            int rolledChars = String.join("\n", rolled).length();
+            int detailedChars = String.join("\n", detailed).length();
+
+            // TARGET CLAUSE 1: at most one line per changed unit plus one total
+            // -- at most 10 lines over this fixture -- and at least a 99%
+            // character reduction.
+            assertTrue(rolled.size() <= 10,
+                    "the 7-unit baseline renders in at most 10 lines, got " + rolled.size());
+            assertTrue(rolledChars * 100 < detailedChars,
+                    "at least a 99% character reduction: " + rolledChars + " vs "
+                            + detailedChars + " chars");
+
+            // And the paths are still all there, on demand.
+            assertTrue(detailed.size() > 800,
+                    "the per-file rendering still lists every path, got " + detailed.size());
+        });
+
+        suite.test("a record predating the digest field is not reported as a deleted unit", () -> {
+            // The committed baseline fixture is exactly this shape: written by
+            // the old code, so every unit's digest is null. Reading that as
+            // "gone" would tell an operator seven units had been deleted.
+            DriftReport report = new DriftReport("aaa", "bbb", List.of(
+                    new DriftReport.UnitDrift("legacy-record-unit", "SKILL",
+                            DriftReport.Change.MODIFIED, null,
+                            List.of(), List.of(), List.of("SKILL.md"))));
+            String line = report.render().get(0);
+            assertTrue(line.contains("no-digest"),
+                    "an absent digest on a MODIFIED unit says so plainly: " + line);
+            assertFalse(line.contains("gone"),
+                    "and is not confused with a removed unit: " + line);
+        });
+
+        suite.test("a REMOVED unit has no after-digest, and says so rather than printing null", () -> {
+            DriftReport report = new DriftReport("aaa", "bbb", List.of(
+                    new DriftReport.UnitDrift("gone-unit", "SKILL",
+                            DriftReport.Change.REMOVED, null,
+                            List.of(), List.of("SKILL.md"), List.of())));
+            List<String> rolled = report.render();
+            assertTrue(rolled.get(0).contains("gone"),
+                    "a removed unit reads as gone, not as a null digest: " + rolled.get(0));
+            assertFalse(rolled.get(0).contains("null"), "never the word null");
+        });
+
         suite.test("a home nobody touched produces no drift and no gate", () -> {
             Home home = Home.create("drift-quiet-");
             home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
@@ -174,7 +308,126 @@ public final class HomeDriftGateTest {
             assertEquals(DriftGate.EXIT_CODE, result.rc, "refused with the drift code");
             assertContains(result.err, "has not been read", "the refusal says why");
             assertContains(result.err, "skill:alpha", "and names the unit that moved");
-            assertContains(result.err, "SKILL.md", "and the file");
+            // NOT the file. #212: the refusal used to print one line per changed
+            // path, and re-print the whole block on every launch attempt. A
+            // launch gate is one decision -- which units moved, are they ones I
+            // was following -- and the paths were crowding out the answer.
+            // `home drift --detail` still has them.
+            assertFalse(result.err.contains("    ~ SKILL.md"),
+                    "the refusal does not list changed paths any more");
+            assertContains(result.err, "1 file", "it says how many paths moved");
+        });
+
+        suite.test("the second surfacing of one gate is a line, and a new change re-opens it", () -> {
+            // HIS-3 / #213. The loop: exec refuses, the operator reads, exec
+            // refuses again, and the whole report is re-printed every time. The
+            // count is PERSISTED rather than decided at the call site because
+            // that sequence is three separate JVMs -- nothing in memory can
+            // answer "has anybody seen this yet".
+            Home home = Home.create("drift-surfacing-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha"),
+                    "references/one.md", "one\n"));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "references/one.md"), "one, revised\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            DriftGate fresh = DriftGate.pending(home.store).orElseThrow();
+            assertTrue(fresh.firstSurfacing(), "a gate nobody has seen is a first surfacing");
+
+            Result first = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
+                    .execute());
+            assertEquals(DriftGate.EXIT_CODE, first.rc, "still gates");
+            assertContains(first.err + first.out, "skill:alpha",
+                    "the first surfacing carries the report");
+
+            Result second = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
+                    .execute());
+            assertEquals(DriftGate.EXIT_CODE, second.rc,
+                    "a collapsed surfacing still gates -- this ticket changes how often the "
+                            + "report is PRINTED, never when the gate is RETIRED");
+            String secondOut = second.err + second.out;
+            assertContains(secondOut, "still unread", "the second surfacing is the reminder");
+            assertContains(secondOut, "--ack", "which still names the remedy");
+            assertFalse(secondOut.contains("skill:alpha"),
+                    "and does not re-print the report: " + secondOut);
+
+            // FAILURE MODE 1, the one that would break the safety: a gate that
+            // stays collapsed across a change the agent has never seen.
+            HomeDigest mid = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\nmore\n");
+            DriftGate.recordSince(home.store, mid, "project sync");
+
+            assertTrue(DriftGate.pending(home.store).orElseThrow().firstSurfacing(),
+                    "a genuinely new change resets the count");
+            Result reopened = captureBoth(() ->
+                    new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            assertContains(reopened.err + reopened.out, "skill:alpha",
+                    "and re-opens the full report");
+        });
+
+        suite.test("--detail always answers in full, however often the gate has been shown", () -> {
+            Home home = Home.create("drift-detail-always-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha"),
+                    "references/one.md", "one\n"));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "references/one.md"), "one, revised\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+
+            // Collapsed by now. `--detail` is an explicit ask; the collapse is
+            // about what an agent gets when it did NOT ask.
+            Result detailed = captureBoth(() ->
+                    new CommandLine(new HomeCommand.DriftCmd(home.store)).execute("--detail"));
+            assertContains(detailed.err + detailed.out, "references/one.md",
+                    "--detail still names every changed path");
+        });
+
+        suite.test("an ack does not leave a count behind for the next gate to inherit", () -> {
+            // If surfacedCount survived an ack into a later re-pend, the FIRST
+            // sight of a change the agent had never seen would be a one-line
+            // reminder. That is failure mode 1 arriving by a different route.
+            Home home = Home.create("drift-ack-resets-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\none\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            DriftGate.acknowledge(home.store);
+            assertTrue(DriftGate.pending(home.store).isEmpty(), "the ack retired the gate");
+
+            HomeDigest mid = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\ntwo\n");
+            DriftGate.recordSince(home.store, mid, "project sync");
+
+            assertTrue(DriftGate.pending(home.store).orElseThrow().firstSurfacing(),
+                    "the gate after an ack starts unseen");
+        });
+
+        suite.test("a record written before surfacedCount existed degrades to full-once", () -> {
+            // The compat rule, asserted rather than assumed: a v1 record has no
+            // field, Jackson yields 0, 0 means "not yet surfaced", and the home
+            // behaves exactly as it did before the field existed.
+            Home home = Home.create("drift-v1-record-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\nedit\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            Path record = DriftGate.file(home.store);
+            String v1 = Files.readString(record)
+                    .replaceAll("\\s*\"surfacedCount\"\\s*:\\s*\\d+,?", "")
+                    .replaceAll("\"schemaVersion\"\\s*:\\s*2", "\"schemaVersion\" : 1");
+            Files.writeString(record, v1);
+            assertFalse(Files.readString(record).contains("surfacedCount"),
+                    "the fixture really is a pre-HIS-3 record");
+
+            DriftGate reread = DriftGate.pending(home.store).orElseThrow();
+            assertTrue(reread.firstSurfacing(),
+                    "an old record reads as not yet surfaced, which is today's behaviour");
         });
 
         suite.test("acknowledging clears the gate and the launch proceeds", () -> {
@@ -287,8 +540,24 @@ public final class HomeDriftGateTest {
                             + " as REMOVED from a copy that still had it");
 
             Home copy = source.cloneTo("drift-clone-schema-dst-");
-            assertTrue(Files.exists(copy.unitFile("alpha", ".venv/pyvenv.cfg")),
-                    "and the copy has it too, so nothing was actually lost");
+            // ARTI-07 changed the second half of this case and not the first.
+            // The copy no longer CARRIES the virtualenv — it declares it, and
+            // `uv` rebuilds it from the lockfile beside it on first use — and
+            // the property this case exists for is untouched, because the
+            // digest never counted a virtualenv on either side:
+            // ChildHomeMaterializer.walkPlain drops every Rederivable.isDerived
+            // path. Deferring one therefore moves nothing the gate can see,
+            // which is what the assertions below measure.
+            assertFalse(Files.exists(copy.unitFile("alpha", ".venv/pyvenv.cfg")),
+                    "the copy declares the virtualenv rather than carrying it");
+            // The ROW, not the file. `declareArtifacts` writes
+            // artifacts.lock.toml on every clone whether or not it deferred
+            // anything, so asserting the file exists is a claim about the
+            // cloner's unconditional behaviour and says nothing about this
+            // virtualenv — the assertion has to name the tree it dropped.
+            assertTrue(ArtifactLedger.load(copy.store).rows().stream()
+                            .anyMatch(row -> row.outputs().contains("skills/alpha/.venv")),
+                    "and records THAT TREE, so nothing was dropped silently");
             new CommandLine(new HomeCommand.DriftCmd(copy.store)).execute("--record");
 
             DriftGate pending = DriftGate.pending(copy.store).orElse(null);
@@ -413,7 +682,19 @@ public final class HomeDriftGateTest {
             Result shown = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
                     .execute());
             assertEquals(DriftGate.EXIT_CODE, shown.rc, "unread drift is a non-zero exit");
-            assertContains(shown.err + shown.out, "references/one.md", "the changed file is named");
+            assertContains(shown.err + shown.out, "skill:alpha", "the changed unit is named");
+            assertFalse((shown.err + shown.out).contains("references/one.md"),
+                    "but not every changed path -- that is the #212 firehose");
+
+            // CLAUSE 2 of GOAL-sync-quiet, through the CLI rather than the
+            // record: collapsing is a default, not a deletion. The paths an
+            // operator used to get by default are still one flag away, and
+            // this is the assertion that keeps them reachable.
+            Result detailed = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
+                    .execute("--detail"));
+            assertEquals(DriftGate.EXIT_CODE, detailed.rc, "--detail still reports the gate");
+            assertContains(detailed.err + detailed.out, "references/one.md",
+                    "and --detail names the changed file");
 
             Result clean = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
                     .execute("--ack"));

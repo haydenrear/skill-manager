@@ -1,0 +1,15 @@
+reconcile: backfilled 6 default-agent binding(s)
+M	/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-E/project/.skill-manager/skills/consumer/.git/index
+A	/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-E/home/skills/consumer/test_graph/build-logic
+D	/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-E/project/.skill-manager/skills/consumer/test_graph/build-logic/build.gradle.kts
+D	/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-E/project/.skill-manager/skills/consumer/test_graph/build-logic/child-only.txt
+
+To inspect the full diff, run:
+
+    git diff --no-index /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-E/project/.skill-manager/skills/consumer /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-E/home/skills/consumer
+
+✓ resolve: 0 unit(s)
+! Telemetry export unavailable; continuing without telemetry.
+✓ units.lock.toml: wrote 2 unit(s) → /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-E/project/.skill-manager/units.lock.toml
+✓ agents: 2 unit(s) linked into claude, codex, gemini
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260821-160341-b356.log

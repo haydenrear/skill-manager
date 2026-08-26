@@ -1,0 +1,18 @@
+a527221 Merge pull request #241 from haydenrear/feature/237-his-16
+464b84b docs(his-16): the final numbers, on the tip that carries the H4 assertion
+f4edcdb test(sandbox): the arming is asserted on the default path, not just described
+be50203 fix(epic): the validator refused wave 7, and it was right
+b71a253 fix(sandbox): the guard is enforced, armed, spelling-correct — and its reader stops writing
+704a335 fix(epic): GOAL-sync-quiet has TWO numbers, and the conflict keys were wrong again
+1d7b21e docs(his-16): the graph table names its runIds and the build each was on
+e1f6730 docs(his-16): close-out, the vacuity record, containment, and DEF-048..052
+f12cdfd fix(test-graph): the membership law reports three claims, not one boolean
+6de397b fix(epic): the baseline's 776 lines are not what it said they were
+aadc105 test(test-graph): the membership self-test plants DEF-047's exact residue
+a7155d6 fix(test-graph): an empty units.lock.toml abstains from the membership law
+ff2a0d9 feat(test-graph): a membership law beside the fixpoint law, and the escape it would have caught
+4ec0d69 feat(sandbox): a confinement a process can declare, and project verbs that refuse to escape it
+28378e7 docs(epic): the vacuity ledger — ten instances, three mechanisms, and the work list
+ca2f04b feat(epic): HIS-18 (#239) — the undelivered digest slice now has an owner
+d6a99a1 feat(epic): HIS-16 (#237) and HIS-17 (#238); schedule revision 7
+640080c chore(epic): wave-5 close-out gates, and DEF-047 — DEF-046 was bigger than reported

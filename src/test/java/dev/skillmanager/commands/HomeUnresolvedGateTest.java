@@ -52,7 +52,11 @@ public final class HomeUnresolvedGateTest {
                     assertContains(r.err, "do not resolve", "the state is named");
                     assertContains(r.err, "bin/cli/computeq -> " + fx.home + "/cache",
                             "and the exact reference is named");
-                    assertContains(r.err, "sync --force-scripts",
+                    // ARTI-06: the command that completes it is the PER-ARTIFACT
+                    // repair now. The paragraph above is the whole argument for
+                    // it — the diagnosis was always per instance and the remedy
+                    // was always the whole home.
+                    assertContains(r.err, "build --stale",
                             "with the command that completes it");
                 })
 

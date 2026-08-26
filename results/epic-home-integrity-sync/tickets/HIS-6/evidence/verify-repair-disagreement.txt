@@ -1,0 +1,65 @@
+# DEF-115 — the two-arm control, run against the epic tip
+# build: skill-manager 0.24.0+g17648705e67b
+# homes: two throwaway homes A and B under the HIS-6 worktree scratch, no
+#        descent record between them, so nothing is sanctioned.
+
+######## ARM A+B TOGETHER — A holds BOTH a wrapper and a symlink into B
+$ skill-manager home verify --home <A>
+✗ 2 path(s) in <A> resolve into another Skill Manager home
+✗   FOREIGN_HOME bin/cli/linktool (<B>/bin/cli/realtool resolves into the home at <B>)
+✗   FOREIGN_PATH_IN_SHIM bin/cli/wrappertool (runs <B>/bin/cli/realtool, which is inside the home at <B>)
+    EXIT=1
+
+$ skill-manager home repair --home <A>          # read-only, no --fix
+✗ 1 finding(s) in <A>, of 1 entry examined
+✗   FOREIGN_PATH_IN_SHIM bin/cli/wrappertool — runs <B>/bin/cli/realtool, ...
+✗       repair: no path under this home stands where <B>/bin/cli/realtool does ...
+✗   1 cannot be repaired by this command — the lines above say why
+    EXIT=1
+
+  ==> verify names TWO subjects, repair names ONE. "of 1 entry examined" over a
+      bin/cli holding TWO entries: the symlink is not even counted.
+
+######## ARM B ONLY — the symlink, no wrapper
+$ skill-manager home verify --home <A>
+✗ 1 path(s) in <A> resolve into another Skill Manager home
+✗   FOREIGN_HOME bin/cli/linktool (...)
+    EXIT=1
+
+$ skill-manager home repair --home <A>
+✓ nothing in <A> is damaged in a way this command knows about (0 entries examined)
+    EXIT=0
+
+  ==> exit 1 against exit 0. Same home, same minute, two readers.
+
+######## CONTROL — ARM A ONLY, the wrapper, no symlink
+$ skill-manager home verify --home <A>
+✗ 1 path(s) in <A> resolve into another Skill Manager home
+✗   FOREIGN_PATH_IN_SHIM bin/cli/wrappertool (...)
+    EXIT=1
+
+$ skill-manager home repair --home <A>
+✗ 1 finding(s) in <A>, of 1 entry examined
+✗   FOREIGN_PATH_IN_SHIM bin/cli/wrappertool — ...
+    EXIT=1
+
+  ==> THE CONTROL AGREES. The two readers CAN return the same verdict about the
+      same file, so the disagreement above is about the SURFACE (link vs text)
+      and not about the fixture. Without this arm, "repair found nothing" is
+      indistinguishable from "the fixture planted nothing".
+
+######## AND THE SAME COMPARISON ON THE REAL PROJECT HOME — read-only
+$ skill-manager home verify --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager
+  5 shim(s) ... link at its parent store — a child home shares the parent's
+  provisioned tools by design; the parent must outlive this home
+      bin/cli/computeq -> /Users/hayde/.skill-manager
+      bin/cli/helm-deploy -> /Users/hayde/.skill-manager
+      bin/cli/monitoring -> /Users/hayde/.skill-manager
+      ... 2 more
+✓ every reference ... resolves, and no path in it reaches any other Skill Manager
+  home except the 5 sanctioned parent-store shim(s) above
+    EXIT=0
+
+  ==> GOAL-one-home-one-answer CLAUSE 3, measured on a real tier: the sanction is
+      durable and needs NO operator-supplied --against. Baseline was five
+      FOREIGN_HOME failures. Clause 3 PASSES; clause 1 does not.

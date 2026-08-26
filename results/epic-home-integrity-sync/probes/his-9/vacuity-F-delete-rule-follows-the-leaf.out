@@ -1,0 +1,5 @@
+# HIS-9 vacuity check: F-delete-rule-follows-the-leaf
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] a DELETE of that same link is permitted — it removes what lives here: refused: the pruner would delete a path outside the home it was given
+FAILURES: 1

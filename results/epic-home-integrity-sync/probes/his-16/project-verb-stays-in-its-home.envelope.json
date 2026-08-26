@@ -1,0 +1,82 @@
+{
+  "nodeId" : "project.verb.stays.in.its.home",
+  "status" : "passed",
+  "startedAt" : "2026-08-23T01:09:01.319813Z",
+  "endedAt" : "2026-08-23T01:09:07.549231Z",
+  "assertions" : [ {
+    "name" : "precondition_victim_home_holds_the_seeded_unit",
+    "status" : "passed"
+  }, {
+    "name" : "precondition_manifest_now_claims_a_different_unit",
+    "status" : "passed"
+  }, {
+    "name" : "a_confined_project_verb_refuses_a_cwd_derived_target",
+    "status" : "passed"
+  }, {
+    "name" : "the_other_homes_unit_set_is_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "the_drivers_own_home_is_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "removing_the_confinement_reproduces_the_escape",
+    "status" : "passed"
+  }, {
+    "name" : "the_control_reached_the_guard_it_removed",
+    "status" : "passed"
+  }, {
+    "name" : "a_per_checkout_home_arms_the_guard_with_no_variable_set",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "seed-victim",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim" ],
+    "startedAt" : "2026-08-23T01:09:01.328999Z",
+    "endedAt" : "2026-08-23T01:09:03.205127Z",
+    "exitCode" : 0,
+    "pid" : 13971,
+    "log" : "node-logs/project.verb.stays.in.its.home.seed-victim.log",
+    "error" : null
+  }, {
+    "label" : "confined-resolve-from-victim-cwd",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
+    "startedAt" : "2026-08-23T01:09:03.210378Z",
+    "endedAt" : "2026-08-23T01:09:04.481046Z",
+    "exitCode" : 14,
+    "pid" : 13984,
+    "log" : "node-logs/project.verb.stays.in.its.home.confined-resolve-from-victim-cwd.log",
+    "error" : null
+  }, {
+    "label" : "control-unconfined-resolve-from-victim-cwd",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
+    "startedAt" : "2026-08-23T01:09:04.484252Z",
+    "endedAt" : "2026-08-23T01:09:06.387180Z",
+    "exitCode" : 0,
+    "pid" : 13993,
+    "log" : "node-logs/project.verb.stays.in.its.home.control-unconfined-resolve-from-victim-cwd.log",
+    "error" : null
+  }, {
+    "label" : "implicit-arming-from-per-checkout-home",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
+    "startedAt" : "2026-08-23T01:09:06.388430Z",
+    "endedAt" : "2026-08-23T01:09:07.548170Z",
+    "exitCode" : 14,
+    "pid" : 14029,
+    "log" : "node-logs/project.verb.stays.in.its.home.implicit-arming-from-per-checkout-home.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "confinedExitCode" : 14,
+    "unconfinedExitCode" : 0,
+    "implicitlyArmedExitCode" : 14,
+    "victimUnitsBefore" : 1,
+    "victimUnitsAfterControl" : 1,
+    "durationMs" : 6230
+  },
+  "logs" : [ "FIXTURE  victim home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager -> [skills/his16-unit-kept] (seed exit 0)\nCLAIM    exit 14 (expected 14); victim [skills/his16-unit-kept]; driver [skills/his16-unit-kept]\nARMING   exit 14 with NO confinement variable set (home is /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/armed-checkout/.skill-manager, cwd is the victim)  <- DEF-046's shape, refused by default\nCONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reproduced\nThe control reddens: the_other_homes_unit_set_is_unchanged (victim [skills/his16-unit-kept] -> [skills/his16-unit-claimed-later])" ],
+  "published" : {
+    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager",
+    "driverHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:09:00.668770Z","executorEndedAt":"2026-08-23T01:09:22.217071Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.verb.stays.in.its.home.stdout.log","inputContextFile":"context/project.verb.stays.in.its.home.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"}

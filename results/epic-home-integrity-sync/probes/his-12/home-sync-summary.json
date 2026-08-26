@@ -1,0 +1,1593 @@
+{"runId":"20260822-001044","status":"passed","traceId":"707978affed9dc842dc33866b8c47be8","execution":{"mode":"full","graphName":"home-sync","complete":true,"expectedNodeIds":["env.prepared","home.sync.sensitive","home.sync.fixture.built","home.sync.root.to.project","home.sync.project.to.root","home.sync.worktree.to.project","home.sync.project.to.worktree","home.sync.git.flawless","home.sync.permutations","home.sync.hazards","home.sync.stale.baseline","home.sync.provenance","home.sync.round.trip","home.sync.homeness","home.sync.built.in.unit","home.sync.project.seam","home.sync.authored.agent.tree","home.fixpoint.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","home.sync.authored.agent.tree","home.sync.built.in.unit","home.sync.fixture.built","home.sync.git.flawless","home.sync.hazards","home.sync.homeness","home.sync.permutations","home.sync.project.seam","home.sync.project.to.root","home.sync.project.to.worktree","home.sync.provenance","home.sync.root.to.project","home.sync.round.trip","home.sync.sensitive","home.sync.stale.baseline","home.sync.worktree.to.project"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","home.sync.sensitive","home.sync.fixture.built","home.sync.root.to.project","home.sync.project.to.root","home.sync.worktree.to.project","home.sync.project.to.worktree","home.sync.git.flawless","home.sync.permutations","home.sync.hazards","home.sync.stale.baseline","home.sync.provenance","home.sync.round.trip","home.sync.homeness","home.sync.built.in.unit","home.sync.project.seam","home.sync.authored.agent.tree","home.fixpoint.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:10:45.417528Z",
+  "endedAt" : "2026-08-22T00:10:45.440727Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 54626,
+    "gatewayPort" : 54627,
+    "durationMs" : 23
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/agent-home/.gemini",
+    "registryPort" : "54626",
+    "gatewayPort" : "54627"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:10:44.792775Z","executorEndedAt":"2026-08-22T00:10:59.127681Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:17:26.247294Z",
+  "endedAt" : "2026-08-22T00:17:40.996785Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 4,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 0,
+    "durationMs" : 14749
+  },
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:17:25.594178Z","executorEndedAt":"2026-08-22T00:17:53.512153Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.authored.agent.tree",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:17:00.947927Z",
+  "endedAt" : "2026-08-22T00:17:11.097883Z",
+  "assertions" : [ {
+    "name" : "installing_over_a_hand_written_skill_does_not_destroy_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_held_back_projection_target_is_named_in_the_output",
+    "status" : "passed"
+  }, {
+    "name" : "the_projection_ledger_does_not_claim_the_authored_directory",
+    "status" : "passed"
+  }, {
+    "name" : "an_ordinary_unit_still_projects_as_a_symlink",
+    "status" : "passed"
+  }, {
+    "name" : "uninstall_does_not_delete_a_hand_written_skill",
+    "status" : "passed"
+  }, {
+    "name" : "uninstall_still_removes_its_own_projection",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "authored-install-colliding",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/authored-agent-tree/sources/hs-authored", "--yes" ],
+    "startedAt" : "2026-08-22T00:17:00.957761Z",
+    "endedAt" : "2026-08-22T00:17:04.976014Z",
+    "exitCode" : 0,
+    "pid" : 55815,
+    "log" : "node-logs/home.sync.authored.agent.tree.authored-install-colliding.log",
+    "error" : null
+  }, {
+    "label" : "authored-install-ordinary",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/authored-agent-tree/sources/hs-projected", "--yes" ],
+    "startedAt" : "2026-08-22T00:17:04.977284Z",
+    "endedAt" : "2026-08-22T00:17:07.551803Z",
+    "exitCode" : 0,
+    "pid" : 55849,
+    "log" : "node-logs/home.sync.authored.agent.tree.authored-install-ordinary.log",
+    "error" : null
+  }, {
+    "label" : "authored-remove-colliding",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "uninstall", "hs-authored" ],
+    "startedAt" : "2026-08-22T00:17:07.552640Z",
+    "endedAt" : "2026-08-22T00:17:09.331568Z",
+    "exitCode" : 0,
+    "pid" : 55871,
+    "log" : "node-logs/home.sync.authored.agent.tree.authored-remove-colliding.log",
+    "error" : null
+  }, {
+    "label" : "authored-remove-ordinary",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "uninstall", "hs-projected" ],
+    "startedAt" : "2026-08-22T00:17:09.332103Z",
+    "endedAt" : "2026-08-22T00:17:11.097293Z",
+    "exitCode" : 0,
+    "pid" : 55880,
+    "log" : "node-logs/home.sync.authored.agent.tree.authored-remove-ordinary.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "installCollidingExitCode" : 0,
+    "installOrdinaryExitCode" : 0,
+    "durationMs" : 10150
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:17:00.236854Z","executorEndedAt":"2026-08-22T00:17:25.577961Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.authored.agent.tree.stdout.log","inputContextFile":"context/home.sync.authored.agent.tree.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.built.in.unit",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:16:14.100594Z",
+  "endedAt" : "2026-08-22T00:16:20.395463Z",
+  "assertions" : [ {
+    "name" : "running_the_tooling_really_does_leave_build_output_in_the_unit",
+    "status" : "passed"
+  }, {
+    "name" : "a_worktree_that_was_only_built_in_is_reported_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "and_the_teardown_gate_clears_instead_of_conflicting",
+    "status" : "passed"
+  }, {
+    "name" : "no_build_output_reaches_the_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "an_upstream_change_still_reaches_the_worktree",
+    "status" : "passed"
+  }, {
+    "name" : "and_the_refresh_keeps_every_derived_byte_it_does_not_own",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_the_agent_committed_in_still_blocks_the_teardown",
+    "status" : "passed"
+  }, {
+    "name" : "and_its_commit_is_untouched",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "built-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/worktree/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:16:14.109847Z",
+    "endedAt" : "2026-08-22T00:16:15.529911Z",
+    "exitCode" : 0,
+    "pid" : 55564,
+    "log" : "node-logs/home.sync.built.in.unit.built-clone.log",
+    "error" : null
+  }, {
+    "label" : "built-discover",
+    "command" : [ "python3", "scripts/discover.py" ],
+    "startedAt" : "2026-08-22T00:16:15.530188Z",
+    "endedAt" : "2026-08-22T00:16:15.605075Z",
+    "exitCode" : 0,
+    "pid" : 55580,
+    "log" : "node-logs/home.sync.built.in.unit.built-discover.log",
+    "error" : null
+  }, {
+    "label" : "built-close-out",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:16:15.613957Z",
+    "endedAt" : "2026-08-22T00:16:16.792064Z",
+    "exitCode" : 0,
+    "pid" : 55586,
+    "log" : "node-logs/home.sync.built.in.unit.built-close-out.log",
+    "error" : null
+  }, {
+    "label" : "built-sync-up",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/worktree/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:16:16.793007Z",
+    "endedAt" : "2026-08-22T00:16:17.864914Z",
+    "exitCode" : 0,
+    "pid" : 55595,
+    "log" : "node-logs/home.sync.built.in.unit.built-sync-up.log",
+    "error" : null
+  }, {
+    "label" : "built-sync-down",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/worktree/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:16:17.866970Z",
+    "endedAt" : "2026-08-22T00:16:19.071967Z",
+    "exitCode" : 0,
+    "pid" : 55606,
+    "log" : "node-logs/home.sync.built.in.unit.built-sync-down.log",
+    "error" : null
+  }, {
+    "label" : "built-close-out-committed",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/built-in-unit/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:16:19.179882Z",
+    "endedAt" : "2026-08-22T00:16:20.374773Z",
+    "exitCode" : 1,
+    "pid" : 55621,
+    "log" : "node-logs/home.sync.built.in.unit.built-close-out-committed.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "derivedArtifacts" : 3,
+    "durationMs" : 6295
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:16:13.323456Z","executorEndedAt":"2026-08-22T00:16:36.252533Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.built.in.unit.stdout.log","inputContextFile":"context/home.sync.built.in.unit.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.fixture.built",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:11:38.092672Z",
+  "endedAt" : "2026-08-22T00:11:47.431447Z",
+  "assertions" : [ {
+    "name" : "root_home_units_installed_by_the_real_cli",
+    "status" : "passed"
+  }, {
+    "name" : "a_root_home_carries_no_materialization_record",
+    "status" : "passed"
+  }, {
+    "name" : "a_root_home_carries_real_installed_state",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/sources/hs-alpha", "--yes" ],
+    "startedAt" : "2026-08-22T00:11:38.102459Z",
+    "endedAt" : "2026-08-22T00:11:42.001110Z",
+    "exitCode" : 0,
+    "pid" : 51337,
+    "log" : "node-logs/home.sync.fixture.built.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/sources/hs-beta", "--yes" ],
+    "startedAt" : "2026-08-22T00:11:42.001429Z",
+    "endedAt" : "2026-08-22T00:11:44.685699Z",
+    "exitCode" : 0,
+    "pid" : 51517,
+    "log" : "node-logs/home.sync.fixture.built.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "install-gamma",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/sources/hs-gamma", "--yes" ],
+    "startedAt" : "2026-08-22T00:11:44.686020Z",
+    "endedAt" : "2026-08-22T00:11:47.424081Z",
+    "exitCode" : 0,
+    "pid" : 51588,
+    "log" : "node-logs/home.sync.fixture.built.install-gamma.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "rootUnits" : 3,
+    "durationMs" : 9339
+  },
+  "logs" : [ ],
+  "published" : {
+    "workspace" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync",
+    "rootHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root",
+    "projectHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager",
+    "worktreeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager",
+    "sourcesDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/sources",
+    "ambientHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/ambient",
+    "rootDigest" : "3643a3c90ba466c4accabbb690f4adb60c4e8a660a84f8e96fb353eef9835975"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:11:37.418173Z","executorEndedAt":"2026-08-22T00:12:00.128444Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.fixture.built.stdout.log","inputContextFile":"context/home.sync.fixture.built.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.git.flawless",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:13:24.071685Z",
+  "endedAt" : "2026-08-22T00:13:31.874549Z",
+  "assertions" : [ {
+    "name" : "the_checkout_under_test_really_is_dirty",
+    "status" : "passed"
+  }, {
+    "name" : "a_sync_reading_a_home_leaves_its_git_state_identical",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_leaves_the_checkouts_git_state_identical",
+    "status" : "passed"
+  }, {
+    "name" : "a_planned_publish_reports_without_touching_git",
+    "status" : "passed"
+  }, {
+    "name" : "no_read_only_operation_moved_a_committed_blob",
+    "status" : "passed"
+  }, {
+    "name" : "publish_commits_and_pushes_the_home_edit",
+    "status" : "passed"
+  }, {
+    "name" : "the_commit_holds_the_agents_exact_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "unrelated_staged_work_is_carried_into_the_commit_not_dropped",
+    "status" : "passed"
+  }, {
+    "name" : "the_working_tree_is_clean_after_a_publish",
+    "status" : "passed"
+  }, {
+    "name" : "no_stray_staged_change_is_left_behind",
+    "status" : "passed"
+  }, {
+    "name" : "every_index_entry_is_at_stage_zero_and_present",
+    "status" : "passed"
+  }, {
+    "name" : "publish_never_moves_the_trunk_on_the_remote",
+    "status" : "passed"
+  }, {
+    "name" : "the_remote_branch_holds_the_commit_that_was_made",
+    "status" : "passed"
+  }, {
+    "name" : "publishing_from_one_home_writes_into_no_other",
+    "status" : "passed"
+  }, {
+    "name" : "a_destination_edited_git_unit_is_never_overwritten",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "git-sync-out",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:24.276039Z",
+    "endedAt" : "2026-08-22T00:13:25.653582Z",
+    "exitCode" : 0,
+    "pid" : 54374,
+    "log" : "node-logs/home.sync.git.flawless.git-sync-out.log",
+    "error" : null
+  }, {
+    "label" : "git-close-out",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:25.730132Z",
+    "endedAt" : "2026-08-22T00:13:26.976542Z",
+    "exitCode" : 0,
+    "pid" : 54394,
+    "log" : "node-logs/home.sync.git.flawless.git-close-out.log",
+    "error" : null
+  }, {
+    "label" : "git-publish-dry",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "unit", "publish", "hs-git", "--ticket", "T-DRY", "--dry-run", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home", "--json" ],
+    "startedAt" : "2026-08-22T00:13:27.048312Z",
+    "endedAt" : "2026-08-22T00:13:28.374778Z",
+    "exitCode" : 0,
+    "pid" : 54414,
+    "log" : "node-logs/home.sync.git.flawless.git-publish-dry.log",
+    "error" : null
+  }, {
+    "label" : "git-publish",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "unit", "publish", "hs-git", "--ticket", "T-C2", "--no-pr", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home", "--json" ],
+    "startedAt" : "2026-08-22T00:13:28.487029Z",
+    "endedAt" : "2026-08-22T00:13:30.033650Z",
+    "exitCode" : 0,
+    "pid" : 54434,
+    "log" : "node-logs/home.sync.git.flawless.git-publish.log",
+    "error" : null
+  }, {
+    "label" : "git-resync",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:30.180515Z",
+    "endedAt" : "2026-08-22T00:13:31.867955Z",
+    "exitCode" : 0,
+    "pid" : 54475,
+    "log" : "node-logs/home.sync.git.flawless.git-resync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "indexEntries" : 3,
+    "gitUnitFirstSyncStatus" : 1,
+    "gitUnitResyncHeldBack" : 1,
+    "durationMs" : 7803
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:13:23.425372Z","executorEndedAt":"2026-08-22T00:13:44.883752Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.git.flawless.stdout.log","inputContextFile":"context/home.sync.git.flawless.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.hazards",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:14:15.683856Z",
+  "endedAt" : "2026-08-22T00:14:22.466886Z",
+  "assertions" : [ {
+    "name" : "the_failure_injection_took_effect",
+    "status" : "passed"
+  }, {
+    "name" : "an_interrupted_sync_fails_rather_than_half_succeeding",
+    "status" : "passed"
+  }, {
+    "name" : "an_interrupted_sync_leaves_the_destination_unit_exactly_as_it_was",
+    "status" : "passed"
+  }, {
+    "name" : "an_interrupted_sync_leaves_no_half_written_tree_beside_the_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_same_sync_succeeds_once_the_failure_is_removed",
+    "status" : "passed"
+  }, {
+    "name" : "a_recovered_home_carries_no_staging_leftovers",
+    "status" : "passed"
+  }, {
+    "name" : "two_concurrent_syncs_into_one_home_both_complete",
+    "status" : "passed"
+  }, {
+    "name" : "a_contended_destination_holds_exactly_one_sources_tree",
+    "status" : "passed"
+  }, {
+    "name" : "the_record_left_by_a_contended_run_describes_the_tree_on_disk",
+    "status" : "passed"
+  }, {
+    "name" : "a_contended_home_carries_no_staging_leftovers",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "hazard-seed",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/dest", "--json" ],
+    "startedAt" : "2026-08-22T00:14:15.692024Z",
+    "endedAt" : "2026-08-22T00:14:16.990303Z",
+    "exitCode" : 0,
+    "pid" : 54834,
+    "log" : "node-logs/home.sync.hazards.hazard-seed.log",
+    "error" : null
+  }, {
+    "label" : "hazard-interrupted",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/dest", "--json" ],
+    "startedAt" : "2026-08-22T00:14:16.995498Z",
+    "endedAt" : "2026-08-22T00:14:18.292274Z",
+    "exitCode" : 1,
+    "pid" : 54850,
+    "log" : "node-logs/home.sync.hazards.hazard-interrupted.log",
+    "error" : null
+  }, {
+    "label" : "hazard-recovered",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/dest", "--json" ],
+    "startedAt" : "2026-08-22T00:14:18.294047Z",
+    "endedAt" : "2026-08-22T00:14:19.628997Z",
+    "exitCode" : 0,
+    "pid" : 54861,
+    "log" : "node-logs/home.sync.hazards.hazard-recovered.log",
+    "error" : null
+  }, {
+    "label" : "hazard-race-settled",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/right", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/hazards/contended", "--dry-run", "--json" ],
+    "startedAt" : "2026-08-22T00:14:21.146025Z",
+    "endedAt" : "2026-08-22T00:14:22.466017Z",
+    "exitCode" : 0,
+    "pid" : 54921,
+    "log" : "node-logs/home.sync.hazards.hazard-race-settled.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "interruptedExitCode" : 1,
+    "concurrentSyncs" : 2,
+    "durationMs" : 6783
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:14:15.018442Z","executorEndedAt":"2026-08-22T00:14:38.000042Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.hazards.stdout.log","inputContextFile":"context/home.sync.hazards.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.homeness",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:15:49.620223Z",
+  "endedAt" : "2026-08-22T00:15:59.675754Z",
+  "assertions" : [ {
+    "name" : "close_out_refuses_the_worktree_directory_instead_of_clearing_it",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_refuses_a_home_that_does_not_exist",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_refuses_a_regular_file_named_as_a_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_writes_nothing_and_leaves_the_real_home_intact",
+    "status" : "passed"
+  }, {
+    "name" : "naming_the_real_home_still_produces_the_real_verdict",
+    "status" : "passed"
+  }, {
+    "name" : "home_sync_refuses_a_source_that_is_not_a_home",
+    "status" : "passed"
+  }, {
+    "name" : "a_symlinked_unit_directory_is_named_in_the_report",
+    "status" : "passed"
+  }, {
+    "name" : "and_it_is_reported_as_linked",
+    "status" : "passed"
+  }, {
+    "name" : "a_report_that_could_not_account_for_a_unit_is_not_clean",
+    "status" : "passed"
+  }, {
+    "name" : "an_ordinary_unit_beside_a_linked_one_still_reconciles",
+    "status" : "passed"
+  }, {
+    "name" : "nothing_is_written_through_a_linked_unit_directory",
+    "status" : "passed"
+  }, {
+    "name" : "a_home_whose_kind_directory_is_a_link_is_not_reported_as_empty",
+    "status" : "passed"
+  }, {
+    "name" : "its_units_are_reported_as_linked",
+    "status" : "passed"
+  }, {
+    "name" : "that_report_is_not_clean_either",
+    "status" : "passed"
+  }, {
+    "name" : "nothing_is_copied_through_a_linked_kind_directory",
+    "status" : "passed"
+  }, {
+    "name" : "the_link_target_outside_every_home_is_never_written_to",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_blocks_on_a_unit_it_cannot_account_for",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "hn-close-out-dir",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/ticket-worktree", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:50.759288Z",
+    "endedAt" : "2026-08-22T00:15:51.821485Z",
+    "exitCode" : 2,
+    "pid" : 55417,
+    "log" : "node-logs/home.sync.homeness.hn-close-out-dir.log",
+    "error" : null
+  }, {
+    "label" : "hn-close-out-missing",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/no/such/home", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:51.822914Z",
+    "endedAt" : "2026-08-22T00:15:52.865117Z",
+    "exitCode" : 2,
+    "pid" : 55429,
+    "log" : "node-logs/home.sync.homeness.hn-close-out-missing.log",
+    "error" : null
+  }, {
+    "label" : "hn-close-out-file",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/not-a-directory", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:52.866010Z",
+    "endedAt" : "2026-08-22T00:15:53.906742Z",
+    "exitCode" : 2,
+    "pid" : 55440,
+    "log" : "node-logs/home.sync.homeness.hn-close-out-file.log",
+    "error" : null
+  }, {
+    "label" : "hn-close-out-correct",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/ticket-worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:53.907584Z",
+    "endedAt" : "2026-08-22T00:15:55.126889Z",
+    "exitCode" : 1,
+    "pid" : 55449,
+    "log" : "node-logs/home.sync.homeness.hn-close-out-correct.log",
+    "error" : null
+  }, {
+    "label" : "hn-sync-from-missing",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/no/such/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/would-have-been-created", "--json" ],
+    "startedAt" : "2026-08-22T00:15:55.127527Z",
+    "endedAt" : "2026-08-22T00:15:56.240318Z",
+    "exitCode" : 2,
+    "pid" : 55484,
+    "log" : "node-logs/home.sync.homeness.hn-sync-from-missing.log",
+    "error" : null
+  }, {
+    "label" : "hn-sync-linked-unit",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/link-source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/link-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:15:56.242251Z",
+    "endedAt" : "2026-08-22T00:15:57.437112Z",
+    "exitCode" : 1,
+    "pid" : 55502,
+    "log" : "node-logs/home.sync.homeness.hn-sync-linked-unit.log",
+    "error" : null
+  }, {
+    "label" : "hn-sync-linked-kind",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/linked-kind-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/linked-kind-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:15:57.441065Z",
+    "endedAt" : "2026-08-22T00:15:58.516285Z",
+    "exitCode" : 1,
+    "pid" : 55512,
+    "log" : "node-logs/home.sync.homeness.hn-sync-linked-kind.log",
+    "error" : null
+  }, {
+    "label" : "hn-close-out-linked",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/link-source", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/homeness/link-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:15:58.518722Z",
+    "endedAt" : "2026-08-22T00:15:59.674955Z",
+    "exitCode" : 1,
+    "pid" : 55522,
+    "log" : "node-logs/home.sync.homeness.hn-close-out-linked.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "closeOutOnWorktreeDirectoryExitCode" : 2,
+    "closeOutOnMissingHomeExitCode" : 2,
+    "syncFromNonHomeExitCode" : 2,
+    "linkedUnitsReported" : 2,
+    "durationMs" : 10055
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:15:48.958034Z","executorEndedAt":"2026-08-22T00:16:13.308953Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.homeness.stdout.log","inputContextFile":"context/home.sync.homeness.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.permutations",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:13:45.553143Z",
+  "endedAt" : "2026-08-22T00:14:00.978194Z",
+  "assertions" : [ {
+    "name" : "a_dry_run_writes_nothing_into_the_destination_home",
+    "status" : "passed"
+  }, {
+    "name" : "a_dry_run_reports_a_new_unit_without_creating_it",
+    "status" : "passed"
+  }, {
+    "name" : "a_dry_run_into_a_fresh_home_creates_nothing_at_all",
+    "status" : "passed"
+  }, {
+    "name" : "the_dry_run_reported_exactly_what_the_real_run_did",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_that_appeared_upstream_is_created",
+    "status" : "passed"
+  }, {
+    "name" : "a_locally_modified_destination_unit_is_held_back",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_with_no_materialization_record_is_held_back",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_removed_upstream_is_reported",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_removed_upstream_while_edited_locally_is_never_deleted",
+    "status" : "passed"
+  }, {
+    "name" : "a_file_changed_on_both_sides_is_reported_as_a_conflict",
+    "status" : "passed"
+  }, {
+    "name" : "a_conflicted_unit_has_nothing_written_into_it",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_with_no_common_ancestor_conflicts_rather_than_guessing",
+    "status" : "passed"
+  }, {
+    "name" : "the_destination_the_refusals_are_measured_against_is_really_frozen",
+    "status" : "passed"
+  }, {
+    "name" : "a_frozen_destination_refuses_a_sync_a_dry_run_and_a_close_out_with_exit_9",
+    "status" : "passed"
+  }, {
+    "name" : "a_frozen_destination_has_nothing_written_into_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_same_sync_succeeds_once_the_home_is_live_again",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "perm-seed",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:45.561403Z",
+    "endedAt" : "2026-08-22T00:13:46.886331Z",
+    "exitCode" : 0,
+    "pid" : 54571,
+    "log" : "node-logs/home.sync.permutations.perm-seed.log",
+    "error" : null
+  }, {
+    "label" : "perm-dry-run",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/dest", "--dry-run", "--json" ],
+    "startedAt" : "2026-08-22T00:13:46.900401Z",
+    "endedAt" : "2026-08-22T00:13:48.259543Z",
+    "exitCode" : 0,
+    "pid" : 54584,
+    "log" : "node-logs/home.sync.permutations.perm-dry-run.log",
+    "error" : null
+  }, {
+    "label" : "perm-dry-run-fresh",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/never-existed", "--dry-run", "--json" ],
+    "startedAt" : "2026-08-22T00:13:48.264668Z",
+    "endedAt" : "2026-08-22T00:13:49.584467Z",
+    "exitCode" : 0,
+    "pid" : 54606,
+    "log" : "node-logs/home.sync.permutations.perm-dry-run-fresh.log",
+    "error" : null
+  }, {
+    "label" : "perm-plain",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:49.584773Z",
+    "endedAt" : "2026-08-22T00:13:50.920164Z",
+    "exitCode" : 0,
+    "pid" : 54619,
+    "log" : "node-logs/home.sync.permutations.perm-plain.log",
+    "error" : null
+  }, {
+    "label" : "perm-merge",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/dest", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:13:50.921744Z",
+    "endedAt" : "2026-08-22T00:13:52.275750Z",
+    "exitCode" : 1,
+    "pid" : 54632,
+    "log" : "node-logs/home.sync.permutations.perm-merge.log",
+    "error" : null
+  }, {
+    "label" : "perm-frozen-sync",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/frozen-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:54.547830Z",
+    "endedAt" : "2026-08-22T00:13:55.838756Z",
+    "exitCode" : 9,
+    "pid" : 54677,
+    "log" : "node-logs/home.sync.permutations.perm-frozen-sync.log",
+    "error" : null
+  }, {
+    "label" : "perm-frozen-dry",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/frozen-dest", "--dry-run", "--json" ],
+    "startedAt" : "2026-08-22T00:13:55.839019Z",
+    "endedAt" : "2026-08-22T00:13:57.154627Z",
+    "exitCode" : 9,
+    "pid" : 54690,
+    "log" : "node-logs/home.sync.permutations.perm-frozen-dry.log",
+    "error" : null
+  }, {
+    "label" : "perm-frozen-close-out",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/frozen-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:57.154906Z",
+    "endedAt" : "2026-08-22T00:13:58.446889Z",
+    "exitCode" : 9,
+    "pid" : 54710,
+    "log" : "node-logs/home.sync.permutations.perm-frozen-close-out.log",
+    "error" : null
+  }, {
+    "label" : "perm-thawed-sync",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/permutations/frozen-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:13:59.585346Z",
+    "endedAt" : "2026-08-22T00:14:00.977495Z",
+    "exitCode" : 0,
+    "pid" : 54736,
+    "log" : "node-logs/home.sync.permutations.perm-thawed-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "frozenSyncExitCode" : 9,
+    "frozenDryRunExitCode" : 9,
+    "frozenCloseOutExitCode" : 9,
+    "mergeExitCode" : 1,
+    "durationMs" : 15425
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:13:44.900658Z","executorEndedAt":"2026-08-22T00:14:14.997638Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.permutations.stdout.log","inputContextFile":"context/home.sync.permutations.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.project.seam",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:16:36.956965Z",
+  "endedAt" : "2026-08-22T00:16:46.637725Z",
+  "assertions" : [ {
+    "name" : "project_resolve_seeds_the_project_home_from_the_root_store",
+    "status" : "passed"
+  }, {
+    "name" : "the_worktree_home_starts_from_the_projects_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "home_sync_merge_carries_the_tickets_work_into_the_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_clears_the_worktree_teardown",
+    "status" : "passed"
+  }, {
+    "name" : "the_worktree_home_is_really_gone",
+    "status" : "passed"
+  }, {
+    "name" : "project_resolve_after_a_merge_does_not_destroy_the_tickets_work",
+    "status" : "passed"
+  }, {
+    "name" : "project_resolve_names_the_unit_it_held_back",
+    "status" : "passed"
+  }, {
+    "name" : "project_sync_after_a_merge_does_not_destroy_the_tickets_work",
+    "status" : "passed"
+  }, {
+    "name" : "the_hold_back_names_a_concrete_way_forward",
+    "status" : "passed"
+  }, {
+    "name" : "the_upward_reconcile_destroys_nothing_either",
+    "status" : "passed"
+  }, {
+    "name" : "no_staging_leftovers_in_either_home",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "seam-resolve-initial",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/project" ],
+    "startedAt" : "2026-08-22T00:16:36.965233Z",
+    "endedAt" : "2026-08-22T00:16:39.300943Z",
+    "exitCode" : 0,
+    "pid" : 55671,
+    "log" : "node-logs/home.sync.project.seam.seam-resolve-initial.log",
+    "error" : null
+  }, {
+    "label" : "seam-project-to-wt",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/wt/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:16:39.301281Z",
+    "endedAt" : "2026-08-22T00:16:40.496026Z",
+    "exitCode" : 0,
+    "pid" : 55682,
+    "log" : "node-logs/home.sync.project.seam.seam-project-to-wt.log",
+    "error" : null
+  }, {
+    "label" : "seam-wt-to-project",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/wt/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/project/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:16:40.496692Z",
+    "endedAt" : "2026-08-22T00:16:41.675202Z",
+    "exitCode" : 0,
+    "pid" : 55691,
+    "log" : "node-logs/home.sync.project.seam.seam-wt-to-project.log",
+    "error" : null
+  }, {
+    "label" : "seam-close-out",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/wt/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:16:41.676084Z",
+    "endedAt" : "2026-08-22T00:16:42.848492Z",
+    "exitCode" : 0,
+    "pid" : 55711,
+    "log" : "node-logs/home.sync.project.seam.seam-close-out.log",
+    "error" : null
+  }, {
+    "label" : "seam-resolve-after-merge",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/project" ],
+    "startedAt" : "2026-08-22T00:16:42.855393Z",
+    "endedAt" : "2026-08-22T00:16:44.149977Z",
+    "exitCode" : 0,
+    "pid" : 55720,
+    "log" : "node-logs/home.sync.project.seam.seam-resolve-after-merge.log",
+    "error" : null
+  }, {
+    "label" : "seam-project-sync",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "project", "sync", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/project" ],
+    "startedAt" : "2026-08-22T00:16:44.150707Z",
+    "endedAt" : "2026-08-22T00:16:45.511286Z",
+    "exitCode" : 0,
+    "pid" : 55731,
+    "log" : "node-logs/home.sync.project.seam.seam-project-sync.log",
+    "error" : null
+  }, {
+    "label" : "seam-project-to-root",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project-seam/root", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:16:45.511770Z",
+    "endedAt" : "2026-08-22T00:16:46.636584Z",
+    "exitCode" : 0,
+    "pid" : 55742,
+    "log" : "node-logs/home.sync.project.seam.seam-project-to-root.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "resolveAfterMergeExitCode" : 0,
+    "projectSyncExitCode" : 0,
+    "upwardReconcileSettledWithoutAHuman" : 0,
+    "durationMs" : 9681
+  },
+  "logs" : [ "upward reconcile status: unchanged" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:16:36.274189Z","executorEndedAt":"2026-08-22T00:17:00.219482Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.project.seam.stdout.log","inputContextFile":"context/home.sync.project.seam.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.project.to.root",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:12:19.984099Z",
+  "endedAt" : "2026-08-22T00:12:27.565925Z",
+  "assertions" : [ {
+    "name" : "a_plain_sync_into_a_recordless_root_home_is_not_a_silent_no_op",
+    "status" : "passed"
+  }, {
+    "name" : "and_the_projects_bytes_actually_reach_the_root_home",
+    "status" : "passed"
+  }, {
+    "name" : "a_root_unit_holding_bytes_no_record_accounts_for_is_held_back",
+    "status" : "passed"
+  }, {
+    "name" : "the_held_back_root_unit_keeps_every_byte_it_had",
+    "status" : "passed"
+  }, {
+    "name" : "and_the_report_names_the_reason_it_refused",
+    "status" : "passed"
+  }, {
+    "name" : "merge_folds_the_project_edit_into_the_root_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_root_home_ends_with_the_projects_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "a_file_only_the_project_had_reaches_the_root_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_merge_never_spends_the_root_homes_own_edit",
+    "status" : "passed"
+  }, {
+    "name" : "units_neither_side_moved_stay_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_home_is_only_read_by_an_upward_sync",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_installed_from_git_is_a_checkout_in_the_home",
+    "status" : "passed"
+  }, {
+    "name" : "unit_publish_pushes_the_home_edit_to_the_units_own_repo",
+    "status" : "passed"
+  }, {
+    "name" : "publish_lands_on_a_ticket_branch_never_the_trunk",
+    "status" : "passed"
+  }, {
+    "name" : "the_published_branch_carries_the_agents_exact_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "publish_never_moves_the_trunk",
+    "status" : "passed"
+  }, {
+    "name" : "publish_leaves_the_homes_checkout_clean",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "sync-project-to-root",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root", "--json" ],
+    "startedAt" : "2026-08-22T00:12:20.009642Z",
+    "endedAt" : "2026-08-22T00:12:21.202460Z",
+    "exitCode" : 0,
+    "pid" : 53340,
+    "log" : "node-logs/home.sync.project.to.root.sync-project-to-root.log",
+    "error" : null
+  }, {
+    "label" : "merge-project-to-root",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:12:21.213461Z",
+    "endedAt" : "2026-08-22T00:12:22.443311Z",
+    "exitCode" : 0,
+    "pid" : 53416,
+    "log" : "node-logs/home.sync.project.to.root.merge-project-to-root.log",
+    "error" : null
+  }, {
+    "label" : "install-git-unit",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-source/hs-git", "--yes" ],
+    "startedAt" : "2026-08-22T00:12:22.646137Z",
+    "endedAt" : "2026-08-22T00:12:25.846705Z",
+    "exitCode" : 0,
+    "pid" : 53513,
+    "log" : "node-logs/home.sync.project.to.root.install-git-unit.log",
+    "error" : null
+  }, {
+    "label" : "unit-publish",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "unit", "publish", "hs-git", "--ticket", "T-B", "--no-pr", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home", "--json" ],
+    "startedAt" : "2026-08-22T00:12:25.902876Z",
+    "endedAt" : "2026-08-22T00:12:27.487030Z",
+    "exitCode" : 0,
+    "pid" : 53741,
+    "log" : "node-logs/home.sync.project.to.root.unit-publish.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "remoteBranches" : 2,
+    "durationMs" : 7581
+  },
+  "logs" : [ ],
+  "published" : {
+    "gitHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-home",
+    "gitRemote" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/remotes/hs-git.git",
+    "gitSource" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/git-source/hs-git"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:12:19.325552Z","executorEndedAt":"2026-08-22T00:12:41.719096Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.project.to.root.stdout.log","inputContextFile":"context/home.sync.project.to.root.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.project.to.worktree",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:13:04.242420Z",
+  "endedAt" : "2026-08-22T00:13:06.722665Z",
+  "assertions" : [ {
+    "name" : "a_unit_the_worktree_never_touched_fast_forwards",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_created_after_the_branch_arrives_whole",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_the_agent_is_mid_edit_on_is_held_back",
+    "status" : "passed"
+  }, {
+    "name" : "the_agents_in_flight_work_keeps_every_byte",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_neither_side_moved_stays_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_home_is_only_read_by_a_downward_sync",
+    "status" : "passed"
+  }, {
+    "name" : "merge_folds_edits_both_sides_made_inside_one_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_merge_took_the_file_only_the_project_changed",
+    "status" : "passed"
+  }, {
+    "name" : "the_merge_kept_the_file_only_the_agent_changed",
+    "status" : "passed"
+  }, {
+    "name" : "a_file_only_the_project_added_arrives_in_the_merge",
+    "status" : "passed"
+  }, {
+    "name" : "the_worktree_home_carries_no_staging_leftovers",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_the_same_pass_could_not_settle_is_left_exactly_as_it_was",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "sync-project-to-worktree",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:13:04.278262Z",
+    "endedAt" : "2026-08-22T00:13:05.498218Z",
+    "exitCode" : 0,
+    "pid" : 54267,
+    "log" : "node-logs/home.sync.project.to.worktree.sync-project-to-worktree.log",
+    "error" : null
+  }, {
+    "label" : "merge-project-to-worktree",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:13:05.510106Z",
+    "endedAt" : "2026-08-22T00:13:06.720688Z",
+    "exitCode" : 0,
+    "pid" : 54300,
+    "log" : "node-logs/home.sync.project.to.worktree.merge-project-to-worktree.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "mergeExitCode" : 0,
+    "worktreeUnits" : 5,
+    "durationMs" : 2480
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:13:03.547674Z","executorEndedAt":"2026-08-22T00:13:23.409275Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.project.to.worktree.stdout.log","inputContextFile":"context/home.sync.project.to.worktree.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.provenance",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:14:59.566612Z",
+  "endedAt" : "2026-08-22T00:15:11.383671Z",
+  "assertions" : [ {
+    "name" : "a_plain_sync_up_carries_the_agents_work_into_the_project",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_then_clears_the_worktree_for_teardown",
+    "status" : "passed"
+  }, {
+    "name" : "the_worktree_home_really_is_removed",
+    "status" : "passed"
+  }, {
+    "name" : "a_push_from_a_home_that_never_held_the_work_destroys_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "and_it_is_reported_rather_than_silently_skipped",
+    "status" : "passed"
+  }, {
+    "name" : "a_merge_with_no_shared_baseline_conflicts_and_writes_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "a_first_merge_folds_the_source_change_in_and_keeps_local_work",
+    "status" : "passed"
+  }, {
+    "name" : "a_second_merge_still_takes_the_file_the_source_moved",
+    "status" : "passed"
+  }, {
+    "name" : "a_second_merge_does_not_revert_the_work_the_first_one_kept",
+    "status" : "passed"
+  }, {
+    "name" : "and_it_needed_no_conflict_to_keep_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_local_work_survives_repeated_merges_from_the_same_source",
+    "status" : "passed"
+  }, {
+    "name" : "neither_home_carries_staging_leftovers",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "pv-seed-project",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:14:59.576839Z",
+    "endedAt" : "2026-08-22T00:15:00.752756Z",
+    "exitCode" : 0,
+    "pid" : 55136,
+    "log" : "node-logs/home.sync.provenance.pv-seed-project.log",
+    "error" : null
+  }, {
+    "label" : "pv-clone-worktree",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/worktree/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:00.753080Z",
+    "endedAt" : "2026-08-22T00:15:02.166287Z",
+    "exitCode" : 0,
+    "pid" : 55145,
+    "log" : "node-logs/home.sync.provenance.pv-clone-worktree.log",
+    "error" : null
+  }, {
+    "label" : "pv-sync-up",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/worktree/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:02.167805Z",
+    "endedAt" : "2026-08-22T00:15:03.316139Z",
+    "exitCode" : 0,
+    "pid" : 55161,
+    "log" : "node-logs/home.sync.provenance.pv-sync-up.log",
+    "error" : null
+  }, {
+    "label" : "pv-close-out",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:03.317100Z",
+    "endedAt" : "2026-08-22T00:15:04.483246Z",
+    "exitCode" : 0,
+    "pid" : 55170,
+    "log" : "node-logs/home.sync.provenance.pv-close-out.log",
+    "error" : null
+  }, {
+    "label" : "pv-sync-down",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:04.491460Z",
+    "endedAt" : "2026-08-22T00:15:05.641237Z",
+    "exitCode" : 0,
+    "pid" : 55179,
+    "log" : "node-logs/home.sync.provenance.pv-sync-down.log",
+    "error" : null
+  }, {
+    "label" : "pv-sync-down-merge",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/project/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:05.643030Z",
+    "endedAt" : "2026-08-22T00:15:06.767719Z",
+    "exitCode" : 1,
+    "pid" : 55193,
+    "log" : "node-logs/home.sync.provenance.pv-sync-down-merge.log",
+    "error" : null
+  }, {
+    "label" : "pv-seed-merge",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-dest", "--json" ],
+    "startedAt" : "2026-08-22T00:15:06.769855Z",
+    "endedAt" : "2026-08-22T00:15:07.937573Z",
+    "exitCode" : 0,
+    "pid" : 55218,
+    "log" : "node-logs/home.sync.provenance.pv-seed-merge.log",
+    "error" : null
+  }, {
+    "label" : "pv-merge-1",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-dest", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:07.938287Z",
+    "endedAt" : "2026-08-22T00:15:09.088102Z",
+    "exitCode" : 0,
+    "pid" : 55248,
+    "log" : "node-logs/home.sync.provenance.pv-merge-1.log",
+    "error" : null
+  }, {
+    "label" : "pv-merge-2",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-dest", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:09.088872Z",
+    "endedAt" : "2026-08-22T00:15:10.230001Z",
+    "exitCode" : 0,
+    "pid" : 55258,
+    "log" : "node-logs/home.sync.provenance.pv-merge-2.log",
+    "error" : null
+  }, {
+    "label" : "pv-merge-3",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-source", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/provenance/merge-dest", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:10.230902Z",
+    "endedAt" : "2026-08-22T00:15:11.382826Z",
+    "exitCode" : 0,
+    "pid" : 55267,
+    "log" : "node-logs/home.sync.provenance.pv-merge-3.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "syncDownExitCode" : 0,
+    "mergeConflictsReported" : 0,
+    "durationMs" : 11817
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:14:58.900784Z","executorEndedAt":"2026-08-22T00:15:24.556651Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.provenance.stdout.log","inputContextFile":"context/home.sync.provenance.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.root.to.project",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:12:00.854367Z",
+  "endedAt" : "2026-08-22T00:12:05.234233Z",
+  "assertions" : [ {
+    "name" : "a_project_home_scaffolds_cleanly_from_the_root_home",
+    "status" : "passed"
+  }, {
+    "name" : "every_root_unit_arrives_byte_for_byte_nested_files_included",
+    "status" : "passed"
+  }, {
+    "name" : "the_scaffold_records_a_baseline_for_every_unit",
+    "status" : "passed"
+  }, {
+    "name" : "no_recorded_baseline_names_the_home_it_was_copied_from",
+    "status" : "passed"
+  }, {
+    "name" : "a_sync_straight_after_the_scaffold_finds_nothing_to_do",
+    "status" : "passed"
+  }, {
+    "name" : "a_root_side_edit_reaches_the_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_added_upstream_after_the_scaffold_arrives",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_neither_side_touched_is_reported_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "a_project_edited_unit_is_held_back",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_edit_keeps_every_byte_it_had",
+    "status" : "passed"
+  }, {
+    "name" : "the_root_home_is_only_read_never_written",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_home_carries_no_staging_leftovers",
+    "status" : "passed"
+  }, {
+    "name" : "a_unit_that_arrived_by_sync_carries_no_installed_state",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "clone-root-to-project",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:00.859900Z",
+    "endedAt" : "2026-08-22T00:12:02.741153Z",
+    "exitCode" : 0,
+    "pid" : 52263,
+    "log" : "node-logs/home.sync.root.to.project.clone-root-to-project.log",
+    "error" : null
+  }, {
+    "label" : "sync-after-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:02.750893Z",
+    "endedAt" : "2026-08-22T00:12:03.969160Z",
+    "exitCode" : 0,
+    "pid" : 52378,
+    "log" : "node-logs/home.sync.root.to.project.sync-after-clone.log",
+    "error" : null
+  }, {
+    "label" : "sync-root-to-project",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:03.978146Z",
+    "endedAt" : "2026-08-22T00:12:05.224944Z",
+    "exitCode" : 0,
+    "pid" : 52456,
+    "log" : "node-logs/home.sync.root.to.project.sync-root-to-project.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "scaffoldedUnits" : 3,
+    "projectUnitsAfterSync" : 4,
+    "durationMs" : 4380
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectBetaContent" : "---\nname: hs-beta\ndescription: home-sync graph fixture\n---\nbeta v1\nbeta — EDITED IN THE PROJECT HOME\n"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:12:00.148445Z","executorEndedAt":"2026-08-22T00:12:19.306843Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.root.to.project.stdout.log","inputContextFile":"context/home.sync.root.to.project.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.round.trip",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:15:25.240340Z",
+  "endedAt" : "2026-08-22T00:15:35.590265Z",
+  "assertions" : [ {
+    "name" : "both_worktrees_start_from_the_project_homes_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "both_tickets_edits_reach_the_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "a_merge_claims_no_baseline_the_two_homes_do_not_both_hold",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_clears_both_worktrees_for_teardown",
+    "status" : "passed"
+  }, {
+    "name" : "the_worktree_homes_really_are_removed",
+    "status" : "passed"
+  }, {
+    "name" : "the_second_tickets_edit_survives_the_whole_round_trip",
+    "status" : "passed"
+  }, {
+    "name" : "the_first_tickets_edit_survives_the_whole_round_trip",
+    "status" : "passed"
+  }, {
+    "name" : "the_edit_exists_in_at_least_one_surviving_home",
+    "status" : "passed"
+  }, {
+    "name" : "no_home_records_a_baseline_it_never_stood_on",
+    "status" : "passed"
+  }, {
+    "name" : "neither_home_carries_staging_leftovers",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "rt-root-to-project",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:25.248767Z",
+    "endedAt" : "2026-08-22T00:15:26.388455Z",
+    "exitCode" : 0,
+    "pid" : 55298,
+    "log" : "node-logs/home.sync.round.trip.rt-root-to-project.log",
+    "error" : null
+  }, {
+    "label" : "rt-project-to-wt1",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/wt1/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:26.388809Z",
+    "endedAt" : "2026-08-22T00:15:27.541469Z",
+    "exitCode" : 0,
+    "pid" : 55314,
+    "log" : "node-logs/home.sync.round.trip.rt-project-to-wt1.log",
+    "error" : null
+  }, {
+    "label" : "rt-project-to-wt2",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/wt2/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:27.541785Z",
+    "endedAt" : "2026-08-22T00:15:28.673826Z",
+    "exitCode" : 0,
+    "pid" : 55323,
+    "log" : "node-logs/home.sync.round.trip.rt-project-to-wt2.log",
+    "error" : null
+  }, {
+    "label" : "rt-wt1-to-project",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/wt1/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:28.675146Z",
+    "endedAt" : "2026-08-22T00:15:29.825539Z",
+    "exitCode" : 0,
+    "pid" : 55332,
+    "log" : "node-logs/home.sync.round.trip.rt-wt1-to-project.log",
+    "error" : null
+  }, {
+    "label" : "rt-wt2-to-project",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/wt2/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:29.825836Z",
+    "endedAt" : "2026-08-22T00:15:30.960854Z",
+    "exitCode" : 0,
+    "pid" : 55341,
+    "log" : "node-logs/home.sync.round.trip.rt-wt2-to-project.log",
+    "error" : null
+  }, {
+    "label" : "rt-close-out-wt1",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/wt1/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:30.962273Z",
+    "endedAt" : "2026-08-22T00:15:32.135602Z",
+    "exitCode" : 0,
+    "pid" : 55350,
+    "log" : "node-logs/home.sync.round.trip.rt-close-out-wt1.log",
+    "error" : null
+  }, {
+    "label" : "rt-close-out-wt2",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/wt2/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:15:32.135870Z",
+    "endedAt" : "2026-08-22T00:15:33.268196Z",
+    "exitCode" : 0,
+    "pid" : 55366,
+    "log" : "node-logs/home.sync.round.trip.rt-close-out-wt2.log",
+    "error" : null
+  }, {
+    "label" : "rt-project-to-root",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/root", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:33.276118Z",
+    "endedAt" : "2026-08-22T00:15:34.432151Z",
+    "exitCode" : 1,
+    "pid" : 55375,
+    "log" : "node-logs/home.sync.round.trip.rt-project-to-root.log",
+    "error" : null
+  }, {
+    "label" : "rt-root-to-project-again",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/round-trip/project/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:15:34.432737Z",
+    "endedAt" : "2026-08-22T00:15:35.588511Z",
+    "exitCode" : 1,
+    "pid" : 55384,
+    "log" : "node-logs/home.sync.round.trip.rt-root-to-project-again.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "upwardPassSettledWithoutAHuman" : 0,
+    "unsharedBaselineClaims" : 0,
+    "durationMs" : 10350
+  },
+  "logs" : [ "upward pass to the root home reported: conflicted; the return pass reported: conflicted. Measured, not asserted — a partially shared baseline conflicts rather than fast-forwarding, which is the direction the baseline rule errs in on purpose." ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:15:24.579442Z","executorEndedAt":"2026-08-22T00:15:48.940249Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.round.trip.stdout.log","inputContextFile":"context/home.sync.round.trip.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.sensitive",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:10:59.786092Z",
+  "endedAt" : "2026-08-22T00:11:24.254125Z",
+  "assertions" : [ {
+    "name" : "an_unmutated_hold_back_reports_clean",
+    "status" : "passed"
+  }, {
+    "name" : "an_unmutated_dry_run_reports_clean",
+    "status" : "passed"
+  }, {
+    "name" : "an_unmutated_run_leaves_no_staging_residue",
+    "status" : "passed"
+  }, {
+    "name" : "an_overwritten_held_back_edit_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_silently_resolved_conflict_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_dry_run_that_writes_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_partially_written_unit_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_staging_tree_left_behind_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_deleted_removed_upstream_unit_is_detected",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "mutationsPlanted" : 5,
+    "controlsAsserted" : 3,
+    "durationMs" : 24468
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:10:59.148715Z","executorEndedAt":"2026-08-22T00:11:37.404181Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.sensitive.stdout.log","inputContextFile":"context/home.sync.sensitive.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.stale.baseline",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:14:38.704447Z",
+  "endedAt" : "2026-08-22T00:14:44.414086Z",
+  "assertions" : [ {
+    "name" : "the_clone_starts_from_the_project_homes_current_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "the_worktree_content_strictly_contains_the_projects",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_never_reports_safe_while_the_worktree_holds_more",
+    "status" : "passed"
+  }, {
+    "name" : "the_worktree_home_is_only_read",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_home_is_either_reconciled_or_untouched_never_partial",
+    "status" : "passed"
+  }, {
+    "name" : "no_staging_residue_survives_the_attempt",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "stale-seed",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/root", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:14:38.713287Z",
+    "endedAt" : "2026-08-22T00:14:40.050890Z",
+    "exitCode" : 0,
+    "pid" : 55015,
+    "log" : "node-logs/home.sync.stale.baseline.stale-seed.log",
+    "error" : null
+  }, {
+    "label" : "stale-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/worktree/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:14:40.052111Z",
+    "endedAt" : "2026-08-22T00:14:41.824165Z",
+    "exitCode" : 0,
+    "pid" : 55025,
+    "log" : "node-logs/home.sync.stale.baseline.stale-clone.log",
+    "error" : null
+  }, {
+    "label" : "stale-close-out",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:14:41.828591Z",
+    "endedAt" : "2026-08-22T00:14:43.098265Z",
+    "exitCode" : 1,
+    "pid" : 55038,
+    "log" : "node-logs/home.sync.stale.baseline.stale-close-out.log",
+    "error" : null
+  }, {
+    "label" : "stale-merge",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/worktree/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/stale-baseline/project/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:14:43.099364Z",
+    "endedAt" : "2026-08-22T00:14:44.409173Z",
+    "exitCode" : 0,
+    "pid" : 55049,
+    "log" : "node-logs/home.sync.stale.baseline.stale-merge.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "reconciledWithoutAHuman" : 1,
+    "spuriousConflict" : 0,
+    "durationMs" : 5710
+  },
+  "logs" : [ "clone-of-an-edited-home reconcile outcome: updated (reconciled=true). The worktree's content strictly contains the project's, so a merge base equal to the clone would settle this without a human." ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:14:38.018834Z","executorEndedAt":"2026-08-22T00:14:58.883353Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.stale.baseline.stdout.log","inputContextFile":"context/home.sync.stale.baseline.input.json","traceId":"707978affed9dc842dc33866b8c47be8"},{
+  "nodeId" : "home.sync.worktree.to.project",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:12:42.375815Z",
+  "endedAt" : "2026-08-22T00:12:48.931505Z",
+  "assertions" : [ {
+    "name" : "a_ticket_worktree_home_clones_cleanly_from_the_project",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_refuses_while_the_worktree_still_holds_work",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_names_every_unit_that_would_be_lost",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_writes_nothing_at_all",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_gives_the_same_verdict_twice",
+    "status" : "passed"
+  }, {
+    "name" : "the_remedy_the_gate_printed_is_a_runnable_command",
+    "status" : "passed"
+  }, {
+    "name" : "running_the_printed_remedy_clears_the_blocker",
+    "status" : "passed"
+  }, {
+    "name" : "close_out_passes_once_the_work_has_been_synced",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_home_holds_the_agents_bytes_exactly",
+    "status" : "passed"
+  }, {
+    "name" : "a_nested_file_the_agent_added_reaches_the_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_return_path_leaves_no_staging_leftovers",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "clone-project-to-worktree",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:42.381252Z",
+    "endedAt" : "2026-08-22T00:12:44.137354Z",
+    "exitCode" : 0,
+    "pid" : 54136,
+    "log" : "node-logs/home.sync.worktree.to.project.clone-project-to-worktree.log",
+    "error" : null
+  }, {
+    "label" : "close-out-blocked",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:44.170829Z",
+    "endedAt" : "2026-08-22T00:12:45.344012Z",
+    "exitCode" : 1,
+    "pid" : 54145,
+    "log" : "node-logs/home.sync.worktree.to.project.close-out-blocked.log",
+    "error" : null
+  }, {
+    "label" : "close-out-repeat",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:45.350785Z",
+    "endedAt" : "2026-08-22T00:12:46.551705Z",
+    "exitCode" : 1,
+    "pid" : 54154,
+    "log" : "node-logs/home.sync.worktree.to.project.close-out-repeat.log",
+    "error" : null
+  }, {
+    "label" : "run-the-remedy",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:46.552501Z",
+    "endedAt" : "2026-08-22T00:12:47.748526Z",
+    "exitCode" : 0,
+    "pid" : 54167,
+    "log" : "node-logs/home.sync.worktree.to.project.run-the-remedy.log",
+    "error" : null
+  }, {
+    "label" : "close-out-cleared",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/worktree/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16855950172977661472/home-sync/project/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:12:47.748831Z",
+    "endedAt" : "2026-08-22T00:12:48.928372Z",
+    "exitCode" : 0,
+    "pid" : 54176,
+    "log" : "node-logs/home.sync.worktree.to.project.close-out-cleared.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "blockersRaised" : 2,
+    "durationMs" : 6556
+  },
+  "logs" : [ ],
+  "published" : {
+    "worktreeAlphaContent" : "---\nname: hs-alpha\ndescription: home-sync graph fixture\n---\nalpha v1\nalpha v2 — improved upstream in the root home\nAGENT IMPROVED ALPHA WHILE WORKING THE TICKET\n"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:12:41.742193Z","executorEndedAt":"2026-08-22T00:13:03.528893Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.sync.worktree.to.project.stdout.log","inputContextFile":"context/home.sync.worktree.to.project.input.json","traceId":"707978affed9dc842dc33866b8c47be8"}]}

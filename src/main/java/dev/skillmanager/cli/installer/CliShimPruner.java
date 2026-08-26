@@ -6,6 +6,7 @@ import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.store.WriteConfinement;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
@@ -84,9 +85,34 @@ public final class CliShimPruner {
      * <p>Best-effort per entry: an unreadable or undeletable one is warned
      * about and skipped rather than failing the sync around it. Nothing here
      * is load-bearing for the install that follows.
+     *
+     * <p><b>Best-effort stops at the home boundary.</b> If {@code bin/cli} does
+     * not resolve inside this home, nothing is pruned and nothing is warned —
+     * the whole prune is REFUSED with
+     * {@link dev.skillmanager.store.WriteOutsideHomeException}, because the
+     * alternative is best-effort deletion of another home's toolchain. See
+     * DEF-007 and the comment on the first line of the body.
+     *
+     * @throws dev.skillmanager.store.WriteOutsideHomeException when
+     *         {@code bin/cli} resolves outside {@code store.root()}
      */
     public static List<Pruned> prune(SkillStore store) {
         Path binDir = store.cliBinDir();
+        // DEF-007. THE ONE LINE THAT STOPS THIS EMPTYING ANOTHER HOME.
+        //
+        // Both calls below FOLLOW a symlink: Files.isDirectory does, and so
+        // does Files.list. Where bin/cli is ITSELF a link at another home's
+        // bin/cli, every entry this lists lives in that other home, every one
+        // of them is correctly judged foreign, and every one of them is deleted
+        // THERE. Measured 2026-08-21: homeA/bin/cli went from 2 entries to 0
+        // because a `sync` ran in homeB. `home verify` already refuses that
+        // shape — its walk does not follow links — so this is the repair path
+        // agreeing with the gate rather than destroying what the gate protects.
+        //
+        // Unconditional rather than scoped: a home's own bin/cli is inside that
+        // home whoever is running, and making this depend on some caller
+        // upstream having remembered to declare a scope is how it comes back.
+        WriteConfinement.requireContainerInside(binDir, store.root(), "sync's bin/cli prune");
         if (!Files.isDirectory(binDir)) return List.of();
         Set<String> declared = declaredArtifactNames(store);
         Path homeRoot = store.root().toAbsolutePath().normalize();

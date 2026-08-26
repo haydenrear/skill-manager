@@ -1,0 +1,8 @@
+7437c72 Merge pull request #236 from haydenrear/feature/235-his-15
+72a85e7 docs(epic): ticket-lifecycle green ON THE INTEGRATED TIP, and the count corrected
+61bd11b docs(epic): V5, DEF-046's general lesson, and the two passages worth keeping
+90a99cf fix(cli): HIS-14's exit-13 refusal goes THROUGH completeExecution, not around it
+0a74e6b docs(epic): ticket-lifecycle green — 13/13 nodes, 117 assertions, 0 failures
+122da42 docs(epic): HIS-15 evidence — the corrected root cause, four vacuity checks, three deferrals
+21834f3 test(cli): guard the --json contract over the convention, not one command
+5b86fea fix(cli): --json owns stdout, and a failing --json run always says why in JSON

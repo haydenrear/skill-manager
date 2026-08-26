@@ -1,0 +1,12 @@
+cli: pruned bin/cli/computeq — resolved into the home at /Users/hayde/.skill-manager, which is not this home's parent store
+cli: pruned bin/cli/helm-deploy — resolved into the home at /Users/hayde/.skill-manager, which is not this home's parent store
+cli: pruned bin/cli/monitoring — resolved into the home at /Users/hayde/.skill-manager, which is not this home's parent store
+cli: pruned bin/cli/tla-spec-dev — resolved into the home at /Users/hayde/.skill-manager, which is not this home's parent store
+cli: pruned bin/cli/tlc2 — resolved into the home at /Users/hayde/.skill-manager, which is not this home's parent store
+✓ cli: installed computeq -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest/bin/cli/computeq
+✓ cli: installed monitoring -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest/bin/cli/monitoring
+✓ cli: installed helm-deploy -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest/bin/cli/helm-deploy
+✓ cli: installed jinja2-cli[yaml]==0.8.2 via uv tool (bin=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest/bin/cli)
+✓ cli: installed tlc2 -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest/bin/cli/tlc2
+✓ cli: installed tla-spec-dev -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest/bin/cli/tla-spec-dev
+✓ cli: installed tracing-observability -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest/bin/cli/tracing-observability-install

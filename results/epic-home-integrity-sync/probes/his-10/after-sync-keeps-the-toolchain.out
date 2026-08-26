@@ -1,0 +1,18 @@
+# reader 4 — the first sync in the clone. 0 pruned, 2 installed.
+pruned: 0
+warning: `/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager/bin/cli` is not on your PATH. To use installed tools, run `export PATH="/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager/bin/cli:$PATH"` or `uv tool update-shell`.
+✓ cli: installed jinja2-cli[yaml]==0.8.2 via uv tool (bin=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager/bin/cli)
+✓ cli: installed tracing-observability -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager/bin/cli/tracing-observability-install
+✓ tools: 2 already present
+✓ cli: 11 already present, 2 installed
+
+# bin/cli after sync — the five inherited links are untouched
+total 24
+lrwxr-xr-x@ 1 hayde  wheel    44 Aug 21 12:17 computeq -> /Users/hayde/.skill-manager/bin/cli/computeq
+lrwxr-xr-x@ 1 hayde  wheel    47 Aug 21 12:17 helm-deploy -> /Users/hayde/.skill-manager/bin/cli/helm-deploy
+lrwxr-xr-x@ 1 hayde  wheel    33 Aug 21 12:18 jinja2 -> ../../venvs/jinja2-cli/bin/jinja2
+lrwxr-xr-x@ 1 hayde  wheel    46 Aug 21 12:17 monitoring -> /Users/hayde/.skill-manager/bin/cli/monitoring
+-rwxr-xr-x@ 1 hayde  staff  5880 Aug 20 19:13 skill-manager
+lrwxr-xr-x@ 1 hayde  wheel    48 Aug 21 12:17 tla-spec-dev -> /Users/hayde/.skill-manager/bin/cli/tla-spec-dev
+lrwxr-xr-x@ 1 hayde  wheel    40 Aug 21 12:17 tlc2 -> /Users/hayde/.skill-manager/bin/cli/tlc2
+-rwxr-xr-x@ 1 hayde  wheel   969 Aug 21 12:18 tracing-observability-install

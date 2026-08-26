@@ -1,0 +1,232 @@
+VACUITY CHECKS — HIS-11 (#186)
+
+Every assertion this ticket adds, run against the code with its own fix
+disabled. An assertion that was not run against broken code is not coverage;
+nine assertions in this epic have been caught passing against broken code,
+three of them by their own authors.
+
+RUNNER: `jbang RunHis11.java` — CommitPreImageRestoreTest +
+CompensationPairingTest + FailureInjectionSweepTest, ~7s. That file IS IN THE
+REPOSITORY (repo root), shipped for the reason RunHis12.java is: a record that
+names a file which does not exist is a claim, not evidence. Apply the mutation
+a V-number names, run it, revert.
+
+The last two suites are in the runner on purpose. They are what a bad
+pre-image escrow breaks FIRST — a vacuity sweep that only ever reddens the new
+file has not checked that the fix left the existing walk-back contract alone.
+They stayed green under every mutation below except where noted.
+
+WHY THIS FIXTURE CAN FAIL AT ALL. #187's case in this same epic is the standing
+warning: an empty `previousLock` there made `removeRealization` remove nothing,
+so "byte-identical afterwards" was true whether or not anything restored it.
+The fixture here has three properties instead:
+  (1) the destination is GENUINELY NON-EMPTY before the run — a real unit tree,
+      with a nested marker file, digested path by path with SHA-256;
+  (2) the incoming tree is GENUINELY DIFFERENT — different SKILL.md body, and
+      no marker file — so `deleteRecursive(dst)` in the commit handler has real
+      work to do and a delete-only rollback is observably lossy;
+  (3) the injected failure lands AFTER the commit, at step 1, so what is under
+      test is the walk-back and not the commit handler's own mid-copy
+      self-rollback.
+Property (1) is checked in the test body as an explicit precondition
+(`before.size() >= 3`), and it is NOT the assertion that reddens: the
+assertions that redden below are all byte-identity, escrow residue, or lock
+behaviour. HIS-4's probe 7a is the standing warning about the other shape — a
+probe that reddens only its precondition is not a probe of the claim.
+
+================================================================ V1
+THE DEFECT ITSELF, PUT BACK. Executor.preStateCompensations:
+
+  -  case SkillEffect.CommitUnitsToStore e -> escrowOverwrittenUnits(e, ctx);
+  +  case SkillEffect.CommitUnitsToStore e -> List.of();
+
+  [FAIL] the pre-installed skill survives a failure after the commit, byte-for-byte: the pre-installed skill survives byte-for-byte: expected <{SKILL.md=27440e66ec825b6e47547532e645acf22da49cebbed29375e589b33ffa39bfc2/19B, nested/keepme.txt=9a51d2aee2b5de92ce764a2dc7dfed2242d96ef97d71d74505b6d5a4d4c27623/29B, skill-manager.toml=1da537a9517f1ee96a489db67004692152611ac37d112babf572c41eefd1f58f/72B}> but was <{}>
+  [FAIL] the pre-installed plugin survives a failure after the commit, byte-for-byte: the pre-installed plugin survives byte-for-byte: expected <{.claude-plugin/plugin.json=c425db641c8bdbd4ed1b3974d68d5d751c597e0b8c5e8c5c755a9c59d82b7301/85B, SKILL.md=27440e66ec825b6e47547532e645acf22da49cebbed29375e589b33ffa39bfc2/19B, nested/keepme.txt=9a51d2aee2b5de92ce764a2dc7dfed2242d96ef97d71d74505b6d5a4d4c27623/29B, skill-manager-plugin.toml=c992d553812b0516403ed18fd9471d82f00c312ed62c44806c9914016b258a35/80B, skills/gamma-impl/SKILL.md=d95186c825fffd4fa9c1f5dc34e5f6b817de3a52d189a8379cd674e4a84449a4/81B, skills/gamma-impl/skill-manager.toml=9053aec5a2405cbae9d5cbc3d83938570a3d36d02860c98607a07b4c6b3691af/82B}> but was <{}>
+  FAILURES: 2
+
+  READ `but was <{}>`. Not "one file differs" — the map is EMPTY. The unit
+  directory is not there at all. Each entry is `<sha256>/<size>B`, so the
+  goal's metric (a) — pre-existing unit BYTES surviving a failed resolve into a
+  non-empty home — is read straight off the failure:
+
+      skill   3 files, 120 bytes  ->  0 files, 0 bytes   (19 + 29 + 72)
+      plugin  6 files, 376 bytes  ->  0 files, 0 bytes   (85 + 19 + 29 + 80 + 81 + 82)
+
+  With the fix, both digests are byte-identical to what they were before the
+  run. Measured, not argued.
+
+================================================================ V2
+THE SUCCESS-EDGE CLEANUP REMOVED. Executor.commit:
+
+  -  if (c instanceof Compensation.RestoreUnitDir r) r.escrow().discard();
+  +  if (false) { }
+
+  [FAIL] a commit that succeeds keeps the NEW bytes and leaves no escrow behind: the pre-image is discarded on success — cache/ holds no escrow: expected <[]> but was <[.materialization-escrow-17929589200021633808]>
+  FAILURES: 1
+
+  This is the acceptance clause "the pre-image is cleaned up on success, so the
+  guard does not grow the home without bound", and it is the failure mode the
+  adversarial review of #231 found in the FIRST version of MaterializationEscrow
+  — one held tree per operation, cleaned up by nothing. One resolve leaves one.
+
+================================================================ V3
+THE RESTORE ARM REMOVED, LIFT LEFT IN PLACE. Executor.applyCompensation:
+
+  -  r.escrow().restore();
+  +  if (false) r.escrow().restore();
+
+  [FAIL] the pre-installed skill survives a failure after the commit, byte-for-byte: ... but was <{}>
+  [FAIL] the pre-installed plugin survives a failure after the commit, byte-for-byte: ... but was <{}>
+  FAILURES: 2
+
+  Separated from V1 on purpose. V1 alone proves only that SOMETHING about the
+  lift matters; this proves the walk-back arm is load-bearing too, i.e. that the
+  test is not passing because the bytes were merely parked somewhere.
+
+================================================================ V4
+THE HOME LOCK REMOVED FROM THE RESOLVE/INSTALL PATH. Executor.homeLock, made to
+lock a private throwaway directory instead of this home, so two programs
+against one home no longer exclude each other:
+
+  -  return HomeLock.acquire(store.root(), ...);
+  +  return HomeLock.acquire(java.nio.file.Files.createTempDirectory("nolock"), ...);
+
+  [FAIL] a second program against the same home WAITS, and says so before it waits: expected false: the second program did not run while the first held the home
+  [FAIL] a second program that will not get the home REFUSES, naming it: expected non-null: the second program refused rather than proceeding
+  FAILURES: 2
+
+  Both halves of "the second waits or refuses" go red together, which is the
+  point: without the lock there is no third outcome to report, the second
+  program simply runs straight through the first one's commit.
+
+================================================================ V5
+THE WAIT LEFT SILENT. HomeLock.acquire, in-process branch:
+
+  -  announceWait(operation, root, "another operation in this process");
+  +  if (false) announceWait(operation, root, "x");
+
+  [FAIL] a second program against the same home WAITS, and says so before it waits: the wait announces itself rather than looking like a hang: expected <> to contain <waiting for>
+  FAILURES: 1
+
+  `expected <>` — the captured stdout is EMPTY. Waiting silently for up to
+  HomeLock.DEFAULT_TIMEOUT (120s) is indistinguishable from a hung command, and
+  the acceptance asks the second caller to SAY which of the two things it did.
+  The refusal half already said so (V4's second line asserts the message names
+  the operation, the home, and "is locked by another"); this is the waiting
+  half.
+
+================================================================ V6
+THE LAST-RESORT DRAIN REMOVED (added answering #233's review, finding #1).
+Executor.drain:
+
+  -  private void drain(RollbackJournal journal) { if (journal.isEmpty()) return;
+  +  private void drain(RollbackJournal journal) { if (true) return;
+
+  [FAIL] an exception escaping the program releases the escrow instead of stranding it: and the escrow was released rather than stranded in cache/: expected <[]> but was <[.materialization-escrow-5446657473548208461]>
+  FAILURES: 1
+
+  The escaping exception is a StagedProgram whose stage-2 builder throws --
+  `staged.stage2().apply(ctx)` is a caller-supplied lambda outside `commit` and
+  outside `walkBack`, which were the only two drains and both sat on ordinary
+  control-flow edges. The cell also asserts that the exception still
+  PROPAGATES, so the drain cannot pass by turning into a catch, and that the
+  committed bytes are left alone, so it cannot pass by restoring.
+
+================================================================ V7
+THE POST-COMMIT HALT DECISION INVERTED (#233's review, finding #5).
+Executor.commit:
+
+  -  if (c instanceof Compensation.RestoreUnitDir r) r.escrow().discard();
+  +  if (c instanceof Compensation.RestoreUnitDir r) r.escrow().restore();
+
+  [FAIL] a commit that succeeds keeps the NEW bytes and leaves no escrow behind: the destination holds the newly committed tree: expected <# gamma …
+  [FAIL] a HALT after the commit keeps the new bytes and discards the pre-image, deliberately: the committed bytes stay — the halt was about what comes AFTER the commit: expected <# gamma …
+  FAILURES: 2
+
+  The point of this one is the SECOND line. `commit` argues in prose that a
+  cooperative stop is not a rollback and so a post-commit HALT keeps the new
+  bytes; that is the one place an explicitly-argued line in this ticket's new
+  code destroys operator bytes, and until now it had no cell. It has one, and
+  inverting the decision reddens it.
+
+  The cell's decoder asserts a non-FAILED HALT actually fired, because without
+  that it would pass just as well on the ordinary success edge -- i.e. it would
+  assert the discard and merely CALL it the halt edge.
+
+  The live instance is on the SYNC path, not the install path: SyncUseCase runs
+  CommitUnitsToStore and then BuildInstallPlan, and BuildInstallPlan returns
+  okAndHalt when the plan is policy-blocked. #233's review named RunInstallPlan;
+  checked, and that handler only ever returns ok or partial, and InstallUseCase
+  puts both of its halting effects BEFORE the commit.
+
+================================================================ V8
+THE MANIFEST'S SLOT LINES REMOVED (#233's review, finding #4).
+MaterializationEscrow.liftPaths, inside the move loop:
+
+  -  Files.writeString(holding.resolve(MANIFEST), manifest.toString());
+  -  i++;
+  +  i++;
+
+  [FAIL] a held escrow says what it is holding and where it goes back: and the slot each held tree is in — enough to put it back by hand: expected <# skill-manager escrow — bytes moved aside by an operation that …
+  FAILURES: 1
+
+  Note WHERE this cell asserts. It drives MaterializationEscrow directly rather
+  than going through the Executor, because every executor path that SUCCEEDS
+  releases the escrow -- so a held one is never observable from outside, and a
+  manifest asserted only end-to-end would have shipped with nothing checking
+  it. The cell lifts, reads the manifest, and only then restores.
+
+  The header still lands under this mutation (it is written before the loop),
+  which is why the failing assertion is the SLOT line and not the file's
+  existence: a manifest that names no slots cannot put anything back, and
+  "the file is there" would have passed.
+
+================================================================ V9
+THE PRE-STATE JOURNALLED AFTER THE EFFECT AGAIN (the ordering as it shipped).
+Executor.runStage -- move `journal.recordAll(preState)` from before `runOne`
+back to after it:
+
+  [FAIL] a renderer that throws does not strand the escrow either — the journal learns about it before the effect runs: the escrow was released, not parked with nothing referencing it: expected <[]> but was <[.materialization-escrow-12991446087162508044]>
+  FAILURES: 1
+
+  This is the fourth escape point #233's review named, and the one the
+  `finally` of V6 does NOT fix, which is why it gets its own number. A drain can
+  only release what the journal knows about. `LiveInterpreter.runOne` catches
+  around `execute` but calls `ctx.renderer().onReceipt(r)` OUTSIDE that catch,
+  so a renderer that throws escapes with the pre-image already lifted and
+  `journal.recordAll(preState)` not yet reached.
+
+  Note that V6 stays GREEN under this mutation and V9 stays green under V6's:
+  two different holes, two different fixes, and neither assertion covers the
+  other. The cell asserts the escape happened (`threw`) as its precondition and
+  the absent residue as its claim.
+
+================================================================ NOT A VACUITY CHECK
+The cell "a commit into an EMPTY destination still rolls back to absent" has no
+V-number and is not claimed as one. It is a NON-REGRESSION guard against the
+opposite defect — an escrow that restored unconditionally would look correct on
+every case above and wrong on a fresh install, resurrecting a unit that was
+never there. There is no single-line mutation that reddens it and not V1, so
+calling it vacuity-checked would be a claim I did not measure.
+
+================================================================ A NOTE ON THE HARNESS
+The first version of the script that applies these mutations reverted them with
+`git checkout -- <path>`. That restores to HEAD, not to the state the mutation
+was applied on top of, and it silently discarded uncommitted work TWICE during
+this ticket -- once for the whole of the original Executor change, once for the
+drain. Nothing was lost: both were reapplied and re-verified before anything was
+pushed, and every V-number above was re-run on the harness that does it safely.
+
+This is now DEF-035 on the epic branch, routed to HIS-8, and the entry records
+the part that makes it worth reading: the recurrence. The agent that FILED the
+hazard walked into it again the same day, because the revert is the natural
+gesture and a backlog entry is not in front of you at the moment you reach for
+it. The procedure that finally worked -- snapshot CONTENT and restore it in a
+`finally`, commit before mutating anyway, and assert the mutation string matches
+exactly once -- is written out in full there rather than duplicated here, since
+one description of it in the place HIS-8 will read is worth more than two.
+
+(That third clause is not incidental. A mutation string that matches nothing
+produces a GREEN run that reads exactly like a passing vacuity check and is
+no check at all -- the same false negative this whole file exists to prevent,
+arriving through the tooling instead of through the assertion.)

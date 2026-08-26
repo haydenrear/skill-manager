@@ -1,0 +1,157 @@
+================ stage edits ================
+edited /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager/skills/his6-probe/SKILL.md
+edited /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager/skills/his6-control/SKILL.md
+edited /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager/skills/his6-control/SKILL.md
+
+================ GOAL-gate-settles: surface the drift twice ================
+### home drift (surface 1)
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager home drift --home /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager
+    ✓ no unread change in /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager
+    EXIT=0
+
+### home drift (surface 2, no new change)
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager home drift --home /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager
+    ✓ no unread change in /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager
+    EXIT=0
+
+================ GOAL-sync-quiet: rollup vs --json ================
+### rollup size, worktree -> project, DRY RUN
+    EXIT=0
+    lines=       6  chars=     711
+      to:          /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager  (dry run — nothing written)
+      held-back          skill:his6-control — locally modified; re-run with --merge to three-way merge it
+      would-update       skill:his6-probe — the destination's working tree is clean and its history is contained in the source's, so it holds nothing of its own; a sync fast-forwards it to the source copy
+      would be: 0 unchanged, 1 updated, 0 new, 0 merged, 1 held back, 0 conflicted, 0 removed upstream, 0 linked
+    ! 1 unit(s) were not reconciled and were left exactly as they were
+      log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-sync-20260824-190906-b813.log
+
+### the same sync --json (the detail surface)
+    EXIT=0
+    lines=       1  chars=     730
+     from = /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager
+     to = /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager
+     merge = False
+     dryRun = True
+     destinationFrozen = False
+     unit = None
+     clean = False
+     units list 2
+    .... unit = skill:his6-control
+    .... name = his6-control
+    .... kind = skill
+    .... status = held-back
+    .... detail = locally modified; re-run with --merge to three-way merge it
+    .... files list 0
+    .... conflicts list 0
+    .... unit = skill:his6-probe
+    .... name = his6-probe
+    .... kind = skill
+    .... status = updated
+    .... detail = the destination's working tree is clean and its history is contained in the source's, so it holds no
+    .... files list 1
+    .... conflicts list 0
+
+================ PATH 1 (UP): worktree -> project ================
+### home close-out on the worktree home
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager
+    Missing required option: '--into=<into>'
+    Usage: skill-manager home close-out [-hv] [--agent-context] [--json]
+                                        --home=<home> --into=<into>
+    Refuse (non-zero) while a worktree home still holds work that removing it would
+    destroy, naming every unit and what to run for each. Writes nothing; safe to
+    run repeatedly.
+          --agent-context   Emit a bounded agent-facing context block to stderr
+                              after the command.
+      -h, --help            Show this help message and exit.
+          --home=<home>     The worktree's Skill Manager home, about to be removed.
+          --into=<into>     The project home its work has to reach first.
+          --json            Emit a machine-readable verdict.
+      -v, --verbose         Verbose output
+    EXIT=2
+
+### targeted sync of ONLY his6-probe, worktree -> project
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager home sync --from /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager --to /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager --unit his6-probe
+      to:          /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager
+      unit:        his6-probe  (only this unit was reconciled; the rest of the home was not visited)
+      updated            skill:his6-probe — the destination's working tree is clean and its history is contained in the source's, so it holds nothing of its own; a sync fast-forwards it to the source copy
+      0 unchanged, 1 updated, 0 new, 0 merged, 0 held back, 0 conflicted, 0 removed upstream, 0 linked
+    ✓ reconciled /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager (unit his6-probe only)
+      log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-sync-20260824-190913-1483.log
+    EXIT=0
+
+### did the bytes move?
+WORKTREE EDIT v2 — promoted by HIS-6
+    MOVED
+### CONTROL: was his6-control (genuinely divergent) left alone?
+PROJECT-SIDE DIVERGENT EDIT — must be held back
+    CONTROL INTACT — destination edit preserved
+
+### whole-home sync worktree -> project (must HOLD BACK his6-control)
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager home sync --from /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/wt/.skill-manager --to /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager
+    ! home sync: skill:his6-control held back — locally modified; re-run with --merge to three-way merge it
+      to:          /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager
+      held-back          skill:his6-control — locally modified; re-run with --merge to three-way merge it
+      1 unchanged, 0 updated, 0 new, 0 merged, 1 held back, 0 conflicted, 0 removed upstream, 0 linked
+    ! 1 unit(s) were not reconciled and were left exactly as they were
+      log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-sync-20260824-190917-ae02.log
+    EXIT=0
+
+### CONTROL after whole-home sync
+PROJECT-SIDE DIVERGENT EDIT — must be held back
+    STILL HELD BACK
+
+================ PATH 2a (UP): project -> root, the ENFORCED direction ================
+### targeted sync of ONLY his6-probe, project -> root
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager home sync --from /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/proj/.skill-manager --to /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager --unit his6-probe
+      to:          /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager
+      unit:        his6-probe  (only this unit was reconciled; the rest of the home was not visited)
+      updated            skill:his6-probe — the destination's working tree is clean and its history is contained in the source's, so it holds nothing of its own; a sync fast-forwards it to the source copy
+      0 unchanged, 1 updated, 0 new, 0 merged, 0 held back, 0 conflicted, 0 removed upstream, 0 linked
+    ✓ reconciled /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager (unit his6-probe only)
+      log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-sync-20260824-190919-8d5a.log
+    EXIT=0
+
+### did the bytes reach the ROOT home?
+WORKTREE EDIT v2 — promoted by HIS-6
+    REACHED ROOT
+
+### root home verify after the promotion
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager home verify --home /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager
+    NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
+    ✓ every reference in /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
+      log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260824-190922-1ab2.log
+    EXIT=0
+
+================ PATH 2b: a DIRECT root update must remain possible ================
+### install a NEW unit directly into the ROOT home
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager install /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/unitsrc/his6-direct --yes
+    ✓ resolve: 1 unit(s)
+    ✓ installed his6-direct
+    ✓ units.lock.toml: wrote 3 unit(s) → /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager/units.lock.toml
+    ✓ agents: 1 unit(s) linked into claude, codex, gemini
+      log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20260824-190924-4100.log
+    EXIT=0
+
+### list at ROOT after the direct install
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager list
+    NAME                         KIND     VERSION    BINDINGS  SHA       SOURCE
+    his6-control                 skill    -          3         bbaac1e   local_file
+    his6-direct                  skill    -          3         9de7f3d   local_file
+    his6-probe                   skill    -          3         e1f65e9   local_file
+    EXIT=0
+
+### is the directly-installed unit present at root?
+    PRESENT — a direct root update is still possible
+
+### skill-manager sync his6-direct AT THE ROOT HOME (the command DEF-103 broke)
+$ /Users/hayde/IdeaProjects/wt-218-his-6/skill-manager sync his6-direct --yes
+    ✓ resolve: 0 unit(s)
+    ✓ units.lock.toml: wrote 3 unit(s) → /Users/hayde/IdeaProjects/wt-218-his-6/scratch/his6/rootH/.skill-manager/units.lock.toml
+    ✓ synced 1 unit(s) — 1 merged, 1 local-only (no shared upstream)
+    ✓ agents: 3 unit(s) linked into claude, codex, gemini
+      log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260824-190929-56d4.log
+    EXIT=0
+
+### did the direct root update land?
+DIRECT ROOT UPDATE v2
+    LANDED

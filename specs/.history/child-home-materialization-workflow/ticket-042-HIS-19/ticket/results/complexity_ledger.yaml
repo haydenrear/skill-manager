@@ -1,0 +1,206 @@
+# Complexity ledger input -- MF-019 standing objective.
+#
+# `close ticket` refuses until this is filled in. That refusal is the mechanism:
+# the standing objective is a required close-out step, not a stance.
+#
+# The delta is computed for you from `analyze complexity` and the TLC report.
+# What you supply is the part a tool cannot know: whether behavior was retained,
+# what the refinement search found, and why any increase is essential.
+
+# Validated-refactor basis -- CD-09 (owner-approved 2026-07-22). This is what
+# LICENSES a complexity DECREASE: TLC green on the model before AND after the
+# change, behavior tests green, and the before/after descriptor comparison
+# recorded. Absent, unknown, or degraded evidence REJECTS a decrease: an
+# unmeasured constraint cannot witness retention. (The fourth obligation, the
+# inspected transition-level diff, is `transition_diff:` below and is demanded
+# whenever the MF-020 red flag fires.)
+#
+#   tlc_before:            green | fail        -- TLC on the pre-change model
+#   tlc_after:             green | fail        -- TLC on the post-change model
+#   behavior_tests:        pass | fail         -- the repository behavior tests
+#   descriptor_comparison: recorded            -- before/after descriptor doc
+validated_refactor:
+  tlc_before:
+    status: "TODO"
+    evidence: "TODO -- path to the pre-change TLC output"
+  tlc_after:
+    status: "TODO"
+    evidence: "TODO -- path to the post-change TLC output"
+  behavior_tests:
+    status: "TODO"
+    evidence: "TODO -- path to the behavior-test output"
+  descriptor_comparison:
+    status: "TODO"
+    evidence: "TODO -- path to the before/after descriptor comparison"
+
+# Fuzzing-era retention members -- RECORDED at every close, non-gating since
+# CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs
+# floor 0.8, 0/9 content bugs caught). `not_run` is the honest value; fill in a
+# measured verdict only when one of them actually ran.
+#
+#   kill_rate:           pass | below_floor | incomplete_catalog | not_run   (MF-016)
+#   effect_conformance:  clean | gaps | dead_surface | unobservable | not_run (MF-013/MF-027)
+#   external_coverage:   pass | gaps | incomplete | not_run                  (MF-015)
+#
+# NOTE: `unobservable` IS NOT `clean`. MF-027 made the effect oracle refuse
+# targets it cannot see; the record keeps that distinction even though the
+# member no longer gates.
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+# Coverage audit -- MF-026. The completeness REVIEW, distinct from the three
+# retention members above, which are all FIDELITY measures bounded to what is
+# already modeled. Unmodeled surface is invisible to every one of them, and this
+# is the only sweep that looks at it.
+#
+#   status: pass | fail | incomplete | not_run
+#
+# RECORDED, NEVER REFUSING (2026-08-04, owner direction). It was a hard gate at
+# workflow close with no override; it is now an optional agent-run review whose
+# verdict is written down and read by a person. `incomplete` IS STILL NOT
+# `pass`, because a sweep that did not walk the surface says nothing about it --
+# what was withdrawn is the refusal, not the distinction.
+#
+# Procedure: prompts/coverage_audit.md   Doctrine: references/coverage_audit.md
+coverage_audit:
+  status: "not_run"
+  report: ""          # path to the filled templates/coverage_audit_report.md
+  in_scope_gaps: null # count; in-scope gaps are HARD -- model it or change the program
+  scope_source: ""    # plan file:lines the declared scope was READ from, never chosen
+
+# Required if complexity INCREASED. Name the new essential behavior the added
+# representation carries. This documents real behavior; it does not waive the
+# increase, which is recorded and reported either way.
+justification: ""
+
+# The recursive refinement loop -- REQUIRED at every close.
+# Either an approved recommendation with evidence, or "searched, found none".
+# Recommendations are advisory and user-approved, never auto-applied.
+refinement:
+  searched: true
+  outcome: "found"
+  detail: >
+    FOUND AND APPLIED, at the review of PR #250. Searched twice, and the second search found something the first did not.
+
+    FIRST PASS (structural, and it still holds for the model): HIS-19 changes no
+    TLA+ module, no .cfg, no adapter and no spec double. Its conflict keys
+    declare `tla: []` and `adapters: []`, and the assignment records
+    `tlc: "N/A: HIS-5 carries the model work for this epic"`. `uv run pytest
+    specs/` is green at 88 passed after the rebase onto HIS-5. The change is
+    below the modelled surface: which absolute path string is written into a
+    generated bash file. Adding a state variable for "the spelling of a pin" to
+    justify a refinement record would be inventing model surface to fill a field.
+
+    SECOND PASS, IN THE PROGRAM, AND IT REMOVED REPRESENTATION. The review of
+    #250 (MAJOR 2) asked whether the `PATH_ALIAS` arm earned its safety claim.
+    Measured, it did not -- and neither did the claim. Removed: one `Source`
+    enum value, one candidate-generation loop, the `Function<String,String> env`
+    parameter threaded through `forPin`/`choose`/`candidates`, and the test
+    helper that fed it. Removed separately (m4): the identity gate in
+    `rejection`, which every candidate now makes unreachable.
+
+    The class is smaller and STRICTLY MORE CONSTRAINED afterwards: it reads no
+    environment at all, so `choose` is a function of the located path and the
+    filesystem, and the same command writes the same pin from cron and from a
+    login shell. That is a refinement in the sense that matters here -- fewer
+    reachable states, one fewer input -- and it was found by a reviewer asking
+    whether a documented property was true rather than by a complexity metric,
+    which could not see it.
+
+    KEPT DELIBERATELY: the `DurableCliPin.Source` enum, now four values. It
+    exists so a probe can name the branch it exercises (vacuity mechanism D).
+    Collapsing it to a boolean was reconsidered at this review and rejected
+    again: V2/V3/V7/V14 are only distinguishable because the branches are named
+    apart, and row 18 of the vacuity ledger is what happens when a branch has no
+    name of its own.
+  measured: false      # no TLC run: the model is byte-identical before and after
+  applied: true
+  approved_by: "review of PR #250 (MAJOR 2), epic owner adjudicating"
+
+# Required only if a generated-states drop at constant distinct states is
+# detected. That is a RED FLAG (deleted self-loop, MF-020), not a win -- record
+# the inspected transition-level diff here to accept it.
+transition_diff: ""
+
+# REQUIRED. The narrative ledger: reasoning, measured alternatives, findings the
+# machine-checked core above cannot express. Path to a document, or prose.
+narrative: >
+  HIS-19 (issue #246) / DEF-027 fixes the CAUSE under DEF-012. The
+  machine-checked core above is uninformative by construction -- the model delta
+  is zero because no model was touched. The full record is
+  results/epic-home-integrity-sync/tickets/HIS-19/goal-contribution.md; this is
+  the part the delta cannot express, written AFTER the review of PR #250 so it
+  states the corrected position rather than the one I opened with.
+
+  WHAT WAS BROKEN. `home shims` recorded the located build's absolute path, and
+  on a Homebrew install that path is inside the keg. The 0.24.0 upgrade deleted
+  that directory on the operator's own machine. The generated entrypoint stayed
+  present and executable -- so every `-x` test, including
+  HomeDescriptor.locateCli's, called the home healthy -- while running it could
+  only produce exit 127, and `home verify` returned EXIT 0. HIS-12 stopped
+  remedies naming a dead pin; HIS-13 detects and repairs one. Neither stopped
+  this class writing the same pin again, so the repair ran on a treadmill.
+
+  WHAT WAS BUILT. DurableCliPin: given the located build, find another SPELLING
+  of the same file that carries no version segment, and pin that. `home verify`
+  gained the one question its walk structurally could not ask -- a dead pin
+  names a path OUTSIDE the home, and missingReferencesIn only considers paths
+  inside it -- and now exits 1 on it, through HIS-13's reader. Existing homes
+  migrate through HIS-13's repairer, which already re-pins by calling
+  LauncherShims.write.
+
+  WHAT THE REVIEW CHANGED, AND IT IS THE MOST USEFUL THING IN THIS ENTRY. The
+  class shipped with a third arm that searched PATH for a versionless entry, and
+  a javadoc sentence claiming a substitution "cannot produce" an older build
+  answering. The review challenged the sentence for that arm. Reproducing it
+  confirmed the arm was unsafe -- and asking the same question of the DERIVABLE
+  Homebrew arm showed the sentence false there too, which is more than the
+  review claimed and is my own claim falsified by my own measurement
+  (probes/his-19/downgrade.out, case B: `brew link` an older keg and the pin
+  runs BUILD 0.19.2).
+
+  So the sentence was rewritten rather than narrowed, and the PATH arm was
+  dropped on four counts: the set of things that can move a DERIVED alias is
+  bounded and is about this product, while an arbitrary PATH directory can be
+  moved by anything and nix generations roll backwards by design; a PATH arm
+  makes the written pin depend on ambient state, which is a second answer to
+  "which build does this home run" produced by the mechanism added to remove one;
+  the fallback when nothing is substituted is a LOUD 127 that this epic already
+  detects (`home verify` exit 1) and repairs (`home repair --fix`), whereas a
+  silent downgrade has none of that; and the arm had no measured user -- the only
+  layouts ever seen are Homebrew's and a fixture written for the arm itself.
+  The governing rule, and it is this epic's own doctrine: PREFER NO SUBSTITUTION
+  OVER AN UNSAFE ONE.
+
+  What the design now guarantees, stated so a reader cannot take more from it
+  than was measured: issue #61's failure -- an unrelated build the operator never
+  chose, selected by PATH ordering at launch -- cannot occur, because nothing is
+  resolved at launch and every recorded path is the package manager's own alias
+  for this formula. It does NOT guarantee the build never moves backwards. A
+  deliberate downgrade is followed, and there is now a test asserting that limit
+  rather than prose denying it.
+
+  THE OTHER REVIEW FINDING WORTH RECORDING. The reader-disagreement I had caught
+  by hand -- `home shims` printing the located pin while writing the durable one
+  -- was still caught only by hand. Reverting the fix reddened NOTHING in 1402
+  cases. A class of defect this epic exists to remove was being defended by my
+  memory of having noticed it once, on the command an operator runs to REPAIR a
+  broken pin. Two assertions and an injected-pin seam on ShimsCmd close it, and
+  probe V4 is the measured red.
+
+  FINDINGS FILED RATHER THAN SOLVED: DEF-092 (`home clone` still does not report
+  a dead pin), DEF-093 (the version predicate is a validated heuristic; the
+  review supplied a corpus showing it errs wide on dates and dotted numerics),
+  DEF-094 (an explicit SKILL_MANAGER_CLI is stabilised too). DEF-095 records
+  MINOR 8 as CLOSED BY DECISION: HomeFixpointLaw cannot auto-repair a dead pin
+  and must not be taught to, because DEF-067 is open precisely because that law
+  repairs what it observes. Three vacuity-ledger rows, 16-18; two mine, one the
+  reviewer's.

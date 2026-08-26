@@ -1,0 +1,69 @@
+{
+ "runId": "20260822-160414",
+ "status": "passed",
+ "graph": "home-integrity",
+ "execution.complete": true,
+ "tree": "rebased onto d40c39f (HIS-11 integrated)",
+ "nodes": [
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  }
+ ]
+}

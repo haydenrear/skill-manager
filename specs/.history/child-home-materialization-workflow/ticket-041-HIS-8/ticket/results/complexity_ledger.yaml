@@ -1,0 +1,169 @@
+# Complexity ledger input -- MF-019 standing objective.
+#
+# `close ticket` refuses until this is filled in. That refusal is the mechanism:
+# the standing objective is a required close-out step, not a stance.
+#
+# The delta is computed for you from `analyze complexity` and the TLC report.
+# What you supply is the part a tool cannot know: whether behavior was retained,
+# what the refinement search found, and why any increase is essential.
+
+# Validated-refactor basis -- CD-09 (owner-approved 2026-07-22). This is what
+# LICENSES a complexity DECREASE: TLC green on the model before AND after the
+# change, behavior tests green, and the before/after descriptor comparison
+# recorded. Absent, unknown, or degraded evidence REJECTS a decrease: an
+# unmeasured constraint cannot witness retention. (The fourth obligation, the
+# inspected transition-level diff, is `transition_diff:` below and is demanded
+# whenever the MF-020 red flag fires.)
+#
+#   tlc_before:            green | fail        -- TLC on the pre-change model
+#   tlc_after:             green | fail        -- TLC on the post-change model
+#   behavior_tests:        pass | fail         -- the repository behavior tests
+#   descriptor_comparison: recorded            -- before/after descriptor doc
+validated_refactor:
+  tlc_before:
+    status: "TODO"
+    evidence: "TODO -- path to the pre-change TLC output"
+  tlc_after:
+    status: "TODO"
+    evidence: "TODO -- path to the post-change TLC output"
+  behavior_tests:
+    status: "TODO"
+    evidence: "TODO -- path to the behavior-test output"
+  descriptor_comparison:
+    status: "TODO"
+    evidence: "TODO -- path to the before/after descriptor comparison"
+
+# Fuzzing-era retention members -- RECORDED at every close, non-gating since
+# CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs
+# floor 0.8, 0/9 content bugs caught). `not_run` is the honest value; fill in a
+# measured verdict only when one of them actually ran.
+#
+#   kill_rate:           pass | below_floor | incomplete_catalog | not_run   (MF-016)
+#   effect_conformance:  clean | gaps | dead_surface | unobservable | not_run (MF-013/MF-027)
+#   external_coverage:   pass | gaps | incomplete | not_run                  (MF-015)
+#
+# NOTE: `unobservable` IS NOT `clean`. MF-027 made the effect oracle refuse
+# targets it cannot see; the record keeps that distinction even though the
+# member no longer gates.
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+# Coverage audit -- MF-026. The completeness REVIEW, distinct from the three
+# retention members above, which are all FIDELITY measures bounded to what is
+# already modeled. Unmodeled surface is invisible to every one of them, and this
+# is the only sweep that looks at it.
+#
+#   status: pass | fail | incomplete | not_run
+#
+# RECORDED, NEVER REFUSING (2026-08-04, owner direction). It was a hard gate at
+# workflow close with no override; it is now an optional agent-run review whose
+# verdict is written down and read by a person. `incomplete` IS STILL NOT
+# `pass`, because a sweep that did not walk the surface says nothing about it --
+# what was withdrawn is the refusal, not the distinction.
+#
+# Procedure: prompts/coverage_audit.md   Doctrine: references/coverage_audit.md
+coverage_audit:
+  status: "not_run"
+  report: ""          # path to the filled templates/coverage_audit_report.md
+  in_scope_gaps: null # count; in-scope gaps are HARD -- model it or change the program
+  scope_source: ""    # plan file:lines the declared scope was READ from, never chosen
+
+# Required if complexity INCREASED. Name the new essential behavior the added
+# representation carries. This documents real behavior; it does not waive the
+# increase, which is recorded and reported either way.
+justification: ""
+
+# The recursive refinement loop -- REQUIRED at every close.
+# Either an approved recommendation with evidence, or "searched, found none".
+# Recommendations are advisory and user-approved, never auto-applied.
+refinement:
+  searched: true
+  outcome: "none"
+  detail: >
+    Searched, found none, and the reason is structural rather than a judgement
+    call: HIS-8 changes no TLA+ model, no .cfg, no adapter and no spec double.
+    Its whole slice is markdown in four units that live in four OTHER
+    repositories, reached by publish rather than by this branch. The plan's own
+    validation block records `tlc: "N/A: this ticket states no new invariant"`
+    and empty `tla`/`adapters` conflict keys, and the measured delta is
+    `variables=38 actions=9, direction=zero` -- identical to the pre-change
+    model because the model was not touched.
+
+    A refinement recommendation here would have to be about a representation
+    this ticket neither adds nor moves. Recording one would be inventing work to
+    satisfy a field.
+  measured: false      # no TLC run: the model is byte-identical before and after
+  applied: false       # if true, approved_by is required
+  approved_by: ""
+
+# Required only if a generated-states drop at constant distinct states is
+# detected. That is a RED FLAG (deleted self-loop, MF-020), not a win -- record
+# the inspected transition-level diff here to accept it.
+transition_diff: ""
+
+# REQUIRED. The narrative ledger: reasoning, measured alternatives, findings the
+# machine-checked core above cannot express. Path to a document, or prose.
+narrative: >
+  HIS-8 (issue #224) is a DOCUMENTATION ticket with a zero-delta model, so the
+  machine-checked core above is uninformative by construction. What it cannot
+  express is the whole of what this ticket did, so it is recorded here.
+
+  WHAT WAS BUILT. The derived-artifact contract -- what an artifact is, what a
+  clone inherits versus declares, when to rebuild, and the exact command -- is
+  now stated ONCE, in skt, at skills/skt/references/derived-artifacts.md. The
+  three other units that instruct agents about homes link to it and deliberately
+  do not restate it.
+
+  THE MEASURED ALTERNATIVE THAT WAS REJECTED. Restating the contract in each of
+  the four units would have made every one of them self-sufficient. It was
+  rejected because this epic has already measured what a second copy does:
+  DEF-021 found eight javadocs describing code that had moved, and this ticket's
+  own BEFORE judged read found git-issue-workflow/references/skill-homes.md
+  asserting -- in the present tense, with a measurement -- that `home verify`
+  REFUSES a lazy clone and that the gap is unfixable. Re-measured 2026-08-23:
+  cold shim, exit 86, `home verify` exit 0. That page was corrected, and then a
+  second read found a TWIN passage 100 lines below it that had been left stale.
+  Two copies of one claim, one corrected, one not, inside the fix for exactly
+  that failure mode. That is the argument for single-sourcing, made by the
+  ticket's own material rather than asserted.
+
+  HOW CORRECTNESS WAS DECIDED. The goal's clause 2 is a judged read, and it was
+  run three times against three fresh agents with NO source access, each given
+  only the four units' markdown and required to cite a file and a quoted
+  sentence per answer. BEFORE: 0 of 3. AFTER: 3 of 3, twice, by different
+  agents. Transcripts and scoring:
+  results/epic-home-integrity-sync/tickets/HIS-8/judged-read/.
+
+  Clause 1's instrument moved 0 of 4 -> 4 of 4 instructing units. Both halves,
+  and the honest limits of each, are in the goal contribution.
+
+  WHAT THIS TICKET FOUND BY MEASURING RATHER THAN READING. Two facts the source
+  alone would have got wrong, both now on the page: building a `cli-shim` also
+  provisions the tree behind it (stale 13 -> 11 on one build, exit 0), and a
+  `pip:` dependency already satisfied on the ambient PATH DEFEATS its own
+  producer -- `build` exits 1 with "the producer ran and this home still does
+  not hold the artifact". The second is a real limit of the remedy this page
+  recommends, filed as a deferred finding rather than papered over.
+
+  CLOSE TAKEN UNDER --allow-open, AND WHY. `close ticket` requires
+  ticket_plan.yaml status in {accepted, closed, complete, completed, done}. This
+  epic marks a landed ticket `delivered`, which is not in that set, and the
+  ticket agent stops at PR OPEN by rule 7 -- so no honest status available to me
+  satisfies the gate. `--allow-open` is the flag whose stated purpose is exactly
+  this case, it is RECORDED and never refused, and the close is therefore the
+  modeled state CloseTicketWeakened rather than CloseTicket. Recorded here so
+  the terminal evaluation reads the weaker claim, not the stronger one. Filed as
+  a deferred finding against the vocabulary mismatch itself.
+
+  NOT DONE. Ticket current == desired (verified by diff, byte-identical), so
+  promotion carries nothing. `refinement.measured` is false because no TLC run
+  was made: the model is byte-identical before and after, and running TLC to
+  reproduce a number that cannot have changed would be evidence theatre.

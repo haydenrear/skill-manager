@@ -5,6 +5,21 @@ name: Lint PR release metadata
 # with rebase-merge, that means the branch commit subjects, not the PR title.
 # If a PR title asks for a release but every branch commit is non-releasable,
 # release-please will silently skip the release PR.
+#
+# `epic` is a local type, not a Conventional Commits standard one. It is here
+# because git-epic-workflow produces one PR per epic whose subject is the epic
+# itself -- `epic(home-integrity-sync): ...`, an integration branch carrying
+# many tickets -- and that PR is neither a feat nor a chore. Without the row,
+# every epic PR failed this job on its title alone.
+#
+# It is deliberately NOT releasable, and the consequence is worth knowing
+# before you merge one: `lint-rebase-release-signal` below only runs when the
+# TITLE asks for a release, so an `epic(...)` title skips that check entirely.
+# Under rebase-merge that is correct -- the branch's own feat/fix commits reach
+# main and release-please reads them. Under SQUASH-merge it is not: the squash
+# subject becomes the only commit on main, `epic` means nothing to
+# release-please, and a release-worthy epic ships no release. Rebase-merge an
+# epic PR, or give the squash a feat/fix subject.
 
 on:
   pull_request:
@@ -34,6 +49,7 @@ jobs:
             ci
             build
             revert
+            epic
           requireScope: false
           # Keep this aligned with the action's conventional-commit parser,
           # but allow an empty subject to parse so subjectPatternError can

@@ -1,0 +1,104 @@
+DEF-002 / #161 — the remedy a sync prints, before and after
+===========================================================
+
+Reproduction: results/epic-home-integrity-sync/probes/his-12/def002-repro.sh
+Run 2026-08-21 in /Users/hayde/IdeaProjects/wt-161-his-12.
+
+SHAPE (this is the shape DEF-002 was measured in, rebuilt from scratch so it
+can be re-run):
+
+  PROJECT home  <scratch>/project/.skill-manager   (installed/ + skills/, NO bin/cli)
+  ROOT home     <scratch>/root/.skill-manager      (installed/ + skills/ + bin/cli/skill-manager)
+  PATH          <scratch>/root/.skill-manager/bin/cli:$PATH
+  SKILL_MANAGER_HOME = the PROJECT home
+  SKILL_MANAGER_CLI  = unset
+
+A unit is installed into the PROJECT home from a local git repo, edited, and
+`sync` is run — which refuses and prints its remedy.
+
+-----------------------------------------------------------------------------
+BEFORE — epic tip dc97f2a (this ticket's base), same scratch, same PATH
+-----------------------------------------------------------------------------
+
+  ✗   re-run with: <scratch>/root/.skill-manager/bin/cli/skill-manager sync probe-unit --merge
+        (merges <scratch>/src/probe-unit into <scratch>/project/.skill-manager/skills/probe-unit)
+
+The command ran against the PROJECT home. The remedy names the ROOT home's
+pinned entrypoint. That file exports SKILL_MANAGER_HOME from its OWN location
+and lets that win over the environment, so following the printed instruction
+verbatim edits the ROOT home — a different home than the one the operator was
+in, with nothing in the transcript saying so.
+
+The path arrived via step 4, the raw PATH walk: the project home has no
+bin/cli of its own, so resolution fell through to PATH, and PATH's first
+`skill-manager` was the root home's shim.
+
+-----------------------------------------------------------------------------
+AFTER — this branch, under the per-verb binding contract
+-----------------------------------------------------------------------------
+
+  ✗   re-run with: /Users/hayde/IdeaProjects/wt-161-his-12/skill-manager
+        sync probe-unit --merge --home <scratch>/project/.skill-manager
+        (merges <scratch>/src/probe-unit into <scratch>/project/.skill-manager/skills/probe-unit)
+
+Three changes, all load-bearing:
+
+  * THE ROOT HOME'S ENTRYPOINT IS NO LONGER A CANDIDATE AT ALL. It exports
+    SKILL_MANAGER_HOME from its own location and lets that win, so it cannot be
+    redirected by any prefix or flag. It is skipped at every resolution step
+    rather than returned and then wrapped.
+  * WHAT ANSWERED INSTEAD is the RUNNING build — the launcher that printed the
+    message, found through SKILL_MANAGER_INSTALL_DIR. That is the step whose
+    javadoc existed and whose implementation could never fire.
+  * THE HOME IS NAMED IN `--home`, not in the head token. The head token is the
+    one token every consumer of a printed remedy substitutes: `home-sync`'s
+    `remedyArgs` drops it, `close-change.sh`'s `run_cli` drops it. A binding
+    carried there is deleted by both.
+
+-----------------------------------------------------------------------------
+AND THE REMEDY WAS PASTED VERBATIM INTO A FRESH SHELL
+-----------------------------------------------------------------------------
+
+Naming the right home is worth nothing if the command does not run, and running
+is worth nothing if it runs somewhere else. So, with the environment set up the
+way a reader's shell would be — SKILL_MANAGER_HOME UNSET, and the ROOT home's
+bin/cli FIRST on PATH:
+
+  $ unset SKILL_MANAGER_HOME SKILL_MANAGER_CLI
+  $ export PATH="<scratch>/root/.skill-manager/bin/cli:$PATH"
+  $ /Users/hayde/.../skill-manager sync probe-unit --merge --home <scratch>/project/.skill-manager
+
+    ✓ units.lock.toml: wrote 1 unit(s) -> <scratch>/project/.skill-manager/units.lock.toml
+    ✓ synced 1 unit(s) — 1 merged, 1 local-only (no shared upstream)
+    ✓ agents: 1 unit(s) linked into claude, codex, gemini
+
+  $ ls <scratch>/root/.skill-manager/skills/
+    (empty)
+
+It ran, it edited the PROJECT home, and the ROOT home was not touched. Before
+this branch, the same paste — with the same unset environment — went to the root
+home, because the remedy named the root home's own entrypoint.
+
+-----------------------------------------------------------------------------
+A NOTE ON WHAT THIS MEANS FOR THE PATH FALLBACK
+-----------------------------------------------------------------------------
+
+With the running-build step alive, a real CLI invocation almost never reaches
+the PATH walk: every shipped launcher exports SKILL_MANAGER_INSTALL_DIR, so the
+running build answers first. The PATH fallback is now reachable only when that
+back-reference AND the jar's own location are both unavailable — and when it IS
+reached, the remedy says so:
+
+  note: this skill-manager came from PATH (<path>); nothing records it as the
+  build that printed this message, and an older release answers an unknown
+  subcommand with usage and exit 0. Give this home its own CLI with
+  `<path> home shims --home <X>` to remove the guess.
+
+That trailing `--home <X>` is the review's H3: the caveat's OWN instruction is a
+remedy, and it was built from the binary alone — so a pasted `home shims` with no
+SKILL_MANAGER_HOME re-pinned the operator's ROOT home. DEF-002 reintroduced
+inside the fix for DEF-002.
+
+That branch is covered by HomeDescriptorCliRemedyTest, driven through the
+injected env seam rather than the ambient one, and vacuity-checked as V6 (the
+caveat suppressed) and V13 (the instruction built unbound).

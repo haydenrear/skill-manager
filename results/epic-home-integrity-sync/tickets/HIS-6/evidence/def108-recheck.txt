@@ -1,0 +1,7 @@
+sweep: 1 graph(s), one at a time, a red one does NOT stop the sweep
+[1/1] git-latest-source-tracking ...
+      PASS  63.9s  run=20260824-235112
+
+graphs_executed=1  graphs_passed=1  graphs_failed=0
+
+wrote /Users/hayde/IdeaProjects/wt-218-his-6/results/epic-home-integrity-sync/tickets/HIS-6/sweep-def108-recheck/sweep.json

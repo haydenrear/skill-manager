@@ -1,12 +1,19 @@
 package dev.skillmanager.store;
 
 import dev.skillmanager.agent.AgentHomes;
+import dev.skillmanager.artifacts.Artifact;
+import dev.skillmanager.artifacts.ArtifactIds;
+import dev.skillmanager.artifacts.ArtifactIndex;
+import dev.skillmanager.artifacts.ArtifactKind;
+import dev.skillmanager.artifacts.ArtifactLedger;
+import dev.skillmanager.artifacts.ColdArtifactShim;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingJson;
 import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.launch.LaunchEnv;
+import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.shared.util.Rederivable;
 import dev.skillmanager.util.Log;
@@ -22,7 +29,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -319,6 +328,56 @@ public final class HomeCloner {
         public static final String FOREIGN_AGENT_HOME = "FOREIGN_AGENT_HOME";
 
         /**
+         * A shim whose <em>content</em> execs a path inside another home —
+         * the wrapper twin of {@code FOREIGN_HOME}, and DEF-104.
+         *
+         * <h2>The measured disagreement, and what actually caused it</h2>
+         *
+         * <p>Same home, same minute, on the operator's root store:
+         *
+         * <pre>
+         *   home verify --home ~/.skill-manager  -> exit 0, "no path in it
+         *                                           reaches any other home"
+         *   home repair --home ~/.skill-manager  -> 5 findings,
+         *                                           FOREIGN_PATH_IN_SHIM x3 shims
+         * </pre>
+         *
+         * <p>and repair was right: {@code bin/cli/tla-spec-dev} held
+         * {@code exec python3 "<project home>/skills/.../tla_spec_dev.py"}
+         * while the root home carried its own copy of that script.
+         *
+         * <p>Issue #253 proposed that {@link #verifyRoots} frames the
+         * foreign-home question against a home's SOURCE, so a parentless home
+         * never runs the branch. <b>That is not the mechanism, and the
+         * difference matters.</b> Measured on two throwaway homes, A holding a
+         * regular-file wrapper that execs a path inside B:
+         *
+         * <pre>
+         *   home verify --home A              -> exit 0   (no source)
+         *   home verify --home A --against C  -> exit 0   (a source, and still blind)
+         *   home repair --home A              -> 1 finding
+         *   A's shim rewritten as a SYMLINK, home verify --home A -> exit 1
+         * </pre>
+         *
+         * <p>So the blindness is not about the TIER and not about
+         * {@code --against}. The foreign-home question was asked only of
+         * SYMLINKS; for a regular file the walk searched for the SOURCE needle
+         * and nothing else, so a wrapper naming a THIRD home was invisible at
+         * every tier, with or without a parent. The root home merely happened
+         * to be where the wrappers had been mis-pointed —
+         * {@code HomeRepair.foreignPathsInShims} says this in its own javadoc:
+         * "every check built on {@code Files.isExecutable} or on link
+         * resolution passes over it".
+         *
+         * <p>Never tolerable, for the same reason {@code FOREIGN_HOME} is not:
+         * the shim RUNS that path. The verdict is
+         * {@link HomeCloner#unsanctionedForeignHome} — the same gate
+         * {@code home repair} asks — so the two readers cannot come to
+         * disagree about one file again.
+         */
+        public static final String FOREIGN_PATH_IN_SHIM = "FOREIGN_PATH_IN_SHIM";
+
+        /**
          * A path that appears only inside a persisted error MESSAGE.
          *
          * <p>{@code installed/<unit>.json} carries an {@code errors[]} array,
@@ -398,8 +457,44 @@ public final class HomeCloner {
              * {@code child-homes/} records the copy deliberately did not
              * inherit, by id. See {@link HomeCloner#insideNewHome}.
              */
-            List<String> droppedChildHomes
+            List<String> droppedChildHomes,
+
+            /**
+             * Trees the copy DECLARED instead of carrying, home-relative — the
+             * in-unit virtualenvs a lazy home defers. Empty for an eager clone.
+             * See {@link HomeCloner#deferrableVirtualenv}.
+             */
+            List<String> deferredTrees,
+
+            /**
+             * Entry points under {@code bin/} the copy replaced with a cold
+             * shim, by name. Every one of these was a path that resolved to
+             * nothing before this ticket and said so in the kernel's words.
+             * See {@link ColdArtifactShim}.
+             */
+            List<String> coldShims,
+
+            /** Whether this copy declares its artifacts and builds them on demand. */
+            boolean lazyArtifacts
     ) {
+        /**
+         * The shape every caller before ARTI-07 constructs. Kept so that adding
+         * three components renamed nothing: an eager clone defers no tree and
+         * writes no cold shim, so the defaults are facts rather than
+         * placeholders.
+         */
+        public Report(Path source, Path dest, int directories, int files, int symlinks,
+                      long bytes, int linksRelativized, int stateReanchored,
+                      int provisionedRewritten, List<Leak> leaks,
+                      List<String> contentReferences, List<String> danglingLinks,
+                      List<String> danglingReferences, List<String> droppedRegistrations,
+                      List<String> droppedBindings, List<String> droppedChildHomes) {
+            this(source, dest, directories, files, symlinks, bytes, linksRelativized,
+                    stateReanchored, provisionedRewritten, leaks, contentReferences,
+                    danglingLinks, danglingReferences, droppedRegistrations, droppedBindings,
+                    droppedChildHomes, List.of(), List.of(), false);
+        }
+
         public Report {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
@@ -410,6 +505,8 @@ public final class HomeCloner {
             droppedBindings = droppedBindings == null ? List.of() : List.copyOf(droppedBindings);
             droppedChildHomes = droppedChildHomes == null
                     ? List.of() : List.copyOf(droppedChildHomes);
+            deferredTrees = deferredTrees == null ? List.of() : List.copyOf(deferredTrees);
+            coldShims = coldShims == null ? List.of() : List.copyOf(coldShims);
         }
 
         /** True when nothing in the copy still points at the source home. */
@@ -428,6 +525,49 @@ public final class HomeCloner {
      *               append-only records
      */
     public static Report cloneHome(Path source, Path dest, boolean strict) throws IOException {
+        // The tier decides it, and the tier test is HomePolicy's, which is
+        // skt's `classify_tier` first comparison and not a second notion of it.
+        return cloneHome(source, dest, strict,
+                HomePolicy.lazyArtifactsDefault(new SkillStore(dest)));
+    }
+
+    /**
+     * Copy {@code source} to {@code dest}, declaring rather than building the
+     * artifacts a lazy copy defers.
+     *
+     * <h2>What "declares, does not build" means here, precisely</h2>
+     *
+     * <p>A clone has ALWAYS skipped {@link #SKIPPED_DIRS} and has never said so
+     * in a form anything could act on: the copy simply had shims that resolved
+     * to nothing, and the first thing to notice was the kernel. Three things
+     * change, and only these three:
+     *
+     * <ol>
+     *   <li>the copy gets an {@code artifacts.lock.toml} that <b>names</b> the
+     *       artifacts under the skipped roots, so they list as
+     *       {@link Artifact.Origin#LEDGER} /
+     *       {@code declared-only} instead of vanishing;</li>
+     *   <li>every entry point whose backing tree is absent becomes a
+     *       {@link ColdArtifactShim} that names the
+     *       artifact and the one command that builds it;</li>
+     *   <li>when {@code lazyArtifacts}, the copy additionally defers the
+     *       <b>virtualenvs inside units</b> — see {@link #deferrableVirtualenv},
+     *       which is where the bytes actually are.</li>
+     * </ol>
+     *
+     * <p>(1) and (2) are done for an EAGER copy too. They describe what the
+     * clone already did; withholding the description from a home that did not
+     * opt into laziness would leave the defect ARTI-01 measured exactly where
+     * it was, in the tier that is not even the one being changed.
+     *
+     * @param lazyArtifacts defer what the copy can rebuild on demand. Default
+     *                      is {@link HomePolicy#lazyArtifactsDefault}; the
+     *                      resulting decision is written into the copy's
+     *                      {@code home.policy.toml} so the home records the
+     *                      state it is in rather than re-deriving it later
+     */
+    public static Report cloneHome(Path source, Path dest, boolean strict, boolean lazyArtifacts)
+            throws IOException {
         Path src = source.toAbsolutePath().normalize();
         Path dst = dest.toAbsolutePath().normalize();
         if (!Files.isDirectory(src)) {
@@ -452,20 +592,21 @@ public final class HomeCloner {
         Counters counters = new Counters();
         try {
             Files.createDirectories(dst);
-            return build(src, dst, strict, counters);
+            return build(src, dst, strict, counters, lazyArtifacts);
         } catch (IOException | RuntimeException e) {
             discardPartialClone(dst, preexisting);
             throw e;
         }
     }
 
-    private static Report build(Path src, Path dst, boolean strict, Counters counters)
-            throws IOException {
+    private static Report build(Path src, Path dst, boolean strict, Counters counters,
+                                boolean lazyArtifacts) throws IOException {
         // Enumerated from the SOURCE before the copy, because the copy is what
         // omits them: after copyTree there is nothing left in the destination
         // to enumerate, and a drop nobody can name is a drop nobody can undo.
         List<String> droppedRegistrations = registrationsIn(src);
-        copyTree(src, dst, counters);
+        List<String> deferredTrees = new ArrayList<>();
+        copyTree(src, dst, counters, lazyArtifacts, deferredTrees);
 
         List<String> droppedBindings = new ArrayList<>();
         List<String> droppedChildHomes = new ArrayList<>();
@@ -474,6 +615,28 @@ public final class HomeCloner {
         List<String> danglingReferences = new ArrayList<>();
         int provisionedRewritten = reanchorProvisioned(src, dst, overflows, danglingReferences);
         HomeLinks.relativizeShims(new SkillStore(dst));
+
+        // Declare, then refuse in the copy's own words, then baseline. The
+        // order is load-bearing in both directions:
+        //
+        //  * BEFORE rebaselineDrift, so the copy's baseline describes the bytes
+        //    the copy actually holds. A baseline taken before the cold shims
+        //    were written would report every one of them as this home's own
+        //    drift on the first launch — the exact failure rebaselineDrift's
+        //    javadoc exists to keep closed, reintroduced one step later.
+        //  * BEFORE verifyRoots, because a cold shim is the ANSWER to an
+        //    unresolved reference. Verifying first would report the state that
+        //    the next line removes.
+        HomePolicy.writeLazyArtifacts(new SkillStore(dst), lazyArtifacts);
+        // HIS-10. BEFORE verifyRoots, and for the same reason the two lines
+        // below it are: the copy's own clone verdict must be produced by the
+        // evidence every LATER reader will use, or `home clone` and
+        // `home verify` are two readers of two different homes again. Before
+        // rebaselineDrift too, so the baseline describes the bytes the home
+        // holds rather than reporting this record as the home's own drift.
+        HomeProvenance.recordDescent(src, dst);
+        declareArtifacts(src, dst, deferredTrees);
+        List<String> coldShims = writeColdShims(dst);
         rebaselineDrift(new SkillStore(dst));
 
         Verification verification = verifyRoots(src, dst, strict);
@@ -496,7 +659,8 @@ public final class HomeCloner {
                 counters.linksRelativized, stateReanchored, provisionedRewritten,
                 leaks, verification.contentReferences(), verification.danglingLinks(),
                 danglingReferences, droppedRegistrations,
-                sorted(droppedBindings), sorted(droppedChildHomes));
+                sorted(droppedBindings), sorted(droppedChildHomes),
+                sorted(deferredTrees), sorted(coldShims), lazyArtifacts);
     }
 
     /** Directory iteration order is not a contract; the report's order is. */
@@ -599,13 +763,26 @@ public final class HomeCloner {
         long bytes;
     }
 
-    private static void copyTree(Path src, Path dst, Counters counters) throws IOException {
+    private static void copyTree(Path src, Path dst, Counters counters,
+                                 boolean lazyArtifacts, List<String> deferredTrees)
+            throws IOException {
         Files.walkFileTree(src, new FileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
                     throws IOException {
                 String rel = rel(src, dir);
                 if (!rel.isEmpty() && isSkipped(rel)) return FileVisitResult.SKIP_SUBTREE;
+                if (lazyArtifacts && !rel.isEmpty() && deferrableVirtualenv(dir, rel)) {
+                    // Left ABSENT, not created empty. `uv` decides what to do
+                    // by looking for `pyvenv.cfg`, so an empty directory with
+                    // no marker is a shape it has to recover from, where a
+                    // missing one is the shape it creates from scratch every
+                    // day. Absent is also the honest probe result: the artifact
+                    // is declared and not materialized, and a reader that finds
+                    // an empty directory cannot tell that from a broken build.
+                    deferredTrees.add(rel.replace(java.io.File.separatorChar, '/'));
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
                 // walkFileTree reports a symlinked directory here only when
                 // following links, which we do not; a link to a directory
                 // arrives at visitFile instead.
@@ -655,6 +832,294 @@ public final class HomeCloner {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    // ------------------------------------------------- declared, not built
+
+    /**
+     * Whether {@code dir} is a virtualenv inside a unit that this copy may
+     * declare instead of carrying.
+     *
+     * <h2>The measurement that put this here</h2>
+     *
+     * <p>ARTI-01 decomposed a 989.5 MB ticket home and named two units and one
+     * runtime as 86% of it. Decomposing those, on the operator's project home:
+     * {@code skills/deploy-helm} is 400 MB of which <b>361 MB is
+     * {@code .venv}</b>; {@code skills/hyper-experiments-finance} carries
+     * another 51 MB and {@code skills/acp-cdc-ai-python} 26 MB, the same shape
+     * each time. That is 438 MB of a 989.5 MB home in virtualenvs that no
+     * record declares, that {@code uv} rebuilds from a lockfile sitting beside
+     * them, and that the clone currently copies AND byte-scans AND re-anchors,
+     * because a venv console script's shebang is an absolute interpreter path.
+     * The other 274 MB of {@code spec-double-compiler} is {@code specs/.history}
+     * and {@code specs/results} — append-only authored records, which is a
+     * different kind of thing and is not touched.
+     *
+     * <h2>Two structural tests, and no naming convention</h2>
+     *
+     * <p>The membership rule is deliberately NOT
+     * {@link Rederivable#OUTPUT_ROOTS}, which that class warns about in as many
+     * words: those names — {@code build}, {@code target}, {@code venv} — "are
+     * ordinary words used by convention", safe for a reconcile that compares
+     * two trees and not safe for a byte-for-byte copy that would simply drop
+     * whatever it matched. A unit with an authored {@code build/} directory
+     * exists; a unit with an authored {@code pyvenv.cfg} does not.
+     *
+     * <p>So the test is:
+     *
+     * <ol>
+     *   <li><b>inside a unit</b> — the top segment is one of
+     *       {@link #CONTENT_ROOTS}. A virtualenv anywhere else is either
+     *       already under a {@link #SKIPPED_DIRS} root or is skill-manager's
+     *       own state, and neither is this rule's business;</li>
+     *   <li><b>it contains {@code pyvenv.cfg}</b> — the marker every virtualenv
+     *       carries, that no authored directory carries, and that names the
+     *       interpreter the shebangs point at. Not the directory's NAME.</li>
+     * </ol>
+     *
+     * <p>{@code node_modules} is deliberately absent. {@link Rederivable} records
+     * why a clone must carry it — {@code node_modules/<pkg>/build/Release/*.node}
+     * is a prebuilt native binary no command rebuilds — and that argument is
+     * unchanged. It also does not arise: the operator's home has none inside a
+     * unit, so including it would trade a real risk for no measured bytes.
+     *
+     * <h2>Why deferring this does not move the drift baseline</h2>
+     *
+     * <p>{@code ChildHomeMaterializer.walkPlain} already excludes
+     * {@link Rederivable#isDerived} paths from the digest, which is what
+     * {@link #rebaselineDrift}'s javadoc means by "the current definition of
+     * unit content excludes them". A venv is therefore not in the digest on
+     * either side, so a copy that omits one is byte-identical to a copy that
+     * carries one as far as the gate is concerned — and building it later moves
+     * nothing either. That is asserted, not assumed.
+     */
+    static boolean deferrableVirtualenv(Path dir, String rel) {
+        String normalized = rel.replace(java.io.File.separatorChar, '/');
+        int slash = normalized.indexOf('/');
+        if (slash < 0) return false;
+        if (!CONTENT_ROOTS.contains(normalized.substring(0, slash))) return false;
+        return Files.isRegularFile(dir.resolve("pyvenv.cfg"));
+    }
+
+    /**
+     * Give the copy a ledger that NAMES what it does not hold.
+     *
+     * <p>Three sources, merged in one order that encodes one rule — the copy
+     * wins on facts, the source is consulted only for existence:
+     *
+     * <ol>
+     *   <li>the SOURCE's artifacts whose outputs land under a root this clone
+     *       skips. These are the only facts the copy cannot re-derive for
+     *       itself, and restricting the source's contribution to them is what
+     *       keeps a dropped registration or a dropped binding from being
+     *       resurrected through the ledger — the copy deliberately did not
+     *       inherit those, and a row declaring one would be a claim over
+     *       another checkout wearing a new file name;</li>
+     *   <li>the trees this copy deferred, which no home has ever recorded;</li>
+     *   <li>everything the COPY can see for itself, last, so a live fact
+     *       overwrites the source's snapshot of the same id.</li>
+     * </ol>
+     *
+     * <h2>The second route into (1), which defeated it</h2>
+     *
+     * <p>{@code artifacts.lock.toml} is an ordinary file under no skipped root,
+     * so the copy carries the SOURCE's ledger verbatim — and
+     * {@link ArtifactIndex} is "the home overlaid with what the ledger says it
+     * once had". The copy's own index is therefore not "what the copy can see
+     * for itself": it is the copy's live facts PLUS every declaration the
+     * source ever wrote, arriving through step (3) with the restriction in step
+     * (1) bypassed entirely. Measured on the seeded home: the doc-import
+     * binding that projects into another checkout is dropped by
+     * {@link #remap}, and its projection came back as
+     * {@code projection:owner:consumer:page:bind#MANAGED_COPY/target/docs/agents/page.md}
+     * in the copy's ledger — the claim over another checkout wearing a new file
+     * name, exactly as described above and not actually prevented. It did not
+     * show up in the first measurements only because a source home without a
+     * ledger has no second route.
+     *
+     * <p>So a row that reaches the copy's index ONLY through the inherited file
+     * ({@link Artifact.Origin#LEDGER}) has to earn its place, and the test is
+     * whether it names anything in this home at all. A dropped binding's
+     * projections and doc imports land outside the home by definition — that is
+     * why the binding was dropped — so they carry no home-scoped output and
+     * declare nothing the copy holds or could build. Everything legitimately
+     * inherited does carry one: a provisioned tree under {@code cache/} or
+     * {@code venvs/}, and a virtualenv a previous clone deferred under
+     * {@code skills/}, which is why the test is not "under a skipped root"
+     * here — a clone of a clone must keep declaring what its parent deferred.
+     *
+     * <p>Never fatal. A ledger is an optimisation and a memory
+     * ({@link ArtifactLedger}); a home that gets one
+     * lists better, and a home that does not still lists. Failing a clone over
+     * it would trade a working home for a tidier index.
+     */
+    private static void declareArtifacts(Path src, Path dst, List<String> deferredTrees) {
+        try {
+            List<Artifact> rows = new ArrayList<>();
+            for (Artifact artifact
+                    : ArtifactIndex.of(new SkillStore(src)).artifacts()) {
+                if (underSkippedRoot(artifact)) rows.add(artifact);
+            }
+            for (String tree : deferredTrees) rows.add(deferredTreeArtifact(dst, tree));
+            for (Artifact artifact : ArtifactIndex.of(new SkillStore(dst)).artifacts()) {
+                if (inheritedClaimOverElsewhere(artifact)) continue;
+                rows.add(artifact);
+            }
+            ArtifactLedger.of(rows).save(new SkillStore(dst));
+        } catch (IOException | RuntimeException e) {
+            Log.warn("clone: could not record the artifact ledger in %s (%s) — the copy still "
+                    + "lists its artifacts, it just cannot name the ones under the roots a "
+                    + "clone skips", dst, e.getMessage());
+        }
+    }
+
+    /**
+     * Whether {@code artifact} reached the copy's index only through the
+     * source's inherited {@code artifacts.lock.toml} and names nothing in this
+     * home.
+     *
+     * <p>{@link Artifact.Origin#LEDGER} is precisely "declared, and the home
+     * cannot see it now"; a row that is also LEDGER-scoped to nothing inside
+     * the home is a declaration about somewhere else. See
+     * {@link #declareArtifacts}.
+     */
+    private static boolean inheritedClaimOverElsewhere(Artifact artifact) {
+        if (artifact.origin() != Artifact.Origin.LEDGER) return false;
+        for (Artifact.Output output : artifact.outputs()) {
+            if (output.scope() == Artifact.Scope.HOME) return false;
+        }
+        return true;
+    }
+
+    /** Whether every home-scoped output of {@code artifact} is under a skipped root. */
+    private static boolean underSkippedRoot(Artifact artifact) {
+        boolean any = false;
+        for (Artifact.Output output : artifact.outputs()) {
+            if (output.scope() != Artifact.Scope.HOME) continue;
+            String path = output.path().replace(java.io.File.separatorChar, '/');
+            int slash = path.indexOf('/');
+            String top = slash < 0 ? path : path.substring(0, slash);
+            if (!SKIPPED_DIRS.contains(top)) return false;
+            any = true;
+        }
+        return any;
+    }
+
+    /** One deferred in-unit virtualenv, as the artifact the copy declares. */
+    private static Artifact deferredTreeArtifact(Path dst, String rel) {
+        String[] segments = rel.split("/");
+        // skills/<unit>/... — the unit is the second segment, and a tree that
+        // is not under one has no owner rather than a guessed one.
+        String owner = segments.length > 1 ? segments[1] : null;
+        List<String> inputs = owner == null ? List.of()
+                : List.of(ArtifactIds.unitInput(owner));
+        return new Artifact(
+                ArtifactIds.of(
+                        ArtifactKind.PROVISIONED_TREE, rel),
+                ArtifactKind.PROVISIONED_TREE,
+                owner, inputs,
+                List.of(Artifact.Output.inHome(rel,
+                        Artifact.Presence.MISSING)),
+                null, Map.of(), Map.of(),
+                Artifact.Agreement.UNRECORDED,
+                Artifact.Origin.LEDGER);
+    }
+
+    /**
+     * Replace every entry point in the copy whose backing tree is absent with
+     * a {@link ColdArtifactShim}.
+     *
+     * <p>Both shapes, because a home has both and only one of them was ever
+     * visible: a SYMLINK into a skipped root, which {@link #copyLink}
+     * faithfully recreates pointing at nothing, and a GENERATED WRAPPER whose
+     * {@code exec} target {@link #reanchorProvisioned} correctly re-anchors
+     * onto a path the copy does not have. The first is
+     * {@code Verification.danglingLinks}, the second is
+     * {@code unresolvedReferences}, and to whoever typed the command they are
+     * the same event.
+     *
+     * <p>The id in the message comes from the ledger written a moment ago,
+     * matched by OUTPUT PATH — the same rule {@code ArtifactBuild.buildableFor}
+     * resolves a remedy by, and never by parsing a shim's name back into a lock
+     * key, because {@code bin/cli/tofu} comes from {@code brew:opentofu}. An
+     * entry point no artifact claims is left exactly as it was: a refusal that
+     * named a command nobody can run would be worse than the kernel's, which at
+     * least does not mislead.
+     *
+     * @return the names replaced
+     */
+    private static List<String> writeColdShims(Path dst) {
+        List<String> replaced = new ArrayList<>();
+        try {
+            Map<String, String> idByOutput = new LinkedHashMap<>();
+            for (ArtifactLedger.Row row
+                    : ArtifactLedger.load(new SkillStore(dst)).rows()) {
+                for (String output : row.outputs()) idByOutput.putIfAbsent(output, row.id());
+            }
+            for (String dir : SHIM_DIRS) {
+                Path shimDir = dst.resolve(dir);
+                if (!Files.isDirectory(shimDir)) continue;
+                try (var entries = Files.list(shimDir)) {
+                    for (Path entry : (Iterable<Path>) entries::iterator) {
+                        String rel = dir + entry.getFileName();
+                        String why = coldReason(entry, dst);
+                        if (why == null) continue;
+                        String id = idByOutput.get(rel);
+                        if (id == null) continue;
+                        ColdArtifactShim.write(entry, id, why);
+                        replaced.add(entry.getFileName().toString());
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            Log.warn("clone: could not write the cold-artifact entry points in %s (%s) — an "
+                    + "entry point whose tree is missing will fail in the kernel's words "
+                    + "instead of naming `skill-manager build`", dst, e.getMessage());
+        }
+        return replaced;
+    }
+
+    /**
+     * Why {@code entry} cannot run in this copy, or null when it can.
+     *
+     * <p>Deliberately NOT "is the artifact materialized": this asks the
+     * filesystem the same question the kernel is about to ask, so the answer
+     * cannot disagree with what the operator sees.
+     */
+    private static String coldReason(Path entry, Path dst) throws IOException {
+        if (ColdArtifactShim.isCold(entry)) return null;
+        if (Files.isSymbolicLink(entry)) {
+            if (Files.exists(entry)) return null;
+            return "it links to " + insideHomeText(Files.readSymbolicLink(entry).toString(), dst)
+                    + ", which this home does not have";
+        }
+        if (!Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)) return null;
+        List<String> missing = missingReferencesIn(entry, dst);
+        if (missing.isEmpty()) return null;
+        return "it runs out of " + insideHomeText(missing.get(0), dst)
+                + ", which this home does not have";
+    }
+
+    /**
+     * {@code value} with this home's own root replaced by {@code $SKILL_MANAGER_HOME}.
+     *
+     * <p>The reason a cold shim gives has to name the missing tree — an agent
+     * that is told only "not built" cannot tell which of eight tools it just
+     * ran. It also has to name it WITHOUT writing an absolute path into the
+     * file, because the file is generated content that a further clone would
+     * carry verbatim, and an absolute path in generated content is precisely
+     * the {@code Surface.PROVISIONED} leak class this class exists to remove.
+     * Both at once means the token, which is the same encoding
+     * {@link HomePaths} uses for every other stored path.
+     */
+    private static String insideHomeText(String value, Path dst) {
+        String out = value;
+        // Every spelling of the root, longest first: replacing /var/x before
+        // /private/var/x would leave "/private$SKILL_MANAGER_HOME".
+        List<String> spellings = new ArrayList<>(rootSpellings(dst));
+        spellings.sort(java.util.Comparator.comparingInt(String::length).reversed());
+        for (String root : spellings) out = out.replace(root, "$SKILL_MANAGER_HOME");
+        return out;
     }
 
     /**
@@ -998,9 +1463,93 @@ public final class HomeCloner {
      * and a gate that always fires is a gate somebody turns off.
      */
     private static List<String> missingDestReferences(byte[] content, Path dstRoot) {
-        String text = new String(content, StandardCharsets.UTF_8);
-        String root = dstRoot.toString();
         List<String> missing = new ArrayList<>();
+        for (String candidate : destReferences(content, dstRoot)) {
+            if (!Files.exists(Path.of(candidate))) missing.add(candidate);
+        }
+        return missing;
+    }
+
+    /**
+     * Every path under a {@link #PROVISIONABLE_ROOTS} root of {@code dstRoot}
+     * that {@code content} names — present or missing.
+     *
+     * <h2>Why the scan and the existence test are now two things</h2>
+     *
+     * <p>{@link #missingDestReferences} is the CLONE's question ("what did this
+     * copy not carry"), and it is a filter over this one. ARTI-05 needs the
+     * other half: which provisioned tree a generated shim RUNS OUT OF, in a home
+     * where the tree is present and everything is healthy. Reading that off the
+     * missing list would produce a dependency graph with edges only in broken
+     * homes, which is the one home where the graph is least useful.
+     *
+     * <p>One scanner, two filters, for the reason {@link #missingReferencesIn}'s
+     * javadoc already gives: a gate and a reader that recover "which tree is
+     * this" independently will disagree, and nothing will say which is right.
+     */
+    private static List<String> destReferences(byte[] content, Path dstRoot) {
+        String text = new String(content, StandardCharsets.UTF_8);
+        String canonical = dstRoot.toAbsolutePath().normalize().toString();
+        List<String> found = new ArrayList<>();
+        for (String root : rootSpellings(dstRoot)) scanFor(text, root, canonical, found);
+        return found;
+    }
+
+    /**
+     * Every spelling of {@code root} a generated file in this home could hold:
+     * the one the caller was given, and the one {@link Path#toRealPath} makes
+     * of it.
+     *
+     * <h2>#206, and why resolving ONCE is not enough</h2>
+     *
+     * <p>{@link #verifyRoots} resolves the destination for the symlink branch
+     * ({@code realOrSame(dstRoot)}) and handed the UNRESOLVED spelling to the
+     * provisioned-file branch, and the scan below is a literal
+     * {@code text.indexOf}. So a home reached through a symlink was checked
+     * against a string its own generated shims do not contain, and the branch
+     * reported clean WITHOUT HAVING CHECKED — on the check that is the
+     * post-condition of 22 graphs.
+     *
+     * <p><b>Resolving the root once and handing THAT to every branch would swap
+     * the blindness rather than remove it.</b> The clone re-anchors generated
+     * files to the destination spelling it was GIVEN, so a home created at
+     * {@code /link/home} holds {@code /link/home/cache/…} in its wrappers; a
+     * scan for {@code /real/home} alone would miss every one of them. Both
+     * spellings are real, either can be in the bytes, so both are scanned and
+     * the results merged.
+     *
+     * <p><b>Do not reach for {@code /var -> /private/var} to test this.</b>
+     * Measured at the epic tip: that pair is substring-compatible —
+     * {@code /private/var/folders/x} literally CONTAINS {@code /var/folders/x} —
+     * so {@code indexOf} finds the reference by accident and a fixture built on
+     * a macOS temp path passes before AND after this fix. The defect needs two
+     * spellings that are not substrings of one another: a symlinked
+     * intermediate directory, a symlinked {@code $HOME} or checkout,
+     * {@code /Volumes/…}. See {@code HomeVerifyPathSpellingTest}, which builds
+     * exactly that and records the vacuous shape it did not use.
+     */
+    static List<String> rootSpellings(Path root) {
+        Path abs = root.toAbsolutePath().normalize();
+        String given = abs.toString();
+        String real = realOrSame(abs).toString();
+        return given.equals(real) ? List.of(given) : List.of(given, real);
+    }
+
+    /**
+     * One spelling's pass over {@code text}, appending what it recovers
+     * REWRITTEN to {@code canonical}.
+     *
+     * <p>The rewrite is what keeps this from becoming a second defect. Callers
+     * make these strings home-relative against the root they passed in
+     * ({@link #referencesIn}'s contract, and what {@code ArtifactBuild} joins
+     * on), so a path recovered under the OTHER spelling would relativize into
+     * {@code ../../..} nonsense. It also collapses the duplicate that
+     * substring-compatible spellings produce — {@code /private/var/x/cache/y}
+     * matches a scan for {@code /var/x} as well as one for {@code /private/var/x}
+     * — so a home on a macOS temp path still reports ONE unresolved reference
+     * and not two.
+     */
+    private static void scanFor(String text, String root, String canonical, List<String> found) {
         int from = 0;
         while (true) {
             int at = text.indexOf(root, from);
@@ -1015,11 +1564,9 @@ public final class HomeCloner {
             }
             if (candidate.length() <= root.length()) continue;
             if (!underProvisionableRoot(candidate, root)) continue;
-            if (!Files.exists(Path.of(candidate)) && !missing.contains(candidate)) {
-                missing.add(candidate);
-            }
+            String normalized = canonical + candidate.substring(root.length());
+            if (!found.contains(normalized)) found.add(normalized);
         }
-        return missing;
     }
 
     /**
@@ -1068,7 +1615,45 @@ public final class HomeCloner {
                                List<String> danglingLinks,
                                List<String> unresolvedReferences,
                                List<String> diagnosticReferences,
-                               List<String> parentStoreShims) {
+                               List<String> parentStoreShims,
+                               /**
+                                * Entry points this home DECLARES and has not
+                                * built — the third state, and the reason it is
+                                * a list of its own rather than a subset of
+                                * {@link #unresolvedReferences}.
+                                *
+                                * <p>A gate that reports a normal state as a
+                                * failure gets turned off. Every clone ships
+                                * these by construction, so folding them in
+                                * would make {@code home verify} exit 1 on every
+                                * fresh worktree, and the next move after that
+                                * is not "fix the artifact", it is "stop running
+                                * the check". They are reported and never
+                                * counted. See
+                                * {@link HomePolicy#LAZY_ARTIFACTS_KEY}.
+                                */
+                               List<String> declaredNotBuilt,
+                               /**
+                                * HIS-19. The home's own {@code bin/cli/skill-manager}
+                                * pins a build that is not there.
+                                *
+                                * <p>Its own list because the walk above cannot
+                                * see it and never could: {@code missingReferencesIn}
+                                * only considers paths under THIS home and under a
+                                * provisionable root, and a dead pin names a path
+                                * outside the home entirely — a Homebrew keg an
+                                * upgrade deleted. Nothing else in this record is
+                                * about a path that leaves the home, which is
+                                * precisely why {@code home verify} returned
+                                * <b>exit 0</b> on the root home the 0.24.0 upgrade
+                                * broke.
+                                *
+                                * <p>Read with {@link dev.skillmanager.launch.LauncherShims#danglingPinIn}
+                                * — HIS-13's reader and the only one — so
+                                * {@code home verify} and {@code home repair}
+                                * cannot come to disagree about one file.
+                                */
+                               List<String> danglingCliPins) {
         public Verification {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
@@ -1078,18 +1663,36 @@ public final class HomeCloner {
             diagnosticReferences = diagnosticReferences == null
                     ? List.of() : List.copyOf(diagnosticReferences);
             parentStoreShims = parentStoreShims == null ? List.of() : List.copyOf(parentStoreShims);
+            declaredNotBuilt = declaredNotBuilt == null ? List.of() : List.copyOf(declaredNotBuilt);
+            danglingCliPins = danglingCliPins == null ? List.of() : List.copyOf(danglingCliPins);
+        }
+
+        public Verification(List<Leak> leaks, List<String> contentReferences,
+                            List<String> danglingLinks, List<String> unresolvedReferences,
+                            List<String> diagnosticReferences, List<String> parentStoreShims,
+                            List<String> declaredNotBuilt) {
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences,
+                    diagnosticReferences, parentStoreShims, declaredNotBuilt, List.of());
+        }
+
+        public Verification(List<Leak> leaks, List<String> contentReferences,
+                            List<String> danglingLinks, List<String> unresolvedReferences,
+                            List<String> diagnosticReferences, List<String> parentStoreShims) {
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences,
+                    diagnosticReferences, parentStoreShims, List.of(), List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences,
                             List<String> diagnosticReferences) {
             this(leaks, contentReferences, danglingLinks, unresolvedReferences,
-                    diagnosticReferences, List.of());
+                    diagnosticReferences, List.of(), List.of(), List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences) {
-            this(leaks, contentReferences, danglingLinks, unresolvedReferences, List.of(), List.of());
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences,
+                    List.of(), List.of(), List.of(), List.of());
         }
 
         public boolean clean() { return leaks.isEmpty(); }
@@ -1156,6 +1759,26 @@ public final class HomeCloner {
      * CHECKED rather than silently skipped, because a check that quietly
      * narrows its scope while keeping its verdict is the defect this whole
      * epic keeps re-finding.
+     *
+     * <h2>That claim was FALSE for two releases, and is now true with a
+     * condition</h2>
+     *
+     * <p>Issue #227 named this javadoc as a defect, and it was one. The
+     * {@code FOREIGN_HOME} half DID need a source: a clone's inherited
+     * parent-store shims were sanctioned only when the caller passed
+     * {@code --against}, so this overload refused, on its own, homes that the
+     * two-argument form accepted. Measured on one cloned home: exit 1 with five
+     * {@code FOREIGN_HOME} findings here, exit 0 there.
+     *
+     * <p>HIS-10 makes it true FOR A HOME THIS PROGRAM CLONED, and not by
+     * widening the rule: the copy records its descent
+     * ({@link HomeProvenance}) and {@link #sanctionedParentShim} re-derives that
+     * chain live, so the sanction is a fact in the home rather than an argument
+     * on the command line. For a home this program did not clone — a {@code cp
+     * -a} copy, an rsync, a pre-HIS-10 clone — there is nothing in the home to
+     * re-derive and {@code --against} is still the only thing that can excuse
+     * its inherited shims. Repairing those homes is HIS-13's, and until it
+     * lands this sentence carries that condition rather than dropping it.
      */
     public static Verification verify(Path dest, boolean strict) throws IOException {
         return verifyRoots(null, dest.toAbsolutePath().normalize(), strict);
@@ -1187,10 +1810,17 @@ public final class HomeCloner {
         List<String> unresolved = new ArrayList<>();
         List<String> diagnostics = new ArrayList<>();
         List<String> parentShims = new ArrayList<>();
+        // Kept only so the walk has somewhere to put the one file it exempts;
+        // the descent itself is read from the home by whoever reports it.
+        List<String> descentRecords = new ArrayList<>();
         // One answer per foreign home rather than one per shim: `isChildOf`
         // lists two directories, and a child home mirroring twenty CLI deps
         // would otherwise ask the identical question twenty times.
         java.util.Map<Path, Boolean> childOf = new java.util.HashMap<>();
+        // The same question asked of the SOURCE, cached the same way and for
+        // the same reason. Separate map rather than a composite key: two
+        // questions about two homes are two questions.
+        java.util.Map<Path, Boolean> srcChildOf = new java.util.HashMap<>();
         String needleText = srcRoot == null ? null : srcRoot.toString();
         Files.walkFileTree(dstRoot, new SimpleWalker((file, rel) -> {
             if (Files.isSymbolicLink(file)) {
@@ -1207,7 +1837,7 @@ public final class HomeCloner {
                 } else {
                     Path foreign = foreignHomeReachedBy(file, dstReal);
                     if (foreign != null) {
-                        if (sanctionedParentShim(rel, file, foreign, dstRoot, childOf)) {
+                        if (sanctionedParentShim(rel, file, foreign, dstRoot, srcRoot, childOf, srcChildOf)) {
                             parentShims.add(rel + " -> " + foreign);
                         } else {
                             leaks.add(new Leak(rel, "FOREIGN_HOME",
@@ -1260,6 +1890,27 @@ public final class HomeCloner {
                         "names an agent directory of the source home (" + surface.name().toLowerCase()
                                 + ") — acting on this record would read or delete files "
                                 + "in the home this copy was made from"));
+            } else if (HomeProvenance.isProvenanceRecord(rel)
+                    && HomeProvenance.mentionsOnlyRecordedDescent(file, needleText)) {
+                // HIS-10. The ONE file in a copy whose job is to name the home
+                // the copy was made from. Refusing it would refuse the evidence
+                // the sanction now stands on, and "record your descent, then
+                // fail verification for having recorded it" is not a fixpoint.
+                //
+                // Not a blanket filename exemption: the branch holds only when
+                // every raw occurrence of the source-home needle is accounted
+                // for by the parsed clonedFrom / parentStores fields, the same
+                // byte-counting mentionIsOnlyDiagnostic does. One occurrence
+                // anywhere else and this is false and the finding stands.
+                //
+                // Nor is it silent: `home verify` prints the recorded descent
+                // for any home that has one, whether or not this branch fired,
+                // and prints each recorded store as re-derived or as a dead
+                // claim -- so the exemption is visible in the same output as
+                // the verdict it shaped. (`home clone` does NOT print it. An
+                // earlier version of this comment said it did; it never has,
+                // and the review of #228 was right to check.)
+                descentRecords.add(rel);
             } else if (mentionIsOnlyDiagnostic(file, rel, needleText)) {
                 // A sentence about another home, not a path into one. See
                 // Leak#DIAGNOSTIC_TEXT — and note this is the only branch that
@@ -1271,21 +1922,180 @@ public final class HomeCloner {
                 leaks.add(new Leak(rel, "FILE_CONTENT", surface.name().toLowerCase()));
             }
         }));
+        // The third state, separated LAST so that every rule above it is
+        // unchanged: a path that resolves into another home is still a leak
+        // whatever the ledger says about it, and only the "names something in
+        // THIS home that is not there" findings can be declared rather than
+        // broken.
+        for (String record : descentRecords) {
+            Log.detail("verify: %s names the home this copy descends from — every occurrence "
+                    + "accounted for by its recorded clonedFrom/parentStores, so it is a "
+                    + "statement about descent and not a path into that home", record);
+        }
+        // DEF-104. THE WRAPPER HALF OF THE ISOLATION QUESTION.
+        //
+        // Everything in the walk above is about SYMLINKS, and until HIS-21 that
+        // was the whole of "does any path in this home reach another one". A
+        // generated wrapper is a regular file that execs an absolute path; it
+        // resolves through no link, so the walk's symlink arm never saw it and
+        // its regular-file arm only ever looked for the SOURCE needle. The
+        // result was `home verify` exit 0 on a home whose shims ran another
+        // home's code, at every tier and with or without `--against`. See
+        // Leak#FOREIGN_PATH_IN_SHIM for the measurement that separates this
+        // from the tier-shaped explanation.
+        //
+        // OUTSIDE THE WALK, and that is review of PR #256's MAJOR-1. The first
+        // version asked this question per-file INSIDE walkFileTree, which does
+        // not follow a symlinked `bin/cli` while `home repair`'s directory
+        // stream does -- so the two readers still disagreed, one link down.
+        // scanShimDirs is now the single enumerator for both.
+        //
+        // outwardLink is deliberately NOT reported here: a `bin/cli` that is a
+        // link into another home is already a FOREIGN_HOME leak from the walk's
+        // symlink arm above, and naming it twice would inflate one broken
+        // directory into two findings -- the reporting defect issue #133 is
+        // about, inside the fix for issue #253.
+        for (ShimDirScan scan : scanShimDirs(dstRoot)) {
+            for (ForeignShimPath found : scan.foreign()) {
+                leaks.add(new Leak(found.rel(), Leak.FOREIGN_PATH_IN_SHIM,
+                        "runs " + found.candidate() + ", which is inside the home at "
+                                + found.foreign()));
+            }
+        }
+        List<String> declaredNotBuilt = partitionDeclared(dstRoot, dangling, unresolved);
+        List<String> danglingCliPins = danglingCliPinIn(dstRoot);
         leaks.sort(java.util.Comparator.comparing(Leak::path));
         contentReferences.sort(String::compareTo);
         dangling.sort(String::compareTo);
         unresolved.sort(String::compareTo);
         diagnostics.sort(String::compareTo);
         parentShims.sort(String::compareTo);
+        declaredNotBuilt.sort(String::compareTo);
         return new Verification(leaks, contentReferences, dangling, unresolved, diagnostics,
-                parentShims);
+                parentShims, declaredNotBuilt, danglingCliPins);
     }
 
     /**
-     * The two shim directories a child home is allowed to mirror from its
-     * parent store, in the {@code <rel>} spelling {@link SimpleWalker} reports.
+     * HIS-19. The home's CLI pin, when it names a build that is gone.
+     *
+     * <p><b>The 0.24.0 incident, as a check.</b> {@code brew upgrade} deleted the
+     * keg the operator's root home pinned; the home's front door could only
+     * produce exit 127 from that moment on; and {@code home verify} said
+     * {@code ✓} and exited 0. It said so honestly, given what it looked at — the
+     * walk above finds a missing path only when the path is INSIDE this home and
+     * under a provisionable root, and a dead pin is neither. So this is not a
+     * widening of the walk, it is the one question the walk structurally cannot
+     * ask, asked separately.
+     *
+     * <p><b>One subject, one reader, no repair.</b> The subject is always
+     * {@code bin/cli/skill-manager} and the reader is
+     * {@link dev.skillmanager.launch.LauncherShims#danglingPinIn}, which HIS-13's
+     * {@code home repair} also uses — so the two commands cannot come to
+     * disagree, which is what {@code GOAL-one-home-one-answer} asks of this
+     * ticket. Verification stays an observer: it reports, and names
+     * {@code home repair --fix} as the thing that acts. An observer that repairs
+     * is DEF-067.
+     *
+     * <p>Empty for a home with no entrypoint, for an entrypoint this program did
+     * not generate, and for a pin that is computed rather than literal.
+     * "Cannot tell" is never reported as "broken" — the response to this finding
+     * is to rewrite a home's front door, so a false positive here is worse than
+     * no check at all.
      */
-    private static final List<String> SHIM_DIRS = List.of("bin/cli/", "bin/mcp/");
+    private static List<String> danglingCliPinIn(Path dstRoot) {
+        Path entrypoint;
+        try {
+            entrypoint = dev.skillmanager.launch.LauncherShims
+                    .cliEntrypoint(new SkillStore(dstRoot));
+        } catch (RuntimeException notAStore) {
+            return List.of();
+        }
+        Path gone = dev.skillmanager.launch.LauncherShims.danglingPinIn(entrypoint).orElse(null);
+        if (gone == null) return List.of();
+        return List.of(dstRoot.relativize(entrypoint) + " -> " + gone);
+    }
+
+    /**
+     * Move the findings this home DECLARES out of the two failure lists.
+     *
+     * <h2>Three states, and the one that must not be a failure</h2>
+     *
+     * <ul>
+     *   <li><b>materialized</b> — nothing appears here at all;</li>
+     *   <li><b>declared, not built</b> — the home's ledger names an artifact
+     *       whose output is this path, and the home declares
+     *       {@code lazy_artifacts}. Normal, expected, and reported;</li>
+     *   <li><b>broken</b> — everything else, unchanged: a path nothing in this
+     *       home ever claimed to produce, which is a defect whatever tier the
+     *       home is.</li>
+     * </ul>
+     *
+     * <p><b>Both conditions, and neither alone.</b> Without the ledger test
+     * this would excuse every unresolved reference in a lazy home, which is
+     * "turn the gate off" spelled as a feature. Without the policy test it
+     * would excuse them in the operator root, where nothing deferred anything
+     * and an unresolved reference means an install broke.
+     *
+     * <p>Matching is by the finding's LEFT side — the entry point's own
+     * home-relative path — against the ledger's output paths. Same join
+     * {@code ArtifactBuild.buildableFor} uses to turn a finding into a remedy,
+     * so a finding this method excuses is exactly a finding that command can
+     * act on.
+     */
+    private static List<String> partitionDeclared(Path dstRoot, List<String> dangling,
+                                                  List<String> unresolved) {
+        List<String> declared = new ArrayList<>();
+        SkillStore store = new SkillStore(dstRoot);
+        try {
+            if (!HomePolicy.lazyArtifacts(store)) return declared;
+        } catch (IOException e) {
+            // An unreadable policy is not a licence to excuse anything.
+            return declared;
+        }
+        Set<String> outputs = new java.util.HashSet<>();
+        try {
+            for (ArtifactLedger.Row row : ArtifactLedger.load(store).rows()) {
+                outputs.addAll(row.outputs());
+            }
+        } catch (IOException | RuntimeException e) {
+            return declared;
+        }
+        if (outputs.isEmpty()) return declared;
+        for (List<String> findings : List.of(dangling, unresolved)) {
+            findings.removeIf(finding -> {
+                int arrow = finding.indexOf(" -> ");
+                String left = (arrow < 0 ? finding : finding.substring(0, arrow))
+                        .trim().replace('\\', '/');
+                if (!outputs.contains(left)) return false;
+                declared.add(finding);
+                return true;
+            });
+        }
+        return declared;
+    }
+
+    /**
+     * THE shim directories. One list, and the reason it is one list is review
+     * of PR #256, MAJOR-1.
+     *
+     * <p>This class declared {@code List.of("bin/cli/", "bin/mcp/")} and
+     * {@code HomeRepair} declared {@code List.of("bin/cli", "bin/mcp")}, and
+     * HIS-21's own PR claimed the two readers shared "one extraction rule, one
+     * verdict, one scope". Two of three were true. The scope was declared
+     * twice, and the duplication was not cosmetic — see
+     * {@link #scanShimDirs}, which now owns the enumeration as well as the
+     * name.
+     */
+    public static final List<String> SHIM_DIR_NAMES = List.of("bin/cli", "bin/mcp");
+
+    /**
+     * {@link #SHIM_DIR_NAMES} in the {@code <rel>} PREFIX spelling
+     * {@link SimpleWalker} reports and {@link #sanctionedParentShim} tests
+     * against. Derived rather than written out, so the two spellings cannot
+     * drift apart again.
+     */
+    private static final List<String> SHIM_DIRS =
+            SHIM_DIR_NAMES.stream().map(d -> d + "/").toList();
 
     /**
      * The other Skill Manager home {@code link} resolves into and is NOT
@@ -1306,8 +2116,233 @@ public final class HomeCloner {
         Path root = homeRoot.toAbsolutePath().normalize();
         Path foreign = foreignHomeReachedBy(link, realOrSame(root));
         if (foreign == null) return null;
-        return sanctionedParentShim(rel, link, foreign, root, new java.util.HashMap<>())
+        // No source here: CliShimPruner asks about ONE standing home, not about
+        // a copy, so there is no source whose sanction could be inherited.
+        return sanctionedParentShim(rel, link, foreign, root, null,
+                new java.util.HashMap<>(), new java.util.HashMap<>())
                 ? null : foreign;
+    }
+
+    /**
+     * One absolute path a shim's CONTENT names that lands in another home.
+     *
+     * @param rel       the shim's location inside the home, {@code /}-separated
+     * @param candidate the path the shim runs
+     * @param foreign   the home it lands in
+     */
+    public record ForeignShimPath(String rel, Path candidate, Path foreign) {}
+
+    /**
+     * What one shim directory holds, as BOTH readers see it.
+     *
+     * @param dir         the directory's home-relative name
+     * @param outwardLink the foreign home this directory IS a link into, or
+     *                    null. When non-null nothing was descended into and
+     *                    {@code foreign} is empty — see {@link #scanShimDirs}
+     * @param examined    how many entries were looked at, so a caller can tell
+     *                    "clean" from "found nothing to look at"
+     * @param foreign     every foreign path named by the CONTENT of a shim here
+     * @param foreignLinks every shim here that IS a symlink into an unsanctioned
+     *                    foreign home. Separate from {@code foreign} because the
+     *                    two readers need different things from it: {@code home
+     *                    repair} had no way to see this shape at all (DEF-115),
+     *                    and {@code home verify} already reports it from the
+     *                    symlink arm of its own walk, so folding links into
+     *                    {@code foreign} would make verify name every one twice.
+     *                    One enumeration, two consumers, no double report.
+     */
+    public record ShimDirScan(String dir, Path outwardLink, int examined,
+                              List<ForeignShimPath> foreign,
+                              List<ForeignShimPath> foreignLinks) {
+
+        /** The pre-DEF-115 shape: no links reported. */
+        public ShimDirScan(String dir, Path outwardLink, int examined,
+                           List<ForeignShimPath> foreign) {
+            this(dir, outwardLink, examined, foreign, List.of());
+        }
+    }
+
+    /**
+     * Walk this home's shim directories and report every foreign path their
+     * CONTENT names. <b>The one enumerator, called by {@code home verify} and
+     * by {@code home repair}.</b>
+     *
+     * <h2>Why this exists — review of PR #256, MAJOR-1</h2>
+     *
+     * <p>HIS-21 gave the two readers one extraction rule
+     * ({@link HomeRepair#absolutePathTokens}) and one verdict
+     * ({@link #unsanctionedForeignHome}) and left them two enumerations.
+     * {@code HomeRepair} listed with {@code Files.newDirectoryStream}, which
+     * FOLLOWS a symlinked {@code bin/cli}; {@code verifyRoots} listed with
+     * {@code Files.walkFileTree}, which does not. Measured on the FIXED tree,
+     * with {@code bin/cli} a symlink at a directory outside the home:
+     *
+     * <pre>
+     *   home verify --home X  -&gt; exit 0, "no path in it reaches any other
+     *                            Skill Manager home"
+     *   home repair --home X  -&gt; exit 1, FOREIGN_PATH_IN_SHIM bin/cli/wrapper
+     * </pre>
+     *
+     * <p>That is DEF-104's shape again, one <em>link</em> down rather than one
+     * segment down — and the shape is one this codebase meets in the wild:
+     * {@link HomeRepair} carries a whole branch for it, citing a measured
+     * HIS-9 case. So the enumeration moved here with the rule and the verdict,
+     * and the javadoc sentence that claimed a shared scope is now true.
+     *
+     * <h2>A shim directory that IS a link into another home is not descended</h2>
+     *
+     * <p>{@code outwardLink} reports it and {@code foreign} is empty, which is
+     * {@code HomeRepair}'s pre-existing behaviour and its reasons are its:
+     * descending would list the OTHER home's entries and report them under this
+     * home's spelling. Each caller says what it wants about that state —
+     * {@code home repair} names it unrepairable, and {@code home verify}
+     * already reports it from the symlink arm of its own walk, so it consumes
+     * only {@code foreign} and does not report it twice.
+     */
+    public static List<ShimDirScan> scanShimDirs(Path homeRoot) {
+        if (homeRoot == null) return List.of();
+        Path root = homeRoot.toAbsolutePath().normalize();
+        List<ShimDirScan> out = new ArrayList<>();
+        for (String dir : SHIM_DIR_NAMES) {
+            Path shimDir = root.resolve(dir);
+            if (!Files.isDirectory(shimDir)) continue;
+            Path outward = Files.isSymbolicLink(shimDir)
+                    ? unsanctionedForeignHome(dir, shimDir, root)
+                    : null;
+            if (outward != null) {
+                out.add(new ShimDirScan(dir, outward, 1, List.of()));
+                continue;
+            }
+            List<Path> files = new ArrayList<>();
+            List<Path> links = new ArrayList<>();
+            collectShimFiles(shimDir, files, links);
+            List<ForeignShimPath> foreign = new ArrayList<>();
+            for (Path file : files) {
+                String rel = relativeTo(root, file);
+                foreign.addAll(foreignPathsInShimContent(rel, file, root));
+            }
+            // DEF-115. The link arm, enumerated HERE so both readers get it from
+            // the same walk with the same verdict. `home repair` consumed only
+            // the text arm, and a symlink has no text -- so on a home holding a
+            // symlinked shim into a third home, verify exited 1 naming it and
+            // repair exited 0 saying "0 entries examined". Same home, same
+            // moment, two readers, two subject SETS.
+            List<ForeignShimPath> foreignLinks = new ArrayList<>();
+            for (Path link : links) {
+                String rel = relativeTo(root, link);
+                Path outsider = unsanctionedForeignHome(rel, link, root);
+                if (outsider != null) {
+                    foreignLinks.add(new ForeignShimPath(rel, link, outsider));
+                }
+            }
+            out.add(new ShimDirScan(dir, null, files.size() + links.size(),
+                    List.copyOf(foreign), List.copyOf(foreignLinks)));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * {@code HomeRepair.collectRegularFiles}, moved here whole so there is one
+     * of it. The directory handed in may itself be a symlink, and following it
+     * is the point (see {@link #scanShimDirs}).
+     *
+     * <p>Symlink ENTRIES used to be dropped on the floor here, with a comment
+     * calling them "the OTHER reader's business, judged by link resolution".
+     * That was true of {@code home verify}, which has its own symlink arm, and
+     * false of {@code home repair}, which has none — so the shape was visible
+     * to exactly one of the two readers this method exists to keep in
+     * agreement. DEF-115. They are now collected into {@code links} and judged
+     * by the same {@link #unsanctionedForeignHome} the text arm uses; who
+     * reports them is the caller's business, which is what it always should
+     * have been.
+     */
+    private static void collectShimFiles(Path dir, List<Path> out, List<Path> links) {
+        try (java.nio.file.DirectoryStream<Path> entries = Files.newDirectoryStream(dir)) {
+            for (Path entry : entries) {
+                if (Files.isSymbolicLink(entry)) { links.add(entry); continue; }
+                if (Files.isDirectory(entry)) collectShimFiles(entry, out, links);
+                else if (Files.isRegularFile(entry)) out.add(entry);
+            }
+        } catch (IOException cannotList) {
+            Log.detail("shim scan: could not list %s (%s)", dir, cannotList.getMessage());
+        }
+    }
+
+    /** {@code base}-relative, {@code /}-separated, or the absolute path. */
+    private static String relativeTo(Path base, Path path) {
+        Path abs = path.toAbsolutePath().normalize();
+        try {
+            return base.relativize(abs).toString().replace(java.io.File.separatorChar, '/');
+        } catch (IllegalArgumentException notUnderIt) {
+            return abs.toString();
+        }
+    }
+
+    /**
+     * Every unsanctioned foreign path named by the TEXT of a shim file — the
+     * one reader of that question, called by {@code home verify} and by
+     * {@code home repair}.
+     *
+     * <h2>Why it is one method and not two</h2>
+     *
+     * <p>DEF-104 is two commands disagreeing about one file. Fixing it by
+     * writing a second scanner beside {@code HomeRepair.foreignPathsInShims}
+     * would leave the two answers free to drift apart again on the next
+     * change, which is the failure being repaired, not a repair of it. So
+     * {@code HomeRepair} now calls this and adds only its remedy text; verify
+     * calls it and adds only its leak record. The extraction rule
+     * ({@link HomeRepair#absolutePathTokens}) and the verdict
+     * ({@link #unsanctionedForeignHome}) are both single-sourced.
+     *
+     * <h2>The scope is the two shim directories, deliberately</h2>
+     *
+     * <p>Not "every regular file in the home". Unit CONTENT legitimately
+     * quotes absolute paths — an authored README, a persisted error message,
+     * a history file — and {@code Surface.CONTENT} / {@code DIAGNOSTIC_TEXT}
+     * exist precisely because a byte scan over those produced findings about
+     * sentences (issues #133, #144). A shim is different in kind: it is a
+     * generated file whose whole content is a command line, and the path in
+     * it is EXECUTED. {@code HomeRepair} draws the boundary in the same place,
+     * and drawing it anywhere else would make the two verdicts differ again.
+     *
+     * @param rel      the file's location inside {@code homeRoot},
+     *                 {@code /}- or platform-separated
+     * @param file     the shim file to read
+     * @param homeRoot the home the shim belongs to
+     */
+    public static List<ForeignShimPath> foreignPathsInShimContent(
+            String rel, Path file, Path homeRoot) {
+        if (rel == null || file == null || homeRoot == null) return List.of();
+        if (!isShimEntry(rel)) return List.of();
+        List<ForeignShimPath> out = new ArrayList<>();
+        java.util.Set<Path> seen = new java.util.LinkedHashSet<>();
+        for (String token : HomeRepair.absolutePathTokens(file)) {
+            Path candidate;
+            try {
+                candidate = Path.of(token);
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            Path foreign = unsanctionedForeignHome(rel, candidate, homeRoot);
+            if (foreign == null || !seen.add(candidate)) continue;
+            out.add(new ForeignShimPath(rel, candidate, foreign));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * True when {@code rel} names a file under one of the two shim
+     * directories. Prefix rather than exact depth: {@code home repair}
+     * collects those directories recursively, and a detector whose scope was
+     * one segment narrower than the repair's would be the disagreement again
+     * one level down.
+     */
+    static boolean isShimEntry(String rel) {
+        String normalized = rel.replace(java.io.File.separatorChar, '/');
+        for (String dir : SHIM_DIRS) {
+            if (normalized.startsWith(dir) && normalized.length() > dir.length()) return true;
+        }
+        return false;
     }
 
     /**
@@ -1327,11 +2362,13 @@ public final class HomeCloner {
      *       {@code bin/cli/<name>} and the child's must resolve to one
      *       artifact. A shim pointing at some other file that merely happens to
      *       live in another home is not a mirror of anything.</li>
-     *   <li><b>That home is this home's parent.</b>
+     *   <li><b>That home is an ancestor of this one.</b>
      *       {@link dev.skillmanager.bindings.ChildHomeLink#isChildOf} — evidence
      *       on disk, from the parent's registry or the child's own
-     *       materialization records. Without this, the first two conditions
-     *       describe a shape that a stale copied link has too.</li>
+     *       materialization records — or {@link HomeProvenance#sanctions}, the
+     *       descent a copy records at clone time. Without one of the two, the
+     *       first two conditions describe a shape that a stale copied link has
+     *       too.</li>
      * </ol>
      *
      * <p>The result is NOT a tolerated leak. A tolerated leak is fatal under
@@ -1341,7 +2378,9 @@ public final class HomeCloner {
      * mirroring — was rejected.
      */
     private static boolean sanctionedParentShim(String rel, Path link, Path foreign, Path dstRoot,
-                                                java.util.Map<Path, Boolean> childOf) {
+                                                Path srcRoot,
+                                                java.util.Map<Path, Boolean> childOf,
+                                                java.util.Map<Path, Boolean> srcChildOf) {
         String normalized = rel.replace(java.io.File.separatorChar, '/');
         String dir = null;
         for (String candidate : SHIM_DIRS) {
@@ -1353,8 +2392,56 @@ public final class HomeCloner {
         Path parentEntry = foreign.resolve(dir + name);
         if (!Files.exists(parentEntry, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return false;
         if (!realOrSame(link).equals(realOrSame(parentEntry))) return false;
-        return childOf.computeIfAbsent(foreign,
-                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(dstRoot, home));
+        // TWO KINDS OF EVIDENCE, BOTH IN THIS HOME, NEITHER ON THE COMMAND LINE.
+        //
+        // ChildHomeLink is the one-level relation: the parent's registry claims
+        // this home, or this home's materialization records name a unit source
+        // inside that store. HomeProvenance is the recorded DESCENT: a copy of a
+        // child is a grandchild, and this is where it says so. Both are files in
+        // this home; neither needs the other home to exist, and neither needs an
+        // operator to type anything. Cached together because a home mirroring
+        // twenty deps would otherwise ask the identical pair of questions twenty
+        // times.
+        if (childOf.computeIfAbsent(foreign,
+                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(dstRoot, home)
+                        || HomeProvenance.sanctions(dstRoot, home))) {
+            return true;
+        }
+        // HIS-7. A COPY INHERITS ITS SOURCE'S SANCTION.
+        //
+        // The check above asks whether the DESTINATION is a child of the home
+        // this shim points into. During a clone the destination is a home that
+        // DOES NOT EXIST YET: nothing claims it, and it was materialized from
+        // the source, not from the home the shim names. So the identical shim
+        // that `home verify` sanctions in the source was refused in the copy,
+        // `bootstrap-home.sh` failed, and neither `wt new` nor `skt ticket new`
+        // could produce a ticket home in this repository at all.
+        //
+        // The chain is root -> project -> worktree, so a clone of a child is a
+        // GRANDCHILD and the one-level question could never have answered yes.
+        // Asked of the SOURCE instead, it answers correctly: the project home
+        // IS a registered child of root, the shim was legitimately inherited,
+        // and copying it changes nothing about whose artifact it is.
+        //
+        // This is NOT a widening of what counts as sanctioned. The structural
+        // tests above still hold -- same bin/cli spelling, same real target,
+        // pointing at a home some link in this chain is genuinely a child of.
+        // What changed is WHICH home is asked, and a copy that inherits bytes
+        // inherits the reason they were allowed.
+        //
+        // HIS-10 KEPT THIS ARM AND DEMOTED IT. A home cloned by this build
+        // carries a HomeProvenance record written before the clone verifies
+        // itself, so the branch above answers first and `--against` decides
+        // nothing about a copy this program made. What is left here is the home
+        // this program did NOT make: a byte copy taken with `cp -a`, an rsync,
+        // a clone by an older skill-manager. For those, `--against` still
+        // EXPLAINS a sanction that has nothing in the copy to stand on -- and
+        // repairing such a home so it stands on its own record is HIS-13's, not
+        // this method's. Deleting the arm here would turn every pre-HIS-10 clone
+        // red on a command that used to pass, which is a migration, not a fix.
+        if (srcRoot == null || srcRoot.equals(dstRoot)) return false;
+        return srcChildOf.computeIfAbsent(foreign,
+                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(srcRoot, home));
     }
 
     /**
@@ -1449,6 +2536,60 @@ public final class HomeCloner {
     }
 
     /**
+     * Every path under a re-provisionable root of {@code dstRoot} that
+     * {@code file} reaches — whether or not it exists.
+     *
+     * <p>{@link #missingReferencesIn} answers "what is broken"; this answers
+     * "what does this file RUN OUT OF", which is the edge ARTI-05 derives the
+     * artifact graph from. A generated {@code bin/cli/computeq} wrapper naming
+     * {@code <home>/cache/skill-script-deploy-helm-computeq/venv/bin/computeq}
+     * declares a dependency on that tree in a healthy home exactly as much as in
+     * a broken one; the missing-only list is silent in the healthy case.
+     *
+     * <h2>Symlinks are read as links, not followed</h2>
+     *
+     * <p>{@code missingReferencesIn} reads bytes, and reading the bytes of
+     * {@code bin/cli/jinja2 -> ../../venvs/jinja2-cli/bin/jinja2} gives the
+     * bytes of the PYTHON SCRIPT at the far end, whose own text mentions no
+     * home path. The reference is the link target, so the link target is what
+     * is read — which is how the two shim shapes a home actually holds (a
+     * generated wrapper and a relative symlink) are both covered by one call.
+     *
+     * <p>Returns absolute path strings, matching {@link #missingReferencesIn}.
+     * The caller makes them home-relative, because only the caller knows
+     * whether it is allowed to write one down.
+     */
+    public static List<String> referencesIn(Path file, Path dstRoot) {
+        if (file == null || dstRoot == null) return List.of();
+        try {
+            if (Files.isSymbolicLink(file)) {
+                Path target = Files.readSymbolicLink(file);
+                Path resolved = (target.isAbsolute() ? target
+                        : file.toAbsolutePath().getParent().resolve(target)).normalize();
+                // Both spellings, same reason as the byte scan: a link stored
+                // with the resolved root is a reference this home holds even
+                // when the home was addressed through a symlink, and vice
+                // versa. Emitted in the CALLER's spelling. See rootSpellings.
+                String canonical = dstRoot.toAbsolutePath().normalize().toString();
+                String candidate = resolved.toString();
+                for (String root : rootSpellings(dstRoot)) {
+                    if (!candidate.startsWith(root) || candidate.length() <= root.length()) continue;
+                    if (!underProvisionableRoot(candidate, root)) continue;
+                    return List.of(canonical + candidate.substring(root.length()));
+                }
+                return List.of();
+            }
+            if (!Files.isRegularFile(file)) return List.of();
+            if (Files.size(file) > WHOLE_FILE_LIMIT) return List.of();
+            byte[] content = Files.readAllBytes(file);
+            if (looksBinary(content)) return List.of();
+            return destReferences(content, dstRoot.toAbsolutePath().normalize());
+        } catch (IOException e) {
+            return List.of();
+        }
+    }
+
+    /**
      * The Skill Manager home a link in the copy reaches, or null when it
      * reaches none.
      *
@@ -1486,7 +2627,10 @@ public final class HomeCloner {
      * same disguised shape that forced the {@code [[vendored]]} validator to
      * compare resolved physical paths.
      */
-    private static Path foreignHomeReachedBy(Path link, Path dstReal) {
+    // Package-private rather than private: HomeProvenance asks the same
+    // question when it records which stores a copy may inherit from, and a
+    // second spelling of "is this another home" is #24 all over again.
+    static Path foreignHomeReachedBy(Path link, Path dstReal) {
         Path resolved;
         try {
             resolved = link.toRealPath();

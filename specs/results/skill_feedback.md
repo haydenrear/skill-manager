@@ -177,3 +177,494 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket HIS-8
+
+- close_scope: ticket
+- close_id: HIS-8
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T00:55:27+00:00
+- summary: >
+    HIS-8 (skill-manager#224): the derived-artifact contract is now stated ONCE,
+    in skt's references/derived-artifacts.md, and the three other units that
+    instruct agents about homes link to it rather than restate it. Zero model
+    change (variables=38 actions=9, delta zero); the whole slice is markdown in
+    four OTHER repositories, published as four PRs. GOAL-mechanism-documented
+    clause 1 moved 0 of 4 -> 4 of 4 instructing units; clause 2's judged read
+    went 0 of 3 -> 3 of 3, twice, with different agents. pytest specs/ 38 passed,
+    RunTests.java ALL PASSED, home-integrity graph BUILD SUCCESSFUL 18/18.
+    Ticket current == desired, byte-identical, so promotion carried nothing.
+    CLOSE TAKEN UNDER --allow-open, i.e. CloseTicketWeakened, for the reason in
+    SF-002; the ticket agent stops at PR open by rule 7, so no honest plan status
+    satisfied the gate.
+- feedback_status: items-recorded
+
+### SF-002 — `close ticket`'s accepted plan statuses exclude every status an unmerged epic ticket can honestly hold
+- category: profile-schema-cli
+- target: scripts/spec_evolution.py — `TICKET_CLOSED_STATUSES` at the `close ticket` gate
+- observed_on: haydenrear/skill-manager HIS-8 (#224), epic/home-integrity-sync, epic ticket close
+- evidence: results/epic-home-integrity-sync/probes/his-8/tla-spec-dev-close.out
+- severity: forced-workaround
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-8`
+- detail: >
+    `TICKET_CLOSED_STATUSES = {accepted, closed, complete, completed, done}`. In
+    the git-epic-workflow model a ticket agent STOPS AT PR OPEN and the epic
+    owner merges, and this plan's own word for a landed ticket is `delivered`
+    (15 tickets carry it). `delivered` is not in the set, so at close time the
+    agent may pick a refused status or make a false claim. `--allow-open` is the
+    only route, and it correctly records the close as `CloseTicketWeakened` --
+    but for a reason unrelated to the ticket's evidence, which dilutes exactly
+    the signal that flag exists to preserve.
+- forced_workaround: `--allow-open`, recorded in the ticket's complexity-ledger narrative so the terminal evaluation reads the weaker claim
+- data_loss: no
+- workaround_applied: yes
+- recommendation: ticket https://github.com/haydenrear/tla-spec-dev/issues/288
+- status: filed
+
+### SF-003 — the ticket plan parses again: DEF-069 is closed by measurement
+- category: profile-schema-cli
+- target: scripts/spec_evolution.py — ticket_plan.yaml reader
+- observed_on: haydenrear/skill-manager HIS-8 (#224)
+- evidence: results/epic-home-integrity-sync/probes/his-8/tla-spec-dev-open.out
+- severity: none — RESOLVED, recorded so nobody re-files it
+- root_cause: tool (fixed upstream)
+- surface: `tla-spec-dev --spec-root specs open ticket HIS-8`
+- detail: >
+    Every prior ticket in this epic recorded `open ticket` as unusable because
+    the toolchain's YAML reader could not parse this plan (DEF-069). Re-measured
+    here: `open ticket HIS-8` succeeded, scaffolded 83 ticket-local workflow
+    files, and `close ticket HIS-8` then completed and promoted. HIS-8 is the
+    first ticket in this epic to run either half. Recording the positive result
+    because a defect nobody re-measures stays "open" forever, which this epic's
+    own backlog reconciliation note warns about.
+- forced_workaround: none
+- data_loss: no
+- workaround_applied: none
+- recommendation: no ticket needed — fixed in skill-manager 6d4c6a4 and verified here
+- status: resolved
+
+## Close-out ticket HIS-5
+
+- close_scope: ticket
+- close_id: HIS-5
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T02:21:26+00:00
+- summary: >
+    HIS-5 (#217): HomeIntegrityInternal goes from 4 invariants / 5 regression
+    configurations to 13 / 14, plus one guard configuration and two reachability
+    probes. Nine new invariants, one per behavioural fix this epic made. Every
+    expected-violation configuration was re-run with its TARGET REMOVED and the
+    other thirteen kept -- fourteen greens -- so each counterexample violates
+    exactly one invariant and it is the declared one. All five pre-existing
+    regression configurations still fail, each on its own invariant. pytest
+    specs/ 38 passed, RunTests.java ALL PASSED (146 suites / 1384 cases),
+    home-integrity graph BUILD SUCCESSFUL 18/18.
+    CLOSE TAKEN UNDER --allow-open for the reason HIS-8 already filed as SF-002
+    below; the ticket agent stops at PR open by rule 7, so no honest plan status
+    satisfied the gate.
+- feedback_status: items-recorded
+- duplicate_avoided: >
+    I had written my own SF-002 for the `--allow-open` gate before rebasing onto
+    the epic tip, and HIS-8 had already filed it -- with an upstream URL. It was
+    DROPPED at the rebase rather than appended. Recorded because "I filed a
+    finding as new that another ticket had recorded two days earlier" is this
+    epic's recurring defect, and the only reason it did not recur here is that
+    the rebase conflict forced both versions of this file to be read side by
+    side. Nothing would have caught it had the two tickets touched different
+    files.
+
+### SF-004 — the ledger's delta reports zero for a module that grew 2.8x
+- category: metric-blind-spot
+- target: complexity ledger (MF-019) — `complexity_ledger_model` scoping
+- observed_on: haydenrear/skill-manager HIS-5 (#217)
+- gated_quantity: variables/actions of `SkillManager.tla` + `MC.cfg`
+- measured_quantity: variables/actions of the module the ticket actually changed
+- evidence: >
+    The close printed `measured: variables=38 actions=9` and
+    `delta: direction=zero (vs ISSUE-168)`. Both are true of the declared
+    ledger model, which this ticket does not touch. `HomeIntegrityInternal`
+    went from 10 variables / 8 actions / 6 configurations to 28 / 23 / 18, and
+    its healthy run from 10 distinct states to 24,000 — none of which the
+    delta can see, because the module is a declared non-replacement view and
+    is not the ledger's model.
+- metric_blind_spot: >
+    A repository whose accepted monolith is frozen while all real work happens
+    in bounded non-replacement views gets `direction=zero` on every close, so
+    the standing objective is measured against a model nobody is editing.
+- workaround_applied: >
+    none — the real numbers were written into `justification:` by hand, which
+    is the only place they exist. A reader of `specs/results/complexity_ledger.json`
+    alone would see zero.
+- recommendation: >
+    Let the ledger measure the union of the modules a ticket's `tla:` conflict
+    keys name, falling back to `complexity_ledger_model` when that set is
+    empty; or refuse `direction=zero` when the ticket's conflict keys name a
+    module the ledger does not measure.
+- status: not-filed — filing against tla-spec-dev is outside a ticket agent's mandate. Reported in the PR body
+  so the epic owner can decide whether to file it.
+## Close-out ticket HIS-19
+
+- close_scope: ticket
+- close_id: HIS-19
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T04:25:59+00:00
+- summary: HIS-19 (#246) / DEF-027: home shims writes the most DURABLE spelling of the located build (DurableCliPin), verified same-file by realpath. Revised at the review of #250: the PATH arm was REMOVED as unsafe and the class's downgrade claim was corrected against my own measurement; home shims now has a test that it prints the pin it wrote. No TLA+ surface change -- HIS-5 carries the model work.
+- feedback_status: items-recorded
+
+### SF-005 — SF-002 has now been forced THREE times: HIS-8, HIS-5, HIS-19
+- category: profile-schema-cli
+- target: scripts/spec_evolution.py — `TICKET_CLOSED_STATUSES` at the `close ticket` gate
+- observed_on: haydenrear/skill-manager HIS-19 (#246), epic/home-integrity-sync, epic ticket close
+- id_note: >
+    Filed as SF-004 on this branch and RENUMBERED to SF-005 at the rebase onto
+    the epic tip, where HIS-5 had already taken SF-004 for a different finding.
+    Recorded rather than silently shifted, because a renumbered id in someone
+    else's citation is the failure this note prevents. Same reason HIS-5's
+    `duplicate_avoided:` block above exists, and the same near-miss: nothing
+    but the rebase conflict put the two lists side by side.
+- evidence: results/epic-home-integrity-sync/tickets/HIS-19/goal-contribution.md; the refusal was `ERROR: ticket HIS-19 is not closed in ticket_plan.yaml: status=delivered`
+- severity: forced-workaround
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-19`
+- detail: >
+    NOT A NEW FINDING. This is SF-002, and after the rebase it is measurably
+    worse than the recurrence I first wrote it up as: HIS-8 filed it, HIS-5's
+    close-out records taking `--allow-open` for the same reason, and this is the
+    THIRD. Recorded rather than re-filed, because three occurrences is the datum
+    an upstream maintainer does not otherwise get — the first report reads as one
+    agent's unusual plan, and three consecutive epic tickets do not. The verbatim
+    refusal is above; `delivered` is this plan's word for a landed ticket and the
+    ticket agent stops at PR open by rule 7, so no honest status satisfies the
+    gate.
+
+    ONE THING SF-002 DID NOT RECORD, and it is the more useful half: the FIRST
+    close attempt with `--allow-open` was still refused, by the complexity
+    ledger, with a verdict naming both missing fields (`refinement.searched` and
+    `narrative`). That refusal is the tool working exactly as designed and it is
+    worth stating beside the complaint, because it is why `--allow-open` does
+    not weaken the close as much as SF-002 implies: the substantive gate is
+    downstream of it and did not yield.
+- forced_workaround: `--allow-open`, declared here and in the ticket's complexity-ledger narrative and in the PR body, so the terminal evaluation reads the weaker claim
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002's ticket; this is the THIRD occurrence on it, not a new issue -- verified open with `gh issue view 288 -R haydenrear/tla-spec-dev`)
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket HIS-20
+
+- close_scope: ticket
+- close_id: HIS-20
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T12:44:03+00:00
+- summary: Progressive disclosure measured in both directions at all three tiers, before and after; gaps closed by linking, in two units published leaf-first
+- feedback_status: items-recorded
+
+### SF-002 (fourth occurrence, not re-filed)
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-20`
+- detail: >
+    NOT A NEW FINDING. `close ticket` refused with
+    `ERROR: ticket HIS-20 is not closed in ticket_plan.yaml: status=planned`,
+    which is SF-002 exactly. HIS-8 filed it, HIS-5 recorded taking `--allow-open`
+    for the same reason, HIS-19 recorded it as the third, and this is the FOURTH
+    consecutive epic ticket to hit it. Recorded rather than re-filed.
+
+    Two things worth adding to the run of four, because they change what the
+    upstream maintainer should conclude:
+
+    (a) It is now unanimous across the epic's implementation tickets, not a
+        pattern in a subset. Every ticket that stops at `pr_open` by rule 7 hits
+        it, because rule 7 and the close gate disagree about what "done" means:
+        the gate wants a terminal plan status, and the agent is forbidden from
+        reaching one.
+
+    (b) HIS-19 noted that the substantive gate is downstream of `--allow-open`
+        and did not yield. For HIS-20 the ledger gate DID yield on the first try,
+        because the ledger had already been filled before the close was
+        attempted. So the reassurance in HIS-19's note is conditional on the
+        order the agent happens to work in, not on the tool. Worth stating so the
+        run of four is not read as four identical data points.
+- forced_workaround: `--allow-open`, declared here, in the ticket's complexity-ledger narrative, and in the PR body, so the terminal evaluation reads the weaker claim (modeled state `CloseTicketWeakened`, not `CloseTicket`)
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002's ticket; this is the FOURTH occurrence on it, not a new issue)
+- status: filed
+
+### SF-003 — promotion drops the executable bit
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs open|close ticket HIS-20`
+- detail: >
+    CORRECTED AFTER CHECKING, and the correction matters for where the fix goes.
+    My first write-up blamed the promotion step. The ticket-local copy is already
+    `-rw-r--r--`:
+
+      $ ls -l specs/.history/.../ticket-043-HIS-20/ticket/desired/run_tlc.sh
+      -rw-r--r--  1 hayde  staff  968  run_tlc.sh
+
+    So the bit is lost at OPEN, when `current/` is seeded into the ticket
+    workspace, and promotion merely copies the already-broken mode back. Both
+    steps copy without preserving mode; open is where it starts.
+
+    Measured on this close, on a ticket whose `current/` and `desired/` were
+    byte-identical and which changed no spec file at all:
+
+      $ git diff specs/current/run_tlc.sh
+      old mode 100755
+      new mode 100644
+
+    Nothing else in the tree changed mode. `run_tlc.sh` is the script
+    `specs/program_model` invokes to run the model checker, so a promotion that
+    silently un-executes it breaks the next TLC run in a way that looks like a
+    model problem rather than a promotion problem. It is also invisible to a
+    content diff: `diff -rq` reports the two trees identical, because mode is not
+    content.
+
+    Worth flagging beyond the one file: this promotion carried ZERO content
+    changes and still produced a working-tree modification. Any ticket that runs
+    the close will see it, and the natural reading of `M specs/current/run_tlc.sh`
+    on a docs-only ticket is "something went wrong with my ticket".
+- forced_workaround: `chmod +x specs/current/run_tlc.sh` after the close, before committing
+- data_loss: no (mode only; recoverable and recovered)
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/289
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+<!-- ID COLLISION ADJUDICATED BY THE EPIC AGENT, 2026-08-24.
+     HIS-21 (#253) and HIS-22 (#254) ran in the same wave from the same base and
+     BOTH appended SF-004 and SF-005 to this file. Neither was at fault: this
+     ledger is named nowhere in git-epic-workflow, carries no pre-filing dedup
+     instruction, and both agents were told to grep it only because the epic
+     agent added that to their briefs by hand. That gap is DEF-089, filed by
+     HIS-5 after nearly colliding here first.
+     Resolved by PROMOTION ORDER: HIS-21 promotes at 20 and keeps SF-004/005;
+     HIS-22 promotes at 21 and its two become SF-006/007, contents unchanged. -->
+
+## Close-out ticket HIS-21
+
+- close_scope: ticket
+- close_id: HIS-21
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T20:26:48+00:00
+- summary: >
+    Five diagnostics that reported something that is not so (DEF-102, DEF-104,
+    DEF-105, DEF-106, DEF-107). No TLA+ module, .cfg, adapter or spec double
+    changed; one spec adapter test gained a production pin for DEF-102. The
+    close was NOT refused for openness and needed no `--allow-open` -- it was
+    refused once by the complexity ledger, correctly, for an empty
+    `refinement:` and `narrative:`, and passed on the second attempt.
+- feedback_status: items-recorded
+
+### SF-004 — SF-003 recurred, unchanged, four tickets later
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs open|close ticket HIS-21`
+- detail: >
+    Not a new finding. SF-003 (HIS-20) is filed as
+    https://github.com/haydenrear/tla-spec-dev/issues/289 and describes exactly
+    this. It is recorded again because the file's own purpose is to count
+    occurrences, and because HIS-21 changed ONE spec file
+    (`tests/test_cli_help_program_model.py`) and still saw it:
+
+      $ git diff specs/current/run_tlc.sh
+      old mode 100755
+      new mode 100644
+
+    So the second occurrence confirms SF-003's corrected diagnosis rather than
+    its first one: the mode is lost regardless of what the ticket touched,
+    because open and close both copy content without mode.
+
+    The shape is worth naming beyond the one file, because it is this epic's
+    own subject: `diff -rq` reports the two trees IDENTICAL. The loss is
+    invisible to a content comparison, and `run_tlc.sh` is the script the model
+    checker is invoked through -- so a promotion that silently un-executes it
+    surfaces later as a TLC failure, which reads as a model problem.
+- forced_workaround: `chmod +x specs/current/run_tlc.sh` after the close, before committing
+- data_loss: no (mode only; recoverable and recovered)
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/289 (SF-003's ticket; this is the SECOND occurrence on it, not a new issue)
+- status: filed
+
+### SF-005 — the ticket workspace seeds a `current/` and a `desired/` that a no-model ticket can only keep equal by not touching them
+
+- root_cause: workflow
+- surface: `tla-spec-dev --spec-root specs open ticket HIS-21` (109 scaffolded files)
+- detail: >
+    Recorded as an OBSERVATION, not a complaint, because the alternative is
+    worse and the workflow's rule ("at close, current == desired") is right.
+
+    HIS-21 changes no model. The close requires `current/` and `desired/` to
+    match, so a ticket that wants to pin one production fact in a spec ADAPTER
+    test -- which HIS-21 did, for DEF-102 -- has to write the identical edit
+    into three places: `tickets/HIS-21/current/tests/...`,
+    `tickets/HIS-21/desired/tests/...`, and `specs/current/tests/...`. Get one
+    wrong and the close refuses with a diff, which is the good failure; but the
+    three-way hand edit is itself the kind of "N call sites, one rule" this
+    repository files findings about.
+
+    What would remove it: `open ticket` could offer `--no-model`, seeding the
+    ticket with a symlinked or omitted model pair so that a diagnostics ticket
+    edits adapters in ONE place and the close's equality check is trivially
+    satisfied. Small, and it would have saved two of the three edits here.
+- forced_workaround: applied the same patch to three paths by script rather than by hand
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (filed against the same close-out surface; if the maintainer prefers a separate ticket this should become one)
+
+## Close-out ticket HIS-22
+
+- close_scope: ticket
+- close_id: HIS-22
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T20:08:02+00:00
+- summary: >
+    Closed with `--allow-open`. No spec-tree change: `desired/` and `current/`
+    were byte-identical throughout (`diff -rq` clean), because HIS-22's fix
+    states a WEAKENING of an existing safety predicate rather than a new
+    invariant, and the assignment reads `tlc: N/A unless the fix states a new
+    invariant`. The model change DEF-101 would eventually want is filed as
+    DEF-112 with the exact variable, constant and regression cfg it owes.
+    Two findings below, both RECURRENCES of already-filed items rather than new
+    ones, recorded so the occurrence count is right.
+- feedback_status: items-recorded
+
+### SF-006 — `close ticket` still refuses `status: delivered` (SF-002, fifth occurrence)  <!-- filed by HIS-22 as SF-004; renumbered at merge, see note above -->
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-22`
+- detail: >
+    `ERROR: ticket HIS-22 is not closed in ticket_plan.yaml: status=delivered`.
+    `delivered` is the status 20 of the plan's entries carry, set by this epic's
+    own convention (HIS-19's entry is `delivered` and was closed the same way),
+    and it is the honest one for a ticket that stops at PR open: the work is
+    delivered, the merge is somebody else's decision. The tool accepts only
+    `closed`, so every epic ticket in this workflow either lies about its status
+    or passes `--allow-open`.
+- forced_workaround: >
+    `--allow-open`, declared here, in the ticket's complexity-ledger narrative,
+    and in the PR body, so the terminal evaluation reads the weaker claim
+    (modeled state `CloseTicketWeakened`, not `CloseTicket`).
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002's ticket; this is the FIFTH occurrence on it, not a new issue)
+- status: filed
+
+### SF-007 — promotion drops the executable bit (SF-003, second occurrence, reproduced exactly)  <!-- filed by HIS-22 as SF-005; renumbered at merge, see note above -->
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs open|close ticket HIS-22`
+- detail: >
+    Reproduced verbatim on a ticket that changed NO spec file at all. After the
+    close:
+
+      $ git status --short specs/current
+       M specs/current/run_tlc.sh
+      $ git diff --stat specs/current
+       specs/current/run_tlc.sh | 0
+       1 file changed, 0 insertions(+), 0 deletions(-)
+
+    A content-only diff shows zero changed lines, and the file is nonetheless
+    modified: mode 100755 -> 100644. This is HIS-20's SF-003 exactly, including
+    its most dangerous property -- it is invisible to `diff -rq`, so a close that
+    reports both trees identical still leaves the model checker's own entrypoint
+    non-executable.
+
+    Recorded as a second occurrence rather than a new finding, because the
+    diagnosis in SF-003 (lost at OPEN when `current/` is seeded, not at
+    promotion) is confirmed and needs no revision. What the second occurrence
+    adds is that it is DETERMINISTIC, not incidental to HIS-20's content: two
+    different tickets, one of which touched no spec file, both produced it.
+- forced_workaround: `chmod +x specs/current/run_tlc.sh` after the close, before committing
+- data_loss: no (mode only; recoverable and recovered)
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/289 (SF-003's ticket; second occurrence)
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket HIS-6
+
+- close_scope: ticket
+- close_id: HIS-6
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-24T23:54:51+00:00
+- summary: TERMINAL EVALUATION: 26 executed / 24 passed; GOAL-one-home-one-answer clause 1 FAILS on DEF-115 and was NOT fixed; DEF-108 triaged as a stale assertion and repaired in the harness; seven new defects, five deferred and two escalated.
+- feedback_status: items-recorded
+
+### SF-008 — promotion drops the executable bit (SF-003, THIRD occurrence, on a ticket that changed no spec file whatsoever)
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs open|close ticket HIS-6`
+- detail: >
+    Reproduced verbatim for the third time, and this occurrence is the strongest
+    evidence available for SF-003's diagnosis, because HIS-6 is an EVALUATION
+    ticket: it edited no `.tla`, no `.cfg`, no adapter, no test under `specs/`.
+    Its only spec-tree edit is one `status:` field in
+    `desired_program_model/ticket_plan.yaml`. And still:
+
+      $ git status --short specs/current
+       M specs/current/run_tlc.sh
+      $ git diff --stat specs/current
+       specs/current/run_tlc.sh | 0
+       1 file changed, 0 insertions(+), 0 deletions(-)
+
+    Zero changed lines, file modified: mode 100755 -> 100644.
+
+    THE PART WORTH ADDING, since the diagnosis needs no revision: this is now
+    THREE tickets, three different content profiles -- HIS-20 changed spec files,
+    HIS-22 changed none, HIS-6 changed none and is not even a modelling ticket --
+    and all three produced it. It is a property of open/close, not of the ticket.
+    SF-007 called it deterministic on n=2; n=3 with a null-change ticket settles it.
+
+    And its dangerous property still holds: a content-only diff shows the trees
+    identical, so `diff -rq` and every "current == desired" check pass while the
+    model checker's own entrypoint is left non-executable. An instrument that
+    reports clean over a real difference -- which is the vacuity ledger's subject,
+    inside the toolchain that runs the model checker.
+- forced_workaround: `chmod +x specs/current/run_tlc.sh` after the close, before committing
+- data_loss: no (mode only; recoverable and recovered)
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/289 (SF-003's ticket; THIRD occurrence)
+- status: filed
+
+### SF-009 — `close ticket` accepts only `status: closed`, so a ticket that stops at PR open must misstate its own status (SF-006, next occurrence, and this time the OTHER workaround was taken)
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs close ticket HIS-6`
+- detail: >
+    `close ticket` refused with:
+
+      ERROR: ticket HIS-6 is not closed in ticket_plan.yaml: status=delivered
+
+    `delivered` is this epic's convention for a ticket whose agent stops at PR
+    open, and it is the honest value: the work is delivered, the merge is the
+    owner's decision. SF-006 recorded this and took `--allow-open`.
+
+    RECORDED AGAIN BECAUSE THIS TICKET TOOK THE OTHER FORK, and the two are not
+    equivalent. `--allow-open` snapshots a ticket whose status is not closed and
+    the history says so; setting `status: closed` writes a claim into the plan
+    that is FALSE at the moment it is written -- HIS-6 has not merged and will
+    not merge itself. I chose it because HIS-6 is the LAST ticket in the epic and
+    the plan is about to be read as the epic's final record, where an
+    `--allow-open` history entry for the terminal evaluation would be the more
+    confusing artifact. That is a judgement, not a right answer, and it is
+    recorded here rather than left to be inferred from the diff.
+
+    The underlying defect is unchanged and is now on its sixth occurrence: the
+    tool models exactly one reason a ticket stops, and the epic workflow it is
+    used by has two.
+- forced_workaround: set `status: closed` in `desired_program_model/ticket_plan.yaml` before closing, and say so here and in the PR body
+- data_loss: no
+- workaround_applied: yes
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002/SF-006's ticket; SIXTH occurrence, first one taking the status-edit fork rather than `--allow-open`)
+- status: filed
+

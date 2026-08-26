@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>The refusal prints a runnable command. This node extracts that exact
  * string from stdout and runs it through {@code sh -c}. It does NOT rebuild
- * {@code env SKILL_MANAGER_HOME=… skill-manager sync --force-scripts} from
+ * {@code env SKILL_MANAGER_HOME=… skill-manager build --stale} from
  * parts — a test that rebuilds the remedy is asserting against a COPY of the
  * production logic and passes happily while the real printed sentence is
  * un-runnable, which is defect #142 exactly (see 69ad2ac). The string the

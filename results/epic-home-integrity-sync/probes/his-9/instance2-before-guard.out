@@ -1,0 +1,35 @@
+== fixture
+homeX = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-z2l3NR/homeX/.skill-manager
+homeY = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-z2l3NR/homeY/.skill-manager
+shim  = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-z2l3NR/homeY/.skill-manager/bin/cli/skill-manager  (executable)
+
+== SKILL_MANAGER_HOME=<x>  <y>/bin/cli/skill-manager home describe
+  home root:   /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeY
+  policy:      live
+  cli:         /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeY/.skill-manager/bin/cli/skill-manager
+  gateway:     http://127.0.0.1:51717 (owned)
+  env:
+    SKILL_MANAGER_HOME /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeY/.skill-manager
+    CLAUDE_CONFIG_DIR  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeY/.claude
+    CLAUDE_HOME        /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeY/.claude
+    CODEX_HOME         /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeY/.codex
+    GEMINI_HOME        /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeY/.gemini
+  units:       0
+! Telemetry export unavailable; continuing without telemetry.
+   exit=0
+
+-- verdict
+SILENTLY REPORTED Y (exit 0) -- the home the operator did NOT name.
+
+== the escape: same environment, plus --home
+  home root:   /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeX
+  policy:      live
+  cli:         /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeX/.skill-manager/bin/cli/skill-manager
+  gateway:     http://127.0.0.1:51717 (owned)
+  env:
+    SKILL_MANAGER_HOME /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeX/.skill-manager
+    CLAUDE_CONFIG_DIR  /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeX/.claude
+    CLAUDE_HOME        /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-z2l3NR/homeX/.claude
+   exit=0
+
+scratch: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-z2l3NR

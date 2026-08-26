@@ -264,9 +264,8 @@ public final class CliArtifactMatrixTest {
                         """.formatted(TOOL, TOOL, TOOL));
                 CliDependency dep = dep();
                 CliLock lock = CliLock.load(store);
-                RequestedVersion.Requested req = RequestedVersion.of(dep);
-                lock.recordInstall(dep.backend(), req.tool(), req.version(), dep.spec(), null,
-                        "matrix-unit", SkillScriptBackend.fingerprintFor(store, "matrix-unit", dep));
+                dev.skillmanager.lock.CliInstallRecorder.record(
+                        lock, new InstallerRegistry(), dep, store, "matrix-unit");
                 lock.save(store);
             }
 

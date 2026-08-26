@@ -1,0 +1,86 @@
+{
+  "task": "orient-worktree-fixed",
+  "rc": 0,
+  "wall_s": 198.8,
+  "is_error": false,
+  "num_turns": 23,
+  "cost_usd": 0.5341504,
+  "corpus_bytes": 37838,
+  "corpus_tokens": 9460,
+  "other_read_bytes": 12765,
+  "total_tokens": 943887,
+  "output_tokens": 16878,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 212,
+      "target": "<fixture>/tier-worktree-fixed/home.provenanc"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1117,
+      "target": "<fixture>/tier-worktree-fixed/home.policy.to"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1846,
+      "target": "<fixture>/tier-worktree-fixed/home.runtime.j"
+    },
+    {
+      "tool": "Read",
+      "bytes": 611,
+      "target": "<fixture>/tier-worktree-fixed/cache/skt-chec"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 384,
+      "target": "<fixture>/tier-worktree-fixed/skills/skill-m"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 378,
+      "target": "<fixture>/tier-worktree-fixed/skills/skt"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 188,
+      "target": "<fixture>/tier-worktree-fixed/skills/skill-m"
+    },
+    {
+      "tool": "Glob",
+      "bytes": 189,
+      "target": "<fixture>/tier-worktree-fixed"
+    },
+    {
+      "tool": "Read",
+      "bytes": 25706,
+      "target": "<fixture>/tier-worktree-fixed/skills/skill-m"
+    },
+    {
+      "tool": "Read",
+      "bytes": 2094,
+      "target": "<fixture>/tier-worktree-fixed/policy.toml"
+    },
+    {
+      "tool": "Bash",
+      "bytes": 1278,
+      "target": "ls -la \"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\" 2>&1 | head -5\necho \"---\"\nls -la \"/Users/hayde/.skill-manager\" 2>&1 | head -5\necho \"---\"\ncat /pr"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 190,
+      "target": "<fixture>/tier-worktree-fixed/plugins/skt/sk"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1928,
+      "target": "<fixture>/tier-worktree-fixed/plugins/skt/sk"
+    },
+    {
+      "tool": "Read",
+      "bytes": 1717,
+      "target": "<fixture>/tier-worktree-fixed/plugins/skt/sk"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project \u2014 $SKILL_MANAGER_HOME is a project-tier Skill Manager home.\",\"source\":\"$SKILL_MANAGER_HOME/cache/skt-check.json\",\"quote\":\"\\\"home\\\": \\\"<fixture>/tier-worktree-fixed\\\", \\\"tier\\\": \\\"project\\\"\"},\n \"q2\":{\"answer\":\"It is a copy made by `home clone` from /Users/hayde/IdeaProjects/skill-manager/.skill-manager, and its own parent store chain is recorded as /Users/hayde/.skill-manager. From that source it inherits the resolved/installed units (skills and plugins, at the versions/shas the source held at clone time) \u2014 per skills/skill-manager/references/projects.md: \\\"Resolved units are projected from the parent store into the child `.skill-manager` store.\\\" \u2014 everything else (e.g. cache/) is re-derived rather than inherited.\",\"source\":\"$SKILL_MANAGER_HOME/home.provenance.json\",\"quote\":\"\\\"clonedFrom\\\" : \\\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\\\", \\\"parentStores\\\" : [ \\\"/Users/hayde/.skill-manager\\\" ]\"},\n \"q3\":{\"answer\":\"(a) Reach the tier above (this project home's parent store): `skill-manager home sync --from $SKILL_MANAGER_HOME --to /Users/hayde/.skill-manager`. (b) Reach the skill's own git repository: `skill-manager unit publish <skill-name> --ticket <ticket>`. Order matters \u2014 per the doc, `skt publish` is \\\"home sync one tier up, then unit publish\\\", i.e. (a) must run before (b).\",\"source\":\"$SKILL_MANAGER_HOME/skills/skill-manager/references/projects.md\",\"quote\":\"skill-manager home sync --from <worktree>/.skill-manager \\\\\\n                        --to <repo>/.skill-manager [--merge] [--dry-run] [--json]\"},\n \"q4\":{\"answer\":\"A unit's installed store copy inside this home, e.g. $SKILL_MANAGER_HOME/skills/<unit-name>/ \u2014 must never be used to author a new change. Why: the next sync overwrites whatever was written there and breaks its provenance match against `origin`; new authoring has to happen in the unit's own checkout, with the store only ever used to rescue an edit that's already there via `skt publish`.\",\"source\":\"$SKILL_MANAGER_HOME/plugins/skt/skills/unit-authoring/SKILL.md\",\"quote\":\"**Never edit the store copy in place** *as a way of authoring*. The next sync overwrites it, and its provenance no longer matches `origin`.\"}}\n```"
+}

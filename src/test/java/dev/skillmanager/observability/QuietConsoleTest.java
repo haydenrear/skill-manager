@@ -521,7 +521,10 @@ public final class QuietConsoleTest {
                     // about an empty string.
                     assertContains(c.text(), "do not resolve",
                             "precondition: verify reported the unresolved reference");
-                    assertContains(c.text(), "sync --force-scripts",
+                    // ARTI-06 replaced the VERB here (`sync --force-scripts` →
+                    // `build --stale`); this case is about the ENV PREFIX, which
+                    // is unchanged and is the whole of #145.
+                    assertContains(c.text(), "build --stale",
                             "precondition: and printed the remedy for it");
 
                     assertContains(c.text(), "SKILL_MANAGER_HOME=" + home,

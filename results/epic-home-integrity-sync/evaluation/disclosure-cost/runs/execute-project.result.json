@@ -1,0 +1,15 @@
+{
+  "task": "execute-project",
+  "rc": 0,
+  "wall_s": 72.1,
+  "is_error": false,
+  "num_turns": 8,
+  "cost_usd": 0.2353202,
+  "corpus_bytes": 0,
+  "corpus_tokens": 0,
+  "other_read_bytes": 40583,
+  "total_tokens": 400808,
+  "output_tokens": 3485,
+  "reads": [],
+  "answer": "{\"installed\":{\"command\":\"skill-manager list --json\",\"exit\":0,\"units\":5,\"stale\":0},\"artifacts\":{\"command\":\"skill-manager artifacts stale\",\"exit\":0,\"stale\":18,\"rebuild_command\":\"skill-manager build cli-shim:brew/docker\"},\"failures\":[]}"
+}

@@ -1,0 +1,1445 @@
+diff --git a/.github/scripts/select-graph-set.py b/.github/scripts/select-graph-set.py
+index 3970c2f..3a2521f 100755
+--- a/.github/scripts/select-graph-set.py
++++ b/.github/scripts/select-graph-set.py
+@@ -98,6 +98,31 @@ CORE: list[str] = [
+ # is the evidence those tickets landed.
+ # ---------------------------------------------------------------------------
+ 
++# ---------------------------------------------------------------------------
++# sync-settles is NOT IN CORE either, and for a DIFFERENT reason than
++# artifact-dag's. It is green.
++#
++# It pins the single biggest change-management drag the home mechanism has
++# produced: two units in the operator's project home sat permanently
++# unsyncable for nine days, first as MERGE_CONFLICT and then as "commits ahead
++# of the installed baseline", with neither printed remedy able to clear either
++# state. Every agent in every worktree cloned from that home inherited both.
++#
++# WHY NOT CORE. The node asserts the right property -- a sync must not strand
++# the installed baseline behind a merge it already committed -- and passes. But
++# it passes on a ROOT-TIER install/sync fixture, and the measured failure was
++# on a PROJECT-TIER materialized child copy. Two candidate reproductions were
++# tried and ruled out by measurement (see the node's class comment). So the
++# node is unproven against the defect it is named for, and a graph that passes
++# for the wrong reason is worth less in core than nothing: it would report the
++# drag covered.
++#
++# TO PROMOTE IT: HIS-4 (#216) owns reproducing the project-tier case. Once the
++# node is red against it and green after the fix, fold it into "home-integrity"
++# and delete this graph -- the node carries its own fixture and shares no
++# state, so the move is a file rename and a line here.
++# ---------------------------------------------------------------------------
++
+ # ---------------------------------------------------------------------------
+ # EXCLUDED — kept out of core AND full, on purpose, with the reason visible.
+ #
+diff --git a/results/epic-home-integrity-sync/deferred/backlog.yaml b/results/epic-home-integrity-sync/deferred/backlog.yaml
+index 8f04adf..95c9c1c 100644
+--- a/results/epic-home-integrity-sync/deferred/backlog.yaml
++++ b/results/epic-home-integrity-sync/deferred/backlog.yaml
+@@ -48,7 +48,16 @@ findings:
+       inherited staleness does not affect this epic's work. Re-check after
+       HIS-4 lands.
+     candidate_owner: HIS-4
+-    status: open
++    status: closed
++    resolution: >
++      Released 2026-08-20. `git reset` alone was NOT enough -- both units still
++      refused with "extra local changes" because the installed baseline was
++      stranded behind a merge a previous sync had already committed. Releasing
++      them took removing the gitignored scaffold trees (making the working tree
++      clean) and then `sync --merge`, which merged with no stash, no pop and no
++      conflict. Both tiers now report `skt check: all current`. The product was
++      not changed; HIS-4 (#216) owns the mechanism and has been rescoped to the
++      full four-link chain.
+ 
+   - id: DEF-002
+     found_by: epic kickoff
+diff --git a/results/epic-home-integrity-sync/tickets/HIS-1/goal-contribution.md b/results/epic-home-integrity-sync/tickets/HIS-1/goal-contribution.md
+new file mode 100644
+index 0000000..74d9e74
+--- /dev/null
++++ b/results/epic-home-integrity-sync/tickets/HIS-1/goal-contribution.md
+@@ -0,0 +1,40 @@
++# HIS-1 — goal contribution
++
++## GOAL-no-spurious-holdback (direct)
++
++**Expected effect:** 16 of 18 held back → 0, with the divergent-fixture clause still refusing.
++
++**Local signal:** `jbang RunTests.java` + `python skills/test_graph/scripts/run.py home-integrity`
++
++| clause | result |
++| --- | --- |
++| 1 — a pristine unit whose record names a dead store is not held back | **met** — new test `a pristine unit whose record names a store that is gone is not held back` |
++| 2 — a unit that genuinely differs is still held back | **met** — new test `a unit that genuinely differs is still held back, foreign record or not`; the agent's edit survives |
++
++**The tests are non-vacuous, and this was verified rather than assumed.** With
++the `copyUnit` call disabled, clause 1 fails `expected <0> but was <1>`; with it
++enabled it passes. Clause 2 passes either way, which is correct — it is a guard
++against the fix going too far, not a regression pin.
++
++**A first version of this test passed without the fix.** It left both trees
++pristine, and `describesSource` (`ChildHomeMaterializer.java:1408`) rescued the
++unit: the record's `entryDigests` still equalled the live source's, so the named
++path was never consulted. The operator's homes were not in that state — their
++parent stores had moved on too. The fixture now moves BOTH homes to the same new
++content and leaves the record describing the older bytes, which is what a ticket
++worktree publishing its work upstream actually leaves behind.
++
++## GOAL-sync-quiet (enabling)
++
++**Expected effect:** none on its own. Removes 16 five-line paragraphs, which is
++most of the non-diff noise HIS-2 then bounds.
++
++**Measured:** not separately measured here. HIS-2 owns the number.
++
++## Validation
++
++| lane | command | result |
++| --- | --- | --- |
++| repository_unit | `jbang RunTests.java` | ALL PASSED |
++| spec_graph | `python skills/test_graph/scripts/run.py home-integrity` | BUILD SUCCESSFUL |
++| tlc | N/A — this ticket states no new invariant; HIS-5 carries the model work | — |
+diff --git a/results/epic-home-integrity-sync/tickets/HIS-2/goal-contribution.md b/results/epic-home-integrity-sync/tickets/HIS-2/goal-contribution.md
+new file mode 100644
+index 0000000..31ea4c4
+--- /dev/null
++++ b/results/epic-home-integrity-sync/tickets/HIS-2/goal-contribution.md
+@@ -0,0 +1,67 @@
++# HIS-2 — goal contribution
++
++## GOAL-sync-quiet (direct)
++
++**Expected effect:** 889 lines / 87,208 chars → ≤10 lines, ≥99% char reduction,
++over the committed fixture.
++
++**Measured**, on `results/epic-home-integrity-sync/baseline/root-home-drift.json`
++— the operator's real pending record at the epic base commit:
++
++| rendering | lines | chars | ~tokens |
++| --- | ---: | ---: | ---: |
++| before (`renderDetailed`, the old `render`) | 896 | 88,308 | ~22,077 |
++| after (`render`) | **8** | **438** | **~109** |
++
++**99.50% reduction, 201× smaller.**
++
++| clause | target | result |
++| --- | --- | --- |
++| 1 | ≤10 lines and ≥99% char reduction | **met** — 8 lines, 99.50% |
++| 2 | full list unchanged behind `--json` / detail | **met** — `renderDetailed()` is byte-identical to the old `render()`; `home drift --detail` reaches it; the JSON surface is untouched |
++
++The rollup over that record, in full:
++
++```
++modified  skill:deploy-helm  no-digest  (20 files)
++modified  skill:git-epic-workflow  no-digest  (14 files)
++modified  skill:git-issue  no-digest  (5 files)
++modified  skill:git-issue-workflow  no-digest  (2 files)
++added     skill:plugin-repository  no-digest  (25 files)
++modified  plugin:skt  no-digest  (47 files)
++modified  skill:spec-double-compiler  no-digest  (776 files)
++7 units, 889 files changed — `home drift --detail` for the paths, `home drift --json` for the data
++```
++
++`no-digest` because this record was written before the field existed. A record
++written from now on carries the unit's short hash.
++
++## Two defects found while building this, both caught by the new tests
++
++1. **A format-precedence bug in the total line.** `.formatted()` binds tighter
++   than `+`, so `"a %d" + "b".formatted(n)` applies the call to the second
++   literal only and the first keeps its raw `%d unit%s` text. The rollup test
++   caught it on the assertion for the total line.
++2. **A missing digest read as a deleted unit.** `shortDigest()` returned `gone`
++   for any absent digest, so all seven units of the committed baseline — every
++   one of which predates the field — rendered as though they had been deleted.
++   Now `gone` only for `REMOVED`, `no-digest` otherwise, with its own regression.
++
++## Two existing tests changed, deliberately
++
++Both encoded the old contract — that a changed **path** is named on the default
++surface.
++
++- `a launch is refused while the change is unread, and nothing runs` — now
++  asserts the unit is named and the path is **not**, plus the file count.
++- `` `home drift` shows the pending change and exits non-zero `` — now asserts
++  the unit is named, the path is not, and that `--detail` still names it. That
++  second half is clause 2 checked through the CLI rather than through the record.
++
++## Validation
++
++| lane | command | result |
++| --- | --- | --- |
++| repository_unit | `jbang RunTests.java` | ALL PASSED |
++| spec_graph | `python skills/test_graph/scripts/run.py home-integrity` | BUILD SUCCESSFUL (3m42s) |
++| tlc | N/A — states no new invariant; HIS-5 carries the model work | — |
+diff --git a/specs/desired_program_model/ticket_plan.yaml b/specs/desired_program_model/ticket_plan.yaml
+index 8cd9f1b..30d07f9 100644
+--- a/specs/desired_program_model/ticket_plan.yaml
++++ b/specs/desired_program_model/ticket_plan.yaml
+@@ -2596,7 +2596,7 @@ tickets:
+         local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+ 
+   - id: HIS-4
+-    title: "dereferencing an in-unit symlink deadlocks the unit's git repo, and the error record outlives the condition"
++    title: "a scaffolded gitignored tree strands the installed baseline, and the unit is never syncable again"
+     phase: HIS
+     status: planned
+     epic: home-integrity-sync
+@@ -2607,60 +2607,98 @@ tickets:
+     promotion_order: 4
+     promotion_predecessor: HIS-3
+     conflict_keys:
+-      production: [ChildHomeMaterializer.materializedView, ChildHomeMaterializer.dereference, InstalledRecord.errors]
++      production: [Rederivable, ChildHomeMaterializer.materializedView, SyncUseCase.merge, InstalledRecord.errors]
+       tla: [HomeIntegrityInternal.RecordDescribesItsStoreOrSaysWhy]
+       adapters: []
+-      test_graph: [home-integrity/DerefedSymlinkSyncsClean]
++      test_graph: [sync-settles/ScaffoldTreeDoesNotStrandTheBaseline]
+       workflow_data: []
+     objective: >
+-      TWO defects that met in one live state, found while satisfying rule 11 at
+-      this epic's kickoff. Both instances of the epic's theme.
+-
+-      (a) THE DEADLOCK. `deploy-helm` and `spec-double-compiler` in the project
+-      home were stuck in MERGE_CONFLICT, blocking `skt sync` for both. The
+-      index carried stages 1 and 3 at mode 120000 (symlink) for
+-      test_graph/build-logic, test_graph/sdk and test_graph/standard-nodes,
+-      stage 2 absent, NO MERGE_HEAD, and HEAD tracking none of those paths.
+-      CHM-5 dereferences in-unit symlinks into real directories -- correct, and
+-      what makes a child home independent -- but it does so inside a git
+-      working tree. Git reads the symlink as deleted; sync stashes, merges an
+-      upstream that still has mode 120000 there, pops, and conflicts. The
+-      printed remedy (`git add` + `git commit`) cannot clear it, because the
+-      working tree cannot hold both a directory and a symlink at one path. It
+-      re-arms on the next sync.
+-
+-      (b) THE STICKY RECORD. installed/<unit>.json carried
+-      errors: [{kind: MERGE_CONFLICT, firstSeenAt: 2026-08-11T22:23:41Z}] with
+-      no resolvedAt and no re-derivation. After the git state was cleared, skt
+-      still reported the conflict, because the state is RECORDED, not observed.
+-      Same shape as HIS-1's dead source path and HIS-3's unretired gate.
++      THE SINGLE BIGGEST CHANGE-MANAGEMENT DRAG THE HOME MECHANISM HAS
++      PRODUCED, and the reason this ticket is scoped wider than the issue that
++      opened it. Two units in the operator's project home -- deploy-helm and
++      spec-double-compiler -- sat permanently unsyncable for nine days. Every
++      agent in every worktree cloned from that home inherited both, which is
++      why it reads as a productivity problem rather than a bug.
++    the_chain: >
++      FOUR LINKS, and any one of them left in place reproduces the drag. This
++      is why the ticket is not "exclude the tree from the digest".
++
++      (1) THE TRIGGER. The test-graph scaffolder writes
++      test_graph/{build-logic,sdk,standard-nodes} into a consuming unit as
++      SYMLINKS into the test-graph store copy, and the unit's own
++      test_graph/.gitignore:30-32 declares all three not-content. CHM-5
++      dereferences them into real directories so the child home is independent
++      -- correct -- but Rederivable does not carry these names and the digest
++      walk does not read .gitignore, so they count as unit content. MEASURED:
++      root store test_graph/ holds 10 entries, the project home holds 13 and
++      12. Rederivable's own membership test is "can a tool write it again from
++      content that is still here", and these pass it.
++
++      (2) THE MECHANISM. Sync reads that as a dirty tree, stashes, merges
++      upstream -- THE MERGE COMMIT LANDS -- then pops. The pop conflicts: the
++      stash carries a change to a path upstream holds at mode 120000 and the
++      working tree cannot hold both a directory and a symlink there. Sync
++      aborts. MEASURED: index stages 1 and 3 at 120000 for all three paths,
++      stage 2 absent, no MERGE_HEAD, HEAD tracking none of them.
++
++      (3) THE PERMANENCE, AND THE LOAD-BEARING LINK. The merge is committed;
++      installed/<unit>.json is not updated. MEASURED: record gitHash c72d03a6
++      written 2026-07-25, store HEAD at eab28837. HEAD is ahead of the baseline
++      FOREVER, so every later sync reports "extra local changes (working tree
++      edits, or commits ahead of the installed baseline)" and refuses. Fixing
++      (1) and (2) does NOT release a home already in this state -- which is the
++      state the operator was actually in, and the reason a fix that only
++      excludes the tree would look right and change nothing.
++
++      (4) THE INVISIBILITY. errors[{kind: MERGE_CONFLICT}] carries no
++      resolvedAt and is never re-derived, so `skt check` kept reporting the
++      conflict after the git state was clean.
+     slice: >
+-      (a) Decide how a dereferenced path is represented to the unit's git repo
+-      so a merge does not re-arm forever, and make the printed remedy one that
+-      actually clears the state. As in CHM-24, "exclude it from the merge
+-      algebra" is not automatically safe -- say what happens to a unit whose
+-      only divergence IS the dereferenced path.
+-      (b) Re-derive an installed-record error from the live tree when it is
+-      read. A condition that has cleared stops being reported without anyone
+-      editing home state by hand.
+-    reproduction_note: >
+-      The live instance was cleared by hand at kickoff to satisfy rule 11
+-      (git reset restoring the index from HEAD; working trees untouched;
+-      backups in the session scratchpad; the conflict did not recur on the next
+-      sync). The mechanism is unchanged. Build the fixture SYNTHETICALLY -- a
+-      unit carrying a symlink into the parent store, materialized, then synced
+-      against a moved upstream. Do not rely on the operator's homes.
++      (1) Decide whether a unit's own .gitignore, or an extension to
++      Rederivable, or both, keeps scaffolded re-derivable trees out of the
++      digest. Prefer the unit's declaration over a global name list: `sdk` and
++      `standard-nodes` are generic enough to be real content in some other
++      unit, and #180 already establishes that gitignored paths should be
++      honoured on a neighbouring surface. Whatever is chosen, the skip must be
++      on BOTH sides -- not hashed, not copied, and NOT DELETED
++      (carryOverUnownedTrees). Excluding a path must make it invisible, not
++      disposable.
++
++      (2) Make the merge and the record atomic, or compensated. A sync that
++      leaves a merge committed and the baseline unwritten is the generator of
++      the permanent state; either roll the merge back on a failed pop, or write
++      the advanced baseline together with the recorded conflict.
++
++      (3) Re-derive an installed-record error from the live tree when it is
++      read.
++
++      (4) Provide the release path for a home ALREADY stranded. Fixes (1)-(3)
++      are prospective; the operator's two units were only recovered by hand.
++    manual_recovery_performed: >
++      2026-08-20, recorded so the ticket is not measured against a state that
++      no longer exists. The deadlock was cleared by `git reset` (restoring the
++      index from HEAD; working trees untouched). That was NOT sufficient: both
++      units still refused with "extra local changes" because of link (3). They
++      were released by removing the gitignored scaffold trees from the project
++      home copies -- which made the working tree clean -- and then
++      `sync --merge`, which merged with no stash, no pop and no conflict. Both
++      tiers then reported `skt check: all current` for the first time. Backups
++      of the removed trees, the original indexes and the original installed
++      records are in the session scratchpad. THE PRODUCT WAS NOT CHANGED, so
++      the mechanism is intact and will re-produce this state.
+     acceptance:
+       assertions:
+-        - The synthetic fixture leaves 0 units in MERGE_CONFLICT and `sync` completes.
+-        - The remedy printed for a genuinely divergent unit is runnable and changes the verdict.
+-        - A unit whose only divergence is the dereferenced path is not silently reported clean.
++        - FIRST, reproduce it. sync-settles/ScaffoldTreeDoesNotStrandTheBaseline currently PASSES on a root-tier install/sync fixture and does not reach the project-tier materialized case. Make it red against the real defect before fixing anything.
++        - A unit carrying a scaffolded gitignored tree stays syncable, at every tier.
++        - A sync that fails partway never leaves the baseline behind a merge it already committed.
++        - An excluded path is not hashed, not copied, and not deleted.
+         - An installed-record error whose condition has cleared stops being reported, with no hand edit.
++        - A home already stranded has a documented, runnable release path that is not `git reset` plus manual deletion.
+     goals:
+       - goal: GOAL-symlink-merge-settles
+         contribution: direct
+-        expected_effect: "2 of 21 stuck -> 0 on the synthetic fixture; stale error records self-clear"
+-        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
++        expected_effect: "2 of 21 units permanently stuck -> 0; a stranded baseline becomes impossible rather than manually recoverable"
++        local_signal: "python skills/test_graph/scripts/run.py sync-settles"
+       - goal: GOAL-sync-quiet
+         contribution: enabling
+         expected_effect: "none on its own -- removes the cause of 776 of the baseline's 889 lines"
+diff --git a/src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java b/src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+index bc695bc..8035527 100644
+--- a/src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
++++ b/src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+@@ -1161,29 +1161,9 @@ public final class ChildHomeMaterializer {
+         }
+ 
+         Fingerprint dst = fingerprint(dest);
+-        if (src.digest().equals(dst.digest())) {
+-            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+-                    "already byte-identical to the source");
+-        }
+-        if (gitTwinsDifferOnlyInBookkeeping(source, dest)) {
+-            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+-                    "identical outside .git and standing on the same refs; the two copies differ "
+-                            + "only in git's own bookkeeping (an index, a reflog, a repack), which "
+-                            + "belongs to neither home");
+-        }
+-        if (gitSourceIsBehind(source, dest)) {
+-            // Answered by git, before any record is consulted, because no
+-            // record can answer it: a home that pulled a newer upstream into
+-            // its store copy is ahead of every home cloned from it earlier,
+-            // and the clone-time baselines those homes carry describe an
+-            // ancestor of both. Measured (#210): a ticket home at deploy-helm
+-            // e22cbe8a, unedited, against a project home that had since
+-            // synced to a367aa00, reported 11 files "changed on both sides"
+-            // and blocked its own teardown.
+-            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+-                    "the destination's history already contains every ref the source holds and "
+-                            + "the source's working tree is clean, so the destination is ahead of "
+-                            + "the source and the source has nothing to contribute");
++        String settled = settledWithoutARecord(source, dest, src.digest(), dst.digest());
++        if (settled != null) {
++            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(), settled);
+         }
+         if (gitDestIsBehind(source, dest)) {
+             // The mirror image, and the one case where git licenses a
+@@ -2171,6 +2151,26 @@ public final class ChildHomeMaterializer {
+         String sourceDigest = sourcePrint.digest();
+         MaterializationRecord record = readRecord(name, kind).orElse(null);
+         String currentDigest = destIsDir ? treeDigest(dest) : null;
++
++        // ASK THE DISK BEFORE ASKING THE RECORD. `reconcile` has always done
++        // this; this method never did, and the gap is #214: 16 of 18 records
++        // across four child homes named a store this pass could not claim, all
++        // 18 were pristine, and every one of them printed a paragraph about
++        // work that "may exist nowhere else" over a tree nobody had touched.
++        //
++        // Placed above `disposal` rather than inside it deliberately. Disposal
++        // answers "may this destination be DESTROYED", which is a question
++        // about provenance and rightly needs evidence. These three answer
++        // "is there anything to do at all", which provenance cannot change:
++        // where the trees already agree, the destroying and the not-destroying
++        // have the same result.
++        if (destIsDir) {
++            String settled = settledWithoutARecord(source, dest, sourceDigest, currentDigest);
++            if (settled != null) {
++                return new UnitOutcome(name, kind, Status.UNCHANGED, dest, settled);
++            }
++        }
++
+         Disposal disposal = disposal(name, kind, record, source, destIsDir ? dest : null,
+                 sourcePrint, currentDigest);
+         String baseline = disposal.baseline();
+@@ -2372,6 +2372,89 @@ public final class ChildHomeMaterializer {
+         }
+     }
+ 
++    /**
++     * The <b>third showing</b> of the <a href="#baseline-rule">baseline rule</a>:
++     * <b>the source is standing on exactly these bytes right now.</b>
++     *
++     * <p>Three questions, all answered from evidence on disk, none of them
++     * needing a record to exist or to be readable. Where any one holds there is
++     * nothing to do, so the answer is the same in both directions and whatever
++     * either record says is irrelevant.
++     *
++     * <h2>Why this function exists rather than three checks in one method</h2>
++     *
++     * <p>It was three checks in one method, and the other method did not have
++     * them. {@code reconcile} — the {@code home sync} path — asked all three
++     * before consulting a record; {@code copyUnit} — the {@code project
++     * resolve} and root-sync path — asked none, computed a digest it then only
++     * used as an argument to {@link #disposal}, and held the unit back. So
++     * {@code home sync} reported a unit UNCHANGED while a sync of the same two
++     * trees printed a paragraph about work that "may exist nowhere else".
++     *
++     * <p>That is the divergence the comment inside {@code copyUnit} says cannot
++     * be allowed to happen — "{@code home sync} and {@code project resolve}
++     * read the same value or they eventually disagree about the units that
++     * matter, which is what CHM-15 was" — reappearing in the opposite
++     * direction, because CHM-15 was fixed by making the two agree about
++     * DISPOSAL and nobody made them agree about the questions asked BEFORE
++     * disposal. One function, two callers, so the next one is a compile error.
++     *
++     * <h2>What it licenses, and why that is nothing</h2>
++     *
++     * <p>Nothing. Every branch returns "there is no work to do", and the
++     * callers turn that into {@code UNCHANGED}. <b>No record is written.</b>
++     * That is deliberate and it is the whole safety argument: the alternative
++     * fix considered for #214 was to re-baseline a record-less or
++     * foreign-sourced destination as "the root owns these bytes", which invents
++     * a claim about bytes two homes may never have shared, persists it, and
++     * hands it to the next reconcile in either direction as licence. See
++     * {@link #sourceHeldTheseBytes}, which argues the same point at length and
++     * declines to make the same move.
++     *
++     * <h2>The measurement</h2>
++     *
++     * <p>16 of 18 per-unit records across four registered child homes named a
++     * {@code source} that was not the root store — six of them a path that no
++     * longer existed, including a deleted ticket worktree and a
++     * {@code /private/tmp} scratchpad from an evaluation session. All 18 were
++     * pristine by their own digest. Every one was held back on every sync, and
++     * the hold-back was protecting nothing.
++     *
++     * @return the reason there is no work to do, or {@code null} when none of
++     *         the three showings holds and the caller must go on to ask the
++     *         record
++     */
++    private static String settledWithoutARecord(Path source, Path dest,
++                                                String sourceDigest, String destDigest)
++            throws IOException {
++        // 1. The trees are the same. Refreshing is a byte-identical no-op, so
++        //    there are no bytes a refresh could destroy -- which is the
++        //    baseline rule's question, answered without asking anyone.
++        if (sourceDigest != null && sourceDigest.equals(destDigest)) {
++            return "already byte-identical to the source";
++        }
++        // 2. Identical outside .git and standing on the same refs.
++        if (gitTwinsDifferOnlyInBookkeeping(source, dest)) {
++            return "identical outside .git and standing on the same refs; the two copies differ "
++                    + "only in git's own bookkeeping (an index, a reflog, a repack), which "
++                    + "belongs to neither home";
++        }
++        // 3. The destination is ahead. Answered by git, before any record is
++        //    consulted, because no record can answer it: a home that pulled a
++        //    newer upstream into its store copy is ahead of every home cloned
++        //    from it earlier, and the clone-time baselines those homes carry
++        //    describe an ancestor of both. Measured (#210): a ticket home at
++        //    deploy-helm e22cbe8a, unedited, against a project home that had
++        //    since synced to a367aa00, reported 11 files "changed on both
++        //    sides" and blocked its own teardown.
++        if (gitSourceIsBehind(source, dest)) {
++            return "the destination's history already contains every ref the source holds and "
++                    + "the source's working tree is clean, so the destination is ahead of "
++                    + "the source and the source has nothing to contribute";
++        }
++        return null;
++    }
++
+     /**
+      * The second showing of the <a href="#baseline-rule">baseline rule</a>'s
+      * first decision: <b>the source's own record names the bytes the
+diff --git a/src/main/java/dev/skillmanager/commands/HomeCommand.java b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+index a8c4a81..0119431 100644
+--- a/src/main/java/dev/skillmanager/commands/HomeCommand.java
++++ b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+@@ -846,6 +846,10 @@ public final class HomeCommand {
+                         + "as pending, and refresh the digest.")
+         boolean record;
+ 
++        @Option(names = "--detail",
++                description = "Print every changed path instead of the per-unit rollup.")
++        boolean detail;
++
+         @Option(names = "--ack", description = "Mark the pending change read, clearing the gate.")
+         boolean ack;
+ 
+@@ -897,8 +901,10 @@ public final class HomeCommand {
+                 Log.ok("acknowledged %d changed unit(s) in %s",
+                         acked.report().units().size(), store.root());
+                 // The count is the verdict; the per-unit lines are already
+-                // read by the time you acknowledge them.
+-                for (String line : acked.report().render()) Log.detail("  %s", line);
++                // read by the time you acknowledge them. Detailed here because
++                // Log.detail is already an opt-in surface -- collapsing a
++                // stream nobody sees by default buys nothing.
++                for (String line : acked.report().renderDetailed()) Log.detail("  %s", line);
+                 return 0;
+             }
+             DriftGate pending = DriftGate.pending(store).orElse(null);
+@@ -920,7 +926,9 @@ public final class HomeCommand {
+             // decision and the first dozen make it.
+             Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
+                     pending.report().units().size(), store.root(), pending.operation());
+-            Log.errorList("  ", pending.report().render());
++            Log.errorList("  ", detail
++                    ? pending.report().renderDetailed()
++                    : pending.report().render());
+             Log.warn("  run `%s home drift --ack` once you have taken it in",
+                     HomeDescriptor.cliInvocation(store.root()));
+             return DriftGate.EXIT_CODE;
+diff --git a/src/main/java/dev/skillmanager/store/DriftGate.java b/src/main/java/dev/skillmanager/store/DriftGate.java
+index 2a889de..e766847 100644
+--- a/src/main/java/dev/skillmanager/store/DriftGate.java
++++ b/src/main/java/dev/skillmanager/store/DriftGate.java
+@@ -164,7 +164,12 @@ public record DriftGate(
+     }
+ 
+     private static DriftReport.UnitDrift union(DriftReport.UnitDrift a, DriftReport.UnitDrift b) {
+-        return new DriftReport.UnitDrift(b.name(), b.kind(), b.change(),
++        // b's digest, not a's: the union describes the unit as it stands NOW,
++        // and b is the newer observation. The file lists are unioned because
++        // the merge exists to keep an unread change from being dropped; the
++        // digest is not a set and the older one describes a tree nobody is
++        // standing on any more.
++        return new DriftReport.UnitDrift(b.name(), b.kind(), b.change(), b.digest(),
+                 joined(a.addedFiles(), b.addedFiles()),
+                 joined(a.removedFiles(), b.removedFiles()),
+                 joined(a.modifiedFiles(), b.modifiedFiles()));
+diff --git a/src/main/java/dev/skillmanager/store/DriftReport.java b/src/main/java/dev/skillmanager/store/DriftReport.java
+index 8a09ac5..f7937ce 100644
+--- a/src/main/java/dev/skillmanager/store/DriftReport.java
++++ b/src/main/java/dev/skillmanager/store/DriftReport.java
+@@ -32,11 +32,13 @@ public record DriftReport(String from, String to, List<UnitDrift> units) {
+ 
+     @JsonInclude(JsonInclude.Include.NON_NULL)
+     @JsonIgnoreProperties(ignoreUnknown = true)
+-    @JsonPropertyOrder({"name", "kind", "change", "addedFiles", "removedFiles", "modifiedFiles"})
++    @JsonPropertyOrder({"name", "kind", "change", "digest",
++            "addedFiles", "removedFiles", "modifiedFiles"})
+     public record UnitDrift(
+             String name,
+             String kind,
+             Change change,
++            String digest,
+             List<String> addedFiles,
+             List<String> removedFiles,
+             List<String> modifiedFiles
+@@ -51,6 +53,28 @@ public record DriftReport(String from, String to, List<UnitDrift> units) {
+             return (kind == null ? "unit" : kind.toLowerCase()) + ":" + name;
+         }
+ 
++        /**
++         * The unit's whole-tree hash AFTER the change — the thing the operator
++         * asked for in place of the file list, and the thing this record was
++         * already being handed and throwing away. Null for a REMOVED unit,
++         * which has no "after" to hash.
++         */
++        public String shortDigest() {
++            if (digest != null && !digest.isBlank()) {
++                return digest.length() > 8 ? digest.substring(0, 8) : digest;
++            }
++            // Two different absences, and collapsing them is how a record
++            // written before this field existed reads as a unit that was
++            // DELETED. Measured on the committed baseline fixture, whose seven
++            // units all predate the field: every one of them rendered `gone`.
++            return change == Change.REMOVED ? "gone" : "no-digest";
++        }
++
++        /** How many paths this unit's drift touches. */
++        public int fileCount() {
++            return addedFiles.size() + removedFiles.size() + modifiedFiles.size();
++        }
++
+         /** Every path this unit's drift touches, sorted. */
+         public List<String> allFiles() {
+             Set<String> all = new TreeSet<>(addedFiles);
+@@ -90,23 +114,23 @@ public record DriftReport(String from, String to, List<UnitDrift> units) {
+             HomeDigest.UnitDigest now = after.unit(name).orElse(null);
+             if (was == null && now == null) continue;
+             if (was == null) {
+-                drifts.add(new UnitDrift(name, now.kind(), Change.ADDED,
++                drifts.add(new UnitDrift(name, now.kind(), Change.ADDED, now.digest(),
+                         sorted(now.entries().keySet()), List.of(), List.of()));
+                 continue;
+             }
+             if (now == null) {
+-                drifts.add(new UnitDrift(name, was.kind(), Change.REMOVED,
++                drifts.add(new UnitDrift(name, was.kind(), Change.REMOVED, null,
+                         List.of(), sorted(was.entries().keySet()), List.of()));
+                 continue;
+             }
+             if (was.digest().equals(now.digest())) continue;
+-            drifts.add(modified(name, now.kind(), was.entries(), now.entries()));
++            drifts.add(modified(name, now.kind(), now.digest(), was.entries(), now.entries()));
+         }
+         drifts.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+         return new DriftReport(before.digest(), after.digest(), drifts);
+     }
+ 
+-    private static UnitDrift modified(String name, String kind,
++    private static UnitDrift modified(String name, String kind, String digest,
+                                       Map<String, String> was, Map<String, String> now) {
+         List<String> added = new ArrayList<>();
+         List<String> removed = new ArrayList<>();
+@@ -119,15 +143,72 @@ public record DriftReport(String from, String to, List<UnitDrift> units) {
+         for (String rel : new TreeSet<>(was.keySet())) {
+             if (!now.containsKey(rel)) removed.add(rel);
+         }
+-        return new UnitDrift(name, kind, Change.MODIFIED, added, removed, changed);
++        return new UnitDrift(name, kind, Change.MODIFIED, digest, added, removed, changed);
+     }
+ 
+     private static List<String> sorted(Set<String> values) {
+         return List.copyOf(new TreeSet<>(values));
+     }
+ 
+-    /** Human-readable rendering, the form a bare {@code home drift} prints. */
++    /**
++     * The bounded rollup: one line per changed unit, plus one total.
++     *
++     * <h2>Why this is not the per-file list any more</h2>
++     *
++     * <p>MEASURED on the operator's root home: one pending record, 7 units,
++     * 87,054 bytes. The old rendering emitted one line per changed FILE — 889
++     * lines, ~87,200 characters, roughly 21,800 tokens — and re-emitted the
++     * whole block on every {@code project sync}, every {@code exec} launch gate
++     * and every {@code home drift}. One unit, {@code spec-double-compiler},
++     * was 776 of the 889 lines on its own.
++     *
++     * <p>That is the decision an agent needs stated in the space it takes to
++     * state it: <em>which units moved, and are they the ones I was following</em>.
++     * The per-file list answers a different question, one nobody was asking on
++     * every pass, and it was crowding out the answer to the first.
++     *
++     * <p>The digest is what replaces it, and it was already here: the report
++     * was being handed {@code HomeDigest.UnitDigest.digest()} for every unit
++     * and dropping it on the floor.
++     *
++     * <h2>This is a default, not a deletion</h2>
++     *
++     * <p>{@link #renderDetailed()} still produces exactly what this used to,
++     * byte for byte, and the JSON surface is untouched. A collapse that made
++     * the paths unreachable would be trading one unusable surface for another.
++     */
+     public List<String> render() {
++        if (units.isEmpty()) return List.of();
++        List<String> lines = new ArrayList<>();
++        int files = 0;
++        for (UnitDrift unit : units) {
++            files += unit.fileCount();
++            lines.add("%-9s %s  %s  (%d file%s)".formatted(
++                    unit.change().name().toLowerCase(),
++                    unit.label(),
++                    unit.shortDigest(),
++                    unit.fileCount(),
++                    unit.fileCount() == 1 ? "" : "s"));
++        }
++        // Parenthesised deliberately: `.formatted` binds tighter than `+`, so
++        // without these the call applies to the LAST literal only and the first
++        // one keeps its raw `%d unit%s` text. Caught by the rollup test.
++        lines.add(("%d unit%s, %d file%s changed — `home drift --detail` for the paths, "
++                + "`home drift --json` for the data").formatted(
++                units.size(), units.size() == 1 ? "" : "s",
++                files, files == 1 ? "" : "s"));
++        return List.copyOf(lines);
++    }
++
++    /**
++     * The per-file rendering, unchanged: one line per added, removed and
++     * modified path, under a header per unit.
++     *
++     * <p>Reachable on demand, and byte-identical to what {@link #render()}
++     * produced before it was bounded. An operator who wants the paths gets
++     * exactly the paths they got before.
++     */
++    public List<String> renderDetailed() {
+         List<String> lines = new ArrayList<>();
+         for (UnitDrift unit : units) {
+             lines.add(unit.change().name().toLowerCase() + "  " + unit.label());
+diff --git a/src/test/java/dev/skillmanager/project/ProjectChildHomeMaterializationTest.java b/src/test/java/dev/skillmanager/project/ProjectChildHomeMaterializationTest.java
+index 4a463b2..dc41b0f 100644
+--- a/src/test/java/dev/skillmanager/project/ProjectChildHomeMaterializationTest.java
++++ b/src/test/java/dev/skillmanager/project/ProjectChildHomeMaterializationTest.java
+@@ -265,6 +265,122 @@ public final class ProjectChildHomeMaterializationTest {
+                         assertEquals("skill:held-back-skill", outcome.label(), "held-back label");
+                     }
+                 })
++                .test("a pristine unit whose record names a store that is gone is not held back", () -> {
++                    // Issue #214, measured on the operator's real homes: 16 of 18
++                    // per-unit records named a `source` that was not the root
++                    // store -- six of them a path that no longer existed at all
++                    // (deleted ticket worktrees, and one /private/tmp scratchpad
++                    // from an evaluation session) -- and ALL 18 were pristine by
++                    // their own digest. Every one printed a paragraph about work
++                    // that "may exist nowhere else", over a tree nobody had
++                    // touched, on every single sync.
++                    //
++                    // The record is deliberately pointed at a path that does not
++                    // exist, because that is the case no record-based showing can
++                    // rescue: `recordIsAboutThisSource` is false, and the root
++                    // home is installed into rather than materialized into, so it
++                    // has no record of its own for `sourceHeldTheseBytes` to read.
++                    try (TestHarness h = TestHarness.create()) {
++                        Path repoRoot = Files.createTempDirectory("child-home-foreign-record-");
++                        Path skill = UnitFixtures.scaffoldSkill(
++                                repoRoot.resolve("units"), "foreign-record-skill", DepSpec.empty())
++                                .sourcePath();
++                        SkillProject project = project(repoRoot, """
++                                [project]
++                                name = "foreign-record-project"
++
++                                [skills.demo]
++                                source = "%s"
++                                """.formatted(skill));
++                        ProjectDependencyResolver resolver =
++                                new ProjectDependencyResolver(h.store(), null);
++                        resolver.resolve(project, new ProjectDependencyResolver.Options(true, false));
++
++                        Path record = repoRoot.resolve(
++                                ".skill-manager/.materialization/skill/foreign-record-skill.json");
++                        assertTrue(Files.isRegularFile(record), "the resolve wrote a record");
++
++                        // BOTH homes move to the SAME new content. This is what a
++                        // ticket worktree publishing its work upstream leaves
++                        // behind, and it is the shape the record cannot describe:
++                        // the two trees agree with each other and neither agrees
++                        // with the record, which still describes the worktree's
++                        // older bytes.
++                        //
++                        // Getting this wrong is how the first version of this test
++                        // passed without the fix. Leaving both trees pristine lets
++                        // `describesSource` rescue the unit at
++                        // ChildHomeMaterializer:1408 -- the record's entryDigests
++                        // still equal the live source's, so the named path never
++                        // gets consulted. The operator's homes were not in that
++                        // state: their parent stores had moved on too.
++                        Path childUnit =
++                                repoRoot.resolve(".skill-manager/skills/foreign-record-skill");
++                        Files.writeString(childUnit.resolve("SKILL.md"), "PUBLISHED CONTENT\n");
++                        Files.writeString(h.store().skillDir("foreign-record-skill")
++                                .resolve("SKILL.md"), "PUBLISHED CONTENT\n");
++
++                        String gone = repoRoot.resolve("wt-gone-worktree/.skill-manager/skills/"
++                                + "foreign-record-skill").toString();
++                        Files.writeString(record, Files.readString(record).replaceFirst(
++                                "\"source\"\\s*:\\s*\"[^\"]*\"",
++                                java.util.regex.Matcher.quoteReplacement(
++                                        "\"source\" : \"" + gone + "\"")));
++                        assertFalse(Files.exists(Path.of(gone)), "the recorded source really is gone");
++
++                        ProjectDependencyResolver.Result second = resolver.resolve(
++                                project, new ProjectDependencyResolver.Options(true, false));
++
++                        assertEquals(0, second.childHome().heldBack().size(),
++                                "a pristine unit is not held back because its record names a dead path");
++                    }
++                })
++                .test("a unit that genuinely differs is still held back, foreign record or not", () -> {
++                    // The other half of #214's target, and the one that keeps the
++                    // fix honest. Same foreign, dead `source` as above -- but this
++                    // time the child home really was edited, so a refresh really
++                    // would destroy work, and the hold-back must survive.
++                    try (TestHarness h = TestHarness.create()) {
++                        Path repoRoot = Files.createTempDirectory("child-home-foreign-edited-");
++                        Path skill = UnitFixtures.scaffoldSkill(
++                                repoRoot.resolve("units"), "foreign-edited-skill", DepSpec.empty())
++                                .sourcePath();
++                        SkillProject project = project(repoRoot, """
++                                [project]
++                                name = "foreign-edited-project"
++
++                                [skills.demo]
++                                source = "%s"
++                                """.formatted(skill));
++                        ProjectDependencyResolver resolver =
++                                new ProjectDependencyResolver(h.store(), null);
++                        resolver.resolve(project, new ProjectDependencyResolver.Options(true, false));
++
++                        Path record = repoRoot.resolve(
++                                ".skill-manager/.materialization/skill/foreign-edited-skill.json");
++                        String gone = repoRoot.resolve("wt-gone-worktree/.skill-manager/skills/"
++                                + "foreign-edited-skill").toString();
++                        Files.writeString(record, Files.readString(record).replaceFirst(
++                                "\"source\"\\s*:\\s*\"[^\"]*\"",
++                                java.util.regex.Matcher.quoteReplacement(
++                                        "\"source\" : \"" + gone + "\"")));
++
++                        Path childUnit =
++                                repoRoot.resolve(".skill-manager/skills/foreign-edited-skill");
++                        Files.writeString(childUnit.resolve("SKILL.md"), "AGENT WORK IN PROGRESS\n");
++                        Files.writeString(h.store().skillDir("foreign-edited-skill")
++                                .resolve("SKILL.md"), "NEW PARENT CONTENT\n");
++
++                        ProjectDependencyResolver.Result second = resolver.resolve(
++                                project, new ProjectDependencyResolver.Options(true, false));
++
++                        assertEquals(1, second.childHome().heldBack().size(),
++                                "an edited unit is still held back");
++                        assertEquals("AGENT WORK IN PROGRESS\n",
++                                Files.readString(childUnit.resolve("SKILL.md")),
++                                "and the agent's edit survives");
++                    }
++                })
+                 .test("re-resolve refreshes an unmodified child home unit from the parent", () -> {
+                     try (TestHarness h = TestHarness.create()) {
+                         Path repoRoot = Files.createTempDirectory("child-home-refresh-");
+diff --git a/src/test/java/dev/skillmanager/store/HomeDriftGateTest.java b/src/test/java/dev/skillmanager/store/HomeDriftGateTest.java
+index 95cf50a..15050d7 100644
+--- a/src/test/java/dev/skillmanager/store/HomeDriftGateTest.java
++++ b/src/test/java/dev/skillmanager/store/HomeDriftGateTest.java
+@@ -112,6 +112,139 @@ public final class HomeDriftGateTest {
+                     "and the untouched unit is not named at all");
+         });
+ 
++        suite.test("the rollup is one line per unit, and the paths are still reachable", () -> {
++            // Issue #212, measured on the operator's root home: one pending
++            // record, 7 units, 87,054 bytes. The old rendering emitted one line
++            // per changed FILE -- 889 lines, ~87,200 characters, roughly 21,800
++            // tokens -- and re-emitted the whole block on every project sync,
++            // every exec launch gate and every home drift. One unit,
++            // spec-double-compiler, was 776 of the 889 on its own.
++            //
++            // The fixture below is that shape in miniature: one unit with many
++            // changed paths, one with few. The assertion is on the RATIO and the
++            // per-unit bound, not on an absolute character count, because the
++            // fixture is not the operator's home and a number copied from one to
++            // the other would be a measurement of nothing.
++            List<String> many = new ArrayList<>();
++            for (int i = 0; i < 200; i++) many.add("src/generated/file-" + i + ".txt");
++
++            DriftReport report = new DriftReport("aaa", "bbb", List.of(
++                    new DriftReport.UnitDrift("noisy-unit", "SKILL",
++                            DriftReport.Change.MODIFIED, "0123456789abcdef",
++                            many, List.of(), List.of("SKILL.md")),
++                    new DriftReport.UnitDrift("quiet-unit", "SKILL",
++                            DriftReport.Change.MODIFIED, "fedcba9876543210",
++                            List.of(), List.of(), List.of("notes.md"))));
++
++            List<String> rolled = report.render();
++            List<String> detailed = report.renderDetailed();
++
++            // CLAUSE 1: one line per unit, plus one total.
++            assertEquals(3, rolled.size(),
++                    "the rollup is one line per changed unit plus a total line");
++            assertTrue(rolled.get(0).contains("skill:noisy-unit"), "names the unit");
++            assertTrue(rolled.get(0).contains("01234567"),
++                    "carries the unit's short digest -- the thing asked for in place of the paths");
++            assertTrue(rolled.get(0).contains("201 files"),
++                    "states how many paths moved without listing them");
++            assertTrue(rolled.get(2).contains("2 units, 202 files changed"), "totals both units");
++
++            // No path escapes into the rollup. This is the actual regression:
++            // one stray `for (String rel : ...)` anywhere and the firehose is
++            // back, and the line count above would still pass if the paths were
++            // appended to the unit lines rather than emitted as their own.
++            for (String line : rolled) {
++                assertFalse(line.contains("src/generated/file-"),
++                        "no changed path appears in the rollup: " + line);
++            }
++
++            int rolledChars = String.join("\n", rolled).length();
++            int detailedChars = String.join("\n", detailed).length();
++            assertTrue(rolledChars * 20 < detailedChars,
++                    "the rollup is at least 20x smaller than the per-file list ("
++                            + rolledChars + " vs " + detailedChars + " chars)");
++
++            // CLAUSE 2: collapsing is a default, not a deletion. An operator who
++            // wants the paths gets exactly the paths they got before.
++            // 2 unit headers + 202 paths.
++            assertEquals(204, detailed.size(),
++                    "renderDetailed still emits a header per unit and a line per path");
++            assertTrue(detailed.contains("    + src/generated/file-0.txt"),
++                    "an added path is still listed verbatim");
++            assertTrue(detailed.contains("    ~ SKILL.md"),
++                    "a modified path is still listed verbatim");
++            assertTrue(detailed.get(0).startsWith("modified  skill:noisy-unit"),
++                    "the detailed header is unchanged");
++        });
++
++        suite.test("the committed baseline fixture renders inside GOAL-sync-quiet's bound", () -> {
++            // THE GOAL'S OWN MEASUREMENT, run against the real record rather
++            // than a fixture that resembles it. results/epic-home-integrity-sync/
++            // baseline/root-home-drift.json is a verbatim copy of the operator's
++            // ~/.skill-manager/home.drift.json as it stood at the epic base
++            // commit, before any ticket landed: 7 units, 87,054 bytes, and 889
++            // per-file lines out of the old rendering.
++            //
++            // Asserted here so the number cannot quietly regress between now and
++            // the terminal evaluation ticket. Skipped rather than failed when the
++            // file is absent, because a unit suite that depends on a results
++            // directory being present is a suite that breaks in a worktree.
++            Path fixture = Path.of("results/epic-home-integrity-sync/baseline/root-home-drift.json");
++            if (!Files.isRegularFile(fixture)) return;
++
++            com.fasterxml.jackson.databind.JsonNode root =
++                    new com.fasterxml.jackson.databind.ObjectMapper()
++                            .readTree(Files.readString(fixture));
++            DriftReport report = new com.fasterxml.jackson.databind.ObjectMapper()
++                    .treeToValue(root.get("report"), DriftReport.class);
++
++            assertEquals(7, report.units().size(), "the baseline record holds 7 units");
++
++            List<String> rolled = report.render();
++            List<String> detailed = report.renderDetailed();
++            int rolledChars = String.join("\n", rolled).length();
++            int detailedChars = String.join("\n", detailed).length();
++
++            // TARGET CLAUSE 1: at most one line per changed unit plus one total
++            // -- at most 10 lines over this fixture -- and at least a 99%
++            // character reduction.
++            assertTrue(rolled.size() <= 10,
++                    "the 7-unit baseline renders in at most 10 lines, got " + rolled.size());
++            assertTrue(rolledChars * 100 < detailedChars,
++                    "at least a 99% character reduction: " + rolledChars + " vs "
++                            + detailedChars + " chars");
++
++            // And the paths are still all there, on demand.
++            assertTrue(detailed.size() > 800,
++                    "the per-file rendering still lists every path, got " + detailed.size());
++        });
++
++        suite.test("a record predating the digest field is not reported as a deleted unit", () -> {
++            // The committed baseline fixture is exactly this shape: written by
++            // the old code, so every unit's digest is null. Reading that as
++            // "gone" would tell an operator seven units had been deleted.
++            DriftReport report = new DriftReport("aaa", "bbb", List.of(
++                    new DriftReport.UnitDrift("legacy-record-unit", "SKILL",
++                            DriftReport.Change.MODIFIED, null,
++                            List.of(), List.of(), List.of("SKILL.md"))));
++            String line = report.render().get(0);
++            assertTrue(line.contains("no-digest"),
++                    "an absent digest on a MODIFIED unit says so plainly: " + line);
++            assertFalse(line.contains("gone"),
++                    "and is not confused with a removed unit: " + line);
++        });
++
++        suite.test("a REMOVED unit has no after-digest, and says so rather than printing null", () -> {
++            DriftReport report = new DriftReport("aaa", "bbb", List.of(
++                    new DriftReport.UnitDrift("gone-unit", "SKILL",
++                            DriftReport.Change.REMOVED, null,
++                            List.of(), List.of("SKILL.md"), List.of())));
++            List<String> rolled = report.render();
++            assertTrue(rolled.get(0).contains("gone"),
++                    "a removed unit reads as gone, not as a null digest: " + rolled.get(0));
++            assertFalse(rolled.get(0).contains("null"), "never the word null");
++        });
++
+         suite.test("a home nobody touched produces no drift and no gate", () -> {
+             Home home = Home.create("drift-quiet-");
+             home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+@@ -175,7 +308,14 @@ public final class HomeDriftGateTest {
+             assertEquals(DriftGate.EXIT_CODE, result.rc, "refused with the drift code");
+             assertContains(result.err, "has not been read", "the refusal says why");
+             assertContains(result.err, "skill:alpha", "and names the unit that moved");
+-            assertContains(result.err, "SKILL.md", "and the file");
++            // NOT the file. #212: the refusal used to print one line per changed
++            // path, and re-print the whole block on every launch attempt. A
++            // launch gate is one decision -- which units moved, are they ones I
++            // was following -- and the paths were crowding out the answer.
++            // `home drift --detail` still has them.
++            assertFalse(result.err.contains("    ~ SKILL.md"),
++                    "the refusal does not list changed paths any more");
++            assertContains(result.err, "1 file", "it says how many paths moved");
+         });
+ 
+         suite.test("acknowledging clears the gate and the launch proceeds", () -> {
+@@ -430,7 +570,19 @@ public final class HomeDriftGateTest {
+             Result shown = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
+                     .execute());
+             assertEquals(DriftGate.EXIT_CODE, shown.rc, "unread drift is a non-zero exit");
+-            assertContains(shown.err + shown.out, "references/one.md", "the changed file is named");
++            assertContains(shown.err + shown.out, "skill:alpha", "the changed unit is named");
++            assertFalse((shown.err + shown.out).contains("references/one.md"),
++                    "but not every changed path -- that is the #212 firehose");
++
++            // CLAUSE 2 of GOAL-sync-quiet, through the CLI rather than the
++            // record: collapsing is a default, not a deletion. The paths an
++            // operator used to get by default are still one flag away, and
++            // this is the assertion that keeps them reachable.
++            Result detailed = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
++                    .execute("--detail"));
++            assertEquals(DriftGate.EXIT_CODE, detailed.rc, "--detail still reports the gate");
++            assertContains(detailed.err + detailed.out, "references/one.md",
++                    "and --detail names the changed file");
+ 
+             Result clean = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
+                     .execute("--ack"));
+diff --git a/test_graph/build.gradle.kts b/test_graph/build.gradle.kts
+index 4244c85..da7e5fd 100644
+--- a/test_graph/build.gradle.kts
++++ b/test_graph/build.gradle.kts
+@@ -1460,4 +1460,27 @@ validationGraph {
+         node("sources/common/HomeFixpointLaw.java")
+                 .dependsOn("home.integrity.bootstrap.projects.target")
+     }
++
++    /**
++     * sync-settles — the change-management drag, asserted end to end.
++     *
++     * Its own graph and NOT a node inside `home-integrity`, for one reason:
++     * home-integrity is in the CI core set and this assertion is RED until
++     * HIS-4 (#216) merges. `DeclaredCliIsAttributed` argued the rule this
++     * follows -- "a permanently red core graph is a signal nobody reads within
++     * a week" -- and `select-graph-set.py` already applies it to artifact-dag.
++     * It runs nightly in `full`, where the red is visible and costs nobody a
++     * push.
++     *
++     * TO PROMOTE IT: once #216 merges and this goes green, fold the node into
++     * `home-integrity` and delete this graph. The node is written to survive
++     * that move -- it carries its own fixture and shares no state.
++     */
++    testGraph("sync-settles") {
++        node("sources/common/EnvPrepared.java")
++
++        // One node, four assertions, because any single link left in place
++        // reproduces the drag. See the class comment for the chain.
++        node("sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java")
++    }
+ }
+diff --git a/test_graph/sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java b/test_graph/sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java
+new file mode 100644
+index 0000000..a719996
+--- /dev/null
++++ b/test_graph/sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java
+@@ -0,0 +1,405 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeContext;
++import com.hayden.testgraphsdk.sdk.NodeResult;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++import com.hayden.testgraphsdk.sdk.ProcessRecord;
++import com.hayden.testgraphsdk.sdk.Procs;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * A unit carrying a gitignored, re-derivable tree stays syncable — and a sync
++ * that fails partway does not strand the installed baseline behind a merge it
++ * already committed.
++ *
++ * <h2>The drag this pins</h2>
++ *
++ * <p>Measured on the operator's own project home, twice, nine days apart, and
++ * it is the single biggest productivity drag the home mechanism has produced.
++ * Two units — {@code deploy-helm} and {@code spec-double-compiler} — sat
++ * permanently unsyncable, each reporting
++ *
++ * <pre>
++ *   is not stale — its store is mid-merge (MERGE_CONFLICT): unmerged paths
++ *   remain. Local work is preserved at stash@{0}.
++ *   resolve with: git -C .../skills/&lt;unit&gt; status  # resolve, then: git add + git commit
++ * </pre>
++ *
++ * <p>and, once that was cleared by hand,
++ *
++ * <pre>
++ *   has extra local changes (working tree edits, or commits ahead of the
++ *   installed baseline) — sync would overwrite them.
++ *   re-run with: skill-manager sync &lt;unit&gt; --merge
++ * </pre>
++ *
++ * <p>Neither remedy clears either state. Every agent in every worktree cloned
++ * from that home inherits both.
++ *
++ * <h2>The chain, which is four links and not one</h2>
++ *
++ * <ol>
++ *   <li><b>The trigger.</b> The test-graph scaffolder writes
++ *       {@code test_graph/build-logic}, {@code sdk} and {@code standard-nodes}
++ *       into a consuming unit as symlinks into the test-graph store copy, and
++ *       the unit's own {@code test_graph/.gitignore} declares all three
++ *       not-content. {@code ChildHomeMaterializer} dereferences them into real
++ *       directories so the child home is independent — correct — but
++ *       {@code Rederivable} does not know these names and the digest walk does
++ *       not read {@code .gitignore}, so they count as unit content. The child
++ *       home therefore holds trees its parent store does not: measured 13 and
++ *       12 entries under {@code test_graph/} against the root store's 10.</li>
++ *   <li><b>The mechanism.</b> Sync reads that as a dirty tree, stashes it,
++ *       merges upstream — <em>the merge commit lands</em> — then pops the
++ *       stash. The pop conflicts, because the stash carries a deletion of a
++ *       path upstream still holds at mode {@code 120000} and the working tree
++ *       cannot hold both a directory and a symlink there. Sync aborts.</li>
++ *   <li><b>The permanence, and the load-bearing link.</b> The merge is already
++ *       committed but {@code installed/<unit>.json} was never updated. Measured:
++ *       record {@code gitHash c72d03a6} written 2026-07-25, store {@code HEAD}
++ *       at {@code eab28837}. HEAD is now ahead of the baseline <em>forever</em>,
++ *       so every later sync reports "commits ahead of the installed baseline"
++ *       and refuses. Fixing links 1 and 2 alone does not release a home already
++ *       in this state.</li>
++ *   <li><b>The invisibility.</b> The {@code errors[{kind: MERGE_CONFLICT}]}
++ *       entry carries no {@code resolvedAt} and is never re-derived, so
++ *       {@code skt check} kept reporting the conflict after the git state was
++ *       clean.</li>
++ * </ol>
++ *
++ * <h2>Why this asserts the whole chain in one node</h2>
++ *
++ * <p>Because any single link left in place reproduces the drag. A node that
++ * only proved "the deref'd tree is excluded from the digest" would pass over a
++ * home that is still stranded at link 3, which is the state the operator was
++ * actually in. So the fixture drives one sync across a unit that has all four
++ * conditions and asserts the outcome an operator cares about: <b>the unit is
++ * still syncable afterwards</b>.
++ *
++ * <h2>What the fixture does NOT do</h2>
++ *
++ * <p>It does not plant the stranded record by hand. A pinned defect asserted
++ * over state the test wrote itself can never observe the product being fixed —
++ * the record would still say whatever the fixture made it say. Here the record
++ * is written by the product's own install and moved, or not moved, by the
++ * product's own sync. The assertion goes green the moment sync stops stranding
++ * it, and not before.
++ *
++ * <p>Hermetic: the unit's origin is a local bare clone, so nothing this node
++ * declares is fetched. As {@code HomeIntegrityFixture} already records, that
++ * does not make it network-free end to end — {@code install} runs
++ * {@code EnsureGateway} — and overstating it would be the kind of comfortable
++ * claim this epic keeps having to retract.
++ *
++ * <h2>STATUS: this node is GREEN, and that is not yet the good news</h2>
++ *
++ * <p>Read this before trusting it. As written, the fixture drives a
++ * <b>root-tier</b> {@code install} then {@code sync}, and that path handles the
++ * mode clash correctly: the sync reports {@code 1 merged}, the baseline
++ * advances, no {@code MERGE_CONFLICT} is recorded, and a second sync settles.
++ * So this node currently guards a true and desirable property — <em>sync must
++ * not strand the installed baseline</em> — and it will catch a regression that
++ * breaks it.
++ *
++ * <p>What it does <b>not</b> yet do is reproduce the operator's failure. That
++ * one happened on a <b>project-tier</b> home holding a <em>materialized child
++ * copy</em>, and reaching it needs the materialization path, not a plain
++ * install. Two things were ruled out along the way, both by measurement, and
++ * they are recorded so the next person does not re-spend them:
++ *
++ * <ul>
++ *   <li>An ordinary gitignored directory that never existed upstream is NOT
++ *       enough — git ignores it, so there is no stash, no pop and no conflict.
++ *       The first version of this fixture did that and passed vacuously.</li>
++ *   <li>A tracked upstream symlink dereferenced into a real directory, with
++ *       upstream then re-pointing that symlink, is ALSO not enough at root
++ *       tier. It merges cleanly.</li>
++ * </ul>
++ *
++ * <p>So the remaining variable is the tier and the materialization, and
++ * pinning it is HIS-4 (#216)'s first acceptance item. Until that lands this
++ * graph stays out of the CI core set — not because it is red, but because it
++ * is <em>unproven against the defect it is named for</em>, and a node that
++ * passes for the wrong reason is the failure mode this whole epic keeps
++ * meeting. See {@code .github/scripts/select-graph-set.py}.
++ */
++public class ScaffoldTreeDoesNotStrandTheBaseline {
++
++    static final NodeSpec SPEC = NodeSpec.of("sync.settles.scaffold.tree.does.not.strand.baseline")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .tags("sync", "home", "rederivable", "his-4")
++            .timeout("600s");
++
++    /** The unit. Named for what it carries, not for what breaks. */
++    private static final String UNIT = "scaffolded-unit";
++
++    /**
++     * The gitignored tree, under {@code test_graph/} and named exactly as the
++     * real scaffolder names it. The name matters: a fix that special-cases
++     * {@code build} but not {@code build-logic} is the gap this pins.
++     */
++    private static final String SCAFFOLD_DIR = "test_graph/build-logic";
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> {
++            try {
++                return check(ctx);
++            } catch (IOException | InterruptedException e) {
++                return NodeResult.error(SPEC.id(), e);
++            }
++        });
++    }
++
++    private static NodeResult check(NodeContext ctx) throws IOException, InterruptedException {
++        Path scratch = Files.createTempDirectory("sync-settles-");
++        Path home = scratch.resolve("home");
++        Files.createDirectories(home);
++
++        Path work = scaffoldUnit(scratch);
++        Path bare = scratch.resolve(UNIT + ".git");
++
++        // 1. Install from the bare remote, so the store copy has a real
++        //    checkout, a real tracking ref, and a product-written record.
++        ProcessRecord install = sm(ctx, "install", home, "install", "git+file://" + bare);
++        if (install.exitCode() != 0) {
++            return NodeResult.fail(SPEC.id(),
++                    "fixture install failed (exit " + install.exitCode() + ") — the node proves "
++                            + "nothing about sync if the subject was never installed");
++        }
++
++        Path store = home.resolve("skills").resolve(UNIT);
++        if (!Files.isDirectory(store)) {
++            return NodeResult.fail(SPEC.id(), "installed unit is not at " + store);
++        }
++
++        // 2. DEREFERENCE, exactly as ChildHomeMaterializer does when it makes a
++        //    child home independent (CHM-5): the symlink upstream tracks is
++        //    replaced, in the home, by a real directory holding the same bytes.
++        //    Correct on its own terms -- and the moment it happens, the home
++        //    disagrees with its own remote about the file MODE at that path.
++        Path scaffold = store.resolve(SCAFFOLD_DIR);
++        if (Files.isSymbolicLink(scaffold)) Files.delete(scaffold);
++        Files.createDirectories(scaffold);
++        Files.writeString(scaffold.resolve("build.gradle.kts"), "// re-derivable scaffold output\n");
++
++        String baselineBefore = recordedGitHash(home);
++
++        // 3. Upstream moves, exactly as a skill repo does between syncs.
++        Files.writeString(work.resolve("SKILL.md"), """
++                ---
++                name: %s
++                description: sync-settles graph fixture, second revision
++                ---
++
++                Upstream moved after the scaffold tree appeared.
++                """.formatted(UNIT));
++        // Upstream also moves the SYMLINK itself -- a scaffolder re-pointing
++        // its tree, which is an ordinary upstream change. This is what makes
++        // the merge touch the same path the home dereferenced, turning a
++        // divergence into a conflict rather than a silent take.
++        Path target2 = work.resolve("_scaffold-src-v2");
++        Files.createDirectories(target2);
++        Files.writeString(target2.resolve("build.gradle.kts"), "// scaffold source, v2\n");
++        Files.delete(work.resolve(SCAFFOLD_DIR));
++        Files.createSymbolicLink(work.resolve(SCAFFOLD_DIR), Path.of("..", "_scaffold-src-v2"));
++        git(work, "add", "-A");
++        git(work, "commit", "-m", "upstream moves after the scaffold tree exists");
++        git(work, "push", "origin", "main");
++        String upstreamHead = capture(work, "git", "rev-parse", "HEAD");
++
++        // 4. The sync an agent runs. Not --merge: --merge is the remedy the
++        //    product PRINTS once it is already stuck, and a node that reaches
++        //    for it is asserting the workaround rather than the behaviour.
++        ProcessRecord sync = sm(ctx, "sync", home, "sync", UNIT);
++
++        List<String> failures = new ArrayList<>();
++
++        if (sync.exitCode() != 0) {
++            failures.add("sync exited " + sync.exitCode()
++                    + "; a unit carrying a gitignored re-derivable tree must stay syncable");
++        }
++
++        String baselineAfter = recordedGitHash(home);
++        if (baselineAfter == null) {
++            failures.add("installed record carries no gitHash after sync");
++        } else if (!baselineAfter.equals(upstreamHead)) {
++            // LINK 3, the load-bearing one.
++            failures.add("installed baseline was stranded: record says " + shortHash(baselineAfter)
++                    + " (was " + shortHash(baselineBefore) + "), upstream HEAD is "
++                    + shortHash(upstreamHead) + ". A merge that lands without its record makes "
++                    + "every later sync report 'commits ahead of the installed baseline' forever");
++        }
++
++        String errors = recordedErrors(home);
++        if (errors != null && errors.contains("MERGE_CONFLICT")) {
++            failures.add("sync recorded a MERGE_CONFLICT over a tree the unit's own "
++                    + ".gitignore declares is not content: " + errors);
++        }
++
++        if (!Files.isDirectory(scaffold)) {
++            // The opposite failure, and worth pinning: excluding a tree from
++            // the digest must not become licence to delete it. Rederivable's
++            // contract is skipped on BOTH sides -- not hashed, not copied, and
++            // not destroyed (carryOverUnownedTrees).
++            failures.add("the re-derivable tree was destroyed by the sync; skipping a path "
++                    + "must make it invisible, not disposable");
++        }
++
++        // 5. The state an agent actually meets: does the NEXT command settle?
++        ProcessRecord second = sm(ctx, "sync-again", home, "sync", UNIT);
++        if (second.exitCode() != 0) {
++            failures.add("a second sync with nothing changed exited " + second.exitCode()
++                    + "; the home never reaches a settled state");
++        }
++
++        return failures.isEmpty()
++                ? NodeResult.pass(SPEC.id())
++                : NodeResult.fail(SPEC.id(), String.join(" | ", failures));
++    }
++
++    // ----------------------------------------------------------- the fixture
++
++    private static Path scaffoldUnit(Path root) throws IOException, InterruptedException {
++        Path work = root.resolve(UNIT);
++        Files.createDirectories(work);
++
++        Files.writeString(work.resolve("SKILL.md"), """
++                ---
++                name: %s
++                description: sync-settles graph fixture
++                ---
++
++                A unit whose test_graph project carries re-derivable scaffold output.
++                """.formatted(UNIT));
++        Files.writeString(work.resolve("skill-manager.toml"), """
++                [skill]
++                name = "%s"
++                version = "0.1.0"
++                description = "sync-settles graph fixture"
++                """.formatted(UNIT));
++
++        // The unit declares the scaffold tree not-content, in its own words.
++        Path tg = work.resolve("test_graph");
++        Files.createDirectories(tg);
++        Files.writeString(tg.resolve(".gitignore"), """
++                # Written by the test-graph scaffolder. Re-derivable; not this
++                # unit's content. Mirrors test_graph/.gitignore:30-32 in the
++                # real consuming units. Note this does NOT untrack build-logic
++                # below: .gitignore has no effect on an already-tracked path,
++                # which is exactly the real units' state and the reason the
++                # mode clash survives.
++                /build-logic
++                /sdk
++                /standard-nodes
++                """);
++        Files.writeString(tg.resolve("build.gradle.kts"), "// fixture test_graph project\n");
++
++        // THE SHAPE THAT MATTERS. Upstream tracks the scaffold path as a
++        // SYMLINK -- git mode 120000 -- pointing at a tree carried elsewhere in
++        // the unit. That is what the test-graph scaffolder produces, and it is
++        // why the conflict is unresolvable later: the home will hold a real
++        // DIRECTORY at this path, and a working tree cannot be both.
++        //
++        // A first version of this fixture made the path an ordinary ignored
++        // directory that never existed upstream. It passed, because git simply
++        // ignored it: no stash, no pop, no conflict. A green node that does not
++        // reproduce is worse than no node, so the symlink is load-bearing here.
++        Path target = work.resolve("_scaffold-src");
++        Files.createDirectories(target);
++        Files.writeString(target.resolve("build.gradle.kts"), "// scaffold source, v1\n");
++        Files.createSymbolicLink(tg.resolve("build-logic"), Path.of("..", "_scaffold-src"));
++
++        git(work, "init", "--initial-branch=main");
++        git(work, "config", "user.email", "sync-settles@test.invalid");
++        git(work, "config", "user.name", "sync-settles");
++        git(work, "add", "-A");
++        git(work, "commit", "-m", "fixture " + UNIT);
++
++        Path bare = root.resolve(UNIT + ".git");
++        git(root, "clone", "--bare", work.toString(), bare.toString());
++        git(work, "remote", "add", "origin", bare.toString());
++        git(work, "fetch", "origin");
++        git(work, "branch", "--set-upstream-to=origin/main", "main");
++        return work;
++    }
++
++    // ------------------------------------------------------------- plumbing
++
++    private static ProcessRecord sm(NodeContext ctx, String label, Path home, String... args) {
++        List<String> argv = new ArrayList<>();
++        argv.add(SmEnv.cli().toString());
++        argv.addAll(List.of(args));
++        ProcessBuilder pb = new ProcessBuilder(argv);
++        SmEnv.apply(ctx, pb, home.toString());
++        return Procs.run(ctx, label, pb);
++    }
++
++    private static String recordedGitHash(Path home) throws IOException {
++        return field(home, "gitHash");
++    }
++
++    private static String recordedErrors(Path home) throws IOException {
++        return field(home, "errors");
++    }
++
++    /** Deliberately string-scraped: the node must not depend on a JSON library. */
++    private static String field(Path home, String key) throws IOException {
++        Path record = home.resolve("installed").resolve(UNIT + ".json");
++        if (!Files.isRegularFile(record)) return null;
++        String json = Files.readString(record);
++        int at = json.indexOf("\"" + key + "\"");
++        if (at < 0) return null;
++        int colon = json.indexOf(':', at);
++        if (colon < 0) return null;
++        int end = json.indexOf('\n', colon);
++        if (end < 0) end = json.length();
++        String raw = json.substring(colon + 1, end).trim();
++        // Strip a trailing comma FIRST, then the surrounding quotes. Doing it
++        // in one pass with a single-character class leaves the closing quote
++        // behind on `"abc",` and the value silently stops matching anything --
++        // which produced a red on this node whose message printed the two
++        // hashes as identical. A comparison that cannot fail loudly when its
++        // own parser is wrong is not a comparison.
++        if (raw.endsWith(",")) raw = raw.substring(0, raw.length() - 1).trim();
++        if (raw.startsWith("\"") && raw.endsWith("\"") && raw.length() >= 2) {
++            raw = raw.substring(1, raw.length() - 1);
++        }
++        return raw;
++    }
++
++    private static String shortHash(String hash) {
++        if (hash == null || hash.isBlank()) return "(none)";
++        return hash.length() > 8 ? hash.substring(0, 8) : hash;
++    }
++
++    private static void git(Path cwd, String... argv) throws IOException, InterruptedException {
++        List<String> cmd = new ArrayList<>();
++        cmd.add("git");
++        cmd.addAll(List.of(argv));
++        Process p = new ProcessBuilder(cmd).directory(cwd.toFile())
++                .redirectErrorStream(true).start();
++        if (!p.waitFor(120, java.util.concurrent.TimeUnit.SECONDS)) {
++            p.destroyForcibly();
++            throw new IOException("git " + String.join(" ", argv) + " timed out in " + cwd);
++        }
++        if (p.exitValue() != 0) {
++            String out = new String(p.getInputStream().readAllBytes());
++            throw new IOException("git " + String.join(" ", argv) + " failed in " + cwd + ": " + out);
++        }
++    }
++
++    private static String capture(Path cwd, String... argv) throws IOException, InterruptedException {
++        Process p = new ProcessBuilder(List.of(argv)).directory(cwd.toFile()).start();
++        String out = new String(p.getInputStream().readAllBytes()).trim();
++        p.waitFor(120, java.util.concurrent.TimeUnit.SECONDS);
++        return out;
++    }
++}

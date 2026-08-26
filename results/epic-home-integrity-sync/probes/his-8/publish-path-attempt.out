@@ -1,0 +1,15 @@
+### skt publish --check
+edited: spec-double-compiler (unknown) at /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager/skills/spec-double-compiler
+exit=10
+
+### skt publish skt
+error: home sync into /Users/hayde/IdeaProjects/skill-manager/.skill-manager failed (exit 12)
+fix:   no unit named 'skt' in this home or its parent — check `skt publish --check` for the name
+✗ home sync --unit skt: no unit named 'skt' in either home (/Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager, /Users/hayde/IdeaProjects/skill-manager/.skill-manager) — nothing would have been reconciled
+exit=12
+
+### ./skill-manager unit publish skt --dry-run --ticket 224-his-8
+✗ skt: not a git checkout at /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager/skills/skt — reinstall the unit from a git source, or materialize it into the child home with --checkout, to publish from it
+  repo:   /Users/hayde/IdeaProjects/wt-224-his-8/.skill-manager/skills/skt
+  branch: skill/224-his-8-skt → origin/main
+exit=1

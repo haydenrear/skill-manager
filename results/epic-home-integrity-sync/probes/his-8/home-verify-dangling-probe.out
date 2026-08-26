@@ -1,0 +1,23 @@
+HIS-8 review response — does `home verify` still refuse a genuinely dangling link?
+Measured 2026-08-23 on the HIS-8 worktree home (a lazy clone).
+
+A. clean lazy clone, untouched:
+   '✓ every reference … resolves'                                  exit 0
+   grep -c DECLARED on the output                                  0   <- m1: the message never fires
+
+B. same home + one GENUINELY dangling symlink
+   (bin/cli/fixture-dangling -> ../../venvs/fixture-missing/bin/tool,
+    the exact link selftest.sh plants):
+   '✗ 1 reference(s) … do not resolve — provisioning was never completed,
+     so the tools they name will fail at exec time'                exit 1
+   remedy it prints: `skill-manager build --stale`  (NOT the old `sync --force-scripts`)
+
+CONCLUSION, and it splits M1 in two:
+  * FALSE, and fixed: the PREMISE 'a clone always produces some' /
+    'any link INTO venvs|tools|npm|cache arrives dangling'. A lazy clone
+    writes a regular-file COLD SHIM at those paths, not a symlink, so
+    dangling_home_links() (find -type l ! -e) finds nothing on one.
+  * STILL TRUE, and kept: the CONSEQUENCE '`home verify` REFUSES this
+    home'. dangling_home_links() only ever reports links that genuinely
+    do not resolve, and B measures that verify does refuse exactly those.
+    The printed warning and selftest.sh's assertion on it are correct.

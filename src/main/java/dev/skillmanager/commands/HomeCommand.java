@@ -6,14 +6,18 @@ import dev.skillmanager.launch.LauncherShims;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.FrozenHomeException;
 import dev.skillmanager.policy.HomePolicy;
+import dev.skillmanager.policy.Policy;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.DriftGate;
 import dev.skillmanager.store.HomeCloseOut;
 import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
+import dev.skillmanager.store.HomeProvenance;
+import dev.skillmanager.store.HomeRepair;
 import dev.skillmanager.store.HomeSync;
 import dev.skillmanager.store.NotAHomeException;
+import dev.skillmanager.artifacts.ArtifactBuild;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -43,6 +47,7 @@ import java.util.concurrent.Callable;
                 HomeCommand.DriftCmd.class,
                 HomeCommand.SyncCmd.class,
                 HomeCommand.CloseOutCmd.class,
+                HomeCommand.RepairCmd.class,
                 HomeCommand.RefreshPluginsCmd.class
         })
 public final class HomeCommand {
@@ -80,11 +85,30 @@ public final class HomeCommand {
                         + "Off by default: two homes cannot both own one port.")
         boolean ownGateway;
 
+        @Option(names = "--lazy-artifacts", arity = "1", paramLabel = "true|false",
+                description = "Whether the copy declares its artifacts and builds them on "
+                        + "demand. Default: true unless the destination IS the operator root "
+                        + "home. The decision is written into the copy's home.policy.toml.")
+        Boolean lazyArtifacts;
+
         @Override
         public Integer call() throws Exception {
             Path source = from != null ? from : SkillStore.defaultStore().root();
-            HomeCloner.Report report = HomeCloner.cloneHome(source, to, strict);
-            print(report, json);
+            HomeCloner.Report report = HomeCloner.cloneHome(source, to, strict,
+                    lazyArtifacts != null ? lazyArtifacts
+                            : HomePolicy.lazyArtifactsDefault(new SkillStore(to)));
+            // DEF-096. A clone copies what the source HOLDS; it cannot copy what
+            // the source's manifest merely DECLARES. Measured on this
+            // repository's own project home: skill-project.toml declares
+            // plugin:skt and skill:skill-manager, the home held neither, and
+            // every ticket worktree in the epic was cloned from it — silently
+            // short the two units documenting the thing being worked on.
+            // Reported about the SOURCE, because the shortfall is inherited: the
+            // copy is short exactly what the original was short.
+            dev.skillmanager.project.ProjectManifestRealization.Shortfall shortfall =
+                    dev.skillmanager.project.ProjectManifestRealization
+                            .inspect(new SkillStore(source));
+            print(report, json, shortfall);
             if (!report.clean()) return 1;
             SkillStore cloned = new SkillStore(report.dest());
             // A gateway is one process on one port, and the copy inherited
@@ -237,7 +261,8 @@ public final class HomeCommand {
                 Log.info("NOT CHECKED: whether a reference back to the home this one was copied "
                         + "from survives — pass `--against <source home>` for that half. "
                         + "Checked below: every link and generated script in %s resolves, and "
-                        + "no path in it reaches any other Skill Manager home.", home);
+                        + "no path in it reaches any other Skill Manager home%s.",
+                        home, isolationScopeCaveat());
             }
             // Tolerated references are still references. Reporting only the
             // leak list would let "0 leaks" read as "nothing survives" while
@@ -289,6 +314,30 @@ public final class HomeCommand {
                         parentShims.size(), home);
                 sample(parentShims);
             }
+            // HIS-10. WHY those shims were sanctioned, printed with the verdict.
+            //
+            // The sanction used to be visible only when an operator passed
+            // --against, so the same home read clean here and FOREIGN_HOME one
+            // command later. It is now a record in the home; saying so is the
+            // "and DECLARES it" half of the lazy contract — a clone keeps its
+            // inherited artifacts on PATH and says whose they are, instead of
+            // pruning and rebuilding a toolchain nobody changed.
+            reportDescent(home);
+            // ARTI-07: the THIRD state, and the reason this section is above
+            // the failure section rather than inside it. A home that declares
+            // its artifacts and builds them on demand ships these on purpose —
+            // every clone does — so reporting them as failures would make this
+            // command exit 1 on every fresh worktree, and what happens next is
+            // not that somebody fixes an artifact. It is that somebody stops
+            // running the check. Reported, never counted.
+            List<String> declared = result.declaredNotBuilt();
+            if (!declared.isEmpty()) {
+                Log.info("%d entry point(s) in %s are DECLARED and not built — normal in a home "
+                                + "with `%s = true`, and not a failure. Each one names the command "
+                                + "that builds it when it is run.",
+                        declared.size(), home, HomePolicy.LAZY_ARTIFACTS_KEY);
+                sample(declared);
+            }
             // Provisioning that never completed. A message printed once by the
             // clone was not enough: nobody ran the remedy, and nothing asked
             // again. This is the command that asks again — issue #133 item 2.
@@ -306,8 +355,58 @@ public final class HomeCommand {
                 // operator's global config instead of this home's
                 // (skill-manager#145). This is the one place the remedy is
                 // printed now, so it is printed runnable.
-                Log.error("  complete it with: %s sync --force-scripts, then re-run this check",
-                        homeEnvPrefix(home));
+                //
+                // ARTI-06: and the VERB is now `build`, not
+                // `sync --force-scripts`. The diagnosis above is per instance;
+                // the remedy was total — every skill-script in the home rerun,
+                // three deploy-helm venvs at ~530 MB each, to repair one shim.
+                //
+                // The artifacts are NAMED, not left to `--stale`. This remedy
+                // is printed for THESE references, so its exit code has to
+                // answer THIS question. Measured: `build --stale` on the
+                // operator's project home selects 55 artifacts and plans 18
+                // rebuilds, 11 of them lock rows recording a `binary` their
+                // install never produced — so it exits 1 over artifacts that
+                // have nothing to do with the reference it was printed under,
+                // and HomeFixpointLaw (which parses this exact string and runs
+                // it through sh -c) then fails on a home whose reference WAS
+                // repaired. A whole-home remedy beneath a per-instance finding
+                // is also the asymmetry this ticket exists to remove, restated
+                // one verb later.
+                Log.error("  complete it with: %s, then re-run this check",
+                        reprovisionRemedy(home, unresolved));
+                noteCaveat(home);
+            }
+            // HIS-19 / DEF-012. THE HOME'S OWN FRONT DOOR PINS A BUILD THAT IS
+            // GONE, and until now this command exited 0 on exactly that home.
+            //
+            // Measured on the operator's machine during this epic's 0.24.0
+            // release: `brew upgrade` deleted the keg the root home pinned, the
+            // home's `bin/cli/skill-manager` could only produce exit 127, and
+            // `home verify` printed ✓ and exited 0. It was not lying about what
+            // it had checked — the walk finds a missing path only INSIDE the
+            // home and under a provisionable root, and a dead pin names one
+            // outside the home entirely — which is why this is a separate
+            // question rather than a wider walk.
+            //
+            // Never gated on --strict: a front door that cannot open is not a
+            // historical record under any reading.
+            List<String> deadPins = result.danglingCliPins();
+            if (!deadPins.isEmpty()) {
+                Log.error("%d CLI pin(s) in %s name a build that is not there — the entrypoint "
+                                + "file exists and is executable, so every -x test passes, and "
+                                + "running it can only produce exit 127",
+                        deadPins.size(), home);
+                Log.errorList("    ", deadPins);
+                // HIS-13 owns the repair; this names it rather than inventing a
+                // second one. `home shims` re-pins too and is named second,
+                // because it pins whatever build is running it while
+                // `home repair --fix` locates one itself.
+                Log.error("  re-pin it with: skill-manager home repair --home %s --fix "
+                                + "(or `skill-manager home shims --home %s`, run from the build "
+                                + "this home should use), then re-run this check",
+                        home, home);
+                noteCaveat(home);
             }
             // Last, because it is the verdict, and because a terminal keeps
             // the tail. Never gated on --strict: a path that RESOLVES into
@@ -332,6 +431,7 @@ public final class HomeCommand {
                 // printed none. The reader was told which paths leak and
                 // nothing about how to stop them leaking.
                 Log.error("  %s", isolationRemedy(isolation, home));
+                noteCaveat(home);
             } else if (tolerated > 0) {
                 Log.error("%s of %s, fatal under --strict; no path in %s "
                         + "resolves into another Skill Manager home",
@@ -348,7 +448,10 @@ public final class HomeCommand {
                         + "persisted error text, not paths. Edit the unit content (listed above) "
                         + "and re-run, or drop --strict — without it this home passes.");
             }
-            if (!result.clean() || !unresolved.isEmpty()) return 1;
+            // HIS-19: `|| !deadPins.isEmpty()`. This clause is the regression
+            // test for the 0.24.0 incident — every other term was already true
+            // of that home and every one of them was FALSE, so it exited 0.
+            if (!result.clean() || !unresolved.isEmpty() || !deadPins.isEmpty()) return 1;
             // "no path reaches any other home" is FALSE of a child home, and a
             // verdict that says it anyway is the same defect as the three
             // earlier versions of this line: a guarantee wider than the run.
@@ -363,20 +466,60 @@ public final class HomeCommand {
                 // be wrong.
                 Log.ok("every reference in %s resolves, and no path in it reaches any other "
                         + "Skill Manager home%s (source-reference check not run — "
-                        + "see NOT CHECKED above)", home, except);
+                        + "see NOT CHECKED above)%s", home, except, isolationScopeCaveat());
                 return 0;
             }
             Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
-                            + "other Skill Manager home%s",
+                            + "other Skill Manager home%s%s",
                     mentions.isEmpty() && diagnostics.isEmpty() ? "" : "repairable ",
-                    against, home, except);
+                    against, home, except, isolationScopeCaveat());
             return 0;
+        }
+
+        /**
+         * The re-provisioning remedy: {@code build} over the artifacts that
+         * own the references this run just refused on.
+         *
+         * <p>Falls back to {@code build --stale} when the join finds nothing —
+         * a home whose unresolved paths belong to no artifact with a producer.
+         * That fallback is the general command rather than a refusal, because a
+         * remedy line with no command in it is the #142 class, and
+         * {@code build --stale} at least names every stale artifact with the
+         * command that rebuilds each one.
+         *
+         * <p>Every id is a shell word ({@link ArtifactBuild#shellWord}):
+         * {@code cli-shim:pip/jinja2-cli[yaml]} is a real id and {@code [yaml]}
+         * is a glob, and this line is pasted into shells and executed by tests.
+         */
+        private static String reprovisionRemedy(Path home, List<String> unresolved) {
+            List<String> ids = List.of();
+            try {
+                ids = ArtifactBuild.buildableFor(new SkillStore(home), unresolved);
+            } catch (RuntimeException ignored) {
+                // The check's verdict does not depend on the remedy resolving.
+            }
+            if (ids.isEmpty()) return homeEnvPrefix(home) + " build --stale";
+            StringBuilder out = new StringBuilder(homeEnvPrefix(home)).append(" build");
+            for (String id : ids) out.append(' ').append(ArtifactBuild.shellWord(id));
+            return out.toString();
         }
 
         /**
          * The remedy line for the isolation verdict, in the one spelling every
          * caller of this command parses ({@code complete it with: <cmd>, then
          * re-run this check}).
+         *
+         * <h2>Why this one did NOT become {@code build --stale} in ARTI-06</h2>
+         *
+         * <p>The unresolved-reference remedy above did, because that block names
+         * artifacts that are stale and {@code build} rebuilds artifacts. This
+         * block names paths that RESOLVE — into another home — and the repair is
+         * {@code CliShimPruner} removing them so something can be provisioned
+         * here instead. {@code build} does not prune, and a foreign link is not
+         * stale: {@code CliPresence} calls it "already provisioned in this
+         * home", so a per-artifact rebuild would skip it forever. Pointing this
+         * line at {@code build} would be a remedy that runs and repairs nothing,
+         * which is the defect one worse than having none.
          *
          * <h2>Why {@code sync --force-scripts} repairs an isolation leak</h2>
          *
@@ -399,12 +542,56 @@ public final class HomeCommand {
          * a home has both kinds the two commands are chained, so the single
          * line stays runnable as printed.
          */
+        /**
+         * WHAT "no path in it reaches any other Skill Manager home" ACTUALLY
+         * COVERS, appended to every sentence that says it.
+         *
+         * <h2>Review of PR #256, minor 1</h2>
+         *
+         * <p>HIS-21 widened the check to a shim's CONTENT and left the verdict
+         * sentence universal. It is not universal, and three cases were
+         * reproduced at review that print it at <b>exit 0</b>: a foreign path
+         * in {@code bin/launch/claude}; a {@code venvs/<x>/bin/<y>} console
+         * script whose shebang names another home's interpreter — the
+         * {@code cp -a} / rsync shape {@code HomeRepair} exists for; and any
+         * generated script outside the two shim directories.
+         *
+         * <p>The scope was disclosed in the pull request and not in the
+         * OUTPUT, which is the same substitution this whole ticket is about:
+         * an operator does not read the pull request. Content scanning is
+         * bounded to {@code bin/cli} and {@code bin/mcp} because that is where
+         * {@code home repair} is bounded, and the two verdicts must not differ
+         * by scope (MAJOR-1) — so the honest move is to say where the boundary
+         * is, not to widen one reader past the other.
+         */
+        private static String isolationScopeCaveat() {
+            return " (LINK targets are checked everywhere in this home; script"
+                    + " CONTENT is read only under " + String.join(" and ",
+                            HomeCloner.SHIM_DIR_NAMES)
+                    + ", so a generated script elsewhere — bin/launch, a venv"
+                    + " console-script shebang — is not covered by this line."
+                    + " `home repair` reads the same two directories)";
+        }
+
         private static String isolationRemedy(List<HomeCloner.Leak> isolation, Path home) {
             boolean launcher = false;
             boolean other = false;
+            // HIS-21 / DEF-104. A wrapper naming a foreign path is a THIRD
+            // remedy, and printing either of the other two for it would be a
+            // remedy that runs and repairs nothing -- the defect one worse than
+            // having none, which this method's javadoc already says twice.
+            // `sync --force-scripts` reaches CliShimPruner, which prunes LINKS;
+            // a regular file execing another home is exactly what the pruner
+            // walks past (HomeRepair.foreignPathsInShims' own javadoc: measured
+            // on one clone, the symlink self-healed and the wrapper was skipped
+            // forever). `home repair --fix` rewrites the path, and it is the
+            // command that reported this finding before verify could.
+            boolean foreignShimContent = false;
             for (HomeCloner.Leak leak : isolation) {
                 String rel = leak.path().replace(java.io.File.separatorChar, '/');
-                if (rel.equals("bin/cli/skill-manager") || rel.startsWith("bin/launch/")) {
+                if (HomeCloner.Leak.FOREIGN_PATH_IN_SHIM.equals(leak.kind())) {
+                    foreignShimContent = true;
+                } else if (rel.equals("bin/cli/skill-manager") || rel.startsWith("bin/launch/")) {
                     launcher = true;
                 } else {
                     other = true;
@@ -412,7 +599,14 @@ public final class HomeCommand {
             }
             String prefix = homeEnvPrefix(home);
             List<String> commands = new java.util.ArrayList<>();
-            if (launcher) commands.add(prefix + " home shims --home " + home);
+            if (launcher) {
+                commands.add(prefix + " home shims --home "
+                        + HomeDescriptor.shellQuote(home.toString()));
+            }
+            if (foreignShimContent) {
+                commands.add(prefix + " home repair --home "
+                        + HomeDescriptor.shellQuote(home.toString()) + " --fix");
+            }
             if (other || commands.isEmpty()) commands.add(prefix + " sync --force-scripts");
             return "complete it with: " + String.join(" && ", commands)
                     + ", then re-run this check";
@@ -429,6 +623,60 @@ public final class HomeCommand {
          * home" checkable without becoming the 163 lines that buried the six
          * findings underneath them.
          */
+        /**
+         * Print what {@code home} RECORDS about where it came from, and which
+         * of it still re-derives.
+         *
+         * <p>Printed either way on purpose. "No descent recorded" is the state
+         * in which an inherited shim is a hard {@code FOREIGN_HOME} refusal, and
+         * an operator staring at that refusal needs to see the missing fact
+         * rather than infer it. It is also what tells a pre-HIS-10 copy apart
+         * from one this build made — the input HIS-13's repair needs.
+         *
+         * <h2>A claim and a fact are never printed as the same thing</h2>
+         *
+         * <p>The first version of this printed the record's own
+         * {@code parentStores} as the answer. Measured on review of #228: a
+         * hand-written record naming {@code /nowhere} as its source turned the
+         * isolation gate off AND was reported here as authoritative descent —
+         * and because this line names the filename, it told the next agent
+         * exactly which file to write to make a refusal go away.
+         *
+         * <p>So the recorded set is a CLAIM, each entry is re-derived live
+         * ({@link HomeProvenance#sanctions}), and an entry that no longer
+         * re-derives is printed as the dead claim it is rather than omitted.
+         * Omitting it would hide the one transition an operator has to act on:
+         * a parent whose claim was revoked, whose shims are foreign again.
+         */
+        private static void reportDescent(Path home) {
+            HomeProvenance.Descent descent = HomeProvenance.read(home);
+            if (descent == null) {
+                Log.detail("no recorded descent: %s carries no %s, so nothing in it sanctions a "
+                                + "path into another home",
+                        home, HomeProvenance.FILENAME);
+                return;
+            }
+            List<Path> recorded = HomeProvenance.recordedParentStores(home);
+            List<Path> verified = HomeProvenance.verifiedParentStores(home);
+            if (recorded.isEmpty()) {
+                Log.info("descent: %s records that it was cloned from %s, and names no parent "
+                                + "store — so no foreign path in it is sanctioned by that record",
+                        home, descent.clonedFrom());
+                return;
+            }
+            Log.info("descent: %s records that it was cloned from %s; %d of %d recorded parent "
+                            + "store(s) still re-derive as ancestors of this home",
+                    home, descent.clonedFrom(), verified.size(), recorded.size());
+            for (Path store : recorded) {
+                if (verified.contains(store)) {
+                    Log.info("    %s  — re-derived, so its artifacts are shared by right", store);
+                } else {
+                    Log.info("    %s  — NOT re-derivable: no live claim links this home to it, "
+                            + "so its shims here are foreign again", store);
+                }
+            }
+        }
+
         private static void sample(List<String> refs) {
             int shown = Math.min(TOLERATED_SAMPLE, refs.size());
             for (int i = 0; i < shown; i++) Log.info("    %s", refs.get(i));
@@ -462,27 +710,64 @@ public final class HomeCommand {
          * {@code out.append(" skill-manager")} — so on a machine whose PATH
          * carries an older release, or none at all, the pasted line runs a
          * different program than the one that printed it, or nothing.
-         * {@link HomeDescriptor#cliInvocation} resolves the CLI that IS running
+         * {@link HomeDescriptor#cliInvocation} resolves a build for this home
          * and falls back to the bare name only when it cannot; it is the same
          * routing the drift gate, {@code close-out}, {@code exec} and the sync
          * renderer already use.
+         *
+         * <p>The sentence above used to read "resolves the CLI that IS
+         * running", and that was an OVERSTATEMENT of the same family as the
+         * precedence javadoc #161 is about: the running build is one of four
+         * steps, and it is not the first. Which step answered is
+         * {@link HomeDescriptor.CliSpelling#source()}, and when it is the
+         * {@code PATH} walk the remedy says so — see
+         * {@link HomeDescriptor.CliSpelling#caveat()}, printed here by
+         * {@code noteCaveat}.
          *
          * <p>Resolved against {@code home} rather than the ambient store: the
          * remedy is for THAT home, and a home carries its own launcher.
          */
         private static String homeEnvPrefix(Path home) {
-            Path root = dev.skillmanager.agent.AgentHomes.homeRootFor(home);
-            StringBuilder out = new StringBuilder("env SKILL_MANAGER_HOME=").append(home);
-            for (Path dir : dev.skillmanager.agent.AgentHomes.agentDirsUnder(root)) {
-                String name = dir.getFileName().toString();
-                String var = switch (name) {
-                    case ".codex" -> "CODEX_HOME";
-                    case ".gemini" -> "GEMINI_HOME";
-                    default -> "CLAUDE_CONFIG_DIR";
-                };
-                out.append(' ').append(var).append('=').append(dir);
-            }
-            return out.append(' ').append(HomeDescriptor.cliInvocation(home)).toString();
+            // A BARE `env`, exactly as this shipped. #229's first attempt
+            // spelled it /usr/bin/env, arguing that made the remedy honest
+            // under the graph assertions that require an absolute head token.
+            // It does the opposite: /usr/bin/env is absolute and executable
+            // forever, whatever the resolution behind it does, so three
+            // readers go permanently green and stop asserting anything.
+            StringBuilder out = new StringBuilder("env");
+            // HIS-14: the four variables are no longer written down here. This
+            // method used to be the ONLY place that knew a home has two axes,
+            // which is precisely why `--home` -- read by every other remedy --
+            // bound one of them and sent the agent half to the operator's real
+            // ~/.claude (DEF-029). AgentHomes.binding is now the single
+            // statement, RENDERED here and APPLIED by --home, so the printed
+            // remedy and the flag cannot mean two different things.
+            dev.skillmanager.agent.AgentHomes.binding(home).forEach((var, value) ->
+                    out.append(' ').append(var).append('=')
+                            .append(HomeDescriptor.shellQuote(value)));
+            // This is not a class-2 verb wearing an env prefix; it is the one
+            // remedy whose target is four variables.
+            //
+            // The caveat is appended here rather than left to the caller: this
+            // is the exact line #161 quotes, and it was the surface where a
+            // PATH-resolved build read as authoritative.
+            HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(home);
+            out.append(' ').append(spelling.binary());
+            return out.toString();
+        }
+
+        /**
+         * Print the one line a remedy built on {@link #homeEnvPrefix} owes its
+         * reader, when there is one.
+         *
+         * <p>M4 of #229's review: the caveat reached four surfaces and this one
+         * dropped it — and this is the exact line issue #161 quotes, where a
+         * PATH-resolved build read as authoritative while being the same binary
+         * the bare token would have found.
+         */
+        private static void noteCaveat(Path home) {
+            String caveat = HomeDescriptor.cliSpelling(home).caveat();
+            if (caveat != null) Log.error("  note: %s", caveat);
         }
 
         /** "40 authored mention(s)", "10 diagnostic message(s)", or both. */
@@ -598,6 +883,18 @@ public final class HomeCommand {
                         + "path that is not a home is refused rather than created.")
         boolean init;
 
+        /**
+         * Declare {@code lazy_artifacts}. A {@link Boolean} rather than a
+         * {@code boolean} so that "not passed" is a third value: this command's
+         * other half rewrites the file, and a primitive would make every
+         * {@code home policy live} silently declare eagerness.
+         */
+        @Option(names = "--lazy-artifacts", arity = "1", paramLabel = "true|false",
+                description = "Declare whether this home builds its artifacts on demand. "
+                        + "Default: true for a project or worktree home, false for the operator "
+                        + "root. May be given with or without a policy word.")
+        Boolean lazyArtifacts;
+
         private final SkillStore injectedStore;
 
         public PolicyCmd() { this(null); }
@@ -618,12 +915,22 @@ public final class HomeCommand {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
+            if (lazyArtifacts != null) HomePolicy.writeLazyArtifacts(store, lazyArtifacts);
             if (policy == null || policy.isBlank()) {
                 HomePolicy current = HomePolicy.load(store);
                 System.out.println("policy: " + current.wire());
+                // Declared and effective, in those words. They differ for every
+                // home that has not said anything, which is most of them, and a
+                // reader who cannot tell them apart writes the default back
+                // into the file as though somebody had chosen it.
+                Boolean declared = HomePolicy.declaredLazyArtifacts(store);
+                System.out.println("lazy_artifacts: " + HomePolicy.lazyArtifacts(store)
+                        + (declared == null
+                            ? "  (not declared — default for this tier)" : "  (declared)"));
                 System.out.println("file:   " + HomePolicy.file(store)
                         + (java.nio.file.Files.isRegularFile(HomePolicy.file(store))
                             ? "" : "  (absent — live by default)"));
+                reportInstallPolicy(store);
                 return 0;
             }
             HomePolicy next = HomePolicy.parse(policy, null);
@@ -634,6 +941,78 @@ public final class HomeCommand {
                 Log.ok("%s is now live", store.root());
             }
             return 0;
+        }
+
+        /**
+         * DEF-105. THE OTHER FILE IN THIS DIRECTORY THAT IS ALSO CALLED POLICY.
+         *
+         * <h2>What the issue said, and what is actually true</h2>
+         *
+         * <p>#253 filed this as "the root home carries a security policy the
+         * product does not read": {@code ~/.skill-manager/policy.toml},
+         * declaring {@code allowed_backends}, {@code require_hash} and an
+         * {@code init_script} flag its own comment calls "very dangerous",
+         * while {@code home policy} reported {@code home.policy.toml (absent —
+         * live by default)}.
+         *
+         * <p><b>The product reads it.</b> Measured on a throwaway home holding
+         * {@code allowed_backends = ["tar"], require_hash = true,
+         * allow_init_scripts = true}: {@code skill-manager policy show} printed
+         * back all three, from {@link Policy#load}, which resolves
+         * {@code <store>/policy.toml} — the same home. It is not legacy and it
+         * is not dead.
+         *
+         * <p>What is true is worse than a stale file and is the reason this is
+         * still a defect. <b>Two files in one directory are both called
+         * policy, they govern the same home, they are read by two different
+         * verbs, and neither verb mentions the other.</b> {@link HomePolicy}
+         * ({@code home.policy.toml}) decides whether the home may be MUTATED;
+         * {@link Policy} ({@code policy.toml}) decides what an install in it is
+         * ALLOWED TO RUN. An operator who asks {@code home policy --home
+         * ~/.skill-manager} and reads {@code (absent — live by default)}
+         * concludes this home declares no policy — with a live security policy
+         * permitting init scripts sitting in the same directory.
+         *
+         * <p>So the verb names both, in the house convention {@code
+         * lazy_artifacts} already uses one line above: declared is marked
+         * declared, and a default is marked as a default rather than printed as
+         * a fact. The security-relevant keys are named rather than summarised,
+         * because "there is another file" sends the reader to {@code policy
+         * show} while "it permits init scripts" is the sentence that makes
+         * them go and look.
+         *
+         * <p>Read-only, and it never creates the file: {@code policy init} is
+         * the verb that writes one, and a report verb that materialises what it
+         * is reporting on is the fail-open shape {@link #requireHome} exists to
+         * remove.
+         */
+        private static void reportInstallPolicy(SkillStore store) {
+            java.nio.file.Path file = store.root().resolve(Policy.FILENAME);
+            boolean present = java.nio.file.Files.isRegularFile(file);
+            if (!present) {
+                System.out.println("install policy: " + file
+                        + "  (absent — install defaults apply; `skill-manager policy show`)");
+                return;
+            }
+            String detail;
+            try {
+                Policy declared = Policy.load(store);
+                detail = "allowed_backends=" + declared.allowedBackends()
+                        + " require_hash=" + declared.requireHash()
+                        + " allow_init_scripts=" + declared.allowInitScripts()
+                        + " allow_docker=" + declared.allowDocker();
+            } catch (IOException unreadable) {
+                // Named, not swallowed. An unreadable policy file is the one
+                // state in which `policy show` and every install will refuse,
+                // and reporting it as absent would be the fail-open reading.
+                detail = "UNREADABLE — " + unreadable.getMessage();
+            }
+            System.out.println("install policy: " + file + "  (declared)");
+            System.out.println("                " + detail);
+            System.out.println("                this file is a DIFFERENT policy from "
+                    + HomePolicy.FILENAME + " above: it governs what an install here may "
+                    + "run, not whether this home may be mutated. Read it with "
+                    + "`skill-manager policy show`.");
         }
     }
 
@@ -665,9 +1044,29 @@ public final class HomeCommand {
 
         private final SkillStore injectedStore;
 
-        public ShimsCmd() { this(null); }
+        /**
+         * The build to pin, when the caller already knows it; {@code RunningCli}
+         * answers when nothing is injected.
+         *
+         * <p>The seam exists for the reason {@link RepairCmd}'s and
+         * {@link LauncherShims#write(SkillStore, Path)}'s do: an in-process test
+         * cannot be located as a running CLI. It is load-bearing for a specific
+         * assertion — that this command PRINTS the pin it wrote — which cannot
+         * be made at all unless a fixture build reaches
+         * {@code LauncherShims.write}. Reverting the two lines below reddened
+         * nothing in 1402 cases before that assertion existed (review of #250,
+         * MAJOR 1).
+         */
+        private final Path injectedPin;
 
-        public ShimsCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+        public ShimsCmd() { this(null, null); }
+
+        public ShimsCmd(SkillStore injectedStore) { this(injectedStore, null); }
+
+        public ShimsCmd(SkillStore injectedStore, Path injectedPin) {
+            this.injectedStore = injectedStore;
+            this.injectedPin = injectedPin;
+        }
 
         @Override
         public Integer call() throws Exception {
@@ -686,7 +1085,9 @@ public final class HomeCommand {
             }
             Path pin;
             try {
-                pin = dev.skillmanager.launch.RunningCli.locate();
+                pin = injectedPin != null
+                        ? injectedPin
+                        : dev.skillmanager.launch.RunningCli.locate();
             } catch (dev.skillmanager.launch.RunningCli.UnknownLocationException e) {
                 // Reported rather than thrown: the operator has to act on this,
                 // and the alternative the code refused to take (resolve the CLI
@@ -697,6 +1098,12 @@ public final class HomeCommand {
                 return 127;
             }
             LauncherShims.Result result = LauncherShims.write(store, pin);
+            // HIS-19: report what was WRITTEN, not what was located. The writer
+            // may record a versionless spelling of the same build (DEF-027), and
+            // a `pinned CLI:` line naming a path the file does not contain is a
+            // reader disagreeing with the writer about one artifact — the class
+            // this epic is about, and one its own fix could have introduced.
+            pin = result.pin();
             if (json) {
                 System.out.println("""
                         {"dir":"%s","cli":"%s","shims":[%s]}"""
@@ -742,6 +1149,10 @@ public final class HomeCommand {
                 description = "Compare the home against its recorded digest, record any change "
                         + "as pending, and refresh the digest.")
         boolean record;
+
+        @Option(names = "--detail",
+                description = "Print every changed path instead of the per-unit rollup.")
+        boolean detail;
 
         @Option(names = "--ack", description = "Mark the pending change read, clearing the gate.")
         boolean ack;
@@ -794,8 +1205,10 @@ public final class HomeCommand {
                 Log.ok("acknowledged %d changed unit(s) in %s",
                         acked.report().units().size(), store.root());
                 // The count is the verdict; the per-unit lines are already
-                // read by the time you acknowledge them.
-                for (String line : acked.report().render()) Log.detail("  %s", line);
+                // read by the time you acknowledge them. Detailed here because
+                // Log.detail is already an opt-in surface -- collapsing a
+                // stream nobody sees by default buys nothing.
+                for (String line : acked.report().renderDetailed()) Log.detail("  %s", line);
                 return 0;
             }
             DriftGate pending = DriftGate.pending(store).orElse(null);
@@ -815,11 +1228,26 @@ public final class HomeCommand {
             // reason for running the command: the list stays on the console,
             // bounded, because a home with 200 changed units is still one
             // decision and the first dozen make it.
-            Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
-                    pending.report().units().size(), store.root(), pending.operation());
-            Log.errorList("  ", pending.report().render());
-            Log.warn("  run `%s home drift --ack` once you have taken it in",
-                    HomeDescriptor.cliInvocation(store.root()));
+            // CLASS 2: `home drift` takes --home, so that is where the
+            // binding goes.
+            HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
+            String cli = spelling.binary();
+            String homeArg = spelling.homeArg();
+            // `--detail` is an explicit ask, so it always answers in full. The
+            // collapse is about what an agent gets when it did NOT ask.
+            if (detail || pending.firstSurfacing()) {
+                Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
+                        pending.report().units().size(), store.root(), pending.operation());
+                Log.errorList("  ", detail
+                        ? pending.report().renderDetailed()
+                        : pending.report().render());
+                Log.warn("  run `%s home drift --ack %s` once you have taken it in",
+                        cli, homeArg);
+            } else {
+                Log.warn("%s", pending.stillUnreadLine(cli, homeArg));
+            }
+            if (spelling.caveat() != null) Log.warn("  note: %s", spelling.caveat());
+            DriftGate.markSurfaced(store);
             return DriftGate.EXIT_CODE;
         }
 
@@ -979,6 +1407,17 @@ public final class HomeCommand {
                 // exit code, not a stack trace — a teardown script branches on
                 // this, and 9 ("refused, nothing attempted") is not 1 ("this
                 // worktree still holds work").
+                //
+                // The `if (json)` line is #235's: this catch sat immediately
+                // below one that DID answer a --json caller and it answered
+                // nothing, so a frozen project home produced exit 9 with an
+                // empty stdout. Nobody decided that; the catch was simply added
+                // later than its sibling. The generic envelope in
+                // JsonExitEnvelope would now cover it, but only with
+                // error="failed" — a caught exception never reaches the
+                // classifier — and this command's consumer reads `safe` and
+                // `blockers`, so it gets the same shape as its sibling.
+                if (json) System.out.println(frozenJson(frozen));
                 Log.error("%s", frozen.getMessage());
                 return FrozenHomeException.EXIT_CODE;
             }
@@ -1094,11 +1533,24 @@ public final class HomeCommand {
                         + "\",\"conflicts\":" + strings(blocker.unit().conflicts())
                         + ",\"remedy\":\"" + esc(blocker.remedy()) + "\"}")
                 .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+        // DEF-101. A unit that cleared the gate because the destination
+        // declares it is a DECISION, and a decision a script can read. An empty
+        // list here plus safe:true means "nothing was at risk"; a non-empty one
+        // means "these were not copied and here is why that is correct".
+        String obtainable = verdict.selfObtainable().stream()
+                .map(o -> "{\"unit\":\"" + esc(o.label())
+                        + "\",\"status\":\""
+                        + o.unit().status().name().toLowerCase().replace('_', '-')
+                        + "\",\"source\":\"" + esc(o.source())
+                        + "\",\"publishedAt\":\"" + esc(o.publishedAt())
+                        + "\",\"remedy\":\"" + esc(o.remedy()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
         return "{\"home\":\"" + esc(verdict.home().toString())
                 + "\",\"into\":\"" + esc(verdict.into().toString())
                 + "\",\"safe\":" + verdict.safe()
                 + ",\"exitCode\":" + verdict.exitCode()
                 + ",\"blockers\":" + blockers
+                + ",\"selfObtainable\":" + obtainable
                 + ",\"units\":" + unitsJson(verdict.units()) + "}";
     }
 
@@ -1126,6 +1578,13 @@ public final class HomeCommand {
                 + "\",\"message\":\"" + esc(error.getMessage())
                 + "\",\"safe\":false,\"clean\":false,\"blockers\":[],\"units\":[],\"exitCode\":"
                 + NotAHomeException.EXIT_CODE + "}";
+    }
+
+    private static String frozenJson(FrozenHomeException frozen) {
+        return "{\"error\":\"home_frozen\",\"path\":\"" + esc(String.valueOf(frozen.homeRoot()))
+                + "\",\"message\":\"" + esc(frozen.getMessage())
+                + "\",\"safe\":false,\"clean\":false,\"blockers\":[],\"units\":[],\"exitCode\":"
+                + FrozenHomeException.EXIT_CODE + "}";
     }
 
     private static String strings(List<String> values) {
@@ -1254,14 +1713,101 @@ public final class HomeCommand {
         return out;
     }
 
+    /**
+     * DEF-106. A DESCRIPTOR THIS HOME NEVER WROTE, PRINTED AS IF IT HAD.
+     *
+     * <h2>The open question, answered from the code rather than from taste</h2>
+     *
+     * <p>#253 asks whether a project home is SUPPOSED to have a
+     * {@code home.runtime.json}. It is not. {@code LaunchEnv.of} reads one if
+     * present and otherwise derives the same block from the home's layout, and
+     * only {@code home clone} and {@code describe --write} ever persist one. So
+     * a home with no descriptor is a normal home and {@code describe}
+     * COMPUTING one is the command working as designed.
+     *
+     * <p>What was wrong is that it printed the computed answer in the same
+     * shape as a recorded one. Measured on a home with no
+     * {@code home.runtime.json}, no {@code gateway.properties} and no
+     * {@code home.policy.toml}:
+     *
+     * <pre>
+     *   policy:      live
+     *   cli:         /Users/…/skill-manager
+     *   gateway:     http://127.0.0.1:51717 (owned)
+     * </pre>
+     *
+     * <p>Every one of those three is a default. {@code policy} is
+     * {@link HomePolicy#LIVE} because nothing was declared; {@code cli} came
+     * from the ambient {@code $SKILL_MANAGER_CLI} of whoever ran the command,
+     * not from the home; and {@code gateway} is {@link GatewayConfig#DEFAULT_URL}
+     * with {@code owned} defaulting to true — which is how the project home and
+     * the root home both reported {@code (owned)} on ONE port, with one process
+     * listening. Two homes cannot both own it, and only one of them had ever
+     * said anything.
+     *
+     * <p>{@code home policy} already had the convention — {@code (not declared
+     * — default for this tier)} — and this command did not follow it. It does
+     * now, per field, naming the file that would make each one a fact.
+     *
+     * <h2>Why the JSON is unchanged</h2>
+     *
+     * <p>{@code --json} emits the descriptor itself, which is the thing
+     * {@code --write} persists and {@code bootstrap-home.sh} consumes. Marking
+     * a field as "not recorded" INSIDE the file whose existence is what makes
+     * fields recorded is a contradiction, and widening a persisted interop
+     * schema is not what this defect is about. The synthesis marks live on the
+     * human surface, which is the surface the defect was measured on.
+     */
     private static void renderHuman(HomeDescriptor d, SkillStore store, boolean wrote) {
+        boolean recorded = java.nio.file.Files.isRegularFile(HomeDescriptor.file(store.root()));
         Log.info("  home root:   %s", d.homeRoot());
-        Log.info("  policy:      %s", d.policy());
+        Log.info("  descriptor:  %s", recorded
+                ? HomeDescriptor.file(store.root()) + " (recorded)"
+                : HomeDescriptor.file(store.root())
+                        + " (absent — every field below is DERIVED from this home's layout "
+                        + "and this process, not read from a descriptor. `--write` records it.)");
+        boolean policyDeclared =
+                java.nio.file.Files.isRegularFile(store.root().resolve(HomePolicy.FILENAME));
+        Log.info("  policy:      %s%s", d.policy(),
+                policyDeclared ? "  (declared)"
+                        : "  (not declared — default; no " + HomePolicy.FILENAME + " here)");
+        // The CLI's PROVENANCE, not just its path. CliSource already models
+        // exactly this distinction -- "three of these steps identify a build
+        // somebody deliberately associated with this home; the fourth is a
+        // guess that happens to be spelled absolutely" -- and printing the path
+        // alone threw that away at the last step. A PINNED_ENV answer is a fact
+        // about the CALLER's shell and reads here as a fact about the home.
+        HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
         Log.info("  cli:         %s", d.cli() == null || d.cli().skillManager() == null
                 ? "(unresolved — set SKILL_MANAGER_CLI or put skill-manager on PATH)"
-                : d.cli().skillManager());
-        Log.info("  gateway:     %s (%s)", d.gateway().url(),
-                d.gateway().owned() ? "owned" : "attached to a shared gateway");
+                : d.cli().skillManager() + "  (" + cliProvenance(spelling.source()) + ")");
+        boolean gatewayDeclared = java.nio.file.Files.isRegularFile(
+                store.root().resolve(GatewayConfig.FILE));
+        // The env var is a THIRD source and it is neither the file nor the
+        // default. Reporting it as "no gateway.properties here, so this is the
+        // default endpoint" would be a true sentence about a URL that is not
+        // the default — the same substitution this whole ticket is about, one
+        // branch further down.
+        String gatewayFromEnv = System.getenv(GatewayConfig.URL_ENV);
+        boolean gatewayEnv = gatewayFromEnv != null && !gatewayFromEnv.isBlank();
+        Log.info("  gateway:     %s%s", d.gateway().url(),
+                gatewayEnv
+                        ? "  (from $" + GatewayConfig.URL_ENV + " in this process — not a fact "
+                                + "about this home, and always attached)"
+                        : gatewayDeclared
+                        ? (d.gateway().owned()
+                                ? "  (owned — declared in " + GatewayConfig.FILE + ")"
+                                : "  (attached to a shared gateway — declared in "
+                                        + GatewayConfig.FILE + ")")
+                        // NOT "(owned)". This home has claimed nothing, and the
+                        // default is what let two homes report ownership of one
+                        // port. `gateway up` still applies the same default --
+                        // that is GatewayConfig's decision and changing it is a
+                        // behaviour change this defect does not ask for -- but
+                        // the REPORT stops stating it as a claim.
+                        : "  (no " + GatewayConfig.FILE + " here — this is the default "
+                                + "endpoint, "
+                                + "and this home claims no ownership of it)");
         Log.info("  env:");
         d.env().asMap().forEach((k, v) -> Log.info("    %-18s %s", k, v));
         if (!d.envContributions().isEmpty()) {
@@ -1272,14 +1818,50 @@ public final class HomeCommand {
         if (wrote) Log.ok("wrote %s", HomeDescriptor.file(store.root()));
     }
 
-    private static void print(HomeCloner.Report report, boolean json) {
+    /** How much the located CLI is worth, in the words {@code CliSource} uses. */
+    private static String cliProvenance(HomeDescriptor.CliSource source) {
+        return switch (source) {
+            case PINNED_ENV -> "from $SKILL_MANAGER_CLI in this process — not a fact about "
+                    + "this home";
+            case HOME_ENTRYPOINT -> "this home's own bin/cli/skill-manager";
+            case RUNNING_BUILD -> "the build running this command — not recorded in this home";
+            case PATH_FALLBACK -> "found on PATH — nothing associates it with this home";
+            case UNRESOLVED -> "unresolved";
+        };
+    }
+
+
+    /**
+     * DEF-096, machine-readable. {@code declared} is carried beside
+     * {@code missing} so a consumer can tell "this home realizes its manifest"
+     * from "this home has no manifest" — both of which have an empty
+     * {@code missing} list and are not the same fact.
+     */
+    private static String manifestShortfallJson(
+            dev.skillmanager.project.ProjectManifestRealization.Shortfall shortfall) {
+        if (shortfall == null || !shortfall.hasManifest()) {
+            return "{\"manifest\":null,\"declared\":0,\"missing\":[]}";
+        }
+        String missing = shortfall.missing().stream()
+                .map(d -> "{\"unit\":\"" + esc(d.lookupName())
+                        + "\",\"kind\":\"" + d.kind().name().toLowerCase()
+                        + "\",\"source\":\"" + esc(d.source()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+        return "{\"manifest\":\"" + esc(shortfall.manifest().toString())
+                + "\",\"declared\":" + shortfall.declared().size()
+                + ",\"missing\":" + missing + "}";
+    }
+
+    private static void print(HomeCloner.Report report, boolean json,
+                             dev.skillmanager.project.ProjectManifestRealization.Shortfall shortfall) {
         if (json) {
             System.out.println("""
                     {"source":"%s","dest":"%s","directories":%d,"files":%d,"symlinks":%d,\
                     "bytes":%d,"linksRelativized":%d,"stateReanchored":%d,\
                     "provisionedRewritten":%d,"leaks":%d,"contentReferences":%d,\
                     "danglingLinks":%d,"danglingReferences":%d,"droppedRegistrations":%d,\
-                    "droppedBindings":%d,"droppedChildHomes":%d,"clean":%b}"""
+                    "droppedBindings":%d,"droppedChildHomes":%d,"clean":%b,\
+                    "manifestShortfall":%s}"""
                     .formatted(esc(report.source().toString()), esc(report.dest().toString()),
                             report.directories(), report.files(), report.symlinks(),
                             report.bytes(), report.linksRelativized(), report.stateReanchored(),
@@ -1288,12 +1870,21 @@ public final class HomeCommand {
                             report.danglingReferences().size(),
                             report.droppedRegistrations().size(),
                             report.droppedBindings().size(),
-                            report.droppedChildHomes().size(), report.clean()));
+                            report.droppedChildHomes().size(), report.clean(),
+                            manifestShortfallJson(shortfall)));
             return;
         }
         // Both restated verbatim by the verdict line at the bottom of this
         // method, which names the destination and the source it was checked
         // against. Kept in the log; not printed twice.
+        if (shortfall != null && !shortfall.clean()) {
+            Log.warn("  manifest:    %s", shortfall.summary());
+            for (String line : shortfall.render().subList(1, shortfall.render().size())) {
+                Log.warn("  %s", line);
+            }
+            Log.warn("  this copy is short the same unit(s); resolving the SOURCE and "
+                    + "re-cloning, or resolving here, is what obtains them");
+        }
         Log.detail("  source:      %s", report.source());
         Log.detail("  destination: %s", report.dest());
         Log.info("  copied:      %d dirs, %d files, %d links (%d bytes; %s skipped)",
@@ -1369,6 +1960,20 @@ public final class HomeCommand {
             for (String dangling : report.danglingLinks()) Log.detail("    link   %s", dangling);
             for (String dangling : report.danglingReferences()) Log.detail("    script %s", dangling);
         }
+        // ARTI-07, and deliberately ONE line each. The clone's report is paid
+        // for on every bootstrap; the entries are in the run log and in
+        // `skill-manager artifacts list`, which is the command that owns them.
+        if (!report.coldShims().isEmpty()) {
+            Log.info("  declared:    %d entry point(s) name `skill-manager build <id>` instead "
+                            + "of failing in the kernel's words — they were shims into a tree "
+                            + "this copy does not carry: %s",
+                    report.coldShims().size(), String.join(", ", report.coldShims()));
+        }
+        if (!report.deferredTrees().isEmpty()) {
+            Log.info("  deferred:    %d virtualenv(s) inside units are declared, not copied — "
+                            + "`uv` rebuilds each from the lockfile beside it on first use: %s",
+                    report.deferredTrees().size(), String.join(", ", report.deferredTrees()));
+        }
         if (report.clean()) {
             // Says what was actually checked — and this line has now been wrong
             // twice in the same way, each time by naming the category the check
@@ -1398,8 +2003,10 @@ public final class HomeCommand {
             // so the clause narrows to what it still covers: file CONTENT,
             // which is not rewritten, and links that resolve nowhere in
             // particular.
-            Log.ok("cloned home to %s — checked: nothing in it resolves back to %s; no path in "
-                    + "it reaches another Skill Manager home; no record or link in it names "
+            Log.ok("cloned home to %s — checked: nothing in it resolves back to %s; no LINK in "
+                    + "it reaches another Skill Manager home and no script under "
+                    + String.join(" or ", HomeCloner.SHIM_DIR_NAMES) + " NAMES one; no record "
+                    + "or link in it names "
                     + "another home's agent directories (.claude, .codex, .gemini); no binding, "
                     + "child-home record or registration in it claims a path outside this home. "
                     + "NOT checked: mentions inside unit content, and anything reached by a "
@@ -1411,6 +2018,282 @@ public final class HomeCommand {
             List<String> leaks = new java.util.ArrayList<>();
             for (HomeCloner.Leak leak : report.leaks()) leaks.add(leak.toString());
             Log.errorList("    ", leaks);
+            cloneFailureRemedy(report);
+        }
+    }
+
+    /**
+     * WHAT THE OPERATOR DOES NEXT AFTER A FAILED CLONE, and where the half-made
+     * copy went.
+     *
+     * <h2>Review of PR #256, MAJOR-1's sibling: a remedy that does not exist</h2>
+     *
+     * <p>HIS-21 widened {@code home verify} to see a wrapper shim whose text
+     * execs another home. {@code home clone} verifies its copy with the same
+     * check, so it inherited the new refusal — and it printed <b>no remedy at
+     * all</b>, on a command whose failure leaves a populated directory behind:
+     *
+     * <pre>
+     *   $ skill-manager home clone --from S1 --to C1
+     *     copied:      8 dirs, 1 files, 0 links
+     *   ✗ clone verification FAILED — 1 path(s) reach outside this copy
+     *   ✗     FOREIGN_PATH_IN_SHIM bin/cli/thirdparty (runs …/B/skills/tool/run.sh …)
+     *   exit 1
+     * </pre>
+     *
+     * <p>This epic's standing rule is that a refusal with no remedy is the
+     * #142 class, and {@code home verify}'s own verdict branch was fixed for
+     * exactly that. Reproduced on a throwaway pair; the operator's root home
+     * has the shape ({@code home verify} names five of them there), so
+     * {@code home clone --from ~/.skill-manager} is refused on that machine
+     * until the source is repaired.
+     *
+     * <h2>The remedy names the SOURCE, not the copy</h2>
+     *
+     * <p>Re-anchoring rewrites paths naming the SOURCE. These name a THIRD
+     * home, so they are not re-anchored — they are copied through unchanged,
+     * and they will be copied through unchanged again by the next clone.
+     * Repairing the destination leaves the source broken and the next clone
+     * failing identically, so the source is what the first line names. The
+     * second line is offered because a copy that already exists can be repaired
+     * where it stands.
+     *
+     * <h2>The destination is LEFT, deliberately, and is now said out loud</h2>
+     *
+     * <p>Deleting it would be a walk-back that destroys bytes the operator may
+     * have waited minutes for, which is precisely
+     * {@code GOAL-no-destructive-recovery}'s subject — {@code Executor}'s
+     * empty pre-state compensation (#186) is this epic's founding instance of
+     * a cleanup that removed more than it made. So the copy stays and the
+     * refusal NAMES it, rather than leaving an operator to discover a
+     * populated home that fails its own {@code home verify}.
+     */
+    private static void cloneFailureRemedy(HomeCloner.Report report) {
+        boolean foreignShim = report.leaks().stream()
+                .anyMatch(l -> HomeCloner.Leak.FOREIGN_PATH_IN_SHIM.equals(l.kind()));
+        Log.error("  the copy at %s was LEFT IN PLACE and does not pass `home verify` — "
+                + "nothing was deleted, because a clone that walks itself back destroys "
+                + "bytes it did not make", report.dest());
+        if (!foreignShim) {
+            Log.error("  inspect it with: %s home verify --home %s",
+                    VerifyCmd.homeEnvPrefix(report.dest()),
+                    HomeDescriptor.shellQuote(report.dest().toString()));
+            return;
+        }
+        Log.error("  repair the SOURCE and clone again: %s home repair --home %s --fix",
+                VerifyCmd.homeEnvPrefix(report.source()),
+                HomeDescriptor.shellQuote(report.source().toString()));
+        Log.error("    (the source is what to fix: these paths name a THIRD home, so the "
+                + "clone does not re-anchor them and the next clone copies them through "
+                + "unchanged. To repair the copy where it stands instead: %s home repair "
+                + "--home %s --fix)",
+                VerifyCmd.homeEnvPrefix(report.dest()),
+                HomeDescriptor.shellQuote(report.dest().toString()));
+    }
+
+    /**
+     * {@code home repair} — name what is damaged in a home, and (only when
+     * asked) fix it.
+     *
+     * <h2>The command that did not exist</h2>
+     *
+     * <p>HIS-13 / issue #159. This subcommand list held {@code clone},
+     * {@code verify}, {@code describe}, {@code policy}, {@code shims},
+     * {@code drift}, {@code sync}, {@code close-out} and
+     * {@code refresh-plugins}, and <b>nothing that repaired</b>. Every guard in
+     * this program prevents the NEXT instance; a home that already took the
+     * damage stayed damaged until a person noticed an odd path in a file. That
+     * happened twice to the operator's root home inside one epic, and both
+     * times a person is what found it.
+     *
+     * <h2>Why the verb is {@code repair} and the default is DETECT</h2>
+     *
+     * <p>DEF-067: an observer that repairs is no longer an observer.
+     * {@code HomeFixpointLaw} parses the remedy out of a refusal and runs it,
+     * so it can silently repair the condition it was checking and report PASS
+     * — and the evidence for telling "the product is broken" from "a fixture
+     * left that there" is exactly what it destroys.
+     *
+     * <p>This command ships the repairer, so the split is a property of the
+     * command rather than a convention: <b>the bare command mutates nothing.</b>
+     * It prints one line per finding, each naming what would repair that
+     * finding, and exits 1. {@code --fix} is the only spelling that writes.
+     * A caller that wants an observer gets one by not passing a flag, and
+     * running detection any number of times on a damaged home leaves it damaged
+     * and leaves the verdict red. There is a graph node that asserts exactly
+     * that, and it runs detect, repair and detect as three separate processes.
+     *
+     * <p>{@code --fix} re-runs detection AFTER repairing and exits on the
+     * second verdict, not on its own opinion of how it went. A repairer that
+     * reports its own success has asserted nothing (#142).
+     */
+    @Command(name = "repair",
+            description = "Report what is damaged in a home — mis-anchored agent skill links, "
+                    + "shims pointing into another home, entry points pruned that this home's "
+                    + "descent record says were inherited, and a CLI pin naming a build that is "
+                    + "gone. Reports only; pass --fix to repair.")
+    public static final class RepairCmd implements Callable<Integer> {
+
+        /**
+         * {@code --root} is a synonym here for the reason it is on
+         * {@code verify}: {@code bootstrap-home.sh} spells its home argument
+         * {@code --root}, and a remedy an agent cannot type is not a remedy.
+         */
+        @Option(names = {"--home", "--root"},
+                description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+        Path home;
+
+        @Option(names = "--fix",
+                description = "Carry out the repairs. WITHOUT THIS THE COMMAND WRITES NOTHING — "
+                        + "it reports, and a damaged home stays damaged.")
+        boolean fix;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        private final SkillStore injectedStore;
+
+        /**
+         * The build a broken CLI pin is re-pinned at, when the caller already
+         * knows it; {@code RunningCli} answers when nothing is injected.
+         *
+         * <p>The seam exists because an in-process test cannot be located as a
+         * running CLI, and a {@code DANGLING_CLI_PIN} finding that silently
+         * downgraded to unrepairable would let an idempotence assertion pass
+         * over a repair that never ran — mechanism C of the vacuity ledger.
+         * Same argument, and the same shape, as
+         * {@link LauncherShims#write(SkillStore, Path)}.
+         */
+        private final Path injectedPin;
+
+        public RepairCmd() { this(null, null); }
+
+        public RepairCmd(SkillStore injectedStore) { this(injectedStore, null); }
+
+        public RepairCmd(SkillStore injectedStore, Path injectedPin) {
+            this.injectedStore = injectedStore;
+            this.injectedPin = injectedPin;
+        }
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store;
+            try {
+                store = requireHome(injectedStore, home, false,
+                        home != null
+                                ? "home repair --home"
+                                : "home repair (no --home; home taken from $"
+                                        + SkillStore.HOME_ENV + ")",
+                        null);
+            } catch (NotAHomeException notAHome) {
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
+            Path root = store.root();
+            Path pin = injectedPin != null
+                    ? injectedPin
+                    : dev.skillmanager.launch.RunningCli.locateOrNull();
+            if (!fix) {
+                HomeRepair.Report report = HomeRepair.detect(root, pin);
+                if (json) {
+                    System.out.println(reportJson(report, null));
+                    return report.clean() ? 0 : 1;
+                }
+                render(report, root);
+                return report.clean() ? 0 : 1;
+            }
+            HomeRepair.Outcome outcome;
+            try {
+                outcome = HomeRepair.repair(root, pin);
+            } catch (FrozenHomeException frozen) {
+                if (json) System.out.println("""
+                        {"home":"%s","error":"frozen"}""".formatted(esc(root.toString())));
+                Log.error("%s", frozen.getMessage());
+                return FrozenHomeException.EXIT_CODE;
+            }
+            if (json) {
+                System.out.println(reportJson(outcome.after(), outcome));
+                return outcome.after().clean() ? 0 : 1;
+            }
+            Log.ok("repaired %d of %d finding(s) in %s",
+                    outcome.repaired().size(), outcome.before().findings().size(), root);
+            for (HomeRepair.Finding finding : outcome.repaired()) {
+                Log.detail("  %s %s -> %s", finding.kind(), finding.subject(), finding.target());
+            }
+            if (!outcome.failed().isEmpty()) {
+                Log.error("%d repair(s) were refused", outcome.failed().size());
+                Log.errorList("    ", outcome.failed());
+            }
+            // The verdict is DETECTION's, taken after the repair ran. Saying
+            // "repaired 3" and exiting 0 would be the remedy-that-does-not-work
+            // class (#142) with a nicer message.
+            render(outcome.after(), root);
+            return outcome.after().clean() ? 0 : 1;
+        }
+
+        /**
+         * One line per finding, and the repair on the line under it.
+         *
+         * <p>Not one line per finding with the repair appended: the paths in
+         * both halves are absolute and long, and the measured failure mode for
+         * this shape of output is that the reader stops at the first wrap. The
+         * remedy is indented under the finding it belongs to, so a finding and
+         * its repair cannot be read apart.
+         */
+        private static void render(HomeRepair.Report report, Path root) {
+            if (report.clean()) {
+                // The scope is stated, because a clean verdict over zero
+                // subjects is not a clean home. Same discipline as `verify`'s
+                // NOT CHECKED clause.
+                Log.ok("nothing in %s is damaged in a way this command knows about "
+                        + "(%d entr%s examined)", root, report.examined(),
+                        report.examined() == 1 ? "y" : "ies");
+                return;
+            }
+            Log.error("%d finding(s) in %s, of %d entr%s examined",
+                    report.findings().size(), root, report.examined(),
+                    report.examined() == 1 ? "y" : "ies");
+            for (HomeRepair.Finding finding : report.findings()) {
+                Log.error("  %s %s — %s",
+                        finding.kind(), finding.subject(), finding.detail());
+                Log.error("      repair: %s", finding.remedy());
+            }
+            int repairable = report.repairable().size();
+            if (repairable > 0) {
+                Log.error("  %d of these can be repaired by: skill-manager home repair "
+                        + "--home %s --fix", repairable, root);
+            }
+            if (repairable < report.findings().size()) {
+                // Named rather than silently folded in, so nobody runs --fix
+                // and reads a non-zero exit as a failed repair.
+                Log.error("  %d cannot be repaired by this command — the lines above say why",
+                        report.findings().size() - repairable);
+            }
+        }
+
+        private static String reportJson(HomeRepair.Report report, HomeRepair.Outcome outcome) {
+            StringBuilder sb = new StringBuilder("{\"home\":\"")
+                    .append(esc(report.home().toString()))
+                    .append("\",\"examined\":").append(report.examined())
+                    .append(",\"clean\":").append(report.clean())
+                    .append(",\"findings\":[");
+            for (int i = 0; i < report.findings().size(); i++) {
+                HomeRepair.Finding f = report.findings().get(i);
+                if (i > 0) sb.append(',');
+                sb.append("{\"kind\":\"").append(f.kind())
+                        .append("\",\"subject\":\"").append(esc(f.subject()))
+                        .append("\",\"detail\":\"").append(esc(f.detail()))
+                        .append("\",\"repair\":\"").append(esc(f.remedy()))
+                        .append("\",\"repairable\":").append(f.repairable()).append('}');
+            }
+            sb.append(']');
+            if (outcome != null) {
+                sb.append(",\"repaired\":").append(outcome.repaired().size())
+                        .append(",\"failed\":").append(outcome.failed().size())
+                        .append(",\"wasDamaged\":").append(!outcome.before().clean());
+            }
+            return sb.append('}').toString();
         }
     }
 

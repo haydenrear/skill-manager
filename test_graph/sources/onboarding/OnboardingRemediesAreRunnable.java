@@ -50,7 +50,8 @@ import java.util.List;
  *       <br><b>Companion:</b> the extracted set must be non-empty and must
  *       include the two known remedies — the {@code home verify} sentence in
  *       {@code bootstrap-home.sh}'s warning, and the re-provision remedy
- *       ({@code sync --force-scripts}) as {@code home verify} itself prints it.
+ *       ({@code build --stale}, ARTI-06's per-artifact repair) as
+ *       {@code home verify} itself prints it.
  *       If neither is found the extractor is broken and the node fails.
  *       <br><b>The second one moved, and its old spelling must not come back.</b>
  *       {@code bootstrap-home.sh} and {@code home clone} both used to print
@@ -203,7 +204,21 @@ public class OnboardingRemediesAreRunnable {
             // assertions are each other's companion — the absence below cannot
             // pass by the search being broken, because the identical search
             // finds it here.
-            String reprovisionRemedy = remedyLineNaming(workingLog, "sync --force-scripts");
+            //
+            // ARTI-06 changed the VERB and nothing else about this property.
+            // `home verify` now prints `build`— the per-artifact repair the
+            // per-instance diagnosis always implied — instead of
+            // `sync --force-scripts`, which rebuilt every skill-script in the
+            // home to fix one shim. The axis-pinning assertion below is
+            // untouched and is still the whole of #145.
+            //
+            // The needle is the VERB and not a flag, because the remedy has two
+            // legitimate spellings: it NAMES the artifacts that own the failing
+            // references (`build 'cli-shim:pip/…'`), and falls back to
+            // `build --stale` only when the join finds no artifact with a
+            // producer behind them. Pinning either spelling here would make
+            // this node fail on a home that got the other one.
+            String reprovisionRemedy = remedyLineNaming(workingLog, " build ");
             boolean theEnforcingCommandPrintsTheReprovisionRemedy = !reprovisionRemedy.isEmpty();
             boolean theReprovisionRemedyPinsBothAxes =
                     reprovisionRemedy.contains("SKILL_MANAGER_HOME=")

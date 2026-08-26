@@ -1,0 +1,8 @@
+promotion order 1: HIS-1  PR #219  feature/214-his-1  -> fd12f45
+promotion order 2: HIS-2  PR #220  feature/212-his-2  -> 8d06d6b
+integrated tip: 8d06d6b
+  jbang RunTests.java           ALL PASSED
+  run.py home-integrity         BUILD SUCCESSFUL (3m49s)
+  run.py sync-settles           BUILD SUCCESSFUL (48s)
+  check_yaml.py                 123 files, 0 findings
+worktrees created: none — see "Guardrails overridden" in wave-1.md

@@ -1,0 +1,891 @@
+{"runId":"20260822-002349","status":"passed","traceId":"718a60b0e5640a3c52babe461c74965f","execution":{"mode":"full","graphName":"ticket-lifecycle","complete":true,"expectedNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","ticket.lifecycle.agent.edits","ticket.lifecycle.caches","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.first.launch","ticket.lifecycle.fixture.built","ticket.lifecycle.global.home.untouched","ticket.lifecycle.next.agent","ticket.lifecycle.provisioned","ticket.lifecycle.publish","ticket.lifecycle.teardown"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:23:50.038838Z",
+  "endedAt" : "2026-08-22T00:23:50.063240Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 59713,
+    "gatewayPort" : 59714,
+    "durationMs" : 25
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/agent-home/.gemini",
+    "registryPort" : "59713",
+    "gatewayPort" : "59714"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:23:49.412420Z","executorEndedAt":"2026-08-22T00:24:04.565357Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:29:13.139126Z",
+  "endedAt" : "2026-08-22T00:29:26.879505Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 3,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 1,
+    "durationMs" : 13740
+  },
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/root-home\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-C/.skill-manager\nSKIPPED (outside the sandbox, never mutated): /Users/hayde/.skill-manager/skills/git-issue-workflow/scripts" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/root-home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-C/.skill-manager",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:29:12.471870Z","executorEndedAt":"2026-08-22T00:29:40.346979Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.agent.edits",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:26:26.806548Z",
+  "endedAt" : "2026-08-22T00:26:26.902329Z",
+  "assertions" : [ {
+    "name" : "both_tickets_edited_the_shared_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_two_edits_to_the_shared_unit_are_different",
+    "status" : "passed"
+  }, {
+    "name" : "each_ticket_also_edited_a_unit_only_it_touches",
+    "status" : "passed"
+  }, {
+    "name" : "neither_tickets_edit_reached_the_others_home",
+    "status" : "passed"
+  }, {
+    "name" : "an_agents_edit_does_not_reach_the_project_home_by_itself",
+    "status" : "passed"
+  }, {
+    "name" : "every_edit_is_invisible_to_every_git_working_tree",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 96
+  },
+  "logs" : [ ],
+  "published" : {
+    "sharedContentA" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-A improved the shared skill\n",
+    "sharedContentB" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-B improved the shared skill, differently\n"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:26:26.173524Z","executorEndedAt":"2026-08-22T00:26:39.899151Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.agent.edits.stdout.log","inputContextFile":"context/ticket.lifecycle.agent.edits.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.caches",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:26:07.452538Z",
+  "endedAt" : "2026-08-22T00:26:10.088124Z",
+  "assertions" : [ {
+    "name" : "both_worktrees_launch_environments_were_read",
+    "status" : "passed"
+  }, {
+    "name" : "the_package_stores_are_shared_across_both_live_worktrees",
+    "status" : "passed"
+  }, {
+    "name" : "no_install_target_is_smuggled_into_the_shared_block",
+    "status" : "passed"
+  }, {
+    "name" : "the_cache_oracle_detects_a_private_per_home_cache",
+    "status" : "passed"
+  }, {
+    "name" : "the_cache_oracle_leaves_the_unmutated_pair_clean",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "print-env-a",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
+    "startedAt" : "2026-08-22T00:26:07.457835Z",
+    "endedAt" : "2026-08-22T00:26:08.771176Z",
+    "exitCode" : 0,
+    "pid" : 64075,
+    "log" : "node-logs/ticket.lifecycle.caches.print-env-a.log",
+    "error" : null
+  }, {
+    "label" : "print-env-b",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B", "--print-env" ],
+    "startedAt" : "2026-08-22T00:26:08.771506Z",
+    "endedAt" : "2026-08-22T00:26:10.082088Z",
+    "exitCode" : 0,
+    "pid" : 64112,
+    "log" : "node-logs/ticket.lifecycle.caches.print-env-b.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "sharedStoresChecked" : 3,
+    "durationMs" : 2636
+  },
+  "logs" : [ "A: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/Library/Caches/pip  B: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/Library/Caches/pip" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:26:06.765037Z","executorEndedAt":"2026-08-22T00:26:26.154244Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.caches.stdout.log","inputContextFile":"context/ticket.lifecycle.caches.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.concurrent.close.out",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:26:40.575502Z",
+  "endedAt" : "2026-08-22T00:27:04.019367Z",
+  "assertions" : [ {
+    "name" : "both_close_change_runs_were_refused_by_the_gate",
+    "status" : "passed"
+  }, {
+    "name" : "each_refusal_names_its_own_units_and_not_the_others",
+    "status" : "passed"
+  }, {
+    "name" : "a_refused_close_change_removes_no_worktree",
+    "status" : "passed"
+  }, {
+    "name" : "the_close_out_gate_writes_nothing_at_all",
+    "status" : "passed"
+  }, {
+    "name" : "every_remedy_the_gate_printed_is_an_absolute_runnable_command",
+    "status" : "passed"
+  }, {
+    "name" : "the_lock_probe_can_observe_a_holder_before_it_is_believed",
+    "status" : "passed"
+  }, {
+    "name" : "both_concurrent_syncs_ran_to_completion",
+    "status" : "passed"
+  }, {
+    "name" : "the_two_syncs_were_genuinely_alive_at_the_same_time",
+    "status" : "passed"
+  }, {
+    "name" : "both_syncs_took_the_project_homes_lock",
+    "status" : "passed"
+  }, {
+    "name" : "their_locked_sections_do_not_overlap",
+    "status" : "passed"
+  }, {
+    "name" : "one_sync_waited_for_the_other_rather_than_interleaving",
+    "status" : "passed"
+  }, {
+    "name" : "the_destination_is_still_coherent_as_a_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_concurrent_pass_left_no_staging_leftovers",
+    "status" : "passed"
+  }, {
+    "name" : "the_lock_oracle_detects_a_genuinely_unserialised_pair",
+    "status" : "passed"
+  }, {
+    "name" : "the_lock_oracle_accepts_a_properly_locked_pair",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "lockprobe-selftest",
+    "command" : [ "python3", "/Users/hayde/IdeaProjects/wt-161-his-12/test_graph/sources/ticket-lifecycle/lockprobe.py", "selftest", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/concurrency/selftest.lock" ],
+    "startedAt" : "2026-08-22T00:26:43.270468Z",
+    "endedAt" : "2026-08-22T00:26:43.416468Z",
+    "exitCode" : 0,
+    "pid" : 64461,
+    "log" : "node-logs/ticket.lifecycle.concurrent.close.out.lockprobe-selftest.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "lockSamples" : 347,
+    "heldSamples" : 14,
+    "distinctHolders" : 2,
+    "processOverlapMillis" : 6318,
+    "durationMs" : 23444
+  },
+  "logs" : [ "real: holders=[64466, 64465] intervals=[Held[pid=64466, firstMillis=6000, lastMillis=6110], Held[pid=64465, firstMillis=6128, lastMillis=6239]] heldSamples=14", "unserialised control: holders=[] intervals=[] heldSamples=0", "serialised control: holders=[64532, 64531] intervals=[Held[pid=64532, firstMillis=5981, lastMillis=6971], Held[pid=64531, firstMillis=6989, lastMillis=7983]] heldSamples=111" ],
+  "published" : {
+    "syncLogA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/concurrency/real.a.log",
+    "syncLogB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/concurrency/real.b.log",
+    "syncExitA" : "0",
+    "syncExitB" : "0"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:26:39.912926Z","executorEndedAt":"2026-08-22T00:27:16.913651Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.concurrent.close.out.stdout.log","inputContextFile":"context/ticket.lifecycle.concurrent.close.out.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.conflict",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:27:17.579983Z",
+  "endedAt" : "2026-08-22T00:27:23.450948Z",
+  "assertions" : [ {
+    "name" : "exactly_one_tickets_edit_landed_in_the_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_ticket_that_lost_the_race_is_blocked_on_the_shared_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_shared_unit_is_reported_conflicted",
+    "status" : "passed"
+  }, {
+    "name" : "every_reported_conflict_is_a_path_inside_the_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_remedys_tail_lists_the_files_to_resolve_and_nothing_else",
+    "status" : "passed"
+  }, {
+    "name" : "the_winning_tickets_bytes_were_not_silently_clobbered",
+    "status" : "passed"
+  }, {
+    "name" : "the_clobber_oracle_detects_a_planted_silent_clobber",
+    "status" : "passed"
+  }, {
+    "name" : "the_planted_clobber_was_reverted",
+    "status" : "passed"
+  }, {
+    "name" : "the_units_that_are_not_in_conflict_landed_clean",
+    "status" : "passed"
+  }, {
+    "name" : "resolving_the_file_on_both_sides_ends_the_conflict",
+    "status" : "passed"
+  }, {
+    "name" : "the_other_edit_to_the_conflicted_unit_survives_the_conflict",
+    "status" : "passed"
+  }, {
+    "name" : "both_worktrees_can_be_torn_down_once_the_conflict_is_resolved",
+    "status" : "passed"
+  }, {
+    "name" : "both_tickets_contributions_survived_the_resolution",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "close-out-loser",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:27:17.587480Z",
+    "endedAt" : "2026-08-22T00:27:18.752506Z",
+    "exitCode" : 1,
+    "pid" : 64582,
+    "log" : "node-logs/ticket.lifecycle.conflict.close-out-loser.log",
+    "error" : null
+  }, {
+    "label" : "sync-after-resolve",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:27:19.897097Z",
+    "endedAt" : "2026-08-22T00:27:21.084876Z",
+    "exitCode" : 0,
+    "pid" : 64600,
+    "log" : "node-logs/ticket.lifecycle.conflict.sync-after-resolve.log",
+    "error" : null
+  }, {
+    "label" : "close-out-cleared-a",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:27:21.085806Z",
+    "endedAt" : "2026-08-22T00:27:22.292548Z",
+    "exitCode" : 0,
+    "pid" : 64609,
+    "log" : "node-logs/ticket.lifecycle.conflict.close-out-cleared-a.log",
+    "error" : null
+  }, {
+    "label" : "close-out-cleared-b",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:27:22.292843Z",
+    "endedAt" : "2026-08-22T00:27:23.449628Z",
+    "exitCode" : 0,
+    "pid" : 64621,
+    "log" : "node-logs/ticket.lifecycle.conflict.close-out-cleared-b.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "remedyRounds" : 1,
+    "conflictsReported" : 1,
+    "durationMs" : 5871
+  },
+  "logs" : [ "loser was TICKET-A; remedies: [/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager home sync --from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager --to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager --merge  (then resolve: SKILL.md)]" ],
+  "published" : {
+    "resolvedShared" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-B improved the shared skill, differently\nTICKET-A improved the shared skill\n"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:27:16.926991Z","executorEndedAt":"2026-08-22T00:27:38.267862Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.conflict.stdout.log","inputContextFile":"context/ticket.lifecycle.conflict.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.first.launch",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:25:44.761740Z",
+  "endedAt" : "2026-08-22T00:25:53.956567Z",
+  "assertions" : [ {
+    "name" : "the_drift_query_gives_a_machine_readable_answer",
+    "status" : "passed"
+  }, {
+    "name" : "a_freshly_cloned_worktree_home_is_not_reported_as_drifted",
+    "status" : "passed"
+  }, {
+    "name" : "a_clean_worktree_homes_first_launch_is_not_refused",
+    "status" : "passed"
+  }, {
+    "name" : "recording_a_change_reports_it_pending_and_exits_like_the_gate",
+    "status" : "passed"
+  }, {
+    "name" : "a_launch_against_an_unread_change_is_refused_with_exit_8",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_the_unit_that_moved",
+    "status" : "passed"
+  }, {
+    "name" : "every_remedy_the_refusal_prints_names_an_existing_executable",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_the_subcommand_that_clears_it",
+    "status" : "passed"
+  }, {
+    "name" : "running_the_remedy_opens_the_gate",
+    "status" : "passed"
+  }, {
+    "name" : "the_launch_environment_resolves_to_this_worktrees_own_home",
+    "status" : "passed"
+  }, {
+    "name" : "this_homes_own_cli_is_first_on_the_launch_path",
+    "status" : "passed"
+  }, {
+    "name" : "all_three_launch_shims_are_executable",
+    "status" : "passed"
+  }, {
+    "name" : "every_remedy_names_a_resolved_cli_not_a_bare_skill_manager",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "drift-fresh",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T00:25:44.766626Z",
+    "endedAt" : "2026-08-22T00:25:46.056647Z",
+    "exitCode" : 0,
+    "pid" : 62819,
+    "log" : "node-logs/ticket.lifecycle.first.launch.drift-fresh.log",
+    "error" : null
+  }, {
+    "label" : "launch-fresh",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
+    "startedAt" : "2026-08-22T00:25:46.059607Z",
+    "endedAt" : "2026-08-22T00:25:47.375605Z",
+    "exitCode" : 0,
+    "pid" : 62860,
+    "log" : "node-logs/ticket.lifecycle.first.launch.launch-fresh.log",
+    "error" : null
+  }, {
+    "label" : "drift-record",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--record", "--json" ],
+    "startedAt" : "2026-08-22T00:25:47.376715Z",
+    "endedAt" : "2026-08-22T00:25:48.691505Z",
+    "exitCode" : 8,
+    "pid" : 62909,
+    "log" : "node-logs/ticket.lifecycle.first.launch.drift-record.log",
+    "error" : null
+  }, {
+    "label" : "launch-refused",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
+    "startedAt" : "2026-08-22T00:25:48.692054Z",
+    "endedAt" : "2026-08-22T00:25:50.009189Z",
+    "exitCode" : 8,
+    "pid" : 62997,
+    "log" : "node-logs/ticket.lifecycle.first.launch.launch-refused.log",
+    "error" : null
+  }, {
+    "label" : "drift-ack",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--ack", "--json" ],
+    "startedAt" : "2026-08-22T00:25:50.011818Z",
+    "endedAt" : "2026-08-22T00:25:51.302315Z",
+    "exitCode" : 0,
+    "pid" : 63084,
+    "log" : "node-logs/ticket.lifecycle.first.launch.drift-ack.log",
+    "error" : null
+  }, {
+    "label" : "launch-after-ack",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
+    "startedAt" : "2026-08-22T00:25:51.302595Z",
+    "endedAt" : "2026-08-22T00:25:52.653623Z",
+    "exitCode" : 0,
+    "pid" : 63170,
+    "log" : "node-logs/ticket.lifecycle.first.launch.launch-after-ack.log",
+    "error" : null
+  }, {
+    "label" : "exec-print-env",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
+    "startedAt" : "2026-08-22T00:25:52.653903Z",
+    "endedAt" : "2026-08-22T00:25:53.955076Z",
+    "exitCode" : 0,
+    "pid" : 63260,
+    "log" : "node-logs/ticket.lifecycle.first.launch.exec-print-env.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "remediesChecked" : 2,
+    "remedyIsAbsolutelyResolved" : 1,
+    "freshDriftExit" : 0,
+    "refusedLaunchExit" : 8,
+    "durationMs" : 9195
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:25:44.056285Z","executorEndedAt":"2026-08-22T00:26:06.739938Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.first.launch.stdout.log","inputContextFile":"context/ticket.lifecycle.first.launch.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.fixture.built",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:24:05.247020Z",
+  "endedAt" : "2026-08-22T00:24:41.173113Z",
+  "assertions" : [ {
+    "name" : "the_integration_scripts_under_test_were_found",
+    "status" : "passed"
+  }, {
+    "name" : "every_install_into_the_root_home_exited_zero",
+    "status" : "passed"
+  }, {
+    "name" : "the_root_home_holds_all_three_units_including_a_nested_file",
+    "status" : "passed"
+  }, {
+    "name" : "the_checkout_is_a_real_git_repository",
+    "status" : "passed"
+  }, {
+    "name" : "the_checkout_is_clean_so_new_change_will_not_refuse_it",
+    "status" : "passed"
+  }, {
+    "name" : "bootstrap_home_sh_gave_the_checkout_a_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_home_is_its_own_copy_of_the_root_home",
+    "status" : "passed"
+  }, {
+    "name" : "bootstrapping_a_home_leaves_the_checkout_clean",
+    "status" : "passed"
+  }, {
+    "name" : "no_global_home_exists_in_the_sandbox_yet",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_is_armed_over_the_operators_real_homes",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-tl-shared",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/sources/tl-shared", "--yes" ],
+    "startedAt" : "2026-08-22T00:24:05.275064Z",
+    "endedAt" : "2026-08-22T00:24:15.573697Z",
+    "exitCode" : 0,
+    "pid" : 58930,
+    "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-shared.log",
+    "error" : null
+  }, {
+    "label" : "install-tl-x",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/sources/tl-x", "--yes" ],
+    "startedAt" : "2026-08-22T00:24:15.574022Z",
+    "endedAt" : "2026-08-22T00:24:18.144672Z",
+    "exitCode" : 0,
+    "pid" : 58964,
+    "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-x.log",
+    "error" : null
+  }, {
+    "label" : "install-tl-y",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/sources/tl-y", "--yes" ],
+    "startedAt" : "2026-08-22T00:24:18.144947Z",
+    "endedAt" : "2026-08-22T00:24:20.716240Z",
+    "exitCode" : 0,
+    "pid" : 58988,
+    "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-y.log",
+    "error" : null
+  }, {
+    "label" : "bootstrap-project-home",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "--root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj", "--source", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/root-home" ],
+    "startedAt" : "2026-08-22T00:24:20.869686Z",
+    "endedAt" : "2026-08-22T00:24:37.173580Z",
+    "exitCode" : 0,
+    "pid" : 59041,
+    "log" : "node-logs/ticket.lifecycle.fixture.built.bootstrap-project-home.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "rootUnits" : 3,
+    "durationMs" : 35926
+  },
+  "logs" : [ "scripts: the git-issue-workflow skill installed in /Users/hayde/.skill-manager" ],
+  "published" : {
+    "workspace" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle",
+    "rootHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/root-home",
+    "checkout" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj",
+    "projectHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager",
+    "ambientHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/ambient",
+    "sourcesDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/sources",
+    "scriptsDir" : "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts",
+    "sandboxGlobalHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/.skill-manager",
+    "leakBaseline" : "/Users/hayde/IdeaProjects/wt-161-his-12/test_graph/build/validation-reports/20260822-002349/ticket-lifecycle.leak-baseline.txt",
+    "configBaseline" : "/Users/hayde/IdeaProjects/wt-161-his-12/test_graph/build/validation-reports/20260822-002349/ticket-lifecycle.config-baseline.txt",
+    "leakRoots" : "/Users/hayde/.skill-manager:/Users/hayde/.claude:/Users/hayde/.codex:/Users/hayde/.gemini"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:24:04.591570Z","executorEndedAt":"2026-08-22T00:24:55.541289Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.fixture.built.stdout.log","inputContextFile":"context/ticket.lifecycle.fixture.built.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.global.home.untouched",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:28:54.161047Z",
+  "endedAt" : "2026-08-22T00:28:58.989865Z",
+  "assertions" : [ {
+    "name" : "the_workflow_never_created_a_global_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_baseline_is_readable",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_baseline_watched_a_non_trivial_tree",
+    "status" : "passed"
+  }, {
+    "name" : "the_operators_real_agent_homes_did_not_move",
+    "status" : "passed"
+  }, {
+    "name" : "an_unchanged_tree_reports_clean",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_a_planted_unit_directory",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_a_planted_symlink",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_an_in_place_rewrite",
+    "status" : "passed"
+  }, {
+    "name" : "the_config_check_covers_the_sibling_claude_json_file",
+    "status" : "passed"
+  }, {
+    "name" : "the_agent_config_registrations_are_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "an_unchanged_agent_home_reports_clean",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_a_repointed_agent_skill_link",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "baselineEntries" : 79311,
+    "differencesFound" : 0,
+    "worktreeRegistrationChanges" : 0,
+    "durationMs" : 4828
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:28:53.491220Z","executorEndedAt":"2026-08-22T00:29:12.454551Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.global.home.untouched.stdout.log","inputContextFile":"context/ticket.lifecycle.global.home.untouched.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.next.agent",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:28:03.537321Z",
+  "endedAt" : "2026-08-22T00:28:17.218564Z",
+  "assertions" : [ {
+    "name" : "a_third_ticket_worktree_provisions_after_the_first_two_are_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_next_agent_inherits_the_first_tickets_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_next_agent_inherits_the_second_tickets_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_next_agent_inherits_the_resolved_shared_unit",
+    "status" : "passed"
+  }, {
+    "name" : "every_unit_arrived_byte_for_byte",
+    "status" : "passed"
+  }, {
+    "name" : "the_third_worktrees_home_is_still_its_own_copy",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "new-change-c",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-C" ],
+    "startedAt" : "2026-08-22T00:28:03.542882Z",
+    "endedAt" : "2026-08-22T00:28:17.208655Z",
+    "exitCode" : 0,
+    "pid" : 65190,
+    "log" : "node-logs/ticket.lifecycle.next.agent.new-change-c.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 13681
+  },
+  "logs" : [ ],
+  "published" : {
+    "worktreeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-C",
+    "homeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-C/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:28:02.891378Z","executorEndedAt":"2026-08-22T00:28:31.073664Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.next.agent.stdout.log","inputContextFile":"context/ticket.lifecycle.next.agent.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.provisioned",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:24:56.257473Z",
+  "endedAt" : "2026-08-22T00:25:31.185897Z",
+  "assertions" : [ {
+    "name" : "new_change_sh_provisioned_both_ticket_worktrees",
+    "status" : "passed"
+  }, {
+    "name" : "each_worktree_exists_and_carries_its_own_home",
+    "status" : "passed"
+  }, {
+    "name" : "each_worktree_is_on_its_own_feature_branch",
+    "status" : "passed"
+  }, {
+    "name" : "all_four_home_roots_are_distinct_inodes",
+    "status" : "passed"
+  }, {
+    "name" : "a_file_the_agent_will_edit_is_a_distinct_inode_per_home",
+    "status" : "passed"
+  }, {
+    "name" : "no_path_in_a_worktree_home_resolves_back_to_the_homes_above_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_reference_walk_read_the_tree_it_claims_to_have_read",
+    "status" : "passed"
+  }, {
+    "name" : "the_reference_walk_finds_a_planted_reference_to_another_home",
+    "status" : "passed"
+  }, {
+    "name" : "each_worktree_home_has_a_pinned_cli_that_actually_runs",
+    "status" : "passed"
+  }, {
+    "name" : "production_agrees_the_worktree_home_reaches_no_other_home",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "new-change-a",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-A" ],
+    "startedAt" : "2026-08-22T00:24:56.262466Z",
+    "endedAt" : "2026-08-22T00:25:11.324412Z",
+    "exitCode" : 0,
+    "pid" : 59585,
+    "log" : "node-logs/ticket.lifecycle.provisioned.new-change-a.log",
+    "error" : null
+  }, {
+    "label" : "new-change-b",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-B" ],
+    "startedAt" : "2026-08-22T00:25:11.324713Z",
+    "endedAt" : "2026-08-22T00:25:25.869467Z",
+    "exitCode" : 0,
+    "pid" : 60730,
+    "log" : "node-logs/ticket.lifecycle.provisioned.new-change-b.log",
+    "error" : null
+  }, {
+    "label" : "pin-probe-proj-TICKET-A",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--help" ],
+    "startedAt" : "2026-08-22T00:25:25.933356Z",
+    "endedAt" : "2026-08-22T00:25:27.220057Z",
+    "exitCode" : 0,
+    "pid" : 61621,
+    "log" : "node-logs/ticket.lifecycle.provisioned.pin-probe-proj-TICKET-A.log",
+    "error" : null
+  }, {
+    "label" : "pin-probe-proj-TICKET-B",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--help" ],
+    "startedAt" : "2026-08-22T00:25:27.220662Z",
+    "endedAt" : "2026-08-22T00:25:28.563091Z",
+    "exitCode" : 0,
+    "pid" : 61695,
+    "log" : "node-logs/ticket.lifecycle.provisioned.pin-probe-proj-TICKET-B.log",
+    "error" : null
+  }, {
+    "label" : "verify-proj-TICKET-A",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager" ],
+    "startedAt" : "2026-08-22T00:25:28.563667Z",
+    "endedAt" : "2026-08-22T00:25:29.878527Z",
+    "exitCode" : 0,
+    "pid" : 61733,
+    "log" : "node-logs/ticket.lifecycle.provisioned.verify-proj-TICKET-A.log",
+    "error" : null
+  }, {
+    "label" : "verify-proj-TICKET-B",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager" ],
+    "startedAt" : "2026-08-22T00:25:29.878806Z",
+    "endedAt" : "2026-08-22T00:25:31.185473Z",
+    "exitCode" : 0,
+    "pid" : 61789,
+    "log" : "node-logs/ticket.lifecycle.provisioned.verify-proj-TICKET-B.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "entriesScannedPerHome" : 30,
+    "plantedReferencesFound" : 2,
+    "durationMs" : 34928
+  },
+  "logs" : [ ],
+  "published" : {
+    "worktreeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A",
+    "worktreeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B",
+    "homeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager",
+    "homeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-B/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:24:55.559261Z","executorEndedAt":"2026-08-22T00:25:44.040963Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.provisioned.stdout.log","inputContextFile":"context/ticket.lifecycle.provisioned.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.publish",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:28:31.735391Z",
+  "endedAt" : "2026-08-22T00:28:39.691832Z",
+  "assertions" : [ {
+    "name" : "a_unit_installed_from_git_is_a_checkout_in_the_home",
+    "status" : "passed"
+  }, {
+    "name" : "a_dry_run_publish_reports_the_branch_and_base_it_would_use",
+    "status" : "passed"
+  }, {
+    "name" : "a_dry_run_publish_names_the_pull_request_it_would_open",
+    "status" : "passed"
+  }, {
+    "name" : "a_dry_run_publish_pushes_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "publish_pushes_the_home_edit_to_the_units_own_repository",
+    "status" : "passed"
+  }, {
+    "name" : "the_branch_is_named_skill_ticket_unit",
+    "status" : "passed"
+  }, {
+    "name" : "the_branch_is_based_on_the_trunk",
+    "status" : "passed"
+  }, {
+    "name" : "publish_never_moves_the_trunk",
+    "status" : "passed"
+  }, {
+    "name" : "the_branch_carries_the_agents_exact_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "only_the_files_the_agent_edited_moved",
+    "status" : "passed"
+  }, {
+    "name" : "publish_leaves_the_homes_checkout_clean",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-publishable",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/publish-sources/tl-pub", "--yes" ],
+    "startedAt" : "2026-08-22T00:28:31.988307Z",
+    "endedAt" : "2026-08-22T00:28:35.288758Z",
+    "exitCode" : 0,
+    "pid" : 65827,
+    "log" : "node-logs/ticket.lifecycle.publish.install-publishable.log",
+    "error" : null
+  }, {
+    "label" : "publish-dry-run",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run", "--json" ],
+    "startedAt" : "2026-08-22T00:28:35.353166Z",
+    "endedAt" : "2026-08-22T00:28:36.688036Z",
+    "exitCode" : 0,
+    "pid" : 65864,
+    "log" : "node-logs/ticket.lifecycle.publish.publish-dry-run.log",
+    "error" : null
+  }, {
+    "label" : "publish-dry-run-text",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run" ],
+    "startedAt" : "2026-08-22T00:28:36.688814Z",
+    "endedAt" : "2026-08-22T00:28:38.016039Z",
+    "exitCode" : 0,
+    "pid" : 65879,
+    "log" : "node-logs/ticket.lifecycle.publish.publish-dry-run-text.log",
+    "error" : null
+  }, {
+    "label" : "publish-no-pr",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--no-pr", "--json" ],
+    "startedAt" : "2026-08-22T00:28:38.056177Z",
+    "endedAt" : "2026-08-22T00:28:39.577538Z",
+    "exitCode" : 0,
+    "pid" : 65896,
+    "log" : "node-logs/ticket.lifecycle.publish.publish-no-pr.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "remoteBranches" : 2,
+    "filesMoved" : 1,
+    "durationMs" : 7956
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:28:31.088263Z","executorEndedAt":"2026-08-22T00:28:53.475384Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.publish.stdout.log","inputContextFile":"context/ticket.lifecycle.publish.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"},{
+  "nodeId" : "ticket.lifecycle.teardown",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T00:27:38.925882Z",
+  "endedAt" : "2026-08-22T00:27:49.854554Z",
+  "assertions" : [ {
+    "name" : "a_dry_run_runs_the_gate_and_removes_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "the_gate_refuses_while_the_home_still_holds_work",
+    "status" : "passed"
+  }, {
+    "name" : "a_refused_teardown_destroys_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_the_unit_whose_work_would_be_lost",
+    "status" : "passed"
+  }, {
+    "name" : "clearing_the_blocker_moves_the_work_to_the_project_home",
+    "status" : "passed"
+  }, {
+    "name" : "both_worktrees_are_removed_once_the_gate_is_clear",
+    "status" : "passed"
+  }, {
+    "name" : "the_gate_ran_before_each_removal",
+    "status" : "passed"
+  }, {
+    "name" : "both_worktree_directories_are_gone",
+    "status" : "passed"
+  }, {
+    "name" : "each_worktrees_home_went_with_it",
+    "status" : "passed"
+  }, {
+    "name" : "git_no_longer_registers_either_worktree",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "close-change-dry-run",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A", "--dry-run" ],
+    "startedAt" : "2026-08-22T00:27:38.930269Z",
+    "endedAt" : "2026-08-22T00:27:41.353462Z",
+    "exitCode" : 0,
+    "pid" : 64697,
+    "log" : "node-logs/ticket.lifecycle.teardown.close-change-dry-run.log",
+    "error" : null
+  }, {
+    "label" : "close-change-refused",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A" ],
+    "startedAt" : "2026-08-22T00:27:41.356455Z",
+    "endedAt" : "2026-08-22T00:27:43.790056Z",
+    "exitCode" : 4,
+    "pid" : 64794,
+    "log" : "node-logs/ticket.lifecycle.teardown.close-change-refused.log",
+    "error" : null
+  }, {
+    "label" : "sync-planted-work",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-161-his-12/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8569403303554660603/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T00:27:43.791061Z",
+    "endedAt" : "2026-08-22T00:27:44.983426Z",
+    "exitCode" : 0,
+    "pid" : 64899,
+    "log" : "node-logs/ticket.lifecycle.teardown.sync-planted-work.log",
+    "error" : null
+  }, {
+    "label" : "close-change-remove-a",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A" ],
+    "startedAt" : "2026-08-22T00:27:44.983920Z",
+    "endedAt" : "2026-08-22T00:27:47.397491Z",
+    "exitCode" : 0,
+    "pid" : 64908,
+    "log" : "node-logs/ticket.lifecycle.teardown.close-change-remove-a.log",
+    "error" : null
+  }, {
+    "label" : "close-change-remove-b",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-B" ],
+    "startedAt" : "2026-08-22T00:27:47.397778Z",
+    "endedAt" : "2026-08-22T00:27:49.833638Z",
+    "exitCode" : 0,
+    "pid" : 65010,
+    "log" : "node-logs/ticket.lifecycle.teardown.close-change-remove-b.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 10929
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T00:27:38.281564Z","executorEndedAt":"2026-08-22T00:28:02.876737Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.teardown.stdout.log","inputContextFile":"context/ticket.lifecycle.teardown.input.json","traceId":"718a60b0e5640a3c52babe461c74965f"}]}

@@ -1,0 +1,51 @@
+{
+  "task": "orient-root",
+  "rc": 0,
+  "wall_s": 272.2,
+  "is_error": false,
+  "num_turns": 23,
+  "cost_usd": 0.9036158000000001,
+  "corpus_bytes": 84743,
+  "corpus_tokens": 21186,
+  "other_read_bytes": 55263,
+  "total_tokens": 2003938,
+  "output_tokens": 14306,
+  "reads": [
+    {
+      "tool": "Read",
+      "bytes": 56690,
+      "target": "<fixture>/tier-root/skills/git-issue-workflo"
+    },
+    {
+      "tool": "Read",
+      "bytes": 10164,
+      "target": "<fixture>/tier-root/plugins/skt/src/skt/stat"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 1121,
+      "target": "<fixture>/tier-root/plugins/skt/src/skt/cont"
+    },
+    {
+      "tool": "Read",
+      "bytes": 2478,
+      "target": "<fixture>/tier-root/plugins/skt/src/skt/cont"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 177,
+      "target": "<fixture>/tier-root/plugins/skt/src/skt/home"
+    },
+    {
+      "tool": "Grep",
+      "bytes": 619,
+      "target": "<fixture>/tier-root/plugins/skt/src/skt/home"
+    },
+    {
+      "tool": "Read",
+      "bytes": 13494,
+      "target": "<fixture>/tier-root/plugins/skt/src/skt/publ"
+    }
+  ],
+  "answer": "```json\n{\"q1\":{\"answer\":\"project\",\"source\":\"$SKILL_MANAGER_HOME/plugins/skt/src/skt/context.py (classify_tier, lines 53-61)\",\"quote\":\"if is_linked_worktree(root) and _inside(home, root):\\n        return \\\"worktree\\\"\\n    return \\\"project\\\"\"},\n \"q2\":{\"answer\":\"It is a clone of an existing home. Per the documented bootstrap-clone rule, a main-working-tree checkout (which is what tier:project means here, since this checkout is not a linked worktree) clones from $SKILL_MANAGER_HOME if set at bootstrap time, else ~/.skill-manager. From that source it inherits the unit store (installed skills/plugins and their re-anchored projections ledger) but NOT cache/, tmp/, logs/, venvs/, tools/, or npm/, which are skipped and re-derived.\",\"source\":\"$SKILL_MANAGER_HOME/skills/git-issue-workflow/references/skill-homes.md (lines 20, 185-188, 354-356)\",\"quote\":\"the home (a clone of an existing home)\"},\n \"q3\":{\"answer\":\"(a) To reach the tier above (this project home's parent is the operator root home, ~/.skill-manager, per skt's _parent_home for tier=='project'): run `<home>/bin/cli/skill-manager home sync --from <home> --to <root_home> --merge --unit <unit-name>`. (b) To reach the skill's own git repository: run `<home>/bin/cli/skill-manager unit publish <unit-name> --ticket <ticket>`. Both together are what `skt publish <unit-name>` runs, in that order.\",\"source\":\"$SKILL_MANAGER_HOME/plugins/skt/src/skt/publish.py (lines 192-194, 267-270)\",\"quote\":\"targeted = _run_cli(\\n        home, \\\"home\\\", \\\"sync\\\", \\\"--from\\\", str(home), \\\"--to\\\", str(parent), \\\"--merge\\\",\\n        \\\"--unit\\\", unit_name,\\n    )\"},\n \"q4\":{\"answer\":\"~/.skill-manager (the operator's global root home).\",\"source\":\"$SKILL_MANAGER_HOME/skills/git-issue-workflow/references/skill-homes.md (lines 11-15)\",\"quote\":\"Parallel tickets collide there, and an improvement an agent makes to a skill has no defined route back to that skill's own repo.\"}}\n```"
+}

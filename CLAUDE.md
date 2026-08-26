@@ -58,3 +58,73 @@ failing task so later graphs in the sweep don't run.
   `skills/<contained>/SKILL.md` instead of detecting the plugin
   layout. Check `Resolver.resolveAll` and `Fetcher.locateSkillRoot`
   for plugin-aware probes (`PluginParser.looksLikePlugin`).
+
+### What CI runs, and how to know
+
+Do not read the matrix out of `ci.yml` — it is computed, not typed.
+`.github/scripts/select-graph-set.py` is the single source:
+
+| event | graph set |
+| --- | --- |
+| `push` on `main`; `pull_request` into `main` or `epic/**` | **none** — suspended, see below |
+| `schedule` (07:00 UTC) | **full** — every registered graph bar the named exclusions, plus the Selenium job |
+| `workflow_dispatch` | `graph_set: core\|full`, `run_browser_graphs: true\|false` |
+
+**The graphs do not run on a push or a PR right now**, at the owner's
+instruction ("disable the graphs and just run them locally for now"). The
+`graph-set` job carries `if: github.event_name == 'schedule' ||
+github.event_name == 'workflow_dispatch'`, and every graph job `needs:
+graph-set`, so push and PR skip the lot — including `graph-count`, so those
+runs produce no `graphs-executed` artifact at all. `unit-tests` and the
+`virtual-mcp-gateway` pytest job are unaffected and still run on both.
+
+**So run them locally** — that is now the only pre-merge graph signal:
+
+```
+python skills/test_graph/scripts/run.py <graph>
+python3 .github/scripts/select-graph-set.py --scope core --print   # what the core set is
+```
+
+Or on a runner, on demand, without waiting for 07:00 UTC:
+
+```
+gh workflow run ci.yml -R haydenrear/skill-manager --ref <branch> -f graph_set=core
+```
+
+**This costs GOAL-validation-floor metric (a)** — graphs executed per CI
+run, target ≥ 8 — on the push/PR half: **8 nightly, 0 per push and per PR.**
+It is a suspension and not a removal, which is why the `schedule` and
+`workflow_dispatch` triggers were kept; the terminal evaluation ticket
+decides which number the goal is read against.
+
+There remains deliberately no `push: epic/**` trigger: every ticket lands as
+a PR into the epic branch, and promotion is serialized, so ticket N+1's PR
+rebases onto N's merge and tests that integrated tree anyway. **A direct push
+to an epic branch runs nothing** until the next PR — accepted, because this
+epic promotes through PRs.
+
+Print either set without a runner:
+
+```
+python3 .github/scripts/select-graph-set.py --scope core --print
+python3 .github/scripts/select-graph-set.py --scope full --print
+```
+
+The selector fails if a name in `CORE` or `EXCLUDED` no longer exists in
+`test_graph/build.gradle.kts`, so renaming a graph breaks the selector
+loudly instead of shrinking the matrix silently. **Two graphs are excluded
+from every automatic set** — `refresh-flow` (integration-repo #53, ~1-in-4
+flake by construction) and `hyper-experiments` (#143, three third-party
+services) — and the reason is printed into the job summary of every run.
+
+**How many graphs did a run actually execute?** Read it, do not infer it:
+
+```
+gh run download <run-id> -R haydenrear/skill-manager -n graphs-executed
+jq .graphs_executed graphs-executed.json
+```
+
+`graphs_executed` counts graphs whose task ran, red or green;
+`graphs_passed` is the separate question. The whole matrix used to sit
+behind `vars.ENABLE_TEST_GRAPH`, which was never set — twelve graphs
+declared, zero executed, every run green.

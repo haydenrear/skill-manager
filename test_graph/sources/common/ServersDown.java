@@ -27,8 +27,19 @@ public class ServersDown {
     static final NodeSpec SPEC = NodeSpec.of("servers.down")
             .kind(NodeSpec.Kind.EVIDENCE)
             .tags("teardown")
-            .timeout("30s")
+            .timeout("90s")
             .retries(2);
+
+    /**
+     * A JVM shutting down under SIGTERM on a loaded machine needs more than
+     * five seconds; five was the old budget and it is what the graph kept
+     * missing. The node timeout above is raised with it so the wait cannot
+     * merely move the failure one level out.
+     */
+    private static final int GRACEFUL_STOP_SECONDS = 20;
+
+    /** After SIGKILL, only the reap is being waited for. */
+    private static final int FORCIBLE_STOP_SECONDS = 10;
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -58,19 +69,56 @@ public class ServersDown {
         try {
             if (!Files.isRegularFile(pidFile)) return true;
             long pid = Long.parseLong(Files.readString(pidFile).trim());
-            boolean stopped = ProcessHandle.of(pid).map(h -> {
-                h.destroy();
-                try {
-                    h.onExit().get(5, java.util.concurrent.TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    h.destroyForcibly();
-                }
-                return !h.isAlive();
-            }).orElse(true);
+            boolean stopped = ProcessHandle.of(pid).map(ServersDown::stop).orElse(true);
             Files.deleteIfExists(pidFile);
             return stopped;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * Stop one process and WAIT FOR IT TO BE GONE, rather than asking whether
+     * it is gone the instant after asking it to leave.
+     *
+     * <p>The previous shape raced its own kill and lost, reproducibly, on a
+     * loaded machine:
+     *
+     * <pre>
+     *   h.destroy();                                  // SIGTERM
+     *   try { h.onExit().get(5, SECONDS); }           // wait
+     *   catch (Exception e) { h.destroyForcibly(); }  // SIGKILL
+     *   return !h.isAlive();                          // sampled IMMEDIATELY
+     * </pre>
+     *
+     * <p>{@code destroyForcibly} is a request, not a reaping. Nothing waited
+     * after it, so {@code isAlive()} was read while SIGKILL was still in
+     * flight and the assertion reported a failure to stop a process that did
+     * stop. MEASURED 2026-08-21: {@code smoke} failed twice in a row at
+     * {@code servers.down / registry_down} on a registry JVM (pid 70183) that
+     * was CONFIRMED GONE afterwards — {@code ps -p 70183} empty, no
+     * {@code SkillRegistryApp} left. Because Gradle stops the sweep at the
+     * first failing task and {@code smoke} is the first graph, one lost race
+     * here took the other 23 graphs with it.
+     *
+     * <p>Two changes, both about waiting: the graceful budget is a JVM
+     * shutdown budget rather than a guess, and the forcible path waits too. A
+     * process that has genuinely gone reports stopped either way.
+     */
+    private static boolean stop(ProcessHandle h) {
+        h.destroy();
+        if (awaitExit(h, GRACEFUL_STOP_SECONDS)) return true;
+        h.destroyForcibly();
+        // SIGKILL is delivered, not instantaneous. Wait for the reap.
+        return awaitExit(h, FORCIBLE_STOP_SECONDS) || !h.isAlive();
+    }
+
+    private static boolean awaitExit(ProcessHandle h, int seconds) {
+        try {
+            h.onExit().get(seconds, java.util.concurrent.TimeUnit.SECONDS);
+            return true;
+        } catch (Exception e) {
+            return !h.isAlive();
         }
     }
 }

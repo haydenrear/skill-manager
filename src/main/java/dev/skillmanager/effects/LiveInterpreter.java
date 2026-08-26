@@ -1,6 +1,9 @@
 package dev.skillmanager.effects;
 
 import dev.skillmanager.agent.Agent;
+import dev.skillmanager.artifacts.ArtifactIndex;
+import dev.skillmanager.artifacts.ArtifactLedger;
+import dev.skillmanager.artifacts.ArtifactPrune;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ConflictPolicy;
@@ -201,13 +204,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.EnsureTool e -> ensureTool(e);
             case SkillEffect.RunCliInstall e -> runCliInstall(e, ctx);
             case SkillEffect.RegisterMcpServer e -> registerMcpServer(e, ctx);
-            case SkillEffect.UnregisterMcpOrphan e -> unregisterOrphan(e);
+            case SkillEffect.UnregisterMcpOrphan e -> unregisterOrphan(e, ctx);
             case SkillEffect.UnregisterMcpOrphans e -> unregisterOrphans(e, ctx);
             case SkillEffect.SyncAgents e -> syncAgents(e, ctx);
             case SkillEffect.RefreshHarnessPlugins e -> refreshHarnessPlugins(e, ctx);
             case SkillEffect.SyncGit e -> SyncGitHandler.run(e, ctx);
             case SkillEffect.RemoveUnitFromStore e -> removeFromStore(e, ctx);
             case SkillEffect.PruneCliIfOrphan e -> pruneCliIfOrphan(e, ctx);
+            case SkillEffect.RecordArtifactLedger e -> recordArtifactLedger(e, ctx);
+            case SkillEffect.PruneOrphanArtifacts e -> pruneOrphanArtifacts(e, ctx);
             case SkillEffect.UnlinkAgentUnit e -> unlinkAgentUnit(e);
             case SkillEffect.UnlinkAgentMcpEntry e -> unlinkAgentMcpEntry(e);
             case SkillEffect.ScaffoldSkill e -> scaffoldSkill(e);
@@ -228,6 +233,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.UnmaterializeProjection e -> unmaterializeProjection(e);
             case SkillEffect.SyncDocRepo e -> syncDocRepo(e, ctx);
             case SkillEffect.SyncHarness e -> syncHarness(e, ctx);
+            case SkillEffect.CheckBuildPolicyGate e -> checkBuildPolicyGate(e, ctx);
+            case SkillEffect.RebuildCliArtifact e -> rebuildCliArtifact(e);
         };
     }
 
@@ -299,6 +306,64 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         project.activeProfile(),
                         result.bindingsRemoved(),
                         result.resolved().lock().resolvedUnits().size()));
+            } catch (dev.skillmanager.project.ProjectVendoredDurabilityException durability) {
+                // DEF-103. THE BLAST RADIUS, not the check.
+                //
+                // This handler is documented on SyncClaimingProjects as a
+                // "best-effort project child-home refresh", and it is: the
+                // operator asked to sync a UNIT at THIS home, and refreshing
+                // the child homes of projects that happen to claim that unit is
+                // a courtesy performed afterwards. A durability finding about
+                // one of those projects' own [[vendored]] declarations is not
+                // attributable to the unit whose bytes just moved — it was true
+                // before the sync and it will be true after — so recording
+                // PROJECT_SYNC_FAILED on the unit and failing the sync makes
+                // the promotion direction the owner asked to enforce
+                // (project home -> root home) unusable for every unit that any
+                // broken project claims. Measured: six projects registered at
+                // the root home, ONE non-durable, and 4 of 4 unit syncs
+                // refused.
+                //
+                // NOT WEAKENED, and this is the part a reviewer should check:
+                // `project resolve` and `project sync` -- the two commands
+                // whose subject IS this project -- still refuse on exactly this
+                // condition with exactly this message, because
+                // ProjectDependencyResolver.checkVendored still throws before
+                // materializing a single binding. What changes is only who is
+                // allowed to be failed by it. The project is named here, with
+                // the count and the repair command, so nothing is swallowed;
+                // what it does not do is stamp an error on a unit that is fine.
+                // Rendered by ConsoleProgramRenderer from the fact, not printed
+                // twice from here: the import-violation branch above sets that
+                // precedent, and a handler that logs AND emits produces the
+                // same sentence on two lines of one run.
+                String message = durability.advisory();
+                facts.add(new ContextFact.ProjectSyncSkippedNonDurable(
+                        projectName, durability.fatalCount(), message));
+            } catch (dev.skillmanager.project.ProjectImportViolationException imports) {
+                // M7 of #229's review: the THIRD caller of ProjectSyncUseCase.sync,
+                // and the one no CLI is standing in front of. The generic branch
+                // below would record this as "project sync failed: <text>",
+                // indistinguishable from an install failure — and this ticket
+                // closes #187, whose subject is exactly that loss of type.
+                //
+                // There is no exit code to give here: this is an effect handler
+                // emitting facts, not a command. What it owes is the CONDITION,
+                // named, with the same per-violation attribution
+                // `project resolve` and `project sync` print — so a reader of
+                // the fact stream can tell "your markdown names a unit that is
+                // not there" from "the install broke", which is the whole
+                // distinction the typed exception exists to carry.
+                String message = projectName + ": closure import violations ("
+                        + imports.violations().size() + ") — nothing was installed; "
+                        + "declare the missing unit in skill-project.toml or fix the import:\n"
+                        + dev.skillmanager.validation.MarkdownImportValidator
+                                .format(imports.violations());
+                failures.add(message);
+                for (String unitName : projectClaimers.getOrDefault(projectName, new LinkedHashSet<>())) {
+                    addUnitProjectSyncFailure(unitFailures, unitName, message);
+                }
+                facts.add(new ContextFact.ProjectSyncFailed(projectName, message));
             } catch (Exception ex) {
                 String message = projectName + ": " + ex.getMessage();
                 failures.add(message);
@@ -611,12 +676,45 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 .plan(units, true, true, store.cliBinDir());
     }
 
-    private EffectReceipt registerMcp(SkillEffect.RegisterMcp e, EffectContext ctx) throws IOException {
+    /**
+     * Register every live unit's MCP deps with the gateway.
+     *
+     * <h2>This handler must not be able to FAIL, and it used to be able to</h2>
+     *
+     * <p>ARTI-21 review. This is the defect the ticket's own thesis exists to
+     * prevent, reintroduced by the ticket. The handler runs <b>in stage 2,
+     * after {@code CommitUnitsToStore}</b>, and it was declared
+     * {@code throws IOException}: {@code ctx.addError}, {@code ctx.clearError}
+     * and {@code McpWriter.registerAll} each throw one. An escaping
+     * {@code IOException} becomes a {@code FAILED} receipt, and
+     * {@link Executor} sets {@code failed = true} on FAILED status <b>alone</b>,
+     * then walks the rollback journal — where {@code CommitUnitsToStore} has
+     * left one {@code DeleteUnitDir} per committed unit.
+     *
+     * <p><b>Rollback is decoupled from halt.</b> Asking whether an effect's
+     * continuation stops the program answers a different question, and it was
+     * the wrong frame in this ticket's first analysis: <em>any</em> FAILED
+     * receipt walks the journal back, halting or not. So a gateway hiccup on
+     * the DEFAULT sync path could delete the unit directories that same sync
+     * had just committed — a content sync destroyed by gateway trouble, which
+     * is exactly what {@code 7fce8ed} was written to stop.
+     *
+     * <p>The sibling handler already knew: {@link #registerMcpServer} wraps the
+     * identical {@code ctx.addError} in {@code try/catch (IOException)} and
+     * degrades to a warning. This one did not — and the unguarded call sat on
+     * the <b>gateway-unreachable</b> branch, the exact path this ticket makes
+     * the default.
+     *
+     * <p>So: no {@code throws}, and every I/O boundary inside is guarded. The
+     * worst this handler can now return is {@code partial}, which records what
+     * went wrong and leaves the store alone.
+     */
+    private EffectReceipt registerMcp(SkillEffect.RegisterMcp e, EffectContext ctx) {
         List<AgentUnit> units = freshen(e.units());
         if (!new GatewayClient(e.gateway()).ping()) {
             for (AgentUnit u : units) {
                 if (u.mcpDependencies().isEmpty()) continue;
-                ctx.addError(u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
+                recordUnitError(ctx, u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
                         "gateway at " + e.gateway().baseUrl() + " unreachable");
             }
             return EffectReceipt.skipped(e, "gateway unreachable");
@@ -628,12 +726,24 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // McpWriter widening lands in ticket 11.
         List<Skill> mcpCarriers = new ArrayList<>(units.size());
         for (AgentUnit u : units) mcpCarriers.add(asMcpCarrier(u));
-        McpWriter writer = new McpWriter(e.gateway());
-        List<InstallResult> results = writer.registerAll(mcpCarriers);
+        // The store form: this writer registers, so it also records what it
+        // registered into <home>/mcp-lock.json.
+        List<InstallResult> results;
+        try {
+            McpWriter writer = new McpWriter(e.gateway(), ctx.store());
+            results = writer.registerAll(mcpCarriers);
+        } catch (IOException | RuntimeException registrationFailed) {
+            // PARTIAL, never FAILED. The units are committed and correct; the
+            // only thing that did not happen is a gateway-side write. A FAILED
+            // receipt here would delete them.
+            Log.warn("mcp: registration pass failed: %s", registrationFailed.getMessage());
+            return EffectReceipt.partial(e, "MCP registration failed: "
+                    + registrationFailed.getMessage());
+        }
 
         for (AgentUnit u : units) {
             if (u.mcpDependencies().isEmpty()) continue;
-            ctx.clearError(u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE);
+            clearUnitError(ctx, u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE);
         }
         List<ContextFact> facts = new ArrayList<>();
         int erroredCount = 0;
@@ -641,18 +751,42 @@ public final class LiveInterpreter implements ProgramInterpreter {
             String owner = ownerOf(units, r.serverId());
             if (owner == null) continue;
             if (InstallResult.Status.ERROR.code.equals(r.status())) {
-                ctx.addError(owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
+                recordUnitError(ctx, owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
                         r.serverId() + ": " + r.message());
                 facts.add(new ContextFact.McpServerRegistrationFailed(owner, r));
                 erroredCount++;
             } else {
-                ctx.clearError(owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
+                clearUnitError(ctx, owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
                 facts.add(new ContextFact.McpServerRegistered(owner, r));
             }
         }
         return erroredCount == 0
                 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, erroredCount + " unit(s) had MCP errors");
+    }
+
+    /**
+     * {@code ctx.addError}, degraded to a warning when the record cannot be
+     * written. Recording that a unit has a problem must never become a bigger
+     * problem than the one being recorded — see {@link #registerMcp}.
+     */
+    private static void recordUnitError(EffectContext ctx, String unitName,
+                                        InstalledUnit.ErrorKind kind, String detail) {
+        try {
+            ctx.addError(unitName, kind, detail);
+        } catch (IOException | RuntimeException unwritable) {
+            Log.warn("could not record %s for %s: %s", kind, unitName, unwritable.getMessage());
+        }
+    }
+
+    /** {@link #recordUnitError}'s inverse, degraded the same way. */
+    private static void clearUnitError(EffectContext ctx, String unitName,
+                                       InstalledUnit.ErrorKind kind) {
+        try {
+            ctx.clearError(unitName, kind);
+        } catch (IOException | RuntimeException unwritable) {
+            Log.warn("could not clear %s for %s: %s", kind, unitName, unwritable.getMessage());
+        }
     }
 
     private static Skill asMcpCarrier(AgentUnit u) {
@@ -680,6 +814,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             for (String id : orphans) {
                 try {
                     if (client.unregister(id)) {
+                        forgetMcpRecord(ctx.store().root(), id);
                         facts.add(new ContextFact.OrphanUnregistered(id));
                     }
                 } catch (Exception ex) {
@@ -695,16 +830,40 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
     }
 
-    private EffectReceipt unregisterOrphan(SkillEffect.UnregisterMcpOrphan e) {
+    private EffectReceipt unregisterOrphan(SkillEffect.UnregisterMcpOrphan e, EffectContext ctx) {
         GatewayClient client = new GatewayClient(e.gateway());
         if (!client.ping()) return EffectReceipt.skipped(e, "gateway unreachable");
         try {
             if (client.unregister(e.serverId())) {
+                forgetMcpRecord(ctx.store().root(), e.serverId());
                 return EffectReceipt.ok(e, new ContextFact.OrphanUnregistered(e.serverId()));
             }
             return EffectReceipt.skipped(e, "not registered");
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    /**
+     * Drop {@code serverId}'s row from {@code mcp-lock.json} once the gateway
+     * has actually let go of it.
+     *
+     * <p>Paired with the write in {@code McpWriter} on purpose: a row that
+     * outlives its registration is a record claiming a registration this home
+     * does not have, which is the "a second copy that can disagree with the
+     * disk" failure the artifact model exists to avoid. Called only after
+     * {@code unregister} returned true, so the row is removed because the
+     * registration is gone and not because a call was attempted.
+     */
+    private void forgetMcpRecord(java.nio.file.Path homeRoot, String serverId) {
+        try {
+            dev.skillmanager.mcp.McpRegistrationLock lock =
+                    dev.skillmanager.mcp.McpRegistrationLock.read(homeRoot);
+            if (lock.server(serverId).isEmpty()) return;
+            lock.without(serverId).write(homeRoot);
+        } catch (IOException io) {
+            Log.warn("could not drop %s from %s: %s", serverId,
+                    dev.skillmanager.mcp.McpRegistrationLock.FILENAME, io.getMessage());
         }
     }
 
@@ -1359,8 +1518,21 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 try {
                     boolean wasMissing = rt.bundledPath(tool.id()) == null;
                     rt.ensureBundled(tool.id());
+                    // The version this home ACTUALLY has, not the one it is
+                    // pinned to. Review of #122: this reported
+                    // `tool.pm().defaultVersion` unconditionally, while
+                    // `ensureBundled` returns the moment ANY bundled copy
+                    // exists — so a home holding uv 0.4.18 with the pin at
+                    // 0.5.0 printed "uv ready 0.5.0". The one thing that
+                    // reports on `pm/` stated a false fact, which is the same
+                    // shape as the defect that justified recording `pm/` at
+                    // all. `currentVersion` reads the `current` pointer in both
+                    // spellings; the pin is the fallback only when this home
+                    // has no pointer to read.
+                    String installed = rt.currentVersion(tool.pm());
                     facts.add(new ContextFact.PackageManagerReady(tool.id(),
-                            tool.pm().defaultVersion, wasMissing));
+                            installed != null ? installed : tool.pm().defaultVersion,
+                            wasMissing));
                 } catch (Exception ex) {
                     facts.add(new ContextFact.PackageManagerUnavailable(tool.id(), ex.getMessage()));
                     failed++;
@@ -1416,23 +1588,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
             registry.installOne(e.dep(), store, e.unitName(), e.forceScripts());
             try {
                 CliLock lock = CliLock.load(store);
-                var req = dev.skillmanager.lock.RequestedVersion.of(e.dep());
-                String sha = null;
-                for (var t : e.dep().install().values()) {
-                    if (t.sha256() != null) { sha = t.sha256(); break; }
-                }
-                // Record the post-install scripts-tree fingerprint for
-                // skill-script deps so the next install / sync /
-                // upgrade pass can detect "scripts edited" and re-fire
-                // — see SkillScriptBackend's javadoc on rerun
-                // semantics. Other backends pass null (they don't
-                // currently use the fingerprint column).
-                String fingerprint = "skill-script".equals(e.dep().backend())
-                        ? dev.skillmanager.cli.installer.SkillScriptBackend
-                                .fingerprintFor(store, e.unitName(), e.dep())
-                        : null;
-                lock.recordInstall(e.dep().backend(), req.tool(), req.version(),
-                        e.dep().spec(), sha, e.unitName(), fingerprint);
+                // One recorder, one row shape, one place that asks a backend
+                // what its artifact was derived from. This used to be a second
+                // hand-maintained copy of CliInstallRecorder's row-writing,
+                // including its own `"skill-script".equals(backend)` branch, so
+                // the four other backends recorded no fingerprint down BOTH
+                // install paths.
+                dev.skillmanager.lock.CliInstallRecorder.record(
+                        lock, registry, e.dep(), store, e.unitName());
                 lock.save(store);
             } catch (Exception lockErr) {
                 Log.warn("cli: %s installed but lock-record failed: %s",
@@ -1444,6 +1607,166 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.failed(e,
                     List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(), ex.getMessage())),
                     ex.getMessage());
+        }
+    }
+
+    /**
+     * ARTI-06: re-derive one artifact through the backend that declared it.
+     *
+     * <p>The install half is deliberately identical to
+     * {@link #runCliInstall} — same {@code InstallerRegistry.installOne}, same
+     * {@code CliInstallRecorder.record}, same lock save — because a rebuilt
+     * artifact must be indistinguishable from an installed one. If {@code build}
+     * wrote a row a different way, {@code artifacts stale} would start reporting
+     * on which verb last touched an artifact, which is the class of second
+     * source of truth this epic exists to remove.
+     *
+     * <p>What differs is outside the install itself: no compensation (see the
+     * effect's javadoc), the receipt carries the artifact id so the command can
+     * join it back without re-deriving the lock key, and the backend's
+     * {@link dev.skillmanager.cli.installer.InstallOutcome} is READ rather than
+     * discarded.
+     *
+     * <h2>Why the outcome is read here and is not in {@link #runCliInstall}</h2>
+     *
+     * <p>{@code runCliInstall} throws the outcome away and emits
+     * {@link ContextFact.CliInstalled} unconditionally, so a backend that
+     * short-circuited — {@code gh already provided by the system
+     * (/opt/homebrew/bin/gh), outside any Skill Manager home}, no {@code brew}
+     * invoked, nothing written into this home — still prints
+     * {@code ✓ cli: gh [brew] installed for <unit>}. Inheriting that verbatim
+     * would put "the command succeeded, therefore the artifact exists" back
+     * into the console of the one verb whose whole thesis is that those are
+     * different claims. So a non-event is reported as a NO-OP, with no
+     * {@code CliInstalled} fact and nothing added to the {@code N installed}
+     * rollup, and {@code BuildCommand} names it beside the verdict it measured
+     * afterwards. Left alone in {@code runCliInstall} deliberately: that is
+     * {@code install}'s path, its console contract is not this ticket's, and
+     * changing it here would be a second claim about a line nobody asked me to
+     * move.
+     */
+    private EffectReceipt rebuildCliArtifact(SkillEffect.RebuildCliArtifact e) {
+        try {
+            dev.skillmanager.cli.installer.InstallerRegistry registry =
+                    new dev.skillmanager.cli.installer.InstallerRegistry();
+            // HIS-7. A REBUILD is the one moment this home has a reason to own
+            // the artifact — the agent changed the unit — so an inherited link
+            // into the parent store is replaced here and nowhere else. On the
+            // sync path the same link is left alone, because building what
+            // nobody changed is waste and deleting it defeats the sharing
+            // `ChildHomeMaterializer.mirrorExistingShim` exists to provide.
+            //
+            // Without this the producer's `cat > "$SKILL_MANAGER_BIN_DIR/<n>"`
+            // FOLLOWS the link and writes the PARENT's file, with this home's
+            // absolute paths in it. Measured on the operator's root home twice.
+            Path inherited = dev.skillmanager.cli.installer.InstallerRegistry
+                    .takeOwnershipOfShim(e.dep(), store);
+            dev.skillmanager.cli.installer.InstallOutcome outcome;
+            try {
+                outcome = registry.installOne(e.dep(), store, e.unitName(), e.force());
+            } finally {
+                // Deleting and then failing would leave the home with no tool
+                // where a working parent-owned one stood.
+                dev.skillmanager.cli.installer.InstallerRegistry
+                        .restoreForeignShim(e.dep(), store, inherited);
+            }
+            if (outcome != null && !outcome.isEvent()) {
+                // SKIPPED, so BuildCommand can tell a no-op from a rebuild
+                // without sniffing a summary string, and no CliInstalled fact,
+                // so neither the per-item line nor the `N installed` rollup
+                // claims work that did not happen.
+                //
+                // AND NO LOCK WRITE. Re-recording a fingerprint for an artifact
+                // the backend just declined to produce would make the home
+                // claim MORE than it holds — which is the mis-recorded-`binary`
+                // defect this run is reporting, committed one layer deeper by
+                // the command written to report it.
+                return EffectReceipt.skipped(e,
+                        e.artifactId() + ": the " + e.dep().backend() + " backend reported the "
+                                + "dependency already satisfied and wrote nothing into this home");
+            }
+            try {
+                CliLock lock = CliLock.load(store);
+                dev.skillmanager.lock.CliInstallRecorder.record(
+                        lock, registry, e.dep(), store, e.unitName());
+                lock.save(store);
+            } catch (Exception lockErr) {
+                // Loud, and NOT swallowed into an ok receipt: an artifact whose
+                // row did not get rewritten is one this home cannot decide next
+                // time, which is the state `build` exists to leave behind.
+                return EffectReceipt.partial(e,
+                        List.of(new ContextFact.CliInstalled(e.unitName(), e.dep().name(),
+                                e.dep().backend())),
+                        e.artifactId() + " rebuilt, but its lock row was not rewritten: "
+                                + lockErr.getMessage());
+            }
+            return EffectReceipt.ok(e,
+                    new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e,
+                    List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(),
+                            ex.getMessage())),
+                    ex.getMessage());
+        }
+    }
+
+    /**
+     * ARTI-06: {@code build}'s policy gate. Same {@link PolicyGate} decision as
+     * {@link #checkInstallPolicyGate}, taken from the selected dependencies
+     * because {@code build} has neither a resolved graph nor an install plan —
+     * see {@link SkillEffect.CheckBuildPolicyGate} for why reusing that handler
+     * would have produced a gate that always reported {@code skipped}.
+     */
+    private EffectReceipt checkBuildPolicyGate(SkillEffect.CheckBuildPolicyGate e,
+                                               EffectContext ctx) {
+        if (e.deps().isEmpty()) return EffectReceipt.skipped(e, "nothing to build");
+        try {
+            Policy policy = Policy.load(ctx.store());
+            // The one categorization line a CLI rebuild produces, spelled the
+            // way PlanBuilder.categorize spells it so PolicyGate sees the
+            // identical input it sees on an install.
+            List<String> categorization = List.of("! CLI");
+            List<dev.skillmanager.policy.PolicyGate.Category> violations =
+                    dev.skillmanager.policy.PolicyGate.violations(categorization,
+                            policy.install());
+            if (violations.isEmpty()) return EffectReceipt.ok(e);
+
+            String msg = dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations);
+            if (e.yes()) {
+                Log.error("%s", msg);
+                return EffectReceipt.okAndHalt(e, msg,
+                        new ContextFact.HaltWithExitCode(5, "policy.install gate rejected --yes"));
+            }
+            if (System.console() == null) {
+                Log.error("build needs interactive confirmation but no TTY is attached");
+                Log.error("%s", msg);
+                return EffectReceipt.okAndHalt(e, "no TTY for policy confirmation",
+                        new ContextFact.HaltWithExitCode(5, "policy.install gate without TTY"));
+            }
+            System.out.println();
+            System.out.println("build will rerun installs in these gated categories:");
+            for (var c : violations) System.out.println("  ! " + c.name());
+            // Named, because "! CLI" does not say that a skill-script install is
+            // arbitrary shell from the unit — which is what the operator is
+            // being asked about.
+            for (dev.skillmanager.model.CliDependency dep : e.deps()) {
+                System.out.println("    [" + dep.backend() + "] " + dep.name()
+                        + ("skill-script".equals(dep.backend())
+                                ? "  — runs shell shipped by the unit" : ""));
+            }
+            System.out.println();
+            System.out.print("proceed? [y/N] ");
+            java.io.BufferedReader r = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(System.in));
+            String line = r.readLine();
+            if (line == null || !line.trim().equalsIgnoreCase("y")) {
+                Log.warn("build aborted at policy gate");
+                return EffectReceipt.okAndHalt(e, "user rejected at policy gate",
+                        new ContextFact.HaltWithExitCode(6, "user said no at prompt"));
+            }
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
         }
     }
 
@@ -1467,7 +1790,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.skipped(e, "gateway unreachable");
         }
         try {
-            McpWriter writer = new McpWriter(e.gateway());
+            McpWriter writer = new McpWriter(e.gateway(), ctx.store());
             // Synthesize a single-dep skill so registerAll has exactly one
             // server to register. No on-disk unit lookup — works the same
             // whether unitName names a skill (skills/<n>) or a plugin
@@ -1516,6 +1839,48 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    /**
+     * Write the ledger while the unit being removed is still describable.
+     *
+     * <p>Never fatal, and a failure here does not fail the removal — it means
+     * the prune below finds no row and refuses to delete, which is the
+     * conservative direction. Losing a removal because an index could not be
+     * written would be the expensive one.
+     */
+    private EffectReceipt recordArtifactLedger(SkillEffect.RecordArtifactLedger e,
+                                               EffectContext ctx) {
+        try {
+            ArtifactLedger.of(ArtifactIndex.of(ctx.store()).artifacts()).save(ctx.store());
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            Log.warn("could not record the artifact ledger before removal (%s) — orphaned "
+                    + "artifacts will be kept rather than guessed at", ex.getMessage());
+            return EffectReceipt.ok(e);
+        }
+    }
+
+    private EffectReceipt pruneOrphanArtifacts(SkillEffect.PruneOrphanArtifacts e,
+                                               EffectContext ctx) {
+        try {
+            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()));
+            List<String> pruned = ArtifactPrune.apply(ctx.store(), plan);
+            for (ArtifactPrune.Step step : plan.refusals()) {
+                Log.warn("kept %s — %s", step.id(), step.reason());
+            }
+            if (!pruned.isEmpty()) {
+                Log.ok("pruned %d orphaned artifact(s) of %s: %s",
+                        pruned.size(), e.unitName(), String.join(", ", pruned));
+            }
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            // A removal that succeeded and left an orphan is a smaller failure
+            // than a removal reported as failed after it removed the unit.
+            Log.warn("could not prune %s's orphaned artifacts (%s) — "
+                    + "`skill-manager artifacts prune` catches up", e.unitName(), ex.getMessage());
+            return EffectReceipt.ok(e);
         }
     }
 
@@ -2006,9 +2371,62 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         existing.unitName(), ContextFact.HarnessBindingSynced.Action.REMOVED,
                         "no longer referenced by template"));
             }
+
+            // 3) Record the template this pass instantiated against.
+            //
+            // This is the write the whole "re-running is the only way to learn
+            // whether the template moved" problem turns on. The projections
+            // above were just rewritten with OVERWRITE regardless of whether
+            // anything changed; from here on the instance CARRIES the digest of
+            // what it was made from, so the question can be asked instead of
+            // re-answered by doing the work. An instance that predates the
+            // field gets its first real fingerprint here rather than a guessed
+            // grade.
+            recordHarnessTemplateFingerprint(sandboxRoot, e, lock, plan.templateFingerprint(),
+                    claudeConfigDir, codexHome, geminiHome, projectDir, ctx.store().root());
+
             return EffectReceipt.ok(e, facts);
         } catch (IOException io) {
             return EffectReceipt.failed(e, facts, "sync-harness failed: " + io.getMessage());
+        }
+    }
+
+    /**
+     * Write the instance lock back with the template fingerprint this sync
+     * planned against, keeping every path and the original {@code createdAt}.
+     *
+     * <p>Reconstructing the lock rather than editing one is deliberate for the
+     * instances that have none: an instance created before the lock file
+     * existed still has a sandbox dir and still gets synced, and it should come
+     * out of this pass with the same record a fresh instantiation writes. The
+     * paths used are the ones the plan actually ran with — the resolved values
+     * above, which fall back to the sandbox defaults exactly as the planner
+     * did, so the record and the plan can never describe different layouts.
+     *
+     * <p>Failure is a warning, never an error: this file is evidence about the
+     * instance, not an input to materializing it, and a sync that projected
+     * every binding correctly must not report failure because a record could
+     * not be updated.
+     */
+    private void recordHarnessTemplateFingerprint(
+            java.nio.file.Path sandboxRoot, SkillEffect.SyncHarness e,
+            java.util.Optional<dev.skillmanager.bindings.HarnessInstanceLock> previous,
+            dev.skillmanager.lock.Fingerprint fingerprint,
+            java.nio.file.Path claudeConfigDir, java.nio.file.Path codexHome,
+            java.nio.file.Path geminiHome, java.nio.file.Path projectDir,
+            java.nio.file.Path homeRoot) {
+        try {
+            String createdAt = previous
+                    .map(dev.skillmanager.bindings.HarnessInstanceLock::createdAt)
+                    .orElseGet(dev.skillmanager.bindings.BindingStore::nowIso);
+            new dev.skillmanager.bindings.HarnessInstanceLock(
+                    e.harnessName(), e.instanceId(),
+                    claudeConfigDir, codexHome, geminiHome, projectDir, createdAt)
+                    .withTemplateFingerprint(fingerprint)
+                    .write(sandboxRoot, homeRoot);
+        } catch (IOException io) {
+            Log.warn("could not record the template fingerprint for harness instance %s: %s",
+                    e.instanceId(), io.getMessage());
         }
     }
 

@@ -1,0 +1,11 @@
+22b947c Merge pull request #228 from haydenrear/feature/227-his-10
+110208f test(home): pin the leak exemption — the one branch that downgrades a finding
+ffa2c78 docs(epic): re-run the two exposed graphs after the re-derivation change
+5145124 fix(home): the descent record points at evidence, it no longer IS the evidence
+b1e9f7b docs(epic): DCO cannot block the epic PR — main is unprotected
+dab562a feat(epic): HIS-9 absorbs DEF-007 — the pruner follows a link out of the home and deletes through it
+439ab9b docs(epic): HIS-10 goal contribution, and two findings its probes turned up
+c0aae68 fix(home): a clone records its descent, so four readers stop giving three answers
+32b437b fix(epic): correct the #206 blast radius — the obvious fixture is vacuous
+81883fc docs(epic): DEF-006 — the worktree front door runs Homebrew 0.23.0, not the epic build
+58692cf feat(epic): schedule revision 4 — absorb every open home bug, and the wave-2 review

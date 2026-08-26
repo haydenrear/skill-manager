@@ -67,6 +67,37 @@ import java.util.List;
  * not. Two writers of one file is what let the difference hide; this class is
  * now the writer, and {@code ensure_cli_pin} has nothing left to repair.
  *
+ * <h2>HIS-19: the pin is the most DURABLE spelling of that build, not the most
+ * physical one</h2>
+ *
+ * <p>Everything above stands and the tradeoff it states was still real, but one
+ * of its clauses was measured false. "A stale pin fails loudly" is what the
+ * bullet promised; DEF-012 measured a stale pin failing <em>silently</em>, in
+ * the one place it matters — {@code brew upgrade} deleted the keg the operator's
+ * root home pinned, the entrypoint file remained present and executable, and
+ * {@code home verify} returned <b>exit 0</b>. Every reader that tests {@code -x}
+ * on that file, including {@code HomeDescriptor.locateCli}, called the home
+ * healthy.
+ *
+ * <p>HIS-12 stopped remedies naming a dead pin and HIS-13 made {@code home
+ * repair} report and re-pin one. Neither stopped THIS class writing the same
+ * pin on the next run, so the repair ran on a treadmill. {@link DurableCliPin}
+ * is the cause: given the located build it looks for another spelling of THE
+ * SAME FILE that carries no version, and pins that instead.
+ *
+ * <p><b>It is not the {@code PATH} fallback this section argues against, and
+ * the difference is enforced rather than asserted.</b> The build is already
+ * chosen — a candidate is refused unless {@link java.nio.file.Path#toRealPath}
+ * makes it the identical file — so what a home runs today is byte-for-byte
+ * unchanged, and there is still exactly one absolute path in the generated file
+ * and no search at launch time. What changes is the day after an upgrade: the
+ * home runs the build that replaced the one it was provisioned with, rather
+ * than nothing at all. The property this section defends narrows from "the
+ * build it was provisioned with" to "that build, or its successor under the
+ * same installation", and it narrows only where the alternative is a path that
+ * names a deleted file. A build whose path carries no version — a source
+ * checkout, a CI artifact, a hand-built binary — is pinned exactly as before.
+ *
  * <h2>One implementation of the launch rules</h2>
  *
  * <p>{@code PATH} precedence, foreign-home pruning, the
@@ -83,7 +114,18 @@ public final class LauncherShims {
 
     private LauncherShims() {}
 
-    public record Result(Path dir, List<Path> written) {}
+    /**
+     * What one {@code home shims} run wrote.
+     *
+     * @param pin the path actually recorded in {@code bin/cli/skill-manager},
+     *            which since HIS-19 need not be the path the caller passed in:
+     *            {@link DurableCliPin} may substitute a versionless spelling of
+     *            the same file. Carried here so the COMMAND reports what was
+     *            written rather than what was located — those were two different
+     *            paths for one run, which is exactly the reader-disagreement
+     *            this epic exists to remove, freshly created by its fix.
+     */
+    public record Result(Path dir, List<Path> written, Path pin) {}
 
     /** {@code <store>/bin/launch}. */
     public static Path dir(SkillStore store) {
@@ -130,7 +172,43 @@ public final class LauncherShims {
      */
     public static Result write(SkillStore store, Path pinnedCli) throws IOException {
         HomePolicy.requireLive(store, "home shims");
-        Path pin = pinnedCli.toAbsolutePath().normalize();
+        // THE PIN IS THE MOST DURABLE SPELLING OF THIS BUILD, NOT THE MOST
+        // PHYSICAL ONE. DEF-027, the cause under DEF-012.
+        //
+        // `toAbsolutePath().normalize()` was the whole of this line, and it is
+        // faithful to a fault: on a Homebrew install the launcher resolves its
+        // own symlink before exporting SKILL_MANAGER_INSTALL_DIR, so RunningCli
+        // hands this method a path INSIDE the keg
+        // (/opt/homebrew/Cellar/skill-manager/0.24.0/...). That pin is correct
+        // exactly until the next `brew upgrade` deletes the directory it names,
+        // and wrong forever after — measured live on the operator's machine
+        // during this epic's own 0.24.0 release, with `home verify` reporting
+        // exit 0 on the broken home.
+        //
+        // DurableCliPin never chooses a BUILD; it is handed one and looks only
+        // for another spelling of THE SAME FILE, checked by real-path equality.
+        // So this changes nothing about which binary a home runs today, and it
+        // is not the PATH search RunningCli's javadoc argues against: the
+        // resolution happens once, here, and the generated entrypoint still
+        // carries one absolute path and no PATH branch.
+        DurableCliPin.Choice choice = DurableCliPin.choose(pinnedCli);
+        Path pin = choice.pin();
+        if (choice.substituted()) {
+            // Said out loud, because it changes which file this home's front
+            // door names. A substitution nobody can audit is the shape
+            // `ensure_cli_pin` had when it silently overwrote 17 correct pins.
+            dev.skillmanager.util.Log.detail(
+                    "home shims: pinning %s instead of %s — the same build reached by a "
+                            + "spelling that survives an upgrade (%s)",
+                    pin, choice.located(), choice.source());
+        }
+        // And the whole audit, not only the outcome. Bounded to at most three
+        // lines because every candidate is derived from the located path.
+        // Choice.considered's javadoc promised this and nothing printed it
+        // until the review of #250 grepped for the reader (m5).
+        for (String line : choice.auditLines()) {
+            dev.skillmanager.util.Log.detail("  pin candidate: %s", line);
+        }
         Path dir = dir(store);
         Fs.ensureDir(dir);
         List<Path> written = new java.util.ArrayList<>();
@@ -156,7 +234,7 @@ public final class LauncherShims {
         Fs.makeExecutable(cli);
         written.add(cli);
 
-        return new Result(dir, List.copyOf(written));
+        return new Result(dir, List.copyOf(written), pin);
     }
 
     /**
@@ -248,6 +326,32 @@ public final class LauncherShims {
      * in fact present) and not 1.
      */
     public static final int SELF_EXEC_EXIT_CODE = 78;
+
+    /**
+     * Exit status when {@code SKILL_MANAGER_HOME} names a home other than the
+     * one this shim lives in, and no {@code --home} settled it.
+     *
+     * <h2>The defect, which is this epic's own class on the launch surface</h2>
+     *
+     * <p>{@code bin/cli/skill-manager} exports its own home, deliberately —
+     * that override exists because running a project home's shim with a decoy
+     * home inherited created ten directories in the decoy. What it did not do
+     * is <em>say</em> so. {@code SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager}
+     * edits <b>y</b>, having been told <b>x</b>, silently. That is how a command
+     * aimed at a worktree home lands in the root home, and it is why every
+     * scratch home in this epic had to be driven with the raw build instead of
+     * a home's own pin.
+     *
+     * <p>Both directions of the bug are now closed: the shim still never runs
+     * against the inherited home (the incident above), and it no longer runs
+     * against its own without saying so. Neither home is silently edited.
+     *
+     * <p>79, not 78: this is a different misconfiguration from the self-exec
+     * refusal and a caller must be able to tell them apart. It sits next to it
+     * because both are {@code sysexits}' {@code EX_CONFIG} family — the shim
+     * works, the request does not.
+     */
+    public static final int HOME_MISMATCH_EXIT_CODE = 79;
 
     /**
      * The marker a test — or an operator reading a stuck fan-out — can grep the
@@ -491,9 +595,72 @@ public final class LauncherShims {
             # that deferred to the environment would be indistinguishable from
             # the bare CLI. Name a different home with --home, or call the CLI
             # directly.
-            export SKILL_MANAGER_HOME="$home"
-
+            #
+            # HIS-9: WINNING SILENTLY IS THE OTHER HALF OF THE SAME DEFECT.
+            # Overriding fixed the decoy incident above and created its mirror:
+            # `SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager` edits y, having
+            # been told x, and says nothing. That is how a command aimed at a
+            # worktree home lands in the root home instead — the class this
+            # ticket exists for, on the launch surface rather than in the
+            # filesystem. So the shim still never runs against the inherited
+            # home, and it no longer runs against its own without saying so: a
+            # DIFFERENT home named in the environment is a REFUSAL naming both.
+            # Two spellings of one directory are not different (`cd -P` on each
+            # side); an unset or empty value is not a request and still binds
+            # this home, which is the case the block above is about.
             @SKILL_MANAGER_SELF_GUARD@
+
+            # `--home` on the command line settles the question and is never
+            # refused: it is the escape this file's own comment above tells the
+            # operator to use, it is what the refusal below recommends, and it
+            # is what bootstrap-home.sh should be passing. A refusal whose
+            # printed remedy the refusal itself would reject is not a remedy.
+            sm_names_a_home=0
+            for sm_arg in "$@"; do
+              if [ "$sm_arg" = "--home" ] || [ "${sm_arg#--home=}" != "$sm_arg" ]; then
+                sm_names_a_home=1
+                break
+              fi
+            done
+
+            sm_inherited_home="${SKILL_MANAGER_HOME:-}"
+            if [ -n "$sm_inherited_home" ] && [ "$sm_names_a_home" -eq 0 ]; then
+              sm_named="$(cd -- "$sm_inherited_home" 2>/dev/null && pwd -P || printf '%s' "$sm_inherited_home")"
+              if [ "$sm_named" != "$home" ]; then
+                echo "skill-manager: refusing to run against a home you did not name." >&2
+                echo "  you named:  $sm_inherited_home" >&2
+                echo "  this shim would have edited: $home" >&2
+                echo "  This entrypoint binds the home it lives in, so it cannot honour" >&2
+                echo "  SKILL_MANAGER_HOME. Refusing rather than silently editing the" >&2
+                echo "  other one." >&2
+                # NAME BOTH HOMES AND LET THE OPERATOR CHOOSE. The shim must
+                # not guess, and two earlier versions of this text did.
+                #
+                # The first printed `--home $sm_inherited_home` only, which
+                # recommends the home named in the ENVIRONMENT -- not the one
+                # this shim serves -- so following it verbatim operated on a
+                # third thing.
+                #
+                # The second tried to infer intent from the invocation and could
+                # not: a #! script never sees the word that was typed (the shell
+                # PATH-resolves it and execve's the absolute path, and the
+                # kernel discards argv[0]), so bare-name and absolute
+                # invocations give an IDENTICAL $0. Worse, the damage case this
+                # guard exists for -- `SKILL_MANAGER_HOME=<x> <y>/bin/cli/
+                # skill-manager sync foo` -- is itself absolute, so no
+                # shim-side observation separates it from a pasted remedy.
+                #
+                # Intent is therefore STATED by the caller, on the command line,
+                # where --home is already this guard's exemption. Both spellings
+                # below are exact and both are runnable.
+                echo "  Say which one you mean:" >&2
+                echo "    --home $home   (this shim's home)" >&2
+                echo "    --home $sm_inherited_home   (the home your environment names)" >&2
+                exit @SKILL_MANAGER_HOME_MISMATCH_EXIT@
+              fi
+            fi
+
+            export SKILL_MANAGER_HOME="$home"
 
             # The pin is written out TWICE, and the duplication is load-bearing.
             # The assignment below is not only bash. bootstrap-home.sh's
@@ -524,6 +691,114 @@ public final class LauncherShims {
             fi
 
             exec "$cli" "$@"
-            """;
+            """.replace("@SKILL_MANAGER_HOME_MISMATCH_EXIT@",
+                    String.valueOf(HOME_MISMATCH_EXIT_CODE));
 
+    /**
+     * The prefix of the one line in a generated entrypoint that carries the
+     * pin, up to the default-value {@code :-}.
+     *
+     * <p>This shape is already a contract with a second reader:
+     * {@code git-integration-repo}'s {@code ensure_cli_pin} finds the first
+     * line with this prefix, strips the closing brace and quote, and asserts
+     * the result is executable. See the comment inside {@link #CLI_TEMPLATE}
+     * for why nothing above that line may spell the prefix out. Named here so
+     * a third reader does not invent a fourth spelling of it.
+     */
+    public static final String PIN_PREFIX = "cli=\"${SKILL_MANAGER_CLI:-";
+
+    /**
+     * The absolute build a generated entrypoint pins, or empty when
+     * {@code entrypoint} is not one of ours or carries no readable pin.
+     *
+     * <h2>Why anything reads this back</h2>
+     *
+     * <p>DEF-012, measured 2026-08-21: the pin is an absolute VERSIONED path
+     * into the Homebrew Cellar
+     * ({@code /opt/homebrew/Cellar/skill-manager/0.23.0/libexec/bin/skill-manager}),
+     * and {@code brew upgrade} to 0.24.0 deleted that directory. The shim
+     * itself still exists and is still executable, so every caller that tests
+     * {@code -x <home>/bin/cli/skill-manager} — including
+     * {@link dev.skillmanager.store.HomeDescriptor#locateCli} — sees a healthy
+     * home entrypoint, while running it can only produce exit 127. A REMEDY
+     * naming that file reads as authoritative and cannot run, which is the
+     * defect of issue #161 in its purest form.
+     *
+     * <p>Empty rather than throwing for a file that is not ours, or is ours
+     * and unreadable: "cannot tell" must not be reported as "broken". Only a
+     * pin that is present AND names something absent is a finding.
+     */
+    public static java.util.Optional<Path> pinnedCliIn(Path entrypoint) {
+        if (entrypoint == null || !Files.isRegularFile(entrypoint)) {
+            return java.util.Optional.empty();
+        }
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(entrypoint);
+        } catch (IOException unreadable) {
+            return java.util.Optional.empty();
+        }
+        if (lines.stream().noneMatch(l -> l.contains(PIN_MARKER))) {
+            return java.util.Optional.empty();
+        }
+        // EVERY matching line, not the first. `ensure_cli_pin` takes the first
+        // and the template's own comment warns that nothing above it may spell
+        // the prefix out — a warning is not an invariant, and a file with two
+        // assignment lines that disagree is a file this cannot read. Two
+        // agreeing lines are fine; two disagreeing ones are "cannot tell".
+        java.util.Set<String> found = new java.util.LinkedHashSet<>();
+        for (String line : lines) {
+            String trimmed = line.strip();
+            if (!trimmed.startsWith(PIN_PREFIX)) continue;
+            String rest = trimmed.substring(PIN_PREFIX.length());
+            // The CLOSING `}"` must be on this line. It is what makes a line
+            // continuation unreadable rather than truncated: a wrapped pin
+            // leaves the brace on the next line, so the search fails and this
+            // reports "cannot tell". Falling back to end-of-line here would
+            // return a truncated path and call a healthy home dangling.
+            //
+            // A separate `endsWith("\\")` guard stood here and was REMOVED: the
+            // epic's vacuity rule could not make it fail, because every
+            // continuation it was meant to catch is already caught by this
+            // search. A guard that cannot fail is not a guard.
+            int end = rest.indexOf("}\"");
+            if (end < 0) return java.util.Optional.empty();
+            String pin = rest.substring(0, end);
+            if (pin.isBlank()) return java.util.Optional.empty();
+            // NOT A LITERAL PATH. A pin carrying `$`, a backtick or `$(` is
+            // computed by the shell at run time, and the text is not what will
+            // be exec'd. Reading it literally makes a HEALTHY home look
+            // dangling — and the caller's response to "dangling" is to push
+            // that home off its own working front door, so a false positive
+            // here is worse than no check at all.
+            if (pin.indexOf('$') >= 0 || pin.indexOf('`') >= 0) {
+                return java.util.Optional.empty();
+            }
+            found.add(pin);
+        }
+        return found.size() == 1
+                ? java.util.Optional.of(Path.of(found.iterator().next()))
+                : java.util.Optional.empty();
+    }
+
+    /**
+     * Whether {@code entrypoint}'s pin names something that is gone.
+     *
+     * <p>False when there is no readable literal pin — see
+     * {@link #pinnedCliIn}, and note that "cannot tell" must never be reported
+     * as "broken" here.
+     *
+     * <p>{@code isRegularFile} as well as {@code isExecutable}, because a
+     * DIRECTORY is executable on POSIX (that is what the execute bit means for
+     * one): a pin naming a directory would otherwise pass as a live build. The
+     * link is followed, so a pin through a symlink to a real build is live and
+     * a pin through a dangling symlink is not.
+     */
+    public static java.util.Optional<Path> danglingPinIn(Path entrypoint) {
+        Path pin = pinnedCliIn(entrypoint).orElse(null);
+        if (pin == null) return java.util.Optional.empty();
+        return Files.isRegularFile(pin) && Files.isExecutable(pin)
+                ? java.util.Optional.empty()
+                : java.util.Optional.of(pin);
+    }
 }

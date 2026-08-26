@@ -238,6 +238,13 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             }
             case ContextFact.ProjectSyncFailed x ->
                     Log.warn("project-sync %s failed — %s", x.projectName(), x.message());
+            // DEF-103: a project skipped for its OWN non-durable vendored
+            // declarations. Warned, never counted as a sync failure, and the
+            // wording says which of the two happened so a reader cannot mistake
+            // "your project needs repairing" for "the unit sync broke".
+            case ContextFact.ProjectSyncSkippedNonDurable x ->
+                    Log.warn("project-sync %s skipped (not refreshed) — %s",
+                            x.projectName(), x.message());
 
             // ---- sync git ----
             case ContextFact.SyncGitUpToDate x -> {
@@ -257,13 +264,19 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 Log.error("%s: merge conflict in %d file(s):",
                         x.skillName(), x.conflictedFiles().size());
                 Log.errorList("    ", x.conflictedFiles());
-                // One sentence per way out, not four with a blank line
-                // between. The stash clause is only printed when there IS a
-                // stash to speak about — it used to be said on every conflict,
-                // including the ones where nothing was stashed.
-                Log.error("  resolve in %s, then `git add` + `git commit`; back out with "
-                        + "`git merge --abort`. A stash, if sync made one, is at `stash@{0}` "
-                        + "(`git stash pop` once the tree is clean).", storeDir);
+                // ONE definition of this remedy, shared with the outstanding-
+                // errors banner: dev.skillmanager.app.ReportUseCase.
+                //
+                // It used to be spelled here as well, and the two spellings had
+                // already drifted -- this one claimed "the stash clause is only
+                // printed when there IS a stash" in a comment while printing it
+                // unconditionally, and both of them printed `git add` + `git
+                // commit` for a stash-pop residue with no MERGE_HEAD, which
+                // cannot clear it. The remedy now asks the store which state it
+                // is in. See ReportUseCase.mergeConflictRemedy.
+                Log.error("  %s", dev.skillmanager.app.ReportUseCase
+                        .mergeConflictRemedy(storeDir, x.skillName(), store.root(),
+                                x.conflictedFiles().size()));
                 conflictedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitFailed x ->
@@ -634,8 +647,16 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     joinBounded(refusedSkills));
         }
         if (!conflictedSkills.isEmpty()) {
-            Log.error("  conflicted — resolve in the store dir, then `git commit` or "
-                    + "`git merge --abort`: %s", joinBounded(conflictedSkills));
+            // The ROLLUP for several units, routed through the same definition
+            // as the per-unit line above via its store-less branch. It said
+            // `git commit` or `git merge --abort` unconditionally, which is the
+            // mid-merge remedy and cannot clear a stash-pop residue -- the very
+            // wrongness this ticket fixed one line up. Review finding MED-7:
+            // the claim that there was ONE definition of this remedy was false
+            // while these two rollups still carried their own.
+            Log.error("  conflicted — %s: %s",
+                    dev.skillmanager.app.ReportUseCase.mergeConflictRemedy(null, null, null),
+                    joinBounded(conflictedSkills));
         }
     }
 
@@ -764,12 +785,22 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         Log.error("%s has extra local changes (working tree edits, or commits ahead of the "
                 + "installed baseline) — sync would overwrite them.", skillName);
         String source = upstream == null || upstream.isBlank() ? "<origin>" : upstream;
-        Log.error("  re-run with: %s sync %s%s%s --merge   (merges %s into %s)",
-                HomeDescriptor.cliInvocation(store.root()),
+        // DEF-002 was measured on exactly this line: run against the PROJECT
+        // home it printed `/Users/hayde/.skill-manager/bin/cli/skill-manager
+        // sync <unit> --merge`, and following that verbatim edits the ROOT
+        // home. `cliSpelling` binds the remedy to the home the sync was about.
+        HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
+        // CLASS 3: `sync` names no home of its own, so it was given --home
+        // (#161). The binding is an ARGUMENT, never the head token: the head is
+        // the token every consumer of a printed remedy substitutes.
+        Log.error("  re-run with: %s sync %s%s%s --merge %s  (merges %s into %s)",
+                spelling.binary(),
                 skillName,
                 gitLatest ? " --git-latest" : "",
-                fromDir ? " --from " + source : "",
+                fromDir ? " --from " + HomeDescriptor.shellQuote(source) : "",
+                spelling.homeArg(),
                 source, unitDirFor(skillName));
+        if (spelling.caveat() != null) Log.error("  note: %s", spelling.caveat());
     }
 
     /**

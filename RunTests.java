@@ -45,6 +45,8 @@ import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.cli.CliAgentContextExecutionTest;
 import dev.skillmanager.cli.CliRefusalsAreMessagesTest;
+import dev.skillmanager.cli.HomeBindsBothAxesTest;
+import dev.skillmanager.cli.JsonContractTest;
 import dev.skillmanager.cli.LazyHomeScaffoldTest;
 import dev.skillmanager.command.CliAgentContextTest;
 import dev.skillmanager.command.CliHelpProgressiveDisclosureTest;
@@ -60,7 +62,15 @@ import dev.skillmanager.effects.LocalInstallIsNotAnErrorTest;
 import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
 import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
 import dev.skillmanager.cli.installer.CliPresenceTest;
+import dev.skillmanager.cli.installer.InstallerFingerprintTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
+import dev.skillmanager.artifacts.ArtifactBackfillTest;
+import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
+import dev.skillmanager.artifacts.ArtifactGraphTest;
+import dev.skillmanager.artifacts.ArtifactStalenessTest;
+import dev.skillmanager.artifacts.ArtifactBuildTest;
+import dev.skillmanager.artifacts.LazyArtifactHomeTest;
+import dev.skillmanager.artifacts.ArtifactPruneTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
@@ -76,11 +86,13 @@ import dev.skillmanager.validation.MarkdownImportValidatorTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.ProjectSyncErrorReportingTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
+import dev.skillmanager.effects.CommitPreImageRestoreTest;
 import dev.skillmanager.effects.CompensationPairingTest;
 import dev.skillmanager.effects.FailureInjectionSweepTest;
 import dev.skillmanager.lock.LockAtomicityTest;
 import dev.skillmanager.lock.LockDiffTest;
 import dev.skillmanager.lock.LockReadWriteTest;
+import dev.skillmanager.lock.RequestedVersionTest;
 import dev.skillmanager.lock.LockSchemaVersionTest;
 import dev.skillmanager.project.ClaudeProjectorTest;
 import dev.skillmanager.project.CodexProjectorTest;
@@ -95,6 +107,7 @@ import dev.skillmanager.project.ProjectResolveAtomicClosureTest;
 import dev.skillmanager.project.ProjectEnvMaterializerTest;
 import dev.skillmanager.project.ProjectLibResolverTest;
 import dev.skillmanager.project.ProjectVendoredResolverTest;
+import dev.skillmanager.project.ProjectToRootPromotionTest;
 import dev.skillmanager.project.ProjectorRegistryTest;
 import dev.skillmanager.project.SkillProjectRegistryTest;
 import dev.skillmanager.effects.RefreshHarnessPluginsTest;
@@ -169,6 +182,7 @@ public class RunTests {
         failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
+        failures += InstallerFingerprintTest.run();
         failures += CliPresenceTest.run();
         failures += CliArtifactMatrixTest.run();
         failures += CycleDetectionTest.run();
@@ -178,6 +192,8 @@ public class RunTests {
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
         failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
+        failures += dev.skillmanager.source.DereferencedStoreLinkSyncTest.run();
+        failures += dev.skillmanager.source.SyncPathsAgreeAboutDirtyTest.run();
         failures += SourceProvenanceRecorderTest.run();
         failures += ResolveGraphDirectGitSyncTest.run();
         failures += SyncGitDocRepoTest.run();
@@ -189,7 +205,9 @@ public class RunTests {
         failures += UninstallScenarioTest.run();
         failures += UninstallCliCleanupTest.run();
         failures += FailureInjectionSweepTest.run();
+        failures += CommitPreImageRestoreTest.run();
         failures += LockReadWriteTest.run();
+        failures += RequestedVersionTest.run();
         failures += LockDiffTest.run();
         failures += LockSchemaVersionTest.run();
         failures += LockAtomicityTest.run();
@@ -201,11 +219,14 @@ public class RunTests {
         failures += SkillProjectRegistryTest.run();
         failures += ProjectDependencyResolverTest.run();
         failures += ProjectResolveAtomicClosureTest.run();
+        failures += dev.skillmanager.commands.ProjectSyncTypedRefusalTest.run();
         failures += ProjectChildHomeMaterializationTest.run();
         failures += ProjectSyncIdempotencyTest.run();
         failures += ProjectEnvMaterializerTest.run();
         failures += ProjectLibResolverTest.run();
         failures += ProjectVendoredResolverTest.run();
+        failures += ProjectToRootPromotionTest.run();
+        failures += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
         failures += HomeRefreshPluginsTest.run();
@@ -221,7 +242,9 @@ public class RunTests {
         failures += ServerObservabilityContractTest.run();
         failures += CliAgentContextExecutionTest.run();
         failures += CliRefusalsAreMessagesTest.run();
+        failures += JsonContractTest.run();
         failures += LazyHomeScaffoldTest.run();
+        failures += HomeBindsBothAxesTest.run();
         failures += CliAgentContextTest.run();
         failures += CliHelpProgressiveDisclosureTest.run();
         failures += CliMetadataTest.run();
@@ -243,14 +266,33 @@ public class RunTests {
         failures += dev.skillmanager.store.HomePathsTest.run();
         failures += dev.skillmanager.store.HomeCloneTest.run();
         failures += dev.skillmanager.commands.HomeVerifyReportTest.run();
+        // HIS-21 (#253): the four diagnostics that reported something that was
+        // not so. DEF-102 lives in the execution strategy; DEF-105 and DEF-106
+        // in what `home policy` and `home describe` say about files they never
+        // read. DEF-104's regression sits in DamagedHomeIsRepairableTest below,
+        // beside the repair half it had to stop disagreeing with.
+        failures += dev.skillmanager.cli.HelpIsTextOnlyTest.run();
+        failures += dev.skillmanager.commands.HomeReportsMarkWhatTheyInventTest.run();
         failures += HomeVerifyDiagnosticTextTest.run();
         failures += dev.skillmanager.commands.HomeUnresolvedGateTest.run();
         failures += dev.skillmanager.store.ChildHomeShimIsolationTest.run();
+        failures += dev.skillmanager.store.ClonedHomeDescentTest.run();
+        failures += dev.skillmanager.store.DamagedHomeIsRepairableTest.run();
+        failures += dev.skillmanager.store.HomeVerifyPathSpellingTest.run();
+        failures += dev.skillmanager.store.ProvenanceRecordExemptionTest.run();
         failures += dev.skillmanager.cli.installer.CliShimPrunerTest.run();
+        // HIS-9 (#226): the write-confinement guard, its two DEF-007 delete
+        // call sites, and the producer boundary.
+        failures += dev.skillmanager.store.WriteConfinementTest.run();
+        failures += dev.skillmanager.store.PruneStaysInsideItsHomeTest.run();
+        failures += dev.skillmanager.cli.installer.ProducerStaysInsideItsHomeTest.run();
+        failures += dev.skillmanager.sandbox.ConfinementTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
+        failures += dev.skillmanager.store.HomeDescriptorCliRemedyTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();
         failures += dev.skillmanager.launch.LauncherShimsTest.run();
+        failures += dev.skillmanager.launch.DurableCliPinTest.run();
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
         failures += dev.skillmanager.store.HomeDriftGateTest.run();
         failures += dev.skillmanager.store.HomeSyncTest.run();
@@ -262,10 +304,19 @@ public class RunTests {
         failures += dev.skillmanager.commands.HomeSyncUnitCliTest.run();
         failures += dev.skillmanager.plan.AuditTrailTest.run();
         failures += dev.skillmanager.mcp.SharedGatewayTest.run();
+        failures += dev.skillmanager.app.SyncMcpSplitTest.run();
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
+        failures += ArtifactBackfillTest.run();
+        failures += ArtifactHomeStabilityTest.run();
+        failures += ArtifactGraphTest.run();
+        failures += ArtifactStalenessTest.run();
+        failures += ArtifactBuildTest.run();
+        failures += LazyArtifactHomeTest.run();
+        failures += ArtifactPruneTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();
+        failures += dev.skillmanager.bindings.ScaffoldedTreeIsNotContentTest.run();
 
         System.out.println();
         if (failures == 0) {

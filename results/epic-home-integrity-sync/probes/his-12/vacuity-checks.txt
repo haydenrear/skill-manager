@@ -1,0 +1,176 @@
+VACUITY CHECKS — HIS-12 (#161, #187)
+
+Every assertion this ticket adds, run against the code with its own fix
+disabled. An assertion that was not run against broken code is not coverage.
+
+RUNNER: `jbang RunHis12.java` — HomeDescriptorCliRemedyTest +
+ProjectSyncTypedRefusalTest, ~6s. That file IS IN THE REPOSITORY (repo root),
+shipped so these records can be re-run rather than believed. Apply the
+mutation a V-number names, run it, revert.
+
+RE-RUN IN FULL after #229's review replaced the binding contract; the numbers
+below are the post-review set, not the pre-review one.
+
+=== V1  precedence walk — steps 2 and 3 swapped in the code, javadoc untouched
+  [FAIL] locateCli walks all four steps, in the order it documents: step 2: the home's own bin/cli entrypoint, before anything global: expected <HOME_ENTRYPOINT> but was <RUNNING_BUILD>
+  [FAIL] a home entrypoint whose pin was deleted by an upgrade is not the remedy: and a live pin makes the entrypoint the answer, as it should: expected <HOME_ENTRYPOINT> but was <RUNNING_BUILD>
+  [FAIL] a pin that is not a literal path, or names a directory, is not dangling: so the home keeps its own entrypoint: expected <HOME_ENTRYPOINT> but was <RUNNING_BUILD>
+  [FAIL] a hand-written entrypoint is left alone: cannot tell is not broken: so it is still this home's entrypoint — only a pin that is present AND names something absent is a finding: expected <HOME_ENTRYPOINT> but was <RUNNING_BUILD>
+  FAILURES: 4
+
+=== V2  the dead ProcessHandle step put back into the code
+  [FAIL] the javadoc's stated precedence is the precedence the walk observed: expected false: but no code consults it: the dead step's implementation is gone, not just its documentation
+  FAILURES: 1
+
+=== V3  RunningCli accepts any basename — the old step would have fired
+  [FAIL] the step that was replaced could not fire in any shipped launcher: not true: a process named java is not a skill-manager launcher
+  FAILURES: 1
+
+=== V4  the --home binding removed: homeArg() returns nothing
+  [FAIL] a remedy about home X names X, whichever step resolved the CLI: the pinned remedy names the home it is about: expected <--home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-names-home-5936184061429174427/project/.skill-manager> but was <>
+  [FAIL] a PATH-resolved remedy says so; a verified one has nothing to admit: and the instruction it gives is itself bound to this home: expected <this skill-manager came from PATH (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-caveat-8179288831337548470/usr-local-bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand  …[truncated]
+  [FAIL] a home entrypoint whose pin was deleted by an upgrade is not the remedy: and how to re-pin the home — bound to THIS home, because the branch that fires here is the one where the front door is already broken: expected <this home's own CLI entrypoint pins a build that is gone (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-cellar-15798796407798548454/0.23.0/libexec/bin/skill-manager) —  …[truncated]
+  FAILURES: 3
+
+=== V5  the foreign-entrypoint skip removed - the root home's shim on PATH wins again
+  [FAIL] DEF-002: another home's entrypoint is never the remedy: not true: the root home's entrypoint is foreign to the project home
+  [FAIL] DEF-002 survives a SYMLINK unless the candidate is resolved first: not true: a symlink to a foreign home's entrypoint IS that entrypoint
+  FAILURES: 2
+
+=== V6  the PATH-fallback caveat suppressed
+  [FAIL] a PATH-resolved remedy says so; a verified one has nothing to admit: not true: and it must say so
+  [FAIL] a home entrypoint whose pin was deleted by an upgrade is not the remedy: the caveat names the deleted build: expected <null> to contain </var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-cellar-5862237720885622406/0.23.0/libexec/bin/skill-manager>
+  FAILURES: 2
+
+=== V7  #187 as it shipped: SyncCmd rethrows instead of rendering the typed refusal
+  [FAIL] project sync renders the same typed refusal, and the same exit code, as project resolve: sync exits exactly what resolve exits for the same condition; got 1 with stderr: dev.skillmanager.project.ProjectImportViolationException: project resolve refused: declared closure has unresolved markdown skill-imports; nothing was installed. Declare the missing unit in skill-project.toml or fix the imp …[truncated]
+  [FAIL] the --json refusal is byte-identical between resolve and sync: same exit code under --json too: expected <11> but was <1>
+  [FAIL] a refused --rebuild puts back a realization it really did tear down: --rebuild is refused with the same typed code; stderr: dev.skillmanager.project.ProjectImportViolationException: project resolve refused: declared closure has unresolved markdown skill-imports; nothing was installed. Declare the missing unit in skill-project.toml or fix the import.
+  FAILURES: 3
+
+=== V8  #187 destructive half re-armed: the snapshot is captured AFTER the teardown
+  [FAIL] a refused --rebuild puts back a realization it really did tear down: the home is byte-identical: the teardown was rolled back, and the refusal did not leave it emptier than it found it: expected <{.=directory, audit.log=file:MjAyNi0wOC0yMVQyMDowODoyOS45NjIxNDVaCWluc3RhbGwJSU5GTwlsb2NhbCAgdHlwZWQtbGl2ZUAwLjEuMAoyMDI2LTA4LTIxVDIwOjA4OjI5Ljk2MjU0OVoJaW5zdGFsbAlJTkZPCXR5cGVkLWxpdmVAMC4xLjAK, bi …[truncated]
+  [FAIL] ProjectSyncUseCase.rebuild still captures a snapshot before it removes: not true: the snapshot is captured BEFORE removeRealization
+  FAILURES: 2
+
+  READ THE ORDER OF THOSE TWO. The BEHAVIOURAL assertion fails first, and the
+  source-order oracle second. That is the whole of the review's H6: before the
+  fixture was corrected, ONLY the source oracle failed here, because the project
+  had never resolved, so `removeRealization` removed nothing and "byte-identical
+  afterwards" was true whether or not anything restored it.
+
+  The truncated diff is base64 file contents. What is missing on the "but was"
+  side, decoded:
+      child-homes/project_typed-rebuild-…/child-home.json   — GONE
+      installed/typed-live.projections.json                 — GONE
+      projects/typed-rebuild-…/project-lock.toml            — GONE
+  i.e. the realization the teardown removed and the moved snapshot could not put
+  back. That is #187's destructive half, re-armed on purpose and caught.
+
+=== V9  DEF-012 resolution half off: a dangling pin is no longer skipped
+  [FAIL] a home entrypoint whose pin was deleted by an upgrade is not the remedy: a remedy falls through rather than naming a front door that cannot open: expected <RUNNING_BUILD> but was <HOME_ENTRYPOINT>
+  FAILURES: 1
+
+=== V10 the pin-marker guard removed — a hand-written entrypoint would be judged too
+  [FAIL] a hand-written entrypoint is left alone: cannot tell is not broken: not true: a file without the pin marker carries no pin this may judge, even though its assignment line parses
+  FAILURES: 1
+
+=== V11 H4: the CANDIDATE is no longer resolved, so a symlink on PATH slips through
+  [FAIL] DEF-002 survives a SYMLINK unless the candidate is resolved first: not true: a symlink to a foreign home's entrypoint IS that entrypoint
+  FAILURES: 1
+
+=== V12 H5: shellQuote back to quoting only on a space
+  [FAIL] a remedy survives a home path a shell would otherwise interpret: /bin/sh refused /tmp/home'x: exit 2 /bin/sh: -c: line 0: unexpected EOF while looking for matching `''
+  /bin/sh: -c: line 1: syntax error: unexpected end of file
+  /bin/sh: -c: line 1: syntax error: unexpected end of file
+  FAILURES: 1
+
+=== V13 H3: the caveat instruction built from binary() alone (DEF-002 inside its own fix)
+  [FAIL] a PATH-resolved remedy says so; a verified one has nothing to admit: and the instruction it gives is itself bound to this home: expected <this skill-manager came from PATH (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-caveat-583750209127686431/usr-local-bin/skill-manager); nothing records it as the build that printed this message, and an older release answers an unknown subcommand w …[truncated]
+  [FAIL] a home entrypoint whose pin was deleted by an upgrade is not the remedy: and how to re-pin the home — bound to THIS home, because the branch that fires here is the one where the front door is already broken: expected <this home's own CLI entrypoint pins a build that is gone (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-cellar-15278583447365820685/0.23.0/libexec/bin/skill-manager) —  …[truncated]
+  FAILURES: 2
+
+=== V14 M2: a computed ($-carrying) pin read literally, so a HEALTHY home reads dangling
+  [FAIL] a pin that is not a literal path, or names a directory, is not dangling: not true: a pin carrying $ is computed at run time and cannot be read literally
+  FAILURES: 1
+
+=== V15 M2: a pin naming a DIRECTORY passes, because directories carry the execute bit
+  [FAIL] a pin that is not a literal path, or names a directory, is not dangling: a pin naming a directory is not a live build: expected </var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-pin-dir-17741149122455911549> but was <null>
+  FAILURES: 1
+
+=== V16 M2: first-line-wins instead of requiring the pins to agree
+  [FAIL] a pin that is not a literal path, or names a directory, is not dangling: not true: two disagreeing pins are unreadable, not first-one-wins
+  FAILURES: 1
+
+=== V17 (FIRST RUN) M2: a continued line read as if the pin were on it
+  !!! NO FAILURE — THE ASSERTION WAS VACUOUS, and this is the record of it.
+
+  The mutation removed `pinnedCliIn`'s `endsWith("\\")` guard and nothing failed.
+  Reason: every line continuation that guard was meant to catch is ALREADY caught
+  by the search for the closing `}"`, which for a wrapped pin is on the NEXT line
+  — so the extractor returns "cannot tell" either way.
+
+  RESOLUTION: the guard was REMOVED rather than kept. A guard that cannot be made
+  to fail is not a guard; keeping it would be a second reader of one rule, which
+  is this epic's subject. The ASSERTION stays — a continued line must not read as
+  a truncated path — and it is now carried by the `}"` search, whose own vacuity
+  check is V16's neighbour: making that search fall back to end-of-line returns
+  the truncated remainder and fails the test.
+
+  This is the second time this ticket's vacuity pass deleted something of mine.
+  The first was V10 last round (the hand-written-entrypoint fixture that could
+  not fail), which the reviewer independently re-ran and confirmed.
+
+ALL 16 REMAINING CHECKS FAILED AGAINST BROKEN CODE.
+V17 did not, was recorded, and the code it guarded was removed.
+
+=== V18 the per-verb GUARD: one `--home` removed from a class-3 remedy
+  [FAIL] every printed remedy that names a class-2/3 verb also names its home:
+         expected <[]> but was <[ConsoleProgramRenderer.java: %s sync %s%s%s --merge
+         (merges %s into %s)", spelling.binary(), skillName, …]>
+  FAILURES: 1
+
+  AND IT CATCHES THE ONE IT WAS BUILT FOR. HIS-4 (#216) routes its new
+  merge-conflict remedies through HomeDescriptor.cliInvocation — correctly —
+  and they read `<cli> sync <name>`, a class-3 verb with no --home. HIS-4
+  promotes before HIS-12. The three lines, verbatim from
+  origin/feature/216-his-4, run against the guard's pattern:
+
+    MATCHED   + ", then `" + cli + " sync " + name + "`";
+    MATCHED   + " (`git status`), then `" + cli + " sync " + name + "`; or merge by hand "
+    MATCHED   + "command retires it; `" + cli + " sync " + name + "` does so now";
+
+  and the class-1 negative is correctly skipped:
+
+    skipped   String sync = cli + " home sync --from " + a + " --to " + b;
+
+  A FIRST VERSION OF THIS GUARD WAS UNUSABLE AND IS RECORDED RATHER THAN
+  ELIDED: it let the verb be any lowercase word, so `%s` matched nearly every
+  log format string in the project — about 180 false positives. A check that
+  can only be satisfied by weakening it is not a check. Pinning the verb list
+  to the five that take --home is what makes each match a real remedy site.
+
+=== V19 DEF-026's fix reverted: ReportUseCase back to `cli + " sync " + name`
+  [FAIL] every printed remedy that names a class-2/3 verb also names its home:
+         expected <[]> but was <[ReportUseCase.java: = cli + " sync " + name]>
+  [FAIL] the merge-conflict remedy names the home it was asked about:
+         the remedy names the home it was asked about, in the argument
+  FAILURES: 2
+
+  TWO ASSERTIONS, AND THEY ARE NOT THE SAME CLAIM. The guard reads SOURCE TEXT
+  and proves the expression mentions --home. The second runs the method and
+  proves the PRINTED STRING carries the right home. A guard that only reads the
+  source can be satisfied by a mention that does nothing.
+
+  THE SECOND ONE ALSO CLOSED A HOLE IN THE INHERITED TESTS. Every pre-existing
+  case for `mergeConflictRemedy` passes homeRoot = null, and with `homeArg(null)`
+  returning "" and the result stripped, the output is byte-identical with or
+  without the fix. Those tests could not have failed on it.
+
+  AND THIS CHECK FOUND A HOLE IN THE GUARD ITSELF. On its FIRST run only the
+  behavioural assertion failed: the guard's pattern required a `+` BEFORE the CLI
+  token, so the reverted form `String syncRemedy = cli + " sync " + name` — an
+  ASSIGNMENT rather than a mid-concatenation — walked straight past it. The
+  pattern now accepts `+`, `=`, `(` and `,` before the token, and the re-run
+  above shows both assertions failing. A guard whose own vacuity check finds a
+  way around it is a guard with a gap, not a passing check.

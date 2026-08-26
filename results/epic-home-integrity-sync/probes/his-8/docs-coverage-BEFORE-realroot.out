@@ -1,0 +1,14 @@
+unit                         md  skill-manager      cold shim  declared-only  artifacts lis
+------------------------------------------------------------------------------------
+spec-double-compiler        601              0              0              1              0
+------------------------------------------------------------------------------------
+TOTAL                                        0              0              1              0
+
+Units that instruct agents about homes, and whether the contract reaches them:
+  skt                    absent
+  skill-manager          absent
+  git-issue-workflow     absent
+  git-epic-workflow      absent
+
+0 of 4 instructing units reach the contract.
+  missing: skt, skill-manager, git-issue-workflow, git-epic-workflow

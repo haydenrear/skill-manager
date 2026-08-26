@@ -1,0 +1,3 @@
+86ddeed fix(drift): the report says which units moved, not every path in them
+8346fef fix(sync): copyUnit asks the disk before it asks the record
+53911b0 feat(sync-settles): pin the change-management drag, and say honestly what the pin does not yet cover

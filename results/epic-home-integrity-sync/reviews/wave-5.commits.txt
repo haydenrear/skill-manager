@@ -1,0 +1,29 @@
+c44a2a0 Merge pull request #234 from haydenrear/feature/232-his-14
+a392813 fix(epic): HIS-15's root cause as I filed it was wrong
+854f2ea feat(epic): HIS-15 (#235) — --json emits nothing when it fails; schedule revision 6
+2f4ae44 docs(his-14): ~/.claude.json moved a third time, with no command in between
+14dcb0d docs(his-14): the graph summaries are from the integrated tip
+7919ed5 docs(his-14): ticket-lifecycle is red on the integrated tip, and it is HIS-11's
+76b529e fix(his-14): renumber my DEF-041 to DEF-042 — HIS-11's merge took 041
+c734acd docs(his-14): the review round — two HIGHs measured, and a probe that leaked
+c1eae9f fix(home): --home keeps an agent dir the home owns, and read verbs stop writing
+5c5b998 docs(his-14): the evidence, the probes, and five deferments
+323ab49 test(home): a fixture that fails when the agent axis is left unbound
+c9b7410 fix(home): --home binds both of a home's axes, or names the one it cannot set
+d40c39f Merge pull request #233 from haydenrear/feature/186-his-11
+e26748a docs(epic): DEF-035 was taken — my lock finding becomes DEF-041
+3866ad4 docs(epic): record the graph pair that matches the tip, not an earlier one
+a7d860d test(escrow): read the escrow prefix from the class, not a copy of it
+9113d5e docs(epic): list the three changes to HIS-4's class as changes, not as none
+daaaf81 docs(executor): say why the escrow guard uses the commit's own predicate
+e6ca91f docs(epic): V9 — the escape point a finally does not cover
+96c0d96 fix(executor): journal the pre-state before the effect runs, not after
+cee1c4d test(escrow): assert the manifest, because no passing path can observe it
+b3e8f73 docs(epic): what #233's review changed, including three claims of mine it broke
+1cbb84e fix(executor): drain the escrow on every exit, and make a stranded one describable
+47d514b docs(epic): HIS-11 evidence — five vacuity checks, the measured bytes, and four deferrals
+d5bc9c6 test(executor): report the bytes, not just the difference; drop two accessors nobody calls
+7f2b086 fix(executor): the walk-back restores what a commit overwrote, and one resolve at a time per home
+65942a3 chore(epic): backlog hygiene — DEF-007 closed with evidence, DEF-021 given a status
+94770ce docs(epic): DEF-035 — mutation testing with git checkout eats uncommitted work
+ddca9be docs(epic): wave-4 review — the wave where all three tickets were told not to merge
