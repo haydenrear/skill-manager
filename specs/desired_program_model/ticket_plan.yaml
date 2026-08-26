@@ -958,6 +958,162 @@ epic_goals:
     evaluation_ticket: HIS-6
     evidence_root: results/epic-home-integrity-sync/goals/GOAL-progressive-disclosure
 
+# ===========================================================================
+# THE SUCCESSOR EPIC, staged here rather than replacing `epic:` above.
+#
+# `epic:` and `epic_goals:` still describe home-integrity-sync, which is
+# DELIVERED (22/22, merged at 574e446, v0.25.0 released) but whose workflow
+# close is BLOCKED on the receipt gap recorded below. Overwriting those blocks
+# now would erase the delivered epic's record from the active plan to make room
+# for one that has not started. So the successor is staged under its own keys
+# and is promoted to `epic:` / `epic_goals:` when the close lands.
+# ===========================================================================
+
+successor_epic:
+  slug: effects-everywhere
+  branch: epic/effects-everywhere
+  base: "574e446"                       # main, v0.25.0
+  repository: haydenrear/skill-manager
+  ticket_prefix: EFF
+  adopts: [COH-0, COH-1, COH-2, COH-3, COH-4, EFF-0, EFF-1, CHM-24, MIG-0]
+  premise: >
+    The effects pipeline -- Program, DryRunInterpreter, LiveInterpreter, typed
+    receipts -- is the only reason this codebase has the stability it has, and
+    every defect of the last epic that mattered was something that escaped it.
+    This epic finishes the architecture rather than working around it, in
+    skill-manager AND in skt, and models the workflow itself so skt's own
+    lifecycle is checkable.
+  budgets_note: >
+    EFF-0 is ANSWERED and negotiated -- see
+    results/epic-effects-everywhere/baseline/README.md 2. Its proposal
+    (max_component_actions 8 -> 12) was REJECTED on the ledger's evidence:
+    gate_passed was False on 16 of 16 runs of the previous epic, variables
+    measured 38 against a budget of 6, and the state-space bound was UNKNOWN.
+    Defaults kept, max_unresolved_bound_variables: 0 added. You cannot lower a
+    budget you are 6.3x over.
+
+successor_epic_goals:
+  - id: GOAL-no-mutation-outside-the-interpreter
+    kind: architecture
+    statement: >
+      Every mutation reachable from the CLI's execution strategy is a declared
+      SkillEffect, run through an interpreter. Startup stops being a place where
+      writes happen before the program exists.
+    metric: "mutation sites reachable from SkillManagerCli's execution strategy that are not SkillEffects"
+    harness: >
+      A unit case walking the call graph from the execution-strategy lambda, plus
+      the grep falsifier named in the epic review: every hit is a future DEF-122.
+    baseline:
+      value: "4 -- tryReconcile, bindNamedHome, refuseIfConfinementEscapes, tryPrintOutstandingErrors"
+      measured_at: "2026-08-25"
+    target: "0"
+
+  - id: GOAL-preview-never-writes
+    kind: correctness
+    statement: >
+      Every command that offers --dry-run leaves the home byte-identical, and
+      each one is asserted rather than assumed.
+    metric: "commands declaring --dry-run that carry a byte-identity assertion"
+    harness: "LazyHomeScaffoldTest, digest-per-path before/after with an in-fixture control that proves the mutation is reachable"
+    baseline:
+      value: "1 of 20 (remove, added by the DEF-122 fix); the other 19 are unasserted"
+      measured_at: "2026-08-25"
+    target: "20 of 20"
+    note: >
+      CHM-18 -- "--dry-run creates a directory and a lock file in the destination
+      it promised not to write" -- is CLOSED in this same plan. The class was
+      found, fixed, and came back as DEF-122. One assertion per command is what
+      stops a third instance.
+
+  - id: GOAL-one-home-one-answer-everywhere
+    kind: correctness
+    statement: >
+      `home verify` and `home repair` name the same subject set AND the same
+      kind, on every surface a link can live on -- shims, skills/, plugins/,
+      agent dirs -- with no operator-supplied flag.
+    metric: "surfaces where the two readers disagree, over homes on this machine"
+    harness: "a unit case per surface with a bin/cli case as the in-run control; plus a fleet pass of `home verify` over every home under ~/IdeaProjects"
+    baseline:
+      value: "3 live homes disagree (DEF-124, links under skills/); plus the DEF-115 kind-label residue"
+      measured_at: "2026-08-26"
+    target: "0 disagreements, and the two readers' scopes stated in one place"
+
+  - id: GOAL-remedy-converges
+    kind: correctness
+    statement: >
+      Every remedy the product prints, run verbatim, changes the verdict that
+      printed it.
+    metric: "printed remedies with an assertion that running them clears the condition"
+    harness: "a remedy-convergence case class; RemediesAreRunnableTest extended from 'is runnable' to 'converges'"
+    baseline:
+      value: >
+        2 known non-converging (DEF-123's rolled-back-merge line; skt check's
+        `skt build <artifact>` when the root cause is a stale unit-store, fixed
+        in skill-publisher-skill#38), 0 asserted as converging
+      measured_at: "2026-08-26"
+    target: "an asserted class, and 0 known non-converging remedies"
+
+  - id: GOAL-skt-is-effectful
+    kind: architecture
+    statement: >
+      skt's mutations go through a declared effect port with a dry-run
+      interpreter, so `skt publish`, `skt sync` and `skt ticket` can be previewed
+      and their effects diffed against what actually happened.
+    metric: "skt mutation sites behind a declared port; observed side effects diffed against declared effects"
+    harness: "EFF-1's own acceptance -- observed side effects diff clean against declared effects; provider assertions check values, counts and ORDERING, not existence"
+    baseline:
+      value: "0 -- skt shells out to the CLI imperatively and has no preview verb of its own"
+      measured_at: "2026-08-26"
+    target: "the port declared, the diff clean"
+
+  - id: GOAL-workflow-in-tla
+    kind: model
+    statement: >
+      The epic/ticket lifecycle is modelled, so skt's own workflow is
+      model-checkable rather than only testable -- and the complexity gate that
+      has been red all along goes green.
+    metric: "gate_passed in specs/results/complexity_ledger.json; max_component_variables"
+    harness: "tla-spec-dev analyze against the negotiated budgets; the ledger is the instrument"
+    baseline:
+      value: "gate_passed False on 16 of 16 runs; variables 38 against a budget of 6; state-space bound UNKNOWN; distinct_states never produced"
+      measured_at: "2026-08-26"
+    target: "gate_passed True; variables <= 6 per component; bound resolvable; distinct_states a real number"
+
+  - id: GOAL-disclosure-cost-holds
+    kind: evaluation
+    statement: >
+      A fresh agent that inherits nothing orients itself at any tier, for any of
+      our skills, inside the budget -- and it stays inside as the corpus grows.
+    metric: "median corpus_tokens over n>=3 runs, per tier x per skill"
+    harness: >
+      results/epic-home-integrity-sync/evaluation/disclosure-cost/drive.py --
+      real `claude -p` subprocesses, clean config dir, all four home axes and
+      HOME pinned at scratch
+    baseline:
+      value: >
+        worktree tier 514 median (n=3, after skill-publisher-skill#36/#37);
+        root tier 21,186 (n=1, measured under the OLD prompt and not re-measured);
+        skt, git-epic-workflow, git-issue-workflow never measured
+      measured_at: "2026-08-26"
+    target: "<= 2000 median at root, project and worktree, for skill-manager, skt, git-epic-workflow and git-issue-workflow"
+
+  - id: GOAL-influence-attributed
+    kind: evaluation
+    statement: >
+      Every regression this epic catches is attributed to the architectural
+      surface that produced it, so the scorecard answers "what causes bugs here"
+      with counts rather than impressions.
+    metric: "findings with a surface attribution and an instrument; edges ranked by blocking density"
+    harness: "results/epic-effects-everywhere/baseline/influence-graph.json, regenerated at close and diffed against the baseline"
+    baseline:
+      value: >
+        122 findings attributed across 12 surfaces; strongest blocking edge
+        HomeCloner/verify <-> HomeRepair, 9 shared / 2 blocking
+      measured_at: "2026-08-26"
+    target: >
+      every finding of this epic attributed at the moment it is caught; the
+      close-time graph diffed against this baseline, and the diff explained
+
 # ---------------------------------------------------------------------------
 # WORKFLOW CLOSE, ATTEMPTED 2026-08-26 AND BLOCKED. RECORDED, NOT WORKED AROUND.
 #
