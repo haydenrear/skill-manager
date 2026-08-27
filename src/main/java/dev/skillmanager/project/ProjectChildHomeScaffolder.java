@@ -369,6 +369,36 @@ public final class ProjectChildHomeScaffolder {
             throws IOException {
         List<ChildHomeMaterializer.UnitOutcome> heldBack = new ArrayList<>();
         if (sameRealPath(childStore.root(), parentStore.root())) return heldBack;
+        // AN EMPTY DESIRED SET IS NOT "THE PROJECT WANTS NOTHING".
+        //
+        // desiredKeys is built from the RESOLVED units. A resolve that produced
+        // nothing -- the manifest could not be read, the lock was empty, the
+        // network was down, the caller passed List.of() -- lands here
+        // indistinguishable from a project that genuinely dropped every
+        // dependency, and the loop below then deletes every CLEAN unit in the
+        // child home.
+        //
+        // Measured on the operator's own project home, 2026-08-26: a parent
+        // sync logged `resolve: 0 unit(s)`, walked its child homes, and deleted
+        // the skt plugin and its installed record. `skt` stopped running in
+        // that home. Four other units survived only because they were locally
+        // modified, so the rule in practice was "clean units are deleted,
+        // silently; edited ones are kept and reported" -- exactly backwards.
+        //
+        // So: no information is not a licence to delete. A project that really
+        // has dropped everything can still be emptied by uninstalling the units
+        // it no longer wants, which is a gesture someone makes on purpose.
+        if (desiredKeys.isEmpty()) {
+            long present = childStore.listInstalledUnits().units().size();
+            if (present > 0) {
+                Log.warn("child home: nothing resolved for this project, so %d installed unit(s) "
+                                + "in %s were LEFT ALONE rather than pruned — an empty resolve "
+                                + "means the project's dependencies are unknown, not empty. "
+                                + "`skill-manager uninstall <unit>` removes one on purpose.",
+                        present, childStore.root());
+            }
+            return heldBack;
+        }
         for (AgentUnit existing : childStore.listInstalledUnits().units()) {
             String key = existing.kind() + ":" + existing.name();
             if (desiredKeys.contains(key)) continue;
@@ -383,6 +413,15 @@ public final class ProjectChildHomeScaffolder {
                         "local changes in a unit the project no longer depends on"));
                 continue;
             }
+            // REPORTED, like every other outcome in this method. The
+            // held-back branch above logs and reportKeptShim logs; the one
+            // branch that DESTROYS was the only one that said nothing, so the
+            // operator's first evidence of a deleted plugin was that the
+            // command stopped existing.
+            Log.warn("child home %s:%s — no longer a project dependency and unmodified, so it "
+                            + "was removed from %s. Re-install it with "
+                            + "`skill-manager install <source>` if that was not intended.",
+                    existing.kind().name().toLowerCase(), existing.name(), unitDir);
             Fs.deleteRecursive(unitDir);
             childUnits.delete(existing.name());
             materializer.forgetUnit(existing.name(), existing.kind());

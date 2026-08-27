@@ -773,6 +773,87 @@ public final class ProjectChildHomeMaterializationTest {
                         allowWrites(sticky);
                     }
                 })
+                .test("an EMPTY resolved set does not empty the child home", () -> {
+                    // MEASURED ON THE OPERATOR'S OWN PROJECT HOME, 2026-08-26.
+                    // A parent-home sync logged `resolve: 0 unit(s)` and then
+                    // walked its child homes. desiredKeys is built from the
+                    // RESOLVED units, so it was empty, and pruneOldUnits treats
+                    // "not in desiredKeys" as "the project no longer depends on
+                    // it". Every CLEAN unit in the child home became a deletion
+                    // candidate. The skt plugin -- freshly synced, therefore
+                    // clean -- was deleted along with its installed record, and
+                    // `skt` stopped running in that home. eval-skill,
+                    // skill-manager, test-graph and tracing-observability
+                    // survived ONLY because they were locally modified.
+                    //
+                    // An empty resolve is "I do not know what this project
+                    // wants", not "this project wants nothing". Deleting on no
+                    // information is the destructive recovery
+                    // GOAL-no-destructive-recovery exists to refuse.
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("child-home-empty-resolve-");
+                        SkillProject project = seedParentUnit(h, repoRoot,
+                                "clean-skill", "empty-resolve-project");
+                        ProjectChildHomeScaffolder scaffolder =
+                                new ProjectChildHomeScaffolder(h.store());
+                        scaffolder.scaffold(project, resolved("clean-skill"),
+                                MaterializationMode.COPY);
+
+                        Path childSkills = repoRoot.resolve(".skill-manager/skills");
+                        SkillStore childStore = new SkillStore(repoRoot.resolve(".skill-manager"));
+                        assertEquals(List.of("clean-skill"), childEntries(childSkills),
+                                "precondition: the child home holds the unit, and it is CLEAN "
+                                        + "-- nothing edited it after the copy");
+
+                        // The measured shape: resolve produced nothing.
+                        scaffolder.scaffold(project, List.of(), MaterializationMode.COPY);
+
+                        assertEquals(List.of("clean-skill"), childEntries(childSkills),
+                                "an empty resolved set means the project's wants are UNKNOWN, "
+                                        + "so a clean unit is left alone -- this is the assertion "
+                                        + "that was red when the operator's skt plugin was "
+                                        + "silently deleted");
+                        assertEquals(1, childStore.listInstalledUnits().units().size(),
+                                "and its installed record survives with it -- the record was "
+                                        + "deleted too, so the home did not merely lose bytes, "
+                                        + "it forgot the unit had ever been installed");
+                    }
+                })
+                .test("a genuine drop still removes a clean unit, and SAYS SO", () -> {
+                    // The control, and the other half of the fix. Pruning is not
+                    // being removed -- a project that really did drop a
+                    // dependency still gets the unit cleaned up. What changes is
+                    // that the destructive branch stops being the only one in
+                    // pruneOldUnits that reports nothing: the held-back branch
+                    // logs, the kept-shim branch logs, and the delete was silent.
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("child-home-real-drop-");
+                        SkillProject project = seedParentUnit(h, repoRoot,
+                                "dropped-skill", "real-drop-project");
+                        UnitFixtures.scaffoldSkill(h.store().skillsDir(), "kept-skill",
+                                DepSpec.empty());
+                        h.seedUnit("kept-skill", UnitKind.SKILL);
+                        ProjectChildHomeScaffolder scaffolder =
+                                new ProjectChildHomeScaffolder(h.store());
+                        scaffolder.scaffold(project,
+                                List.of(new SkillProjectLock.ResolvedUnit(
+                                                "dropped-skill", UnitKind.SKILL, "0.1.0", null, true),
+                                        new SkillProjectLock.ResolvedUnit(
+                                                "kept-skill", UnitKind.SKILL, "0.1.0", null, true)),
+                                MaterializationMode.COPY);
+                        Path childSkills = repoRoot.resolve(".skill-manager/skills");
+                        assertEquals(List.of("dropped-skill", "kept-skill"),
+                                childEntries(childSkills), "precondition: both are there");
+
+                        // A NON-EMPTY resolve that genuinely omits one unit.
+                        scaffolder.scaffold(project, resolved("kept-skill"),
+                                MaterializationMode.COPY);
+
+                        assertEquals(List.of("kept-skill"), childEntries(childSkills),
+                                "a real drop still prunes -- the fix narrows the empty case, it "
+                                        + "does not disable pruning");
+                    }
+                })
                 .test("LINK mode still symlinks the child home unit at the parent store", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("child-home-link-mode-");
