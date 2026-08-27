@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.1](https://github.com/haydenrear/skill-manager/compare/v0.25.0...v0.25.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **project:** an empty resolve is not a licence to empty the child home ([7137512](https://github.com/haydenrear/skill-manager/commit/71375121adc2c7551b6167625311ac6f789bc282))
+* **sync:** release the third state, and stop counting what nobody calls content ([1faead7](https://github.com/haydenrear/skill-manager/commit/1faead76c8f9d7beec03509a74ed60b9f767ef71))
+
 ## [0.25.0](https://github.com/haydenrear/skill-manager/compare/v0.24.0...v0.25.0) (2026-08-26)
 
 
