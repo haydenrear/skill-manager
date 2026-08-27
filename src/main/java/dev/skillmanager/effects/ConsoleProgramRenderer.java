@@ -256,7 +256,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 gitMerged.add(x.skillName());
             }
             case ContextFact.SyncGitRefused x -> {
-                printMergeInstructions(x.skillName(), x.upstream(), x.gitLatest(), x.fromDir());
+                printMergeInstructions(x.skillName(), x.upstream(), x.gitLatest(), x.fromDir(),
+                        x.worktreeEdits());
                 refusedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitConflicted x -> {
@@ -781,9 +782,25 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
      * stays too: it is where the reader resolves the conflict.
      */
     private void printMergeInstructions(String skillName, String upstream, boolean gitLatest,
-                                        boolean fromDir) {
-        Log.error("%s has extra local changes (working tree edits, or commits ahead of the "
-                + "installed baseline) — sync would overwrite them.", skillName);
+                                        boolean fromDir, boolean worktreeEdits) {
+        // Naming the half that fired is the whole point: the two states need
+        // different things from the reader. Uncommitted work is theirs to keep
+        // or discard; a store carrying commits upstream has not got is a branch
+        // that has to go somewhere before it can be overwritten. The old line
+        // offered both and settled neither, so every reader ran `git status` in
+        // a store directory they had to find first.
+        // "extra local changes" is load-bearing: four Test Graph nodes and the
+        // spec assert on that phrase. So the diagnosis is APPENDED to it rather
+        // than replacing it -- the contract holds, and the reader stops having
+        // to run `git status` in a store directory they must find first.
+        if (worktreeEdits) {
+            Log.error("%s has extra local changes — uncommitted edits in its store — "
+                    + "sync would overwrite them.", skillName);
+        } else {
+            Log.error("%s has extra local changes — commits its installed record does not name, "
+                    + "which the sync target does not contain either; the working tree is clean "
+                    + "— sync would overwrite them.", skillName);
+        }
         String source = upstream == null || upstream.isBlank() ? "<origin>" : upstream;
         // DEF-002 was measured on exactly this line: run against the PROJECT
         // home it printed `/Users/hayde/.skill-manager/bin/cli/skill-manager
