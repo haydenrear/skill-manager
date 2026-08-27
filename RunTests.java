@@ -194,6 +194,7 @@ public class RunTests {
         failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
         failures += dev.skillmanager.source.DereferencedStoreLinkSyncTest.run();
         failures += dev.skillmanager.source.SyncPathsAgreeAboutDirtyTest.run();
+        failures += dev.skillmanager.effects.SyncFastForwardReleaseTest.run();
         failures += SourceProvenanceRecorderTest.run();
         failures += ResolveGraphDirectGitSyncTest.run();
         failures += SyncGitDocRepoTest.run();

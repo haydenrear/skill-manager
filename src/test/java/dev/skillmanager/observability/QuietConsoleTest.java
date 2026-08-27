@@ -348,7 +348,8 @@ public final class QuietConsoleTest {
                         r.onReceipt(EffectReceipt.partial(
                                 new SkillEffect.SyncGit("acme-widgets", null, null, false, false),
                                 List.of(new ContextFact.SyncGitRefused(
-                                        "acme-widgets", "git@github.com:acme/widgets", false, false)),
+                                        "acme-widgets", "git@github.com:acme/widgets", false, false,
+                                        true)),
                                 "extra local changes"));
                         r.onComplete();
                     });
@@ -381,7 +382,7 @@ public final class QuietConsoleTest {
                                 new SkillEffect.SyncFromLocalDir(
                                         "acme-widgets", Path.of(from), false, false),
                                 List.of(new ContextFact.SyncGitRefused(
-                                        "acme-widgets", from, false, true)),
+                                        "acme-widgets", from, false, true, true)),
                                 "extra local changes"));
                         r.onComplete();
                     });
@@ -407,7 +408,7 @@ public final class QuietConsoleTest {
                                 new SkillEffect.SyncGit("acme-widgets", null, null, true, false),
                                 List.of(new ContextFact.SyncGitRefused(
                                         "acme-widgets", "https://github.com/acme/widgets.git",
-                                        true, false)),
+                                        true, false, true)),
                                 "extra local changes"));
                         r.onComplete();
                     });

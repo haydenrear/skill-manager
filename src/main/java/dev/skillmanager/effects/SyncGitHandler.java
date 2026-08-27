@@ -160,7 +160,8 @@ public final class SyncGitHandler {
         if (tr.fact != null) {
             if (dirty && !e.merge() && isRegistryLookupFailure(tr.fact)) {
                 return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                        new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest(), false));
+                        new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest(), false,
+                                DereferencedStoreLinks.hasAuthoredWorktreeChanges(storeDir)));
             }
             return EffectReceipt.ok(e, tr.fact);
         }
@@ -171,8 +172,27 @@ public final class SyncGitHandler {
                 refreshSourceRecord(ctx, skillName, storeDir);
                 return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
             }
-            return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                    new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest(), false));
+            // Which half of "dirty" fired. Computed here rather than in the
+            // renderer because only the handler can see the store, and the
+            // refusal used to throw it away -- leaving "working tree edits, OR
+            // commits ahead of the baseline" as the whole diagnosis and the
+            // reader to establish by hand which one it was.
+            boolean worktreeEdits = DereferencedStoreLinks.hasAuthoredWorktreeChanges(storeDir);
+            if (worktreeEdits || !targetIsStrictlyAhead(storeDir, upstream, target)) {
+                return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
+                        new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest(), false,
+                                worktreeEdits));
+            }
+            // THE THIRD STATE. `alreadyContainsTarget` above releases a store
+            // that is at or past the target; this releases one that is strictly
+            // BEHIND it with a clean tree. Between them sat the case that has
+            // no name and every symptom of danger: record < HEAD < target, which
+            // is what an out-of-band `git pull` in the store leaves behind. It
+            // is a pure fast-forward -- there is no local commit upstream does
+            // not already contain, and nothing in the tree to overwrite -- so it
+            // falls through to the merge below and the record is restated
+            // there. Refusing it printed a `--merge` recipe whose only effect
+            // was to perform this same fast-forward after a round trip.
         }
 
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {
@@ -564,6 +584,31 @@ public final class SyncGitHandler {
             targetHash = fetchedHash;
         }
         return GitOps.isAncestor(storeDir, targetHash, "HEAD");
+    }
+
+    /**
+     * Is the sync target strictly ahead of this store -- every commit the store
+     * holds already in it, and more besides?
+     *
+     * <p>Asked only once {@link #alreadyContainsTarget} has said no and the
+     * tree has been found clean, so a true answer means the move is a
+     * fast-forward that can lose nothing. A false answer covers both real
+     * divergence and an unresolvable target, and both must keep refusing.
+     */
+    private static boolean targetIsStrictlyAhead(Path storeDir, String upstream, TargetRef target) {
+        String targetHash = target.sha();
+        if (targetHash == null) targetHash = GitOps.fetchRef(storeDir, upstream, target.ref());
+        return targetIsStrictlyAhead(storeDir, targetHash);
+    }
+
+    /**
+     * The decision itself, split out from resolving the ref so it can be tested
+     * against a real three-state repository without a remote, a store or an
+     * {@code EffectContext}. Package-private for exactly that.
+     */
+    static boolean targetIsStrictlyAhead(Path storeDir, String targetHash) {
+        if (targetHash == null) return false;
+        return GitOps.isAncestor(storeDir, "HEAD", targetHash);
     }
 
     private static void refreshSourceRecord(EffectContext ctx, String skillName, Path storeDir) {
