@@ -86,13 +86,21 @@ public final class SyncFromLocalDirHandler {
             // third sync path spells it a third way.
             boolean dirty = dev.skillmanager.source.DereferencedStoreLinks
                     .isAuthoredDirty(storeDir, baseline);
+            // Same two halves, named the same way as the git path next door --
+            // see SyncPathsAgreeAboutDirtyTest. There is no upstream ref here to
+            // fast-forward TO, so this path has no third state to release; it
+            // only reports WHICH half refused it.
+            boolean worktreeEdits = dev.skillmanager.source.DereferencedStoreLinks
+                    .hasAuthoredWorktreeChanges(storeDir);
             if (dirty && !e.merge()) {
                 return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                        new ContextFact.SyncGitRefused(skillName, src.toString(), false, true));
+                        new ContextFact.SyncGitRefused(skillName, src.toString(), false, true,
+                                worktreeEdits));
             }
             if (e.merge() && !srcIsGit && dirty) {
                 return EffectReceipt.partial(e, "source not git, store dirty",
-                        new ContextFact.SyncGitRefused(skillName, src.toString(), false, true));
+                        new ContextFact.SyncGitRefused(skillName, src.toString(), false, true,
+                                worktreeEdits));
             }
         }
 

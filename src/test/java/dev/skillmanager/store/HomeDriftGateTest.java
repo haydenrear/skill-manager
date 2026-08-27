@@ -64,6 +64,81 @@ public final class HomeDriftGateTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("HomeDriftGateTest");
 
+        // ------------------------------------- what is not the home's content
+
+        suite.test("a re-derivable tree is not drift, and a tracked file still is", () -> {
+            Home home = Home.create("drift-rederivable-");
+            home.installSkill("delta", Map.of(
+                    "SKILL.md", skillMd("delta"),
+                    "pyproject.toml", "[project]\nname = \"delta\"\n"));
+
+            HomeDigest before = HomeDigest.compute(home.store);
+
+            // Exactly what `pip install -e .` and a venv build leave behind.
+            // Every other reader in the system -- HomeCloner, ChildHomeMaterializer,
+            // ArtifactPrune -- already agrees these are not unit content;
+            // HomeDigest was the one that did not ask, so a venv rebuild read as
+            // the home changing underneath the operator.
+            write(home.unitFile("delta", ".venv/bin/python"), "#!/bin/sh\n");
+            write(home.unitFile("delta", "__pycache__/mod.cpython-311.pyc"), "\0\0bytecode\n");
+            write(home.unitFile("delta", "build/lib/delta/__init__.py"), "\n");
+
+            DriftReport quiet = DriftReport.between(before, HomeDigest.compute(home.store));
+            assertTrue(quiet.units().isEmpty(),
+                    "a venv, a __pycache__ and a build/ tree are re-derivable, so none of them "
+                            + "is a change the operator has to acknowledge — got " + quiet.units());
+
+            // The same walk must still see real content, or the exclusion above
+            // has simply blinded the digest.
+            write(home.unitFile("delta", "references/real.md"), "a real edit\n");
+            DriftReport loud = DriftReport.between(before, HomeDigest.compute(home.store));
+            assertTrue(!loud.units().isEmpty(),
+                    "an ordinary file the unit does not exclude is still drift");
+        });
+
+        suite.test("a path the unit's own .gitignore excludes is not drift", () -> {
+            Home home = Home.create("drift-gitignore-");
+            home.installSkill("epsilon", Map.of(
+                    "SKILL.md", skillMd("epsilon"),
+                    ".gitignore", "**/*.egg-info\nscripts/logs/\n"));
+            // NO READABLE INDEX MEANS NOTHING IS IGNORED, so the declaration
+            // only counts once the unit is a repository -- see GitIgnoreRules.
+            initRepoAndCommit(home.store.skillDir("epsilon"));
+
+            HomeDigest before = HomeDigest.compute(home.store);
+
+            // The two shapes measured in the operator's root home on 2026-08-27,
+            // which together were 22 of the 33 files gating that home: setuptools
+            // metadata, and a unit-local run-log directory.
+            write(home.unitFile("epsilon", "src/epsilon.egg-info/PKG-INFO"), "Name: epsilon\n");
+            write(home.unitFile("epsilon", "scripts/logs/run-01.jsonl"), "{}\n");
+
+            DriftReport quiet = DriftReport.between(before, HomeDigest.compute(home.store));
+            assertTrue(quiet.units().isEmpty(),
+                    "the unit's author declared both of these not to be content, so neither is "
+                            + "something to acknowledge — got " + quiet.units());
+        });
+
+        suite.test("a digest from an older schema is not diffed — it re-baselines", () -> {
+            Home home = Home.create("drift-schema-");
+            home.installSkill("zeta", Map.of("SKILL.md", skillMd("zeta")));
+            HomeDigest.compute(home.store).write(home.store);
+            assertTrue(HomeDigest.read(home.store).isPresent(), "a current record reads back");
+
+            // Rewrite it as the previous schema, byte for byte otherwise. This
+            // is what every existing home holds at the moment of the upgrade,
+            // and its entries were computed over a set of files that included
+            // .venv, build/ and every gitignored path.
+            Path f = HomeDigest.file(home.store);
+            Files.writeString(f, Files.readString(f)
+                    .replace("\"schemaVersion\" : 2", "\"schemaVersion\" : 1"));
+
+            assertTrue(HomeDigest.read(home.store).isEmpty(),
+                    "an older record is not evidence about these bytes, so it reads as absent "
+                            + "and the caller records a fresh baseline — rather than reporting "
+                            + "every newly-excluded path as a deletion");
+        });
+
         // -------------------------------------------- the report vs the bytes
 
         suite.test("the drift report names exactly the files whose bytes changed", () -> {
@@ -789,6 +864,36 @@ public final class HomeDriftGateTest {
     }
 
     // ------------------------------------------------------------- fixtures
+
+
+    /** Write a file, creating parents. */
+    private static void write(Path target, String body) throws Exception {
+        Fs.ensureDir(target.getParent());
+        Files.writeString(target, body);
+    }
+
+    /**
+     * Make a unit directory a real repository with its declaration committed.
+     * Required because {@code GitIgnoreRules} refuses to ignore anything for a
+     * unit with no readable index — the index is what rescues a path the
+     * declaration would otherwise hide.
+     */
+    private static void initRepoAndCommit(Path unitDir) throws Exception {
+        run(unitDir, "git", "init", "--initial-branch=main");
+        run(unitDir, "git", "config", "user.email", "drift@test.invalid");
+        run(unitDir, "git", "config", "user.name", "drift");
+        run(unitDir, "git", "add", "-A");
+        run(unitDir, "git", "commit", "--quiet", "-m", "fixture");
+    }
+
+    private static void run(Path cwd, String... argv) throws Exception {
+        Process p = new ProcessBuilder(argv).directory(cwd.toFile())
+                .redirectErrorStream(true).start();
+        String out = new String(p.getInputStream().readAllBytes());
+        if (p.waitFor() != 0) {
+            throw new IllegalStateException(String.join(" ", argv) + ": " + out);
+        }
+    }
 
     private record Home(Path root, SkillStore store) {
 

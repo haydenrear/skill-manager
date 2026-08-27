@@ -155,7 +155,19 @@ public sealed interface ContextFact {
      *                 so the printed remedy did something other than the
      *                 command it was offered as a fix for.
      */
-    record SyncGitRefused(String skillName, String upstream, boolean gitLatest, boolean fromDir)
+    /**
+     * A sync refused rather than move the store, because moving it could lose
+     * something local.
+     *
+     * <p>{@code worktreeEdits} names WHICH of the two halves of "dirty" fired,
+     * because the remedy is the same either way but the diagnosis is not, and
+     * the reader cannot see the store. {@code true} is uncommitted work in the
+     * tree; {@code false} is a HEAD carrying commits the installed record does
+     * not name, with a clean tree. The handler has just computed this — before
+     * it was discarded, and every reader paid to rediscover it by hand.
+     */
+    record SyncGitRefused(String skillName, String upstream, boolean gitLatest, boolean fromDir,
+                          boolean worktreeEdits)
             implements ContextFact {}
     record SyncGitConflicted(String skillName, java.util.List<String> conflictedFiles) implements ContextFact {}
     record SyncGitFailed(String skillName, String reason) implements ContextFact {}
