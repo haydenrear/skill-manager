@@ -1,0 +1,87 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-017-CHM-20 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-20'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-017-CHM-20"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:28.595084+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-017-CHM-20",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-017-CHM-20/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-017-CHM-20/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The shim execs the skill-manager it finds and hands the arguments over.",
+        "The shim does not resolve to itself when its own directory leads PATH.",
+        "The shim still refuses, with its diagnostic, when nothing is reachable.",
+        "The generated body contains no doubled percent."
+      ]
+    },
+    "closed": "2026-07-29",
+    "evidence": {
+      "graph": "checkout-home node checkout.home.provisioned, three bounded invocations on a hermetic PATH: nothing reachable, a stub reachable, and the shim own directory first with the stub behind it",
+      "mutation": "Restored `printf '%%s'` at BOTH sites in cliScript() (2 occurrences counted first; mutating one would have left the other half of the filter working). Killed three named tests: \"the cli entrypoint body carries no unformatted percent\" on the BYTES, and both \"the cli entrypoint execs the skill-manager it finds on PATH\" and \"the cli entrypoint never resolves to itself\" on the exec'd output -- each reporting the refusal banner where the stub sentinel was expected. Reverted; shasum -a 256 -c OK.\n",
+      "unit": [
+        "LauncherShimsTest \"the cli entrypoint execs the skill-manager it finds on PATH\" -- on the stub CLI output and its view of the arguments",
+        "LauncherShimsTest \"the cli entrypoint never resolves to itself\" -- bounded, so recursion is a named failure",
+        "LauncherShimsTest \"the cli entrypoint refuses when no skill-manager is reachable\" -- on the diagnostic, not on a bare non-zero exit",
+        "LauncherShimsTest \"the cli entrypoint body carries no unformatted percent\""
+      ]
+    },
+    "found_by": "an operator running the shim on a machine with a working CLI on PATH",
+    "id": "CHM-20",
+    "model_change": "none",
+    "objective": "LauncherShims.cliScript() emitted `printf '%%s'`. That is correct in script(String), which ends in `.formatted(agent)`, and wrong here, where nothing unescapes it: the doubled percent reached bash literally, and bash `printf '%%s'` prints the two characters `%s` rather than its argument. So the filtered PATH became the single entry `%s`, `command -v skill-manager` found nothing, and the shim took the \"no CLI is provisioned\" branch UNCONDITIONALLY. Measured with /opt/homebrew/bin/skill-manager on PATH: exit 127. All seven onboarded constituent homes affected. It survived because CheckoutHomeProvisioned only ever exercised the no-CLI-reachable case -- SKILL_MANAGER_CLI cleared and PATH set to the shim's own directory -- and asserted a non-zero exit. A shim that ALWAYS exits 127 satisfies that perfectly. A one-sided assertion cannot tell a correct refusal from a dead command. Worse than under-tested: the PATH-filtering loop exists so the shim does not resolve to ITSELF (LaunchEnv puts <home>/bin/cli at the front of the launch PATH). With printf broken the filter had never once run, so the self-recursion guard was untested in practice.\n",
+    "phase": "CHM",
+    "resolution": "Write the percent once, and say in the javadoc why it is once here and twice one method above -- naming the trap for whoever adds a format specifier later. The assertion is now two-sided in both the unit suite and the graph, asserted on the exec'd CLI's OUTPUT rather than on a zero exit (a shim that exits 0 without launching is the defect the shim exists to prevent), plus a direct assertion that no `%%` survives in the generated body. The recursion guard is exercised for real: the shim's own directory FIRST on PATH and a working stub behind it, exactly as a launch arranges them, with a bounded wait so a self-exec spin is a NAMED failure rather than a hung suite. Every case runs on a hermetic PATH holding links to bash, dirname and tr and nothing else -- emptying PATH makes the shim die on a missing dirname, which is a non-zero exit that looks like a refusal and is not one, and leaving /usr/bin on it would let the refusal case find a real skill-manager on some machines.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-017-CHM-20/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "the home's CLI entrypoint could never find a CLI, and the assertion covering it was one-sided"
+  },
+  "ticket_id": "CHM-20",
+  "ticket_index": 17,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

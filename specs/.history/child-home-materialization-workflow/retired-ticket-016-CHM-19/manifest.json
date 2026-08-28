@@ -1,0 +1,88 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-016-CHM-19 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-19'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-016-CHM-19"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:28.387663+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-016-CHM-19",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-016-CHM-19/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-016-CHM-19/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A plain upward sync into a record-less home moves the bytes.",
+        "A record-less home holding bytes no record accounts for is still held back, intact.",
+        "The refusal names which of the two reasons applied.",
+        "External_regression_blindadoption.cfg keeps producing a counterexample."
+      ]
+    },
+    "closed": "2026-07-29",
+    "evidence": {
+      "graph": "home-sync node home.sync.project.to.root, rewritten: the fast-forward that now happens AND the hold-back that still must, plus that --merge folds the two disjoint edits without spending the root home own edit",
+      "mutation": "`sourceHeldTheseBytes` -> `if (true) return false` (8 occurrences of the symbol counted first: 1 definition, 1 record component, 1 read in disposable(), 1 write in disposal(), 4 in prose -- all routing through the one definition). Killed HomeSyncMergeTest \"a record-less destination the source is on record as having held is refreshed\" on \"a plain upward sync is no longer a silent no-op\", and HomeSyncTest \"a clone of a home that edited a unit in place restates the baseline\". Reverted; shasum -a 256 -c OK.\n",
+      "tlc": "External_regression_blindadoption.cfg violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 3 (8 distinct states). All 24 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass. Sync-slice state counts moved and are re-recorded in spec_manifest.yaml.",
+      "unit": [
+        "HomeSyncMergeTest \"a record-less destination the source is on record as having held is refreshed\" -- both halves, on bytes",
+        "HomeSyncMergeTest \"a destination unit with no materialization record is never overwritten\" -- the untouched-bytes half, message updated",
+        "HomeSyncTest \"a clone of a home that edited a unit in place restates the baseline\" -- now UPDATED rather than MERGED, same clone-time baseline doing the work"
+      ]
+    },
+    "found_by": "running the documented upward sync against the real root home",
+    "github_issue": 43,
+    "id": "CHM-19",
+    "model_change": "External gains RecordlessDestinationPolicy (SOURCE_WITNESSED / NEVER_DISPOSABLE / ALWAYS_DISPOSABLE), the NoRecordOrigin token, and a ROOT tier that starts record-less in Init. That last is what made the defect expressible: Init handed EVERY tier a clone-time baseline -- the state `home clone` leaves behind -- so the one destination an operator actually has was unrepresentable, and a reconciliation that could write nothing into it was indistinguishable from a correct one. DestMovedAt gained the `# NoBaseline` guard the record-write rule already had, because a record that claims nothing cannot have been moved away from. NEVER_DISPOSABLE -- the code as it was -- violates NOTHING, and that is why the axis had to exist rather than a counterexample: safe and useless is not catchable by a safety invariant.\n",
+    "objective": "`home sync --from <project> --to ~/.skill-manager` reported EVERY shared unit held-back -- \"no usable materialization record, so its contents cannot be shown to be disposable\" -- and exited 0 having reconciled nothing. 6, 7 and 5 units on three real repositories. The same sync against a throwaway root produced by `home clone` succeeds (6 updated, byte-identical), because a clone records baselines and a home that was INSTALLED into has none.\n",
+    "phase": "CHM",
+    "resolution": "A second showing of the baseline rule's first decision, not a second rule. Disposal gains sourceHeldTheseBytes: the SOURCE's own record names the tree the destination is standing on now. The rule is unchanged word for word -- the bytes a fast-forward destroys must be bytes the source passed through -- and only the evidence differs, because a record-less destination cannot answer for itself and the source can. NOT adoption, deliberately. Writing a baseline into the record-less destination asserts that two homes shared bytes they may never have shared, it persists, and the next reconcile in either direction reads it as a licence. Nothing is written; this is a question asked and answered from evidence already on disk, once, per pass. contentDigest and NOT sourceDigest, which is the whole safety argument in one field name: contentDigest is \"the bytes this reconcile wrote HERE\", so the source demonstrably held them, while sourceDigest is the tree the source was HANDED, which after a merge the source never held. It is also whole-tree, which entryDigests deliberately is not after a merge. Every hazardous shape stays blocked because all of them make the destination hold something else -- a third home's work merged in since, an edit made there, an upstream change -- and each moves the destination's digest off the source's recorded content, routing the unit back to held-back or to a conflict a human resolves. copyUnit was brought under the same value in the same edit, because Disposal is the single reading of the rule and CHM-15 was exactly what happens when it is not.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-016-CHM-19/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "project -> root is a silent no-op against the only destination an operator has"
+  },
+  "ticket_id": "CHM-19",
+  "ticket_index": 16,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

@@ -1,0 +1,114 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-000-CHM-1 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-1'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-000-CHM-1"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:17.863856+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-000-CHM-1",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-000-CHM-1/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-000-CHM-1/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "ChildHomeWritesNeverReachTheParentStore holds under External.cfg.",
+        "External_regression_symlink.cfg still produces a counterexample."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg",
+        "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_symlink.cfg"
+      ],
+      "evidence": {
+        "current_model_half": "NOT RUN. The command names specs/current/External.tla (or Internal.tla); specs/current holds only SkillManager.tla. See status.current_model_blocker.\n",
+        "desired_model_half": "verified 2026-07-27",
+        "measured": "External.cfg PASS 1302 generated / 250 distinct / depth 9; AgentEdited... and ChildHomeWritesNeverReachTheParentStore hold. External_regression_symlink.cfg VIOLATED[ChildHomeWritesNeverReachTheParentStore] at depth 3.\n"
+      },
+      "status_note": "Left at its existing status deliberately. The desired-state half of the acceptance is met and measured; the current-model half cannot be run at all, so closing this would be closing it on an assumption.\n"
+    },
+    "current_increment": {
+      "adapters": [
+        "ChildHomeMaterializerPort.swap_in",
+        "AgentWorkspacePort.edit_child_home_unit"
+      ],
+      "graph_after_unit_pass": [
+        "project-resolve"
+      ],
+      "model_actions": [
+        "EditChildHomeUnit",
+        "ResolveProjectChildHome"
+      ],
+      "model_state": [
+        "store_body",
+        "child_home",
+        "agent_edits"
+      ],
+      "unit_tests": [
+        "editing a child unit does not change the parent store unit",
+        "a resolved child unit directory is not a symlink"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "EditChildHomeUnit",
+      "ResolveProjectChildHome"
+    ],
+    "id": "CHM-1",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java",
+      "src/main/java/dev/skillmanager/bindings/MaterializationMode.java",
+      "src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java"
+    ],
+    "objective": "A project child home holds an independent tree per unit. No entry in it is a symlink at a parent-store unit directory, so an ordinary edit below a child unit cannot reach the parent store.\n",
+    "phase": "CHM",
+    "production_status": "implemented_spec_pending",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-000-CHM-1/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "Child home units materialize by copy, not by symlink"
+  },
+  "ticket_id": "CHM-1",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

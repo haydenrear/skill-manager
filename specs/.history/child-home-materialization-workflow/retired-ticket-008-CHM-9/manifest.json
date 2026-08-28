@@ -1,0 +1,100 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-008-CHM-9 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-9'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-008-CHM-9"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:26.302501+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-008-CHM-9",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-008-CHM-9/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-008-CHM-9/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A destination may be replaced wholesale only when its current content came from the home now pushing, or from nobody.",
+        "External_regression_ffprovenance.cfg keeps producing a counterexample.",
+        "The reproduction above ends with the agent's bytes still in the project home."
+      ],
+      "evidence": {
+        "graph": "home-sync node home.sync.provenance: sync up, close out, remove the worktree, sync down, through the real CLI over real homes",
+        "mutation": "dropped `&& recordIsAboutThisSource` from the wholesale-copy guard; the named unit test failed with \"expected <AGENT IMPROVED THIS> but was <ROOT V2>\"; reverted and verified with shasum -a 256 -c",
+        "tlc": "External_regression_ffprovenance.cfg still violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 4 (24 distinct states)",
+        "unit": "HomeSyncMergeTest \"a fast-forward is not disposable to a home it never came from (CHM-9)\" -- the whole reproduction including the teardown, asserted on bytes"
+      }
+    },
+    "aggravating": "HomeCloseOut.remedyFor returns a plain `home sync` (no --merge) for status UPDATED, so the remedy the tool prints is the one that creates this state. `--merge` is not affected: it records reconcileKind = \"merge\".\n",
+    "closed": "2026-07-27",
+    "depends_on": [],
+    "found_by": "External_regression_ffprovenance.cfg, then reproduced against HomeSync / HomeCloseOut / ChildHomeMaterializer directly.\n",
+    "id": "CHM-9",
+    "modelled_as": "ReconcileProvenance: SOURCE_AWARE (desired) vs MERGE_KIND_ONLY (today)",
+    "objective": "MaterializationRecord.reconcileKind distinguishes a merge result from a pristine copy. It does not distinguish one pristine copy from another, and that is the distinction that matters: a pristine copy is only disposable relative to the home it is a copy OF.\n",
+    "phase": "CHM",
+    "production_status": "defect_in_merged_code",
+    "reproduction": [
+      "root home installs skill s at ROOT V1; project and worktree are clones.",
+      "the ticket agent edits s in the worktree home.",
+      "`home sync --from worktree --to project` -- the project had moved nothing, so this is a clean fast-forward. Status UPDATED. The project's record: reconcileKind = \"copy\", source = <worktree>/skills/s.",
+      "`home close-out` reports the worktree as safe -- correctly, the work is in the project now.",
+      "the worktree is torn down.",
+      "the root home ships ROOT V2. `home sync --from root --to project`.",
+      "reconcile sees destUntouched (true -- the project matches its own record) and !isMergeResult (true -- kind is \"copy\"), takes the wholesale-copy path, and OVERWRITES. The agent's SKILL.md and agent-note.md are gone, from the only place they existed. Status UPDATED. Nothing is reported."
+    ],
+    "resolution": "MaterializationRecord.source was already written and correct; reconcile now READS it. A destination may be replaced wholesale only when it still holds exactly what its record says was written there AND that record is evidence about the home now pushing -- it names it, or names nobody (a clone's own baseline), or the two homes recorded the same baseline, or the source is standing on that baseline right now. Anything else holds back, and under --merge conflicts. The rule is stated once, in ChildHomeMaterializer's class javadoc under \"The baseline rule\", and CHM-10 and the stale-baseline finding are the same rule applied to the merge base and to what a clone writes down.\n",
+    "resolved_with": [
+      "CHM-10",
+      "the stale-baseline finding"
+    ],
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-008-CHM-9/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "severity": "silent_data_loss",
+    "status": "retired",
+    "title": "A fast-forward makes the destination a pristine copy of a home that may be gone",
+    "why_nothing_catches_it": "The record's `source` field names the worktree, and nothing reads it -- reconcile reads sourceDigest, contentDigest, entryDigests and reconcileKind, never source. And the write really is entitled by every test about the DESTINATION: the project home genuinely had not moved anything. External_sync_guard_ffprovenance.cfg is that fact as a config that must keep passing.\n"
+  },
+  "ticket_id": "CHM-9",
+  "ticket_index": 8,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

@@ -1,0 +1,76 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-010-CHM-11 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-11'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-010-CHM-11"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:26.719664+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-010-CHM-11",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-010-CHM-11/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-010-CHM-11/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "closed": "2026-07-27",
+    "closed_by": "ea03c22",
+    "evidence": {
+      "command": "python3 skills/test_graph/scripts/run.py home-sync",
+      "graph": "home-sync",
+      "mutations": "3 registered, 3 killed, each on state rather than on an exit code",
+      "note": "Not run by this ticket's author; recorded from ea03c22, whose own evidence block reports it. The bindings this file now carries name the graph's real node and assertion ids, checked against test_graph/sources/home-sync/.\n",
+      "result": "BUILD SUCCESSFUL, 11/11 node envelopes passed, 112 assertions, 0 non-passing"
+    },
+    "id": "CHM-11",
+    "objective": "Both commands were exercised only through their Java classes, in process. Nothing ran `skill-manager home sync` or `skill-manager home close-out` as a command, so argument parsing, exit codes and the --json shape had never been executed by a test -- including HomeCloseOut.BLOCKED_EXIT_CODE, whose entire purpose is to be observed by a caller that is not this JVM.\n",
+    "opened_and_closed_the_same_day": true,
+    "phase": "CHM",
+    "resolution": "Closed by the `home-sync` graph: 11 nodes, 112 assertions, all four directions between the three tiers, driving the real CLI over real homes. It landed while this slice was being modelled, so the ticket was written against a gap that was real that morning and closed that evening. Recorded as opened-and-closed rather than deleted, because the bindings file said `status: absent` for a day and someone reading the history is entitled to see why.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-010-CHM-11/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "`home sync` and `home close-out` have no out-of-process coverage"
+  },
+  "ticket_id": "CHM-11",
+  "ticket_index": 10,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

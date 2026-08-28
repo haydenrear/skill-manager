@@ -1,0 +1,86 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-013-CHM-16 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-16'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-013-CHM-16"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:27.765952+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-013-CHM-16",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-013-CHM-16/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-013-CHM-16/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Installing a unit whose name collides with a hand-written skill does not destroy it.",
+        "Uninstalling does not delete a hand-written skill through the ledger.",
+        "The backfill does not adopt a path it cannot show is a projection.",
+        "An ordinary unit still projects, and an ordinary uninstall still removes its own projection."
+      ]
+    },
+    "closed": "2026-07-28",
+    "evidence": {
+      "graph": "home-sync node home.sync.authored.agent.tree: install over a hand-written skill, then uninstall, through the real CLI, asserted on the authored bytes",
+      "mutation": "Replaced ProjectionOwnership.clear''s hold-back branch with `Fs.deleteRecursive(target); return true;` (1 occurrence, counted first). Both named ClaudeProjectorTest cases failed on the authored bytes; reverted and verified with shasum -a 256 -c.\n",
+      "tlc": "Not modelled. The agent-tree slice has no record to reason about and the entitlement is a two-path comparison; AuthoredContentIsNeverRewritten already carries the home-level form of the requirement. Recorded as a deliberate omission rather than an oversight.",
+      "unit": [
+        "ClaudeProjectorTest \"skill -- apply does not destroy a hand-authored directory at the target\"",
+        "ClaudeProjectorTest \"skill -- remove does not delete a hand-authored directory at the target\"",
+        "ClaudeProjectorTest \"skill -- apply still replaces the projector's own copy-fallback output\" (the happy path a guard must not refuse)"
+      ]
+    },
+    "found_by": "enumerating every writer into a home that does not go through ChildHomeMaterializer",
+    "id": "CHM-16",
+    "objective": "`<home>/.claude|.codex|.gemini/skills/<name>` is not a skill-manager-only namespace. It is where a human writes skills by hand. Three writers destroyed content there with no warning, no backup, and no mention in any report, and no two of them were in the same file: - the three projectors' apply(), each carrying its own copy of \"delete whatever is at the target, then link\"; - their remove(), the same six lines inverted; - BindingBackfill, which adopted ANY existing path at a projection target into the projection ledger as though skill-manager had put it there -- after which the ledger-driven LiveInterpreter.reverseProjection deleted it on the next uninstall, believing it was removing its own symlink. The third is the one that makes this a choke-point problem rather than a guard problem: guarding the projectors closed the install door and left the uninstall door open, and the ledger row that authorized the deletion was written by a third file again. Measured that way -- the graph node failed on `uninstall` after the projector fix passed on `install`.\n",
+    "phase": "CHM",
+    "resolution": "ProjectionOwnership, one predicate shared by all three doors: a projection may destroy only a symlink (its bytes live where it points) or a directory the source still holds byte for byte (the copy fallback's own output). Anything else is left alone and named. Deliberately NOT a materialization record. A projection is a pure function of the store, so entitlement is decidable from the two paths alone; a provenance file for it would be machinery nobody needs. Two mechanisms -- ChildHomeMaterializer.Disposal for unit trees, ProjectionOwnership for agent trees -- because the evidence available differs; one rule, because the requirement does not. Projector.apply and .remove became default methods returning whether the write landed, so ProjectorRegistry records only projections that are really there, and a unit whose every projection was held back fails its agent-sync step instead of reporting success.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-013-CHM-16/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "Three writers delete hand-authored skills out of an agent tree, and one of them writes the licence for another"
+  },
+  "ticket_id": "CHM-16",
+  "ticket_index": 13,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

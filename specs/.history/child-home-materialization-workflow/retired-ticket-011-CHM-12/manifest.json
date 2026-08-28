@@ -1,0 +1,86 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-011-CHM-12 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-12'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-011-CHM-12"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:26.929190+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-011-CHM-12",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-011-CHM-12/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-011-CHM-12/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "After a merge, entryDigests names no path the two homes are not both standing on.",
+        "The ordinary three-tier round trip with two worktrees loses neither worktree's edit.",
+        "External_regression_recordsourcetree.cfg keeps producing a counterexample."
+      ]
+    },
+    "also_fixed": "The related report. A merge whose every differing path had s = b announced \"the destination is ahead of the source; the source has nothing to contribute\" even when the destination was BEHIND and the base was only the source's own record of what it was handed. The status stays UNCHANGED -- measured: reporting it as unresolved blocks close-out for the ordinary, correct case of a worktree that is merely behind on a file another worktree contributed -- but the sentence no longer asserts a direction the evidence cannot support, and it names what to run when the direction turns out to be the other one.\n",
+    "closed": "2026-07-28",
+    "evidence": {
+      "graph": "home-sync node home.sync.round.trip: the six-command sequence through the real CLI over real homes, with a real rm -rf between, asserted on bytes read back off disk",
+      "mutation": "restored `writeCopyRecord(name, kind, source, stagedPrint.digest(), src, MERGED)` in place of the sharedAfterMerge call (1 occurrence, counted first); the named unit test failed on the record claim AND the round-trip test failed on the bytes; reverted and verified with shasum -a 256 -c",
+      "tlc": "External_regression_recordsourcetree.cfg violates ARecordClaimsNoBaselineTheDestinationNeverStoodOn at depth 7 (2,815 distinct states, 1s). External_sync.cfg and External_sync_merge.cfg carry the same invariant and pass to exhaustion. All 22 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass.",
+      "unit": [
+        "HomeSyncMergeTest \"a merge claims no shared baseline for a path it declined to write (CHM-12)\" -- the invariant, stated over the record on disk",
+        "HomeSyncMergeTest \"the ordinary three-tier round trip destroys no worktree edit (CHM-12)\" -- the consequence, four homes and a teardown"
+      ]
+    },
+    "found_by": "manual exploratory testing of the ordinary three-tier round trip",
+    "id": "CHM-12",
+    "model_change": "The record-WRITE decision is now separate from base selection in External.tla, and it had to be: with only MergeBasePolicy to vary, a reconciler that reads soundly and then records something it has no right to was inexpressible, and this defect was invisible to every config in the directory. External gains RecordWritePolicy (SHARED_ONLY / SOURCE_TREE / MERGED_TREE), the NoBaseline value a partial entryDigests map needs, the source-record FALLBACK the code has always had and the model did not, and the invariant ARecordClaimsNoBaselineTheDestinationNeverStoodOn. Two operators were split along the way, because separating the policies exposed that the model had been conflating them: DestMovedAt (\"has the destination moved off its OWN record\", which is what makes a tree pristine for the wholesale-copy path) and DestOnBaseAt (\"is the destination standing on the base this merge measured\"). The write log now asks the wholesale-copy path and the merge path the question each of them actually answered, which is also why all three pre-existing merge-base regression configs keep producing their original counterexamples.\n",
+    "objective": "The documented three-tier flow, with TWO ticket worktrees instead of one, destroys the second worktree's edit while reporting clean=true at every step. No operator error is involved. Root cause: writeCopyRecord wrote the SOURCE's entire tree as the destination's new entryDigests, including paths the reconciliation had DECLINED to write. After `project -> root --merge`, the root home's record claimed root and project last shared a byte root had never held; the next `root -> project --merge` read d = b as \"the destination is standing on the base\" and overwrote it, describing itself as \"1 file(s) taken from the source; local work kept\" while deleting the local work. Afterwards the edit existed in NO home. This is CHM-10's failure mode reintroduced through the record-WRITE side rather than the base-selection side, and it violates the class's own stated rule: a reconciliation may destroy bytes in the destination only where it can show the SOURCE passed through them.\n",
+    "phase": "CHM",
+    "resolution": "The baseline rule gains a fourth decision, \"what a reconciliation writes down\", stated in ChildHomeMaterializer's class javadoc beside the three that were already there. ChildHomeMaterializer.sharedAfterMerge computes the record a merge may write: a path is claimed only where this pass can SHOW both homes stood on the byte -- it was just written here from the source, the two sides already agreed on it, or the source is still standing on a base that was itself shared with this destination. Anything else is omitted, and a missing path reads as \"no baseline here\", which routes the next merge on that path to a conflict rather than to a silent overwrite. writeMergeRecord is separate from writeCopyRecord so that passing the source's whole fingerprint is no longer something a caller can do by accident.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-011-CHM-12/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "A merge records the source's whole tree as the shared baseline, and the next reconcile overwrites the work"
+  },
+  "ticket_id": "CHM-12",
+  "ticket_index": 11,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

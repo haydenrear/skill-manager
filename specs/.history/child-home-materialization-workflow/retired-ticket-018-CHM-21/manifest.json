@@ -1,0 +1,104 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-018-CHM-21 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-21'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-018-CHM-21"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:28.803651+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-018-CHM-21",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-018-CHM-21/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-018-CHM-21/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Bookkeeping churn inside a unit does not hold the unit back, on EITHER side, and the churn is asserted to have moved the whole-tree digest first so the case cannot pass vacuously; the gate is asserted through HomeCloseOut.inspect().safe() rather than UnitSync.unresolved(), which is a strictly smaller set than what remedyFor blocks on.",
+        "A commit reachable only from a side branch, and a stash, both survive -- asserted on cat-file -e and git stash list, never on a status.",
+        "A commit the source does not have holds the unit back, with the working tree asserted byte-identical through entryDigests(root, {\".git\"}) -- the exact view the naive fix compares.",
+        {
+          "A reconcile with the source moved on keeps the commit": "HEAD, the commit object and the committed file's content are all still readable out of the destination afterwards."
+        },
+        "An uncommitted edit still holds the unit back, so the worktree half of the conjunction is load-bearing on its own."
+      ]
+    },
+    "closed": "2026-07-29",
+    "evidence": {
+      "graph": "home-sync 17 nodes / 180 assertions passed; project-child-home 11/60; home-clone 8/59",
+      "mutation": "R1, THE SHIPPED REGRESSION AS A MUTATION: gitHistoryMovedOn's historyDigest comparison replaced by the HEAD-only reading it had before the rework (1 occurrence, counted first). Killed \"a commit on a side branch survives, with HEAD never having moved\" ON THE OBJECT STORE (cat-file -e 128) and \"a stash survives a sync that would otherwise replace .git\" ON `git stash list` (empty) -- both reporting the pass's own words, \"refreshed from the source; the destination held no local work\". R2, the differ-only-in-bookkeeping shortcut stops comparing the history (1 occurrence): killed \"a commit the source does not have holds the unit back\" -- UNCHANGED for HELD_BACK, i.e. the shortcut would have become a second way to call a home with a unique commit pristine. R3, the shortcut removed entirely (1 occurrence): killed \"git's own bookkeeping inside a unit does not hold the unit back\" on the close-out gate, whose blocker came back as `updated -- the destination held no local work` with a remedy. That is the symptom this shortcut exists for. M1, THE REQUIRED NAIVE FIX: gitCopyIsUntouched's history clause replaced by `return true`, which IS \"skip .git in the digest\" in this code's terms (1 occurrence). Killed FOUR: both commit-survival cases, the side-branch case and the stash case. M1b, the literal form, adding .git to isUnowned (1 occurrence): killed SEVEN, including epic #1's guard \"a .git directory inside a unit is content, never skipped as build output\". M1c, the worktree half of the conjunction removed (1 occurrence): killed \"an uncommitted edit in a git-backed unit is still an edit\" plus ProjectTrunkSyncTest \"project sync does not destroy an edit in the child home\" -- ProjectTrunkSyncTest, corrected from an earlier report that named ProjectChildHomeMaterializationTest, under which class the mutation kills nothing. Every mutation reverted; shasum -a 256 -c OK.\n",
+      "spec": [
+        "External_sync_git.cfg -- No error has been found, 61149 states / 10120 distinct / depth 15",
+        "External_regression_wholetreegit.cfg -- GitBookkeepingIsNeverReportedAsWork violated at depth 2",
+        "External_regression_headonlygit.cfg -- CommittedWorkIsNeverDestroyed violated at depth 3, counterexample CommitOnSideRefInHomeTier then TearDownWorktreeHome",
+        "External_regression_skipgit.cfg -- CommittedWorkIsNeverDestroyed violated, 45 distinct states",
+        "External_sync_guard_skipgit.cfg -- GUARD: No error has been found, 83275/14924/19",
+        "External_sync_guard_headonlygit.cfg -- GUARD: No error has been found, 80241/13876/17, with TWO invariants removed; see the manifest entry for why the second removal is itself the finding",
+        "All 36 External configs re-run: every regression config violates its named invariant, every guard and must-pass config clean, and the pre-existing counts are byte-identical to the parent commit (External_sync 65297/6379/21, External_sync_guard_ffprovenance 480496/45542/24, External_home 2966/706/12, External 1302/250/9)"
+      ],
+      "unit": [
+        "HomeSyncGitUnitTest \"git's own bookkeeping inside a unit does not hold the unit back\"",
+        "HomeSyncGitUnitTest \"a commit the source does not have holds the unit back\"",
+        "HomeSyncGitUnitTest \"a reconcile keeps commits made in a unit whose working tree it did not change\"",
+        "HomeSyncGitUnitTest \"an uncommitted edit in a git-backed unit is still an edit\"",
+        "HomeSyncGitUnitTest \"a commit on a side branch survives, with HEAD never having moved\"",
+        "HomeSyncGitUnitTest \"a stash survives a sync that would otherwise replace .git\"",
+        "HomeSyncTest \"a .git directory inside a unit is content, never skipped as build output\" -- epic #1's guard, still green"
+      ]
+    },
+    "found_by": "end-to-end home-sync graph coverage, then TLC three times over on the model of the fix",
+    "github_issue": 29,
+    "id": "CHM-21",
+    "model_change": "A new axis on External.tla, additive and default-off. Constants GitBackedUnits (FALSE pins every variable the axis adds at its initial value, so all thirty pre-existing configs keep their exact state counts -- External_sync.cfg is still 65297/6379/21 and External_sync_guard_ffprovenance still 480496/45542/24) and GitProvenance with FOUR values, because all three of the others are defects and they fail in different directions. sync_git carries TWO history components, head and side, and the second was added in the rework because without it the HEAD_ONLY defect is INEXPRESSIBLE: with only a tip, \"the predicate reads HEAD\" and \"the predicate reads the repository\" are the same proposition and External_sync_git.cfg is clean because the question cannot be asked. That was a vacuous-model finding about this very slice, on a defect that had already been measured on real homes. Variables sync_git (per home: whether git has rewritten its own bookkeeping, and the SET of commits reachable from HEAD) and sync_committed (WITNESS: every commit ever made, written at the moment it is made because a reconciliation destroys the commit and the evidence of it in the same step). Actions ChurnGitBookkeepingInHomeTier -- which deliberately leaves sync_history alone, because nobody authored anything -- and CommitInHomeTier, which deliberately leaves sync_body alone, because that is the whole trap. The record gained TWO git fields, not one: git_head (evidence about this home alone) and git_base (evidence about a pair, claimed only where the pass can show it).\n",
+    "objective": "A unit installed from a git source keeps .git inside the home, so a COPY carries it -- 61 entries, measured. .git rewrites itself on every git command, `git status` included, so the unit's whole-tree digest moved off contentDigest the first time anybody looked at it and every later pass reported it locally modified. Nothing cleared that, ever, on exactly the units an agent works in: `home close-out` could not be satisfied and the worktree could not be torn down. Skipping .git from the digest removes that symptom and is a DATA-LOSS DEFECT, which is why this is its own ticket. A commit moves bytes ONLY inside .git. An agent whose edit has already been synced up and who then commits it locally has a working tree byte-identical to the record and history that exists in one home on earth; excluded from the digest, that unit reads UNMODIFIED, the gate clears, the worktree is removed, and the commits stop existing.\n",
+    "phase": "CHM",
+    "resolution": "Split the tree at .git and ask each half of the authority that can answer it -- ChildHomeMaterializer.gitCopyIsUntouched: the digest for every byte OUTSIDE .git (a new record field, worktreeDigest), and git for the history (a second new field, historyDigest). Bookkeeping moves neither half; a commit moves the second. `git status` is deliberately NOT consulted for the worktree half: a unit that does not gitignore its build/ would come back dirty and put issue #41 straight back. gitHistoryMovedOn is shared with checkoutIsModified so a CHECKOUT and a git-backed COPY cannot come to disagree about what \"the agent has committed something\" means. REWORKED AFTER REVIEW. The first version of this asked git ONE question -- HEAD == the recorded revision -- and that was a data-loss REGRESSION, not merely a gap. A commit on a side branch the agent switched away from, and a `git stash`, both leave HEAD where it was and the working tree clean, so the unit read as pristine and a plain downward sync replaced .git wholesale: measured, cat-file -e exit 128 on the side commit and an empty `git stash list`, from a pass reporting \"the destination held no local work\". Before #29 the whole-tree digest never matched after ANY git command, so the permanent false positive was ACCIDENTALLY protecting every object in the repository; replacing \"the bytes are identical\" with \"(HEAD, worktree bytes) are identical\" made side branches, stashes, tags and notes disposable at a stroke. historyDigest is therefore a digest over the FULL ref listing (`for-each-ref refs/`, which includes refs/stash) plus HEAD -- the asymmetry rule applied literally, when in doubt conflict. A listing digest rather than `rev-list --all --not <rev>` because a ref DELETION and an annotated tag are both invisible to a reachability query, and the whole point is to stop converting \"cannot see\" into \"nothing there\". Named costs: a fetched remote-tracking ref and a deleted merged branch both read as moved-on, each worth one conflict a human resolves. Also added, because the record-based route cannot reach it: gitTwinsDifferOnlyInBookkeeping, an UNCHANGED shortcut for two homes that are identical outside .git and stand on the same refs. It is what makes the issue's own words -- \"after ANY git command on EITHER side\" -- true, and it is the only thing that clears close-out when the destination is an installed home with no record at all (#43's shape) or when the churn happened in the SOURCE. Safe unconditionally because it writes nothing.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-018-CHM-21/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "spec_findings": "THREE defects in the model of the fix, each found by TLC and none of which a test would have reached: 1. SourceHeldDestBytes licensed a fast-forward into a RECORD-LESS destination on the strength of the worktree paths alone, so a root home that had committed was overwritten from a home whose worktree merely agreed with it. The code does not have that hole -- the digest sourceHeldTheseBytes compares is the WHOLE tree, .git included -- but a desired-state model weaker than the code cannot protect it. SourceHeldDestGit states the other half. 2. Writing the destination's own current head as the merge base made `d = b` hold trivially, so the next merge read it as \"only the source moved\" and took the agent's commit away with no conflict and no report. That is CHM-10 exactly, one dimension across, and it is why the record carries git_base separately from git_head. 3. A tip-only history produced a FALSE violation: a commit merged up and then committed on top of is no longer any home's tip, and git has it as an ancestor. Modelling the history as the reachable SET fixed the invariant rather than weakening it.\n",
+    "status": "retired",
+    "title": "a git-sourced unit's .git was digested as unit content, so it was held back forever -- and skipping it destroys commits"
+  },
+  "ticket_id": "CHM-21",
+  "ticket_index": 18,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

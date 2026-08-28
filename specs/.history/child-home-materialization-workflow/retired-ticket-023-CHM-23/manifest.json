@@ -1,0 +1,85 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-023-CHM-23 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-23'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-023-CHM-23"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:29.230309+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-023-CHM-23",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-023-CHM-23/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-023-CHM-23/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A sync appends an entry naming the verb, the unit and the arm, and the log had none before it ran.",
+        "Every entry keeps the log's four-field shape however it got there.",
+        "A second sync appends rather than replacing.",
+        "A clone of a home that has a log does not carry it, while demonstrably copying the rest of the home."
+      ]
+    },
+    "closed": "2026-07-29",
+    "evidence": {
+      "mutation": "Removed the effect from the sync program (1 site): killed \"sync appends a line naming the verb and the unit it touched\" -- no audit.log at all. THE INTERESTING ONE: kept the effect and dropped the targets, i.e. install's treatment exactly as specified (1 site). Killed the same test, and again with no audit.log created at all -- direct evidence that \"give sync the same treatment\" would have shipped a green fix that logged nothing on the measured scenario. Removed audit.log from HomeCloner.SKIPPED_ROOT_FILES (1 site): killed \"a clone does not carry the source home's audit log\". Every mutation reverted; shasum -a 256 -c OK.\n",
+      "unit": [
+        "AuditTrailTest \"sync appends a line naming the verb and the unit it touched\" -- on the file's bytes, through a real Executor run of the sync program",
+        "AuditTrailTest \"a clone does not carry the source home's audit log\""
+      ]
+    },
+    "found_by": "attributing a real-home change during the sync-blocker work, which is exactly what an audit log is for",
+    "github_issue": 45,
+    "id": "CHM-23",
+    "model_change": "none",
+    "objective": "Measured on the operator's home: audit.log's last entry was 8 days old while a `skill-manager sync` rewrote 101 files in it.\n",
+    "phase": "CHM",
+    "resolution": "Give sync install's treatment -- the same SkillEffect.RecordAuditPlan, in the same position (after the plan is built, before it runs) -- and then the part that makes it non-vacuous. Sync's plan comes from BuildResolveGraphFromUnmetReferences, so a steady-state sync plans ZERO actions and the same treatment alone would have logged nothing on the pass that re-merged every unit. Proven by mutation, not asserted. So RecordAuditPlan gained a `targets` component, filled from the one place that already builds the targets (SyncUseCase.auditTargets), naming the unit AND the arm -- git, from-dir, doc-repo, harness -- because an entry that named only the unit could not tell an investigator which set of bytes moved. One definition (AuditLog.record), one handler, one emission site. A new component on the existing effect rather than a second audit-writing effect or an AuditLog call in each of the four target handlers: four handlers writing their own line is four chances to miss one, which is how this came to be missing. Install's behaviour is byte-identical (empty targets). HomeCloner.SKIPPED_ROOT_FILES still excludes audit.log, and that is now asserted: it is the SOURCE home's history, and a clone that inherited it would claim actions it never took.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-023-CHM-23/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "audit.log was written by install and not by sync -- no trail for the command that touches the most files"
+  },
+  "ticket_id": "CHM-23",
+  "ticket_index": 23,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

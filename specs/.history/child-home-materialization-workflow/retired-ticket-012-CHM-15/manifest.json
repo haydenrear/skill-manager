@@ -1,0 +1,86 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-012-CHM-15 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-15'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-012-CHM-15"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:27.553600+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-012-CHM-15",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-012-CHM-15/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-012-CHM-15/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A tree a worktree merged into a project home survives the next materialization from the store.",
+        "The pass that declines to overwrite it names it, and names something to run.",
+        "A LINK-mode pass does not delete an edited child unit to install a symlink.",
+        "External_regression_childrefresh.cfg keeps producing a counterexample."
+      ]
+    },
+    "closed": "2026-07-28",
+    "evidence": {
+      "graph": "home-sync node home.sync.project.seam: resolve / clone / edit / merge / close-out / rm -rf / resolve / project sync, through the real CLI over real homes, asserted on bytes read back off disk",
+      "mutation": "Three, each reverted and verified with shasum -a 256 -c. (1) `if (!disposal.disposable())` -> `if (false)` in copyUnit (1 occurrence, counted first) failed \"a merge from a worktree survives the next parent-store materialization\" on the bytes. (2) isLocallyModified restored to the two-line copyBaseline comparison failed the same test on \"a tree merged up from a worktree is not the parent store's to delete\". (3) the linkUnit guard condition -> `if (false)` failed \"LINK mode does not delete an edited child unit to install a symlink\" on the symlink assertion.\n",
+      "tlc": "External_regression_childrefresh.cfg violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough (51 distinct states). All 23 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass.",
+      "unit": [
+        "ProjectChildHomeMaterializationTest \"a merge from a worktree survives the next parent-store materialization\" -- bytes, plus the isLocallyModified predicate",
+        "ProjectChildHomeMaterializationTest \"LINK mode does not delete an edited child unit to install a symlink\""
+      ]
+    },
+    "found_by": "asking which OTHER writers destroy bytes in a home, after CHM-9/10/12 closed home sync",
+    "id": "CHM-15",
+    "model_change": "External gains ChildRefreshProvenance (SOURCE_AWARE / CONTENT_DIGEST_ONLY), the StoreOrigin token for a writer that is not a tier, and the action RefreshProjectChildHomeFromStore in the tier slice. That is what made the defect expressible at all: the unit slice's LocallyModified is content-based and so already forbade this, while the code's is record-based and did not. The defect lives in the difference, and the difference is only visible where records are.\n",
+    "objective": "`home sync --merge` from a ticket worktree leaves the project home holding a tree that is PRISTINE BY ITS OWN RECORD -- the merge rewrote that record -- while being a wholesale copy of no store on earth. ChildHomeMaterializer.reconcile asks all three clauses of the baseline rule before it destroys anything: the destination still holds what its record says, the record is evidence about THIS source, and the tree is not a merge result. copyUnit -- the downward materialization that `project resolve` and `project sync` run -- asked only the first, and so did isLocallyModified, the predicate a prune, a teardown and a close-out consult before deleting. Consequence, reproduced end to end against the real CLI: resolve, clone the project home into a worktree, edit, `home sync --merge` back, `home close-out` clears, `rm -rf` the worktree, `project resolve` again. The ticket's bytes then existed in NO home, and the command that deleted them reported MATERIALIZED with the detail \"copied from the parent store\". No operator error is involved: it is the epic's documented flow with the ordinary dependency-refresh command run after it.\n",
+    "phase": "CHM",
+    "resolution": "One reading of the rule, not three. ChildHomeMaterializer.Disposal is the whole conjunction as a value -- baseline, destUntouched, recordIsAboutThisSource, mergeResult -- computed once by disposal() and consumed by copyUnit, reconcile and isLocallyModified. The three inlined copies that disagreed are gone. linkUnit was brought under the same value: linkPath deletes a real directory to put a symlink where it stood, so a COPY child home somebody edited could be destroyed by a later pass that merely asked for LINK. The choke point is inside ChildHomeMaterializer rather than in Fs or in a new collaborator, and the reason is what evidence is available where: Fs knows nothing about homes or records, so a guard there would either have to be handed a baseline by every caller -- which is the same N call sites -- or invent provenance it cannot have.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-012-CHM-15/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "`project resolve` refreshes from the store over a tree a worktree just merged in"
+  },
+  "ticket_id": "CHM-15",
+  "ticket_index": 12,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}
