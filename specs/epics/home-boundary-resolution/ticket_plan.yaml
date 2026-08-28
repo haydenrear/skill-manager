@@ -1,0 +1,237 @@
+# Staged ticket plan -- home-boundary-resolution.
+#
+# STAGED, NOT ACTIVE. `tla-spec-dev scaffold workflow` writes specs/current and
+# specs/desired_program_model, which the child-home-materialization-workflow
+# still occupies: its close is blocked on the MF-019 complexity ledger and that
+# is a real failing measurement, not a formality. So this plan is canonical for
+# scheduling and issue assignment NOW, and becomes the spec workflow when that
+# close lands. Same arrangement effects-everywhere ran under.
+version: 1
+schedule_revision: 1
+name: home-boundary-resolution
+slug: home-boundary-resolution
+branch: epic/home-boundary-resolution
+base: "4423b80"
+repository: haydenrear/skill-manager
+ticket_prefix: HBR
+updated: "2026-08-28"
+
+purpose: >
+  One question, asked in four places, answered differently in each: WHICH HOME'S
+  COPY DOES THIS RUN? A bin/cli shim answers "whichever home wrote me". PATH
+  answers "the root home". SKILL_MANAGER_HOME answers "the one you named" and is
+  ignored by the first two. bootstrap-home.sh asks a CLI that refuses, and reads
+  the refusal as a version problem. Every one of #262, #263 and #264 is that
+  disagreement surfacing somewhere different.
+
+  The failure mode they share is worse than being wrong: they are wrong AT THE
+  MOMENT OF VERIFICATION. An agent edits a skill in its own home, runs the CLI
+  to check, and sees the old code -- so more careful verification produces more
+  confident wrong conclusions. That is why this epic comes before the effects
+  refactor rather than after it.
+
+premise: >
+  This is the two-readers defect class the influence graph already ranks #2 and
+  #3 (HomeCloner/verify 34 findings, sync/close-out 31). The fix is not four
+  patches; it is ONE resolution rule with one implementation, and a test that
+  every generator of a shim obeys it. bin/launch/* already resolves correctly --
+  home="$(cd -- "$shim_dir/../.." && pwd -P)" -- so the pattern exists in the
+  tree and bin/cli/* simply does not use it.
+
+goals:
+  - id: GOAL-a-home-runs-its-own-copy
+    kind: correctness
+    statement: >
+      A skill edited inside a home is what that home's CLI runs. No shim in a
+      home execs a copy living in a different home.
+    metric: "(home, cli-shim) pairs whose shim resolves a skill copy outside its own home"
+    harness: >
+      A walker over every home on the machine that, for each bin/cli/* shim,
+      resolves what it would exec and compares the owning home against the home
+      the shim lives in. Reported per pair, not aggregated -- one bad pair is
+      the whole defect.
+    baseline:
+      value: "UNMEASURED -- HBR-0 establishes it before any fix lands"
+      measured_at: null
+    target: "0"
+
+  - id: GOAL-an-agent-in-its-own-home-can-work
+    kind: capability
+    statement: >
+      An agent launched through a worktree home's launch shim authenticates and
+      does work, rather than printing 'Not logged in' and halting.
+    metric: "does `bin/launch/claude -p 'reply OK'` in a freshly bootstrapped worktree home return a result"
+    harness: "test_graph node: bootstrap a worktree home, launch through the shim, assert a non-empty result and a non-zero churn"
+    baseline:
+      value: "fails -- 'Not logged in - Please run /login', churned for 0s (#263, measured)"
+      measured_at: "2026-08-27"
+    target: "succeeds"
+
+  - id: GOAL-a-failure-names-its-cause
+    kind: diagnosis
+    statement: >
+      A failed bootstrap names the thing that actually went wrong. A non-zero
+      exit from a shim is not evidence about its version.
+    metric: "of 3 seeded failure modes, how many produce a message naming the true cause"
+    harness: >
+      Seed each in turn -- (a) a cross-home refusal, (b) a genuinely old CLI
+      without `home clone`, (c) no CLI at all -- and assert the message
+      distinguishes them. Today all three render as 'too old'.
+    baseline:
+      value: "0 of 3 -- #264 measured (a) reported as (b), with a remedy that cannot work"
+      measured_at: "2026-08-27"
+    target: "3 of 3"
+
+  - id: GOAL-the-real-error-survives
+    kind: diagnosis
+    statement: >
+      When skt relays a CLI failure, the cause reaches the reader instead of
+      being truncated away.
+    metric: "is the underlying CLI error present in skt's rendered output for a seeded cross-home refusal"
+    harness: "a skt unit case asserting the refusal text appears; today it is cut before the substantive line"
+    baseline:
+      value: "absent -- truncated (#264, second defect)"
+      measured_at: "2026-08-27"
+    target: "present"
+
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-home-boundary-resolution/deferred/backlog.yaml
+  rule: >
+    A failure case found outside a ticket's declared slice is appended to the
+    backlog with its reproduction and left there. This epic is SMALL on purpose
+    and its adjacency is enormous -- every home-resolution question invites the
+    effects refactor. Agents do not widen a ticket into that.
+
+review_policy:
+  cadence: wave
+  gate: true
+  merges: epic-agent
+  walkthrough: required
+  artifact_root: results/epic-home-boundary-resolution/reviews/
+  rule: >
+    The epic agent merges each wave's PRs into the epic branch in promotion
+    order, then writes the review artifact and stops. Silence is not approval.
+
+tickets:
+  - id: HBR-0
+    title: "Establish the baseline, and name the one resolution rule"
+    wave: 1
+    depends_on: []
+    promotion_order: 0
+    promotion_predecessor: null
+    goals: [GOAL-a-home-runs-its-own-copy]
+    contribution: measurement-and-contract
+    objective: >
+      Measure GOAL-a-home-runs-its-own-copy's baseline across every home on the
+      machine, and write the resolution rule down ONCE as a contract with a test
+      that every shim generator is checked against.
+    expected_effect: "a number where there is currently none, and a test that fails for bin/cli/*"
+    local_signal: "the contract test is RED against today's tree, and names each offending generator"
+    slice: "measurement + the contract test. NO generator is changed here."
+    conflict_keys: [shims/contract]
+
+  - id: HBR-1
+    title: "#262 - a bin/cli shim resolves the skill from the home it lives in"
+    issue: "https://github.com/haydenrear/skill-manager/issues/262"
+    wave: 2
+    depends_on: [HBR-0]
+    promotion_order: 1
+    promotion_predecessor: HBR-0
+    goals: [GOAL-a-home-runs-its-own-copy]
+    contribution: primary
+    objective: >
+      Generated bin/cli shims resolve their skill path from the home the shim
+      lives in, mirroring bin/launch/*. The rule is PREFER THIS HOME'S COPY,
+      FALL BACK TO THE PINNED ONE -- not "always this home", which would break
+      a home that legitimately has no copy of the unit.
+    expected_effect: "the HBR-0 contract test goes green for skill-manager's own generator"
+    local_signal: "an edit to a skill inside a worktree home changes what that home's shim runs"
+    slice: >
+      skill-manager's shim generator AND the SkillScriptBackend installer
+      contract, so a unit that writes its own shim inherits the rule rather than
+      re-inventing it. spec-double-compiler's install-tla-spec-dev.sh freezing
+      $SKILL_DIR is the measured instance.
+    conflict_keys: [shims/contract, installer/skill-script]
+
+  - id: HBR-2
+    title: "#264a - bootstrap resolves the CLI in the right order, and tells refused from too-old"
+    issue: "https://github.com/haydenrear/skill-manager/issues/264"
+    wave: 2
+    depends_on: [HBR-0]
+    promotion_order: 2
+    promotion_predecessor: HBR-1
+    goals: [GOAL-a-failure-names-its-cause]
+    contribution: primary
+    objective: >
+      bootstrap-home.sh resolves the CLI pinned-build-first and PATH-last, the
+      way the launch shims already do, and distinguishes a cross-home REFUSAL
+      from a CLI that is genuinely too old and from one that is absent.
+    expected_effect: "3 of 3 seeded failure modes name their true cause"
+    local_signal: "seeding a cross-home refusal no longer prints 'too old', and the printed remedy works when followed verbatim"
+    slice: "bootstrap-home.sh CLI resolution and its diagnostics. Not skt's rendering -- that is HBR-3."
+    conflict_keys: [bootstrap/cli-resolution]
+
+  - id: HBR-3
+    title: "#264b - skt relays the CLI's real error instead of truncating it"
+    issue: "https://github.com/haydenrear/skill-manager/issues/264"
+    repository: haydenrear/skill-publisher-skill
+    wave: 2
+    depends_on: [HBR-0]
+    promotion_order: 3
+    promotion_predecessor: HBR-2
+    goals: [GOAL-the-real-error-survives]
+    contribution: primary
+    objective: >
+      When a provisioning command fails, the CLI's own error reaches the reader.
+    expected_effect: "the refusal text appears in skt's output for a seeded cross-home refusal"
+    local_signal: "a skt unit case asserting the substantive line survives"
+    slice: >
+      skt's error rendering only. NOTE: a DIFFERENT REPOSITORY, so this ticket
+      does not land on the epic branch -- it lands in skill-publisher-skill and
+      reaches this epic through `skt sync`. Its receipt records both.
+    conflict_keys: [skt/error-rendering]
+
+  - id: HBR-4
+    title: "#263 - an agent launched from a worktree home can authenticate"
+    issue: "https://github.com/haydenrear/skill-manager/issues/263"
+    wave: 3
+    depends_on: [HBR-1, HBR-2]
+    promotion_order: 4
+    promotion_predecessor: HBR-3
+    goals: [GOAL-an-agent-in-its-own-home-can-work]
+    contribution: primary
+    objective: >
+      `skill-manager exec` stops redirecting CLAUDE_CONFIG_DIR to an empty
+      directory in the case where that guarantees the agent cannot authenticate.
+      The DESIGN QUESTION is the ticket: isolation and credentials are both real
+      requirements and the current answer sacrifices one silently.
+    expected_effect: "a worktree-home launch returns a result instead of 'Not logged in'"
+    local_signal: "bin/launch/claude -p 'reply OK' in a fresh worktree home returns non-empty"
+    slice: >
+      The credential axis of `exec` only. Explicitly IN scope: a documented
+      warning that modifying the credential path of a RUNNING session is
+      unrecoverable from inside that session -- #263 measured a session losing
+      its own credentials mid-turn and being unable to undo it, because undoing
+      required an API call.
+    conflict_keys: [exec/agent-env]
+
+  - id: HBR-5
+    title: "Terminal evaluation - decide all four goals on the integrated tree"
+    wave: 4
+    depends_on: [HBR-1, HBR-2, HBR-3, HBR-4]
+    promotion_order: 5
+    promotion_predecessor: HBR-4
+    goals:
+      - GOAL-a-home-runs-its-own-copy
+      - GOAL-an-agent-in-its-own-home-can-work
+      - GOAL-a-failure-names-its-cause
+      - GOAL-the-real-error-survives
+    contribution: measurement
+    objective: "Run every harness on the integrated epic and record each goal met or missed."
+    expected_effect: "four numbers, reported against their baselines"
+    local_signal: "n/a - this ticket IS the signal"
+    slice: "measurement only. A missed goal is reported, never fixed here."
+    conflict_keys: [evaluation]
