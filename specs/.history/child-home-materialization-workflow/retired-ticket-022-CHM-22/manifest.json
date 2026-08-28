@@ -1,0 +1,88 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-022-CHM-22 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-22'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-022-CHM-22"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:29.018137+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-022-CHM-22",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-022-CHM-22/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-022-CHM-22/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A record whose only defect is its version holds the unit back with its bytes intact, and the identical record at the current version still fast-forwards.",
+        "The hold-back names the schema and the change, and does NOT say \"locally modified\".",
+        "A clone re-baselines a record it cannot read and leaves one it can.",
+        "A stale CHECKOUT record still keeps the unit a checkout."
+      ]
+    },
+    "closed": "2026-07-29",
+    "evidence": {
+      "graph": "home-sync 17/180, project-child-home 11/60, home-clone 8/59 -- all passed",
+      "mutation": "Removed the schema gate (usableAsEvidence -> `record != null`, 1 definition site feeding 3 readers, counted first): killed \"a record from an older schema is not a licence to replace anything\" ON THE BYTES -- the destination was overwritten -- and \"a clone re-baselines a record it cannot read\". Silenced staleSchemaNote (1 site): killed the same test on the message, which then fell back to the #43 sentence about \"no materialization record of its own\" -- true, and useless to whoever has to act on it. Gated `mode` on the version too (1 site added): killed \"a record this build cannot read still keeps a checkout a checkout\" -- the record came back as mode COPY, the checkout demoted to an ordinary copy. Removed the deliberate clone re-baseline (1 site): killed \"a clone re-baselines a record it cannot read\". Every mutation reverted; shasum -a 256 -c OK.\n",
+      "note": "The insensitive first version of the checkout assertion never landed -- it was written and replaced inside the same session, so `git show --stat -- src/test` on the first commit is 673 insertions and ZERO deletions. No coverage was lost; an earlier report described it as a deletion, which the diff does not say. A first version of the checkout assertion, written against a non-git child tree, was INSENSITIVE to the mode mutation -- the stale record also fails as a COPY baseline, so the unit was held back either way and the test passed for the wrong reason. Replaced with the git-backed form, where the child tree is byte-identical to the store's and the demotion is reachable through the adopt-an-identical-copy branch. A mutation that kills nothing is a finding about the test.\n",
+      "unit": [
+        "HomeSyncTest \"a record from an older schema is not a licence to replace anything\" -- on the destination's bytes, its tree digest, and both surfaces' wording, with the current-schema half asserted too",
+        "HomeSyncTest \"a clone re-baselines a record it cannot read, and leaves one it can\"",
+        "HomeSyncGitUnitTest \"a record this build cannot read still keeps a checkout a checkout\" -- on the record's own bytes"
+      ]
+    },
+    "found_by": "review of",
+    "github_issue": 46,
+    "id": "CHM-22",
+    "model_change": "NONE, and the reason is worth stating rather than assuming. A record whose schema this build cannot read is exactly RecordlessSyncRecord -- every path claims NoBaseline -- which External.tla has had since #43, and AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough is already the property that such a record may not license a write. Adding a schema dimension would state the same rule twice, which planning_rules.dual_representation_rule forbids for the same reason.\n",
+    "objective": "#41 changed what a materialization record's digests are computed OVER: re-derivable build output stopped counting as unit content. The version number did not move, so a record written before it and one written after describe two different trees and are not comparable. The first pass over a home holding a pre-#41 record therefore saw a mismatch it could not explain and held the unit back -- correctly, and SILENTLY. All seven onboarded constituent homes carry such records. The silence is the defect, not the hold-back.\n",
+    "phase": "CHM",
+    "resolution": "Both halves of the issue's \"either/or\", because they answer different questions. BUMP: RECORD_SCHEMA_VERSION is 2, and usableAsEvidence -- one definition, three readers (copyBaseline, hasEntries, sourceHeldTheseBytes: exactly the three showings the baseline rule accepts) -- makes any other version no evidence at all. Under the baseline rule that costs exactly the ability to fast-forward and cannot cost bytes. The OTHER reading of \"re-baseline\" -- recomputing contentDigest from whatever the destination currently holds so the tree reads as untouched again -- is the unsafe one: true by construction, proving nothing about whether an agent edited the unit since the copy, and a licence for the next reconcile. That is CHM-9's shape reached through the version field. `mode` is deliberately NOT gated on the version. It is the one field whose whole job is to stop a deletion: a project-wide COPY default that won over a recorded CHECKOUT would demote a tree holding unpushed commits. Deliberate re-baselining happens in the one place it is sound -- recordCloneBaselines, where the home's content IS what the home it was copied from held, by construction. Elsewhere a pristine unit self-heals on the next pass and a non-pristine one holds back. MESSAGE: staleSchemaNote names the schema and issue #41 as the cause, on all three surfaces that report a hold-back (home sync's detail, which close-out renders; copyUnit's held-back detail; and locallyModifiedUnits, the predicate a prune and a teardown consult).\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-022-CHM-22/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "RECORD_SCHEMA_VERSION was not bumped when the digest scope changed, so a stale record held a unit back with no cause an operator could act on"
+  },
+  "ticket_id": "CHM-22",
+  "ticket_index": 22,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

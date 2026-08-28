@@ -1,0 +1,113 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-007-CHM-8 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-8'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-007-CHM-8"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:26.095265+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-007-CHM-8",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-007-CHM-8/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-007-CHM-8/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Every Internal action has a spec-unit adapter.",
+        "Every External action has a Test Graph binding running out of process."
+      ],
+      "commands": [
+        "tla-spec-dev --spec-root specs run spec-unit-tests --target specs/current"
+      ],
+      "evidence": {
+        "production_package_decision": "Kept as documentation. The External content rule forbids an External adapter importing the production package; for this program that rule is both unenforceable and unnecessary, because the unit under test is a Java CLI driven out of process and no Python adapter could import it if it tried. CHM-8 still owns deciding whether to widen the contract for non-Python programs or drop the key for them.\n",
+        "scope_update_2026_07_27": "The three-tier sync slice added three External actions (ReconcileHomeTiers, TearDownWorktreeHome, EditUnitInHomeTier). The adapter gap was NOT closed for them, and the reasoning is recorded in testgraph_bindings.yml `blocked.decision_2026_07_27`: adapters bind GENERATED CASES, case_codegen.generation_status is still `planned`, so adapters written now would be classes nothing loads -- while making the four required keys appear in the file and turning a missing deliverable into a silent one. The honest documentation was extended instead: each new action carries its port, its command, the named JVM test cases that exercise it today, and an explicit `test_graph: status: absent` with its owner and ticket.\n"
+      },
+      "note": "test_graph node authoring for this epic is owned by a separate agent; this ticket owns the bindings file, not the nodes.\n"
+    },
+    "current_increment": {
+      "adapters": [
+        "ChildHomeMaterializerPort",
+        "SkillManagerCliChildHomePort",
+        "AgentWorkspacePort"
+      ],
+      "graph_after_unit_pass": [
+        "project-resolve",
+        "harness-smoke",
+        "smoke",
+        "source-tracking"
+      ],
+      "model_actions": [],
+      "model_state": [],
+      "unit_tests": [
+        "tla-spec-dev run spec-unit-tests --target specs/current"
+      ]
+    },
+    "depends_on": [
+      "CHM-1",
+      "CHM-2",
+      "CHM-3",
+      "CHM-4",
+      "CHM-5",
+      "CHM-6",
+      "CHM-7"
+    ],
+    "desired_actions": [],
+    "id": "CHM-8",
+    "implementation_scope": [
+      "specs/desired_program_model/case_adapters.toml",
+      "specs/desired_program_model/testgraph_bindings.yml",
+      "specs/desired_program_model/adapters.py",
+      "specs/desired_program_model/tlc_projection.py"
+    ],
+    "objective": "Wire case_adapters.toml (Internal -> spec-unit) and testgraph_bindings.yml (External -> Test Graph) so the model is actually validated against production instead of only against itself.\n",
+    "phase": "CHM",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-007-CHM-8/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "Spec-unit adapters and Test Graph bindings for the new views"
+  },
+  "ticket_id": "CHM-8",
+  "ticket_index": 7,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

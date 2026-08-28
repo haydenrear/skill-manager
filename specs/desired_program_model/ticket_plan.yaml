@@ -1,7 +1,7 @@
 # Desired program model + ticket plan for the child-home materialization epic.
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
-schedule_revision: 10
+schedule_revision: 12
 name: child-home-materialization-workflow
 updated: "2026-08-07"
 purpose: >
@@ -958,11 +958,208 @@ epic_goals:
     evaluation_ticket: HIS-6
     evidence_root: results/epic-home-integrity-sync/goals/GOAL-progressive-disclosure
 
+# ===========================================================================
+# THE SUCCESSOR EPIC, staged here rather than replacing `epic:` above.
+#
+# `epic:` and `epic_goals:` still describe home-integrity-sync, which is
+# DELIVERED (22/22, merged at 574e446, v0.25.0 released) but whose workflow
+# close is BLOCKED on the receipt gap recorded below. Overwriting those blocks
+# now would erase the delivered epic's record from the active plan to make room
+# for one that has not started. So the successor is staged under its own keys
+# and is promoted to `epic:` / `epic_goals:` when the close lands.
+# ===========================================================================
+
+successor_epic:
+  slug: effects-everywhere
+  branch: epic/effects-everywhere
+  base: "574e446"                       # main, v0.25.0
+  repository: haydenrear/skill-manager
+  ticket_prefix: EFF
+  adopts: [COH-0, COH-1, COH-2, COH-3, COH-4, EFF-0, EFF-1, CHM-24, MIG-0]
+  premise: >
+    The effects pipeline -- Program, DryRunInterpreter, LiveInterpreter, typed
+    receipts -- is the only reason this codebase has the stability it has, and
+    every defect of the last epic that mattered was something that escaped it.
+    This epic finishes the architecture rather than working around it, in
+    skill-manager AND in skt, and models the workflow itself so skt's own
+    lifecycle is checkable.
+  budgets_note: >
+    EFF-0 is ANSWERED and negotiated -- see
+    results/epic-effects-everywhere/baseline/README.md 2. Its proposal
+    (max_component_actions 8 -> 12) was REJECTED on the ledger's evidence:
+    gate_passed was False on 16 of 16 runs of the previous epic, variables
+    measured 38 against a budget of 6, and the state-space bound was UNKNOWN.
+    Defaults kept, max_unresolved_bound_variables: 0 added. You cannot lower a
+    budget you are 6.3x over.
+
+successor_epic_goals:
+  - id: GOAL-no-mutation-outside-the-interpreter
+    kind: architecture
+    statement: >
+      Every mutation reachable from the CLI's execution strategy is a declared
+      SkillEffect, run through an interpreter. Startup stops being a place where
+      writes happen before the program exists.
+    metric: "mutation sites reachable from SkillManagerCli's execution strategy that are not SkillEffects"
+    harness: >
+      A unit case walking the call graph from the execution-strategy lambda, plus
+      the grep falsifier named in the epic review: every hit is a future DEF-122.
+    baseline:
+      value: "4 -- tryReconcile, bindNamedHome, refuseIfConfinementEscapes, tryPrintOutstandingErrors"
+      measured_at: "2026-08-25"
+    target: "0"
+
+  - id: GOAL-preview-never-writes
+    kind: correctness
+    statement: >
+      Every command that offers --dry-run leaves the home byte-identical, and
+      each one is asserted rather than assumed.
+    metric: "commands declaring --dry-run that carry a byte-identity assertion"
+    harness: "LazyHomeScaffoldTest, digest-per-path before/after with an in-fixture control that proves the mutation is reachable"
+    baseline:
+      value: "1 of 20 (remove, added by the DEF-122 fix); the other 19 are unasserted"
+      measured_at: "2026-08-25"
+    target: "20 of 20"
+    note: >
+      CHM-18 -- "--dry-run creates a directory and a lock file in the destination
+      it promised not to write" -- is CLOSED in this same plan. The class was
+      found, fixed, and came back as DEF-122. One assertion per command is what
+      stops a third instance.
+
+  - id: GOAL-one-home-one-answer-everywhere
+    kind: correctness
+    statement: >
+      `home verify` and `home repair` name the same subject set AND the same
+      kind, on every surface a link can live on -- shims, skills/, plugins/,
+      agent dirs -- with no operator-supplied flag.
+    metric: "surfaces where the two readers disagree, over homes on this machine"
+    harness: "a unit case per surface with a bin/cli case as the in-run control; plus a fleet pass of `home verify` over every home under ~/IdeaProjects"
+    baseline:
+      value: "3 live homes disagree (DEF-124, links under skills/); plus the DEF-115 kind-label residue"
+      measured_at: "2026-08-26"
+    target: "0 disagreements, and the two readers' scopes stated in one place"
+
+  - id: GOAL-remedy-converges
+    kind: correctness
+    statement: >
+      Every remedy the product prints, run verbatim, changes the verdict that
+      printed it.
+    metric: "printed remedies with an assertion that running them clears the condition"
+    harness: "a remedy-convergence case class; RemediesAreRunnableTest extended from 'is runnable' to 'converges'"
+    baseline:
+      value: >
+        2 known non-converging (DEF-123's rolled-back-merge line; skt check's
+        `skt build <artifact>` when the root cause is a stale unit-store, fixed
+        in skill-publisher-skill#38), 0 asserted as converging
+      measured_at: "2026-08-26"
+    target: "an asserted class, and 0 known non-converging remedies"
+
+  - id: GOAL-skt-is-effectful
+    kind: architecture
+    statement: >
+      skt's mutations go through a declared effect port with a dry-run
+      interpreter, so `skt publish`, `skt sync` and `skt ticket` can be previewed
+      and their effects diffed against what actually happened.
+    metric: "skt mutation sites behind a declared port; observed side effects diffed against declared effects"
+    harness: "EFF-1's own acceptance -- observed side effects diff clean against declared effects; provider assertions check values, counts and ORDERING, not existence"
+    baseline:
+      value: "0 -- skt shells out to the CLI imperatively and has no preview verb of its own"
+      measured_at: "2026-08-26"
+    target: "the port declared, the diff clean"
+
+  - id: GOAL-workflow-in-tla
+    kind: model
+    statement: >
+      The epic/ticket lifecycle is modelled, so skt's own workflow is
+      model-checkable rather than only testable -- and the complexity gate that
+      has been red all along goes green.
+    metric: "gate_passed in specs/results/complexity_ledger.json; max_component_variables"
+    harness: "tla-spec-dev analyze against the negotiated budgets; the ledger is the instrument"
+    baseline:
+      value: "gate_passed False on 16 of 16 runs; variables 38 against a budget of 6; state-space bound UNKNOWN; distinct_states never produced"
+      measured_at: "2026-08-26"
+    target: "gate_passed True; variables <= 6 per component; bound resolvable; distinct_states a real number"
+
+  - id: GOAL-disclosure-cost-holds
+    kind: evaluation
+    statement: >
+      A fresh agent that inherits nothing orients itself at any tier, for any of
+      our skills, inside the budget -- and it stays inside as the corpus grows.
+    metric: "median corpus_tokens over n>=3 runs, per tier x per skill"
+    harness: >
+      results/epic-home-integrity-sync/evaluation/disclosure-cost/drive.py --
+      real `claude -p` subprocesses, clean config dir, all four home axes and
+      HOME pinned at scratch
+    baseline:
+      value: >
+        worktree tier 514 median (n=3, after skill-publisher-skill#36/#37);
+        root tier 21,186 (n=1, measured under the OLD prompt and not re-measured);
+        skt, git-epic-workflow, git-issue-workflow never measured
+      measured_at: "2026-08-26"
+    target: "<= 2000 median at root, project and worktree, for skill-manager, skt, git-epic-workflow and git-issue-workflow"
+
+  - id: GOAL-influence-attributed
+    kind: evaluation
+    statement: >
+      Every regression this epic catches is attributed to the architectural
+      surface that produced it, so the scorecard answers "what causes bugs here"
+      with counts rather than impressions.
+    metric: "findings with a surface attribution and an instrument; edges ranked by blocking density"
+    harness: "results/epic-effects-everywhere/baseline/influence-graph.json, regenerated at close and diffed against the baseline"
+    baseline:
+      value: >
+        122 findings attributed across 12 surfaces; strongest blocking edge
+        HomeCloner/verify <-> HomeRepair, 9 shared / 2 blocking
+      measured_at: "2026-08-26"
+    target: >
+      every finding of this epic attributed at the moment it is caught; the
+      close-time graph diffed against this baseline, and the diff explained
+
+# ---------------------------------------------------------------------------
+# WORKFLOW CLOSE, ATTEMPTED 2026-08-26 AND BLOCKED. RECORDED, NOT WORKED AROUND.
+#
+# `close_spec_workflow.py --allow-open` refuses: 17 tickets carry `status:
+# closed` and have ZERO close receipts under
+# specs/.history/child-home-materialization-workflow/.
+#
+#     plan claims   17 closed + 22 delivered = 39
+#     receipts on disk                          9
+#       ISSUE-166, ISSUE-168, HIS-5, HIS-6, HIS-8, HIS-19, HIS-20, HIS-21, HIS-22
+#
+# CHM-9..23 were marked closed by a HAND EDIT to this file (492a6b4), never
+# through `close ticket`. Fifteen of the twenty-two delivered HIS tickets have
+# no receipt either -- they pass only because the gate validates `closed` and
+# not `delivered`, which is a hole in the gate rather than a clean bill.
+#
+# NOTHING WAS RELABELLED AND NO RECEIPT WAS GENERATED. Marking the 17
+# `delivered` would have dodged the gate; generating receipts for work closed
+# weeks ago would have fabricated the evidence the receipts exist to be. Either
+# would be the exact failure this repository keeps finding in itself.
+#
+# The gate is right and the plan is wrong. Disposition is the owner's; until
+# then this workflow stays OPEN and its successor, epic/effects-everywhere,
+# runs alongside it rather than on top of it.
+#
+# Fourth instance in one day of one shape -- a record written by one component
+# and read by none. See results/epic-effects-everywhere/baseline/README.md 3.
+# ---------------------------------------------------------------------------
+
 tickets:
   - id: CHM-1
     title: "Child home units materialize by copy, not by symlink"
     phase: CHM
-    status: next
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-000-CHM-1/manifest.json
+      affected_goals: []
     depends_on: []
     production_status: implemented_spec_pending
     objective: >
@@ -1015,7 +1212,19 @@ tickets:
   - id: CHM-2
     title: "Per-unit materialization record as the local-change baseline"
     phase: CHM
-    status: planned
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-001-CHM-2/manifest.json
+      affected_goals: []
     depends_on: [CHM-1]
     production_status: implemented_spec_pending
     objective: >
@@ -1070,7 +1279,19 @@ tickets:
   - id: CHM-3
     title: "Hold back and report locally modified units on resolve and sync"
     phase: CHM
-    status: planned
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-002-CHM-3/manifest.json
+      affected_goals: []
     depends_on: [CHM-2]
     production_status: implemented_spec_pending
     objective: >
@@ -1124,7 +1345,19 @@ tickets:
   - id: CHM-4
     title: "Prune holds back modified units it no longer claims"
     phase: CHM
-    status: planned
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-003-CHM-4/manifest.json
+      affected_goals: []
     depends_on: [CHM-3]
     production_status: implemented_spec_pending
     objective: >
@@ -1171,7 +1404,19 @@ tickets:
   - id: CHM-5
     title: "Dereference in-unit symlinks that point into the parent store"
     phase: CHM
-    status: planned
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-004-CHM-5/manifest.json
+      affected_goals: []
     depends_on: [CHM-1]
     production_status: implemented_spec_pending
     objective: >
@@ -1223,7 +1468,19 @@ tickets:
   - id: CHM-6
     title: "Staged, atomically swapped materialization"
     phase: CHM
-    status: planned
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-005-CHM-6/manifest.json
+      affected_goals: []
     depends_on: [CHM-2]
     production_status: implemented_spec_pending
     objective: >
@@ -1272,7 +1529,19 @@ tickets:
   - id: CHM-7
     title: "harness instantiate --child-home-dir goes through the same materializer"
     phase: CHM
-    status: planned
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-006-CHM-7/manifest.json
+      affected_goals: []
     depends_on: [CHM-3, CHM-6]
     production_status: implemented_spec_pending
     objective: >
@@ -1316,7 +1585,19 @@ tickets:
   - id: CHM-8
     title: "Spec-unit adapters and Test Graph bindings for the new views"
     phase: CHM
-    status: planned
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Never dispatched: no issue was ever published for this id, so no assignment
+        is being revoked. The behaviour it specified is present in the shipped
+        implementation, and the successor workflow carries the question forward.
+        This receipt records a SCHEDULING fact and makes no validation claim.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-007-CHM-8/manifest.json
+      affected_goals: []
     depends_on: [CHM-1, CHM-2, CHM-3, CHM-4, CHM-5, CHM-6, CHM-7]
     objective: >
       Wire case_adapters.toml (Internal -> spec-unit) and testgraph_bindings.yml
@@ -1384,7 +1665,23 @@ tickets:
   - id: CHM-9
     title: "A fast-forward makes the destination a pristine copy of a home that may be gone"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-008-CHM-9/manifest.json
+      affected_goals: []
     closed: "2026-07-27"
     resolved_with: [CHM-10, the stale-baseline finding]
     depends_on: []
@@ -1443,7 +1740,23 @@ tickets:
   - id: CHM-10
     title: "mergeBase picks a baseline newer than the common ancestor, and reverts work without a conflict"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-009-CHM-10/manifest.json
+      affected_goals: []
     closed: "2026-07-27"
     resolved_with: [CHM-9, the stale-baseline finding]
     depends_on: []
@@ -1525,7 +1838,23 @@ tickets:
   - id: CHM-11
     title: "`home sync` and `home close-out` have no out-of-process coverage"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-010-CHM-11/manifest.json
+      affected_goals: []
     closed: "2026-07-27"
     closed_by: ea03c22
     opened_and_closed_the_same_day: true
@@ -1557,7 +1886,23 @@ tickets:
   - id: CHM-12
     title: "A merge records the source's whole tree as the shared baseline, and the next reconcile overwrites the work"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-011-CHM-12/manifest.json
+      affected_goals: []
     closed: "2026-07-28"
     found_by: manual exploratory testing of the ordinary three-tier round trip
     objective: >
@@ -1633,7 +1978,23 @@ tickets:
   - id: CHM-15
     title: "`project resolve` refreshes from the store over a tree a worktree just merged in"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-012-CHM-15/manifest.json
+      affected_goals: []
     closed: "2026-07-28"
     found_by: asking which OTHER writers destroy bytes in a home, after CHM-9/10/12 closed home sync
     objective: >
@@ -1702,7 +2063,23 @@ tickets:
   - id: CHM-16
     title: "Three writers delete hand-authored skills out of an agent tree, and one of them writes the licence for another"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-013-CHM-16/manifest.json
+      affected_goals: []
     closed: "2026-07-28"
     found_by: enumerating every writer into a home that does not go through ChildHomeMaterializer
     objective: >
@@ -1763,7 +2140,23 @@ tickets:
   - id: CHM-17
     title: "close-out compares build and tool state inside a unit as if it were unit content"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-014-CHM-17/manifest.json
+      affected_goals: []
     closed: "2026-07-29"
     github_issue: 41
     found_by: running a worktree's own tooling once, on three real repositories
@@ -1849,7 +2242,23 @@ tickets:
   - id: CHM-18
     title: "`--dry-run` creates a directory and a lock file in the destination it promised not to write"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-015-CHM-18/manifest.json
+      affected_goals: []
     closed: "2026-07-29"
     github_issue: 42
     found_by: measuring what a dry run left behind in the operator's own read-only home
@@ -1898,7 +2307,23 @@ tickets:
   - id: CHM-19
     title: "project -> root is a silent no-op against the only destination an operator has"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-016-CHM-19/manifest.json
+      affected_goals: []
     closed: "2026-07-29"
     github_issue: 43
     found_by: running the documented upward sync against the real root home
@@ -1977,7 +2402,23 @@ tickets:
   - id: CHM-20
     title: "the home's CLI entrypoint could never find a CLI, and the assertion covering it was one-sided"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-017-CHM-20/manifest.json
+      affected_goals: []
     closed: "2026-07-29"
     found_by: an operator running the shim on a machine with a working CLI on PATH
     objective: >
@@ -2044,7 +2485,23 @@ tickets:
   - id: CHM-21
     title: "a git-sourced unit's .git was digested as unit content, so it was held back forever -- and skipping it destroys commits"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-018-CHM-21/manifest.json
+      affected_goals: []
     closed: "2026-07-29"
     github_issue: 29
     found_by: end-to-end home-sync graph coverage, then TLC three times over on the model of the fix
@@ -2220,6 +2677,12 @@ tickets:
     title: "a git-backed unit's .git goes through the three-way merge algebra, so close-out names .git/index as a file to resolve"
     phase: CHM
     status: open
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     needs_github_issue: true
     found_by: adversarial review of CHM-21, which measured it against the parent commit and found it byte-identical
     objective: >
@@ -2382,7 +2845,23 @@ tickets:
   - id: CHM-22
     title: "RECORD_SCHEMA_VERSION was not bumped when the digest scope changed, so a stale record held a unit back with no cause an operator could act on"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-022-CHM-22/manifest.json
+      affected_goals: []
     closed: "2026-07-29"
     github_issue: 46
     found_by: review of #41's fix
@@ -2479,7 +2958,23 @@ tickets:
   - id: CHM-23
     title: "audit.log was written by install and not by sync -- no trail for the command that touches the most files"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-023-CHM-23/manifest.json
+      affected_goals: []
     closed: "2026-07-29"
     github_issue: 45
     found_by: attributing a real-home change during the sync-blocker work, which is exactly what an audit log is for
@@ -2536,7 +3031,23 @@ tickets:
   - id: CHM-13
     title: "`home close-out` clears a teardown for a path that is not a home at all"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-024-CHM-13/manifest.json
+      affected_goals: []
     closed: "2026-07-28"
     found_by: manual exploratory testing
     objective: >
@@ -2584,7 +3095,23 @@ tickets:
   - id: CHM-14
     title: "A symlinked unit or kind directory is invisible to the enumerator and reported clean"
     phase: CHM
-    status: closed
+    status: retired
+    retirement:
+      schedule_revision: 12
+      resolution: superseded
+      reason: >
+        Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather
+        than through `close ticket`, so no close receipt was ever written. A
+        genuine re-close is not available: it requires the complexity-ledger
+        input that `open ticket` scaffolds, which this ticket never had, and a
+        receipt produced now would describe today's tree rather than the work as
+        it was done. Retired instead, which is the honest record — a SCHEDULING
+        receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The
+        shipped behaviour is unaffected; only the ceremony is being closed out.
+      decided_by: "repository owner, 2026-08-28 disposition"
+      decided_at: "2026-08-28"
+      receipt: specs/.history/child-home-materialization-workflow/retired-ticket-025-CHM-14/manifest.json
+      affected_goals: []
     closed: "2026-07-28"
     found_by: manual exploratory testing
     objective: >
@@ -2632,6 +3159,12 @@ tickets:
     title: "Owner decision: schedule the Internal/External migration"
     phase: MIG
     status: blocked_on_owner
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     depends_on: [CHM-8]
     objective: >
       Decide whether to migrate SkillManager.tla into Core/Internal/External as
@@ -2689,6 +3222,12 @@ tickets:
     title: "Phase 0: agree the budgets"
     phase: EFF
     status: blocked_on_owner
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     depends_on: []
     objective: >
       Owner accepts or adjusts the budgets in spec_manifest.yaml, and
@@ -2706,6 +3245,12 @@ tickets:
     title: "Declare the child-home filesystem effect port"
     phase: EFF
     status: blocked_on_prerequisite
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     depends_on: [EFF-0, MIG-0]
     blocked_because: >
       effectful_onboarding.md requires the Internal/External views to be
@@ -2736,6 +3281,12 @@ tickets:
     title: "Decide whether the effects pipeline is the target architecture"
     phase: COH
     status: open
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     github_issue: 24
     objective: >
       Executor / Compensation / RollbackJournal exist but are wired to no
@@ -2754,6 +3305,12 @@ tickets:
     title: "Make @port enforceable rather than a comment"
     phase: COH
     status: open
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     github_issue: 24
     objective: >
       Internal.tla carries 19 @port tags and External.tla 11, including the
@@ -2770,6 +3327,12 @@ tickets:
     title: "Close the read paths that hide corruption"
     phase: COH
     status: open
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     github_issue: 27
     objective: >
       Two mutations killed nothing during #20, which is how these surfaced.
@@ -2786,6 +3349,12 @@ tickets:
     title: "Scope the relocatability claim to the surfaces that hold it"
     phase: COH
     status: open
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     github_issue: 26
     objective: >
       AHomeIsAPureFunctionOfItsRoot is stated over RelocatableSurfaces ==
@@ -2803,6 +3372,12 @@ tickets:
     title: "Make an unsatisfiable toolchain version request fail loudly"
     phase: COH
     status: open
+    adopted_by: "epic/effects-everywhere"
+    adopted_at: "2026-08-26"
+    adoption_note: >
+      Carried into the successor workflow with its id, acceptance and
+      history intact. This is not new scope; it is the same question,
+      still open.
     github_issue: 28
     objective: >
       cli-lock.toml is keyed [package-manager.tool] with no version dimension,

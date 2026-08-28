@@ -1,0 +1,109 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-006-CHM-7 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-7'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-006-CHM-7"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:25.885854+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-006-CHM-7",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-006-CHM-7/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-006-CHM-7/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "EveryPassReportsExactlyTheHeldBackUnits holds for pass.kind = \"harness\"."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg"
+      ],
+      "evidence": {
+        "current_model_half": "NOT RUN. The command names specs/current/External.tla (or Internal.tla); specs/current holds only SkillManager.tla. See status.current_model_blocker.\n",
+        "desired_model_half": "verified 2026-07-27",
+        "measured": "External.cfg PASS, which checks EveryPassReportsExactlyTheHeldBackUnits over PassScope(\"harness\").\n"
+      },
+      "status_note": "Left at its existing status deliberately. The desired-state half of the acceptance is met and measured; the current-model half cannot be run at all, so closing this would be closing it on an assumption.\n"
+    },
+    "current_increment": {
+      "adapters": [
+        "SkillManagerCliChildHomePort.instantiate_child_home_from_harness"
+      ],
+      "graph_after_unit_pass": [
+        "harness-smoke",
+        "project-resolve"
+      ],
+      "model_actions": [
+        "InstantiateHarnessChildHome"
+      ],
+      "model_state": [
+        "child_home"
+      ],
+      "unit_tests": [
+        "harness instantiate holds back a locally modified child unit",
+        "harness and project payloads share one materialization record layout"
+      ]
+    },
+    "depends_on": [
+      "CHM-3",
+      "CHM-6"
+    ],
+    "desired_actions": [
+      "InstantiateHarnessChildHome"
+    ],
+    "id": "CHM-7",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/bindings/ChildHomeHarnessInstaller.java"
+    ],
+    "objective": "Both paths that populate a child home write the same layout, so they must agree on how units get there and on what happens to local edits.\n",
+    "phase": "CHM",
+    "production_status": "implemented_spec_pending",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Never dispatched: no issue was ever published for this id, so no assignment is being revoked. The behaviour it specified is present in the shipped implementation, and the successor workflow carries the question forward. This receipt records a SCHEDULING fact and makes no validation claim.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-006-CHM-7/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "harness instantiate --child-home-dir goes through the same materializer"
+  },
+  "ticket_id": "CHM-7",
+  "ticket_index": 6,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

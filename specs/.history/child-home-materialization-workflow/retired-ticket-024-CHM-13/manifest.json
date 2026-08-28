@@ -1,0 +1,74 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-024-CHM-13 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-13'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-024-CHM-13"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:27.137137+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-024-CHM-13",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-024-CHM-13/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-024-CHM-13/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "closed": "2026-07-28",
+    "evidence": {
+      "graph": "home-sync node home.sync.homeness: the same four through the real CLI, asserted on exit code AND on nothing having been created",
+      "mutation": "deleted the NotAHomeException.require call in HomeSync.run (1 occurrence, counted first) and both in HomeCloseOut.inspect (2 occurrences, both mutated); the named unit test failed with \"it did NOT refuse, which is the defect\"; reverted and verified with shasum -a 256 -c",
+      "unit": "HomeSyncTest \"close-out refuses a path that is not a home rather than clearing it\" -- the worktree directory, a nonexistent path, a regular file, and the --into end, each asserted on the exception TYPE and on the real home being untouched"
+    },
+    "found_by": "manual exploratory testing",
+    "id": "CHM-13",
+    "not_fixed_here": "`home describe`, `home drift` and `home policy` also answer for arbitrary paths, and each calls store.init(), which lays out a home wherever it is pointed. Left alone on purpose and reported instead: `home policy frozen --home <a home being created>` is a real gesture, and none of the three claims anything about content or authorises a teardown. A command that says \"there is nothing here to lose\" is a different class of defect from one that leaves an empty directory tree at a mistyped path.\n",
+    "objective": "`home close-out --home <the worktree DIRECTORY>` -- rather than <worktree>/.skill-manager -- exited 0 with \"safe\": true, \"blockers\": [], and printed the check mark line naming the directory that held the only copy of the agent's edit. So did a --home that did not exist at all. The gate FAILED OPEN, and the mistake is maximally likely: <worktree> is exactly the argument `git worktree remove` takes. Mechanism: nothing validated home-ness. HomeSync.unitsToVisit returns the union of both sides, a non-home yields zero units, every unit becomes REMOVED_UPSTREAM, and HomeCloseOut.remedyFor maps REMOVED_UPSTREAM to no blocker. Same hole on the sync side: `home sync --from <a nonexistent path>` printed \"reconciled\" with all-zero counts, exit 0, and created the destination's layout on the way; --from <a regular file> behaved identically.\n",
+    "phase": "CHM",
+    "resolution": "NotAHomeException.require refuses before anything is read or written, for `home sync --from`, `home close-out --home` and `home close-out --into`. Home-ness is decided by LaunchEnv.looksLikeStoreRoot, made public rather than re-spelled: it already encoded the test for the PATH sanitizer, and three spellings of \"is this a home\" would eventually disagree about exactly the homes where it matters. Exit code 2, distinct from 0 (reconciled / safe), 1 (this home still holds work) and 9 (refused by policy); --json callers get {\"error\":\"not_a_home\", \"safe\":false, \"clean\":false} rather than a stack trace, so a script cannot read the refusal as approval. A sync DESTINATION is deliberately not validated: creating a tier by reconciling into it is the operation this epic exists for.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-024-CHM-13/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "`home close-out` clears a teardown for a path that is not a home at all"
+  },
+  "ticket_id": "CHM-13",
+  "ticket_index": 24,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

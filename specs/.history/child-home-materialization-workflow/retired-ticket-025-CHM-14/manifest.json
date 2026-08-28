@@ -1,0 +1,74 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-025-CHM-14 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-14'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-025-CHM-14"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:27.345070+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-025-CHM-14",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-025-CHM-14/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-025-CHM-14/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "closed": "2026-07-28",
+    "evidence": {
+      "graph": "home-sync node home.sync.homeness: both shapes through the real CLI, asserting the unit is NAMED, the report is not clean, nothing was copied through the link, and the link target outside every home was never written to",
+      "mutation": "restored the two skip conditions in unitDirectories -- the kind-directory NOFOLLOW_LINKS test and the per-unit isSymbolicLink skip (2 sites, counted first, both mutated); the named unit test failed with \"the linked unit was not named at all: []\"; reverted and verified with shasum -a 256 -c",
+      "unit": "HomeSyncTest \"a symlinked unit or kind directory is reported, never silently skipped\""
+    },
+    "found_by": "manual exploratory testing",
+    "id": "CHM-14",
+    "known_gap": "`home clone` still reproduces such a link verbatim, so the clone is not an independent copy for that unit, and `home verify --against <source>` still passes because the link points somewhere else rather than back at the source. Reported, not fixed here: it is a home-clone property, and the sync side now refuses to be silent about the result either way.\n",
+    "objective": "ChildHomeMaterializer.unitDirectories skipped any unit directory that was a symlink, and skipped an entire KIND directory that was one, with no report of either. MaterializationMode.LINK produces exactly that shape. Measured: a home whose skills/ was a symlink reconciled as {\"clean\":true,\"units\":[]} with the destination's skills/ left empty; a single symlinked unit beside a normal one synced only the normal one, reported clean=true, and never named the other. Worse, the enumerator and the reconciler disagreed. reconcile() applies NOFOLLOW_LINKS only to the final path component, so it reads THROUGH a symlinked skills/, and the same unit was invisible to `home sync` while `home close-out` reported it conflicted -- purely because the destination contributed the name to the union.\n",
+    "phase": "CHM",
+    "resolution": "Symlinks are enumerated, not skipped, and answered by a new outcome: SyncStatus.LINKED, which is unresolved(), so clean is false, `home sync` exits non-zero and `home close-out` blocks with a remedy. reconcile() checks both levels -- the kind directory and the unit directory -- through one helper (symlinkOnUnitPath) before it reads any bytes, so the enumerator and the reconciler cannot disagree by construction. The report names which side is linked and where it points. The gate blocks rather than clears on LINKED because it genuinely cannot tell whether the link points inside the home about to be removed or outside it. \"Cannot tell\" is not \"nothing to lose\".\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-025-CHM-14/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "A symlinked unit or kind directory is invisible to the enumerator and reported clean"
+  },
+  "ticket_id": "CHM-14",
+  "ticket_index": 25,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

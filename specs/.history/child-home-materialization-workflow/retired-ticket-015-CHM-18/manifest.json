@@ -1,0 +1,83 @@
+{
+  "accept_new": false,
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/retired-ticket-015-CHM-18 specs/desired_program_model/ticket_plan.yaml",
+    "git_commit": "git commit -m 'record ticket retirement for CHM-18'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/retired-ticket-015-CHM-18"
+  },
+  "complexity_ledger": null,
+  "created_at_utc": "2026-08-28T23:21:28.180727+00:00",
+  "entry_kind": "ticket-retirement",
+  "entry_name": "retired-ticket-015-CHM-18",
+  "git": {
+    "branch": "epic/effects-everywhere",
+    "commit": "08a1c00",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": null,
+  "history_policy": "append-only by convention; this retirement is a scheduling receipt, not a successful close or validation claim",
+  "kind": "ticket-retirement",
+  "promotion": null,
+  "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-015-CHM-18/manifest.json",
+  "results": [],
+  "retirement": {
+    "affected_goals": [],
+    "decided_at": "2026-08-28",
+    "decided_by": "repository owner, 2026-08-28 disposition",
+    "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+    "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-015-CHM-18/manifest.json",
+    "resolution": "superseded",
+    "schedule_revision": 12
+  },
+  "schema_version": 1,
+  "semantic_promotion": {
+    "performed": false
+  },
+  "skill_feedback": null,
+  "snapshots": [],
+  "spec_root": "specs",
+  "summary": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A dry run against a destination that does not exist does not create it.",
+        "A dry run against an existing home creates nothing at all in it.",
+        "A real run still creates and holds the lock file."
+      ]
+    },
+    "closed": "2026-07-29",
+    "evidence": {
+      "graph": "home-sync node home.sync.permutations: the allow-list handed to wroteNothingBut is now EMPTY, and the fresh-destination case asserts the directory does not exist",
+      "mutation": "`HomeLock.acquireWithoutCreating` -> `HomeLock.acquire` at its one call site (counted first: 1 use, 1 javadoc reference). Killed HomeSyncTest \"--dry-run reports the whole reconciliation and writes nothing\" on \"a dry run against a destination that does not exist does not create it\", which is a file-presence assertion. Reverted; shasum -a 256 -c OK.\n",
+      "tlc": "Not modelled; see model_change.",
+      "unit": "HomeSyncTest \"--dry-run reports the whole reconciliation and writes nothing\" -- on file PRESENCE, plus the empty-directory case so \"nothing was created\" is measured rather than inferred from the parent being absent, plus the real run still locking"
+    },
+    "found_by": "measuring what a dry run left behind in the operator's own read-only home",
+    "github_issue": 42,
+    "id": "CHM-18",
+    "model_change": "None. The claim is about a filesystem side effect of acquiring a lock, and this model has neither a filesystem nor a lock.\n",
+    "objective": "A dry run created `~/.skill-manager/.materialization/` and a zero-byte `.materialization/.home.lock` inside it. `--dry-run` is documented \"Compute and print the whole report, write nothing\". Content-benign, and still: it breaks the contract, it would fail outright against a read-only or frozen destination, and it is exactly the write a caller reaches for `--dry-run` to avoid. The lock was acquired BEFORE the plan was computed, so no amount of care later could have prevented it.\n",
+    "phase": "CHM",
+    "resolution": "HomeLock.acquireWithoutCreating. The in-process ReentrantLock is taken unconditionally -- it is memory, not disk, and it excludes every writer in this JVM completely. The OS file lock is taken only when the lock file already EXISTS, and that is not a concession: creating that file is the first thing acquiring the lock does, so its absence is positive evidence that no process anywhere holds it. There is nothing to exclude against and nothing to wait for. Where the file is there, the ordinary path runs unchanged, wait included. The residual window -- a peer that begins AFTER the check -- is bounded and stated rather than waved away: every real writer stages each unit and swaps it in atomically, so no unit is ever read half-written, and the worst case is a report naming units from either side of a peer's pass, which is what it would have said had the peer run a millisecond earlier.\n",
+    "retirement": {
+      "affected_goals": [],
+      "decided_at": "2026-08-28",
+      "decided_by": "repository owner, 2026-08-28 disposition",
+      "reason": "Delivered, then marked `closed` by a hand edit to this plan (492a6b4) rather than through `close ticket`, so no close receipt was ever written. A genuine re-close is not available: it requires the complexity-ledger input that `open ticket` scaffolds, which this ticket never had, and a receipt produced now would describe today's tree rather than the work as it was done. Retired instead, which is the honest record \u2014 a SCHEDULING receipt that makes no validation claim (RETIREMENT_HISTORY_POLICY). The shipped behaviour is unaffected; only the ceremony is being closed out.\n",
+      "receipt": "specs/.history/child-home-materialization-workflow/retired-ticket-015-CHM-18/manifest.json",
+      "resolution": "superseded",
+      "schedule_revision": 12
+    },
+    "status": "retired",
+    "title": "`--dry-run` creates a directory and a lock file in the destination it promised not to write"
+  },
+  "ticket_id": "CHM-18",
+  "ticket_index": 15,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "retired",
+  "ticket_workdir": null,
+  "validation": {
+    "claimed": false
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}
