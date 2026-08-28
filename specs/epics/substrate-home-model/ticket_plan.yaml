@@ -140,6 +140,7 @@ review_policy:
 
 tickets:
   - id: SUB-0
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/274
     title: "Survey - enumerate every machine-local assumption in the home model"
     wave: 1
     depends_on: []
@@ -156,6 +157,7 @@ tickets:
     conflict_keys: [survey]
 
   - id: SUB-1
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/276
     title: "Classify the propagation paths by demonstration, not by reading"
     wave: 2
     depends_on: [SUB-0]
@@ -176,6 +178,7 @@ tickets:
     conflict_keys: [fixtures/propagation]
 
   - id: SUB-2
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/277
     title: "What root, project and worktree MEAN when the machine is ephemeral"
     wave: 3
     depends_on: [SUB-0, SUB-1, SUB-5]
@@ -194,6 +197,7 @@ tickets:
     conflict_keys: [design/tiers]
 
   - id: SUB-3
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/278
     title: "How each harness provisions sub-agents inside a container, and what we must expose"
     wave: 3
     depends_on: [SUB-0]
@@ -212,6 +216,7 @@ tickets:
     conflict_keys: [survey/harnesses]
 
   - id: SUB-4
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/279
     title: "Close the named gaps - support the containerized tier, drive nothing"
     wave: 4
     depends_on: [SUB-2, SUB-3]
@@ -230,6 +235,7 @@ tickets:
     conflict_keys: [implementation/home-tiers]
 
   - id: SUB-5
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/275
     title: "Local Substrate setup, for inspection only"
     wave: 1
     depends_on: []
@@ -250,6 +256,7 @@ tickets:
     conflict_keys: [local/k3d]
 
   - id: SUB-6
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/280
     title: "Terminal evaluation - decide all four goals"
     wave: 5
     depends_on: [SUB-1, SUB-2, SUB-3, SUB-4, SUB-5]

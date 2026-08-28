@@ -117,6 +117,7 @@ review_policy:
 
 tickets:
   - id: HBR-0
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/268
     title: "Establish the baseline, and name the one resolution rule"
     wave: 1
     depends_on: []
@@ -134,6 +135,7 @@ tickets:
     conflict_keys: [shims/contract]
 
   - id: HBR-1
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/269
     title: "#262 - a bin/cli shim resolves the skill from the home it lives in"
     issue: "https://github.com/haydenrear/skill-manager/issues/262"
     wave: 2
@@ -157,6 +159,7 @@ tickets:
     conflict_keys: [shims/contract, installer/skill-script]
 
   - id: HBR-2
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/270
     title: "#264a - bootstrap resolves the CLI in the right order, and tells refused from too-old"
     issue: "https://github.com/haydenrear/skill-manager/issues/264"
     wave: 2
@@ -175,6 +178,7 @@ tickets:
     conflict_keys: [bootstrap/cli-resolution]
 
   - id: HBR-3
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/271
     title: "#264b - skt relays the CLI's real error instead of truncating it"
     issue: "https://github.com/haydenrear/skill-manager/issues/264"
     repository: haydenrear/skill-publisher-skill
@@ -195,6 +199,7 @@ tickets:
     conflict_keys: [skt/error-rendering]
 
   - id: HBR-4
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/272
     title: "#263 - an agent launched from a worktree home can authenticate"
     issue: "https://github.com/haydenrear/skill-manager/issues/263"
     wave: 3
@@ -219,6 +224,7 @@ tickets:
     conflict_keys: [exec/agent-env]
 
   - id: HBR-5
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/273
     title: "Terminal evaluation - decide all four goals on the integrated tree"
     wave: 4
     depends_on: [HBR-1, HBR-2, HBR-3, HBR-4]
