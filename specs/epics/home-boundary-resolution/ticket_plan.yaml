@@ -252,6 +252,39 @@ tickets:
       the trigger condition. And there is a SECOND instance of the same misread
       in the verify phase, which must be fixed with it or it will re-report
       "older than" on the same evidence.
+    remediation_reach: >
+      A DESIGN DECISION FOR THE REVIEWER, not a detail. bootstrap-home.sh is a
+      SKILL FILE, so every home holds its own copy and every home runs its own.
+      Counted on this machine 2026-08-28: 37 live copies in two generations
+      (24 at 1827 lines, 13 at 1794), and the defective probe is BYTE-IDENTICAL
+      in all 37, at line 617 in both generations.
+
+      So this is a FOURTH instance of the epic's own question -- which home's
+      copy does this run? -- applied to the remediation itself:
+
+        a fix expressed only in BASH reaches NONE of the 37 until each home
+        individually syncs the unit;
+
+        a fix expressed on the JAVA side reaches ALL 37 the moment they run
+        any current build, because every copy shells out to $CLI.
+
+      Candidate Java-side shapes: make the refusal distinguishable without the
+      caller cooperating, or let `home clone --help` succeed under a home
+      mismatch since it writes nothing. Decide this deliberately; do not let
+      the repository the ticket happens to live in decide it.
+
+      The defect also PREDATES its current owner -- it migrated from
+      git-integration-repo to git-issue-workflow unchanged -- and
+      LauncherShims' own javadoc still names the old owner in four places
+      (:64, :380, :496, :702). A reviewer grepping for it will not find the
+      file. Cheap to fix and IN SCOPE, because a stale name for which copy is
+      authoritative is precisely this epic's defect class, sitting in a doc
+      comment about this very script.
+
+      One more disagreement worth recording: two checkouts of the same remote
+      disagree about whether the file exists at all. The integration-repo
+      constituent carries scripts/bootstrap-home.sh at fa34ff9;
+      ~/IdeaProjects/git-issue-workflow-skill at 663ecac does not.
     conflict_keys: [bootstrap/cli-resolution]
 
   - id: HBR-3
