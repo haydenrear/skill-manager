@@ -159,27 +159,24 @@ public final class ShimHomeContractTest {
             Tests.assertFalse(shimsSeen.values().stream().allMatch(List::isEmpty),
                     "the sweep produced shims at all — an empty sweep would pass vacuously");
 
-            // PINNED, NOT SUPPRESSED. The two violations below are HBR-0's
-            // measured finding; HBR-1 removes them. Until then this suite must
-            // stay GREEN, and that is not cosmetic: wave 2 runs three agents in
-            // parallel off this branch, and a permanently red check gives none
-            // of them a way to tell "HBR-0's known red" from "I broke
-            // something". A verification signal nobody can read is the exact
-            // defect this epic exists to fix, so leaving it red would have been
-            // the epic contradicting itself in its own CI.
-            //
-            // The guard is still a guard, in BOTH directions:
+            // EMPTY, AS OF HBR-1, and the emptiness is the ticket's whole
+            // signal. HBR-0 landed two pinned violations here — install-skt.sh
+            // freezing `$SKILL_DIR` into bin/cli/skt, and the skill-script
+            // graph fixture freezing `$SKILL_MANAGER_CACHE_DIR` into
+            // bin/cli/skill-script-touched — and HBR-1 fixed both installers
+            // and removed both pins in the same change, because the guard
+            // below fails in BOTH directions and a stale pin is as loud as a
+            // new offender:
             //   - a violation NOT in this set fails -- a new offender, or a
             //     known one that changed shape, is caught immediately;
-            //   - a pinned entry that STOPS firing also fails -- so HBR-1
-            //     cannot fix a generator and leave a stale pin behind
-            //     claiming a violation that no longer exists.
+            //   - a pinned entry that STOPS firing also fails -- so a
+            //     generator cannot be fixed while leaving behind a pin that
+            //     claims a violation which no longer exists.
             //
-            // HBR-1's local signal is therefore exact: drive this set to empty.
-            Set<String> pinned = new TreeSet<>(Set.of(
-                    "skill-publisher-skill/skill-scripts/install-skt.sh|bin/cli/skt|FOREIGN_UNIT_COPY",
-                    "test_graph/fixtures/skill-script-skill/skill-scripts/install.sh"
-                            + "|bin/cli/skill-script-touched|FOREIGN_HOME_PATH"));
+            // Keep it empty. An entry added here is a generator this
+            // repository ships that sends a home off to run another home's
+            // copy, and it is charged to GOAL-a-home-runs-its-own-copy.
+            Set<String> pinned = new TreeSet<>(Set.of());
 
             Set<String> seen = new TreeSet<>();
             List<ShimHomeContract.Violation> unexpected = new ArrayList<>();
@@ -192,9 +189,12 @@ public final class ShimHomeContractTest {
             stale.removeAll(seen);
 
             if (!unexpected.isEmpty()) {
-                throw new AssertionError("a shim generator violates the contract and is NOT "
-                        + "one of the " + pinned.size() + " pinned by HBR-0:\n\n"
-                        + report(unexpected, shimsSeen));
+                throw new AssertionError("a shim generator violates the contract"
+                        + (pinned.isEmpty()
+                                ? " (the pinned set is empty — every generator in this tree "
+                                        + "satisfied the rule before this change)"
+                                : " and is NOT one of the " + pinned.size() + " pinned")
+                        + ":\n\n" + report(unexpected, shimsSeen));
             }
             if (!stale.isEmpty()) {
                 throw new AssertionError("these violations are pinned but no longer fire, so "
@@ -202,6 +202,45 @@ public final class ShimHomeContractTest {
                         + "in this test as part of the change that fixed them:\n  "
                         + String.join("\n  ", stale));
             }
+        });
+
+        suite.test("the freeze is visible BEFORE the copy, which is where an author can "
+                + "still act on it", () -> {
+            // HBR-1. `check` needs two homes and a relocation to see anything;
+            // `frozenHomePaths` reads the same defect off one home at the
+            // moment the bytes are written, which is what `SkillScriptBackend`
+            // warns from. Both directions, because a detector that never says
+            // "clean" and one that never says "frozen" are equally useless.
+            Path root = Files.createTempDirectory("hbr1-frozen-");
+            Path home = home(root);
+            Fs.ensureDir(home.resolve("bin/cli"));
+
+            Path frozen = home.resolve("bin/cli/frozen");
+            Files.writeString(frozen, "#!/bin/sh\nexec \""
+                    + home.resolve("cache/tool/venv/bin/tool") + "\" \"$@\"\n");
+            Tests.assertEquals(List.of("cache/tool/venv/bin/tool"),
+                    ShimHomeContract.frozenHomePaths(home, frozen),
+                    "a wrapper naming its own home absolutely has frozen that path");
+
+            Path conformant = home.resolve("bin/cli/conformant");
+            Files.writeString(conformant, """
+                    #!/usr/bin/env bash
+                    set -euo pipefail
+                    rel="cache/tool/venv/bin/tool"
+                    shim_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+                    home="$(cd -- "$shim_dir/../.." && pwd -P)"
+                    exec "$home/$rel" "$@"
+                    """);
+            Tests.assertTrue(ShimHomeContract.frozenHomePaths(home, conformant).isEmpty(),
+                    "the home-derived spelling of the same shim has frozen nothing");
+
+            // The narrowness that keeps this from firing on shims that are
+            // already right: a path OUTSIDE every home does not move when the
+            // shim does either, so pinning one is not the defect.
+            Path interpreter = home.resolve("bin/cli/interpreter");
+            Files.writeString(interpreter, "#!/bin/sh\nexec /opt/homebrew/bin/python3.13 \"$@\"\n");
+            Tests.assertTrue(ShimHomeContract.frozenHomePaths(home, interpreter).isEmpty(),
+                    "an absolute path outside every home is a pin, not a freeze");
         });
 
         return suite.runAll();
