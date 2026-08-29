@@ -61,11 +61,22 @@ import java.util.List;
  *       build it was provisioned with, only the illusion of one.</li>
  * </ul>
  *
- * <p>{@code git-integration-repo}'s {@code bootstrap-home.sh} reached the same
+ * <p>{@code git-issue-workflow}'s {@code bootstrap-home.sh} reached the same
  * conclusion first and wrote the pin from bash, which is why homes bootstrapped
  * by that script worked and homes provisioned by {@code home shims} alone did
  * not. Two writers of one file is what let the difference hide; this class is
  * now the writer, and {@code ensure_cli_pin} has nothing left to repair.
+ *
+ * <p><b>Where that script lives, since this file names it four times below and
+ * named the wrong repo in all four.</b> {@code bootstrap-home.sh},
+ * {@code close-change.sh} and {@code ensure_cli_pin} were {@code
+ * git-integration-repo}'s when the paragraphs below were written. They moved to
+ * {@code haydenrear/git-issue-workflow-skill} (its {@code scripts/}) and
+ * {@code git-integration-repo} keeps none of them — so a reviewer grepping the
+ * old name for the second reader of {@link #PIN_PREFIX} found nothing, and the
+ * defect HBR-2 fixes rode across that move unchanged. A stale name for WHICH
+ * COPY IS AUTHORITATIVE is the same class of defect as the ones this class
+ * guards against, so it is corrected rather than left as history.
  *
  * <h2>HIS-19: the pin is the most DURABLE spelling of that build, not the most
  * physical one</h2>
@@ -350,6 +361,35 @@ public final class LauncherShims {
      * refusal and a caller must be able to tell them apart. It sits next to it
      * because both are {@code sysexits}' {@code EX_CONFIG} family — the shim
      * works, the request does not.
+     *
+     * <h2>HBR-2: the refusal was answering a question that was not about a home</h2>
+     *
+     * <p>A caller that has not yet chosen a home still has one legitimate
+     * question for a CLI: <em>what commands do you have?</em> That is what a
+     * capability probe is, and {@code git-issue-workflow}'s
+     * {@code bootstrap-home.sh} asks it of every candidate before it picks one
+     * — {@code "$cli" home clone --help}, matched for {@code --to}. Answering
+     * that with this refusal made the probe conclude the build was TOO OLD,
+     * which is the opposite of true: the build has {@code home clone}, it
+     * declined to talk about homes. Measured, and the misreport is verbatim:
+     *
+     * <pre>
+     * error: no skill-manager CLI with a `home` subcommand was found.
+     *     on PATH: &lt;other home&gt;/bin/cli/skill-manager (too old — `home clone` is missing)
+     * </pre>
+     *
+     * <p>So {@code --help} is exempt, for the same reason {@code --home} is:
+     * the guard exists to stop this shim <em>silently editing the other home</em>,
+     * and a help request edits neither. The exemption withholds nothing either,
+     * which is checked rather than assumed — {@code home clone --help} emits
+     * byte-identical usage with and without {@code --home}, so the home was
+     * never an input to the answer being refused.
+     *
+     * <p><b>{@code --version} is deliberately NOT exempt.</b> It looks like the
+     * same kind of question and is not: its output names the CLI this home
+     * pins, so the answer is a fact ABOUT a home, and which home is asked still
+     * matters. {@code --help} describes the command surface of the build, which
+     * is the same from every home.
      */
     public static final int HOME_MISMATCH_EXIT_CODE = 79;
 
@@ -377,7 +417,7 @@ public final class LauncherShims {
      * </pre>
      *
      * <p>It is not hypothetical and it is not a typo an operator makes.
-     * {@code git-integration-repo}'s {@code close-change.sh} reaches it by
+     * {@code git-issue-workflow}'s {@code close-change.sh} reaches it by
      * construction: its {@code pick_cli} selects the home's own
      * {@code bin/cli/skill-manager} and then invokes it as
      * {@code SKILL_MANAGER_CLI="$CLI" "$CLI" …}. One orphaned process from that
@@ -493,7 +533,7 @@ public final class LauncherShims {
      * holds something I should not touch".
      *
      * <p>It exists because of a specific, measured accident.
-     * {@code git-integration-repo}'s {@code ensure_cli_pin} decided whether to
+     * {@code git-issue-workflow}'s {@code ensure_cli_pin} decided whether to
      * overwrite this file by grepping it for the words {@code home shims} —
      * which every version of it contains, including the fixed one — and so
      * overwrote a correct pin on 17 of 25 homes with a pin to a CLI IT had
@@ -615,16 +655,45 @@ public final class LauncherShims {
             # operator to use, it is what the refusal below recommends, and it
             # is what bootstrap-home.sh should be passing. A refusal whose
             # printed remedy the refusal itself would reject is not a remedy.
+            #
+            # A HELP REQUEST IS EXEMPT FOR THE SAME REASON, and it is the one
+            # this exemption was added for. A caller that has not chosen a home
+            # yet still gets to ask what commands this build has --
+            # bootstrap-home.sh probes exactly that, `"$cli" home clone --help`
+            # matched for `--to`, to avoid picking a CLI that will die deep in
+            # the sequence. Refusing that made the probe read a REFUSAL as an
+            # OLD BUILD and report "(too old -- home clone is missing)" about a
+            # CLI that has the command. Help edits no home, so the
+            # refusal below -- whose whole charter is "rather than silently
+            # editing the other one" -- has nothing here to protect. And it
+            # withholds nothing: `home clone --help` prints the same bytes with
+            # and without `--home`, so the home was never an input to it.
+            #
+            # `--version` is NOT exempt, and the difference is not arbitrary: it
+            # reports the CLI this home PINS, so its answer is a fact about a
+            # home and which home is asked still matters. skt probes with
+            # `--version` for exactly that reason and asserts the 79.
+            #
+            # Both scans are POSITIONAL-BLIND — a `--help` that is an option's
+            # VALUE reads the same as a request — and that limitation is the
+            # `--home` scan's already, not something added here. It is left as
+            # it is because this guard is a visibility measure rather than a
+            # boundary: the shim binds its own home either way, and what the
+            # refusal adds is saying so. `-h` is safe to key on because the CLI
+            # declares it exactly once, as `usageHelp` alongside `--help`.
             sm_names_a_home=0
+            sm_asks_for_help=0
             for sm_arg in "$@"; do
               if [ "$sm_arg" = "--home" ] || [ "${sm_arg#--home=}" != "$sm_arg" ]; then
                 sm_names_a_home=1
-                break
+              elif [ "$sm_arg" = "--help" ] || [ "$sm_arg" = "-h" ]; then
+                sm_asks_for_help=1
               fi
             done
 
             sm_inherited_home="${SKILL_MANAGER_HOME:-}"
-            if [ -n "$sm_inherited_home" ] && [ "$sm_names_a_home" -eq 0 ]; then
+            if [ -n "$sm_inherited_home" ] && [ "$sm_names_a_home" -eq 0 ] \\
+               && [ "$sm_asks_for_help" -eq 0 ]; then
               sm_named="$(cd -- "$sm_inherited_home" 2>/dev/null && pwd -P || printf '%s' "$sm_inherited_home")"
               if [ "$sm_named" != "$home" ]; then
                 echo "skill-manager: refusing to run against a home you did not name." >&2
@@ -699,7 +768,7 @@ public final class LauncherShims {
      * pin, up to the default-value {@code :-}.
      *
      * <p>This shape is already a contract with a second reader:
-     * {@code git-integration-repo}'s {@code ensure_cli_pin} finds the first
+     * {@code git-issue-workflow}'s {@code ensure_cli_pin} finds the first
      * line with this prefix, strips the closing brace and quote, and asserts
      * the result is executable. See the comment inside {@link #CLI_TEMPLATE}
      * for why nothing above that line may spell the prefix out. Named here so
