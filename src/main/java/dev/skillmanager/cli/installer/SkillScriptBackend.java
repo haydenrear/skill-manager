@@ -61,6 +61,31 @@ import java.util.Map;
  * <p>Runs arbitrary code from the skill, so the install plan flags this
  * backend as {@code DANGER}.
  *
+ * <h3>What the script owes back: the shim resolution rule</h3>
+ *
+ * <p>Every one of those variables is an absolute path <em>into the home doing
+ * the installing</em>, and that is the whole of skill-manager#262: a script
+ * that copies {@code $SKILL_DIR} or {@code $SKILL_MANAGER_CACHE_DIR} into the
+ * wrapper it writes has resolved the path ONCE, against whichever home
+ * happened to be installing, and frozen the answer. Copy that home, symlink
+ * its {@code bin/cli} entry from a child, or clone it into a worktree, and the
+ * wrapper goes on running the FIRST home's copy while the home it now lives in
+ * holds its own, unused. An agent edits a skill in its own home, runs the CLI
+ * to check, and sees the old code.
+ *
+ * <p>So a wrapper this backend installs must obey
+ * {@link dev.skillmanager.store.ShimHomeContract#RULE}: derive the home from
+ * the shim's own location and name everything under it home-RELATIVE, exactly
+ * as {@code bin/launch/*} does. Use the env vars to find things and to compute
+ * paths relative to {@code SKILL_MANAGER_HOME}; do not write them into the
+ * generated body.
+ *
+ * <p>This backend cannot enforce that — it forks the script and reads none of
+ * the bytes it writes — but it does READ the shims a run touched and warn when
+ * one has this home baked in. See {@link #reportFrozenShims} for why that is a
+ * warning rather than a failure, and {@code references/skill-scripts.md} for
+ * the wrapper recipe.
+ *
  * <h3>Re-run semantics</h3>
  *
  * <p>On every {@code install} / {@code sync} / {@code upgrade} pass the
@@ -192,7 +217,9 @@ public final class SkillScriptBackend implements InstallerBackend {
         Path logPath = skillScriptLogPath(store, skillName, dep.name());
         Log.step("cli: skill-script %s — running %s", dep.name(), script);
         Log.step("cli: skill-script %s — writing output to %s", dep.name(), logPath);
+        Map<String, Long> binBefore = binStamps(store);
         int rc = Shell.runToLog(cmd, env, logPath);
+        reportFrozenShims(dep, store, binBefore);
         if (rc != 0) {
             throw new IOException("skill-script " + dep.name() + " exited " + rc
                     + " (log: " + logPath + ")" + failureTail(logPath, 40));
@@ -215,6 +242,86 @@ public final class SkillScriptBackend implements InstallerBackend {
                     + "skipping post-run verification)", dep.name());
         }
         return InstallOutcome.INSTALLED;
+    }
+
+    /**
+     * Every entry of {@code bin/cli/} and when it was last written, so the
+     * caller can tell what the script it is about to run TOUCHED.
+     *
+     * <p>Names and stamps rather than a content hash: the question is only
+     * "which of these did this run write", the answer has to be cheap enough
+     * to take on every install, and a script that rewrites a wrapper with
+     * identical bytes has changed nothing worth reporting. Links are stamped
+     * without following them — a symlink into another home is the shape whose
+     * TARGET must not be read.
+     */
+    private static Map<String, Long> binStamps(SkillStore store) {
+        Map<String, Long> out = new LinkedHashMap<>();
+        Path bin = store.cliBinDir();
+        if (!Files.isDirectory(bin)) return out;
+        try (java.util.stream.Stream<Path> entries = Files.list(bin)) {
+            for (Path entry : entries.toList()) {
+                try {
+                    out.put(entry.getFileName().toString(),
+                            Files.getLastModifiedTime(entry, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                                    .toMillis());
+                } catch (IOException gone) {
+                    // Raced or unreadable. Absent from the map reads as "new",
+                    // which errs toward looking at it rather than past it.
+                }
+            }
+        } catch (IOException cannotList) {
+            Log.detail("cli: could not list %s to check shim conformance: %s",
+                    bin, cannotList.getMessage());
+        }
+        return out;
+    }
+
+    /**
+     * Say so when a script just wrote a shim that has THIS HOME frozen into it.
+     *
+     * <h2>Why this is the only enforcement point there can be</h2>
+     *
+     * <p>The wrapper's bytes are the unit author's, not this codebase's:
+     * {@code install} forks the script and its only post-conditions are exit 0
+     * and the optional {@code binary} check, so nothing here inspects,
+     * rewrites or wraps what it writes. That is deliberate — a backend that
+     * rewrote author-supplied shell would be a worse problem than the one it
+     * solved. What is left is to READ the result and to say, once, at the
+     * moment the author can act on it.
+     *
+     * <h2>A warning and not a failure</h2>
+     *
+     * <p>The shim works. It runs the right code in the home it was just
+     * written into, and it goes wrong only later, in a home that does not
+     * exist yet. Failing the install would break every already-shipped unit
+     * that writes an absolute wrapper — including ones whose homes are never
+     * copied and for which the freeze is harmless — over a defect that has not
+     * happened. So the install proceeds and the reader is told what will
+     * happen if this home is ever cloned, symlinked from, or used as a parent.
+     *
+     * <p>{@link ShimHomeContract#check} is the same rule read from the other
+     * end, after the copy; this is the only place it can be read BEFORE.
+     */
+    private static void reportFrozenShims(CliDependency dep, SkillStore store,
+                                          Map<String, Long> before) {
+        Path bin = store.cliBinDir();
+        for (Map.Entry<String, Long> now : binStamps(store).entrySet()) {
+            Long was = before.get(now.getKey());
+            if (was != null && was.equals(now.getValue())) continue;
+            Path shim = bin.resolve(now.getKey());
+            if (Files.isSymbolicLink(shim) || !Files.isRegularFile(shim)) continue;
+            List<String> frozen = dev.skillmanager.store.ShimHomeContract
+                    .frozenHomePaths(store.root(), shim);
+            if (frozen.isEmpty()) continue;
+            Log.warn("cli: skill-script %s wrote bin/cli/%s with this home's absolute path "
+                            + "baked in (%s). %s — copy that shim into another home and it "
+                            + "will still run THIS one's copy. Derive the home from the shim's "
+                            + "own location instead: see the skill-script reference, "
+                            + "\"Writing a wrapper that survives being copied\".",
+                    dep.name(), now.getKey(), String.join(", ", frozen),
+                    dev.skillmanager.store.ShimHomeContract.RULE);
+        }
     }
 
     /**

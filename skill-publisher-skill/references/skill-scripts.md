@@ -72,8 +72,120 @@ spurious re-runs when edited.
 | `SKILL_MANAGER_CACHE_DIR` | `$SKILL_MANAGER_HOME/cache/` | Safe scratch space — clone here, build here, then `install -m 0755 build/out "$SKILL_MANAGER_BIN_DIR/<bin>"`. |
 | `SKILL_PLATFORM` | `darwin-arm64` / `linux-x64` / etc. | Branch in the script for cross-platform handling without needing separate `install.<platform>` entries. |
 
-The script's `cwd` is unspecified (don't depend on it). Use absolute
-paths via the env vars.
+The script's `cwd` is unspecified (don't depend on it). Use the env
+vars to find things — but read the next section before you copy one of
+them into the wrapper you generate.
+
+## Writing a wrapper that survives being copied
+
+**The rule: a shim resolves its unit's path from the home the shim
+lives in — prefer this home's copy, fall back to the pinned one.**
+
+Every variable in the table above is an absolute path *into the home
+that happens to be installing right now*. A wrapper that writes one of
+them into its own body has resolved the path once and frozen the
+answer:
+
+```bash
+# WRONG — this is skill-manager#262, written down.
+cat > "$SKILL_MANAGER_BIN_DIR/my-cli" <<SH
+#!/bin/sh
+exec "$PY" "$SKILL_DIR/src/cli.py" "\$@"
+SH
+```
+
+Homes get copied. A project home is cloned from the root home, a ticket
+worktree gets its own home, a child home symlinks its parent's
+`bin/cli/` entries. The wrapper above goes with them and keeps naming
+the **first** home — so the home it now lives in runs somebody else's
+copy of the unit while holding its own, unused. That fails at the worst
+possible moment: an agent edits the skill in its own home, runs the CLI
+to check, sees the old behaviour, and concludes the edit was wrong.
+
+Measured on one machine: 19 `(home, shim)` pairs crossing into another
+home, and in every single one the home had its own copy sitting there.
+
+Write it like `bin/launch/*` does instead — derive the home from the
+shim's own location and keep everything under it **relative**:
+
+```bash
+# Install time: the entrypoint's path RELATIVE TO A HOME. That is the
+# part that is the same in every home; $SKILL_DIR is this home's
+# spelling of it and is exactly what must not be baked in.
+home="$(cd -- "${SKILL_MANAGER_HOME:-$SKILL_MANAGER_BIN_DIR/../..}" && pwd -P)"
+skill_real="$(cd -- "$SKILL_DIR" && pwd -P)"
+rel="${skill_real#"$home"/}/src/cli.py"
+
+# Two heredocs: the first EXPANDED for install-time facts, the second
+# QUOTED for the body. One expanded heredoc is how $SKILL_DIR ends up
+# frozen in the first place.
+cat > "$SKILL_MANAGER_BIN_DIR/my-cli" <<SH
+#!/usr/bin/env bash
+set -euo pipefail
+py="$PY"
+rel="$rel"
+SH
+cat >> "$SKILL_MANAGER_BIN_DIR/my-cli" <<'SH'
+# `pwd -P` resolves the DIRECTORY's own symlinks, never the shim's, so a
+# child home whose bin/cli entry is a link into its parent still answers
+# with itself here.
+shim_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+home="$(cd -- "$shim_dir/../.." && pwd -P)"
+exec "$py" "$home/$rel" "$@"
+SH
+chmod 0755 "$SKILL_MANAGER_BIN_DIR/my-cli"
+```
+
+Three details worth knowing:
+
+- **`bin/cli/<tool>` is always `<home>/bin/cli/<tool>`,** so `../..`
+  from the shim's directory is the home. That is the same derivation
+  `bin/launch/*` uses; there is no second convention to learn.
+- **A path outside every home may be pinned.** The interpreter you
+  probed for, a build you resolved — those don't move when the shim
+  moves, so freezing them is not the defect. It's specifically home
+  paths that must not be baked in.
+- **The fallback is followed, never stored.** A home that legitimately
+  holds no copy of the unit has to reach the home it was pinned to.
+  Find that home at run time — follow the shim's own symlink — rather
+  than writing its path into the body, because a stored path is taken
+  by a home that *does* have its own copy, which is the bug again:
+
+  ```bash
+  target="$home/$rel"
+  if [ ! -f "$target" ]; then
+    link="${BASH_SOURCE[0]}"
+    for _ in 1 2 3 4 5 6 7 8; do
+      [ -L "$link" ] || break
+      t="$(readlink "$link")"
+      case "$t" in
+        /*) link="$t" ;;
+        *)  link="$(cd -- "$(dirname -- "$link")" && pwd -P)/$t" ;;
+      esac
+      pinned="$(cd -- "$(dirname -- "$link")/../.." 2>/dev/null && pwd -P)" || continue
+      if [ -f "$pinned/$rel" ]; then target="$pinned/$rel"; break; fi
+    done
+  fi
+  ```
+
+Naming the tree **home-relative** also keeps the artifact ledger
+working: `bin/cli/<tool>` naming `cache/skill-script-<unit>-<tool>/…`
+is the only evidence a home has of which install wrote that directory,
+and it is what lets `uninstall` prune the tree instead of leaving it
+behind forever. skill-manager reads both the absolute and the relative
+spelling for that reason — but only the relative one survives a copy.
+
+skill-manager cannot rewrite what your script writes (it forks the
+script and reads none of those bytes), so it does the one thing it can:
+after the script runs it **reads the shims the run touched and warns**
+when one has the installing home's absolute path baked in. If you see
+
+```
+cli: skill-script my-cli wrote bin/cli/my-cli with this home's absolute
+path baked in (skills/my-skill/src/cli.py). …
+```
+
+that is this section, addressed to you.
 
 ## The re-run gate (fingerprint mechanics)
 
@@ -257,6 +369,11 @@ Before committing a skill that uses `skill-script:`:
 - [ ] Script uses `set -euo pipefail` (or equivalent) — silent failures
       are bad.
 - [ ] Script validates required env vars early (`: "${SKILL_MANAGER_BIN_DIR:?}"`).
+- [ ] The wrapper the script generates derives its home from its own
+      location and names everything under it relative — no
+      `$SKILL_DIR`, `$SKILL_MANAGER_HOME` or `$SKILL_MANAGER_CACHE_DIR`
+      expanded into the generated body. See "Writing a wrapper that
+      survives being copied".
 - [ ] Manifest declares `binary` so post-run verification catches no-ops.
 - [ ] Manifest declares `on_path` so users see a sensible name in
       plan output.
@@ -279,6 +396,14 @@ Before committing a skill that uses `skill-script:`:
   users who only `install` won't see the change until the install
   cache invalidates. Prefer `[skill].version` bumps for user-visible
   behavior changes.
+- **Baking `$SKILL_DIR` / `$SKILL_MANAGER_CACHE_DIR` into the wrapper
+  you generate.** The wrapper outlives the home that installed it —
+  homes are cloned, and child homes symlink their parent's `bin/cli`
+  entries. A frozen path makes the copy run the original home's code
+  while its own sits unused, and the failure shows up as "my edit did
+  nothing". See "Writing a wrapper that survives being copied"; using
+  those variables *in the script* is exactly right, it is writing them
+  into the generated body that is wrong.
 - **Cloning into `$SKILL_DIR`.** That's read-only-ish — anything you
   write there will dirty the store skill's git tree (if it was
   installed from git) and break `sync`. Use `$SKILL_MANAGER_CACHE_DIR`.
