@@ -72,9 +72,14 @@ epic_goals:
       CLI pins, agent projections, credentials, the drift digest -- each marked
       unaffected / needs-contract / needs-change with the evidence for that call.
     baseline:
-      value: "0 -- no inventory exists; the assumption has never been stated, only relied on"
+      value: >
+        0 of 9. No inventory exists; the assumption has never been stated, only
+        relied on. The denominator is fixed at 9 by the harness: home discovery,
+        tier derivation, bin/cli and bin/launch shims, home sync, child
+        materialization, CLI pins, agent projections, credentials, the drift
+        digest. Naming it makes the goal scorable instead of open-ended.
       measured_at: "2026-08-28"
-    target: "every surface in the checklist dispositioned, none left 'unknown'"
+    target: "9 of 9 surfaces dispositioned, none left 'unknown'"
 
   - id: GOAL-propagation-paths-are-classified
     kind: eval
@@ -119,7 +124,13 @@ epic_goals:
     metric: "named gaps from SUB-0/SUB-1/SUB-2 that are closed, and Substrate-driving APIs added"
     harness: "the gap list from the survey, checked off; plus a review that no Substrate client, CRD, or scheduling call entered the tree"
     baseline:
-      value: "gaps unknown until SUB-0 runs; Substrate-driving APIs: 0, and that number must not move"
+      value: >
+        Substrate-driving APIs: 0, MEASURED 2026-08-29 -- a grep of src/main/java
+        for substrate / gVisor / CustomResourceDefinition / io.kubernetes /
+        fabric8 / k8s.io client symbols returns exactly one hit, and it is the
+        English word "substrate" in an EffectReceipt javadoc. No Kubernetes
+        client is declared in SkillManager.java's DEPS. The gap half of this
+        metric is genuinely unknown until SUB-0 runs, and is scored then.
       measured_at: "2026-08-28"
     target: "every named gap closed; Substrate-driving APIs still 0"
 

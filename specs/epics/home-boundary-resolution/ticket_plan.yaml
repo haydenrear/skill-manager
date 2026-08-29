@@ -53,8 +53,20 @@ epic_goals:
       the shim lives in. Reported per pair, not aggregated -- one bad pair is
       the whole defect.
     baseline:
-      value: "UNMEASURED -- HBR-0 establishes it before any fix lands"
-      measured_at: null
+      value: >
+        19 unsanctioned pairs, over 27 homes and 194 bin/cli shims. Two units
+        account for all of them: skills:deploy-helm (17, via the computeq,
+        helm-deploy and monitoring shims) and skills:spec-double-compiler (2,
+        via tla-spec-dev). 16 of the 19 reach the other home through a SYMLINK
+        to its shim; 3 have the foreign path baked into their own body. 17 of
+        the 19 ALSO exec a binary from the other home's cache venv, which is
+        counted separately and not charged to this metric. Sanctioned
+        fallbacks -- a shim reaching the parent because its own home has no
+        copy of the unit -- were 0: every single crossing is the unsanctioned
+        kind, with a local copy sitting unused.
+      measured_at: "2026-08-29"
+      evidence: results/epic-home-boundary-resolution/goals/GOAL-a-home-runs-its-own-copy/baseline-2026-08-29.json
+      harness_command: python3 scripts/measure_goal_home_runs_its_own_copy.py
     target: "0"
 
   - id: GOAL-an-agent-in-its-own-home-can-work

@@ -1,0 +1,201 @@
+{
+ "scanned_homes": 27,
+ "scanned_shims": 194,
+ "unsanctioned_pairs": 19,
+ "sanctioned_fallback": 0,
+ "foreign_cache_only": 0,
+ "pairs": [
+  {
+   "home": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+   "shim": "computeq",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+   "shim": "helm-deploy",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+   "shim": "monitoring",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket/.skill-manager",
+   "shim": "computeq",
+   "runs": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket/.skill-manager",
+   "shim": "helm-deploy",
+   "runs": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket/.skill-manager",
+   "shim": "monitoring",
+   "runs": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+   "shim": "tla-spec-dev",
+   "runs": "/Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/tla_spec_dev.py",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:spec-double-compiler",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": false
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/support-agent-rears/.skill-manager",
+   "shim": "computeq",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/support-agent-rears/.skill-manager",
+   "shim": "helm-deploy",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/support-agent-rears/.skill-manager",
+   "shim": "monitoring",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-165-cdc-isf-013/.skill-manager",
+   "shim": "computeq",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-165-cdc-isf-013/.skill-manager",
+   "shim": "helm-deploy",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-165-cdc-isf-013/.skill-manager",
+   "shim": "monitoring",
+   "runs": "/Users/hayde/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager",
+   "shim": "computeq",
+   "runs": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager",
+   "shim": "helm-deploy",
+   "runs": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager",
+   "shim": "monitoring",
+   "runs": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": true,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+   "shim": "helm-deploy",
+   "runs": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": false,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+   "shim": "monitoring",
+   "runs": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/deploy-helm",
+   "other_home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+   "unit": "skills:deploy-helm",
+   "this_home_has_its_own": true,
+   "via_symlink": false,
+   "also_execs_foreign_cache": true
+  },
+  {
+   "home": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+   "shim": "tla-spec-dev",
+   "runs": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/spec-double-compiler/scripts/tla_spec_dev.py",
+   "other_home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+   "unit": "skills:spec-double-compiler",
+   "this_home_has_its_own": true,
+   "via_symlink": false,
+   "also_execs_foreign_cache": false
+  }
+ ],
+ "fallback": [],
+ "cache_only": []
+}
