@@ -57,9 +57,11 @@ non_goals:
   - Building a container image as a deliverable of this epic.
   - Changing Substrate. It is a dependency to be supported, not modified.
 
-goals:
+epic_goals:
   - id: GOAL-every-machine-local-assumption-is-named
-    kind: analysis
+    kind: quality
+    evidence_root: results/epic-substrate-home-model/goals/GOAL-every-machine-local-assumption-is-named/
+    evaluation_ticket: SUB-6
     statement: >
       Every place the home model depends on one machine or one filesystem is
       written down, with its Substrate consequence and an owner decision.
@@ -75,7 +77,9 @@ goals:
     target: "every surface in the checklist dispositioned, none left 'unknown'"
 
   - id: GOAL-propagation-paths-are-classified
-    kind: analysis
+    kind: eval
+    evidence_root: results/epic-substrate-home-model/goals/GOAL-propagation-paths-are-classified/
+    evaluation_ticket: SUB-6
     statement: >
       Each way unit state moves between homes is classified as
       machine-independent or machine-local, with evidence, so it is knowable
@@ -91,7 +95,9 @@ goals:
     target: "all paths classified, each by demonstration rather than by reading"
 
   - id: GOAL-the-tiers-have-a-container-meaning
-    kind: design
+    kind: quality
+    evidence_root: results/epic-substrate-home-model/goals/GOAL-the-tiers-have-a-container-meaning/
+    evaluation_ticket: SUB-6
     statement: >
       Root, project and worktree homes have a written, owner-accepted meaning
       when the machine is an ephemeral container -- including what a root home
@@ -104,7 +110,9 @@ goals:
     target: "3 of 3 accepted"
 
   - id: GOAL-support-without-driving
-    kind: capability
+    kind: integration
+    evidence_root: results/epic-substrate-home-model/goals/GOAL-support-without-driving/
+    evaluation_ticket: SUB-6
     statement: >
       skill-manager and skt carry whatever the survey shows is needed for a
       containerized tier, and nothing that drives Substrate.
@@ -130,7 +138,7 @@ deferment_policy:
 review_policy:
   cadence: wave
   gate: true
-  merges: epic-agent
+  merges: owner
   walkthrough: required
   artifact_root: results/epic-substrate-home-model/reviews/
   rule: >
@@ -144,9 +152,15 @@ tickets:
     title: "Survey - enumerate every machine-local assumption in the home model"
     wave: 1
     depends_on: []
-    promotion_order: 0
+    promotion_order: 1
     promotion_predecessor: null
-    goals: [GOAL-every-machine-local-assumption-is-named]
+    goals:
+      - goal: GOAL-every-machine-local-assumption-is-named
+        contribution: direct
+        expected_effect: >
+          an inventory where there is none, with no entry left 'unknown'
+        local_signal: >
+          every surface in the checklist carries a disposition and its evidence
     contribution: primary
     objective: >
       Walk the enumerated surfaces and record, for each, whether it depends on
@@ -154,16 +168,30 @@ tickets:
     expected_effect: "an inventory where there is none, with no entry left 'unknown'"
     local_signal: "every surface in the checklist carries a disposition and its evidence"
     slice: "reading and recording. NO production change lands in this ticket."
-    conflict_keys: [survey]
+    conflict_keys:
+      production: ["survey"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    blocks: ["SUB-1", "SUB-2", "SUB-3"]
 
   - id: SUB-1
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/276
     title: "Classify the propagation paths by demonstration, not by reading"
     wave: 2
     depends_on: [SUB-0]
-    promotion_order: 2
+    promotion_order: 3
     promotion_predecessor: SUB-5
-    goals: [GOAL-propagation-paths-are-classified]
+    goals:
+      - goal: GOAL-propagation-paths-are-classified
+        contribution: direct
+        expected_effect: >
+          each path labelled machine-independent or machine-local, with a fixture
+          behind the label
+        local_signal: >
+          the fixture for at least one path CONTRADICTS the expectation recorded in
+          SUB-0
     contribution: primary
     objective: >
       For each way unit state moves between homes, demonstrate on a scratch
@@ -175,16 +203,28 @@ tickets:
       had a `skt sync` record-gap claim falsified twice on a scratch fixture,
       and a survey that agrees with itself everywhere has probably not been
       tested.
-    conflict_keys: [fixtures/propagation]
+    conflict_keys:
+      production: ["fixtures/propagation"]
+      tla: []
+      adapters: []
+      test_graph: ["home-sync", "home-clone"]
+      workflow: []
+    blocks: ["SUB-2", "SUB-6"]
 
   - id: SUB-2
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/277
     title: "What root, project and worktree MEAN when the machine is ephemeral"
     wave: 3
     depends_on: [SUB-0, SUB-1, SUB-5]
-    promotion_order: 3
+    promotion_order: 4
     promotion_predecessor: SUB-1
-    goals: [GOAL-the-tiers-have-a-container-meaning]
+    goals:
+      - goal: GOAL-the-tiers-have-a-container-meaning
+        contribution: direct
+        expected_effect: >
+          a design document the owner accepts at the wave review
+        local_signal: >
+          each tier answer names the SUB-1 fixture that supports it
     contribution: primary
     objective: >
       Answer the three tier questions with the survey and the fixtures behind
@@ -194,16 +234,36 @@ tickets:
     expected_effect: "a design document the owner accepts at the wave review"
     local_signal: "each tier answer names the SUB-1 fixture that supports it"
     slice: "design and acceptance. Implementation is SUB-4."
-    conflict_keys: [design/tiers]
+    conflict_keys:
+      production: ["design/tiers"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    blocks: ["SUB-4", "SUB-6"]
 
   - id: SUB-3
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/278
     title: "How each harness provisions sub-agents inside a container, and what we must expose"
     wave: 3
     depends_on: [SUB-0]
-    promotion_order: 4
+    promotion_order: 5
     promotion_predecessor: SUB-2
-    goals: [GOAL-every-machine-local-assumption-is-named, GOAL-support-without-driving]
+    goals:
+      - goal: GOAL-every-machine-local-assumption-is-named
+        contribution: enabling
+        expected_effect: >
+          a per-harness requirement list feeding SUB-4's gap list
+        local_signal: >
+          at least one harness requirement that skill-manager cannot currently meet,
+          named concretely
+      - goal: GOAL-support-without-driving
+        contribution: enabling
+        expected_effect: >
+          a per-harness requirement list feeding SUB-4's gap list
+        local_signal: >
+          at least one harness requirement that skill-manager cannot currently meet,
+          named concretely
     contribution: supporting
     objective: >
       Each harness has its own way of running sub-agents inside its container.
@@ -213,16 +273,29 @@ tickets:
     expected_effect: "a per-harness requirement list feeding SUB-4's gap list"
     local_signal: "at least one harness requirement that skill-manager cannot currently meet, named concretely"
     slice: "Claude Code first, since it is the measured case; others recorded as found."
-    conflict_keys: [survey/harnesses]
+    conflict_keys:
+      production: ["survey/harnesses"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    blocks: ["SUB-4", "SUB-6"]
 
   - id: SUB-4
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/279
     title: "Close the named gaps - support the containerized tier, drive nothing"
     wave: 4
     depends_on: [SUB-2, SUB-3]
-    promotion_order: 5
+    promotion_order: 6
     promotion_predecessor: SUB-3
-    goals: [GOAL-support-without-driving]
+    goals:
+      - goal: GOAL-support-without-driving
+        contribution: direct
+        expected_effect: >
+          every named gap closed; no Substrate client, CRD or scheduling call in the
+          tree
+        local_signal: >
+          the gap list is checked off and the no-driving review is clean
     contribution: primary
     objective: >
       Implement exactly the gaps SUB-0..SUB-3 named, and nothing adjacent.
@@ -232,16 +305,28 @@ tickets:
       Only gaps the survey NAMED. A gap discovered here goes to the backlog for
       the owner, because a survey that grows while being implemented is a survey
       that was not finished.
-    conflict_keys: [implementation/home-tiers]
+    conflict_keys:
+      production: ["implementation/home-tiers"]
+      tla: []
+      adapters: []
+      test_graph: ["home-clone", "home-sync", "project-child-home"]
+      workflow: []
+    blocks: ["SUB-6"]
 
   - id: SUB-5
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/275
     title: "Local Substrate setup, for inspection only"
     wave: 1
     depends_on: []
-    promotion_order: 1
+    promotion_order: 2
     promotion_predecessor: SUB-0
-    goals: [GOAL-every-machine-local-assumption-is-named]
+    goals:
+      - goal: GOAL-every-machine-local-assumption-is-named
+        contribution: enabling
+        expected_effect: >
+          the survey's container-lifecycle claims cite observed behaviour
+        local_signal: >
+          at least one survey claim corrected by observation
     contribution: enabling
     objective: >
       Enough local Substrate on k3d to READ its actor lifecycle, filesystem and
@@ -253,23 +338,60 @@ tickets:
       Inspection only. Explicitly NOT: deploying an agent, deploying
       skill-manager, or anything that runs in CI. If this ticket cannot be done
       without deploying, it is CUT and the survey cites documentation, saying so.
-    conflict_keys: [local/k3d]
+    conflict_keys:
+      production: ["local/k3d"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    blocks: ["SUB-2", "SUB-6"]
 
   - id: SUB-6
+    role: evaluation
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/280
     title: "Terminal evaluation - decide all four goals"
     wave: 5
     depends_on: [SUB-1, SUB-2, SUB-3, SUB-4, SUB-5]
-    promotion_order: 6
-    promotion_predecessor: SUB-5
+    promotion_order: 7
+    promotion_predecessor: SUB-4
     goals:
-      - GOAL-every-machine-local-assumption-is-named
-      - GOAL-propagation-paths-are-classified
-      - GOAL-the-tiers-have-a-container-meaning
-      - GOAL-support-without-driving
+      - goal: GOAL-every-machine-local-assumption-is-named
+        contribution: direct
+        expected_effect: >
+          four results, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
+      - goal: GOAL-propagation-paths-are-classified
+        contribution: direct
+        expected_effect: >
+          four results, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
+      - goal: GOAL-the-tiers-have-a-container-meaning
+        contribution: direct
+        expected_effect: >
+          four results, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
+      - goal: GOAL-support-without-driving
+        contribution: direct
+        expected_effect: >
+          four results, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
     contribution: measurement
     objective: "Run every harness on the integrated epic and record each goal met or missed."
     expected_effect: "four results, reported against their baselines"
     local_signal: "n/a - this ticket IS the signal"
     slice: "measurement only."
-    conflict_keys: [evaluation]
+    conflict_keys:
+      production: ["evaluation"]
+      tla: []
+      adapters: []
+      test_graph: ["home-clone", "home-sync", "project-child-home"]
+      workflow: ["substrate-home-model"]
+    blocks: []

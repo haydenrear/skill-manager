@@ -38,9 +38,11 @@ premise: >
   home="$(cd -- "$shim_dir/../.." && pwd -P)" -- so the pattern exists in the
   tree and bin/cli/* simply does not use it.
 
-goals:
+epic_goals:
   - id: GOAL-a-home-runs-its-own-copy
-    kind: correctness
+    kind: quality
+    evidence_root: results/epic-home-boundary-resolution/goals/GOAL-a-home-runs-its-own-copy/
+    evaluation_ticket: HBR-5
     statement: >
       A skill edited inside a home is what that home's CLI runs. No shim in a
       home execs a copy living in a different home.
@@ -56,7 +58,9 @@ goals:
     target: "0"
 
   - id: GOAL-an-agent-in-its-own-home-can-work
-    kind: capability
+    kind: integration
+    evidence_root: results/epic-home-boundary-resolution/goals/GOAL-an-agent-in-its-own-home-can-work/
+    evaluation_ticket: HBR-5
     statement: >
       An agent launched through a worktree home's launch shim authenticates and
       does work, rather than printing 'Not logged in' and halting.
@@ -68,7 +72,9 @@ goals:
     target: "succeeds"
 
   - id: GOAL-a-failure-names-its-cause
-    kind: diagnosis
+    kind: quality
+    evidence_root: results/epic-home-boundary-resolution/goals/GOAL-a-failure-names-its-cause/
+    evaluation_ticket: HBR-5
     statement: >
       A failed bootstrap names the thing that actually went wrong. A non-zero
       exit from a shim is not evidence about its version.
@@ -83,7 +89,9 @@ goals:
     target: "3 of 3"
 
   - id: GOAL-the-real-error-survives
-    kind: diagnosis
+    kind: quality
+    evidence_root: results/epic-home-boundary-resolution/goals/GOAL-the-real-error-survives/
+    evaluation_ticket: HBR-5
     statement: >
       When skt relays a CLI failure, the cause reaches the reader instead of
       being truncated away.
@@ -108,7 +116,7 @@ deferment_policy:
 review_policy:
   cadence: wave
   gate: true
-  merges: epic-agent
+  merges: owner
   walkthrough: required
   artifact_root: results/epic-home-boundary-resolution/reviews/
   rule: >
@@ -121,9 +129,17 @@ tickets:
     title: "Establish the baseline, and name the one resolution rule"
     wave: 1
     depends_on: []
-    promotion_order: 0
+    promotion_order: 1
     promotion_predecessor: null
-    goals: [GOAL-a-home-runs-its-own-copy]
+    goals:
+      - goal: GOAL-a-home-runs-its-own-copy
+        contribution: guard
+        expected_effect: >
+          a number where there is currently none, and a test that fails for
+          bin/cli/*
+        local_signal: >
+          the contract test is RED against today's tree, and names each offending
+          generator
     contribution: measurement-and-contract
     objective: >
       Measure GOAL-a-home-runs-its-own-copy's baseline across every home on the
@@ -160,7 +176,13 @@ tickets:
       HomeRepair.foreignPathsInShims' rewrite remedy applies here and its
       mappedIntoThisHome is non-null.
     slice: "measurement + the contract test. NO generator is changed here."
-    conflict_keys: [shims/contract]
+    conflict_keys:
+      production: ["shims/contract"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    blocks: ["HBR-1", "HBR-2", "HBR-3"]
 
   - id: HBR-1
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/269
@@ -168,9 +190,16 @@ tickets:
     issue: "https://github.com/haydenrear/skill-manager/issues/262"
     wave: 2
     depends_on: [HBR-0]
-    promotion_order: 1
+    promotion_order: 2
     promotion_predecessor: HBR-0
-    goals: [GOAL-a-home-runs-its-own-copy]
+    goals:
+      - goal: GOAL-a-home-runs-its-own-copy
+        contribution: direct
+        expected_effect: >
+          the HBR-0 contract test goes green for every shim a skill-script writes
+        local_signal: >
+          an edit to a skill inside a worktree home changes what that home's shim
+          runs
     contribution: primary
     objective: >
       A bin/cli tool shim resolves its skill path from the home the shim lives
@@ -212,7 +241,13 @@ tickets:
       The fix seam already exists and is not being built from nothing:
       HomeCloner.Kind.FOREIGN_PATH_IN_SHIM and HomeRepair.foreignPathsInShims
       already detect this, and already cite this exact file.
-    conflict_keys: [shims/contract, installer/skill-script]
+    conflict_keys:
+      production: ["shims/contract", "installer/skill-script"]
+      tla: []
+      adapters: []
+      test_graph: ["checkout-home", "project-child-home"]
+      workflow: []
+    blocks: ["HBR-4", "HBR-5"]
 
   - id: HBR-2
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/270
@@ -221,9 +256,16 @@ tickets:
     repository: haydenrear/git-issue-workflow-skill
     wave: 2
     depends_on: [HBR-0]
-    promotion_order: 2
+    promotion_order: 3
     promotion_predecessor: HBR-1
-    goals: [GOAL-a-failure-names-its-cause]
+    goals:
+      - goal: GOAL-a-failure-names-its-cause
+        contribution: direct
+        expected_effect: >
+          3 of 3 seeded failure modes name their true cause
+        local_signal: >
+          seeding a cross-home refusal no longer prints 'too old', and the printed
+          remedy works when followed verbatim
     contribution: primary
     objective: >
       bootstrap-home.sh resolves the CLI pinned-build-first and PATH-last, the
@@ -285,7 +327,13 @@ tickets:
       disagree about whether the file exists at all. The integration-repo
       constituent carries scripts/bootstrap-home.sh at fa34ff9;
       ~/IdeaProjects/git-issue-workflow-skill at 663ecac does not.
-    conflict_keys: [bootstrap/cli-resolution]
+    conflict_keys:
+      production: ["bootstrap/cli-resolution"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    blocks: ["HBR-4", "HBR-5"]
 
   - id: HBR-3
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/271
@@ -294,9 +342,15 @@ tickets:
     repository: haydenrear/skill-publisher-skill
     wave: 2
     depends_on: [HBR-0]
-    promotion_order: 3
+    promotion_order: 4
     promotion_predecessor: HBR-2
-    goals: [GOAL-the-real-error-survives]
+    goals:
+      - goal: GOAL-the-real-error-survives
+        contribution: direct
+        expected_effect: >
+          the refusal text appears in skt's output for a seeded cross-home refusal
+        local_signal: >
+          a skt unit case asserting the substantive line survives
     contribution: primary
     objective: >
       When a provisioning command fails, the CLI's own error reaches the reader.
@@ -306,7 +360,13 @@ tickets:
       skt's error rendering only. NOTE: a DIFFERENT REPOSITORY, so this ticket
       does not land on the epic branch -- it lands in skill-publisher-skill and
       reaches this epic through `skt sync`. Its receipt records both.
-    conflict_keys: [skt/error-rendering]
+    conflict_keys:
+      production: ["skt/error-rendering"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    blocks: ["HBR-5"]
 
   - id: HBR-4
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/272
@@ -314,9 +374,15 @@ tickets:
     issue: "https://github.com/haydenrear/skill-manager/issues/263"
     wave: 3
     depends_on: [HBR-1, HBR-2]
-    promotion_order: 4
+    promotion_order: 5
     promotion_predecessor: HBR-3
-    goals: [GOAL-an-agent-in-its-own-home-can-work]
+    goals:
+      - goal: GOAL-an-agent-in-its-own-home-can-work
+        contribution: direct
+        expected_effect: >
+          a worktree-home launch returns a result instead of 'Not logged in'
+        local_signal: >
+          bin/launch/claude -p 'reply OK' in a fresh worktree home returns non-empty
     contribution: primary
     objective: >
       `skill-manager exec` stops redirecting CLAUDE_CONFIG_DIR to an empty
@@ -344,23 +410,60 @@ tickets:
       unrecoverable from inside that session -- #263 measured a session losing
       its own credentials mid-turn and being unable to undo it, because undoing
       required an API call.
-    conflict_keys: [exec/agent-env]
+    conflict_keys:
+      production: ["exec/agent-env"]
+      tla: []
+      adapters: []
+      test_graph: ["checkout-home"]
+      workflow: []
+    blocks: ["HBR-5"]
 
   - id: HBR-5
+    role: evaluation
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/273
     title: "Terminal evaluation - decide all four goals on the integrated tree"
     wave: 4
     depends_on: [HBR-1, HBR-2, HBR-3, HBR-4]
-    promotion_order: 5
+    promotion_order: 6
     promotion_predecessor: HBR-4
     goals:
-      - GOAL-a-home-runs-its-own-copy
-      - GOAL-an-agent-in-its-own-home-can-work
-      - GOAL-a-failure-names-its-cause
-      - GOAL-the-real-error-survives
+      - goal: GOAL-a-home-runs-its-own-copy
+        contribution: direct
+        expected_effect: >
+          four numbers, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
+      - goal: GOAL-an-agent-in-its-own-home-can-work
+        contribution: direct
+        expected_effect: >
+          four numbers, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
+      - goal: GOAL-a-failure-names-its-cause
+        contribution: direct
+        expected_effect: >
+          four numbers, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
+      - goal: GOAL-the-real-error-survives
+        contribution: direct
+        expected_effect: >
+          four numbers, reported against their baselines
+        local_signal: >
+          N/A: this ticket IS the measurement, so it has no cheaper local
+          predictor of itself. Every other ticket carries one.
     contribution: measurement
     objective: "Run every harness on the integrated epic and record each goal met or missed."
     expected_effect: "four numbers, reported against their baselines"
     local_signal: "n/a - this ticket IS the signal"
     slice: "measurement only. A missed goal is reported, never fixed here."
-    conflict_keys: [evaluation]
+    conflict_keys:
+      production: ["evaluation"]
+      tla: []
+      adapters: []
+      test_graph: ["home-integrity", "checkout-home", "project-child-home"]
+      workflow: ["home-boundary-resolution"]
+    blocks: []
