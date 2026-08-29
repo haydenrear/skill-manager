@@ -130,6 +130,13 @@ tickets:
       machine, and write the resolution rule down ONCE as a contract with a test
       that every shim generator is checked against.
     expected_effect: "a number where there is currently none, and a test that fails for bin/cli/*"
+    existing_seam: >
+      Not built from nothing. HomeCloner.Kind.FOREIGN_PATH_IN_SHIM and
+      HomeRepair.foreignPathsInShims already extract absolute paths out of shim
+      text and already produce a rewrite remedy. They also already disagree with
+      each other -- `home verify` exit 0 against three FOREIGN_PATH_IN_SHIM
+      findings from `home repair`, same home, same minute -- so the contract
+      test has a measured disagreement to resolve rather than invent.
     local_signal: "the contract test is RED against today's tree, and names each offending generator"
     slice: "measurement + the contract test. NO generator is changed here."
     conflict_keys: [shims/contract]
@@ -145,23 +152,49 @@ tickets:
     goals: [GOAL-a-home-runs-its-own-copy]
     contribution: primary
     objective: >
-      Generated bin/cli shims resolve their skill path from the home the shim
-      lives in, mirroring bin/launch/*. The rule is PREFER THIS HOME'S COPY,
-      FALL BACK TO THE PINNED ONE -- not "always this home", which would break
-      a home that legitimately has no copy of the unit.
-    expected_effect: "the HBR-0 contract test goes green for skill-manager's own generator"
+      A bin/cli tool shim resolves its skill path from the home the shim lives
+      in. The rule is PREFER THIS HOME'S COPY, FALL BACK TO THE PINNED ONE --
+      not "always this home", which would break a home that legitimately has no
+      copy of the unit.
+
+      CORRECTED 2026-08-28 BY CODE SURVEY, and the correction changes the work.
+      There is NO Java writer for bin/cli/<tool> shims to fix. All three Java
+      shim writers are already correct and all three derive the home from the
+      shim's own location (LauncherShims launch template, LauncherShims
+      cliEntrypoint, ColdArtifactShim). Every tool wrapper BODY is written by
+      the unit's own install script, forked by SkillScriptBackend, whose only
+      post-conditions are exit 0 and an optional isExecutable check -- nothing
+      inspects, rewrites or wraps the bytes it writes. So this is an INSTALLER
+      CONTRACT ticket, not a generator fix.
+    expected_effect: "the HBR-0 contract test goes green for every shim a skill-script writes"
     local_signal: "an edit to a skill inside a worktree home changes what that home's shim runs"
     slice: >
-      skill-manager's shim generator AND the SkillScriptBackend installer
-      contract, so a unit that writes its own shim inherits the rule rather than
-      re-inventing it. spec-double-compiler's install-tla-spec-dev.sh freezing
-      $SKILL_DIR is the measured instance.
+      The SkillScriptBackend contract, and the three things that currently
+      teach the freeze:
+
+        1. references/skill-scripts.md tells authors "Use absolute paths via the
+           env vars", which is the defect written down as guidance.
+        2. THIS REPOSITORY ships its own instance --
+           skill-publisher-skill/skill-scripts/install-skt.sh freezes both $PY
+           and $ENTRYPOINT into the body -- so the epic can regress-test in
+           tree rather than against an installed home.
+        3. test_graph/fixtures/skill-script-skill/skill-scripts/install.sh
+           ENCODES the frozen shape as expected behaviour, so a graph fixture
+           has to change with the contract or the graph will defend the bug.
+
+      spec-double-compiler's install-tla-spec-dev.sh is the originally measured
+      instance and lives only in the installed home, NOT in this tree.
+
+      The fix seam already exists and is not being built from nothing:
+      HomeCloner.Kind.FOREIGN_PATH_IN_SHIM and HomeRepair.foreignPathsInShims
+      already detect this, and already cite this exact file.
     conflict_keys: [shims/contract, installer/skill-script]
 
   - id: HBR-2
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/270
     title: "#264a - bootstrap resolves the CLI in the right order, and tells refused from too-old"
     issue: "https://github.com/haydenrear/skill-manager/issues/264"
+    repository: haydenrear/git-issue-workflow-skill
     wave: 2
     depends_on: [HBR-0]
     promotion_order: 2
@@ -174,7 +207,27 @@ tickets:
       from a CLI that is genuinely too old and from one that is absent.
     expected_effect: "3 of 3 seeded failure modes name their true cause"
     local_signal: "seeding a cross-home refusal no longer prints 'too old', and the printed remedy works when followed verbatim"
-    slice: "bootstrap-home.sh CLI resolution and its diagnostics. Not skt's rendering -- that is HBR-3."
+    slice: >
+      bootstrap-home.sh CLI resolution and its diagnostics. Not skt's rendering
+      -- that is HBR-3.
+
+      A THIRD REPOSITORY: bootstrap-home.sh is not in skill-manager. It ships in
+      git-issue-workflow-skill and reaches a machine as an installed unit, so
+      this ticket does not land on the epic branch either.
+
+      THE MECHANISM IS EXACT, and the fix may be one line. `cli_has_home` is
+      `"$1" home clone --help 2>&1 | grep -q -- '--to'`. In a pipeline the
+      function's status is GREP's, so the candidate's own exit code is
+      discarded -- 0, 2, 79 and 127 are indistinguishable inputs. The shim
+      already exits 79 (LauncherShims.HOME_MISMATCH_EXIT_CODE) specifically so
+      a caller CAN tell a refusal apart, and 79 collides with nothing. The
+      signal is emitted and thrown away.
+
+      Note also that pick_cli runs BEFORE the script exports SKILL_MANAGER_HOME,
+      so the probe executes under the calling agent's ambient home -- which is
+      the trigger condition. And there is a SECOND instance of the same misread
+      in the verify phase, which must be fixed with it or it will re-report
+      "older than" on the same evidence.
     conflict_keys: [bootstrap/cli-resolution]
 
   - id: HBR-3
@@ -213,6 +266,19 @@ tickets:
       directory in the case where that guarantees the agent cannot authenticate.
       The DESIGN QUESTION is the ticket: isolation and credentials are both real
       requirements and the current answer sacrifices one silently.
+
+      CAUSE REFINED 2026-08-28 BY CODE SURVEY. #263 attributes the failure to
+      the macOS keychain being keyed to the operator's default config dir.
+      `exec` NEVER OVERRIDES HOME -- it sets only the descriptor env, the
+      package caches, the confine root and PATH -- so the keychain is still
+      reachable. The failure is narrower and more fixable than reported: the
+      new CLAUDE_CONFIG_DIR simply has no authenticated .claude.json in it.
+      Confirm this before designing, because it changes the option set.
+
+      There is NO existing opt-out, passthrough or inheritance flag. The one
+      available lever, `home describe --set-env`, is wired to a hard refusal:
+      LaunchEnv.requireClaudeRedirected() runs before anything is spawned and
+      exits 7. Any design here has to say what happens to that guard.
     expected_effect: "a worktree-home launch returns a result instead of 'Not logged in'"
     local_signal: "bin/launch/claude -p 'reply OK' in a fresh worktree home returns non-empty"
     slice: >
