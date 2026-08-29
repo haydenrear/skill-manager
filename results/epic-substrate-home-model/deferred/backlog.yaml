@@ -1,0 +1,162 @@
+# Deferred findings — epic/substrate-home-model
+#
+# APPEND ONLY. A ticket agent that meets a finding outside its declared slice
+# adds an entry here and moves on. It does not widen the ticket to fix it, and
+# it does not chase a goal metric by expanding scope.
+#
+# Policy: mode batch, blocking escalate, budget 5 findings per ticket.
+# The epic agent triages this file with the owner at each wave review.
+#
+# THIS EPIC'S RULE, from ticket_plan.yaml deferment_policy:
+#   A finding that is really "the home model should be different" goes here,
+#   not into a ticket. Anything that begins "we should just deploy" is out of
+#   scope by the scope_boundary and gets ESCALATED to the owner rather than
+#   absorbed.
+#
+# Schema per entry:
+#   id, found_by, found_at, severity (blocking|major|minor), summary,
+#   detail, reproduction, why_deferred, candidate_owner, status (open|triaged|closed)
+
+version: 1
+findings:
+  - id: DEF-SUB0-001
+    found_by: SUB-0 survey, surface 9 (the drift digest)
+    found_at: "2026-08-29"
+    severity: minor
+    summary: >
+      `home sync` records no drift, and no DriftGate path takes the home lock.
+    detail: >
+      `DriftGate.recordSince` is invoked from exactly two sites --
+      `project/ProjectSyncUseCase.java:156` ("project sync") and
+      `commands/HomeCommand.java:1191` ("home drift --record"). `store/HomeSync.java`
+      contains no `DriftGate` reference at all, so a `home sync` that replaces unit
+      content leaves the launch-time drift gate untouched: an agent following a skill
+      that `home sync` just rewrote is not told. Separately, every DriftGate write is
+      a plain `Fs.ensureDir` + `writeValue` (`store/DriftGate.java:114-115,158-159,221-222`)
+      with no `HomeLock`, so two processes -- or two containers sharing a volume --
+      can interleave writes to `home.drift.json`.
+    reproduction: >
+      Read-only. `grep -n DriftGate src/main/java/dev/skillmanager/store/HomeSync.java`
+      returns nothing; `grep -rn "DriftGate.recordSince" src/main/java` returns the two
+      sites above.
+    why_deferred: >
+      Not a machine-local assumption. It is a coverage gap in the drift instrument
+      that predates this epic and would be the same defect on one machine. SUB-0's
+      slice is reading and recording; fixing it is a production change.
+    candidate_owner: epic owner -- likely a separate issue, not a substrate-home-model ticket
+    status: open
+
+  - id: DEF-SUB0-002
+    found_by: SUB-0 survey, surface 8 (credentials)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      `gateway-data/` is copied by every home clone and may hold plaintext MCP
+      secrets; could not be determined from this codebase.
+    detail: >
+      `mcp/GatewayRuntime.java:38` puts `gateway-data/` at the store root. It is in
+      `HomeCloner.PROVISIONED_ROOTS` (`store/HomeCloner.java:248`) but NOT in
+      `SKIPPED_DIRS` (`:131-132`), so a clone copies it. It holds `dynamic-servers.json`,
+      and MCP server records carry `env` maps whose fields may be declared
+      `secret = true` (`model/McpDependency.java:216`, `model/SkillParser.java:272`,
+      `mcp/InstallResult.java:37`). `mcp/McpRegistrationLock.java:72-75` states that a
+      plaintext secret never enters the registration DIGEST, which implies plaintext
+      secrets exist somewhere in the payload.
+      Whether they land on disk cannot be decided from `src/main/java`: the file is
+      written by the Python gateway under `VMG_DATA_DIR`.
+    reproduction: >
+      Not reproduced. Would need a home with a secret-carrying MCP dep installed, then
+      `cat <home>/gateway-data/dynamic-servers.json`. Not run: it would require writing
+      to a real home or provisioning a gateway, both outside SUB-0's slice.
+    why_deferred: >
+      Sits beside the `auth.token` question (#281) but is a different file written by a
+      different codebase. SUB-0 settled the token by demonstration; this one needs the
+      gateway's own source, which is not in scope for a reading ticket.
+    candidate_owner: whoever takes #281's decision -- same session, adjacent question
+    status: open
+
+  - id: DEF-SUB0-003
+    found_by: SUB-0 survey, surface 7 (agent projections)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      The named-profile agent layout (`<profileRoot>/agents/{claude,codex,gemini}`) is
+      not covered by `AgentHomes.agentDirsUnder`, so a clone may not re-root it.
+    detail: >
+      `project/ProjectChildHomeScaffolder.java:305-307` places agent dirs under
+      `agents/` for a project with an active profile. `agent/AgentHomes.java:288-292`
+      (`agentDirsUnder`) knows only the sibling spelling `.claude` / `.codex` /
+      `.gemini`, and `AgentHomes.java:268-270` flags the profile layout as an exception
+      such callers must handle themselves. `HomeCloner.remapPath` re-roots exactly
+      `agentDirsUnder` (`store/HomeCloner.java:2845-2851`) and otherwise falls through
+      to `return path` (`:2853`). A profile-layout ledger row would then meet
+      `insideNewHome` (`:1191-1192`), which accepts anything under
+      `homeRootFor(dstRoot)` -- and `agents/` sits under the PROFILE root, not the home
+      root. I could not determine whether the row is re-rooted, kept unrewritten, or
+      dropped as foreign.
+    reproduction: >
+      Not reproduced. Would need a project with an active profile, a resolve, and a
+      clone of the resulting home -- a multi-step fixture beyond a reading ticket.
+    why_deferred: >
+      This is the "I could not tell" case the ticket asks to be written down rather
+      than guessed. Answering it means running the profile path, which is SUB-1's
+      demonstration slice, not SUB-0's.
+    candidate_owner: SUB-1 (propagation-path fixtures) or SUB-4 if it turns out to be a gap
+    status: open
+
+  - id: DEF-SUB0-004
+    found_by: SUB-0 survey, cross-cutting (not one of the nine surfaces)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      A cloned home carries the source home's loopback gateway URL, which means
+      nothing in another container.
+    detail: >
+      Measured on a scratch clone: the copy's `gateway.properties` and
+      `home.runtime.json` both hold `gateway.url = http://127.0.0.1:51717` with
+      `owned = false` -- i.e. the clone is pointed at the SOURCE home's gateway
+      process on the host loopback. `home clone` reports this deliberately
+      ("the source home owns it; pass --own-gateway to claim it instead"), so on one
+      machine it is correct behaviour. In a container, `127.0.0.1` is the container's
+      own loopback: the clone attaches to nothing, or -- worse -- to an unrelated
+      process that happens to hold that port.
+    reproduction: >
+      See the survey's "Reproducing the two demonstrations" section; the credentials
+      fixture prints `home.runtime.json`, which carries the URL. Fully reproducible in
+      a scratch directory with no real home involved.
+    why_deferred: >
+      The goal's harness fixes the denominator at nine named surfaces and the MCP
+      gateway is not one of them. Recording it inside a surface row would inflate the
+      denominator; recording it nowhere would lose it.
+    candidate_owner: SUB-2 (what the tiers mean in a container) -- the gateway is part of
+      the answer to "what is a root home when no durable machine owns one"
+    status: open
+
+  - id: DEF-SUB0-005
+    found_by: SUB-0 survey, cross-cutting (surfaces 3 and 6)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      A home records no platform key, and re-provisioning from `cli-lock.toml` across
+      a platform change has never been demonstrated.
+    detail: >
+      `util/Platform.currentKey()` is `os-arch` (`util/Platform.java:28-30`) and
+      nothing in a home records which platform provisioned it. The repair path for a
+      relocated home is `sync --force-scripts` re-provisioning from `cli-lock.toml`,
+      which is platform-agnostic in shape -- no field holds an absolute path
+      (`lock/CliLock.java:70-80`, `lock/CliInstallRecorder.java:121-127`) -- but every
+      backend is platform-keyed: `cli/installer/BrewBackend.java:29-34`,
+      `TarBackend.java:241-253`, `SkillScriptBackend.java:393-402`,
+      `pm/PackageManager.java:53-56` (throws on Windows). `TarBackend.java:136-141`
+      states that two homes on different architectures deliberately do not agree about
+      fingerprints. So a macOS-authored home moved into a Linux container is expected
+      to re-provision, and whether it CAN has not been shown either way.
+    reproduction: >
+      Not reproduced -- it needs a second platform, which SUB-0 does not have and
+      SUB-5's k3d work might.
+    why_deferred: >
+      Straddles two of the nine surfaces without being a defect in either. The survey
+      dispositions both rows on evidence that does not depend on this answer; this is
+      the follow-on measurement, and it is SUB-1's kind of work.
+    candidate_owner: SUB-1 (demonstration) with SUB-5's k3d environment if it exists
+    status: open
