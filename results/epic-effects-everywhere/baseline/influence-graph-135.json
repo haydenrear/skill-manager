@@ -1,0 +1,1540 @@
+{
+ "schema": 1,
+ "generated_from": [
+  "results/epic-home-integrity-sync/deferred/backlog.yaml",
+  "session findings 2026-08-27/28 (skill-manager + skill-publisher-skill)",
+  "github issues 262, 263, 264"
+ ],
+ "generated_at": "2026-08-28",
+ "findings": 135,
+ "method": "regex attribution of each finding's WHOLE record to one or more architectural surfaces; a finding may touch several, so node counts sum past the finding total. Surfaces are PLACES in the architecture. Recurring defect CLASSES are reported separately in defect_classes rather than as nodes, because a class is not a place and mixing the two makes the ranking unreadable.",
+ "changes_since_2026_08_26": {
+  "added_surface": [
+   "shim/CLI resolution",
+   "HomeDigest/drift"
+  ],
+  "added_findings": 13,
+  "repaired_attribution": [
+   "DEF-123 carried an empty surfaces list; attributed from its own record"
+  ],
+  "deliberately_not_re_added": [
+   "DEF-115",
+   "DEF-122",
+   "DEF-123",
+   "DEF-124"
+  ],
+  "known_data_flaw": "DEF-109, DEF-110, DEF-111, DEF-112 each appear TWICE in per_finding with different severities and surfaces. Inherited from the baseline and NOT silently deduplicated here; it inflates four surfaces by an unknown amount and should be reconciled deliberately."
+ },
+ "nodes": {
+  "HomeCloner/verify": 36,
+  "test_graph/laws": 35,
+  "sync/close-out": 34,
+  "skt": 33,
+  "TLA+/spec tooling": 29,
+  "project/manifest": 22,
+  "confinement": 19,
+  "docs/disclosure": 17,
+  "AgentHomes/two axes": 16,
+  "artifacts": 14,
+  "HomeRepair": 11,
+  "CLI execution strategy": 8,
+  "shim/CLI resolution": 3,
+  "HomeDigest/drift": 2
+ },
+ "edges": [
+  {
+   "a": "TLA+/spec tooling",
+   "b": "test_graph/laws",
+   "shared": 15,
+   "blocking": 1
+  },
+  {
+   "a": "docs/disclosure",
+   "b": "skt",
+   "shared": 12,
+   "blocking": 1
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "test_graph/laws",
+   "shared": 11,
+   "blocking": 2
+  },
+  {
+   "a": "skt",
+   "b": "sync/close-out",
+   "shared": 11,
+   "blocking": 1
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "TLA+/spec tooling",
+   "shared": 10,
+   "blocking": 1
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "HomeRepair",
+   "shared": 9,
+   "blocking": 2
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "confinement",
+   "shared": 8,
+   "blocking": 2
+  },
+  {
+   "a": "TLA+/spec tooling",
+   "b": "project/manifest",
+   "shared": 8,
+   "blocking": 0
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "sync/close-out",
+   "shared": 7,
+   "blocking": 2
+  },
+  {
+   "a": "HomeRepair",
+   "b": "test_graph/laws",
+   "shared": 7,
+   "blocking": 2
+  },
+  {
+   "a": "docs/disclosure",
+   "b": "sync/close-out",
+   "shared": 7,
+   "blocking": 1
+  },
+  {
+   "a": "project/manifest",
+   "b": "skt",
+   "shared": 7,
+   "blocking": 1
+  },
+  {
+   "a": "project/manifest",
+   "b": "test_graph/laws",
+   "shared": 7,
+   "blocking": 0
+  },
+  {
+   "a": "sync/close-out",
+   "b": "test_graph/laws",
+   "shared": 7,
+   "blocking": 1
+  },
+  {
+   "a": "confinement",
+   "b": "project/manifest",
+   "shared": 6,
+   "blocking": 1
+  },
+  {
+   "a": "project/manifest",
+   "b": "sync/close-out",
+   "shared": 6,
+   "blocking": 1
+  },
+  {
+   "a": "skt",
+   "b": "test_graph/laws",
+   "shared": 6,
+   "blocking": 0
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "CLI execution strategy",
+   "shared": 5,
+   "blocking": 0
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "confinement",
+   "shared": 5,
+   "blocking": 2
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "project/manifest",
+   "shared": 5,
+   "blocking": 3
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "skt",
+   "shared": 5,
+   "blocking": 2
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "HomeCloner/verify",
+   "shared": 4,
+   "blocking": 2
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "HomeRepair",
+   "shared": 4,
+   "blocking": 1
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "artifacts",
+   "shared": 4,
+   "blocking": 1
+  },
+  {
+   "a": "HomeRepair",
+   "b": "TLA+/spec tooling",
+   "shared": 4,
+   "blocking": 0
+  },
+  {
+   "a": "TLA+/spec tooling",
+   "b": "confinement",
+   "shared": 4,
+   "blocking": 0
+  },
+  {
+   "a": "TLA+/spec tooling",
+   "b": "skt",
+   "shared": 4,
+   "blocking": 1
+  },
+  {
+   "a": "artifacts",
+   "b": "docs/disclosure",
+   "shared": 4,
+   "blocking": 1
+  },
+  {
+   "a": "docs/disclosure",
+   "b": "project/manifest",
+   "shared": 4,
+   "blocking": 1
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "TLA+/spec tooling",
+   "shared": 3,
+   "blocking": 0
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "HomeCloner/verify",
+   "shared": 3,
+   "blocking": 0
+  },
+  {
+   "a": "artifacts",
+   "b": "skt",
+   "shared": 3,
+   "blocking": 1
+  },
+  {
+   "a": "artifacts",
+   "b": "test_graph/laws",
+   "shared": 3,
+   "blocking": 1
+  },
+  {
+   "a": "confinement",
+   "b": "skt",
+   "shared": 3,
+   "blocking": 1
+  },
+  {
+   "a": "confinement",
+   "b": "test_graph/laws",
+   "shared": 3,
+   "blocking": 0
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "test_graph/laws",
+   "shared": 2,
+   "blocking": 1
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "TLA+/spec tooling",
+   "shared": 2,
+   "blocking": 0
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "confinement",
+   "shared": 2,
+   "blocking": 0
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "sync/close-out",
+   "shared": 2,
+   "blocking": 0
+  },
+  {
+   "a": "HomeRepair",
+   "b": "confinement",
+   "shared": 2,
+   "blocking": 0
+  },
+  {
+   "a": "TLA+/spec tooling",
+   "b": "docs/disclosure",
+   "shared": 2,
+   "blocking": 0
+  },
+  {
+   "a": "artifacts",
+   "b": "project/manifest",
+   "shared": 2,
+   "blocking": 1
+  },
+  {
+   "a": "confinement",
+   "b": "sync/close-out",
+   "shared": 2,
+   "blocking": 1
+  },
+  {
+   "a": "docs/disclosure",
+   "b": "test_graph/laws",
+   "shared": 2,
+   "blocking": 0
+  },
+  {
+   "a": "shim/CLI resolution",
+   "b": "skt",
+   "shared": 2,
+   "blocking": 0
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "artifacts",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "project/manifest",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "shim/CLI resolution",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "AgentHomes/two axes",
+   "b": "sync/close-out",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "artifacts",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "project/manifest",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "skt",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "CLI execution strategy",
+   "b": "test_graph/laws",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "HomeCloner/verify",
+   "b": "docs/disclosure",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "HomeDigest/drift",
+   "b": "artifacts",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "HomeRepair",
+   "b": "artifacts",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "HomeRepair",
+   "b": "project/manifest",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "HomeRepair",
+   "b": "skt",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "HomeRepair",
+   "b": "sync/close-out",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "TLA+/spec tooling",
+   "b": "sync/close-out",
+   "shared": 1,
+   "blocking": 0
+  },
+  {
+   "a": "artifacts",
+   "b": "confinement",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "artifacts",
+   "b": "sync/close-out",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "confinement",
+   "b": "docs/disclosure",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "confinement",
+   "b": "shim/CLI resolution",
+   "shared": 1,
+   "blocking": 1
+  },
+  {
+   "a": "docs/disclosure",
+   "b": "shim/CLI resolution",
+   "shared": 1,
+   "blocking": 0
+  }
+ ],
+ "defect_classes": {
+  "note": "Counts over the 122 BASELINE records by regex on the whole record, plus the 13 new findings by hand. A regex proxy over prose is an estimate, and is reported as one.",
+  "two-readers-of-one-truth": {
+   "baseline_estimate": 26,
+   "new": 4,
+   "supported": true,
+   "evidence": "DEF-004, DEF-006, DEF-007, DEF-021, DEF-104, DEF-115, DEF-124 + DEF-125, DEF-128, DEF-134, ISSUE-262"
+  },
+  "record-written-and-never-read": {
+   "baseline_estimate": 15,
+   "new": 2,
+   "supported": true,
+   "caveat": "weaker in the baseline than the 'two readers' class; it SPIKED this session (DEF-129, DEF-132) rather than being a long-standing top class",
+   "evidence": "DEF-031, DEF-068, DEF-078, DEF-085, DEF-089, DEF-098, DEF-105, DEF-110 + DEF-129, DEF-132"
+  },
+  "wrong-answer-at-the-moment-of-verification": {
+   "baseline_estimate": null,
+   "new": 4,
+   "supported": true,
+   "note": "not measured against the baseline; named because ISSUE-262, DEF-132, DEF-133 and DEF-134 all break the CHECK rather than the behaviour, which is why careful verification produced confident wrong conclusions",
+   "evidence": "ISSUE-262, DEF-132, DEF-133, DEF-134"
+  }
+ },
+ "per_finding": [
+  {
+   "id": "DEF-001",
+   "severity": "major",
+   "surfaces": [
+    "skt",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-002",
+   "severity": "minor",
+   "surfaces": [
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-003",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-004",
+   "severity": "blocking",
+   "surfaces": [
+    "HomeCloner/verify",
+    "TLA+/spec tooling",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-005",
+   "severity": "minor",
+   "surfaces": [
+    "docs/disclosure",
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-006",
+   "severity": "major",
+   "surfaces": [
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-007",
+   "severity": "blocking",
+   "surfaces": [
+    "HomeCloner/verify",
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-008",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-009",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-010",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-011",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-012",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-025",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-026",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-027",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-028",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-029",
+   "severity": "blocking",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-030",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-021",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "confinement",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-013",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-014",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "project/manifest",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-015",
+   "severity": "minor",
+   "surfaces": [
+    "CLI execution strategy",
+    "HomeCloner/verify",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-016",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-017",
+   "severity": "major",
+   "surfaces": [
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-018",
+   "severity": "major",
+   "surfaces": [
+    "skt",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-019",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-020",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "TLA+/spec tooling",
+    "confinement",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-024",
+   "severity": "blocking",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-031",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-032",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify",
+    "project/manifest"
+   ]
+  },
+  {
+   "id": "DEF-033",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-034",
+   "severity": "minor",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-035",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-041",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-036",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-037",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "CLI execution strategy"
+   ]
+  },
+  {
+   "id": "DEF-038",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-039",
+   "severity": "minor",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "CLI execution strategy",
+    "HomeCloner/verify",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-040",
+   "severity": "minor",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "CLI execution strategy",
+    "TLA+/spec tooling",
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-042",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-043",
+   "severity": "blocking",
+   "surfaces": [
+    "sync/close-out",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-044",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-045",
+   "severity": "minor",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-046",
+   "severity": "minor",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "CLI execution strategy",
+    "confinement",
+    "project/manifest"
+   ]
+  },
+  {
+   "id": "DEF-047",
+   "severity": "major",
+   "surfaces": [
+    "confinement",
+    "project/manifest",
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-048",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "confinement",
+    "project/manifest",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-049",
+   "severity": "minor",
+   "surfaces": [
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-050",
+   "severity": "major",
+   "surfaces": [
+    "confinement",
+    "project/manifest"
+   ]
+  },
+  {
+   "id": "DEF-051",
+   "severity": "minor",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "confinement",
+    "project/manifest"
+   ]
+  },
+  {
+   "id": "DEF-052",
+   "severity": "minor",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-053",
+   "severity": "major",
+   "surfaces": [
+    "CLI execution strategy",
+    "HomeCloner/verify",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-054",
+   "severity": "major",
+   "surfaces": [
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-055",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify",
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-058",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-059",
+   "severity": "minor",
+   "surfaces": [
+    "project/manifest",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-060",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-061",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-062",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-063",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-064",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify",
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-065",
+   "severity": "major",
+   "surfaces": [
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-066",
+   "severity": "minor",
+   "surfaces": [
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-067",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-068",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-069",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-070",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "HomeRepair",
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-071",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "HomeRepair",
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-072",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "project/manifest",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-073",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "HomeRepair"
+   ]
+  },
+  {
+   "id": "DEF-074",
+   "severity": "major",
+   "surfaces": [
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-075",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-076",
+   "severity": "major",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "HomeCloner/verify",
+    "HomeRepair",
+    "confinement",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-077",
+   "severity": "major",
+   "surfaces": [
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-078",
+   "severity": "major",
+   "surfaces": [
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-079",
+   "severity": "major",
+   "surfaces": [
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-080",
+   "severity": "minor",
+   "surfaces": [
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-081",
+   "severity": "major",
+   "surfaces": [
+    "artifacts",
+    "docs/disclosure",
+    "skt",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-082",
+   "severity": "major",
+   "surfaces": [
+    "artifacts",
+    "docs/disclosure",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-083",
+   "severity": "minor",
+   "surfaces": [
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-084",
+   "severity": "minor",
+   "surfaces": [
+    "docs/disclosure",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-085",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-086",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-087",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "project/manifest",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-088",
+   "severity": "minor",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "CLI execution strategy",
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-089",
+   "severity": "minor",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "docs/disclosure"
+   ]
+  },
+  {
+   "id": "DEF-092",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-093",
+   "severity": "minor",
+   "surfaces": [
+    "docs/disclosure"
+   ]
+  },
+  {
+   "id": "DEF-094",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-095",
+   "severity": "none",
+   "surfaces": [
+    "HomeCloner/verify",
+    "HomeRepair",
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-096",
+   "severity": "major",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "docs/disclosure",
+    "project/manifest",
+    "skt",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-097",
+   "severity": "major",
+   "surfaces": [
+    "docs/disclosure",
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-098",
+   "severity": "major",
+   "surfaces": [
+    "docs/disclosure",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-099",
+   "severity": "major",
+   "surfaces": [
+    "docs/disclosure",
+    "project/manifest",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-100",
+   "severity": "minor",
+   "surfaces": [
+    "project/manifest",
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-101",
+   "severity": "major",
+   "surfaces": [
+    "project/manifest",
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-102",
+   "severity": "minor",
+   "surfaces": [
+    "docs/disclosure",
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-103",
+   "severity": "blocking",
+   "surfaces": [
+    "HomeCloner/verify",
+    "artifacts",
+    "confinement",
+    "docs/disclosure",
+    "project/manifest",
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-104",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "HomeRepair",
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-105",
+   "severity": "major",
+   "surfaces": [
+    "artifacts",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-106",
+   "severity": "major",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-107",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-109",
+   "severity": "minor",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-111",
+   "severity": "major",
+   "surfaces": [
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-112",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "HomeRepair",
+    "TLA+/spec tooling",
+    "project/manifest",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-110",
+   "severity": "minor",
+   "surfaces": [
+    "HomeCloner/verify",
+    "HomeRepair",
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-108",
+   "severity": "minor",
+   "surfaces": []
+  },
+  {
+   "id": "DEF-109",
+   "severity": "major",
+   "surfaces": [
+    "artifacts",
+    "docs/disclosure",
+    "project/manifest"
+   ]
+  },
+  {
+   "id": "DEF-110",
+   "severity": "minor",
+   "surfaces": [
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-111",
+   "severity": "minor",
+   "surfaces": [
+    "project/manifest",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-112",
+   "severity": "minor",
+   "surfaces": [
+    "TLA+/spec tooling",
+    "project/manifest",
+    "sync/close-out",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-113",
+   "severity": "major",
+   "surfaces": [
+    "project/manifest",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-114",
+   "severity": "minor",
+   "surfaces": [
+    "skt",
+    "sync/close-out",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-115",
+   "severity": "blocking",
+   "surfaces": [
+    "HomeCloner/verify",
+    "HomeRepair",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-116",
+   "severity": "blocking",
+   "surfaces": [
+    "HomeCloner/verify",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-117",
+   "severity": "major",
+   "surfaces": [
+    "docs/disclosure",
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-118",
+   "severity": "major",
+   "surfaces": [
+    "confinement"
+   ]
+  },
+  {
+   "id": "DEF-119",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "TLA+/spec tooling"
+   ]
+  },
+  {
+   "id": "DEF-120",
+   "severity": "minor",
+   "surfaces": [
+    "skt",
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-121",
+   "severity": "major",
+   "surfaces": [
+    "HomeCloner/verify",
+    "HomeRepair",
+    "skt",
+    "sync/close-out",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-122",
+   "severity": "blocking",
+   "surfaces": [
+    "CLI execution strategy",
+    "artifacts",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-123",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out",
+    "docs/disclosure"
+   ]
+  },
+  {
+   "id": "DEF-124",
+   "severity": "blocking",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "HomeCloner/verify",
+    "HomeRepair",
+    "test_graph/laws"
+   ]
+  },
+  {
+   "id": "DEF-125",
+   "severity": "blocking",
+   "surfaces": [
+    "project/manifest",
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "DEF-126",
+   "severity": "major",
+   "surfaces": [
+    "sync/close-out"
+   ]
+  },
+  {
+   "id": "DEF-127",
+   "severity": "minor",
+   "surfaces": [
+    "sync/close-out",
+    "docs/disclosure"
+   ]
+  },
+  {
+   "id": "DEF-128",
+   "severity": "major",
+   "surfaces": [
+    "HomeDigest/drift",
+    "artifacts"
+   ]
+  },
+  {
+   "id": "DEF-129",
+   "severity": "blocking",
+   "surfaces": [
+    "HomeDigest/drift"
+   ]
+  },
+  {
+   "id": "DEF-130",
+   "severity": "major",
+   "surfaces": [
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-131",
+   "severity": "major",
+   "surfaces": [
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-132",
+   "severity": "minor",
+   "surfaces": [
+    "skt"
+   ]
+  },
+  {
+   "id": "DEF-133",
+   "severity": "major",
+   "surfaces": [
+    "skt",
+    "shim/CLI resolution"
+   ]
+  },
+  {
+   "id": "DEF-134",
+   "severity": "blocking",
+   "surfaces": [
+    "project/manifest",
+    "HomeCloner/verify"
+   ]
+  },
+  {
+   "id": "ISSUE-262",
+   "severity": "blocking",
+   "surfaces": [
+    "shim/CLI resolution",
+    "AgentHomes/two axes",
+    "confinement"
+   ]
+  },
+  {
+   "id": "ISSUE-263",
+   "severity": "blocking",
+   "surfaces": [
+    "AgentHomes/two axes",
+    "confinement"
+   ]
+  },
+  {
+   "id": "ISSUE-264",
+   "severity": "major",
+   "surfaces": [
+    "shim/CLI resolution",
+    "skt",
+    "docs/disclosure"
+   ]
+  }
+ ]
+}
