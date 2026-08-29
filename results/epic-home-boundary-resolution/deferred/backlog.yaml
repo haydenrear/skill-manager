@@ -1,0 +1,67 @@
+# Deferred findings — epic/home-boundary-resolution
+#
+# APPEND ONLY. A ticket agent that meets a failure case outside its declared
+# slice adds an entry here and moves on. It does not widen the ticket to fix
+# it, and it does not chase a goal metric by expanding scope.
+#
+# Policy: mode batch, blocking escalate, budget 5 findings per ticket.
+# The epic agent triages this file with the owner at each wave review.
+#
+# Schema per entry:
+#   id, found_by, found_at, severity (blocking|major|minor), summary,
+#   reproduction, why_deferred, candidate_owner, status (open|triaged|closed)
+
+version: 1
+findings:
+  - id: DEF-HBR-001
+    found_by: HBR-0 (the shim-generator contract sweep)
+    found_at: "2026-08-29"
+    severity: minor
+    summary: >
+      skill-dev-skill/skill-scripts/install.sh is a FOURTH shim generator in
+      this tree and the contract sweep does not cover it. It does not write a
+      wrapper itself -- it delegates to `uv tool install "$SKILL_DIR"` with
+      UV_TOOL_BIN_DIR/UV_TOOL_DIR pointed at this home -- so the bytes at
+      bin/cli/skill-dev are uv's, and uv's console-script wrapper freezes the
+      absolute path of the venv it installed into. That is the same freeze
+      ShimHomeContract.FOREIGN_HOME_PATH names, produced by a generator this
+      repository does not own.
+    reproduction: >
+      The sweep in src/test/java/dev/skillmanager/store/ShimHomeContractTest.java
+      runs each installer in a temp home and relocates its output. Adding this
+      one needs `uv` on PATH and a network fetch for the interpreter, so the
+      case would be neither hermetic nor offline-runnable, which is why the
+      class javadoc lists it as not covered rather than skipping it silently.
+    why_deferred: >
+      Outside HBR-0's slice (measurement + the contract test; NO generator is
+      changed here) and outside HBR-1's (the SkillScriptBackend contract and
+      the three in-tree instances it names). Fixing it is not an installer edit
+      at all -- it is a question about whether a uv tool install can be made
+      relocatable, or whether the backend must post-process what uv writes.
+    candidate_owner: HBR-1 or a follow-on ticket
+    status: open
+
+  - id: DEF-HBR-002
+    found_by: HBR-0 (reading the seam the ticket names)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      HomeCloner.sanctionedParentShim sanctions a foreign crossing on SHAPE
+      alone -- same bin/cli/<name> spelling on both sides, one resolved
+      artifact, and ancestor evidence -- and never asks whether this home holds
+      its own copy of the unit. That is why `home verify` exits 0 on 16 of the
+      19 pairs measured for GOAL-a-home-runs-its-own-copy: every one of them is
+      a parent-shaped symlink over a local copy that is sitting unused.
+      ShimHomeContract states the missing condition and HBR-0 stops there.
+    reproduction: >
+      python3 scripts/measure_goal_home_runs_its_own_copy.py  (19 pairs, 16 via
+      symlink, this_home_has_its_own true on all of them), then
+      `skill-manager home verify --home <one of those homes>` -> exit 0.
+    why_deferred: >
+      Changing the gate changes what `home verify` and `home repair` refuse,
+      which is a production behaviour change in a seam HBR-0 is explicitly not
+      allowed to touch ("measurement + the contract test. NO generator is
+      changed here"). The contract now names the disagreement in one place so
+      the ticket that closes it has a single reading to move to.
+    candidate_owner: HBR-5 (the goal's decider) via HBR-1
+    status: open
