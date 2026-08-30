@@ -65,3 +65,63 @@ findings:
       the ticket that closes it has a single reading to move to.
     candidate_owner: HBR-5 (the goal's decider) via HBR-1
     status: open
+
+  - id: DEF-HBR-003
+    found_by: HBR-1 (running the graphs its change could plausibly touch)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      The artifact-dag graph is RED on the epic branch, before this ticket.
+      Node `uninstall.prunes.the.subgraph` fails two of its assertions:
+      the_census_names_nothing_the_removed_unit_owned=false and
+      the_home_is_byte_comparable_to_before_the_install=false. The removed
+      unit's six artifact ids -- unit-store, cli-shim, provisioned-tree and
+      three projections -- still appear in the census after `uninstall` exits
+      0, and artifacts.lock.toml is left behind (onlyAfter=[F
+      artifacts.lock.toml 3745], onlyBefore=[]). Everything the node checks
+      about the DISK passes, including the provisioned tree being gone; it is
+      the LEDGER that has not forgotten.
+    reproduction: >
+      python skills/test_graph/scripts/run.py artifact-dag  -> BUILD FAILED.
+      Confirmed pre-existing by stashing feature/hbr-1's whole diff and
+      re-running on 2ed23af: byte-identical failure message, same six
+      survivingIds. It is not caused by this ticket's change to
+      HomeCloner.referencesIn, and this ticket did not make it worse.
+    why_deferred: >
+      Outside HBR-1's slice (the SkillScriptBackend contract and the three
+      in-tree instances that teach the freeze) and outside its declared graphs
+      (checkout-home, project-child-home). It is a ledger-forgetting defect in
+      the ARTI line, not a home-boundary one, and repairing it would mean
+      changing what `uninstall` writes -- a production behaviour change nobody
+      in this epic has been scoped to review.
+    candidate_owner: an ARTI follow-on; HBR-5 should know the graph is red
+      before it reads any artifact evidence
+    status: open
+
+  - id: DEF-HBR-004
+    found_by: HBR-1 (fixing the in-tree instance the ticket named)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      skill-publisher-skill/ in this repository is a VENDORED copy, refreshed
+      from the leaf repo's main ("chore: refresh vendored skill copies from
+      merged leaf mains"). HBR-1 fixed the vendored
+      skill-scripts/install-skt.sh -- which is the copy the contract test reads
+      and the copy the ticket named -- but the authoritative one lives in
+      haydenrear/skill-publisher-skill and is unchanged. Until the same edit
+      lands there, the next vendor refresh reverts this fix and the contract
+      test goes red again, correctly, on a change nobody made on purpose.
+    reproduction: >
+      git log --oneline -- skill-publisher-skill/skill-scripts/install-skt.sh
+      shows the vendoring commits. Diff this repo's copy against the leaf repo
+      after this PR merges: only this one differs.
+    why_deferred: >
+      A different repository, and this ticket stops at PR open against
+      epic/home-boundary-resolution -- it cannot open a leaf PR. HBR-3 already
+      lands in skill-publisher-skill for skt's error rendering, so the two
+      edits can travel together; whoever takes it should also decide whether
+      the plugin version is bumped, which HBR-1 deliberately did not do to a
+      vendored file.
+    candidate_owner: HBR-3 (already working in that repo) or the epic owner's
+      fan-out at wave close
+    status: open

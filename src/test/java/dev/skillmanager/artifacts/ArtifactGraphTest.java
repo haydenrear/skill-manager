@@ -57,6 +57,79 @@ public final class ArtifactGraphTest {
                             "and it resolves to the tree that contains it");
                 });
 
+        suite.test("a wrapper that names its tree HOME-RELATIVE draws the same edge", () -> {
+            // HBR-1. ShimHomeContract now requires a generated wrapper to
+            // derive its home from its own location and to name what it runs
+            // relative to that home, so that copying it into another home
+            // stops sending it back to this one. That removes the absolute
+            // path this edge used to be recovered from — and this edge is the
+            // only evidence a home has of which install wrote which tree, and
+            // what the uninstall prune that closed skill-manager#104 is built
+            // on. If it did not survive the rewrite, every installer that
+            // COMPLIED with the contract would have its tree go unowned and
+            // outlive its unit again.
+            SkillStore store = ArtifactsFixture.seed();
+            java.nio.file.Path shimFile = store.root().resolve("bin/cli/alpha-script");
+            String rel = "cache/skill-script-alpha-alpha-script/venv/bin/alpha-script";
+            java.nio.file.Files.writeString(shimFile, """
+                    #!/usr/bin/env bash
+                    set -euo pipefail
+                    rel="%s"
+                    shim_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+                    home="$(cd -- "$shim_dir/../.." && pwd -P)"
+                    exec "$home/$rel" "$@"
+                    """.formatted(rel));
+
+            // The control, and the reason this case is not vacuous: the
+            // rewritten wrapper carries no absolute path at all.
+            assertFalse(java.nio.file.Files.readString(shimFile)
+                            .contains(store.root().toString()),
+                    "the conformant wrapper names no home absolutely");
+
+            ArtifactIndex index = ArtifactIndex.of(store);
+            String shim = ArtifactIds.cliShim("skill-script", "alpha-script");
+            assertTrue(index.byId(shim).orElseThrow().observedInputs().stream()
+                            .anyMatch(i -> i.startsWith("store:cache/skill-script-alpha-alpha-script")),
+                    "the relative name is still read as the path it runs: "
+                            + index.byId(shim).orElseThrow().observedInputs());
+            assertContains(ArtifactGraph.of(index).dependsOn(shim).toString(),
+                    ArtifactIds.provisionedTree("cache", "skill-script-alpha-alpha-script"),
+                    "and it still resolves to the tree that contains it");
+        });
+
+        suite.test("ANOTHER home's absolute path is not read as this home's relative one", () -> {
+            // The cost of letting `/` be a token boundary, paid for. A frozen
+            // wrapper naming `/other/home/cache/<tree>/…` has a `/` before its
+            // `cache/` exactly as `"$home/cache/…"` does, and both homes hold
+            // a tree of that name — so existence-gating cannot tell them apart
+            // and this home would be credited with running a tree it does not.
+            // That is the very confusion the shim contract exists to end, so
+            // committing it here would be the check making the defect.
+            SkillStore store = ArtifactsFixture.seed();
+            java.nio.file.Files.writeString(store.root().resolve("bin/cli/alpha-script"),
+                    "#!/bin/sh\nexec \"/somewhere/else/.skill-manager/"
+                            + "cache/skill-script-alpha-alpha-script/venv/bin/alpha-script\""
+                            + " \"$@\"\n");
+            assertTrue(ArtifactIndex.of(store)
+                            .byId(ArtifactIds.cliShim("skill-script", "alpha-script"))
+                            .orElseThrow().observedInputs().isEmpty(),
+                    "the path names another home, so it names nothing here");
+        });
+
+        suite.test("a home-relative token this home does not hold draws NO edge", () -> {
+            // The narrowness that keeps the relative scan from inventing
+            // edges. An unanchored `tools/…` token is a plausible fragment of
+            // prose or of an unrelated path, so it counts only when the home
+            // actually holds what it names.
+            SkillStore store = ArtifactsFixture.seed();
+            java.nio.file.Files.writeString(store.root().resolve("bin/cli/alpha-script"),
+                    "#!/bin/sh\n# see tools/nothing-here and cache/not-a-tree/bin/x\nexit 0\n");
+            assertTrue(ArtifactIndex.of(store)
+                            .byId(ArtifactIds.cliShim("skill-script", "alpha-script"))
+                            .orElseThrow().observedInputs().isEmpty(),
+                    "nothing on disk answers to either token, so neither is an input");
+        });
+
         suite.test("a moved unit reaches its shims and the trees they run out of", () -> {
             SkillStore store = ArtifactsFixture.seed();
             ArtifactIndex index = ArtifactIndex.of(store);

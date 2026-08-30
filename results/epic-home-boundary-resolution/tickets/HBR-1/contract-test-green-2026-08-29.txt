@@ -1,0 +1,113 @@
+HBR-1 expected effect — "the HBR-0 contract test goes green for every shim a
+skill-script writes", i.e. the `pinned` set in ShimHomeContractTest is EMPTY.
+
+command : jbang RunTests.java        (2026-08-29, worktree of feature/hbr-1)
+suite   : 1441 passed, 0 failed.
+          1437 was the count on the epic branch at 2ed23af; the four added
+          cases are named below. Nothing regressed.
+
+== ShimHomeContractTest (2 cases)
+  [PASS] every shim generator in this tree resolves its unit from the home the shim lives in
+  [PASS] the freeze is visible BEFORE the copy, which is where an author can still act on it
+   → 2 passed, 0 failed
+
+== ArtifactGraphTest
+  [PASS] a wrapper that names its tree HOME-RELATIVE draws the same edge
+  [PASS] ANOTHER home's absolute path is not read as this home's relative one
+  [PASS] a home-relative token this home does not hold draws NO edge
+
+The two pins HBR-0 left, and what removed each:
+
+  skill-publisher-skill/skill-scripts/install-skt.sh -> bin/cli/skt
+      FOREIGN_UNIT_COPY, charged to GOAL-a-home-runs-its-own-copy.
+      The installer wrote `exec "$PY" "$SKILL_DIR/src/skt/cli.py"` into the
+      wrapper body. It now computes $SKILL_DIR's path RELATIVE to the home and
+      writes that; the wrapper derives its home from ${BASH_SOURCE[0]}.
+
+  test_graph/fixtures/skill-script-skill/skill-scripts/install.sh
+      -> bin/cli/skill-script-touched
+      FOREIGN_HOME_PATH, not charged.
+      Same shape one root over: $SKILL_MANAGER_CACHE_DIR frozen into the body.
+      Same fix. This one MATTERED beyond its own greenness — a graph fixture
+      that keeps the frozen shape is a fixture that defends the bug.
+
+----------------------------------------------------------------------
+LOCAL SIGNAL — "an edit to a skill inside a worktree home changes what that
+home's shim runs."
+
+Three homes. The wrapper is installed ONCE, in A, and then copied to B exactly
+as a clone, a child home, or a `cp -a` would copy it. Nothing is reinstalled at
+any point below.
+
+  the shim installed in A, run from A : I am the copy in home A
+  the SAME shim, standing in B        : I am the copy in home B
+
+  now EDIT the skill inside B and re-run B's shim — nothing reinstalled:
+    B's shim                          : I am the copy in home B, EDITED
+    A's shim, unaffected              : I am the copy in home A
+
+  and the sanctioned fallback: a home with NO copy, symlinked from A
+    C's shim                          : I am the copy in home A
+
+  the wrapper's bytes name no home at all:
+    rel="plugins/skt/src/skt/cli.py"
+    home="$(cd -- "$shim_dir/../.." && pwd -P)"
+    exec "$py" "$entrypoint" "$@"
+
+Before this change the second line read "I am the copy in home A", the edit in
+B changed nothing an agent could observe through the CLI, and C behaved
+identically to B — which is the point: the frozen shim gave the RIGHT answer in
+the one home that happened to have installed it, and the wrong one everywhere
+else, with a local copy sitting unused.
+
+The rule is "prefer this home's copy, FALL BACK to the pinned one", not "always
+this home", so C is a pass and not a failure: C holds no copy of skt, and
+reaching the home it was pinned to is what the second clause is for. The pin is
+FOLLOWED (through the shim's own symlink) rather than STORED, because a stored
+absolute path would also be taken by B — which has its own copy — and that is
+the defect again.
+
+----------------------------------------------------------------------
+GRAPHS (local; CI does not run graphs on push or PR — see CLAUDE.md)
+
+  smoke               PASS  (4m58s)  runId 20260829-224812
+      includes skill.script.installed, .reruns.on.change, .force.rerun,
+      .force.sync.with.mcp, .transitive.installed and — the one that had to be
+      watched — skill.script.uninstall.prunes.cli, whose
+      `skill_script_cache_tree_removed_after_uninstall` assertion is the
+      end-to-end proof that a home-relative wrapper still credits its tree.
+  checkout-home       PASS  (1m13s)  runId 20260829-225246   [declared]
+  project-child-home  PASS  (1m02s)  runId 20260829-225407   [declared]
+  home-clone          PASS  (2m03s)  (on the same change, one revision earlier)
+  artifact-dag        FAIL — PRE-EXISTING, see DEF-HBR-003. Verified by
+                      stashing this branch's changes and re-running on
+                      2ed23af: byte-identical failure message.
+
+----------------------------------------------------------------------
+DEFERRED FINDINGS — what HBR-1 did with the two it inherited
+
+DEF-HBR-002 (HomeCloner.sanctionedParentShim sanctions on shape alone):
+  NOT TAKEN. Left deferred, deliberately, and the reason is not timidity.
+
+  It is a change to what `home verify` and `home repair` REFUSE, and the 16
+  pairs it would start refusing were not written by any generator this ticket
+  fixed -- they are parent-shaped symlinks laid down by home materialisation,
+  which no installer contract reaches. Turning the gate on now would convert a
+  latent defect into a hard failure for every already-standing home on the
+  machine, days before HBR-5 measures the goal, and the two graphs this ticket
+  is required to keep green (checkout-home, project-child-home) are exactly the
+  ones that build parent/child shim pairs. Moving the gate and fixing the
+  generators in one PR would also make the goal unreadable: HBR-5 could not
+  tell which of the two produced the number.
+
+  The metric is decided by HBR-5's own walker, not by `home verify`, so leaving
+  the gate where it is costs the goal nothing measurable. What it costs is that
+  `home verify` still exits 0 on those 16 pairs, which is DEF-HBR-002 exactly,
+  and it stays open with HBR-5 as its owner.
+
+DEF-HBR-001 (skill-dev-skill's installer delegates to `uv tool install`):
+  NOT TAKEN, and it is genuinely not an installer edit. The frozen bytes are
+  uv's console-script wrapper, so the fix is either "make a uv tool install
+  relocatable" or "post-process what uv writes" -- a design question, needing
+  uv and a network to even reproduce, which is why HBR-0's sweep records it as
+  uncovered rather than skipping it silently. Unchanged, still open.

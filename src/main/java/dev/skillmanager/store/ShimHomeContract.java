@@ -183,6 +183,56 @@ public final class ShimHomeContract {
     }
 
     /**
+     * The paths {@code shim} has FROZEN: absolute paths in its own bytes that
+     * land inside {@code home} itself, home-relative and sorted.
+     *
+     * <p>{@link #check} asks the question after the fact — this shim has moved,
+     * is it now running somebody else's copy? By then the bytes are somebody
+     * else's problem and the generator that wrote them may be three homes away.
+     * This asks the same question at the moment of writing, where the answer is
+     * still actionable: a shim whose body names its own home absolutely is a
+     * shim that will go on naming THIS home from wherever it is later copied,
+     * symlinked or cloned to. Empty is the conformant state, and it is
+     * reachable — {@code bin/launch/*} and both {@code LauncherShims} writers
+     * have always been empty here.
+     *
+     * <p>Deliberately not "any absolute path". A shim may legitimately name
+     * something outside every home — the interpreter it was built against, a
+     * pinned build — because relocating the shim does not move those either,
+     * and pretending otherwise would make the check fire on shims that are
+     * already right. The freeze is specifically about the home.
+     *
+     * @param home the home the shim was written into
+     * @param shim the shim file
+     */
+    public static List<String> frozenHomePaths(Path home, Path shim) {
+        if (home == null || shim == null) return List.of();
+        // BOTH spellings, for HomeCloner.rootSpellings' reason: a home
+        // addressed through a symlink holds the spelling it was GIVEN in its
+        // generated files, and a check against the resolved one alone reports
+        // clean without having looked.
+        Set<Path> roots = new LinkedHashSet<>();
+        roots.add(home.toAbsolutePath().normalize());
+        roots.add(real(home));
+        Set<String> out = new java.util.TreeSet<>();
+        for (String token : HomeRepair.absolutePathTokens(shim)) {
+            Path candidate;
+            try {
+                candidate = Path.of(token).toAbsolutePath().normalize();
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            for (Path root : roots) {
+                if (!candidate.startsWith(root) || candidate.equals(root)) continue;
+                out.add(root.relativize(candidate).toString()
+                        .replace(java.io.File.separatorChar, '/'));
+                break;
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    /**
      * {@code skills/<unit>} or {@code plugins/<unit>} when {@code path} is a
      * unit copy inside {@code home}, else null.
      *

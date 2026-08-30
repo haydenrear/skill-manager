@@ -2555,6 +2555,34 @@ public final class HomeCloner {
      * is read — which is how the two shim shapes a home actually holds (a
      * generated wrapper and a relative symlink) are both covered by one call.
      *
+     * <h2>Home-RELATIVE references are read too, and HBR-1 is why</h2>
+     *
+     * <p>{@link ShimHomeContract} requires a generated wrapper to derive its
+     * home from its own location and to name what it runs <em>relative</em> to
+     * that home — {@code rel="cache/skill-script-x-y/venv/bin/y"} beside
+     * {@code exec "$home/$rel"} — precisely so that copying the wrapper into
+     * another home stops sending it back to this one. A wrapper that obeys
+     * that rule contains no absolute home path, so a scanner that only knows
+     * absolute paths reads it as running out of NOTHING.
+     *
+     * <p>That is not a cosmetic gap. This edge is the only evidence a home has
+     * of which install wrote which provisioned tree
+     * ({@code ArtifactBackfill.provisionedTrees}), and the uninstall prune
+     * that closed skill-manager#104 is built on it. Reading only absolute
+     * paths would therefore have made the shim contract <em>un-adoptable</em>:
+     * every installer that complied would have its {@code cache/} tree go
+     * unowned and outlive its unit again, which is #104 reopened for exactly
+     * the units that did the right thing.
+     *
+     * <p>The relative scan is deliberately narrower than the absolute one. It
+     * only accepts a token whose first segment is one of
+     * {@link #PROVISIONABLE_ROOTS} <em>and</em> that resolves to something
+     * {@code dstRoot} actually holds. Existence is not a nicety here: an
+     * unanchored token like {@code tools/build} is a plausible fragment of
+     * ordinary prose or of an unrelated path, and {@code producersOf} already
+     * discards references that resolve to nothing, so requiring it costs no
+     * real edge and removes the false ones.
+     *
      * <p>Returns absolute path strings, matching {@link #missingReferencesIn}.
      * The caller makes them home-relative, because only the caller knows
      * whether it is allowed to write one down.
@@ -2583,10 +2611,72 @@ public final class HomeCloner {
             if (Files.size(file) > WHOLE_FILE_LIMIT) return List.of();
             byte[] content = Files.readAllBytes(file);
             if (looksBinary(content)) return List.of();
-            return destReferences(content, dstRoot.toAbsolutePath().normalize());
+            Path root = dstRoot.toAbsolutePath().normalize();
+            String text = new String(content, StandardCharsets.UTF_8);
+            List<String> found = new ArrayList<>(destReferences(content, root));
+            for (String relative : relativeReferences(text, root)) {
+                if (!found.contains(relative)) found.add(relative);
+            }
+            return List.copyOf(found);
         } catch (IOException e) {
             return List.of();
         }
+    }
+
+    /**
+     * Every home-relative path under a {@link #PROVISIONABLE_ROOTS} root that
+     * {@code text} names and {@code root} actually holds, returned absolute.
+     *
+     * <p>The shape {@link ShimHomeContract} asks generated wrappers to use.
+     * See {@link #referencesIn} for why this is read at all.
+     */
+    private static List<String> relativeReferences(String text, Path root) {
+        String canonical = root.toString();
+        List<String> found = new ArrayList<>();
+        // Sorted, because PROVISIONABLE_ROOTS is a Set and a caller reading
+        // these as a list should not see the order change between runs.
+        for (String provisionable : PROVISIONABLE_ROOTS.stream().sorted().toList()) {
+            String needle = provisionable + "/";
+            for (int at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + 1)) {
+                // Two guards, and they are not the same guard twice.
+                //
+                // The first is a token boundary, so `mycache/x` is not read as
+                // this home's `cache/x`. `/` is allowed as a boundary on
+                // purpose: `"$home/cache/x"` is a spelling the contract invites
+                // and it must be recoverable.
+                //
+                // The second is what allowing `/` costs. `"/other/home/cache/x"`
+                // ALSO has `/` before its `cache/`, and reading it as this
+                // home's `cache/x` would credit a tree to a shim that runs
+                // somebody else's — the exact false edge existence-gating
+                // cannot catch, because both homes hold that tree. So when the
+                // boundary is a slash, walk back to the start of the token: if
+                // it begins with `/` this is an absolute path, which
+                // destReferences already reads correctly and this scan must not
+                // read a second time.
+                String delimiters = "\"' \n\r\t:;,()=$";
+                char before = at == 0 ? '\0' : text.charAt(at - 1);
+                if (at > 0 && before != '/' && delimiters.indexOf(before) < 0) continue;
+                if (before == '/') {
+                    int start = at;
+                    while (start > 0 && delimiters.indexOf(text.charAt(start - 1)) < 0) start--;
+                    if (text.charAt(start) == '/') continue;
+                }
+                int end = at;
+                while (end < text.length() && "\"'\n\r\t :;,)".indexOf(text.charAt(end)) < 0) end++;
+                String candidate = text.substring(at, end);
+                while (candidate.endsWith(".") || candidate.endsWith("/")) {
+                    candidate = candidate.substring(0, candidate.length() - 1);
+                }
+                if (candidate.length() <= needle.length()) continue;
+                if (candidate.indexOf('$') >= 0 || candidate.indexOf('*') >= 0) continue;
+                Path resolved = root.resolve(candidate).normalize();
+                if (!resolved.startsWith(root) || !Files.exists(resolved)) continue;
+                String absolute = canonical + "/" + candidate;
+                if (!found.contains(absolute)) found.add(absolute);
+            }
+        }
+        return found;
     }
 
     /**
