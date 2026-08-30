@@ -160,3 +160,121 @@ findings:
       the follow-on measurement, and it is SUB-1's kind of work.
     candidate_owner: SUB-1 (demonstration) with SUB-5's k3d environment if it exists
     status: open
+
+  - id: DEF-SUB3-001
+    found_by: SUB-3 survey, section 2b / GAP-4 (Claude Code harness)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      skill-manager registers a home's plugin marketplace at USER scope by absolute
+      host path, and has no reader and no de-registration path for those rows.
+    detail: >
+      `project/HarnessPluginCli.java:288-291` runs
+      `claude plugin marketplace add <marketplaceRoot> --scope user` and `:453-457`
+      runs `claude plugin install <name>@<mkt> --scope user`. The destination config
+      directory is resolved ambiently -- `claudeEnv()` at `:337-338` is
+      `CLAUDE_CONFIG_DIR = AgentHomes.claude().configDir()`, which falls back through
+      `agentHomeRoot()` (`agent/AgentHomes.java:254-262`) to `$HOME` whenever
+      `SKILL_MANAGER_HOME` is unset.
+      MEASURED on the operator's machine: `~/.claude/plugins/known_marketplaces.json`
+      holds EIGHT skill-manager marketplaces, each an absolute host path to a
+      different project home's `plugin-marketplace/` (root home, commit-diff-context-parent,
+      tla-spec-dev, skill-manager-integration-repository, acp-cdc-ai-python,
+      skill-manager, meta-harness). `installed_plugins.json` keys project-scope installs
+      by absolute `projectPath`, several of which are deleted `/private/var/folders/.../skt-eval-*`
+      temp directories.
+      `grep -rn "known_marketplaces" src/main/java` returns NOTHING: skill-manager writes
+      this file through the harness CLI and can neither read nor prune it. The Codex
+      side is worse -- `HarnessPluginCli.java:463-466` returns
+      `"[codex: uninstall via /plugins UI]"`, a documented no-op.
+      By SUB-0's boundary rule (`store/HomePaths.java:13-19`) this is a set of absolute
+      paths NAMING HOMES that lives outside every home: `home clone`'s isolation oracle
+      cannot report it, `HomeCloner.remapPath` cannot re-root it, `home verify` does not
+      look at it. In a container all eight are dangling.
+    reproduction: >
+      Read-only:
+      `python3 -c 'import json;d=json.load(open("~/.claude/plugins/known_marketplaces.json".replace("~",__import__("os").path.expanduser("~"))));[print(k,"->",v["installLocation"]) for k,v in d.items()]'`
+      The causal link to `HarnessPluginCli` is strongly-supported INFERENCE, not
+      measurement: reproducing a registration writes a real home, which SUB-3's rules forbid.
+    why_deferred: >
+      SUB-3's slice is reading and recording per harness. Adding a reader, a pruner, or
+      a home-scoped registration policy is a production change, and the DECISION
+      (should a project home's marketplace ever be registered at user scope?) is the
+      owner's. It is also adjacent to #263's "agent login state is not modelled" axis
+      rather than to any of the nine surfaces.
+    candidate_owner: SUB-4 if it is a gap to close; otherwise a standalone issue beside #263
+    status: open
+
+  - id: DEF-SUB3-002
+    found_by: SUB-3 survey, section 3 (Codex) -- gap X1
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      The launch-time unredirected-home refusal exists for Claude only; `exec -- codex`
+      and `exec -- gemini` have no equivalent guard.
+    detail: >
+      `commands/ExecCommand.java:139` calls `launch.requireClaudeRedirected()` and
+      nothing else, and `launch/LaunchEnv.java:400-417` declares exactly one such
+      guard. So `bin/launch/codex` and `bin/launch/gemini` -- generated from the same
+      template for the same three agents (`launch/LauncherShims.java:113`, `:274-310`)
+      -- launch with no refusal when `CODEX_HOME` or `GEMINI_HOME` resolve outside the
+      home root. The asymmetry is in the launch gate, not in the model:
+      `sandbox/Confinement.java:158-160` treats all three as confinement axes, and
+      `store/HomeDescriptor.java:102-124` publishes all three in the descriptor's env
+      block.
+      This matters more in a container than on a host: `LaunchEnv.of` falls back to
+      `HomeDescriptor.envFor` only when the home has no descriptor (`:156-166`), so a
+      home whose descriptor was written on another machine and not re-derived can carry
+      stale agent-home values, and only the Claude one would be caught.
+      Also recorded here: the fixed 3-element `AGENTS` list at `LauncherShims.java:113`
+      means the `harness` unit kind -- which declares no launch, env, or config-dir
+      field at all (`model/HarnessParser.java:62-88,113-135`) -- can never contribute a
+      fourth launcher.
+    reproduction: >
+      Read-only:
+      `grep -n "requireClaudeRedirected\|requireCodex\|requireGemini" src/main/java/dev/skillmanager/launch/LaunchEnv.java src/main/java/dev/skillmanager/commands/ExecCommand.java`
+      -- one guard, one call site, Claude only.
+    why_deferred: >
+      A production change to a security-relevant refusal path, in a ticket whose rules
+      are reading and recording only. It is also not obviously a container question:
+      the same asymmetry is present on one machine, which is why it belongs on the
+      backlog rather than inside a machine-local-assumption row.
+    candidate_owner: SUB-4 if the containerized tier needs it; otherwise a standalone issue
+    status: open
+
+  - id: DEF-SUB3-003
+    found_by: SUB-3 survey, incidental (while reading the skt ticket lifecycle)
+    found_at: "2026-08-29"
+    severity: minor
+    summary: >
+      The vendored `skt` source in this repo and the `skt` installed in the operator's
+      root home disagree about whether `skt ticket list|sweep` exists, and the LOWER
+      version number is the one that has them.
+    detail: >
+      In this repo at `cd9b1db`, `skill-publisher-skill/src/skt/cli.py:67` declares
+      `ticket.add_argument("verb", nargs="?", choices=["new", "close", "info"])` and
+      `grep -rn sweep skill-publisher-skill/src/` returns nothing -- while
+      `skill-publisher-skill/skills/skt/SKILL.md` documents `skt ticket list` and
+      `skt ticket sweep` in its frontmatter description, in its cheat-sheet at `:18-19`,
+      and in a whole section at `:101-137` (exit codes, `--epic <slug>`, `--yes`).
+      The repo copy's last commit is `55bde20 chore: vendored skt 0.3.0 ...`.
+      The INSTALLED copy in the operator's root home is version 0.2.0 with origin
+      `https://github.com/haydenrear/skill-publisher-skill.git` -- and its
+      `plugins/skt/src/skt/cli.py:77` DOES accept `["new","close","info","list","sweep"]`,
+      with `ticket.py:245 FLEET_VERBS = ("list", "sweep")`.
+      So the vendored 0.3.0 in the repo lacks verbs that the installed 0.2.0 has. Which
+      copy is authoritative could not be determined from either side.
+    reproduction: >
+      Read-only:
+      `grep -n 'choices=\["new"' skill-publisher-skill/src/skt/cli.py` (repo) vs
+      `grep -n 'choices=\["new"' ~/.skill-manager/plugins/skt/src/skt/cli.py` (installed),
+      and `python3 -c 'import json;print(json.load(open("'"$HOME"'/.skill-manager/installed/skt.json"))["version"])'`.
+    why_deferred: >
+      Entirely outside SUB-3's slice -- it is neither a harness requirement nor a
+      machine-local assumption. Recorded because it is exactly the "which copy travels"
+      question the epic's premise turns on (`skt publish` goes to the unit repo,
+      `home sync` walks a local parent path), and because a container image built from
+      either source would carry a different `skt` surface.
+    candidate_owner: epic owner -- a skt/skill-publisher-skill housekeeping issue, not a
+      substrate-home-model ticket
+    status: open
