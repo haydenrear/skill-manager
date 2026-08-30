@@ -54,7 +54,14 @@ set -euo pipefail
 rel="$rel"
 SH
 cat >> "$SKILL_MANAGER_BIN_DIR/skill-script-touched" <<'SH'
-shim_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+# BUILTINS ONLY on the primary path: a generated wrapper must answer with no
+# PATH at all, and `dirname` is external. ${var%/*} and cd/pwd/[ are builtins.
+# The fallback below still uses `readlink`, which is the accepted line -- it
+# runs only for a home that provisioned no tree of its own.
+shim="${BASH_SOURCE[0]}"
+shim_dir="${shim%/*}"
+[ "$shim_dir" = "$shim" ] && shim_dir="."
+shim_dir="$(cd -- "$shim_dir" && pwd -P)"
 home="$(cd -- "$shim_dir/../.." && pwd -P)"
 target="$home/$rel"
 if [ ! -x "$target" ]; then

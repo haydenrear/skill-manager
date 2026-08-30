@@ -87,8 +87,18 @@ cat >> "$WRAPPER" <<'SH'
 # resolves the DIRECTORY's own symlinks and never the wrapper's, so a child
 # home whose bin/cli/skt is a link into its parent still answers with itself
 # here — which is the case the preference exists for.
+# BUILTINS ONLY ON THE PRIMARY PATH. This wrapper must answer with NO PATH at
+# all -- the same requirement that makes the interpreter above absolute, and
+# the first version of this resolution broke it by calling `dirname` here.
+# With PATH empty `dirname` is not found, $shim_dir comes back empty, and the
+# wrapper resolves the WRONG HOME. `${var%/*}` and cd/pwd/[ are builtins.
+# The fallback below still uses `readlink`, and that is the accepted line:
+# it runs only for a home that holds no copy, while the common path -- the
+# home has its own copy -- needs nothing external.
 shim="${BASH_SOURCE[0]}"
-shim_dir="$(cd -- "$(dirname -- "$shim")" && pwd -P)"
+shim_dir="${shim%/*}"
+[ "$shim_dir" = "$shim" ] && shim_dir="."
+shim_dir="$(cd -- "$shim_dir" && pwd -P)"
 home="$(cd -- "$shim_dir/../.." && pwd -P)"
 
 entrypoint="$home/$rel"
