@@ -290,6 +290,45 @@ public final class LaunchEnv {
      * the same reasoning HBR-2 applies to the bootstrap probe, applied to this
      * remediation.
      */
+    /**
+     * The credential axis as this launch will actually set it, and what that
+     * predicts — or {@code null} when there is nothing to say.
+     *
+     * <h2>Why this predicts rather than detects</h2>
+     *
+     * <p>The obvious guard is to watch the agent for {@code Not logged in} and
+     * explain it. That is not available: {@code ExecCommand} spawns with
+     * {@code inheritIO()} and the launch shim {@code exec}s itself away, so
+     * nothing in this process ever sees a byte the agent writes — and piping it
+     * through would take the terminal from an interactive agent to catch a
+     * message only a broken one prints.
+     *
+     * <p>So the failure is predicted from its cause instead, which is strictly
+     * earlier and names the reason rather than the symptom.
+     * {@code CLAUDE_SECURESTORAGE_CONFIG_DIR} does not select a directory; it
+     * selects a keychain SLOT, {@code Claude Code-credentials-<sha256(v)[0:8]>}.
+     * Nothing in this system ever writes a suffixed slot, so a non-empty value
+     * is a slot nobody has logged into, and the agent will report exactly the
+     * #263 failure — <b>identically to setting nothing at all</b>, which is what
+     * makes it a trap rather than a mistake.
+     *
+     * <p>Deliberately NOT a keychain probe. Reading the slot would answer the
+     * question exactly, and would also risk an authorization prompt inside a
+     * launch path — a launch that blocks on a dialog is worse than one that
+     * warns.
+     */
+    public static String credentialAxisWarning(Map<String, String> env) {
+        if (env == null) return null;
+        String v = env.get(AgentHomes.CLAUDE_SECURESTORAGE_CONFIG_DIR);
+        if (v == null || v.isEmpty()) return null;   // the sharing default
+        return "CLAUDE_SECURESTORAGE_CONFIG_DIR is set to " + v + ", which selects the "
+                + "credential slot Claude Code-credentials-<sha256 of that value>. "
+                + "Nothing writes that slot, so the agent will report 'Not logged in' "
+                + "and do nothing -- the same result as leaving it unset, which is why "
+                + "this is easy to miss. The empty string is what shares the operator's "
+                + "login; a path here does not.";
+    }
+
     public static Map<String, String> sharedCredentialEnv() {
         // Deliberately the empty string. See the javadoc; a path here is the
         // one change that silently restores the #263 failure.
