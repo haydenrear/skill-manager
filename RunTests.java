@@ -293,6 +293,7 @@ public class RunTests {
         failures += dev.skillmanager.store.HomeDescriptorCliRemedyTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();
         failures += dev.skillmanager.launch.LauncherShimsTest.run();
+        failures += dev.skillmanager.launch.LaunchCredentialAxisTest.run();
         // HBR-0's guard. RED on purpose against today's tree: it names the
         // shim generators that freeze another home's path into their bytes.
         // HBR-1 is what turns it green; do not delete it to get a clean run.

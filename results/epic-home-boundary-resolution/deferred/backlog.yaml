@@ -125,3 +125,67 @@ findings:
     candidate_owner: HBR-3 (already working in that repo) or the epic owner's
       fan-out at wave close
     status: open
+
+  - id: DEF-HBR-005
+    found_by: HBR-4 (fixing the credential axis for Claude)
+    found_at: "2026-08-30"
+    severity: major
+    summary: >
+      codex and gemini have the SAME defect and it is not fixed. `exec`
+      redirects CODEX_HOME and GEMINI_HOME into the home root exactly as it
+      redirects CLAUDE_CONFIG_DIR, and both agents keep their credentials
+      INSIDE that directory -- ~/.codex/auth.json, ~/.gemini's account state --
+      so a worktree home's bin/launch/codex and bin/launch/gemini launch an
+      unauthenticated agent for the same reason bin/launch/claude did. The
+      asymmetry that made Claude tractable does not carry over: the Claude CLI
+      publishes CLAUDE_SECURESTORAGE_CONFIG_DIR, which separates "where config
+      lives" from "where credentials live", and neither codex nor gemini
+      exposes an equivalent.
+    reproduction: >
+      `skill-manager exec --home <a fresh worktree home> --print-env` shows
+      CODEX_HOME=<homeRoot>/.codex and GEMINI_HOME=<homeRoot>/.gemini; both are
+      empty directories, while the operator's credentials are files under
+      ~/.codex and ~/.gemini. Note this compounds a finding already recorded on
+      the epic: SUB-3 measured that the unredirected-home REFUSAL is
+      Claude-only (ExecCommand.java:139 is the sole call site), so codex and
+      gemini are neither guarded nor credentialed -- they fail quietly in both
+      directions.
+    why_deferred: >
+      HBR-4's slice is "the credential axis of `exec` only" and its goal is
+      measured on `bin/launch/claude -p`. Extending it would mean inventing a
+      mechanism per agent rather than using one the vendor already provides,
+      and the only shapes available -- copying or symlinking auth.json into
+      each home -- move actual credential MATERIAL between directories, which
+      is a materially riskier decision than exporting a variable and wants its
+      own review. Widening this ticket to make that call would be exactly the
+      adjacency the epic's deferment_policy forbids.
+    candidate_owner: a follow-on ticket, scoped with the owner; HBR-5 should
+      read GOAL-an-agent-in-its-own-home-can-work as decided for Claude only
+    status: open
+
+  - id: DEF-HBR-006
+    found_by: HBR-4 (deciding what its own fix rests on)
+    found_at: "2026-08-30"
+    severity: minor
+    summary: >
+      The fix rests on an env var of a third-party binary that this repository
+      does not control and no test can pin. CLAUDE_SECURESTORAGE_CONFIG_DIR and
+      its empty-string convention were read out of Claude Code 2.1.251 and
+      confirmed by measurement; if a future release drops or renames it, every
+      worktree launch returns to `Not logged in` and the repository's own suite
+      stays green, because the suite asserts the launch env's BYTES and cannot
+      assert that an agent authenticated. That gap is deliberate and documented
+      on LaunchCredentialAxisTest -- a unit test that shelled out to the real
+      binary would be red for reasons unrelated to this code -- but it means
+      the only instrument that can catch the regression is the graph node.
+    reproduction: >
+      Not a defect to reproduce; a coverage boundary. The node HBR-5 declares
+      for this goal ("bootstrap a worktree home, launch through the shim,
+      assert a non-empty result and a non-zero churn") is the assertion that
+      would go red, and it does not exist yet.
+    why_deferred: >
+      Building it is HBR-5's declared harness, not HBR-4's slice, and it needs
+      a live login on the machine running it -- a decision about what the graph
+      may assume, which the evaluation ticket owns.
+    candidate_owner: HBR-5
+    status: open

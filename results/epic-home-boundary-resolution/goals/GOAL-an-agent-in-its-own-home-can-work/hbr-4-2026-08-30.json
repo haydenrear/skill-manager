@@ -1,0 +1,50 @@
+{
+  "goal": "GOAL-an-agent-in-its-own-home-can-work",
+  "measured_by": "HBR-4",
+  "measured_at": "2026-08-30",
+  "decided_by": "HBR-5",
+  "advisory": true,
+  "metric": "does `bin/launch/claude -p 'reply OK'` in a freshly bootstrapped worktree home return a result",
+  "method": {
+    "shim": "<scratch>/wt-demo/.skill-manager/bin/launch/claude",
+    "command": "bin/launch/claude -p 'reply OK'",
+    "controlled": "same home, same shim, same command; the only variable is whether feature/hbr-4's diff is applied (git stash / git stash pop between the two runs)",
+    "home": "a scratch checkout under the session scratchpad; no real Skill Manager home was written",
+    "claude_cli_version": "2.1.251",
+    "platform": "darwin 25.6.0"
+  },
+  "baseline": {
+    "value": "fails",
+    "stdout": "Not logged in · Please run /login",
+    "note": "re-measured on this branch rather than taken from #263, so the pair is a controlled before/after"
+  },
+  "after": {
+    "value": "succeeds",
+    "stdout": "OK"
+  },
+  "isolation_held": {
+    "claude_config_dir": "<scratch>/wt-demo/.claude",
+    "wrote_into_worktree_home": [".claude.json", "backups/", "projects/", "sessions/"],
+    "new_keychain_slots_created": 0,
+    "keychain_services_before_and_after": [
+      "Claude Code-credentials",
+      "Claude Code-credentials-84a08daf"
+    ]
+  },
+  "regression": {
+    "unit_tests": {
+      "command": "jbang RunTests.java",
+      "epic_base_331cda8": 1442,
+      "this_branch": 1448,
+      "status": "ALL PASSED"
+    },
+    "graphs": {
+      "checkout-home": {
+        "status": "passed",
+        "nodes": 8,
+        "runId": "20260831-013131"
+      },
+      "artifact-dag": "not run; red on the epic base already (DEF-HBR-003)"
+    }
+  }
+}
