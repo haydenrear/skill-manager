@@ -849,6 +849,16 @@ public final class HomeCommand {
                             .map(HomeDescriptor::envContributions)
                             .orElse(Map.of())
                     : parseEnv(setEnv);
+            // THE ONE PLACE A PERSON TYPES THIS VALUE, so it is the one place
+            // worth catching it. A non-empty CLAUDE_SECURESTORAGE_CONFIG_DIR
+            // selects a keychain slot nobody has written, and the agent then
+            // fails EXACTLY as if nothing were set -- which is what makes it a
+            // trap. Warned, not refused: pointing at a slot that HAS been
+            // logged into is legitimate, and this command cannot know from
+            // here whether that is the case.
+            String credentialRisk =
+                    dev.skillmanager.launch.LaunchEnv.credentialAxisWarning(contributions);
+            if (credentialRisk != null) Log.warn("%s", credentialRisk);
             HomeDescriptor descriptor = describe(store, homeRoot, contributions);
             if (write) descriptor.write(store.root());
             if (json) {

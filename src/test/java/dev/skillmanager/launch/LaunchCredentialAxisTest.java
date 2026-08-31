@@ -175,6 +175,29 @@ public final class LaunchCredentialAxisTest {
                     "the credential variable is not read as a config directory");
         });
 
+                suite.test("a non-empty credential dir is PREDICTED to fail, and the default is silent", () -> {
+            // The guard has to be quiet in the shipped configuration or it is
+            // noise; it has to fire on the one value that looks more correct
+            // than the empty string. Both directions, or it proves nothing.
+            Tests.assertTrue(
+                    LaunchEnv.credentialAxisWarning(
+                            java.util.Map.of(AgentHomes.CLAUDE_SECURESTORAGE_CONFIG_DIR, "")) == null,
+                    "the empty string is the sharing default and must warn about nothing");
+            Tests.assertTrue(
+                    LaunchEnv.credentialAxisWarning(java.util.Map.of()) == null,
+                    "an env that never mentions the variable must warn about nothing");
+
+            String warned = LaunchEnv.credentialAxisWarning(
+                    java.util.Map.of(AgentHomes.CLAUDE_SECURESTORAGE_CONFIG_DIR,
+                            "/Users/someone/.claude"));
+            Tests.assertTrue(warned != null,
+                    "the spelling that looks more correct than the empty string must warn");
+            Tests.assertTrue(warned.contains("Not logged in"),
+                    "the warning names the SYMPTOM the reader will otherwise see: " + warned);
+            Tests.assertTrue(warned.contains("the same result as leaving it unset"),
+                    "and says why it is a trap rather than an ordinary mistake: " + warned);
+        });
+
         return suite.runAll();
     }
 
