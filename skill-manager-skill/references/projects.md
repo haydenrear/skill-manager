@@ -441,6 +441,59 @@ separate home, and the child-home record names this home as its own parent.
 `project resolve` says so and proceeds. `--allow-same-home` is still accepted
 and is no longer consulted; a page telling you to pass it is out of date.
 
+### Launching an agent into a home: config is isolated, the login is shared
+
+`bin/launch/claude` points the agent's `CLAUDE_CONFIG_DIR` at the home's own
+`.claude` — skills, settings, projects, MCP servers, all of it. It also exports
+
+```
+CLAUDE_SECURESTORAGE_CONFIG_DIR=
+```
+
+an **empty value**, which is what tells the Claude CLI to read credentials from
+the slot the operator's own logins already use. Without it, redirecting
+`CLAUDE_CONFIG_DIR` also silently renames the credential slot — the keychain
+service name on macOS, the credentials file elsewhere — and the agent starts,
+prints `Not logged in · Please run /login`, and exits 0 having done nothing.
+
+**The empty value is deliberate and must not be "fixed" to a path.** Only an
+empty value selects the unsuffixed slot. Naming the operator's config directory
+explicitly hashes that path into the slot name and asks for one that has never
+been written, which fails exactly as an unset variable does.
+
+So a launched agent is isolated in everything it *reads and writes* and shares
+one answer to *who is logged in*. That is the intended trade: skill-manager
+models no per-home login, and a per-home credential slot would mean an
+interactive `/login` per worktree, which the `-p` path cannot perform. A token
+refresh performed by a launched agent updates the shared slot, the same way two
+ordinary sessions share it.
+
+To give one home its own credentials instead — a service account, a different
+subscription — override the lowest-precedence default and log in once inside it:
+
+```bash
+skill-manager home describe --home <store> --write \
+  --set-env CLAUDE_SECURESTORAGE_CONFIG_DIR=<homeRoot>/.claude
+```
+
+Nothing else changes; the config directory already pointed there.
+
+#### Never change the credential path of a session that is running
+
+Not the shell it was started from, not the settings files it reads. Measured on
+this repository (#263): an `apiKeyHelper` added to the project home-root's
+`.claude/settings.json` took effect in the session **already running in that
+checkout**. It lost its credentials mid-turn — and could not undo the edit,
+because undoing it needed an API call, which needed the credentials it had just
+removed. There is no recovery from inside; the operator has to fix the file
+from another process.
+
+The rule that follows: credential wiring is a property of a launch, not of a
+live session. Set it in the environment `exec` hands a *new* child, never in a
+file a running agent re-reads. That is why this lives in the launch env and not
+in `settings.json`, and why the opt-out above is written to a descriptor that is
+read at launch.
+
 ### One symptom worth recognising: a `skill-manager` that refuses to run
 
 ```

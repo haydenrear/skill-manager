@@ -52,6 +52,52 @@ public final class AgentHomes {
     public static final String GEMINI_HOME = "GEMINI_HOME";
 
     /**
+     * Where the Claude CLI looks for <em>credentials</em>, as distinct from
+     * {@link #CLAUDE_CONFIG_DIR}, which is where it looks for everything else.
+     *
+     * <h2>Two axes that were one</h2>
+     *
+     * <p>Setting {@link #CLAUDE_CONFIG_DIR} moves the whole config tree —
+     * skills, settings, projects, {@code .claude.json} — and it also, silently,
+     * moves the credential slot. On macOS the CLI's keychain <em>service
+     * name</em> is derived from the config directory; on a file-backed platform
+     * the credentials file moves with it. So a home that redirected
+     * {@code CLAUDE_CONFIG_DIR} for isolation got an unauthenticated agent as a
+     * side effect it never asked for: {@code Not logged in · Please run /login},
+     * exit 0, no work done. Issue #263.
+     *
+     * <p>This variable is the CLI's own separation of the two axes, and it is
+     * what lets skill-manager keep full config isolation and still hand the
+     * launched agent the operator's existing login. Measured against Claude Code
+     * 2.1.251, whose derivation is:
+     *
+     * <pre>
+     * suffix = CLAUDE_SECURESTORAGE_CONFIG_DIR is set
+     *            ? (it is empty ? "" : "-" + sha256(it).hex[0:8])
+     *            : (CLAUDE_CONFIG_DIR is unset ? "" : "-" + sha256(configDir).hex[0:8])
+     * service = "Claude Code-credentials" + suffix
+     * </pre>
+     *
+     * <h2>The value is the EMPTY STRING, and that is not a placeholder</h2>
+     *
+     * <p>Read the derivation again: only an <em>empty</em> value produces the
+     * unsuffixed {@code Claude Code-credentials}, which is the slot an operator
+     * who logged in normally actually has. Naming the operator's config
+     * directory explicitly — the spelling every reader reaches for first —
+     * produces {@code Claude Code-credentials-<hash of that path>}, a slot that
+     * does not exist, and the launch fails exactly as it did before. Both were
+     * measured on this machine; see {@code LaunchEnv#sharedCredentialEnv}.
+     *
+     * <p>The empty value is also the correct one on a file-backed platform: the
+     * CLI resolves the credentials directory as {@code value || ~/.claude}, so
+     * empty means {@code ~/.claude/.credentials.json} — the operator's real
+     * store — while any non-empty value is taken verbatim. One value, both
+     * backends.
+     */
+    public static final String CLAUDE_SECURESTORAGE_CONFIG_DIR =
+            "CLAUDE_SECURESTORAGE_CONFIG_DIR";
+
+    /**
      * The POSIX home-directory variable. Not an agent config root — the
      * last-resort <em>base</em> the agent roots are derived from when no
      * agent-specific variable is set. See {@link #userHome()}.
