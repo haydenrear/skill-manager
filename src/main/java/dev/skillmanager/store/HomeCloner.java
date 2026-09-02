@@ -2111,6 +2111,71 @@ public final class HomeCloner {
      *             platform-separated — it decides whether the sanctioned
      *             child-home shim exception can apply at all
      */
+    /**
+     * The copy THIS home holds that a sanctioned parent link is shadowing, or
+     * null.
+     *
+     * <h2>The fourth condition {@link #sanctionedParentShim} does not ask</h2>
+     *
+     * <p>That method sanctions a mirror on three structural facts: it is a shim
+     * entry, it names the same entry in the other home, and that home is an
+     * ancestor. All three are true of a link that is <em>also</em> a defect,
+     * because none of them asks the question
+     * {@code GOAL-a-home-runs-its-own-copy} is about: <b>does this home hold its
+     * own copy of the program that entry runs?</b> When it does, the local copy
+     * sits unused, an edit to it changes nothing, and the home runs another
+     * home's skill — which is the epic's whole subject.
+     *
+     * <p>So this is deliberately NOT folded into {@code unsanctionedForeignHome}.
+     * That method gates {@code clone}, {@code sync} and the installers, and
+     * HIS-7 records what happened the last time the sanction narrowed underneath
+     * them: {@code bootstrap-home.sh} failed and neither {@code wt new} nor
+     * {@code skt ticket new} could produce a ticket home at all. Sharing a
+     * parent's provisioned toolchain stays legal here; what becomes REPORTABLE
+     * is shadowing a copy this home already has.
+     *
+     * <h2>Scoped to {@code skills/}, and that is the metric's own boundary</h2>
+     *
+     * <p>A shim reaching the parent's {@code venvs/} or {@code tools/} is
+     * sharing a provisioned toolchain, which {@link PackageCaches} makes
+     * deliberate. The goal's walker counts those crossings separately and does
+     * not charge them; charging them here would make the two readers disagree
+     * again, one directory over, and would recommend breaking sharing that is
+     * intended.
+     *
+     * @param link    the shim entry in this home, a symlink
+     * @param foreign the home it mirrors
+     * @param homeRoot this home
+     */
+    public static Path shadowedLocalCopy(Path link, Path foreign, Path homeRoot) {
+        if (link == null || foreign == null || homeRoot == null) return null;
+        Path target = Fs.realOrNormalized(link);
+        if (!Files.isRegularFile(target)) return null;
+        Path foreignReal = Fs.realOrNormalized(foreign);
+        Path root = Fs.realOrNormalized(homeRoot);
+        if (foreignReal.equals(root)) return null;
+        for (String token : HomeRepair.absolutePathTokens(target)) {
+            Path candidate;
+            try {
+                candidate = Path.of(token);
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            Path rel;
+            try {
+                rel = foreignReal.relativize(Fs.realOrNormalized(candidate));
+            } catch (IllegalArgumentException notUnderIt) {
+                continue;
+            }
+            String spelled = rel.toString().replace(java.io.File.separatorChar, '/');
+            if (spelled.isEmpty() || spelled.startsWith("..")) continue;
+            if (!spelled.startsWith("skills/")) continue;
+            Path mine = root.resolve(rel);
+            if (Files.exists(mine, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return mine;
+        }
+        return null;
+    }
+
     public static Path unsanctionedForeignHome(String rel, Path link, Path homeRoot) {
         if (rel == null || link == null || homeRoot == null) return null;
         Path root = homeRoot.toAbsolutePath().normalize();
@@ -2153,14 +2218,44 @@ public final class HomeCloner {
      */
     public record ShimDirScan(String dir, Path outwardLink, int examined,
                               List<ForeignShimPath> foreign,
-                              List<ForeignShimPath> foreignLinks) {
+                              List<ForeignShimPath> foreignLinks,
+                              List<ShadowedShim> shadowed) {
 
         /** The pre-DEF-115 shape: no links reported. */
         public ShimDirScan(String dir, Path outwardLink, int examined,
                            List<ForeignShimPath> foreign) {
-            this(dir, outwardLink, examined, foreign, List.of());
+            this(dir, outwardLink, examined, foreign, List.of(), List.of());
+        }
+
+        /** The pre-#289 shape: links reported, shadowing not yet asked about. */
+        public ShimDirScan(String dir, Path outwardLink, int examined,
+                           List<ForeignShimPath> foreign,
+                           List<ForeignShimPath> foreignLinks) {
+            this(dir, outwardLink, examined, foreign, foreignLinks, List.of());
         }
     }
+
+    /**
+     * A SANCTIONED mirror of a parent's shim that this home nonetheless should
+     * not be running: the home holds its own copy of the skill the parent's
+     * entry executes.
+     *
+     * <p>Separate from {@link ForeignShimPath} because the verdict is different
+     * in kind. A {@code ForeignShimPath} is a leak — a path that should never
+     * have been reachable. This is not a leak: every structural condition for
+     * the mirror is satisfied and the link is exactly what
+     * {@code ChildHomeMaterializer} was asked to write. What makes it a finding
+     * is a fact about THIS home that appeared later — it acquired its own copy
+     * — so the same bytes are legitimate in a home without one and a defect in
+     * a home with one. Merging the two would force one verdict on two
+     * questions, which is the disagreement #289 is about.
+     *
+     * @param rel    the shim entry's location inside this home
+     * @param target the parent entry the link resolves to
+     * @param runs   the path in the parent home that entry executes
+     * @param mine   this home's own copy, which the link bypasses
+     */
+    public record ShadowedShim(String rel, Path target, Path runs, Path mine) {}
 
     /**
      * Walk this home's shim directories and report every foreign path their
@@ -2235,8 +2330,32 @@ public final class HomeCloner {
                     foreignLinks.add(new ForeignShimPath(rel, link, outsider));
                 }
             }
+            // #289. A link the verdict above SANCTIONS is still a finding when
+            // this home holds its own copy of what it runs -- the fourth
+            // condition `sanctionedParentShim` does not ask. Collected here,
+            // in the one walk, so `home repair` and the goal's walker cannot
+            // answer this differently; asked only of links the verdict let
+            // through, so nothing is reported twice.
+            List<ShadowedShim> shadowed = new ArrayList<>();
+            for (Path link : links) {
+                String rel = relativeTo(root, link);
+                if (!isShimEntry(rel)) continue;
+                if (unsanctionedForeignHome(rel, link, root) != null) continue;
+                Path foreignHome = foreignHomeReachedBy(link, realOrSame(root));
+                if (foreignHome == null) continue;
+                Path mine = shadowedLocalCopy(link, foreignHome, root);
+                if (mine == null) continue;
+                Path target = Fs.realOrNormalized(link);
+                // The parent-side counterpart of `mine`: same home-relative
+                // spelling, the other home. Derived rather than re-extracted so
+                // the pair reported is provably the same relative path.
+                Path runs = Fs.realOrNormalized(foreignHome)
+                        .resolve(Fs.realOrNormalized(root).relativize(mine));
+                shadowed.add(new ShadowedShim(rel, target, runs, mine));
+            }
             out.add(new ShimDirScan(dir, null, files.size() + links.size(),
-                    List.copyOf(foreign), List.copyOf(foreignLinks)));
+                    List.copyOf(foreign), List.copyOf(foreignLinks),
+                    List.copyOf(shadowed)));
         }
         return List.copyOf(out);
     }

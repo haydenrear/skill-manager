@@ -160,6 +160,34 @@ public final class HomeRepair {
         FOREIGN_PATH_IN_SHIM,
 
         /**
+         * A shim this home is SANCTIONED to mirror from its parent, whose
+         * program this home also holds its own copy of.
+         *
+         * <h3>Why a fifth kind rather than a stretched {@link #FOREIGN_PATH_IN_SHIM}</h3>
+         *
+         * <p>The other kind means "a path that should never have been
+         * reachable". This one means the opposite: every structural condition
+         * for the mirror is met, {@code ChildHomeMaterializer} wrote exactly
+         * what it was asked to, and the same bytes are CORRECT in a home that
+         * has no copy of its own. What makes it a finding is a later fact about
+         * this home — it acquired one — so the remedy is to rebuild the entry
+         * point, never to delete a leak.
+         *
+         * <p>Reported, not repaired. The link is the only entry point this home
+         * currently reaches for that tool; removing it takes the tool away and
+         * puts nothing in its place, which is the destructive recovery this
+         * class exists to refuse. Regenerating a real shim is
+         * {@code skill-manager build}'s job and needs the unit's own
+         * declaration, not a path rewrite.
+         *
+         * <p>Issue #289. The condition was measured at 43 pairs across 15 homes
+         * while {@code home repair} reported every one of those homes clean,
+         * because {@code sanctionedParentShim} never asks whether the home has
+         * its own copy. See {@link HomeCloner#shadowedLocalCopy}.
+         */
+        PARENT_SHIM_SHADOWS_LOCAL_COPY,
+
+        /**
          * An entry point this home DECLARES, does not hold, and whose still
          * re-derivable parent store does hold — the residue of a prune that
          * deleted an inherited artifact.
@@ -489,6 +517,22 @@ public final class HomeRepair {
             // place -- the destructive recovery this class exists to refuse.
             // `home verify` also only reports it. Agreement was the defect;
             // agreement is the fix.
+            // #289. Asked of the links the verdict SANCTIONED, so this reports
+            // exactly what the other two arms cannot: a mirror that is
+            // structurally legitimate and substantively wrong because this home
+            // holds its own copy of what it runs.
+            for (HomeCloner.ShadowedShim shadow : scan.shadowed()) {
+                findings.add(new Finding(Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY, shadow.rel(),
+                        "is a sanctioned mirror of " + shadow.target() + ", which runs "
+                                + shadow.runs() + " — but this home holds its own "
+                                + shadow.mine() + ", so an edit there changes nothing and "
+                                + "this home runs the other home's copy",
+                        "rebuild this home's own entry point with `skill-manager build`, or "
+                                + "re-install the unit here. Do not simply delete the link: "
+                                + "it is the only entry point this home currently reaches "
+                                + "for that tool",
+                        false, null));
+            }
             for (HomeCloner.ForeignShimPath link : scan.foreignLinks()) {
                 Path target = link.candidate();
                 Path foreign = link.foreign();

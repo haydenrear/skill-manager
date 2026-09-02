@@ -81,6 +81,145 @@ public final class DamagedHomeIsRepairableTest {
     public static int run() throws Exception {
         return Tests.suite("DamagedHomeIsRepairableTest")
 
+                .test("#289: a SANCTIONED parent mirror is a finding when this home holds "
+                        + "its own copy of what it runs", () -> {
+                    // THE DISAGREEMENT THIS CLOSES, measured on 2026-08-31 on
+                    // this machine, both readers asked about the same homes at
+                    // the same moment:
+                    //
+                    //   scripts/measure_goal_home_runs_its_own_copy.py
+                    //     -> 43 unsanctioned pairs, 15 homes, target 0
+                    //   skill-manager home repair --home <one of those homes>
+                    //     -> "nothing ... is damaged in a way this command
+                    //         knows about (32 entries examined)"
+                    //
+                    // `sanctionedParentShim` requires three conditions -- shim
+                    // entry, same target, ancestor home -- and NONE of them asks
+                    // whether this home holds its own copy of the program the
+                    // entry runs. The goal's walker asks exactly that, calls the
+                    // answer "unsanctioned", and counted 0 of the legitimate
+                    // fallback kind: every crossing on the machine had a local
+                    // copy sitting unused.
+                    //
+                    // THE FIXTURE IS THE SANCTIONED SHAPE, deliberately. If the
+                    // link were unsanctioned the existing DEF-115 arm would name
+                    // it and this test would pass without exercising anything
+                    // new -- so the precondition below asserts the sanction
+                    // holds before the claim asserts the finding.
+                    Fixture fx = Fixture.build("shadowed");
+
+                    String tool = "shadowtool";
+                    String script = "skills/" + UNIT + "/run.py";
+
+                    // The parent holds the unit and a shim that RUNS it.
+                    Path parentScript = fx.other.resolve(script);
+                    Files.createDirectories(parentScript.getParent());
+                    Files.writeString(parentScript, "print('parent')\n");
+                    Path parentEntry = fx.other.resolve("bin/cli").resolve(tool);
+                    Files.writeString(parentEntry,
+                            "#!/usr/bin/env bash\nexec python3 \"" + parentScript + "\" \"$@\"\n");
+                    parentEntry.toFile().setExecutable(true);
+
+                    // This home mirrors it -- the shape ChildHomeMaterializer
+                    // writes, and legitimate on its face.
+                    Path mirror = fx.store.resolve("bin/cli").resolve(tool);
+                    Files.createSymbolicLink(mirror, parentEntry);
+
+                    // AND THIS HOME HAS ITS OWN COPY. This is the whole fact:
+                    // the bytes above are correct in a home without this file
+                    // and wrong in a home with it.
+                    Path mine = fx.store.resolve(script);
+                    Files.createDirectories(mine.getParent());
+                    Files.writeString(mine, "print('mine')\n");
+
+                    assertTrue(HomeCloner.unsanctionedForeignHome(
+                                    "bin/cli/" + tool, mirror, fx.store) == null,
+                            "precondition: the mirror is SANCTIONED, so the existing "
+                                    + "foreign-path arms do not fire and this asserts about "
+                                    + "the new condition rather than an old one");
+
+                    List<String> subjects = HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY)
+                            .map(HomeRepair.Finding::subject)
+                            .distinct().sorted().toList();
+
+                    assertEquals(List.of("bin/cli/" + tool), subjects,
+                            "THE CLAIM: repair names the shadowed mirror, so it and the "
+                                    + "goal's walker answer 'does this home run its own copy' "
+                                    + "the same way");
+                })
+
+                .test("#289: --fix leaves the shadowed mirror REPORTED, and that is deliberate",
+                        () -> {
+                    // THE GUARD AGAINST A DESTRUCTIVE "IMPROVEMENT". The only
+                    // mechanical repair available here is to delete the link,
+                    // which takes away the sole entry point this home currently
+                    // reaches for that tool and puts nothing in its place. The
+                    // remedy is to REBUILD the home's own entry point, which
+                    // needs the unit's declaration and is `skill-manager
+                    // build`'s job.
+                    //
+                    // So this asserts the finding SURVIVES --fix. If someone
+                    // later wires a rewrite into it, this goes red and they
+                    // have to argue for it rather than discover it in a home.
+                    Fixture fx = Fixture.build("shadow-not-repaired");
+                    fx.damageShadowedMirror();
+
+                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(before.findings().stream()
+                                    .anyMatch(f -> f.kind()
+                                            == HomeRepair.Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY),
+                            "precondition: the shape is planted and reported");
+
+                    HomeRepair.repair(fx.store, fx.pin);
+
+                    HomeRepair.Report after = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(after.findings().stream()
+                                    .anyMatch(f -> f.kind()
+                                            == HomeRepair.Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY),
+                            "THE CLAIM: --fix does not silently take the tool away; the "
+                                    + "finding is still reported afterwards");
+                    assertTrue(Files.exists(fx.store.resolve("bin/cli/shadowed-tool"),
+                                    LinkOption.NOFOLLOW_LINKS),
+                            "and the link itself is still there — repair removed nothing");
+                })
+
+                .test("#289: a sanctioned mirror with NO local copy stays clean", () -> {
+                    // THE OTHER DIRECTION, and it is the one that protects
+                    // dispatch. HIS-7 records what a narrowed sanction cost the
+                    // last time: `bootstrap-home.sh` failed and neither
+                    // `wt new` nor `skt ticket new` could produce a ticket home
+                    // at all. Sharing a parent's provisioned toolchain is what a
+                    // child home is FOR, so a mirror with nothing local behind
+                    // it must stay silent -- a detector that cannot be quiet
+                    // would turn every freshly cloned worktree home into a
+                    // wall of findings.
+                    Fixture fx = Fixture.build("not-shadowed");
+
+                    String tool = "sharedtool";
+                    Path parentScript = fx.other.resolve("skills/" + UNIT + "/only-there.py");
+                    Files.createDirectories(parentScript.getParent());
+                    Files.writeString(parentScript, "print('parent')\n");
+                    Path parentEntry = fx.other.resolve("bin/cli").resolve(tool);
+                    Files.writeString(parentEntry,
+                            "#!/usr/bin/env bash\nexec python3 \"" + parentScript + "\" \"$@\"\n");
+                    parentEntry.toFile().setExecutable(true);
+                    Files.createSymbolicLink(fx.store.resolve("bin/cli").resolve(tool), parentEntry);
+
+                    assertFalse(Files.exists(fx.store.resolve("skills/" + UNIT + "/only-there.py")),
+                            "precondition: this home has NO copy of what the mirror runs");
+
+                    List<String> subjects = HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY)
+                            .map(HomeRepair.Finding::subject)
+                            .distinct().sorted().toList();
+
+                    assertEquals(List.of(), subjects,
+                            "THE CLAIM: the legitimate fallback stays legitimate. The goal's "
+                                    + "walker counts this shape separately and charges it to "
+                                    + "nothing; so must this reader");
+                })
+
                 .test("a healthy ROOT-TIER home is reported clean, over a non-zero subject count", () -> {
                     Fixture fx = Fixture.build("healthy");
 
@@ -200,13 +339,17 @@ public final class DamagedHomeIsRepairableTest {
                             "and --fix created no link at a path nothing stands at");
                 })
 
-                .test("all four damage shapes are reported, one line each, naming the repair", () -> {
-                    Fixture fx = Fixture.build("all-four");
-                    fx.damageAll();
+                .test("every damage shape is reported, one line each, naming the repair", () -> {
+                    // GENERIC OVER Kind.values() on purpose: a new kind that
+                    // nothing plants fails here rather than shipping undetected,
+                    // which is how #289's own kind was caught the first time
+                    // this ran.
+                    Fixture fx = Fixture.build("every-kind");
+                    fx.damageEveryKind();
 
                     HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
 
-                    assertFalse(report.clean(), "a home damaged four ways is not clean");
+                    assertFalse(report.clean(), "a home damaged every way is not clean");
                     for (HomeRepair.Kind kind : HomeRepair.Kind.values()) {
                         assertTrue(report.findings().stream().anyMatch(f -> f.kind() == kind),
                                 kind + " was planted and not reported; got: " + report.findings());
@@ -1178,11 +1321,56 @@ public final class DamagedHomeIsRepairableTest {
             Files.delete(pinned.getParent());
         }
 
+        /**
+         * The four REPAIRABLE shapes. Kept exactly that, because the repair
+         * tests assert the invariant "after `--fix`, detection is clean" — and
+         * a report-only shape planted here would make that invariant
+         * unsatisfiable for reasons that have nothing to do with repair.
+         */
         void damageAll() throws IOException {
             damageAgentLink();
             damageShimText();
             damagePrunedEntry();
             damageCliPin();
+        }
+
+        /**
+         * Every shape the detector knows, repairable or not — the fixture for
+         * the DETECTION-coverage guard.
+         *
+         * <p>Separate from {@link #damageAll()} on purpose. Detection coverage
+         * and repair coverage are two questions, and #289 is the first kind
+         * where they differ: it is reported and deliberately never repaired,
+         * because the only mechanical repair removes the sole entry point the
+         * home currently reaches.
+         */
+        void damageEveryKind() throws IOException {
+            damageAll();
+            damageShadowedMirror();
+        }
+
+        /**
+         * #289. A mirror this home is SANCTIONED to hold, of a parent entry
+         * that runs a skill this home also has its own copy of.
+         *
+         * <p>Structurally indistinguishable from the legitimate mirror the
+         * fixture already plants at {@code bin/cli/mirror}; what makes it
+         * damage is the local copy written last. Planted here so the
+         * every-kind guard above stays an invariant rather than a list
+         * somebody has to remember to extend.
+         */
+        void damageShadowedMirror() throws IOException {
+            Path parentScript = other.resolve("skills").resolve(UNIT).resolve("shadowed.py");
+            Files.createDirectories(parentScript.getParent());
+            Files.writeString(parentScript, "print('parent')\n");
+            Path parentEntry = other.resolve("bin/cli").resolve("shadowed-tool");
+            Files.writeString(parentEntry,
+                    "#!/usr/bin/env bash\nexec python3 \"" + parentScript + "\" \"$@\"\n");
+            parentEntry.toFile().setExecutable(true);
+            Files.createSymbolicLink(store.resolve("bin/cli").resolve("shadowed-tool"), parentEntry);
+            Path mine = store.resolve("skills").resolve(UNIT).resolve("shadowed.py");
+            Files.createDirectories(mine.getParent());
+            Files.writeString(mine, "print('mine')\n");
         }
 
         /**
