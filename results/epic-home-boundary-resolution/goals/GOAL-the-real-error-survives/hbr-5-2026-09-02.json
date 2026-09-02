@@ -1,0 +1,19 @@
+{
+ "goal": "GOAL-the-real-error-survives",
+ "metric": "is the underlying CLI error present in skt's rendered output for a seeded cross-home refusal",
+ "value": "present",
+ "target": "present",
+ "met": true,
+ "substantive_lines_expected": [
+  "refused:",
+  "NOTHING IS OUT OF DATE",
+  "SENTINEL-CROSS-HOME-REFUSAL"
+ ],
+ "substantive_lines_present": [
+  "refused:",
+  "NOTHING IS OUT OF DATE",
+  "SENTINEL-CROSS-HOME-REFUSAL"
+ ],
+ "substantive_lines_missing": [],
+ "skt_output": "error: home bootstrap failed (exit 1); worktree and branch rolled back\n       error: SKILL_MANAGER_CLI cannot bootstrap this home.\n           refused: /some/home/bin/cli/skill-manager\n                    it is the entrypoint of the home /some/home, which binds that\n                    home and will not act on another. NOTHING IS OUT OF DATE.\n                    It said:\n                      SENTINEL-CROSS-HOME-REFUSAL\n         Point SKILL_MANAGER_CLI at a skill-manager BUILD rather than at a home's\n         entrypoint, or unset SKILL_MANAGER_HOME so nothing is being aimed elsewhere.\nfix:   /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/goal-error-survives-bmr07iau/repo/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh --root <repo-root>   # once per repository, then re-run"
+}
