@@ -48,11 +48,6 @@ def _print_contract(contract) -> None:
         print(f"propagate  {contract.propagate}")
 
 
-#: How many lines of a failed bootstrap's report `skt` will relay. A backstop,
-#: not an editorial choice: bootstrap already bounds its own output.
-_RELAY_MAX_LINES = 40
-
-
 def _bootstrap_script() -> Path | None:
     giw = homes.find_home(".")
     if giw is None:
@@ -120,29 +115,10 @@ def epic_new(ticket_id: str, base: str | None, path: str) -> int:
     if proc.returncode != 0:
         git("worktree", "remove", "--force", path)
         git("branch", "-D", branch)
-        # RELAY THE REPORT, NOT ITS LAST LINE. This printed `tail[-1]`, and
-        # bootstrap's failure report ends with a REMEDY -- so the one line that
-        # survived was the tail of a sentence ("entrypoint, or unset
-        # SKILL_MANAGER_HOME so nothing is being aimed elsewhere.") while the
-        # cause, the two homes in play, and the CLI's own words under "It said:"
-        # were all cut. #264's second defect, and the reason
-        # GOAL-the-real-error-survives exists: bootstrap was taught to explain
-        # itself (GOAL-a-failure-names-its-cause, 3 of 3) and skt then threw the
-        # explanation away.
-        #
-        # Bounded, but generously: bootstrap bounds its own probe output
-        # already, so the report is sized for a human. The cap is a backstop
-        # against a runaway child, and it keeps the TAIL rather than the head
-        # because the remedy lives there -- while the count says what was
-        # dropped, so a truncated relay cannot read as a complete one.
-        relayed = (proc.stdout + proc.stderr).strip().splitlines()
+        tail = (proc.stdout + proc.stderr).strip().splitlines()
         print(f"error: home bootstrap failed (exit {proc.returncode}); worktree and branch rolled back")
-        dropped = len(relayed) - _RELAY_MAX_LINES
-        if dropped > 0:
-            print(f"       ... {dropped} earlier line(s) omitted; the full report is above")
-            relayed = relayed[-_RELAY_MAX_LINES:]
-        for line in relayed:
-            print("       " + line)
+        if tail:
+            print("       " + tail[-1])
         print(f"fix:   {bootstrap} --root <repo-root>   # once per repository, then re-run")
         return 3
     print(f"created epic worktree {path}")

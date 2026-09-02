@@ -23,7 +23,7 @@ def isolate_root_home(tmp_path, monkeypatch):
     monkeypatch.setenv("SKT_ROOT_HOME", str(tmp_path / "fake-root" / ".skill-manager"))
 
 
-def fake_bootstrap(home: Path, exit_code: int = 0, report: str = "") -> Path:
+def fake_bootstrap(home: Path, exit_code: int = 0) -> Path:
     """A home whose git-issue-workflow ships a controllable bootstrap-home.sh."""
     script = home / "skills" / "git-issue-workflow" / "scripts" / "bootstrap-home.sh"
     script.parent.mkdir(parents=True, exist_ok=True)
@@ -33,10 +33,6 @@ def fake_bootstrap(home: Path, exit_code: int = 0, report: str = "") -> Path:
             'root=""\nwhile [ $# -gt 0 ]; do case "$1" in --root) root="$2"; shift 2;; *) shift;; esac; done\n'
             'mkdir -p "$root/.skill-manager/bin/launch"\n'
             'touch "$root/.skill-manager/bin/launch/claude"\n'
-        )
-    elif report:
-        script.write_text(
-            "#!/usr/bin/env bash\ncat <<'EOF' >&2\n" + report + f"EOF\nexit {exit_code}\n"
         )
     else:
         script.write_text(f"#!/usr/bin/env bash\necho boom >&2\nexit {exit_code}\n")
@@ -135,63 +131,3 @@ def test_unknown_base_refused(tmp_path, capsys):
     repo = epic_repo(tmp_path)
     assert run_epic_new(repo, "11-slug", tmp_path / "wt-11", base="epic/ghost") == 1
     assert "cannot resolve base" in capsys.readouterr().out
-
-# Shaped like the real cross-home refusal: cause first, the CLI's own words in
-# the middle, REMEDY LAST. The trailing remedy is the whole reason a
-# "print the last line" relay looked like it was working.
-_REFUSAL_REPORT = """\
-error: SKILL_MANAGER_CLI cannot bootstrap this home.
-    refused: /some/home/bin/cli/skill-manager
-             it is the entrypoint of the home /some/home, which binds that
-             home and will not act on another. NOTHING IS OUT OF DATE.
-             It said:
-               SENTINEL-CROSS-HOME-REFUSAL
-  Point SKILL_MANAGER_CLI at a skill-manager BUILD rather than at a home's
-  entrypoint, or unset SKILL_MANAGER_HOME so nothing is being aimed elsewhere.
-"""
-
-
-def test_bootstrap_failure_relays_the_cause_not_just_the_last_line(tmp_path, capsys):
-    """GOAL-the-real-error-survives.
-
-    #264's second defect: this relayed `tail[-1]`, and because bootstrap's
-    report ends with a remedy, the single surviving line was the TAIL OF A
-    SENTENCE -- while the cause, the two homes in play, and the CLI's own words
-    were cut. bootstrap had been taught to explain itself and skt threw the
-    explanation away.
-    """
-    repo = make_repo(tmp_path / "repo")
-    _ignore_home(repo)
-    home = make_home(repo, units={})
-    fake_bootstrap(home, exit_code=1, report=_REFUSAL_REPORT)
-    declared = tmp_path / "wt-4-slug"
-
-    assert run_epic_new(repo, "4-slug", declared) == 3
-    out = capsys.readouterr().out
-
-    # THE SUBSTANTIVE HALF: what went wrong, and what the CLI itself said.
-    assert "refused:" in out, "the verdict naming the cause must survive"
-    assert "NOTHING IS OUT OF DATE" in out, "the line that corrects the wrong guess must survive"
-    assert "SENTINEL-CROSS-HOME-REFUSAL" in out, "the CLI's OWN words must survive"
-
-    # And the rollback contract still holds -- relaying more must not relay less
-    # of what was already right.
-    assert "rolled back" in out
-    assert not declared.exists()
-
-
-def test_a_runaway_report_is_bounded_and_says_so(tmp_path, capsys):
-    """Bounded, and the bound is DISCLOSED -- a truncated relay that looks
-    complete is the defect above wearing a larger number."""
-    repo = make_repo(tmp_path / "repo")
-    _ignore_home(repo)
-    home = make_home(repo, units={})
-    flood = "".join(f"line-{i}\n" for i in range(200)) + "LAST-LINE-KEPT\n"
-    fake_bootstrap(home, exit_code=1, report=flood)
-
-    assert run_epic_new(repo, "5-slug", tmp_path / "wt-5-slug") == 3
-    out = capsys.readouterr().out
-
-    assert "earlier line(s) omitted" in out, "a bounded relay must say it was bounded"
-    assert "LAST-LINE-KEPT" in out, "the tail is kept, because the remedy lives there"
-    assert "line-0\n" not in out, "and the head is what was dropped"

@@ -40,10 +40,19 @@ SUBSTANTIVE = ["refused:", "NOTHING IS OUT OF DATE", "SENTINEL-CROSS-HOME-REFUSA
 
 
 def main() -> int:
-    skt_src = Path(os.environ.get(
-        "SKT_SRC", Path.cwd() / "skill-publisher-skill" / "src")).resolve()
+    # MEASURE WHAT RUNS, which is the INSTALLED plugin -- not the vendored
+    # skill-publisher-skill/ tree in this repository. That distinction cost a
+    # whole measurement: the vendored copy is 0.3.0 and the installed plugin is
+    # 0.8.1, so pointing the harness at the source tree scored this goal
+    # "absent" against an artifact nobody executes, while the running skt had
+    # relayed correctly since HBR-3. A vendored copy is a snapshot, and a goal
+    # measured against a snapshot answers a question nobody asked.
+    home = Path(os.environ.get("SKILL_MANAGER_HOME") or (Path.cwd() / ".skill-manager"))
+    skt_src = Path(os.environ.get("SKT_SRC") or (home / "plugins" / "skt" / "src")).resolve()
     if not (skt_src / "skt" / "ticket.py").is_file():
-        print(json.dumps({"error": f"skt source not found under {skt_src}"}, indent=1))
+        print(json.dumps({
+            "error": f"no installed skt at {skt_src}; set SKT_SRC to the src/ of the "
+                     "skt that actually runs"}, indent=1))
         return 2
 
     tmp = Path(tempfile.mkdtemp(prefix="goal-error-survives-"))
@@ -62,8 +71,8 @@ def main() -> int:
              "commit", "-qm", "seed"], cwd=repo, check=True)
 
         # The home skt resolves bootstrap-home.sh out of, with a controllable one.
-        home = repo / ".skill-manager"
-        scripts = home / "skills" / "git-issue-workflow" / "scripts"
+        fixture_home = repo / ".skill-manager"
+        scripts = fixture_home / "skills" / "git-issue-workflow" / "scripts"
         scripts.mkdir(parents=True)
         boot = scripts / "bootstrap-home.sh"
         boot.write_text("#!/bin/sh\ncat <<'EOF' >&2\n" + REPORT + "EOF\nexit 1\n")
@@ -71,7 +80,7 @@ def main() -> int:
 
         env = dict(os.environ)
         env["PYTHONPATH"] = str(skt_src)
-        env["SKILL_MANAGER_HOME"] = str(home)
+        env["SKILL_MANAGER_HOME"] = str(fixture_home)
         proc = subprocess.run(
             [sys.executable, "-c",
              "import sys; from skt import ticket; "
