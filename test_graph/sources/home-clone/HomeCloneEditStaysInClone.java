@@ -139,9 +139,41 @@ public class HomeCloneEditStaysInClone {
 
             // --- the acceptance criterion ----------------------------------
             String afterDigest = HomeCloneSupport.treeDigest(fixtureHome);
+            // AND THE CLONE RUNS ITS OWN COPY. The sibling claim of this node's
+            // first assertion: an edit lands in the clone, and the clone is
+            // what executes it. A copy inherits its source's bin/cli mirrors
+            // along with its own skills/, so before HomeCloner.warmLocalShims a
+            // fresh clone could hold a unit it never ran -- edit it, nothing
+            // changes, and every check passes because every path RESOLVES, just
+            // into the source (skill-manager#289).
+            //
+            // Asked of `home repair --json` rather than re-derived here. The
+            // product owns the question; a second implementation in a graph
+            // node is the two-readers-one-truth defect this epic is about, and
+            // a node that disagreed with the command would be worse than no
+            // node. `home repair` EXITS NON-ZERO WHEN IT FINDS SOMETHING, so
+            // the exit code is not the signal -- the absence of the kind is.
+            ProcessRecord repair = HomeCloneSupport.sm(ctx, "repair", cloneStoreRaw,
+                    "home", "repair", "--home", cloneStoreRaw, "--json");
+            // ProcessRecord.logPath() is RELATIVE to the run's reportDir, and
+            // it is where the captured output lives -- there is no stdout()
+            // accessor. Same read the smoke nodes do.
+            String repairOut = "";
+            if (repair != null && repair.logPath() != null) {
+                try {
+                    repairOut = Files.readString(ctx.reportDir().resolve(repair.logPath()));
+                } catch (Exception unreadable) {
+                    repairOut = "";
+                }
+            }
+            boolean theRepairReportParsed = repairOut.contains("\"findings\"");
+            boolean noShimInTheCloneShadowsItsOwnCopy =
+                    theRepairReportParsed && !repairOut.contains("PARENT_SHIM_SHADOWS_LOCAL_COPY");
+
             boolean sourceHomeIsByteIdentical = afterDigest.equals(sourceDigest);
 
-            boolean pass = editLandedInTheClone && sourceSkillUnchanged
+            boolean pass = theRepairReportParsed && noShimInTheCloneShadowsItsOwnCopy
+                    && editLandedInTheClone && sourceSkillUnchanged
                     && writeThroughTheLinkLandedInTheClone && cloneSeesItsBindings
                     && unbindSucceeded && unbindDeletedNoInstalledUnit && bindSucceeded
                     && agentLinkResolvesIntoTheClone && agentLinkDoesNotResolveIntoTheSource
@@ -167,6 +199,10 @@ public class HomeCloneEditStaysInClone {
                                     + " changed=" + changedEntries(fixtureHome)))
                     .process(list)
                     .assertion("an_edit_through_the_clone_lands_in_the_clone", editLandedInTheClone)
+                    .assertion("the_clone_can_be_asked_whether_it_runs_its_own_copy",
+                            theRepairReportParsed)
+                    .assertion("no_shim_in_the_clone_shadows_a_copy_the_clone_holds",
+                            noShimInTheCloneShadowsItsOwnCopy)
                     .assertion("the_source_units_own_bytes_are_unchanged", sourceSkillUnchanged)
                     .assertion("a_write_through_the_clones_in_unit_symlink_lands_in_the_clone",
                             writeThroughTheLinkLandedInTheClone)
