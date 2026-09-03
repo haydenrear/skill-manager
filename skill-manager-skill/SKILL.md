@@ -92,6 +92,11 @@ you get there: never run `install`, `sync`, `bind`, `upgrade` or `project
 resolve` before the local home exists — they write into whatever
 `SKILL_MANAGER_HOME` names, which until then is the operator's global home.
 
+A home can hold its own copy of a unit and still run the parent's — an edit
+that changes nothing, on a home every check calls valid. `skill-manager home
+repair --home <home>` names it; `--fix` migrates it. See **Migrating A Home
+That Runs Another Home's Copy** in `references/projects.md`.
+
 See `references/projects.md` for the project workflow, child-home
 relationship, the tier model and both upward paths, `[[vendored]]`
 declarations, env docs, and cleanup rules.

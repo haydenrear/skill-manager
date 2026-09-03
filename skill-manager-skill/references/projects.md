@@ -514,6 +514,65 @@ often through a wrapper script that resolves its CLI off `PATH` and then runs
 it under a `SKILL_MANAGER_HOME` you set, which is how the same command can
 have worked yesterday and refuse today.
 
+## Migrating A Home That Runs Another Home's Copy
+
+A home can hold its own copy of a unit and still run the one above it. The
+symptom is the one that wastes an afternoon: you edit a skill in the home you
+are working in, nothing changes, and every check says the home is fine.
+
+The cause is the entry point, not the skill. `<home>/skills/<unit>/` was
+cloned correctly; `<home>/bin/cli/<tool>` is a **symlink into the parent** that
+the clone copied along with everything else. The local copy sits unused.
+
+### Find out
+
+```bash
+skill-manager home repair --home <home>
+```
+
+A home with the shape reports `PARENT_SHIM_SHADOWS_LOCAL_COPY`, naming the
+entry, what it runs, and the copy it is bypassing. `home verify` will **not**
+tell you: every path resolves, so a home in this state is "valid".
+
+### Fix it
+
+```bash
+skill-manager home repair --home <home> --fix
+```
+
+That writes this home's own shim — the parent's command line with each path
+remapped into this home — and only where the home already holds every path
+that entry runs. The tool keeps working across the change; it just runs the
+local copy afterwards.
+
+### When it refuses, that is the right answer
+
+Some mirrors **must** stay. `deploy-helm`'s entries exec a per-unit cache venv:
+
+```
+exec <home>/cache/skill-script-deploy-helm-computeq/venv/bin/computeq
+```
+
+and `home clone` deliberately does not copy `cache/`, `venvs/`, `tools/` or
+`npm/`. So a cloned home holds `skills/deploy-helm` and not the venv that entry
+runs, and the mirror into the parent is **the only way that tool runs at all**.
+Rewriting it would name a venv that is not there and turn a working tool into
+one that resolves nowhere. `home repair` does not raise those, and would refuse
+the write if it did.
+
+Provision the tool in the home first if you want it local; until then the
+mirror is correct.
+
+### New homes do not need this
+
+Homes created by `home clone` from **0.25.2** onward get their own shims
+wherever they can run them, so the shape is not inherited any more. Migration
+is a one-time pass over homes that already exist, and it is **per project**:
+each repository migrates its own homes and its own worktrees. Nothing fans out
+across the machine, and a home belonging to another project is that project's
+to fix.
+
+
 ## Cleanup
 
 Use the owning CLI flow to remove generated state:
