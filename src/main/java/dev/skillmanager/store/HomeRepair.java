@@ -975,44 +975,10 @@ public final class HomeRepair {
         Path foreign = HomeCloner.foreignHomeReachedBy(link, Fs.realOrNormalized(store));
         if (foreign == null) throw new IOException(link + " no longer reaches another home");
         Path target = Fs.realOrNormalized(link);
-        if (!Files.isRegularFile(target)) {
-            throw new IOException("the mirrored entry is not a regular file: " + target);
-        }
-        String text = Files.readString(target, StandardCharsets.UTF_8);
-
-        // Remap every path under the parent home to this home, longest first so
-        // a prefix never eats a longer path that shares it -- the same hazard
-        // `replaceWholePath` exists for, one level up.
-        Path foreignReal = Fs.realOrNormalized(foreign);
-        Path mine = Fs.realOrNormalized(store);
-        List<String> tokens = new ArrayList<>(absolutePathTokens(target));
-        tokens.sort(Comparator.comparingInt(String::length).reversed());
-        String replaced = text;
-        for (String token : tokens) {
-            Path candidate;
-            try {
-                candidate = Path.of(token);
-            } catch (RuntimeException notAPath) {
-                continue;
-            }
-            Path rel;
-            try {
-                rel = foreignReal.relativize(Fs.realOrNormalized(candidate));
-            } catch (IllegalArgumentException notUnderIt) {
-                continue;
-            }
-            if (rel.toString().isEmpty() || rel.startsWith("..")) continue;
-            Path here = mine.resolve(rel);
-            if (!Files.exists(here)) {
-                throw new IOException("refusing to materialize " + link + ": this home has no "
-                        + here + ", so the shim would resolve nowhere. The mirror is the only "
-                        + "way that tool runs here — provision it first");
-            }
-            replaced = replaceWholePath(replaced, candidate.toString(), here.toString());
-        }
-        if (replaced.equals(text)) {
-            throw new IOException("nothing in " + target + " names a path under " + foreign);
-        }
+        // The rewrite itself lives in HomeCloner beside the detector, because
+        // the CLONE has to do the same thing at creation time and two
+        // implementations of "remap this shim into this home" would drift.
+        String replaced = HomeCloner.mirrorRewrittenInto(link, foreign, store);
         // THE SAME POSTCONDITION the text rewrite carries, for the same reason:
         // I am the writer, so I verify what I wrote, and `home verify` cannot
         // see a missing path under skills/.

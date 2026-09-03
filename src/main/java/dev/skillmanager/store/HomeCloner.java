@@ -637,6 +637,13 @@ public final class HomeCloner {
         HomeProvenance.recordDescent(src, dst);
         declareArtifacts(src, dst, deferredTrees);
         List<String> coldShims = writeColdShims(dst);
+        // #289, at the moment the home is made rather than the moment somebody
+        // notices. A copy inherits its parent's bin/cli mirrors AND its own
+        // skills/, so it starts life holding a copy it does not run. Done after
+        // the cold pass (which claims the entries whose tree is absent) and
+        // before rebaselineDrift, so the drift baseline describes the bytes the
+        // home actually ends up with.
+        warmLocalShims(dst);
         rebaselineDrift(new SkillStore(dst));
 
         Verification verification = verifyRoots(src, dst, strict);
@@ -2174,6 +2181,112 @@ public final class HomeCloner {
             if (Files.exists(mine, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return mine;
         }
         return null;
+    }
+
+    /**
+     * The parent's shim command line, with every path it names remapped into
+     * {@code homeRoot} — or an {@link IOException} naming the first path this
+     * home does not have.
+     *
+     * <p>One implementation, two callers: {@code home repair} materializing a
+     * shim on an existing home, and {@link #cloneHome} making sure a NEW home
+     * never carries the shape in the first place. They agreed by accident
+     * before this existed, which in this codebase is the same as not agreeing.
+     *
+     * <p>Longest token first, so replacing a prefix can never eat a longer path
+     * that shares it — {@code <F>/skills} rewritten before
+     * {@code <F>/skills/foo/run} is the measured way a shim that ran becomes a
+     * shim that resolves nowhere.
+     *
+     * <p>Refuses rather than guessing when a named path is missing here. That
+     * refusal is the whole safety property: {@code deploy-helm}'s entries exec
+     * a per-unit cache venv and {@code home clone} does not copy {@code cache/},
+     * so remapping one would name a venv that is not there and take away a tool
+     * that works.
+     */
+    public static String mirrorRewrittenInto(Path link, Path foreign, Path homeRoot)
+            throws IOException {
+        Path target = Fs.realOrNormalized(link);
+        if (!Files.isRegularFile(target)) {
+            throw new IOException("the mirrored entry is not a regular file: " + target);
+        }
+        String text = Files.readString(target, java.nio.charset.StandardCharsets.UTF_8);
+        Path foreignReal = Fs.realOrNormalized(foreign);
+        Path mine = Fs.realOrNormalized(homeRoot);
+        List<String> tokens = new ArrayList<>(HomeRepair.absolutePathTokens(target));
+        tokens.sort(java.util.Comparator.comparingInt(String::length).reversed());
+        String replaced = text;
+        for (String token : tokens) {
+            Path candidate;
+            try {
+                candidate = Path.of(token);
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            Path rel;
+            try {
+                rel = foreignReal.relativize(Fs.realOrNormalized(candidate));
+            } catch (IllegalArgumentException notUnderIt) {
+                continue;
+            }
+            if (rel.toString().isEmpty() || rel.startsWith("..")) continue;
+            Path here = mine.resolve(rel);
+            if (!Files.exists(here)) {
+                throw new IOException("this home has no " + here + ", so the shim would resolve "
+                        + "nowhere — the mirror is the only way that tool runs here");
+            }
+            replaced = HomeRepair.replaceWholePath(replaced, candidate.toString(), here.toString());
+        }
+        if (replaced.equals(text)) {
+            throw new IOException("nothing in " + target + " names a path under " + foreign);
+        }
+        return replaced;
+    }
+
+    /**
+     * Give the COPY its own shims wherever it can run them, so a home created
+     * by this build never starts life shadowing a copy it already holds.
+     *
+     * <p>The sibling of {@link #writeColdShims}, and the opposite case: that
+     * one replaces an entry whose tree is ABSENT with a shim that explains
+     * itself; this one replaces a mirror whose tree is PRESENT with a shim that
+     * runs it. Both walk the copy's shim directories once the clone's own
+     * records exist, and neither touches an entry the other claims.
+     *
+     * <p>Best effort by construction. A mirror that cannot be rewritten is
+     * exactly the one that must stay — see {@link #mirrorRewrittenInto} — so a
+     * refusal here is the normal case for an unprovisioned tool, not an error,
+     * and the clone continues.
+     *
+     * @return the entries given local shims
+     */
+    private static List<String> warmLocalShims(Path dst) {
+        List<String> warmed = new ArrayList<>();
+        try {
+            for (ShimDirScan scan : scanShimDirs(dst)) {
+                for (ShadowedShim shadow : scan.shadowed()) {
+                    Path link = dst.resolve(shadow.rel());
+                    try {
+                        Path foreign = foreignHomeReachedBy(link, realOrSame(dst));
+                        if (foreign == null) continue;
+                        String rewritten = mirrorRewrittenInto(link, foreign, dst);
+                        boolean executable = Files.isExecutable(Fs.realOrNormalized(link));
+                        Files.delete(link);
+                        Files.writeString(link, rewritten,
+                                java.nio.charset.StandardCharsets.UTF_8);
+                        if (executable) link.toFile().setExecutable(true);
+                        warmed.add(shadow.rel());
+                    } catch (IOException cannot) {
+                        Log.detail("clone: %s stays a mirror of its parent (%s)",
+                                shadow.rel(), cannot.getMessage());
+                    }
+                }
+            }
+        } catch (RuntimeException e) {
+            Log.warn("clone: could not give %s its own shims (%s) — it will run its parent's "
+                    + "copies until `skill-manager home repair --fix`", dst, e.getMessage());
+        }
+        return warmed;
     }
 
     public static Path unsanctionedForeignHome(String rel, Path link, Path homeRoot) {
