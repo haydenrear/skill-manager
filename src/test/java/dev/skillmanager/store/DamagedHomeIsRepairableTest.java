@@ -149,39 +149,98 @@ public final class DamagedHomeIsRepairableTest {
                                     + "the same way");
                 })
 
-                .test("#289: --fix leaves the shadowed mirror REPORTED, and that is deliberate",
-                        () -> {
-                    // THE GUARD AGAINST A DESTRUCTIVE "IMPROVEMENT". The only
-                    // mechanical repair available here is to delete the link,
-                    // which takes away the sole entry point this home currently
-                    // reaches for that tool and puts nothing in its place. The
-                    // remedy is to REBUILD the home's own entry point, which
-                    // needs the unit's declaration and is `skill-manager
-                    // build`'s job.
+                .test("#289: --fix materializes this home's OWN shim, and it still runs", () -> {
+                    // THE DECISION THIS REVERSES, on the record. This kind
+                    // shipped REPORT-ONLY, guarded by a test asserting the
+                    // finding survives --fix, with a comment saying whoever
+                    // wired a rewrite into it would have to argue for it rather
+                    // than discover it in a home. Here is the argument.
                     //
-                    // So this asserts the finding SURVIVES --fix. If someone
-                    // later wires a rewrite into it, this goes red and they
-                    // have to argue for it rather than discover it in a home.
-                    Fixture fx = Fixture.build("shadow-not-repaired");
+                    // The report-only stance rested on "the only mechanical
+                    // repair deletes the sole entry point this home reaches".
+                    // That was true while the DETECTOR was wrong. It raised the
+                    // finding whenever the home held the unit DIRECTORY -- and
+                    // deploy-helm's shims exec a per-unit cache venv that
+                    // `home clone` never copies, so most findings were homes
+                    // that genuinely could not run their own copy. Measured
+                    // 2026-09-02: 53 of 55.
+                    //
+                    // The detector now requires the home to hold EVERY path the
+                    // entry runs. Under that precondition a local shim can be
+                    // written that RUNS before the link is removed, so the
+                    // repair takes nothing away. The guard does not disappear;
+                    // it moves to the next test, which is the case that must
+                    // still refuse.
+                    Fixture fx = Fixture.build("shadow-repaired");
                     fx.damageShadowedMirror();
+                    Path shim = fx.store.resolve("bin/cli/shadowed-tool");
+                    assertTrue(Files.isSymbolicLink(shim), "precondition: it starts as a mirror");
 
-                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
-                    assertTrue(before.findings().stream()
-                                    .anyMatch(f -> f.kind()
+                    HomeRepair.Outcome out = HomeRepair.repair(fx.store, fx.pin);
+
+                    assertFalse(Files.isSymbolicLink(shim),
+                            "THE CLAIM: the mirror is replaced by this home's own shim; "
+                                    + "repair refused with: " + out.failed());
+                    assertTrue(Files.isRegularFile(shim), "and it is a real file");
+                    String text = Files.readString(shim);
+                    assertTrue(text.contains(fx.store.resolve("skills").resolve(UNIT).toString()),
+                            "which runs THIS home's copy; got: " + text);
+                    assertFalse(text.contains(fx.other.resolve("skills").resolve(UNIT).toString()),
+                            "and no longer the other home's; got: " + text);
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                                    .noneMatch(f -> f.kind()
                                             == HomeRepair.Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY),
-                            "precondition: the shape is planted and reported");
+                            "and detection agrees afterwards -- the repairer's own opinion is "
+                                    + "not evidence (#142)");
+                })
+
+                .test("#289: a mirror whose target this home CANNOT run is refused, not rewritten",
+                        () -> {
+                    // THE GUARD, moved here from the report-only test above and
+                    // made sharper. This is the deploy-helm shape: the parent's
+                    // entry execs something under cache/, which `home clone`
+                    // does not copy. Rewriting it would name a path that is not
+                    // there and turn a tool that RUNS into one that resolves
+                    // nowhere -- #142's remedy-that-does-not-work, produced by
+                    // the remedy.
+                    //
+                    // Two assertions, because either alone is satisfiable by a
+                    // bug: nothing is reported (the detector declines), AND the
+                    // link is untouched (no repair ran).
+                    Fixture fx = Fixture.build("shadow-unprovisioned");
+
+                    Path parentScript = fx.other.resolve("skills").resolve(UNIT).resolve("boxed.py");
+                    Files.createDirectories(parentScript.getParent());
+                    Files.writeString(parentScript, "print('parent')\n");
+                    // The venv the entry actually execs, in the parent ONLY --
+                    // exactly what a clone leaves behind.
+                    Path venv = fx.other.resolve("cache/skill-script-alpha-boxed/venv/bin/boxed");
+                    Files.createDirectories(venv.getParent());
+                    Files.writeString(venv, "#!/bin/sh\nexit 0\n");
+                    venv.toFile().setExecutable(true);
+                    Path parentEntry = fx.other.resolve("bin/cli").resolve("boxed-tool");
+                    Files.writeString(parentEntry,
+                            "#!/usr/bin/env bash\nexec \"" + venv + "\" \"$@\"\n");
+                    parentEntry.toFile().setExecutable(true);
+                    Path shim = fx.store.resolve("bin/cli").resolve("boxed-tool");
+                    Files.createSymbolicLink(shim, parentEntry);
+                    // The home DOES hold its own copy of the unit's script, so
+                    // the OLD detector would have raised this one.
+                    Path mine = fx.store.resolve("skills").resolve(UNIT).resolve("boxed.py");
+                    Files.createDirectories(mine.getParent());
+                    Files.writeString(mine, "print('mine')\n");
+                    assertFalse(Files.exists(fx.store.resolve(
+                                    "cache/skill-script-alpha-boxed/venv/bin/boxed")),
+                            "precondition: the venv it execs is NOT in this home");
 
                     HomeRepair.repair(fx.store, fx.pin);
 
-                    HomeRepair.Report after = HomeRepair.detect(fx.store, fx.pin);
-                    assertTrue(after.findings().stream()
-                                    .anyMatch(f -> f.kind()
-                                            == HomeRepair.Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY),
-                            "THE CLAIM: --fix does not silently take the tool away; the "
-                                    + "finding is still reported afterwards");
-                    assertTrue(Files.exists(fx.store.resolve("bin/cli/shadowed-tool"),
-                                    LinkOption.NOFOLLOW_LINKS),
-                            "and the link itself is still there — repair removed nothing");
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                                    .noneMatch(f -> f.subject().equals("bin/cli/boxed-tool")),
+                            "the mirror this home cannot run is not a finding at all");
+                    assertTrue(Files.isSymbolicLink(shim),
+                            "THE CLAIM: and it is still a mirror — the only way that tool runs "
+                                    + "here, so nothing took it away");
                 })
 
                 .test("#289: a sanctioned mirror with NO local copy stays clean", () -> {
