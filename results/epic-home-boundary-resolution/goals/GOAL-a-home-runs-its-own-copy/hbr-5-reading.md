@@ -1,42 +1,61 @@
-# GOAL-a-home-runs-its-own-copy — HBR-5 interim reading, 2026-09-02
+# GOAL-a-home-runs-its-own-copy — HBR-5 reading, 2026-09-02
 
-| | baseline 2026-08-29 | now | target |
-|---|---|---|---|
-| unsanctioned pairs | 19 | **46** | 0 |
-| homes scanned | 27 | 37 | — |
-| pairs per home | 0.70 | **1.24** | — |
-| sanctioned fallbacks | 0 | 0 | — |
+**The instrument was wrong. The corrected value is 2, not 55.**
 
-## The number went up, and the epic did not cause it
+| | old test | corrected |
+|---|---|---|
+| unsanctioned pairs | 55 | **2** |
+| sanctioned fallbacks | 0 | **53** |
+| homes scanned | 41 | 41 |
 
-Two units account for all 46 — `deploy-helm` (44) and `spec-double-compiler`
-(2) — across **16 homes, exactly one of which belongs to skill-manager**. The
-other 15 are unrelated projects (`commit-diff-context-parent`,
-`hyper-experiments-*`, `support-agent-rears`, and a dozen `wt-*cdc*`
-worktrees).
+## What the walker asked, and what it should have asked
 
-The mechanism is propagation, not regression: the crossing is a **symlink**
-into the root home, and `home clone` copies it. Every new worktree home in any
-project inherits three more pairs. So the metric grows with a population
-skill-manager neither controls nor creates, and it will keep growing while
-those projects make worktrees.
+It asked *"does this home hold the unit DIRECTORY the shim reaches past?"*:
 
-**This is a defect in how the goal is measured, and it should be decided at
-terminal evaluation rather than papered over.** "Pairs on this machine" makes
-the epic accountable for homes it never touched. Candidate re-readings, for the
-owner: pairs per home; pairs in homes this repository owns; or pairs in homes
-created after the fix landed. Each answers a different question and the first
-is the only one that is stable under other people's work.
+```python
+mine = home / kind / unit
+(pairs if mine.exists() else fallback).append(row)
+```
 
-## What changed here, and what did not
+A shim does not run a directory. `deploy-helm`'s runs a per-unit **cache venv
+binary**:
 
-Fixed and validated (#289): `home repair` now reports the condition. It
-previously called every one of these 16 homes clean while the walker counted
-46 pairs — two readers, one truth, two answers, inside the verifier. They now
-return the same count home by home (1 and 1 on the project home; 3 and 3 on
-`wt-165-cdc-isf-013`), over the same entry count, so it is the verdict that
-moved and not the scope.
+```
+exec <home>/cache/skill-script-deploy-helm-computeq/venv/bin/computeq
+```
 
-**The metric is unchanged at 46.** Detection is not remediation. Reaching 0
-needs each affected home's entry point rebuilt, and 15 of the 16 belong to
-other projects — so the remediation is a decision about scope, not a commit.
+and `home clone` **deliberately does not copy** `cache/`, `venvs/`, `tools/` or
+`npm/` — bootstrap-home.sh says so in its own output. So a freshly cloned home
+holds `skills/deploy-helm` and *not* the venv that shim execs. The old test read
+that as "has its own copy, runs the parent's anyway" — an unsanctioned crossing.
+It is the exact opposite: the mirror is the **only way the tool runs at all**,
+which is the sanctioned fallback the metric says it excludes.
+
+The corrected test maps every foreign path a shim names into this home and
+charges the crossing only when the home holds **all** of them.
+
+## The baseline was wrong the same way
+
+`19 unsanctioned / 0 sanctioned fallbacks` (2026-08-29) came from the same code.
+"Every single crossing is the unsanctioned kind, with a local copy sitting
+unused" was an artefact, not a finding. The growth 19 → 55 was real but
+measured the wrong population: it tracked how many worktrees other projects
+created, because each new clone adds three unprovisioned `deploy-helm` mirrors.
+
+## What is actually left
+
+Two pairs, both `spec-double-compiler` / `tla-spec-dev` — a plain Python script
+with no venv, so the home holds everything the shim needs and reaches past it
+anyway:
+
+| home | reaches into |
+|---|---|
+| `IdeaProjects/skill-manager/.skill-manager` | `~/.skill-manager` |
+| `IdeaProjects/wt-epic-mh-testing/.skill-manager` | `IdeaProjects/skill-manager/.skill-manager` |
+
+These are genuine, they are the shape `home repair` now names
+(`PARENT_SHIM_SHADOWS_LOCAL_COPY`, #289), and one of the two is this
+repository's own project home.
+
+**Target 0 is now within reach** — it is two shims, not a machine-wide
+remediation across 19 homes owned by other projects.

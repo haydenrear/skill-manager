@@ -110,13 +110,46 @@ def main():
             if skill_hits:
                 cand, other, (kind, unit) = skill_hits[0]
                 mine = home / kind / unit
+                # CAN THIS HOME ACTUALLY RUN ITS OWN COPY?  Not "does it hold
+                # the unit DIRECTORY" -- that was this walker's original test
+                # and it is the wrong question.  A shim runs a command line,
+                # and `deploy-helm`'s runs a per-unit CACHE VENV BINARY:
+                #
+                #   exec <home>/cache/skill-script-deploy-helm-computeq/venv/bin/computeq
+                #
+                # `home clone` deliberately does not copy cache/, venvs/,
+                # tools/ or npm/, so a freshly cloned home holds
+                # skills/deploy-helm and NOT the venv that shim execs.  Under
+                # the old test that scored as "has its own copy, runs the
+                # parent's" -- an unsanctioned crossing.  It is the opposite:
+                # the mirror is the ONLY way the tool runs at all, which is
+                # exactly the sanctioned fallback this metric says it excludes.
+                #
+                # Measured 2026-09-02: 53 of 55 "unsanctioned" pairs were this,
+                # and the baseline's claim of "0 sanctioned fallbacks" was an
+                # artefact of the same error.  So the test is now every foreign
+                # path the shim names, mapped into this home: a crossing is
+                # unsanctioned only when the home holds ALL of them and reaches
+                # past them anyway.
+                needed = [cand] + list(cache_hits)
+                missing = []
+                for path in needed:
+                    try:
+                        rel = path.resolve().relative_to(other.resolve())
+                    except (ValueError, OSError):
+                        continue
+                    if not (home / rel).exists():
+                        missing.append(str(rel))
+                has_everything = mine.exists() and not missing
                 row = {"home": str(home), "shim": shim.name,
                        "runs": str(cand), "other_home": str(other),
                        "unit": f"{kind}:{unit}",
                        "this_home_has_its_own": mine.exists(),
+                       "can_run_its_own": has_everything,
+                       "missing_locally": missing,
                        "via_symlink": shim.is_symlink(),
                        "also_execs_foreign_cache": bool(cache_hits)}
-                (pairs if mine.exists() else fallback).append(row)
+                (pairs if has_everything else fallback).append(row)
             elif cache_hits:
                 cache_only.append({"home": str(home), "shim": shim.name,
                                    "runs": str(cache_hits[0])})
