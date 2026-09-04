@@ -47,3 +47,36 @@ since the fix above is in the unit it covers.
 
 Read the count, do not infer it: a sweep that stops early looks like a sweep
 that passed if you only read the tail.
+
+---
+
+## Re-confirmed at the PR head (`49c01b7`), 2026-09-04
+
+The sweep above ran at `02223e6`. Nothing under `src/` changed after it — the
+only delta is documentation plus one graph node — but the sweep was re-run at
+the head rather than argued from the delta.
+
+**Same result: 28 green, `artifact-dag` red on the same two DEF-HBR-003
+assertions, `hyper-experiments` excluded.** Gradle again stopped at
+`artifact-dag`, so `skill-dev-smoke`, `home-integrity`, `onboarding` and
+`sync-settles` were run individually — all four green.
+
+### The first attempt at the head errored, and it was the environment
+
+```
+gateway.python.venv.ready errored: timed out after 180s across 3 attempts
+Nodes: 53 (passed=6, failed=0, errored=1, skipped=46)
+```
+
+`failed=0` — no assertion was wrong. Between the two sweeps `~/.cache/uv` went
+from **92 GB to 7.9 GB**: macOS purged it under disk pressure (the volume had
+been at 99%; free space went 21 GiB → 76 GiB with nothing run to cause it). The
+venv build was therefore cold and outran a budget sized for a warm cache. An
+immediate re-run of `smoke` alone: **BUILD SUCCESSFUL in 4m50s**.
+
+Filed as #295, because a cold uv cache is the normal state of every CI runner —
+including the nightly, which is currently the only automatic graph signal.
+
+Worth keeping the distinction the report already draws: `errored` is not
+`failed`, and it is what made this diagnosable at a glance rather than read as
+a broken graph.
