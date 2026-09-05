@@ -293,10 +293,25 @@ jobs:
       # specs/pytest.ini supplies --import-mode=importlib; the two directories
       # carry five identically named test modules and cannot be collected
       # together without it.
+      #
+      # specs/current/tests exists only while a spec workflow is scaffolded.
+      # It was hardcoded here, so closing a workflow -- which REMOVES
+      # specs/current -- turned every CI run on every branch red with
+      # "file or directory not found", before a single assertion ran. That is
+      # what happened on main at e07e577. The accepted baseline's suite always
+      # runs; the workflow's runs when there is a workflow.
       - name: Run spec-model suites
         env:
           SPEC_REQUIRE_TLC: "1"
-        run: uv run --with pytest pytest specs/program_model/tests specs/current/tests -q
+        run: |
+          suites=(specs/program_model/tests)
+          if [ -d specs/current/tests ]; then
+            suites+=(specs/current/tests)
+          else
+            echo "note: no spec workflow is scaffolded (specs/current absent);"
+            echo "      running the accepted baseline suite only."
+          fi
+          uv run --with pytest pytest "${suites[@]}" -q
 
       - name: Install JBang
         uses: jbangdev/setup-jbang@main

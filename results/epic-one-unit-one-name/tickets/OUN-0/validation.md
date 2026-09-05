@@ -51,3 +51,26 @@ No writes to `~/.skill-manager` or to
 harness installs its two fixtures into a `home clone` in a scratch directory
 and refuses by name to run against either protected home, or against any home
 passed with `--home` that resolves to one.
+
+## And CI has been red on `main` for a second, separate reason
+
+`.github/workflows/ci.yml` hardcoded both suites:
+
+```
+uv run --with pytest pytest specs/program_model/tests specs/current/tests -q
+```
+
+`specs/current` exists only while a spec workflow is scaffolded. Closing one
+removes it, so from `e07e577` onward **every CI run on every branch** failed
+with `ERROR: file or directory not found: specs/current/tests` — before a
+single assertion ran. `main`'s own CI run for that commit is red for exactly
+this.
+
+Fixed here rather than deferred: it is two lines, it is unambiguous, and
+every remaining ticket in this epic would otherwise inherit a red required
+check that says nothing about the ticket. The accepted baseline's suite now
+always runs; the workflow's runs when there is a workflow.
+
+With the path fixed, CI reaches the real failure — the one contract test of
+`DEF-OUN-001`. That is the intended outcome: a red check that names the
+actual defect is worth more than a red check that names a missing directory.
