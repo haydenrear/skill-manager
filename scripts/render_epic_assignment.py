@@ -97,7 +97,7 @@ def block(slug, plan, t):
         A(f"      ticket: {t['id'] if is_eval else ev}")
         A(f"      harness: {q(g['harness'])}")
     A("validation:")
-    A('  tlc: "N/A: the spec workflow for this epic is STAGED, not scaffolded — child-home-materialization-workflow still occupies specs/current and specs/desired_program_model, so there is no TLC model for this ticket to check yet."')
+    A('  tlc: "N/A: no TLA workflow is scaffolded for this epic. The slot is FREE (specs/current and specs/desired_program_model were removed from main on 2026-09-05); scaffolding one on top of this plan is an owner decision that has not been taken, so there is no TLC model for this ticket to check."')
     A('  spec_unit: "python3 .skill-manager/skills/spec-double-compiler/scripts/run_spec_units.py"')
     A('  repository_unit: "jbang RunTests.java"')
     A(f'  spec_graph: "N/A: staged epic, see validation.tlc — the graphs named in conflict_keys.test_graph are the repository graphs this ticket must keep green, run with the test_graph runner named in the plan"')
