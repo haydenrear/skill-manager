@@ -142,7 +142,7 @@ epic_goals:
 
 tickets:
   - id: OUN-0
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/299
     title: "Baseline both edge mechanisms, and name the addressing rule once"
     wave: 1
     depends_on: []
@@ -188,7 +188,7 @@ tickets:
         local_signal: "6 and 8 reproduced by the harness rather than by grep"
 
   - id: OUN-1
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/300
     title: "A plugin-contained skill is addressable by name"
     wave: 2
     depends_on: ["OUN-0"]
@@ -225,7 +225,7 @@ tickets:
         local_signal: "the OUN-0 case flips green without being edited"
 
   - id: OUN-3
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/301
     title: "`skt deps --who-imports` -- the reverse edge, recomputed, cycle-safe"
     wave: 2
     depends_on: ["OUN-0"]
@@ -268,7 +268,7 @@ tickets:
         local_signal: "both mechanisms in one answer, cycle fixture terminates"
 
   - id: OUN-2
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/302
     title: "Refuse a plugin whose contained skill name already exists standalone"
     wave: 3
     depends_on: ["OUN-1"]
@@ -306,7 +306,7 @@ tickets:
         local_signal: "planted collision refused; no-collision install unaffected"
 
   - id: OUN-4
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/303
     title: "Remove skill-dev-skill from the repository and from onboarding"
     wave: 3
     depends_on: ["OUN-3"]
@@ -348,7 +348,7 @@ tickets:
         local_signal: "zero importers, printed, recorded as the evidence"
 
   - id: OUN-5
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/304
     title: "Migration: retire skill-dev-skill and the superseded standalone skill-manager"
     wave: 4
     depends_on: ["OUN-2", "OUN-4"]
@@ -393,7 +393,7 @@ tickets:
         local_signal: "planted collision still refused mid-migration"
 
   - id: OUN-6
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/305
     title: "Move skill-manager-skill into the skt plugin, keeping the unit name"
     wave: 5
     depends_on: ["OUN-5"]
@@ -433,7 +433,7 @@ tickets:
         local_signal: "the walker reports one root for skill-manager"
 
   - id: OUN-7
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/306
     title: "Rename skill-publisher-skill to skt, and repoint what names the old repo"
     wave: 6
     depends_on: ["OUN-6"]
@@ -471,7 +471,7 @@ tickets:
         local_signal: "records repointed, verified by reading them"
 
   - id: OUN-8
-    assignment_issue: "TBD"
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/307
     title: "Terminal evaluation -- decide all four goals on the integrated result"
     role: evaluation
     wave: 7

@@ -3,7 +3,31 @@ sys.path.insert(0,'.skill-manager/skills/spec-double-compiler/scripts')
 from extract_spec_manifest import parse_simple_yaml
 
 PLAN_COMMIT = subprocess.run(["git","rev-parse","HEAD"],capture_output=True,text=True).stdout.strip()[:40]
-BASE = "4423b80"
+# DERIVED, not typed. These were three hardcoded maps keyed by epic slug, so a
+# new epic failed with a KeyError on its own name and a silently wrong base
+# commit. Everything here is already in the plan; read it from there and keep
+# the maps only as a fallback for the two epics that predate this.
+def _plan_base(plan):
+    return str(plan.get("base") or "").strip('"') or BASE_FALLBACK
+
+def _decider(slug, plan):
+    for t in plan["tickets"]:
+        if t.get("role") == "evaluation":
+            return t["id"]
+    ev = {g.get("evaluation_ticket") for g in plan.get("epic_goals", [])} - {None}
+    if len(ev) == 1:
+        return ev.pop()
+    return DECIDER[slug]
+
+def _graphs(slug, plan):
+    seen = []
+    for t in plan["tickets"]:
+        for g in (t.get("conflict_keys") or {}).get("test_graph") or []:
+            if g not in seen:
+                seen.append(g)
+    return seen or GRAPHS.get(slug, [])
+
+BASE_FALLBACK = "4423b80"
 KIND = {  # our vocabulary -> the schema's GOAL_KINDS
  'correctness':'quality','capability':'integration','diagnosis':'quality',
  'analysis':'quality','design':'quality',
@@ -21,7 +45,7 @@ def q(s):
 
 def block(slug, plan, t):
     goals={g['id']:g for g in plan['epic_goals']}
-    ev=DECIDER[slug]
+    ev=_decider(slug, plan)
     is_eval = t['id']==ev
     L=[]
     A=L.append
@@ -32,7 +56,7 @@ def block(slug, plan, t):
     A(f"  id: {slug}")
     A(f"  workflow: {plan['name']}")
     A(f"  branch: {plan['branch']}")
-    A(f"  base_sha: {BASE}")
+    A(f"  base_sha: {_plan_base(plan)}")
     A(f"  plan_commit: {PLAN_COMMIT}")
     A("  default_branch: main")
     A(f"  schedule_revision: {int(plan['schedule_revision'])}")
