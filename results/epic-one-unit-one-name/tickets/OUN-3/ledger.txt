@@ -1,0 +1,10 @@
+epic/one-unit-one-name — goal ledger
+
+  UNMEASURED  GOAL-one-name-one-copy                 0 live, 0 latent over 33 homes  (target 0 live AND 0 latent)
+              why: no (home, unit-name) pair resolves to two roots, but the other half of this goal — an installer that REFUSES a planted c
+  MET         GOAL-a-contained-skill-is-addressable  yes  (target yes)
+  NOT MET     GOAL-migration-lands-on-one-skt        root (1, 1, 1); 0 of 31 homes at (0, 0, 1)  (target (0, 0, 1))
+              why: no migration exists yet -- OUN-5 writes it. This reads the triple where it stands so the migration is graded against a n
+  MET         GOAL-who-imports-this                  one command, agreeing with an independent walk in 31 of 31 homes  (target one command, both mechanisms, transitive, terminates on cycles)
+
+  2 of 4 met, 1 unmeasured

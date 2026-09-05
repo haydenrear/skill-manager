@@ -1,0 +1,1135 @@
+{
+ "goal": "GOAL-who-imports-this",
+ "metric": "can a single command answer it for skill-manager, covering skill-imports AND skill_references, transitively",
+ "value": "one command, agreeing with an independent walk in 31 of 31 homes",
+ "target": "one command, both mechanisms, transitive, terminates on cycles",
+ "met": true,
+ "command": "skill-manager deps --who-imports skill-manager",
+ "target_unit": "skill-manager",
+ "homes_reporting": 31,
+ "distinct_direct_counts": [
+  0,
+  1,
+  6,
+  7,
+  8,
+  9
+ ],
+ "timed_out": [],
+ "no_command": [],
+ "disagreements": [],
+ "why": null,
+ "per_home": [
+  {
+   "home": "root",
+   "home_path": "/Users/hayde/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 10,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "plugin-repository",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-oun-3",
+   "home_path": "/Users/hayde/IdeaProjects/wt-oun-3/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 6,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 6,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 6,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "acp-cdc-ai-python",
+   "home_path": "/Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 9,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "commit-diff-context-parent",
+   "home_path": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 7,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 7,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 7,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "commit-diff-context-parent-eval-024",
+   "home_path": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 7,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 7,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 7,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "deploy-cdc",
+   "home_path": "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 9,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "embabel-meta-skill",
+   "home_path": "/Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 9,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "git-epic-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-epic-skill/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 9,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "git-epic-workflow-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "skill-publisher"
+   ],
+   "product_claimed_count": 1,
+   "walk_direct": [
+    "skill-publisher"
+   ],
+   "agrees": true,
+   "by_skill_imports": 1,
+   "by_skill_references": 0,
+   "only_by_reference": [],
+   "transitive": 1,
+   "transitive_units": [
+    "skill-publisher"
+   ]
+  },
+  {
+   "home": "git-integration-repo-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/git-integration-repo-ARTI-14/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "skill-publisher"
+   ],
+   "product_claimed_count": 1,
+   "walk_direct": [
+    "skill-publisher"
+   ],
+   "agrees": true,
+   "by_skill_imports": 1,
+   "by_skill_references": 0,
+   "only_by_reference": [],
+   "transitive": 1,
+   "transitive_units": [
+    "skill-publisher"
+   ]
+  },
+  {
+   "home": "git-issue-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-skill/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 9,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 9,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 10,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "git-issue-workflow-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "skill-publisher"
+   ],
+   "product_claimed_count": 1,
+   "walk_direct": [
+    "skill-publisher"
+   ],
+   "agrees": true,
+   "by_skill_imports": 1,
+   "by_skill_references": 0,
+   "only_by_reference": [],
+   "transitive": 1,
+   "transitive_units": [
+    "skill-publisher"
+   ]
+  },
+  {
+   "home": "git-issue-workflow-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 9,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 9,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 10,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "git-issue-workflow-skill-27-close-reason",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 9,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 9,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 10,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "meta-harness",
+   "home_path": "/Users/hayde/IdeaProjects/meta-harness/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 7,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 7,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 7,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "meta-orchestrator",
+   "home_path": "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 9,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 9,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 10,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skill-publisher",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "skill-manager",
+   "home_path": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 6,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 6,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 6,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "skill-manager-integration-repository",
+   "home_path": "/Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 9,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "skill-publisher-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-14/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [],
+   "product_claimed_count": 0,
+   "walk_direct": [],
+   "agrees": true,
+   "by_skill_imports": 0,
+   "by_skill_references": 0,
+   "only_by_reference": [],
+   "transitive": 0,
+   "transitive_units": []
+  },
+  {
+   "home": "skill-publisher-ARTI-19",
+   "home_path": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-19/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [],
+   "product_claimed_count": 0,
+   "walk_direct": [],
+   "agrees": true,
+   "by_skill_imports": 0,
+   "by_skill_references": 0,
+   "only_by_reference": [],
+   "transitive": 0,
+   "transitive_units": []
+  },
+  {
+   "home": "skill-publisher-ARTI-23",
+   "home_path": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-23/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [],
+   "product_claimed_count": 0,
+   "walk_direct": [],
+   "agrees": true,
+   "by_skill_imports": 0,
+   "by_skill_references": 0,
+   "only_by_reference": [],
+   "transitive": 0,
+   "transitive_units": []
+  },
+  {
+   "home": "tla-spec-dev",
+   "home_path": "/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 10,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "plugin-repository",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-16-concurrent-agent-registration-cannot-lose",
+   "home_path": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 9,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-223-cdc-isf-042",
+   "home_path": "/Users/hayde/IdeaProjects/wt-223-cdc-isf-042/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 7,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 7,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 7,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-82-surface-parity-every-external-surface-as",
+   "home_path": "/Users/hayde/IdeaProjects/wt-82-surface-parity-every-external-surface-as/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 7,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 7,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 7,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-epic-cdc-index-mvp",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 7,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 7,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 7,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-epic-computeq-multiproject-validation",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 9,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-epic-meta-harness-loop",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 7,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 7,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 7,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-epic-mh-testing",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 8,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 8,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 10,
+   "transitive_units": [
+    "discovery",
+    "git-epic-workflow",
+    "git-integration-repo",
+    "git-issue",
+    "git-issue-workflow",
+    "plugin-repository",
+    "skill-dev-skill",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-oun-0",
+   "home_path": "/Users/hayde/IdeaProjects/wt-oun-0/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 6,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 6,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 6,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  },
+  {
+   "home": "wt-oun-1",
+   "home_path": "/Users/hayde/IdeaProjects/wt-oun-1/.skill-manager",
+   "product_exit": 0,
+   "product_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "product_claimed_count": 6,
+   "walk_direct": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ],
+   "agrees": true,
+   "by_skill_imports": 6,
+   "by_skill_references": 1,
+   "only_by_reference": [],
+   "transitive": 6,
+   "transitive_units": [
+    "git-epic-workflow",
+    "git-issue",
+    "git-issue-workflow",
+    "skt",
+    "spec-double-compiler",
+    "unit-authoring"
+   ]
+  }
+ ]
+}
