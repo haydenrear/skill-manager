@@ -206,6 +206,40 @@ public final class SkillStore {
         };
     }
 
+    /**
+     * Is {@code dir} one of this store's own unit directories, or its root?
+     *
+     * <h2>Why anything needs to ask (#311)</h2>
+     *
+     * <p>Several write targets are derived from agent-home environment
+     * variables — {@code CodexAgent.pluginsDir()} is {@code $CODEX_HOME/plugins}
+     * and {@code CodexAgent.skillsDir()} is {@code $CODEX_HOME/skills}.
+     * {@code CODEX_HOME} and {@code GEMINI_HOME} name the config directory
+     * ITSELF rather than its parent, unlike {@code CLAUDE_HOME}, so pointing
+     * either at a Skill Manager home makes those expressions THIS store's own
+     * {@code plugins/} and {@code skills/}.
+     *
+     * <p>Measured 2026-09-05, one ordinary install under
+     * {@code CODEX_HOME=<home>}: the legacy plugin cleanup deleted every
+     * installed plugin out of {@code <home>/plugins}, and the agent projection
+     * replaced each freshly installed unit at {@code <home>/skills/<name>}
+     * with a symlink pointing at itself. Exit 0 both times.
+     *
+     * <p>Deliberately NOT "is it anywhere under the home". A home legitimately
+     * contains agent directories — {@code <home>/.codex/skills} is the DEFAULT
+     * when {@code CODEX_HOME} is unset — and a guard written that broadly
+     * would disable agent projection in every ordinary home. What must never
+     * be a write target is the store's own unit storage.
+     */
+    public boolean ownsUnitDirectory(Path dir) {
+        if (dir == null) return false;
+        Path candidate = Fs.realOrNormalized(dir);
+        for (Path owned : List.of(root, pluginsDir, skillsDir, docsDir, harnessesDir)) {
+            if (candidate.equals(Fs.realOrNormalized(owned))) return true;
+        }
+        return false;
+    }
+
     public boolean contains(String name) {
         return Files.isDirectory(skillDir(name)) && Files.isRegularFile(skillDir(name).resolve(SkillParser.SKILL_FILENAME));
     }
