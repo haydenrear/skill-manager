@@ -3,4 +3,60 @@
 # with its reproduction and stays until triaged with the owner.
 version: 1
 epic: one-unit-one-name
-findings: []
+findings:
+  - id: DEF-OUN-001
+    found_by: OUN-0 (running the assignment's declared spec_unit validation)
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      The 2026-09-05 close-out of child-home-materialization-workflow (main,
+      e07e577) promoted the DESIRED workflow model onto specs/program_model
+      wholesale, replacing the accepted baseline's spec_manifest.yaml with the
+      workflow's working manifest. The accepted manifest carried `catalogs`,
+      `invariants`, `state_fields`, `actions`, `state_variables` and
+      `promotion_invariants`; the promoted one has `state_fields: []`,
+      `actions: []`, no catalogs section, and package `desired_program_cases`
+      instead of `skillmanager_program_cases`. One accepted-model contract
+      test has been red on main ever since.
+    reproduction: >
+      git worktree add --detach /tmp/rev e07e577 && cd /tmp/rev &&
+      uv run --with pytest pytest specs/program_model/tests -q
+        -> 1 failed, 10 passed
+           test_program_model_accepts_bounded_cli_disclosure_case_surface
+           (CliCommandCatalog is defined in SkillManager.tla but bound in
+           neither MC.cfg nor spec_manifest.yaml)
+      git checkout e07e577~1 && uv run --with pytest pytest specs/program_model/tests -q
+        -> 11 passed
+    why_deferred: >
+      Outside OUN-0's slice by a wide margin -- this is main's accepted spec
+      baseline, not this epic's measurement -- and the remedy is an owner
+      decision, not a repair: restoring specs/program_model from e07e577~1
+      keeps the accepted baseline but discards whatever the desired model
+      legitimately added, while merging the two is a spec-authoring task.
+      git-epic-workflow's own precondition ("specs/program_model is a complete
+      accepted baseline") is not currently satisfied, which is why this is
+      logged blocking rather than major.
+    candidate_owner: owner decision, then a main-branch fix outside this epic
+    status: open
+
+  - id: DEF-OUN-002
+    found_by: OUN-0 (the one-name-one-copy walker)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      Every home carrying skt already claims the name `skt` twice -- the plugin
+      at plugins/skt and a contained skill at plugins/skt/skills/skt. 21 homes
+      on this machine. It is latent only because contained skills are
+      unaddressable, so OUN-1 turns all 21 live, and an OUN-2 gate written
+      without a rule for it would refuse the skt plugin everywhere, including
+      during its own migration.
+    reproduction: >
+      python3 scripts/measure_goal_one_name_one_copy.py | jq '.latent[0]'
+    why_deferred: >
+      NOT deferred as work -- it is an input OUN-1 and OUN-2 must design
+      against, and it was not visible when the plan was written. Recorded here
+      so the wave review triages it explicitly rather than each ticket agent
+      rediscovering it.
+    candidate_owner: OUN-1 (the addressing rule), then OUN-2 (the gate)
+    status: open
+

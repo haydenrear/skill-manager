@@ -1,0 +1,236 @@
+{
+ "goal": "GOAL-migration-lands-on-one-skt",
+ "metric": "(skill-dev-skill present, standalone skill-manager present, skt count) per home",
+ "value": "root (1, 1, 1); 0 of 28 homes at (0, 0, 1)",
+ "target": "(0, 0, 1)",
+ "met": false,
+ "why": "no migration exists yet -- OUN-5 writes it. This reads the triple where it stands so the migration is graded against a number that predates it.",
+ "homes_in_scope": 28,
+ "homes_at_target": 0,
+ "per_home": [
+  {
+   "home": "root",
+   "home_path": "/Users/hayde/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "wt-oun-0",
+   "home_path": "/Users/hayde/IdeaProjects/wt-oun-0/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "acp-cdc-ai-python",
+   "home_path": "/Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "commit-diff-context-parent",
+   "home_path": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "commit-diff-context-parent-eval-024",
+   "home_path": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "deploy-cdc",
+   "home_path": "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "embabel-meta-skill",
+   "home_path": "/Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "git-epic-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-epic-skill/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "git-epic-workflow-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 0,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "git-integration-repo-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/git-integration-repo-ARTI-14/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 0,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "git-issue-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-skill/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "git-issue-workflow-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 0,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "git-issue-workflow-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "git-issue-workflow-skill-27-close-reason",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "meta-harness",
+   "home_path": "/Users/hayde/IdeaProjects/meta-harness/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "meta-orchestrator",
+   "home_path": "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "skill-manager",
+   "home_path": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "skill-manager-integration-repository",
+   "home_path": "/Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "skill-publisher-ARTI-14",
+   "home_path": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-14/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 0,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "skill-publisher-ARTI-19",
+   "home_path": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-19/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 0,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "skill-publisher-ARTI-23",
+   "home_path": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-23/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 0,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "tla-spec-dev",
+   "home_path": "/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "wt-16-concurrent-agent-registration-cannot-lose",
+   "home_path": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "wt-75-batch-spec-step-the-full-corpus-at-a-fra",
+   "home_path": "/Users/hayde/IdeaProjects/wt-75-batch-spec-step-the-full-corpus-at-a-fra/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "wt-epic-cdc-index-mvp",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "wt-epic-computeq-multiproject-validation",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "wt-epic-meta-harness-loop",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager",
+   "skill_dev_skill": 0,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  },
+  {
+   "home": "wt-epic-mh-testing",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+   "skill_dev_skill": 1,
+   "standalone_skill_manager": 1,
+   "skt": 1,
+   "skill_manager_contained_in": null
+  }
+ ]
+}

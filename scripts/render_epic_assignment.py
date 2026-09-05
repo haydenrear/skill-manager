@@ -103,7 +103,14 @@ def block(slug, plan, t):
         A(f"      harness: {q(g['harness'])}")
     A("validation:")
     A('  tlc: "N/A: no TLA workflow is scaffolded for this epic. The slot is FREE (specs/current and specs/desired_program_model were removed from main on 2026-09-05); scaffolding one on top of this plan is an owner decision that has not been taken, so there is no TLC model for this ticket to check."')
-    A('  spec_unit: "python3 .skill-manager/skills/spec-double-compiler/scripts/run_spec_units.py"')
+    # The old value named scripts/run_spec_units.py, which exists in no
+    # spec-double-compiler version installed here and in no checkout of this
+    # repository. Every assignment this renderer has produced declared a
+    # validation command that cannot run. The real suite is pytest under
+    # specs/, with the rootdir pinned by specs/pytest.ini; specs/current/tests
+    # is added by hand when a workflow is scaffolded.
+    A('  spec_unit: "uv run --with pytest pytest specs/program_model/tests -q'
+      ' (add specs/current/tests once a spec workflow is scaffolded)"')
     A('  repository_unit: "jbang RunTests.java"')
     A(f'  spec_graph: "N/A: staged epic, see validation.tlc — the graphs named in conflict_keys.test_graph are the repository graphs this ticket must keep green, run with the test_graph runner named in the plan"')
     A('  toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler or its toolchain."')

@@ -355,6 +355,57 @@ public final class MarkdownImportValidatorTest {
             }
         });
 
+        // OUN-0 BASELINE for GOAL-a-contained-skill-is-addressable. This case
+        // asserts the DEFECT, deliberately, and OUN-1 inverts it: a plugin's
+        // contained skill must resolve by name exactly as a standalone skill
+        // does. Pinning it here means the change shows up as this assertion
+        // flipping rather than as a behaviour nobody was watching.
+        //
+        // Measured on the real tree: skt has contained `unit-authoring` since
+        // it shipped, and nothing imports it, because nothing can.
+        suite.test("OUN-0 baseline: a plugin-contained skill is NOT addressable by name", () -> {
+            SkillStore store = store();
+            installTargetPlugin(store, "carrier-plugin", "docs/reference.md");
+            // The contained skill: a real unit root, with its own SKILL.md,
+            // living inside the plugin exactly as skt carries unit-authoring.
+            Path contained = store.pluginsDir().resolve("carrier-plugin")
+                    .resolve("skills").resolve("contained-skill");
+            Files.createDirectories(contained);
+            Files.writeString(contained.resolve("SKILL.md"),
+                    "---\nname: contained-skill\n---\nbody\n");
+            Files.writeString(contained.resolve("reference.md"), "reference\n");
+
+            Path roots = Files.createTempDirectory("md-import-contained-");
+            Path importer = roots.resolve("importer");
+            Files.createDirectories(importer);
+            Files.writeString(importer.resolve("SKILL.md"),
+                    mdUnitImport("contained-skill", "reference.md"));
+
+            List<MarkdownImportValidator.Violation> violations = MarkdownImportValidator.validate(
+                    store,
+                    List.of(new MarkdownImportValidator.UnitRoot(
+                            "importer", UnitKind.SKILL, importer)));
+
+            assertSize(1, violations, "the contained skill is unreachable by name");
+            assertContains(violations.get(0).message(), "missing unit `contained-skill`",
+                    "the product reports it MISSING, though it is on disk in this very store");
+            assertTrue(Files.isRegularFile(contained.resolve("reference.md")),
+                    "and the file the import named does exist — the unit is unaddressable, not absent");
+
+            // THE CONTROL. Without it, "one violation" is also what a store
+            // with no plugin at all would produce, and the case would pass
+            // over a fixture that never installed the carrier.
+            Path carrierImporter = roots.resolve("carrier-importer");
+            Files.createDirectories(carrierImporter);
+            Files.writeString(carrierImporter.resolve("SKILL.md"),
+                    mdUnitImport("carrier-plugin", "docs/reference.md"));
+            assertSize(0, MarkdownImportValidator.validate(
+                            store,
+                            List.of(new MarkdownImportValidator.UnitRoot(
+                                    "carrier-importer", UnitKind.SKILL, carrierImporter))),
+                    "the carrying PLUGIN is addressable by name — only its contained skill is not");
+        });
+
         return suite.runAll();
     }
 
