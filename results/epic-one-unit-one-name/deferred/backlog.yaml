@@ -1,0 +1,6 @@
+# Deferred findings — epic/one-unit-one-name.
+# Append-only. A failure case found outside a ticket's declared slice lands here
+# with its reproduction and stays until triaged with the owner.
+version: 1
+epic: one-unit-one-name
+findings: []
