@@ -77,3 +77,46 @@ and turned every CI run on every branch red before collecting a test.
 *Recommendation:* neither defect is about specs. Both are about **a step that
 assumes a transient tree is permanent.** Worth checking whether anything else
 in CI or the skills names `specs/current` unconditionally.
+
+## The #311 fix, and what its own test caught
+
+The fix was written against one write path and was **incomplete**. Both faces
+come from the same expression — `CodexAgent.pluginsDir()` is
+`$CODEX_HOME/plugins` and `CodexAgent.skillsDir()` is `$CODEX_HOME/skills`, and
+those two variables name the config directory itself rather than its parent —
+but they are reached through different code:
+
+| face | path | effect |
+| --- | --- | --- |
+| **a** | `PluginMarketplace.cleanupLegacyAgentPluginEntries` | deletes every installed plugin |
+| **b** | `LiveInterpreter.syncAgents` → projector | replaces each installed unit with a link to its own path |
+
+I fixed **a**, wrote the graph node, and the node's *control* found **b**. The
+control exists for an unrelated reason — "the plugins survived" is satisfied
+by an install that failed before reaching the cleanup, so the node also asserts
+the install it asked for really happened. That assertion came back
+`exit=0 unitInstalled=false`, which is what a self-referential symlink looks
+like to `Files.isDirectory`.
+
+*The generalisable part:* **a control written against vacuity found a second
+defect, not a vacuous pass.** The two are the same shape — both are "this
+assertion is true for a reason other than the one you think" — which is why
+controls keep earning their cost in this repository.
+
+The guard is now one question on the store (`ownsUnitDirectory`) asked from
+both paths, rather than two guards that could drift apart. That is the same
+correction the wave-1 attribution recommended for a different component: one
+place to ask, not one per caller.
+
+## An instrument note, counted separately because it cost time
+
+`checkout-home` went red during this fix's graph sweep. It was **not** a
+regression: I invoked the runner with `SKILL_MANAGER_HOME` exported, and that
+graph is precisely the one that asserts a pinned shim binds the home it lives
+in — so an inherited home variable naming a different home is a conflict it is
+right to refuse (`exit=79`). Green with `env -u SKILL_MANAGER_HOME`, same
+commit.
+
+Every other graph tolerated the variable, which is what made it look like a
+finding. Recorded so the next sweep does not re-diagnose it.
+
