@@ -63,6 +63,26 @@ import java.util.Optional;
  * <p>See {@link #requireClaudeRedirected()}. It is the one condition that is
  * fatal rather than advisory, because {@code CLAUDE_CONFIG_DIR} is where
  * skills live.
+ *
+ * <h2>Isolating a home must not de-authenticate the agent in it</h2>
+ *
+ * <p>Everything above is about where the agent <em>reads its instructions</em>.
+ * It says nothing about whether the agent can talk to the model at all, and
+ * for a long time the answer was that it could not: redirecting
+ * {@code CLAUDE_CONFIG_DIR} also moved the credential slot, so an agent
+ * launched through a worktree home's shim printed {@code Not logged in ·
+ * Please run /login} and halted, with exit 0 and nothing done. Issue #263
+ * measured {@code Churned for 0s}. That made the documented way to run a
+ * ticket agent in its own home unusable, which is a strong incentive to stop
+ * isolating homes — so the isolation invariant was being paid for in the one
+ * currency that eventually buys its removal.
+ *
+ * <p>The two are separable, and the Claude CLI itself separates them. See
+ * {@link #sharedCredentialEnv()}: the config axis stays redirected exactly as
+ * before, and the credential axis is pointed back at the operator's own login.
+ * <b>{@link #requireClaudeRedirected()} is unchanged and unrelaxed</b> — it
+ * guards the config axis, this fixes the credential axis, and the whole reason
+ * to fix them separately is that the guard did not have to move.
  */
 public final class LaunchEnv {
 
@@ -140,6 +160,11 @@ public final class LaunchEnv {
         // UV_CACHE_DIR and nothing noticed. See PackageCaches for which
         // directories are shareable and which are not.
         assembled.putAll(PackageCaches.sharedEnv(store.venvsDir()));
+        // The credential axis, on the same footing and for the same reason as
+        // the package caches above: a shared store declared explicitly, low
+        // precedence, so a descriptor or a contribution that names it wins.
+        // See #sharedCredentialEnv for what it is and what it trades away.
+        assembled.putAll(sharedCredentialEnv());
         if (existing.isPresent()) {
             HomeDescriptor descriptor = existing.get();
             root = homeRootOverride != null
@@ -168,6 +193,146 @@ public final class LaunchEnv {
         List<Path> prefix = binPrefix(store);
         List<Path> entries = effectivePath(prefix, inheritedPath, store.root());
         return new LaunchEnv(root, store, assembled, prefix, entries);
+    }
+
+    /**
+     * The credential half of a launch: point the launched agent at the
+     * operator's existing login while its config directory stays redirected
+     * into this home.
+     *
+     * <h2>What was actually wrong, measured rather than inferred</h2>
+     *
+     * <p>Issue #263 reported this as the macOS keychain being unreachable, and
+     * a later code survey reported it as the redirected config directory simply
+     * having no authenticated {@code .claude.json} in it. Both were tested
+     * directly against Claude Code 2.1.251, and <b>neither is the cause</b>:
+     *
+     * <ul>
+     *   <li>{@code exec} never overrides {@code HOME}, so the keychain is
+     *       reachable — correct, and not the problem.</li>
+     *   <li>An {@code oauthAccount}-bearing {@code .claude.json} copied into
+     *       the redirected config directory still yields {@code Not logged in ·
+     *       Please run /login}. So the missing file is not the problem
+     *       either.</li>
+     * </ul>
+     *
+     * <p>The cause is that {@code CLAUDE_CONFIG_DIR} silently <em>renames the
+     * credential slot</em>. The CLI derives its keychain service name from the
+     * config directory — {@code Claude Code-credentials} when the variable is
+     * unset, {@code Claude Code-credentials-<sha256(configDir)[0:8]>} when it is
+     * set — and does the same to the credentials file on file-backed platforms.
+     * A redirected home therefore asks for a slot nobody has ever written.
+     * {@link AgentHomes#CLAUDE_SECURESTORAGE_CONFIG_DIR} carries the derivation.
+     *
+     * <h2>Why the empty string, which looks like a bug</h2>
+     *
+     * <p>Because only an empty value selects the <em>unsuffixed</em> slot, and
+     * the unsuffixed slot is the one an operator who logged in normally
+     * actually has. Naming their config directory explicitly — the obvious
+     * spelling, and the one a future reader will "fix" this to — hashes that
+     * path into a suffix and asks for a slot that does not exist. Measured:
+     * with {@code CLAUDE_CONFIG_DIR} pointed at an empty scratch directory,
+     * {@code CLAUDE_SECURESTORAGE_CONFIG_DIR=} returned a result and
+     * {@code CLAUDE_SECURESTORAGE_CONFIG_DIR=$HOME/.claude} returned
+     * {@code Not logged in}. Do not "tidy" the empty string away.
+     *
+     * <h2>The trade, said out loud</h2>
+     *
+     * <p>This shares credentials across every home on the machine. A ticket
+     * agent in a worktree home authenticates as the operator, against the
+     * operator's subscription, out of one keychain item — and a token refresh
+     * it performs updates that shared item, so the write is shared too. That is
+     * a real reduction in isolation on the credential axis, and it is chosen
+     * deliberately over the two alternatives:
+     *
+     * <ul>
+     *   <li><b>Per-home credentials.</b> skill-manager does not model agent
+     *       login state anywhere: the agent directories are siblings of the
+     *       store, {@code home clone} does not carry them, and nothing creates
+     *       or rotates a login. A per-home slot means an interactive
+     *       {@code /login} per worktree, which the non-interactive
+     *       {@code -p} path this exists to serve cannot perform. "Isolated"
+     *       would mean "empty", which is today's behaviour under a better
+     *       name.</li>
+     *   <li><b>Not redirecting {@code CLAUDE_CONFIG_DIR}.</b> That buys
+     *       credentials by giving up the skills isolation this whole class
+     *       exists for, and it is what {@link #requireClaudeRedirected()}
+     *       refuses. It is the trade this method exists to avoid making.</li>
+     * </ul>
+     *
+     * <p>The isolation that is actually wanted — which skill a home runs, which
+     * settings, which projects, which MCP servers — is untouched. Only the
+     * answer to "who is logged in" is shared, and it was always going to be the
+     * operator.
+     *
+     * <h2>Opting out</h2>
+     *
+     * <p>A home that genuinely wants its own credential slot (a service
+     * account, a different subscription) overrides this the way it overrides
+     * anything else in the launch env, because this is deliberately the
+     * lowest-precedence layer:
+     *
+     * <pre>
+     * skill-manager home describe --home &lt;store&gt; --write \\
+     *     --set-env CLAUDE_SECURESTORAGE_CONFIG_DIR=&lt;homeRoot&gt;/.claude
+     * </pre>
+     *
+     * <p>and then logs in once inside that home. Nothing else changes; the
+     * config directory was already redirected there.
+     *
+     * <h2>Why here and not in the descriptor</h2>
+     *
+     * <p>Because a fix written into {@code HomeDescriptor.envFor} reaches only
+     * homes whose descriptor is rewritten after this build ships, and there are
+     * dozens of homes on a working machine whose descriptors were written
+     * months ago. Written here it reaches every one of them the moment they run
+     * a current CLI, because every launch goes through {@code exec}. That is
+     * the same reasoning HBR-2 applies to the bootstrap probe, applied to this
+     * remediation.
+     */
+    /**
+     * The credential axis as this launch will actually set it, and what that
+     * predicts — or {@code null} when there is nothing to say.
+     *
+     * <h2>Why this predicts rather than detects</h2>
+     *
+     * <p>The obvious guard is to watch the agent for {@code Not logged in} and
+     * explain it. That is not available: {@code ExecCommand} spawns with
+     * {@code inheritIO()} and the launch shim {@code exec}s itself away, so
+     * nothing in this process ever sees a byte the agent writes — and piping it
+     * through would take the terminal from an interactive agent to catch a
+     * message only a broken one prints.
+     *
+     * <p>So the failure is predicted from its cause instead, which is strictly
+     * earlier and names the reason rather than the symptom.
+     * {@code CLAUDE_SECURESTORAGE_CONFIG_DIR} does not select a directory; it
+     * selects a keychain SLOT, {@code Claude Code-credentials-<sha256(v)[0:8]>}.
+     * Nothing in this system ever writes a suffixed slot, so a non-empty value
+     * is a slot nobody has logged into, and the agent will report exactly the
+     * #263 failure — <b>identically to setting nothing at all</b>, which is what
+     * makes it a trap rather than a mistake.
+     *
+     * <p>Deliberately NOT a keychain probe. Reading the slot would answer the
+     * question exactly, and would also risk an authorization prompt inside a
+     * launch path — a launch that blocks on a dialog is worse than one that
+     * warns.
+     */
+    public static String credentialAxisWarning(Map<String, String> env) {
+        if (env == null) return null;
+        String v = env.get(AgentHomes.CLAUDE_SECURESTORAGE_CONFIG_DIR);
+        if (v == null || v.isEmpty()) return null;   // the sharing default
+        return "CLAUDE_SECURESTORAGE_CONFIG_DIR is set to " + v + ", which selects the "
+                + "credential slot Claude Code-credentials-<sha256 of that value>. "
+                + "Nothing writes that slot, so the agent will report 'Not logged in' "
+                + "and do nothing -- the same result as leaving it unset, which is why "
+                + "this is easy to miss. The empty string is what shares the operator's "
+                + "login; a path here does not.";
+    }
+
+    public static Map<String, String> sharedCredentialEnv() {
+        // Deliberately the empty string. See the javadoc; a path here is the
+        // one change that silently restores the #263 failure.
+        return Map.of(AgentHomes.CLAUDE_SECURESTORAGE_CONFIG_DIR, "");
     }
 
     /**
@@ -394,6 +559,25 @@ public final class LaunchEnv {
      * is what {@link AgentHomes#claude(Map)} returns whenever the env block
      * carries neither {@code CLAUDE_CONFIG_DIR} nor {@code CLAUDE_HOME},
      * because its last fallback is {@code user.home}.
+     *
+     * <h2>This gate is about skills, not about credentials</h2>
+     *
+     * <p>It was, for a while, doing both jobs by accident, and doing the second
+     * one badly: because a redirected config directory also relocated the
+     * credential slot, "refuse an unredirected launch" and "the agent cannot
+     * log in" were the same condition seen from two sides. Issue #263 is what
+     * that cost, and the temptation it created was to add an opt-out here —
+     * some {@code --inherit-claude-config} that would let a launch keep its
+     * credentials by giving up its skills isolation. That opt-out was not
+     * added, and should not be: it would trade the invariant for a symptom.
+     *
+     * <p>{@link #sharedCredentialEnv()} settles the credential axis without
+     * touching this one. {@link AgentHomes#CLAUDE_SECURESTORAGE_CONFIG_DIR} is
+     * therefore deliberately <b>not</b> consulted here: it cannot satisfy this
+     * gate and it cannot trip it. A launch whose config directory is outside
+     * the home is still refused with exit
+     * {@link UnredirectedLaunchException#EXIT_CODE}, credentials or no
+     * credentials.
      *
      * @throws UnredirectedLaunchException before any child process is created
      */

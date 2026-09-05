@@ -1,0 +1,48 @@
+{
+ "goal": "GOAL-a-failure-names-its-cause",
+ "metric": "of 3 seeded failure modes, how many produce a message naming the true cause",
+ "harness": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh",
+ "source_home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+ "value": "3 of 3",
+ "target": "3 of 3",
+ "met": true,
+ "all_three_distinct": true,
+ "modes": [
+  {
+   "mode": "refused",
+   "exit": 1,
+   "names_its_cause": true,
+   "markers_found": [
+    "refused:",
+    "NOTHING IS OUT OF DATE"
+   ],
+   "markers_of_other_modes": [],
+   "relayed_the_cli_words": true,
+   "excerpt": "    refused: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/goal-cause-refused-8pw9idix/fake-cli\n             It said:"
+  },
+  {
+   "mode": "old",
+   "exit": 1,
+   "names_its_cause": true,
+   "markers_found": [
+    "too old:",
+    "predates"
+   ],
+   "markers_of_other_modes": [],
+   "relayed_the_cli_words": true,
+   "excerpt": "    too old: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/goal-cause-old-gxxnjhy1/fake-cli\n             build predates `home clone`. It said:"
+  },
+  {
+   "mode": "broken",
+   "exit": 1,
+   "names_its_cause": true,
+   "markers_found": [
+    "broken:",
+    "not a version problem"
+   ],
+   "markers_of_other_modes": [],
+   "relayed_the_cli_words": true,
+   "excerpt": "    broken:  /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/goal-cause-broken-934qooah/fake-cli\n             not a version problem. It said:"
+  }
+ ]
+}

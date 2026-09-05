@@ -144,6 +144,11 @@ public final class ExecCommand implements Callable<Integer> {
 
         if (printEnv) {
             launch.exportedEnv().forEach((k, v) -> System.out.println(k + "=" + v));
+            // --print-env is what somebody runs when an agent said "Not logged
+            // in", so the explanation belongs here, on stderr so it cannot
+            // corrupt an `eval $(... --print-env)`.
+            String credentialRisk = LaunchEnv.credentialAxisWarning(launch.exportedEnv());
+            if (credentialRisk != null) Log.warn("%s", credentialRisk);
             return 0;
         }
 
@@ -219,6 +224,13 @@ public final class ExecCommand implements Callable<Integer> {
         List<String> argv = new ArrayList<>();
         argv.add(binary.toString());
         argv.addAll(commandLine.subList(1, commandLine.size()));
+
+        // BEFORE the spawn, because after it there is nothing to say: inheritIO
+        // gives the terminal to the child and this process never sees its
+        // output. Predicting the failure from its cause is the only guard
+        // available here, and it is a better one than reading the symptom.
+        String credentialRisk = LaunchEnv.credentialAxisWarning(launch.exportedEnv());
+        if (credentialRisk != null) Log.warn("%s", credentialRisk);
 
         ProcessBuilder pb = new ProcessBuilder(argv).inheritIO();
         pb.environment().putAll(launch.exportedEnv());

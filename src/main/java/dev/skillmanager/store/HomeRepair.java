@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -158,6 +159,34 @@ public final class HomeRepair {
          * which is the destructive recovery this class serves against.
          */
         FOREIGN_PATH_IN_SHIM,
+
+        /**
+         * A shim this home is SANCTIONED to mirror from its parent, whose
+         * program this home also holds its own copy of.
+         *
+         * <h3>Why a fifth kind rather than a stretched {@link #FOREIGN_PATH_IN_SHIM}</h3>
+         *
+         * <p>The other kind means "a path that should never have been
+         * reachable". This one means the opposite: every structural condition
+         * for the mirror is met, {@code ChildHomeMaterializer} wrote exactly
+         * what it was asked to, and the same bytes are CORRECT in a home that
+         * has no copy of its own. What makes it a finding is a later fact about
+         * this home — it acquired one — so the remedy is to rebuild the entry
+         * point, never to delete a leak.
+         *
+         * <p>Reported, not repaired. The link is the only entry point this home
+         * currently reaches for that tool; removing it takes the tool away and
+         * puts nothing in its place, which is the destructive recovery this
+         * class exists to refuse. Regenerating a real shim is
+         * {@code skill-manager build}'s job and needs the unit's own
+         * declaration, not a path rewrite.
+         *
+         * <p>Issue #289. The condition was measured at 43 pairs across 15 homes
+         * while {@code home repair} reported every one of those homes clean,
+         * because {@code sanctionedParentShim} never asks whether the home has
+         * its own copy. See {@link HomeCloner#shadowedLocalCopy}.
+         */
+        PARENT_SHIM_SHADOWS_LOCAL_COPY,
 
         /**
          * An entry point this home DECLARES, does not hold, and whose still
@@ -489,6 +518,22 @@ public final class HomeRepair {
             // place -- the destructive recovery this class exists to refuse.
             // `home verify` also only reports it. Agreement was the defect;
             // agreement is the fix.
+            // #289. Asked of the links the verdict SANCTIONED, so this reports
+            // exactly what the other two arms cannot: a mirror that is
+            // structurally legitimate and substantively wrong because this home
+            // holds its own copy of what it runs.
+            for (HomeCloner.ShadowedShim shadow : scan.shadowed()) {
+                findings.add(new Finding(Kind.PARENT_SHIM_SHADOWS_LOCAL_COPY, shadow.rel(),
+                        "is a sanctioned mirror of " + shadow.target() + ", which runs "
+                                + shadow.runs() + " — but this home holds its own "
+                                + shadow.mine() + ", so an edit there changes nothing and "
+                                + "this home runs the other home's copy",
+                        "run `skill-manager home repair --fix` to write this home's own "
+                                + "shim, running the copy above. Safe because this home already "
+                                + "holds every path that entry runs — where it does not, the "
+                                + "mirror is the only way the tool runs and this is not raised",
+                        true, shadow.mine()));
+            }
             for (HomeCloner.ForeignShimPath link : scan.foreignLinks()) {
                 Path target = link.candidate();
                 Path foreign = link.foreign();
@@ -851,6 +896,8 @@ public final class HomeRepair {
             // The same call `home shims` makes, on the same home, with the pin
             // detection already resolved. Rewriting the line by hand here would
             // be a second writer for a generated file that has one.
+            case PARENT_SHIM_SHADOWS_LOCAL_COPY ->
+                    materializeLocalShim(store.resolve(finding.subject()), store);
             case DANGLING_CLI_PIN -> {
                 WriteConfinement.checkWrite(store.resolve(finding.subject()), WHAT);
                 LauncherShims.write(new SkillStore(store), finding.target());
@@ -888,6 +935,65 @@ public final class HomeRepair {
      * non-executability is a shim that stops working, which is the repair being
      * worse than the damage.
      */
+    /**
+     * Replace a shadowing parent mirror with this home's OWN shim: the
+     * parent's command line, with every path it names remapped into this home.
+     *
+     * <h2>Why this is repairable when the mirror-into-a-third-home is not</h2>
+     *
+     * <p>The other foreign-shim shapes are reported and never repaired because
+     * the only mechanical repair is to delete the link, which takes the tool
+     * away and puts nothing in its place. This one is different in exactly the
+     * way that matters: the finding is raised ONLY when this home already holds
+     * every path the parent's shim runs
+     * ({@link HomeCloner#shadowedLocalCopy}), so a local shim can be written
+     * that runs, from this home's own copy, before the link is removed.
+     *
+     * <p>That distinction was measured rather than assumed, and getting it
+     * wrong the other way is what made the goal unreadable for a week.
+     * {@code deploy-helm}'s shims exec a per-unit CACHE VENV BINARY, and
+     * {@code home clone} does not copy {@code cache/} — so in a cloned home
+     * those mirrors are the only way the tool runs at all, the remap below
+     * would name a venv that is not there, and this repair must not fire.
+     * It cannot: the detector does not raise the finding, and the postcondition
+     * would refuse the write even if it did.
+     *
+     * <p>Order is delete-then-write because a symlink and a regular file cannot
+     * occupy one name; the content is computed and CHECKED first, so a refusal
+     * happens before anything is removed.
+     */
+    private static void materializeLocalShim(Path link, Path store) throws IOException {
+        // THE ENTRY RULE, not the write rule. `checkWrite` resolves the LEAF,
+        // and this leaf is by definition in another home -- so the write gate
+        // refused every one of these before the first byte was computed. That
+        // is the container-versus-entry distinction WriteConfinement records,
+        // and its own javadoc names this case: "a sanctioned mirror shim, which
+        // lives inside the home and points out of it, is not caught."
+        // `requireInside` resolves the parent and re-appends the name, which is
+        // what replacing a symlink ENTRY actually touches.
+        WriteConfinement.requireInside(link, store, WHAT);
+        Path foreign = HomeCloner.foreignHomeReachedBy(link, Fs.realOrNormalized(store));
+        if (foreign == null) throw new IOException(link + " no longer reaches another home");
+        Path target = Fs.realOrNormalized(link);
+        // The rewrite itself lives in HomeCloner beside the detector, because
+        // the CLONE has to do the same thing at creation time and two
+        // implementations of "remap this shim into this home" would drift.
+        String replaced = HomeCloner.mirrorRewrittenInto(link, foreign, store);
+        // THE SAME POSTCONDITION the text rewrite carries, for the same reason:
+        // I am the writer, so I verify what I wrote, and `home verify` cannot
+        // see a missing path under skills/.
+        Set<String> broken = missingPathsUnderHome(replaced, store);
+        if (!broken.isEmpty()) {
+            throw new IOException("refusing the rewrite: it would leave " + link + " naming "
+                    + broken.size() + " path(s) under this home that do not exist ("
+                    + broken.iterator().next() + ")");
+        }
+        boolean executable = Files.isExecutable(target);
+        Files.delete(link);
+        Files.writeString(link, replaced, StandardCharsets.UTF_8);
+        if (executable) link.toFile().setExecutable(true);
+    }
+
     private static void rewrite(Path file, Path store, Finding finding) throws IOException {
         WriteConfinement.checkWrite(file, WHAT);
         String text = Files.readString(file, StandardCharsets.UTF_8);

@@ -441,6 +441,59 @@ separate home, and the child-home record names this home as its own parent.
 `project resolve` says so and proceeds. `--allow-same-home` is still accepted
 and is no longer consulted; a page telling you to pass it is out of date.
 
+### Launching an agent into a home: config is isolated, the login is shared
+
+`bin/launch/claude` points the agent's `CLAUDE_CONFIG_DIR` at the home's own
+`.claude` — skills, settings, projects, MCP servers, all of it. It also exports
+
+```
+CLAUDE_SECURESTORAGE_CONFIG_DIR=
+```
+
+an **empty value**, which is what tells the Claude CLI to read credentials from
+the slot the operator's own logins already use. Without it, redirecting
+`CLAUDE_CONFIG_DIR` also silently renames the credential slot — the keychain
+service name on macOS, the credentials file elsewhere — and the agent starts,
+prints `Not logged in · Please run /login`, and exits 0 having done nothing.
+
+**The empty value is deliberate and must not be "fixed" to a path.** Only an
+empty value selects the unsuffixed slot. Naming the operator's config directory
+explicitly hashes that path into the slot name and asks for one that has never
+been written, which fails exactly as an unset variable does.
+
+So a launched agent is isolated in everything it *reads and writes* and shares
+one answer to *who is logged in*. That is the intended trade: skill-manager
+models no per-home login, and a per-home credential slot would mean an
+interactive `/login` per worktree, which the `-p` path cannot perform. A token
+refresh performed by a launched agent updates the shared slot, the same way two
+ordinary sessions share it.
+
+To give one home its own credentials instead — a service account, a different
+subscription — override the lowest-precedence default and log in once inside it:
+
+```bash
+skill-manager home describe --home <store> --write \
+  --set-env CLAUDE_SECURESTORAGE_CONFIG_DIR=<homeRoot>/.claude
+```
+
+Nothing else changes; the config directory already pointed there.
+
+#### Never change the credential path of a session that is running
+
+Not the shell it was started from, not the settings files it reads. Measured on
+this repository (#263): an `apiKeyHelper` added to the project home-root's
+`.claude/settings.json` took effect in the session **already running in that
+checkout**. It lost its credentials mid-turn — and could not undo the edit,
+because undoing it needed an API call, which needed the credentials it had just
+removed. There is no recovery from inside; the operator has to fix the file
+from another process.
+
+The rule that follows: credential wiring is a property of a launch, not of a
+live session. Set it in the environment `exec` hands a *new* child, never in a
+file a running agent re-reads. That is why this lives in the launch env and not
+in `settings.json`, and why the opt-out above is written to a descriptor that is
+read at launch.
+
 ### One symptom worth recognising: a `skill-manager` that refuses to run
 
 ```
@@ -460,6 +513,65 @@ expands that same variable, so it re-execs itself forever. It surfaces most
 often through a wrapper script that resolves its CLI off `PATH` and then runs
 it under a `SKILL_MANAGER_HOME` you set, which is how the same command can
 have worked yesterday and refuse today.
+
+## Migrating A Home That Runs Another Home's Copy
+
+A home can hold its own copy of a unit and still run the one above it. The
+symptom is the one that wastes an afternoon: you edit a skill in the home you
+are working in, nothing changes, and every check says the home is fine.
+
+The cause is the entry point, not the skill. `<home>/skills/<unit>/` was
+cloned correctly; `<home>/bin/cli/<tool>` is a **symlink into the parent** that
+the clone copied along with everything else. The local copy sits unused.
+
+### Find out
+
+```bash
+skill-manager home repair --home <home>
+```
+
+A home with the shape reports `PARENT_SHIM_SHADOWS_LOCAL_COPY`, naming the
+entry, what it runs, and the copy it is bypassing. `home verify` will **not**
+tell you: every path resolves, so a home in this state is "valid".
+
+### Fix it
+
+```bash
+skill-manager home repair --home <home> --fix
+```
+
+That writes this home's own shim — the parent's command line with each path
+remapped into this home — and only where the home already holds every path
+that entry runs. The tool keeps working across the change; it just runs the
+local copy afterwards.
+
+### When it refuses, that is the right answer
+
+Some mirrors **must** stay. `deploy-helm`'s entries exec a per-unit cache venv:
+
+```
+exec <home>/cache/skill-script-deploy-helm-computeq/venv/bin/computeq
+```
+
+and `home clone` deliberately does not copy `cache/`, `venvs/`, `tools/` or
+`npm/`. So a cloned home holds `skills/deploy-helm` and not the venv that entry
+runs, and the mirror into the parent is **the only way that tool runs at all**.
+Rewriting it would name a venv that is not there and turn a working tool into
+one that resolves nowhere. `home repair` does not raise those, and would refuse
+the write if it did.
+
+Provision the tool in the home first if you want it local; until then the
+mirror is correct.
+
+### New homes do not need this
+
+Homes created by `home clone` from **0.25.2** onward get their own shims
+wherever they can run them, so the shape is not inherited any more. Migration
+is a one-time pass over homes that already exist, and it is **per project**:
+each repository migrates its own homes and its own worktrees. Nothing fans out
+across the machine, and a home belonging to another project is that project's
+to fix.
+
 
 ## Cleanup
 

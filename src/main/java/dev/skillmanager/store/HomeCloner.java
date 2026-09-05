@@ -637,6 +637,13 @@ public final class HomeCloner {
         HomeProvenance.recordDescent(src, dst);
         declareArtifacts(src, dst, deferredTrees);
         List<String> coldShims = writeColdShims(dst);
+        // #289, at the moment the home is made rather than the moment somebody
+        // notices. A copy inherits its parent's bin/cli mirrors AND its own
+        // skills/, so it starts life holding a copy it does not run. Done after
+        // the cold pass (which claims the entries whose tree is absent) and
+        // before rebaselineDrift, so the drift baseline describes the bytes the
+        // home actually ends up with.
+        warmLocalShims(dst);
         rebaselineDrift(new SkillStore(dst));
 
         Verification verification = verifyRoots(src, dst, strict);
@@ -2111,6 +2118,177 @@ public final class HomeCloner {
      *             platform-separated — it decides whether the sanctioned
      *             child-home shim exception can apply at all
      */
+    /**
+     * The copy THIS home holds that a sanctioned parent link is shadowing, or
+     * null.
+     *
+     * <h2>The fourth condition {@link #sanctionedParentShim} does not ask</h2>
+     *
+     * <p>That method sanctions a mirror on three structural facts: it is a shim
+     * entry, it names the same entry in the other home, and that home is an
+     * ancestor. All three are true of a link that is <em>also</em> a defect,
+     * because none of them asks the question
+     * {@code GOAL-a-home-runs-its-own-copy} is about: <b>does this home hold its
+     * own copy of the program that entry runs?</b> When it does, the local copy
+     * sits unused, an edit to it changes nothing, and the home runs another
+     * home's skill — which is the epic's whole subject.
+     *
+     * <p>So this is deliberately NOT folded into {@code unsanctionedForeignHome}.
+     * That method gates {@code clone}, {@code sync} and the installers, and
+     * HIS-7 records what happened the last time the sanction narrowed underneath
+     * them: {@code bootstrap-home.sh} failed and neither {@code wt new} nor
+     * {@code skt ticket new} could produce a ticket home at all. Sharing a
+     * parent's provisioned toolchain stays legal here; what becomes REPORTABLE
+     * is shadowing a copy this home already has.
+     *
+     * <h2>Scoped to {@code skills/}, and that is the metric's own boundary</h2>
+     *
+     * <p>A shim reaching the parent's {@code venvs/} or {@code tools/} is
+     * sharing a provisioned toolchain, which {@link PackageCaches} makes
+     * deliberate. The goal's walker counts those crossings separately and does
+     * not charge them; charging them here would make the two readers disagree
+     * again, one directory over, and would recommend breaking sharing that is
+     * intended.
+     *
+     * @param link    the shim entry in this home, a symlink
+     * @param foreign the home it mirrors
+     * @param homeRoot this home
+     */
+    public static Path shadowedLocalCopy(Path link, Path foreign, Path homeRoot) {
+        if (link == null || foreign == null || homeRoot == null) return null;
+        Path target = Fs.realOrNormalized(link);
+        if (!Files.isRegularFile(target)) return null;
+        Path foreignReal = Fs.realOrNormalized(foreign);
+        Path root = Fs.realOrNormalized(homeRoot);
+        if (foreignReal.equals(root)) return null;
+        for (String token : HomeRepair.absolutePathTokens(target)) {
+            Path candidate;
+            try {
+                candidate = Path.of(token);
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            Path rel;
+            try {
+                rel = foreignReal.relativize(Fs.realOrNormalized(candidate));
+            } catch (IllegalArgumentException notUnderIt) {
+                continue;
+            }
+            String spelled = rel.toString().replace(java.io.File.separatorChar, '/');
+            if (spelled.isEmpty() || spelled.startsWith("..")) continue;
+            if (!spelled.startsWith("skills/")) continue;
+            Path mine = root.resolve(rel);
+            if (Files.exists(mine, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return mine;
+        }
+        return null;
+    }
+
+    /**
+     * The parent's shim command line, with every path it names remapped into
+     * {@code homeRoot} — or an {@link IOException} naming the first path this
+     * home does not have.
+     *
+     * <p>One implementation, two callers: {@code home repair} materializing a
+     * shim on an existing home, and {@link #cloneHome} making sure a NEW home
+     * never carries the shape in the first place. They agreed by accident
+     * before this existed, which in this codebase is the same as not agreeing.
+     *
+     * <p>Longest token first, so replacing a prefix can never eat a longer path
+     * that shares it — {@code <F>/skills} rewritten before
+     * {@code <F>/skills/foo/run} is the measured way a shim that ran becomes a
+     * shim that resolves nowhere.
+     *
+     * <p>Refuses rather than guessing when a named path is missing here. That
+     * refusal is the whole safety property: {@code deploy-helm}'s entries exec
+     * a per-unit cache venv and {@code home clone} does not copy {@code cache/},
+     * so remapping one would name a venv that is not there and take away a tool
+     * that works.
+     */
+    public static String mirrorRewrittenInto(Path link, Path foreign, Path homeRoot)
+            throws IOException {
+        Path target = Fs.realOrNormalized(link);
+        if (!Files.isRegularFile(target)) {
+            throw new IOException("the mirrored entry is not a regular file: " + target);
+        }
+        String text = Files.readString(target, java.nio.charset.StandardCharsets.UTF_8);
+        Path foreignReal = Fs.realOrNormalized(foreign);
+        Path mine = Fs.realOrNormalized(homeRoot);
+        List<String> tokens = new ArrayList<>(HomeRepair.absolutePathTokens(target));
+        tokens.sort(java.util.Comparator.comparingInt(String::length).reversed());
+        String replaced = text;
+        for (String token : tokens) {
+            Path candidate;
+            try {
+                candidate = Path.of(token);
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            Path rel;
+            try {
+                rel = foreignReal.relativize(Fs.realOrNormalized(candidate));
+            } catch (IllegalArgumentException notUnderIt) {
+                continue;
+            }
+            if (rel.toString().isEmpty() || rel.startsWith("..")) continue;
+            Path here = mine.resolve(rel);
+            if (!Files.exists(here)) {
+                throw new IOException("this home has no " + here + ", so the shim would resolve "
+                        + "nowhere — the mirror is the only way that tool runs here");
+            }
+            replaced = HomeRepair.replaceWholePath(replaced, candidate.toString(), here.toString());
+        }
+        if (replaced.equals(text)) {
+            throw new IOException("nothing in " + target + " names a path under " + foreign);
+        }
+        return replaced;
+    }
+
+    /**
+     * Give the COPY its own shims wherever it can run them, so a home created
+     * by this build never starts life shadowing a copy it already holds.
+     *
+     * <p>The sibling of {@link #writeColdShims}, and the opposite case: that
+     * one replaces an entry whose tree is ABSENT with a shim that explains
+     * itself; this one replaces a mirror whose tree is PRESENT with a shim that
+     * runs it. Both walk the copy's shim directories once the clone's own
+     * records exist, and neither touches an entry the other claims.
+     *
+     * <p>Best effort by construction. A mirror that cannot be rewritten is
+     * exactly the one that must stay — see {@link #mirrorRewrittenInto} — so a
+     * refusal here is the normal case for an unprovisioned tool, not an error,
+     * and the clone continues.
+     *
+     * @return the entries given local shims
+     */
+    private static List<String> warmLocalShims(Path dst) {
+        List<String> warmed = new ArrayList<>();
+        try {
+            for (ShimDirScan scan : scanShimDirs(dst)) {
+                for (ShadowedShim shadow : scan.shadowed()) {
+                    Path link = dst.resolve(shadow.rel());
+                    try {
+                        Path foreign = foreignHomeReachedBy(link, realOrSame(dst));
+                        if (foreign == null) continue;
+                        String rewritten = mirrorRewrittenInto(link, foreign, dst);
+                        boolean executable = Files.isExecutable(Fs.realOrNormalized(link));
+                        Files.delete(link);
+                        Files.writeString(link, rewritten,
+                                java.nio.charset.StandardCharsets.UTF_8);
+                        if (executable) link.toFile().setExecutable(true);
+                        warmed.add(shadow.rel());
+                    } catch (IOException cannot) {
+                        Log.detail("clone: %s stays a mirror of its parent (%s)",
+                                shadow.rel(), cannot.getMessage());
+                    }
+                }
+            }
+        } catch (RuntimeException e) {
+            Log.warn("clone: could not give %s its own shims (%s) — it will run its parent's "
+                    + "copies until `skill-manager home repair --fix`", dst, e.getMessage());
+        }
+        return warmed;
+    }
+
     public static Path unsanctionedForeignHome(String rel, Path link, Path homeRoot) {
         if (rel == null || link == null || homeRoot == null) return null;
         Path root = homeRoot.toAbsolutePath().normalize();
@@ -2153,14 +2331,44 @@ public final class HomeCloner {
      */
     public record ShimDirScan(String dir, Path outwardLink, int examined,
                               List<ForeignShimPath> foreign,
-                              List<ForeignShimPath> foreignLinks) {
+                              List<ForeignShimPath> foreignLinks,
+                              List<ShadowedShim> shadowed) {
 
         /** The pre-DEF-115 shape: no links reported. */
         public ShimDirScan(String dir, Path outwardLink, int examined,
                            List<ForeignShimPath> foreign) {
-            this(dir, outwardLink, examined, foreign, List.of());
+            this(dir, outwardLink, examined, foreign, List.of(), List.of());
+        }
+
+        /** The pre-#289 shape: links reported, shadowing not yet asked about. */
+        public ShimDirScan(String dir, Path outwardLink, int examined,
+                           List<ForeignShimPath> foreign,
+                           List<ForeignShimPath> foreignLinks) {
+            this(dir, outwardLink, examined, foreign, foreignLinks, List.of());
         }
     }
+
+    /**
+     * A SANCTIONED mirror of a parent's shim that this home nonetheless should
+     * not be running: the home holds its own copy of the skill the parent's
+     * entry executes.
+     *
+     * <p>Separate from {@link ForeignShimPath} because the verdict is different
+     * in kind. A {@code ForeignShimPath} is a leak — a path that should never
+     * have been reachable. This is not a leak: every structural condition for
+     * the mirror is satisfied and the link is exactly what
+     * {@code ChildHomeMaterializer} was asked to write. What makes it a finding
+     * is a fact about THIS home that appeared later — it acquired its own copy
+     * — so the same bytes are legitimate in a home without one and a defect in
+     * a home with one. Merging the two would force one verdict on two
+     * questions, which is the disagreement #289 is about.
+     *
+     * @param rel    the shim entry's location inside this home
+     * @param target the parent entry the link resolves to
+     * @param runs   the path in the parent home that entry executes
+     * @param mine   this home's own copy, which the link bypasses
+     */
+    public record ShadowedShim(String rel, Path target, Path runs, Path mine) {}
 
     /**
      * Walk this home's shim directories and report every foreign path their
@@ -2235,8 +2443,32 @@ public final class HomeCloner {
                     foreignLinks.add(new ForeignShimPath(rel, link, outsider));
                 }
             }
+            // #289. A link the verdict above SANCTIONS is still a finding when
+            // this home holds its own copy of what it runs -- the fourth
+            // condition `sanctionedParentShim` does not ask. Collected here,
+            // in the one walk, so `home repair` and the goal's walker cannot
+            // answer this differently; asked only of links the verdict let
+            // through, so nothing is reported twice.
+            List<ShadowedShim> shadowed = new ArrayList<>();
+            for (Path link : links) {
+                String rel = relativeTo(root, link);
+                if (!isShimEntry(rel)) continue;
+                if (unsanctionedForeignHome(rel, link, root) != null) continue;
+                Path foreignHome = foreignHomeReachedBy(link, realOrSame(root));
+                if (foreignHome == null) continue;
+                Path mine = shadowedLocalCopy(link, foreignHome, root);
+                if (mine == null) continue;
+                Path target = Fs.realOrNormalized(link);
+                // The parent-side counterpart of `mine`: same home-relative
+                // spelling, the other home. Derived rather than re-extracted so
+                // the pair reported is provably the same relative path.
+                Path runs = Fs.realOrNormalized(foreignHome)
+                        .resolve(Fs.realOrNormalized(root).relativize(mine));
+                shadowed.add(new ShadowedShim(rel, target, runs, mine));
+            }
             out.add(new ShimDirScan(dir, null, files.size() + links.size(),
-                    List.copyOf(foreign), List.copyOf(foreignLinks)));
+                    List.copyOf(foreign), List.copyOf(foreignLinks),
+                    List.copyOf(shadowed)));
         }
         return List.copyOf(out);
     }
@@ -2555,6 +2787,34 @@ public final class HomeCloner {
      * is read — which is how the two shim shapes a home actually holds (a
      * generated wrapper and a relative symlink) are both covered by one call.
      *
+     * <h2>Home-RELATIVE references are read too, and HBR-1 is why</h2>
+     *
+     * <p>{@link ShimHomeContract} requires a generated wrapper to derive its
+     * home from its own location and to name what it runs <em>relative</em> to
+     * that home — {@code rel="cache/skill-script-x-y/venv/bin/y"} beside
+     * {@code exec "$home/$rel"} — precisely so that copying the wrapper into
+     * another home stops sending it back to this one. A wrapper that obeys
+     * that rule contains no absolute home path, so a scanner that only knows
+     * absolute paths reads it as running out of NOTHING.
+     *
+     * <p>That is not a cosmetic gap. This edge is the only evidence a home has
+     * of which install wrote which provisioned tree
+     * ({@code ArtifactBackfill.provisionedTrees}), and the uninstall prune
+     * that closed skill-manager#104 is built on it. Reading only absolute
+     * paths would therefore have made the shim contract <em>un-adoptable</em>:
+     * every installer that complied would have its {@code cache/} tree go
+     * unowned and outlive its unit again, which is #104 reopened for exactly
+     * the units that did the right thing.
+     *
+     * <p>The relative scan is deliberately narrower than the absolute one. It
+     * only accepts a token whose first segment is one of
+     * {@link #PROVISIONABLE_ROOTS} <em>and</em> that resolves to something
+     * {@code dstRoot} actually holds. Existence is not a nicety here: an
+     * unanchored token like {@code tools/build} is a plausible fragment of
+     * ordinary prose or of an unrelated path, and {@code producersOf} already
+     * discards references that resolve to nothing, so requiring it costs no
+     * real edge and removes the false ones.
+     *
      * <p>Returns absolute path strings, matching {@link #missingReferencesIn}.
      * The caller makes them home-relative, because only the caller knows
      * whether it is allowed to write one down.
@@ -2583,10 +2843,72 @@ public final class HomeCloner {
             if (Files.size(file) > WHOLE_FILE_LIMIT) return List.of();
             byte[] content = Files.readAllBytes(file);
             if (looksBinary(content)) return List.of();
-            return destReferences(content, dstRoot.toAbsolutePath().normalize());
+            Path root = dstRoot.toAbsolutePath().normalize();
+            String text = new String(content, StandardCharsets.UTF_8);
+            List<String> found = new ArrayList<>(destReferences(content, root));
+            for (String relative : relativeReferences(text, root)) {
+                if (!found.contains(relative)) found.add(relative);
+            }
+            return List.copyOf(found);
         } catch (IOException e) {
             return List.of();
         }
+    }
+
+    /**
+     * Every home-relative path under a {@link #PROVISIONABLE_ROOTS} root that
+     * {@code text} names and {@code root} actually holds, returned absolute.
+     *
+     * <p>The shape {@link ShimHomeContract} asks generated wrappers to use.
+     * See {@link #referencesIn} for why this is read at all.
+     */
+    private static List<String> relativeReferences(String text, Path root) {
+        String canonical = root.toString();
+        List<String> found = new ArrayList<>();
+        // Sorted, because PROVISIONABLE_ROOTS is a Set and a caller reading
+        // these as a list should not see the order change between runs.
+        for (String provisionable : PROVISIONABLE_ROOTS.stream().sorted().toList()) {
+            String needle = provisionable + "/";
+            for (int at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + 1)) {
+                // Two guards, and they are not the same guard twice.
+                //
+                // The first is a token boundary, so `mycache/x` is not read as
+                // this home's `cache/x`. `/` is allowed as a boundary on
+                // purpose: `"$home/cache/x"` is a spelling the contract invites
+                // and it must be recoverable.
+                //
+                // The second is what allowing `/` costs. `"/other/home/cache/x"`
+                // ALSO has `/` before its `cache/`, and reading it as this
+                // home's `cache/x` would credit a tree to a shim that runs
+                // somebody else's — the exact false edge existence-gating
+                // cannot catch, because both homes hold that tree. So when the
+                // boundary is a slash, walk back to the start of the token: if
+                // it begins with `/` this is an absolute path, which
+                // destReferences already reads correctly and this scan must not
+                // read a second time.
+                String delimiters = "\"' \n\r\t:;,()=$";
+                char before = at == 0 ? '\0' : text.charAt(at - 1);
+                if (at > 0 && before != '/' && delimiters.indexOf(before) < 0) continue;
+                if (before == '/') {
+                    int start = at;
+                    while (start > 0 && delimiters.indexOf(text.charAt(start - 1)) < 0) start--;
+                    if (text.charAt(start) == '/') continue;
+                }
+                int end = at;
+                while (end < text.length() && "\"'\n\r\t :;,)".indexOf(text.charAt(end)) < 0) end++;
+                String candidate = text.substring(at, end);
+                while (candidate.endsWith(".") || candidate.endsWith("/")) {
+                    candidate = candidate.substring(0, candidate.length() - 1);
+                }
+                if (candidate.length() <= needle.length()) continue;
+                if (candidate.indexOf('$') >= 0 || candidate.indexOf('*') >= 0) continue;
+                Path resolved = root.resolve(candidate).normalize();
+                if (!resolved.startsWith(root) || !Files.exists(resolved)) continue;
+                String absolute = canonical + "/" + candidate;
+                if (!found.contains(absolute)) found.add(absolute);
+            }
+        }
+        return found;
     }
 
     /**

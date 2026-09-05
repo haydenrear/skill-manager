@@ -1,0 +1,191 @@
+# Deferred findings — epic/home-boundary-resolution
+#
+# APPEND ONLY. A ticket agent that meets a failure case outside its declared
+# slice adds an entry here and moves on. It does not widen the ticket to fix
+# it, and it does not chase a goal metric by expanding scope.
+#
+# Policy: mode batch, blocking escalate, budget 5 findings per ticket.
+# The epic agent triages this file with the owner at each wave review.
+#
+# Schema per entry:
+#   id, found_by, found_at, severity (blocking|major|minor), summary,
+#   reproduction, why_deferred, candidate_owner, status (open|triaged|closed)
+
+version: 1
+findings:
+  - id: DEF-HBR-001
+    found_by: HBR-0 (the shim-generator contract sweep)
+    found_at: "2026-08-29"
+    severity: minor
+    summary: >
+      skill-dev-skill/skill-scripts/install.sh is a FOURTH shim generator in
+      this tree and the contract sweep does not cover it. It does not write a
+      wrapper itself -- it delegates to `uv tool install "$SKILL_DIR"` with
+      UV_TOOL_BIN_DIR/UV_TOOL_DIR pointed at this home -- so the bytes at
+      bin/cli/skill-dev are uv's, and uv's console-script wrapper freezes the
+      absolute path of the venv it installed into. That is the same freeze
+      ShimHomeContract.FOREIGN_HOME_PATH names, produced by a generator this
+      repository does not own.
+    reproduction: >
+      The sweep in src/test/java/dev/skillmanager/store/ShimHomeContractTest.java
+      runs each installer in a temp home and relocates its output. Adding this
+      one needs `uv` on PATH and a network fetch for the interpreter, so the
+      case would be neither hermetic nor offline-runnable, which is why the
+      class javadoc lists it as not covered rather than skipping it silently.
+    why_deferred: >
+      Outside HBR-0's slice (measurement + the contract test; NO generator is
+      changed here) and outside HBR-1's (the SkillScriptBackend contract and
+      the three in-tree instances it names). Fixing it is not an installer edit
+      at all -- it is a question about whether a uv tool install can be made
+      relocatable, or whether the backend must post-process what uv writes.
+    candidate_owner: HBR-1 or a follow-on ticket
+    status: open
+
+  - id: DEF-HBR-002
+    found_by: HBR-0 (reading the seam the ticket names)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      HomeCloner.sanctionedParentShim sanctions a foreign crossing on SHAPE
+      alone -- same bin/cli/<name> spelling on both sides, one resolved
+      artifact, and ancestor evidence -- and never asks whether this home holds
+      its own copy of the unit. That is why `home verify` exits 0 on 16 of the
+      19 pairs measured for GOAL-a-home-runs-its-own-copy: every one of them is
+      a parent-shaped symlink over a local copy that is sitting unused.
+      ShimHomeContract states the missing condition and HBR-0 stops there.
+    reproduction: >
+      python3 scripts/measure_goal_home_runs_its_own_copy.py  (19 pairs, 16 via
+      symlink, this_home_has_its_own true on all of them), then
+      `skill-manager home verify --home <one of those homes>` -> exit 0.
+    why_deferred: >
+      Changing the gate changes what `home verify` and `home repair` refuse,
+      which is a production behaviour change in a seam HBR-0 is explicitly not
+      allowed to touch ("measurement + the contract test. NO generator is
+      changed here"). The contract now names the disagreement in one place so
+      the ticket that closes it has a single reading to move to.
+    candidate_owner: HBR-5 (the goal's decider) via HBR-1
+    status: open
+
+  - id: DEF-HBR-003
+    found_by: HBR-1 (running the graphs its change could plausibly touch)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      The artifact-dag graph is RED on the epic branch, before this ticket.
+      Node `uninstall.prunes.the.subgraph` fails two of its assertions:
+      the_census_names_nothing_the_removed_unit_owned=false and
+      the_home_is_byte_comparable_to_before_the_install=false. The removed
+      unit's six artifact ids -- unit-store, cli-shim, provisioned-tree and
+      three projections -- still appear in the census after `uninstall` exits
+      0, and artifacts.lock.toml is left behind (onlyAfter=[F
+      artifacts.lock.toml 3745], onlyBefore=[]). Everything the node checks
+      about the DISK passes, including the provisioned tree being gone; it is
+      the LEDGER that has not forgotten.
+    reproduction: >
+      python skills/test_graph/scripts/run.py artifact-dag  -> BUILD FAILED.
+      Confirmed pre-existing by stashing feature/hbr-1's whole diff and
+      re-running on 2ed23af: byte-identical failure message, same six
+      survivingIds. It is not caused by this ticket's change to
+      HomeCloner.referencesIn, and this ticket did not make it worse.
+    why_deferred: >
+      Outside HBR-1's slice (the SkillScriptBackend contract and the three
+      in-tree instances that teach the freeze) and outside its declared graphs
+      (checkout-home, project-child-home). It is a ledger-forgetting defect in
+      the ARTI line, not a home-boundary one, and repairing it would mean
+      changing what `uninstall` writes -- a production behaviour change nobody
+      in this epic has been scoped to review.
+    candidate_owner: an ARTI follow-on; HBR-5 should know the graph is red
+      before it reads any artifact evidence
+    status: open
+
+  - id: DEF-HBR-004
+    found_by: HBR-1 (fixing the in-tree instance the ticket named)
+    found_at: "2026-08-29"
+    severity: major
+    summary: >
+      skill-publisher-skill/ in this repository is a VENDORED copy, refreshed
+      from the leaf repo's main ("chore: refresh vendored skill copies from
+      merged leaf mains"). HBR-1 fixed the vendored
+      skill-scripts/install-skt.sh -- which is the copy the contract test reads
+      and the copy the ticket named -- but the authoritative one lives in
+      haydenrear/skill-publisher-skill and is unchanged. Until the same edit
+      lands there, the next vendor refresh reverts this fix and the contract
+      test goes red again, correctly, on a change nobody made on purpose.
+    reproduction: >
+      git log --oneline -- skill-publisher-skill/skill-scripts/install-skt.sh
+      shows the vendoring commits. Diff this repo's copy against the leaf repo
+      after this PR merges: only this one differs.
+    why_deferred: >
+      A different repository, and this ticket stops at PR open against
+      epic/home-boundary-resolution -- it cannot open a leaf PR. HBR-3 already
+      lands in skill-publisher-skill for skt's error rendering, so the two
+      edits can travel together; whoever takes it should also decide whether
+      the plugin version is bumped, which HBR-1 deliberately did not do to a
+      vendored file.
+    candidate_owner: HBR-3 (already working in that repo) or the epic owner's
+      fan-out at wave close
+    status: open
+
+  - id: DEF-HBR-005
+    found_by: HBR-4 (fixing the credential axis for Claude)
+    found_at: "2026-08-30"
+    severity: major
+    summary: >
+      codex and gemini have the SAME defect and it is not fixed. `exec`
+      redirects CODEX_HOME and GEMINI_HOME into the home root exactly as it
+      redirects CLAUDE_CONFIG_DIR, and both agents keep their credentials
+      INSIDE that directory -- ~/.codex/auth.json, ~/.gemini's account state --
+      so a worktree home's bin/launch/codex and bin/launch/gemini launch an
+      unauthenticated agent for the same reason bin/launch/claude did. The
+      asymmetry that made Claude tractable does not carry over: the Claude CLI
+      publishes CLAUDE_SECURESTORAGE_CONFIG_DIR, which separates "where config
+      lives" from "where credentials live", and neither codex nor gemini
+      exposes an equivalent.
+    reproduction: >
+      `skill-manager exec --home <a fresh worktree home> --print-env` shows
+      CODEX_HOME=<homeRoot>/.codex and GEMINI_HOME=<homeRoot>/.gemini; both are
+      empty directories, while the operator's credentials are files under
+      ~/.codex and ~/.gemini. Note this compounds a finding already recorded on
+      the epic: SUB-3 measured that the unredirected-home REFUSAL is
+      Claude-only (ExecCommand.java:139 is the sole call site), so codex and
+      gemini are neither guarded nor credentialed -- they fail quietly in both
+      directions.
+    why_deferred: >
+      HBR-4's slice is "the credential axis of `exec` only" and its goal is
+      measured on `bin/launch/claude -p`. Extending it would mean inventing a
+      mechanism per agent rather than using one the vendor already provides,
+      and the only shapes available -- copying or symlinking auth.json into
+      each home -- move actual credential MATERIAL between directories, which
+      is a materially riskier decision than exporting a variable and wants its
+      own review. Widening this ticket to make that call would be exactly the
+      adjacency the epic's deferment_policy forbids.
+    candidate_owner: a follow-on ticket, scoped with the owner; HBR-5 should
+      read GOAL-an-agent-in-its-own-home-can-work as decided for Claude only
+    status: open
+
+  - id: DEF-HBR-006
+    found_by: HBR-4 (deciding what its own fix rests on)
+    found_at: "2026-08-30"
+    severity: minor
+    summary: >
+      The fix rests on an env var of a third-party binary that this repository
+      does not control and no test can pin. CLAUDE_SECURESTORAGE_CONFIG_DIR and
+      its empty-string convention were read out of Claude Code 2.1.251 and
+      confirmed by measurement; if a future release drops or renames it, every
+      worktree launch returns to `Not logged in` and the repository's own suite
+      stays green, because the suite asserts the launch env's BYTES and cannot
+      assert that an agent authenticated. That gap is deliberate and documented
+      on LaunchCredentialAxisTest -- a unit test that shelled out to the real
+      binary would be red for reasons unrelated to this code -- but it means
+      the only instrument that can catch the regression is the graph node.
+    reproduction: >
+      Not a defect to reproduce; a coverage boundary. The node HBR-5 declares
+      for this goal ("bootstrap a worktree home, launch through the shim,
+      assert a non-empty result and a non-zero churn") is the assertion that
+      would go red, and it does not exist yet.
+    why_deferred: >
+      Building it is HBR-5's declared harness, not HBR-4's slice, and it needs
+      a live login on the machine running it -- a decision about what the graph
+      may assume, which the evaluation ticket owns.
+    candidate_owner: HBR-5
+    status: open

@@ -1,0 +1,62 @@
+HBR-0 local signal — "the contract test is RED against today's tree, and names
+each offending generator."
+
+command : jbang RunTests.java        (2026-08-29, worktree of feature/hbr-0)
+suite   : 1436 passed, 1 failed.
+          1436 is the count before this change too, so the single failure is
+          this guard and nothing regressed.
+test    : src/test/java/dev/skillmanager/store/ShimHomeContractTest.java
+contract: src/main/java/dev/skillmanager/store/ShimHomeContract.java
+
+It asserts on BYTES, never on behaviour. Each generator is run against one
+temporary home and the bytes it produced are then placed in a SECOND temporary
+home that holds its own copy of the same unit. A conformant generator derives
+its home from the shim's own location, so relocating it changes what it names;
+a frozen one still names the first home. Nothing is executed and nothing is
+compared by output — which is required here, because the measured defect
+(project home's tla-spec-dev shim execing the root home's byte-identical copy)
+makes every behavioural assertion pass over it.
+
+----------------------------------------------------------------------
+== ShimHomeContractTest (1 cases)
+  [FAIL] every shim generator in this tree resolves its unit from the home the shim lives in: a shim resolves its unit's path from the home the shim lives in: prefer this home's copy, fall back to the pinned one
+
+2 of 6 shim generators in this tree break it, in 2 place(s) (1 charged to GOAL-a-home-runs-its-own-copy):
+
+  - skill-publisher-skill/skill-scripts/install-skt.sh -> bin/cli/skt: FOREIGN_UNIT_COPY (skills/skt)
+      names  /var/folders/.../hbr0-origin-1520711822685878088/.skill-manager/skills/skt/src/skt/cli.py
+      which is in the home at /private/var/folders/.../hbr0-origin-1520711822685878088/.skill-manager
+      CHARGED to GOAL-a-home-runs-its-own-copy
+  - test_graph/fixtures/skill-script-skill/skill-scripts/install.sh -> bin/cli/skill-script-touched: FOREIGN_HOME_PATH
+      names  /var/folders/.../hbr0-origin-.../.skill-manager/cache/skill-script-skill-script-skill-skill-script-touched/venv/bin/skill-script-touched
+      which is in the home at /private/var/folders/.../hbr0-origin-.../.skill-manager
+      not charged (counted separately, as the baseline does)
+
+conformant generators:
+  - LauncherShims.script (bin/launch template) -> [bin/launch/claude]
+  - LauncherShims.cliScript (the CLI pin) -> [bin/cli/skill-manager]
+  - ColdArtifactShim.write -> [bin/cli/cold-tool]
+  - test_graph/fixtures/skill-script-umbrella-skill/inner/skill-scripts/install.sh -> [bin/cli/skill-script-transitive-touched]
+
+Each offender resolved the path once, at install time, against the home that happened
+to be installing, and froze the answer. Relocating the shim does not move it, so the
+home it lands in runs the other home's copy while holding its own.
+----------------------------------------------------------------------
+(temp paths elided to /var/folders/... — the run's own output carries them in full)
+
+WHY THE FOUR GREEN CELLS MATTER. A rule no writer in the tree satisfies reads
+as an unreasonable rule. All three Java writers derive the home from the shim's
+own location and pass unchanged; the umbrella fixture names no path at all. The
+rule is satisfiable today, and HBR-1 has a worked example of what satisfying it
+looks like.
+
+WHAT IS NOT COVERED, said rather than skipped silently:
+  skill-dev-skill/skill-scripts/install.sh delegates to `uv tool install`, so
+  the wrapper bytes are uv's and reproducing them needs uv plus a network.
+  Recorded as DEF-HBR-001 in ../../deferred/backlog.yaml.
+
+RELATION TO THE BASELINE (results/epic-home-boundary-resolution/goals/
+GOAL-a-home-runs-its-own-copy/baseline-2026-08-29.json): 19 unsanctioned pairs
+over 27 homes and 194 shims. The test does not re-measure that — it is a
+hermetic guard over the GENERATORS, so it stays true on a machine with no homes
+on it. HBR-5's harness is what re-reads the number.

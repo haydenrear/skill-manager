@@ -691,6 +691,62 @@ public final class LauncherShimsTest {
                     "the pin ran, and --home is left to the CLI to honour");
         });
 
+        suite.test("a --help request is answered, not refused -- and the answer is the same "
+                + "one --home gets", () -> {
+            // HBR-2. The refusal was answering a question that was not about a
+            // home. `bootstrap-home.sh` picks its CLI by asking every candidate
+            // `home clone --help` and matching `--to`; against another home's
+            // shim that probe got the refusal, and — because the probe is a
+            // PIPELINE, so the candidate's status is grep's — read it as
+            // `(too old -- \`home clone\` is missing)` about a build that has
+            // the command. 0, 2, 79 and 127 all arrive as "no `--to`".
+            //
+            // The fix is on THIS side on purpose. bootstrap-home.sh is a skill
+            // file: 31 live copies of it were counted on the author's machine,
+            // the defective probe byte-identical in every one, and none of them
+            // changes until its home syncs the unit. Every one of them shells
+            // out to the CLI, so the shim answering truthfully reaches all of
+            // them at once.
+            //
+            // TWO assertions, because either alone passes over a wrong fix: the
+            // probe must SUCCEED, and it must succeed with the SAME BYTES the
+            // sanctioned `--home` escape produces. If they ever differ, the
+            // exemption is withholding something and is no longer free.
+            Home home = Home.create("cli-entrypoint-help-");
+            LauncherShims.write(home.store, realCli());
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Home elsewhere = Home.create("cli-entrypoint-help-elsewhere-");
+            Map<String, String> hostile =
+                    Map.of("SKILL_MANAGER_HOME", elsewhere.store.root().toString());
+
+            Result probe = runProcess(
+                    List.of(shim.toString(), "home", "clone", "--help"), hostile);
+
+            assertEquals(0, probe.rc,
+                    "a help request names no home and edits none, so it is answered:\n"
+                            + probe.out);
+            assertContains(probe.out, "--to",
+                    "and it carries the token the capability probe actually greps for");
+
+            Result named = runProcess(
+                    List.of(shim.toString(), "home", "clone", "--help",
+                            "--home", elsewhere.store.root().toString()),
+                    hostile);
+            assertEquals(probe.out, named.out,
+                    "the home was never an input to this answer, so exempting it withholds "
+                            + "nothing");
+
+            // The guard itself is untouched. A command that CAN edit a home is
+            // still refused, and so is --version: its answer names the CLI THIS
+            // home pins, which is a fact about a home.
+            Result mutating = runProcess(List.of(shim.toString(), "sync"), hostile);
+            assertEquals(LauncherShims.HOME_MISMATCH_EXIT_CODE, mutating.rc,
+                    "a command that could edit the other home is still refused");
+            Result version = runProcess(List.of(shim.toString(), "--version"), hostile);
+            assertEquals(LauncherShims.HOME_MISMATCH_EXIT_CODE, version.rc,
+                    "--version is not exempt: it reports the pin, which is per-home");
+        });
+
         suite.test("the cli entrypoint refuses when its pin is gone, and still ignores PATH", () -> {
             // The refusal half, with a WORKING skill-manager first on PATH. The
             // old version of this case ran with nothing reachable, which is why
