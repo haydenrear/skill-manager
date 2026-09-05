@@ -73,3 +73,56 @@ findings:
     candidate_owner: OUN-1 (the addressing rule), then OUN-2 (the gate)
     status: open
 
+  - id: DEF-OUN-003
+    found_by: OUN-1 (building the addressability harness)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      With CODEX_HOME or GEMINI_HOME pointed at a Skill Manager home root, an
+      ordinary `skill-manager install` of an unrelated unit REMOVES
+      <home>/plugins/<plugin>. Exit 0, nothing in the output about it. Each
+      variable does it independently; CLAUDE_HOME does not. The bytes survive
+      under plugin-marketplace/plugins/, but the addressable root is gone.
+      Filed as issue #311.
+    reproduction: >
+      skill-manager home clone --to /tmp/probe/home
+      ls /tmp/probe/home/plugins                       # skt
+      SKILL_MANAGER_HOME=/tmp/probe/home CODEX_HOME=/tmp/probe/home \
+        skill-manager install <any-local-unit> --yes   # exits 0
+      ls /tmp/probe/home/plugins                       # empty
+    why_deferred: >
+      Outside OUN-1's slice, which is installedRoot's resolution order.
+      Reaching it means changing agent registration and probably
+      WriteConfinement. Recorded major rather than blocking because it needs a
+      misconfiguration to trigger -- but the failure mode is silent deletion
+      of a store directory reported as success, which is the same "which home
+      does this write?" class as #262 and #289 with a destructive answer.
+    candidate_owner: outside this epic; issue #311
+    status: open
+
+  - id: DEF-OUN-004
+    found_by: OUN-1 (the addressability harness reporting a fix as absent)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      jbang keys its build cache on the hash of the ENTRY script.
+      SkillManager.java rarely changes, so editing anything under
+      src/main/java leaves the cached jar in place and `./skill-manager` keeps
+      running the PREVIOUS build. RunTests.java is a different entry script,
+      so unit tests rebuild and pass while any harness or manual check driving
+      the wrapper measures the last build. Measured: OUN-1's resolver change
+      passed every unit case while the harness still reported the defect.
+    reproduction: >
+      Edit any file under src/main/java, then run ./skill-manager <cmd>:
+      the change is absent. `jbang --fresh SkillManager.java --version` once
+      re-caches under the same key and every later wrapper invocation picks
+      the new build up.
+    why_deferred: >
+      OUN-1 works around it in the one harness that drives the CLI (it
+      compares source mtimes against the newest cached jar and rebuilds when
+      stale). The general fix belongs in the wrapper -- ./skill-manager should
+      not be able to run a build older than its own sources -- and that is a
+      dev-loop change, not a resolver change.
+    candidate_owner: outside this epic; the ./skill-manager wrapper
+    status: worked_around
+

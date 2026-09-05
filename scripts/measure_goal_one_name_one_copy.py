@@ -65,12 +65,31 @@ def main() -> int:
         "live": live,
         "latent": latent,
     }
-    # `met` is the harness's verdict, and it counts LATENT pairs against the
-    # goal deliberately. A pair that becomes a defect the moment the next
-    # ticket lands is not a pair this epic gets to call clean.
-    out["met"] = not live and not latent
+    # THE GOAL HAS TWO HALVES AND THIS MEASURES ONE.
+    #
+    # Target: "0, non-vacuously, WITH THE GATE REFUSING A PLANTED COLLISION."
+    # Counting pairs answers the first clause. Nothing here installs a planted
+    # collision, so nothing here can answer the second, and OUN-2 is the
+    # ticket that builds the refusal.
+    #
+    # So the verdict is UNMEASURED, not MET, while zero pairs stand without a
+    # gate. Reporting MET would repeat exactly the mistake OUN-0 was written
+    # to catch: a number that reads as success because nothing can currently
+    # violate it. UNMEASURED is deliberately loud — the ledger prints it and
+    # exits 2 — so OUN-2 replacing this with a real probe is a visible task
+    # rather than a hardcoded `False` somebody has to remember to flip.
+    out["pairs_clean"] = not live and not latent
+    out["gate"] = {"refuses_a_planted_collision": None, "probed_by": "OUN-2"}
+    if live or latent:
+        out["met"] = False
+        print(json.dumps(out, indent=1))
+        return 1
+    out["met"] = None
+    out["why"] = ("no (home, unit-name) pair resolves to two roots, but the "
+                  "other half of this goal — an installer that REFUSES a "
+                  "planted collision — has no probe yet. OUN-2 adds it.")
     print(json.dumps(out, indent=1))
-    return 0 if out["met"] else 1
+    return 2
 
 
 if __name__ == "__main__":
