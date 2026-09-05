@@ -37,7 +37,20 @@ findings:
       accepted baseline") is not currently satisfied, which is why this is
       logged blocking rather than major.
     candidate_owner: owner decision, then a main-branch fix outside this epic
-    status: open
+    status: partially_repaired
+    repair: >
+      OUN-0 restored specs/program_model/spec_manifest.yaml to the accepted
+      manifest from e07e577~1 (11 passed), because e07e577 changed exactly one
+      file in the baseline besides its 72 additions, and SkillManager.tla and
+      MC.cfg were not among them -- the baseline was left describing its own
+      spec with a manifest written for a different one. The 72 promoted
+      modules stay.
+    residual: >
+      Those 72 modules now have no entries in the accepted manifest, and the
+      promotion should probably have MERGED the two manifests rather than
+      replacing one with the other. Both are spec-authoring decisions for the
+      owner. Also: this repair currently lives only on the epic branch --
+      main is still red until it is carried there.
 
   - id: DEF-OUN-002
     found_by: OUN-0 (the one-name-one-copy walker)
