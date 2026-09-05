@@ -104,7 +104,7 @@ public final class SkillManagerCli implements Runnable {
      * line of {@code --version} exactly as the annotation used to.
      */
     // x-release-please-start-version
-    public static final String RELEASE = "skill-manager 0.26.0";
+    public static final String RELEASE = "skill-manager 0.26.1";
     // x-release-please-end
 
     @Option(names = {"-h", "--help"}, usageHelp = true,
