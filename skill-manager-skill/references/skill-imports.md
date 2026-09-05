@@ -146,12 +146,11 @@ still an ambiguity that the collision gate refuses rather than resolves.
 ### One name, one copy — the rule, not yet the behaviour
 
 > **Status.** Everything above this line describes what the product does
-> today, including the fifth branch — a plugin-contained skill resolves by
-> name as of OUN-1. What this section adds and the next section describe are
-> still being built by epic `one-unit-one-name`: **the refusal does not exist
-> yet** (OUN-2) and **there is still no command that answers the reverse
-> edge** (OUN-3). They are written here so one statement of the rule precedes
-> the code, rather than three readers each inventing their own.
+> today, including the fifth branch (a plugin-contained skill resolves by
+> name, OUN-1) and the reverse-edge command (OUN-3). One thing in this section
+> is still being built by epic `one-unit-one-name`: **the refusal does not
+> exist yet** (OUN-2). It is written here so one statement of the rule
+> precedes the code, rather than three readers each inventing their own.
 
 A unit name should resolve to exactly one copy in a home. Two consequences:
 
@@ -176,21 +175,39 @@ homes are in that shape, and a rule that did not say so would refuse the
 
 "What in this home imports X" has no answer on disk: neither mechanism is
 recorded in `installed/*.json`, which holds only name, version, gitHash,
-kind, origin, installSource, errors and installedAt. There is no command that
-answers it either — `skill-manager deps` walks forward only. Answering it
-today means re-reading every unit tree in the home.
+kind, origin, installSource, errors and installedAt. Ask the product:
 
-When that command exists it will recompute, not store. A stored index is a
-second record of the edges, and a second record can disagree with the units
-it describes — a home is a *copy*, so an index copied with it describes the
-home it was built in, not the one you are standing in.
+```
+skill-manager deps --who-imports skill-manager
+skill-manager deps --who-imports skill-manager --direct-only
+```
 
-Two properties any such computation must have, because the edges are not a
-tree:
+It covers **both** mechanisms, follows the whole chain, names the file
+carrying each edge — the question is usually asked by whoever is about to
+break that line — and reports coordinates that name nothing installed here
+rather than guessing at them.
+
+**It recomputes on every run and stores nothing.** A stored index is a second
+record of the edges, and a second record can disagree with the units it
+describes — a home is a *copy*, so an index copied with it describes the home
+it was built in, not the one you are standing in. The divergence is not
+theoretical: the same question answers **8** in the operator root home and
+**6** in this repository's project home, and both answers are correct for
+their home.
+
+Two properties the computation has, because the edges are not a tree:
 
 - **transitive** — the whole chain, not the direct importers. Units here
   depend on each other through intermediaries.
-- **cycle-safe** — mark a name before expanding it. The edges do form loops:
-  in this machine's root home `git-epic-workflow` imports `git-issue-workflow`
-  and `git-issue-workflow` imports `git-epic-workflow` back. A walk that does
-  not mark returns to the same unit forever.
+- **cycle-safe** — a name is marked before it is expanded. The edges do form
+  loops: in this machine's root home `git-epic-workflow` imports
+  `git-issue-workflow` and `git-issue-workflow` imports `git-epic-workflow`
+  back. A walk that does not mark returns to the same unit forever.
+
+**The coordinate half needs the origin join.** A manifest reference names a
+repository; the unit it installs may have a different name
+(`github:haydenrear/skill-manager-skill` installs `skill-manager`). The
+command resolves that through each unit's `installed/<name>.json` `origin`
+field. A coordinate whose unit is not installed here cannot be resolved at
+all, and is listed separately instead of being counted as an edge to a name
+guessed from the URL.
