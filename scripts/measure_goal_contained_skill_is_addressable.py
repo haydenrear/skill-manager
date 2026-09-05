@@ -20,7 +20,7 @@ The scratch home is a `home clone` of a real one, never a home the operator
 works in: the probe installs units, and installing into a live home would be a
 write this measurement has no business making.
 
-  measure_goal_contained_skill_is_addressable.py [--home DIR] [--keep]
+  measure_goal_contained_skill_is_addressable.py [--home DIR] [--keep] [--no-refresh]
 
 `--home` reuses a scratch home from an earlier run (the clone is the slow
 part). It must not be a home anyone works in; the script refuses the operator
@@ -89,20 +89,74 @@ def write_fixture(dst: Path, name: str, body: str, unit: str) -> Path:
     return d
 
 
+def cli_is_stale():
+    """Is the cached CLI build older than the sources it was built from?
+
+    jbang keys its cache on the hash of the ENTRY script. `SkillManager.java`
+    barely changes, so editing anything under `src/main/java` leaves the
+    cached jar in place and `./skill-manager` keeps running the PREVIOUS
+    build. Measured on 2026-09-05: the OUN-1 resolver change passed every
+    unit test (RunTests.java is a different entry script, so it rebuilt) while
+    this harness, driving the wrapper, still reported the defect. An
+    instrument that measures the last build is worse than no instrument.
+
+    Returns (stale, why). Unknown counts as stale: refusing to guess is the
+    whole point.
+    """
+    jars = sorted(Path.home().glob("*jbang/cache/jars/SkillManager.java.*/*.jar"))
+    if not jars:
+        return True, "no cached SkillManager build found"
+    newest_jar = max(j.stat().st_mtime for j in jars)
+    src = REPO / "src" / "main" / "java"
+    if not src.is_dir():
+        return True, f"{src} is not readable"
+    newest_src = 0.0
+    for f in src.rglob("*.java"):
+        try:
+            newest_src = max(newest_src, f.stat().st_mtime)
+        except OSError:
+            return True, "a source file could not be stat'ed"
+    if newest_src > newest_jar:
+        return True, "sources are newer than the newest cached build"
+    return False, None
+
+
+def refresh_cli():
+    """Rebuild the CLI so the wrapper's cached path serves current sources.
+
+    One `--fresh` is enough: it re-caches under the same key, so every later
+    invocation through `./skill-manager` picks the new jar up.
+    """
+    proc = subprocess.run(
+        ["jbang", "--fresh", str(REPO / "SkillManager.java"), "--version"],
+        cwd=REPO, capture_output=True, text=True, timeout=1800,
+        env={**os.environ, "SKILL_MANAGER_INSTALL_DIR": str(REPO)})
+    return proc.returncode == 0, (proc.stdout + proc.stderr)[-400:]
+
+
 def install(home: Path, unit_dir: Path):
-    # ALL the home axes, not just SKILL_MANAGER_HOME. Install registers the
-    # unit with the agent CLIs, and SKILL_MANAGER_HOME alone does not move
-    # where those writes land -- CLAUDE_HOME is the parent of .claude/. The
-    # clone already carries its own .claude/.codex/.gemini; this points the
-    # child at them instead of the operator's.
-    #
-    # CLAUDE_CONFIG_DIR is deliberately NOT set: it silently relocates the
-    # keychain slot, and a probe has no business touching credentials.
-    env = {**os.environ,
-           "SKILL_MANAGER_HOME": str(home),
-           "CLAUDE_HOME": str(home),
-           "CODEX_HOME": str(home),
-           "GEMINI_HOME": str(home)}
+    """Install one fixture into the scratch home.
+
+    SKILL_MANAGER_HOME AND NOTHING ELSE, and that is a measured decision, not
+    an oversight. A `home clone` carries its own .claude, .codex and .gemini,
+    and install writes into those — verified in the run output, which names
+    `<clone>/.claude/.claude.json`.
+
+    An earlier version of this harness also pinned CLAUDE_HOME, CODEX_HOME and
+    GEMINI_HOME to the home root, on the theory that more pinning is safer.
+    It is not. CODEX_HOME and GEMINI_HOME are the config DIRECTORY, not its
+    parent, so pointing either at a Skill Manager home made this install
+    DELETE `<home>/plugins/skt` — silently, exit 0, nothing about it in the
+    output. Bisected to each of those two variables independently on
+    2026-09-05; CLAUDE_HOME alone is harmless. Filed as DEF-OUN-003.
+
+    So the probe was measuring a home whose plugins directory it had just
+    emptied, and reporting "a contained skill is not addressable" about a
+    plugin that was no longer there.
+    """
+    env = {**os.environ, "SKILL_MANAGER_HOME": str(home)}
+    for stray in ("CLAUDE_HOME", "CODEX_HOME", "GEMINI_HOME"):
+        env.pop(stray, None)
     proc = subprocess.run([str(CLI), "install", str(unit_dir), "--yes"],
                           cwd=REPO, capture_output=True, text=True,
                           timeout=900, env=env)
@@ -114,15 +168,14 @@ def sweep_stale():
 
     A clone is ~460 MB. This repository has already lost 1.4 GB to leaked
     per-run temp homes once; a harness that makes one every invocation should
-    take its own litter with it, not only on the happy path.
+    take its own litter with it, not only on the happy path. Age-gated so two
+    concurrent runs do not delete each other's scratch.
     """
     root = Path(tempfile.gettempdir())
     cutoff = time.time() - 2 * 3600
     removed = []
     try:
         for d in root.glob(TMP_PREFIX + "*"):
-            # Age-gated, so two concurrent runs do not delete each other's
-            # scratch out from under them.
             if d.is_dir() and d.stat().st_mtime < cutoff:
                 shutil.rmtree(d, ignore_errors=True)
                 removed.append(str(d))
@@ -170,6 +223,15 @@ def main() -> int:
                     "unaddressable one")
 
     swept = sweep_stale()
+    stale, why_stale = cli_is_stale()
+    rebuilt = False
+    if stale and "--no-refresh" not in args:
+        ok, detail = refresh_cli()
+        if not ok:
+            return fail("the CLI could not be rebuilt, so the probe would be "
+                        "measuring an older build than the tree it is run "
+                        "against", detail=detail)
+        rebuilt = True
     tmp = None
     home = given
     try:
@@ -199,6 +261,16 @@ def main() -> int:
                         control_exit=c_rc, detail=c_out[-800:])
 
         p_rc, p_out = install(home, probe)
+        # THE HOME MUST STILL HOLD IT. "not addressable" and "not there any
+        # more" produce the same message, and one of them is a broken
+        # measurement. DEF-OUN-003 is what that looks like when nobody checks.
+        still_there = [str(r) for r in sorted(
+            (home / "plugins").glob(f"*/skills/{CONTAINED}"))]
+        if not still_there:
+            return fail(f"{CONTAINED} is no longer in the scratch home after "
+                        "the probe install; the measurement would be about an "
+                        "absent unit, not an unaddressable one",
+                        probe_exit=p_rc, detail=p_out[-600:])
         resolves = p_rc == 0 and "missing unit" not in p_out
         evidence = next((ln.strip() for ln in p_out.splitlines()
                          if "missing unit" in ln), None)
@@ -210,10 +282,13 @@ def main() -> int:
             "target": "yes",
             "met": resolves,
             "contained_root": str(contained_roots[0]),
+            "contained_root_after_probe": still_there,
             "control": {"unit": STANDALONE, "exit": c_rc, "resolved": True},
             "probe": {"unit": CONTAINED, "exit": p_rc, "resolved": resolves},
             "product_said": evidence,
             "swept_stale_temp_homes": len(swept),
+            "cli_rebuilt_before_probing": rebuilt,
+            "cli_was_stale_because": why_stale,
             "why": None if resolves else (
                 f"{CONTAINED} exists at {contained_roots[0]} in the very home "
                 "the import was validated against. installedRoot has four "
