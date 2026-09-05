@@ -74,3 +74,22 @@ always runs; the workflow's runs when there is a workflow.
 With the path fixed, CI reaches the real failure — the one contract test of
 `DEF-OUN-001`. That is the intended outcome: a red check that names the
 actual defect is worth more than a red check that names a missing directory.
+
+## Re-run after the wave-1 review
+
+Six defects were found reviewing this ticket's own diff — one real parsing
+bug, three harness-safety gaps, one documentation defect, and hygiene. Fixed,
+then everything re-run:
+
+| | result |
+| --- | --- |
+| `jbang RunTests.java` | ALL PASSED |
+| `home-integrity` graph | BUILD SUCCESSFUL |
+| all four harnesses | unchanged verdicts; **8 and 6 importer counts identical after the parser fix**, which is the point of re-running them |
+| `uv run --with pytest pytest specs/program_model/tests -q` | 11 passed |
+
+The parser fix was verified not to move any measured number before it was
+kept: had it changed the 8 or the 6, the baseline recorded in the plan would
+have been wrong and the plan would have needed amending, not the harness.
+
+See `../../reviews/wave-1.md` and `../../attribution/2026-09-05-by-component.md`.
