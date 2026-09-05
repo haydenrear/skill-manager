@@ -107,17 +107,6 @@ SkillManagerHomes == {ParentHomeA, ChildHomeA}
 \* reachable units as a visited set, so each coordinate is fetched at most once;
 \* an edge back into that set is surfaced as a recoverable cycle warning.
 ReferenceEdges == {<<UnitA, UnitB>>, <<UnitB, UnitA>>}
-\* Markdown `skill-imports` between units, by target name (issue #168).
-\* Distinct from ReferenceEdges: a hard reference PULLS its target into the
-\* resolution closure, while a markdown import only NAMES a unit that must be
-\* present -- staged in the same candidate closure or already installed --
-\* when the importing unit's markdown is validated. The bounded model carries
-\* the defect's reciprocal fixture: UnitA and UnitB import each other, which
-\* per-unit validation against the incomplete store can never satisfy from a
-\* clean home whichever unit commits first, and which the staged-closure
-\* validation in ResolveProjectDependencies always satisfies because both
-\* sides are candidates together.
-UnitMarkdownImportEdges == {<<UnitA, UnitB>>, <<UnitB, UnitA>>}
 UnitMcpEdges == {<<UnitA, ServerA>>, <<UnitB, ServerB>>}
 ServerToolEdges == {<<ServerA, ToolA>>, <<ServerB, ToolB>>}
 UnitScriptEdges == {<<UnitA, ScriptA>>}
@@ -302,20 +291,6 @@ ProjectResolvedUnitClosure(project) ==
 ProjectChildHomePayload(project) ==
   ProjectResolvedUnitClosure(project) \cup
     ProjectDocRepos(project) \cup ProjectHarnessTemplates(project)
-
-\* The candidate closure a project resolve VALIDATES markdown imports
-\* against: everything the resolve is about to publish plus everything
-\* already installed (issue #168). Judged from staged intent, never from
-\* mid-publish store state -- validating each unit against the incomplete
-\* store as it commits is exactly the defect this replaces.
-ProjectImportCandidates(project) ==
-  ProjectChildHomePayload(project)
-    \cup cli_store_units \cup cli_doc_repos \cup cli_harness_templates
-
-ProjectMissingMarkdownImports(project) ==
-  {edge \in UnitMarkdownImportEdges :
-     /\ edge[1] \in ProjectResolvedUnitClosure(project)
-     /\ edge[2] \notin ProjectImportCandidates(project)}
 
 ProjectProfiles(project) ==
   {profile \in Profiles : <<project, profile>> \in ProjectProfileEdges}
@@ -1226,38 +1201,13 @@ ResolveProjectDependencies(project) ==
   LET resolved_units == ProjectResolvedUnitClosure(project)
       docs == ProjectDocRepos(project)
       harnesses == ProjectHarnessTemplates(project)
-      missing_imports == ProjectMissingMarkdownImports(project)
   IN
   IF project \notin project_model.manifests
   THEN
     /\ result' = Reject("PROJECT_NOT_REGISTERED")
     /\ project_model' = project_model
     /\ UNCHANGED state_vars
-  ELSE IF missing_imports # {}
-  THEN
-    \* Staged-closure import validation refused (issue #168): a staged
-    \* unit's markdown names a unit that is in neither the candidate
-    \* closure nor the installed store. Typed reject BEFORE publish --
-    \* no store commit, no installed record, no lock row, no binding, no
-    \* projection, no child-home payload. The registration in
-    \* project_model.manifests retains declared intent; nothing claims
-    \* successful resolution. In this bounded model every markdown
-    \* import's target belongs to ProjectA's own declared closure, so
-    \* this branch has no reachable witness here; its automated
-    \* witnesses are ProjectResolveAtomicClosureTest's planted ghost
-    \* import (unit suite) and the e2e CLI negative run recorded in the
-    \* ISSUE-168 ticket results — the project-resolve graph has no
-    \* negative-import node today. A ghost-edge model variant would
-    \* make the branch reachable here; until then this comment is the
-    \* honest record of where the behavior is actually proven.
-    /\ result' = Reject("PROJECT_IMPORT_MISSING")
-    /\ project_model' = project_model
-    /\ UNCHANGED state_vars
   ELSE
-    \* Publish is one atomic step over the WHOLE declared closure, entered
-    \* only after the staged-closure import validation above: installed
-    \* units, records, lock rows, bindings, projections and child-home
-    \* payload land together or not at all.
     /\ cli_store_units' = cli_store_units \cup resolved_units
     /\ cli_doc_repos' = cli_doc_repos \cup docs
     /\ cli_harness_templates' = cli_harness_templates \cup harnesses

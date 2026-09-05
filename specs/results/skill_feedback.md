@@ -668,3 +668,27 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 - recommendation: https://github.com/haydenrear/tla-spec-dev/issues/288 (SF-002/SF-006's ticket; SIXTH occurrence, first one taking the status-edit fork rather than `--allow-open`)
 - status: filed
 
+
+## Close-out workflow child-home-materialization-workflow
+
+- close_scope: workflow
+- close_id: child-home-materialization-workflow
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-09-05T15:52:25+00:00
+- summary: child-home-materialization-workflow closed by OWNER OVERRIDE. desired_program_model promoted onto program_model and current (76 semantic files each); the program model had fallen far out of date and the active desired/current trees were not meant to live on main. TWO GATES WAIVED on the owner's explicit instruction: (1) ticket completion -- tickets remain open/delivered/blocked; (2) the MF-019 complexity ledger, whose input is an OWNER ATTESTATION and was NOT authored, NOT measured and NOT satisfied. Nothing here should be read as the standing objective having been met.
+- feedback_status: unreviewed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out workflow child-home-materialization-workflow
+
+- close_scope: workflow
+- close_id: child-home-materialization-workflow
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-09-05T15:53:18+00:00
+- summary: child-home-materialization-workflow closed by OWNER OVERRIDE. desired promoted onto program_model and current (76 semantic files each); active trees removed. TWO GATES WAIVED on the owner's instruction: ticket completion, and the MF-019 complexity ledger -- an owner attestation that was NOT authored, NOT measured and NOT satisfied. See specs/results/complexity_ledger_waiver.md. The standing objective was not met.
+- feedback_status: unreviewed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
