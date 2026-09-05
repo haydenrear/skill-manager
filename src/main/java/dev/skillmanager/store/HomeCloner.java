@@ -166,6 +166,62 @@ public final class HomeCloner {
             Set.of("audit.log", "gateway.log", "gateway.pid");
 
     /**
+     * Root-level files a clone does not copy <b>because they are secrets</b>.
+     *
+     * <h2>Separate from {@link #SKIPPED_ROOT_FILES} on purpose</h2>
+     *
+     * <p>Those three are skipped because they are transient — a log and a pid
+     * belong to the run that made them. This one is skipped for a different
+     * reason and carries a different obligation: a transient file that
+     * silently does not arrive is fine, and a CREDENTIAL that silently does
+     * not arrive is a confusing "not logged in" later. So the clone names it
+     * (see {@link #credentialsNotCopied}) rather than merely omitting it.
+     *
+     * <h2>What was measured (#281, DEF-282)</h2>
+     *
+     * <p>{@code auth.token} holds {@code access_token}, {@code refresh_token}
+     * and {@code expires_at} at mode 0600. Before this, a clone carried it
+     * verbatim — observed 2026-09-05 by cloning a home holding one, not
+     * inferred from the absence of an exclusion, which is how #281 sat open
+     * as a question for weeks.
+     *
+     * <p>Every project home and every worktree home is a clone, so the token
+     * was already present in every per-checkout home on the machine. The
+     * sharper case is the one that prompted the fix: <b>a home copied into a
+     * container image shipped a working refresh token for the operator's
+     * registry account</b>, in an 881-byte file, in a home that otherwise
+     * looked exactly right, with no build-time signal.
+     *
+     * <h2>Not carried, rather than carried by default</h2>
+     *
+     * <p>A child home arguably SHOULD inherit registry auth — #281 says so —
+     * and the argument is real for the project and worktree tiers, where the
+     * copy stays on the operator's own machine. It does not survive the case
+     * where the copy leaves the machine, and a copy cannot tell which kind it
+     * is about to become. So the default is the safe one and logging in again
+     * is the remedy the clone prints.
+     */
+    public static final Set<String> CREDENTIAL_ROOT_FILES =
+            Set.of(dev.skillmanager.registry.AuthStore.FILENAME);
+
+    /**
+     * The credential files present in {@code source} that a clone of it will
+     * not carry — so the caller can say what it dropped.
+     *
+     * <p>Read from the SOURCE, because the answer the operator needs is "you
+     * had one and this copy does not", and the copy alone cannot tell that
+     * from "there was never one".
+     */
+    public static List<String> credentialsNotCopied(Path source) {
+        if (source == null) return List.of();
+        List<String> present = new ArrayList<>();
+        for (String name : CREDENTIAL_ROOT_FILES.stream().sorted().toList()) {
+            if (Files.isRegularFile(source.resolve(name))) present.add(name);
+        }
+        return List.copyOf(present);
+    }
+
+    /**
      * Directories a clone does not copy because their contents are
      * <b>claims of stewardship over directories outside the home</b>, and a
      * copy of a home is not a copy of those relationships.
@@ -3108,6 +3164,7 @@ public final class HomeCloner {
         // Segment-wise, and the .pyc / .pyo suffix rule with it, both from the
         // one definition shared with the reconcile.
         if (Rederivable.isCache(normalized)) return true;
+        if (slash < 0 && CREDENTIAL_ROOT_FILES.contains(normalized)) return true;
         return slash < 0 && SKIPPED_ROOT_FILES.contains(normalized);
     }
 
