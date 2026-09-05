@@ -22,7 +22,7 @@
   }
  ],
  "target_unit": "skill-manager",
- "homes_reporting": 28,
+ "homes_reporting": 27,
  "distinct_direct_counts": [
   0,
   1,
@@ -607,33 +607,6 @@
     "git-issue",
     "git-issue-workflow",
     "skill-dev-skill",
-    "skt",
-    "spec-double-compiler",
-    "unit-authoring"
-   ]
-  },
-  {
-   "home": "wt-75-batch-spec-step-the-full-corpus-at-a-fra",
-   "home_path": "/Users/hayde/IdeaProjects/wt-75-batch-spec-step-the-full-corpus-at-a-fra/.skill-manager",
-   "direct": 7,
-   "direct_units": [
-    "git-epic-workflow",
-    "git-integration-repo",
-    "git-issue",
-    "git-issue-workflow",
-    "skt",
-    "spec-double-compiler",
-    "unit-authoring"
-   ],
-   "by_skill_imports": 7,
-   "by_skill_references": 1,
-   "only_by_reference": [],
-   "transitive": 7,
-   "transitive_units": [
-    "git-epic-workflow",
-    "git-integration-repo",
-    "git-issue",
-    "git-issue-workflow",
     "skt",
     "spec-double-compiler",
     "unit-authoring"

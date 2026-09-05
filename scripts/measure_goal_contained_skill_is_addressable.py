@@ -32,9 +32,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import unit_graph as g  # noqa: E402
+
 REPO = Path(__file__).resolve().parent.parent
+TMP_PREFIX = "oun0-addressability-"
 CLI = REPO / "skill-manager"
 CONTAINED = "unit-authoring"
 STANDALONE = "skill-manager"
@@ -85,11 +90,45 @@ def write_fixture(dst: Path, name: str, body: str, unit: str) -> Path:
 
 
 def install(home: Path, unit_dir: Path):
+    # ALL the home axes, not just SKILL_MANAGER_HOME. Install registers the
+    # unit with the agent CLIs, and SKILL_MANAGER_HOME alone does not move
+    # where those writes land -- CLAUDE_HOME is the parent of .claude/. The
+    # clone already carries its own .claude/.codex/.gemini; this points the
+    # child at them instead of the operator's.
+    #
+    # CLAUDE_CONFIG_DIR is deliberately NOT set: it silently relocates the
+    # keychain slot, and a probe has no business touching credentials.
+    env = {**os.environ,
+           "SKILL_MANAGER_HOME": str(home),
+           "CLAUDE_HOME": str(home),
+           "CODEX_HOME": str(home),
+           "GEMINI_HOME": str(home)}
     proc = subprocess.run([str(CLI), "install", str(unit_dir), "--yes"],
                           cwd=REPO, capture_output=True, text=True,
-                          timeout=900,
-                          env={**os.environ, "SKILL_MANAGER_HOME": str(home)})
+                          timeout=900, env=env)
     return proc.returncode, (proc.stdout + proc.stderr)
+
+
+def sweep_stale():
+    """Remove temp homes an earlier run was killed before cleaning up.
+
+    A clone is ~460 MB. This repository has already lost 1.4 GB to leaked
+    per-run temp homes once; a harness that makes one every invocation should
+    take its own litter with it, not only on the happy path.
+    """
+    root = Path(tempfile.gettempdir())
+    cutoff = time.time() - 2 * 3600
+    removed = []
+    try:
+        for d in root.glob(TMP_PREFIX + "*"):
+            # Age-gated, so two concurrent runs do not delete each other's
+            # scratch out from under them.
+            if d.is_dir() and d.stat().st_mtime < cutoff:
+                shutil.rmtree(d, ignore_errors=True)
+                removed.append(str(d))
+    except OSError:
+        pass
+    return removed
 
 
 def main() -> int:
@@ -97,14 +136,26 @@ def main() -> int:
     keep = "--keep" in args
     given = None
     if "--home" in args:
-        given = Path(args[args.index("--home") + 1]).expanduser()
+        i = args.index("--home") + 1
+        if i >= len(args):
+            return fail("--home needs a directory")
+        given = Path(args[i]).expanduser()
 
-    protected = {Path.home() / ".skill-manager",
-                 REPO / ".skill-manager",
-                 Path("/Users/hayde/IdeaProjects/skill-manager/.skill-manager")}
-    if given and given.resolve() in {p.resolve() for p in protected if p.exists()}:
-        return fail(f"refusing to install fixtures into {given}: that is a home "
-                    "someone works in. Pass a scratch home or none at all.")
+    # PORTABLE, not a hardcoded path. The protected set is every home this
+    # machine actually has -- the operator root, this checkout's, every
+    # sibling checkout's and worktree's -- because the probe INSTALLS units,
+    # and "is this a home someone works in" is not a question to answer with
+    # one absolute path baked into a script that ships in a public repo.
+    if given:
+        working = {h.resolve() for h in g.default_homes()}
+        try:
+            target = given.resolve()
+        except OSError:
+            target = given
+        if target in working:
+            return fail(f"refusing to install fixtures into {given}: that is a "
+                        "home someone works in. Pass a scratch home or none "
+                        "at all.")
 
     source = Path(os.environ.get("SKILL_MANAGER_HOME") or (REPO / ".skill-manager"))
     if not (source / "plugins").is_dir():
@@ -118,11 +169,12 @@ def main() -> int:
                     "the probe would be measuring an absent unit, not an "
                     "unaddressable one")
 
+    swept = sweep_stale()
     tmp = None
     home = given
     try:
         if home is None:
-            tmp = Path(tempfile.mkdtemp(prefix="oun0-addressability-"))
+            tmp = Path(tempfile.mkdtemp(prefix=TMP_PREFIX))
             home = tmp / "home"
             proc = subprocess.run([str(CLI), "home", "clone", "--from", str(source),
                                    "--to", str(home)], cwd=REPO,
@@ -131,7 +183,10 @@ def main() -> int:
                 return fail("home clone failed",
                             detail=(proc.stdout + proc.stderr)[-600:])
 
-        fx = (tmp or home.parent) / "fixtures"
+        # Fixtures always go somewhere disposable, never beside a home the
+        # caller named: --home points at a home, not at a scratch parent.
+        fxroot = tmp or Path(tempfile.mkdtemp(prefix=TMP_PREFIX))
+        fx = fxroot / "fixtures"
         control = write_fixture(fx, "standalone-addressability-control",
                                 CONTROL_MD, STANDALONE)
         probe = write_fixture(fx, "contained-addressability-probe",
@@ -158,6 +213,7 @@ def main() -> int:
             "control": {"unit": STANDALONE, "exit": c_rc, "resolved": True},
             "probe": {"unit": CONTAINED, "exit": p_rc, "resolved": resolves},
             "product_said": evidence,
+            "swept_stale_temp_homes": len(swept),
             "why": None if resolves else (
                 f"{CONTAINED} exists at {contained_roots[0]} in the very home "
                 "the import was validated against. installedRoot has four "
@@ -167,8 +223,10 @@ def main() -> int:
         print(json.dumps(out, indent=1))
         return 0 if resolves else 1
     finally:
-        if tmp and not keep:
-            shutil.rmtree(tmp, ignore_errors=True)
+        if not keep:
+            for d in {tmp, locals().get("fxroot")}:
+                if d:
+                    shutil.rmtree(d, ignore_errors=True)
 
 
 if __name__ == "__main__":

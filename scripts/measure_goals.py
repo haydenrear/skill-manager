@@ -117,7 +117,11 @@ def main() -> int:
     argv = sys.argv[1:]
     epic = DEFAULT_EPIC
     if "--epic" in argv:
-        epic = argv[argv.index("--epic") + 1]
+        i = argv.index("--epic") + 1
+        if i >= len(argv):
+            print("--epic needs a name", file=sys.stderr)
+            return 2
+        epic = argv[i]
     if epic not in EPICS:
         print(f"unknown epic {epic!r}; known: {', '.join(sorted(EPICS))}",
               file=sys.stderr)

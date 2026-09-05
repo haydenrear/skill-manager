@@ -1,11 +1,11 @@
 {
  "goal": "GOAL-migration-lands-on-one-skt",
  "metric": "(skill-dev-skill present, standalone skill-manager present, skt count) per home",
- "value": "root (1, 1, 1); 0 of 28 homes at (0, 0, 1)",
+ "value": "root (1, 1, 1); 0 of 27 homes at (0, 0, 1)",
  "target": "(0, 0, 1)",
  "met": false,
  "why": "no migration exists yet -- OUN-5 writes it. This reads the triple where it stands so the migration is graded against a number that predates it.",
- "homes_in_scope": 28,
+ "homes_in_scope": 27,
  "homes_at_target": 0,
  "per_home": [
   {
@@ -188,14 +188,6 @@
    "home": "wt-16-concurrent-agent-registration-cannot-lose",
    "home_path": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager",
    "skill_dev_skill": 1,
-   "standalone_skill_manager": 1,
-   "skt": 1,
-   "skill_manager_contained_in": null
-  },
-  {
-   "home": "wt-75-batch-spec-step-the-full-corpus-at-a-fra",
-   "home_path": "/Users/hayde/IdeaProjects/wt-75-batch-spec-step-the-full-corpus-at-a-fra/.skill-manager",
-   "skill_dev_skill": 0,
    "standalone_skill_manager": 1,
    "skt": 1,
    "skill_manager_contained_in": null
