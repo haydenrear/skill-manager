@@ -65,12 +65,22 @@ class Unit:
 
     @property
     def addressable(self):
-        """Can a `unit:` skill-import name this root TODAY?
+        """Can a `unit:` skill-import name this root?
 
-        installedRoot has four branches and none descends into a plugin, so a
-        contained skill is not addressable no matter what its SKILL.md says.
+        Since OUN-1, installedRoot has a FIFTH branch and a plugin-contained
+        skill resolves by name — so a contained skill is addressable, with one
+        exception that is not an exception to the rule but an application of
+        it: a contained skill whose name equals its carrying plugin's is that
+        plugin's ENTRY SKILL. `plugins/` is searched first, so the name
+        resolves to the plugin and never to the skill inside it. One unit, one
+        name. `skt` carrying `plugins/skt/skills/skt` is that shape, in every
+        home it is installed into.
+
+        This property tracks the product deliberately. A collision walker that
+        kept asserting yesterday's resolution rule would report defects the
+        product does not have, and miss the ones it does.
         """
-        return self.contained_in is None
+        return self.contained_in is None or self.contained_in == self.name
 
     def __repr__(self):
         return f"<Unit {self.name} {self.kind}{' in ' + self.contained_in if self.contained_in else ''}>"
@@ -261,7 +271,12 @@ def load_home(home: Path):
                         cu = Unit(c.name, "contained-skill", c,
                                   contained_in=child.name)
                         order.append(cu)
-                        units.setdefault(c.name, []).append(cu)
+                        # The plugin's entry skill is not a SECOND claim on
+                        # the plugin's name -- see Unit.addressable. Indexing
+                        # it as one would report every skt-carrying home as
+                        # a collision.
+                        if c.name != child.name:
+                            units.setdefault(c.name, []).append(cu)
     # Edges. A contained skill's own files belong to the contained unit, not
     # to the plugin that carries it -- otherwise every plugin inherits its
     # skills' imports and the reverse edge names the wrong importer.

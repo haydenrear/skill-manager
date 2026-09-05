@@ -370,6 +370,37 @@ public final class MarkdownImportValidator {
             return Optional.of(new UnitRoot(
                     name, UnitKind.SKILL, store.skillDir(name).toAbsolutePath()));
         }
+        // FIFTH, AND LAST ON PURPOSE. A skill contained in a plugin is a real
+        // unit with its own SKILL.md, and until this branch existed it was
+        // addressable by nothing: `skt` has carried `unit-authoring` since it
+        // shipped and no file could import it, because an import naming it
+        // was reported as a MISSING unit while sitting on disk in the same
+        // home.
+        //
+        // The position of this branch is the design decision, not the branch
+        // itself. Last means:
+        //
+        //   1. no name that resolved before resolves differently now. Adding
+        //      it earlier would let a contained skill shadow a standalone
+        //      unit of the same name, silently, by directory order — which is
+        //      the ambiguity the one-name-one-copy rule exists to forbid, not
+        //      a resolution strategy.
+        //   2. a plugin's own entry skill stays the plugin. `plugins/skt` is
+        //      checked first, so `skt` resolves to the plugin and never to
+        //      `plugins/skt/skills/skt`. One unit, one name.
+        //   3. a contained name resolves only when nothing standalone claims
+        //      it — which is exactly the state OUN-2's gate will make
+        //      mandatory rather than merely usual.
+        //
+        // When two plugins contain the same skill name the store returns both
+        // and this takes the first in plugin-name order: deterministic, so the
+        // behaviour is testable, and still an ambiguity that the collision
+        // gate refuses at install time rather than resolving here.
+        List<Path> contained = store.containedSkillDirs(name);
+        if (!contained.isEmpty()) {
+            return Optional.of(new UnitRoot(
+                    name, UnitKind.SKILL, contained.get(0).toAbsolutePath()));
+        }
         return Optional.empty();
     }
 

@@ -123,27 +123,35 @@ place the two are joined is each unit's `installed/<name>.json`, whose
 `origin` field records the coordinate it came from — and nothing in the
 product performs that join.
 
-### The four branches, in order
+### The five branches, in order
 
 A `unit:` name is resolved by searching the home's store in exactly this
 order, first hit wins:
 
 ```
-plugins/<name>     harnesses/<name>     docs/<name>     skills/<name>
+plugins/<name>   harnesses/<name>   docs/<name>   skills/<name>   plugins/*/skills/<name>
 ```
 
-**None of them descends into a plugin's contained skills.** A skill at
-`plugins/<plugin>/skills/<skill>` is not addressable by name at all — an
-import naming it is reported as `references missing unit`, in the very home
-where the file is sitting on disk.
+**The contained branch is last, and the position is the rule, not an
+implementation detail.** It means a contained skill can never shadow a
+standalone unit of the same name: the ambiguity is refused at install time
+(below), not resolved silently by search order. It also means **a plugin's
+entry skill is the plugin** — `plugins/skt` is matched before
+`plugins/skt/skills/skt`, so `skt` is one unit under one name.
+
+When two installed plugins each contain a skill of the same name, resolution
+takes the first in plugin-name order — deterministic, so it is testable, and
+still an ambiguity that the collision gate refuses rather than resolves.
 
 ### One name, one copy — the rule, not yet the behaviour
 
 > **Status.** Everything above this line describes what the product does
-> today. This section and the next describe the rule being established by
-> epic `one-unit-one-name`. Neither the refusal nor the reverse-edge command
-> exists yet. They are written here so that one statement of the rule
-> precedes the code, rather than three readers each inventing their own.
+> today, including the fifth branch — a plugin-contained skill resolves by
+> name as of OUN-1. What this section adds and the next section describe are
+> still being built by epic `one-unit-one-name`: **the refusal does not exist
+> yet** (OUN-2) and **there is still no command that answers the reverse
+> edge** (OUN-3). They are written here so one statement of the rule precedes
+> the code, rather than three readers each inventing their own.
 
 A unit name should resolve to exactly one copy in a home. Two consequences:
 

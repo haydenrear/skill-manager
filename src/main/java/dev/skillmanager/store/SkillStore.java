@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -229,6 +230,53 @@ public final class SkillStore {
         Path hd = harnessesDir.resolve(name);
         return Files.isDirectory(hd)
                 && Files.isRegularFile(hd.resolve(dev.skillmanager.model.HarnessParser.TOML_FILENAME));
+    }
+
+    /**
+     * Every {@code plugins/<plugin>/skills/<name>} directory carrying a
+     * {@code SKILL.md}, in plugin-name order.
+     *
+     * <h2>Why a LIST and not an Optional</h2>
+     *
+     * <p>Two installed plugins may each contain a skill of the same name.
+     * That is an ambiguity, not a preference, and a predicate that returned
+     * the first match would resolve it silently by directory order — the
+     * exact failure mode the one-name-one-copy rule exists to prevent. The
+     * caller gets both roots and decides; {@code installedRoot} picks the
+     * first deterministically and the collision gate refuses the install
+     * outright.
+     *
+     * <p>A contained skill whose name equals its carrying plugin's is
+     * returned here too, and is harmless: {@code installedRoot} checks
+     * {@code plugins/} first, so that name resolves to the plugin. The
+     * plugin and its entry skill are one unit under one name, which is the
+     * shape {@code skt} — carrying {@code plugins/skt/skills/skt} — is
+     * already in, in every home it is installed into.
+     */
+    public List<Path> containedSkillDirs(String name) {
+        if (name == null || name.isBlank() || name.contains("/")) return List.of();
+        if (!Files.isDirectory(pluginsDir)) return List.of();
+        List<Path> found = new ArrayList<>();
+        try (Stream<Path> plugins = Files.list(pluginsDir)) {
+            plugins.filter(Files::isDirectory)
+                    .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                    .forEach(plugin -> {
+                        Path candidate = plugin.resolve("skills").resolve(name);
+                        if (Files.isDirectory(candidate)
+                                && Files.isRegularFile(
+                                        candidate.resolve(SkillParser.SKILL_FILENAME))) {
+                            found.add(candidate);
+                        }
+                    });
+        } catch (IOException ignored) {
+            return List.of();
+        }
+        return List.copyOf(found);
+    }
+
+    /** True iff some installed plugin contains a skill named {@code name}. */
+    public boolean containsContainedSkill(String name) {
+        return !containedSkillDirs(name).isEmpty();
     }
 
     /**
