@@ -840,6 +840,55 @@ public final class HomeCloneTest {
             assertTrue(refused, "nested destination refused");
         });
 
+        // #281 / DEF-282. Asserts on the COPY, with a real-shaped token, and
+        // that is the whole point: #281 sat open for weeks as an "unverified
+        // inference" precisely because it was reasoned from the absence of an
+        // exclusion rather than by cloning a home and looking.
+        suite.test("a clone does not carry the registry credential", () -> {
+            Path source = seededHome();
+            Path token = source.resolve(dev.skillmanager.registry.AuthStore.FILENAME);
+            Files.writeString(token, """
+                    {"access_token":"FAKE-ACCESS","refresh_token":"FAKE-REFRESH",\
+                    "expires_at":"2099-01-01T00:00:00Z"}
+                    """);
+            try {
+                Files.setPosixFilePermissions(token,
+                        java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+            } catch (UnsupportedOperationException ignored) {
+                // a filesystem without POSIX modes does not change the claim
+            }
+            Path dest = newDir("dest-credential-").resolve("home");
+
+            HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
+
+            assertFalse(Files.exists(dest.resolve(dev.skillmanager.registry.AuthStore.FILENAME)),
+                    "the copy holds no auth.token");
+            assertTrue(Files.isRegularFile(token),
+                    "and the SOURCE still has its own — this drops a copy, it does not log you out");
+            assertEquals(List.of(dev.skillmanager.registry.AuthStore.FILENAME),
+                    HomeCloner.credentialsNotCopied(source),
+                    "the clone can say what it did not carry, read from the source: "
+                            + "'there was never one' and 'you had one' are different answers");
+            assertTrue(report.clean(), "and the copy still verifies clean: " + report.leaks());
+        });
+
+        // THE COMPANION. Without it, "no auth.token in the copy" is also what a
+        // clone that copied nothing at all would produce, and what a source
+        // with no token would produce.
+        suite.test("COMPANION: a home with no credential makes no claim, and other root files still travel", () -> {
+            Path source = seededHome();
+            Files.writeString(source.resolve("home.policy.toml"), "# a root file that is not a secret\n");
+            Path dest = newDir("dest-no-credential-").resolve("home");
+
+            HomeCloner.cloneHome(source, dest);
+
+            assertEquals(List.of(), HomeCloner.credentialsNotCopied(source),
+                    "nothing to report when there was nothing to drop");
+            assertTrue(Files.isRegularFile(dest.resolve("home.policy.toml")),
+                    "an ordinary root file is still copied — the exclusion is one file, "
+                            + "not a new rule about root files");
+        });
+
         return suite.runAll();
     }
 

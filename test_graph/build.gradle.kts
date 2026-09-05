@@ -869,6 +869,14 @@ validationGraph {
         node("sources/home-clone/HomeCloneEditStaysInClone.java")
         node("sources/home-clone/HomeCloneWorksWithSourceRenamed.java")
         node("sources/home-clone/HomeCloneNoAgentHomeLeak.java")
+        // #281 / DEF-282: a copy of a home is not a copy of its login. Plants
+        // a real-shaped auth.token in the fixture, runs a REAL `home clone`,
+        // and reads the copy -- the unit test drives HomeCloner, this one
+        // shows the exit-0 "clean" report an operator would have read while
+        // the copy held a working refresh token. Carries three controls: the
+        // source keeps its own, an ordinary root file still travels, and the
+        // clone SAYS what it dropped rather than omitting it silently.
+        node("sources/home-clone/HomeCloneCarriesNoCredential.java")
         // The undeclared property this home model rests on, with an oracle
         // rather than a comment. It does not depend on the fixture above: the
         // cost node needs a dedicated volume nobody else writes to.

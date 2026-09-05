@@ -1902,6 +1902,19 @@ public final class HomeCommand {
                 String.join(", ", HomeCloner.SKIPPED_DIRS.stream().sorted().toList()));
         Log.info("  re-anchored: %d links relativized, %d records, %d provisioned files",
                 report.linksRelativized(), report.stateReanchored(), report.provisionedRewritten());
+        // NAMED, not merely omitted. A transient file that silently fails to
+        // arrive is fine; a credential that silently fails to arrive is a
+        // confusing "not logged in" later, and one that silently DOES arrive
+        // is a token in an image (#281 / DEF-282). Either way the operator
+        // should be told, and told what to do about it.
+        List<String> credentials = HomeCloner.credentialsNotCopied(report.source());
+        if (!credentials.isEmpty()) {
+            Log.info("  credentials: %s not copied — a copy of a home is not a copy of its "
+                            + "login, and a home that is imaged or moved would otherwise "
+                            + "carry a working refresh token. Run `skill-manager login` in "
+                            + "the copy if it needs registry access.",
+                    String.join(", ", credentials));
+        }
         if (!report.droppedRegistrations().isEmpty()) {
             // Named, not merely omitted. Dropping them is right (see
             // HomeCloner.DROPPED_STATE_DIRS) and it is still a change to what
