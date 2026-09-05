@@ -8,7 +8,7 @@ Counted once each. My own instrument errors are counted too: a measurement
 that reports the wrong number costs more than most product bugs, and leaving
 them out flatters the ledger.
 
-Through wave 2 (OUN-0, OUN-1, OUN-3).
+Through wave 2 (OUN-0, OUN-1, OUN-3), plus the #311 fix and OUN-9.
 
 ## The table
 
@@ -20,6 +20,7 @@ Through wave 2 (OUN-0, OUN-1, OUN-3).
 | **Measurement instruments (mine)** — wave 2 | 2 | the harness measured the PREVIOUS build; the harness DELETED the home it was measuring |
 | **Product — agent-home boundary** | 1 | `install` removes `<home>/plugins/` when `CODEX_HOME`/`GEMINI_HOME` names a Skill Manager home (#311) |
 | **Dev loop — build caching** | 1 | jbang keys its cache on the entry script, so `./skill-manager` runs a build older than its own sources |
+| **Product — home portability across a machine boundary** | 4 | DEF-282 a clone carries `auth.token`; DEF-283 `bin/cli` bakes an absolute home path; DEF-284 the gateway state a copy inherits; DEF-285 CoW is APFS-only and `pm/` is Mach-O |
 | **Documentation** | 1 | unimplemented behaviour written in the present tense in a doc that ships into homes |
 
 Fifteen. Through wave 1 not one was in the product's resolver, installer or
