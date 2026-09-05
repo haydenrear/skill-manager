@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.1](https://github.com/haydenrear/skill-manager/compare/v0.26.0...v0.26.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **ci:** a closed spec workflow should not turn every run red ([bfca8a8](https://github.com/haydenrear/skill-manager/commit/bfca8a8bb13548f132ca453487294ab8deae11bd)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **specs:** restore the accepted manifest the close-out overwrote ([e7f30b4](https://github.com/haydenrear/skill-manager/commit/e7f30b478be709ae254d2f51dbc34a14cbf011df)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+
 ## [0.26.0](https://github.com/haydenrear/skill-manager/compare/v0.25.1...v0.26.0) (2026-09-05)
 
 
