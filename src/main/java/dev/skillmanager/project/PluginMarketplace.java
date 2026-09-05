@@ -279,16 +279,59 @@ public final class PluginMarketplace {
      *
      * <p>Only entries matching the supplied plugin names are touched —
      * never anything the harness installed itself.
+     *
+     * <h2>Why this needs to know about the store (#311)</h2>
+     *
+     * <p>The directory it deletes from is an <em>agent</em> plugins directory,
+     * derived from an agent-home environment variable.
+     * {@link dev.skillmanager.agent.CodexAgent#pluginsDir()} and
+     * {@link dev.skillmanager.agent.GeminiAgent#pluginsDir()} compute it as
+     * {@code $CODEX_HOME/plugins} and {@code $GEMINI_HOME/plugins} — those two
+     * variables ARE the config directory, not its parent, unlike
+     * {@code CLAUDE_HOME}. So pointing either at a Skill Manager home makes
+     * that expression the STORE's own {@code plugins/}, and this method then
+     * deletes every installed plugin from it, recursively, while the install
+     * that triggered it reports success.
+     *
+     * <p>Measured 2026-09-05: {@code CODEX_HOME=<home> skill-manager install
+     * <unit>} emptied {@code <home>/plugins/} and exited 0 with nothing about
+     * it in the output. Each of the two variables does it independently;
+     * {@code CLAUDE_HOME} does not, because {@code ClaudeAgent} resolves
+     * through a config directory that appends {@code .claude}.
+     *
+     * <p>So the store's own unit directories are passed in and refused. The
+     * misconfiguration is still a misconfiguration — this does not make
+     * {@code CODEX_HOME=<a skill-manager home>} correct — but the failure mode
+     * stops being silent deletion of installed units and becomes a warning
+     * that names the directory and what to do about it.
+     *
+     * @return the entries actually removed, so the caller can say so
      */
-    public static void cleanupLegacyAgentPluginEntries(Path agentPluginsDir, List<String> pluginNames)
+    public static List<Path> cleanupLegacyAgentPluginEntries(
+            Path agentPluginsDir, List<String> pluginNames, SkillStore store)
             throws IOException {
-        if (agentPluginsDir == null || pluginNames == null || pluginNames.isEmpty()) return;
-        if (!Files.isDirectory(agentPluginsDir)) return;
+        if (agentPluginsDir == null || pluginNames == null || pluginNames.isEmpty()) {
+            return List.of();
+        }
+        if (!Files.isDirectory(agentPluginsDir)) return List.of();
+        if (store != null && store.ownsUnitDirectory(agentPluginsDir)) {
+            dev.skillmanager.util.Log.warn("refusing to clean legacy plugin entries from %s: that is this "
+                            + "home's own unit directory, not an agent's. Check "
+                            + "CODEX_HOME / GEMINI_HOME — those name the config "
+                            + "directory itself, so pointing one at a Skill Manager "
+                            + "home aims plugin cleanup at the store (#311).",
+                    agentPluginsDir);
+            return List.of();
+        }
+        List<Path> removed = new ArrayList<>();
         for (String name : pluginNames) {
             Path stale = agentPluginsDir.resolve(name);
             if (Files.exists(stale, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(stale)) {
                 Fs.deleteRecursive(stale);
+                removed.add(stale);
             }
         }
+        return List.copyOf(removed);
     }
+
 }

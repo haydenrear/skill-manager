@@ -254,6 +254,35 @@ final class SmEnv {
     }
 
     /**
+     * {@link #apply(NodeContext, ProcessBuilder, Path)} with ONE agent-home
+     * variable deliberately pointed somewhere wrong.
+     *
+     * <h2>Why a misconfiguration needs a sanctioned spelling</h2>
+     *
+     * <p>{@code sandbox.env.contract} allows exactly one file to write the six
+     * managed variables into a child, and this is that file. A node asserting
+     * what happens under a BAD value therefore cannot set it at the call site;
+     * without this helper the only way to write such a node is to break the
+     * single-writer rule the contract exists to keep.
+     *
+     * <p>The node that needs it is {@code InstallKeepsItsOwnPlugins}: #311 is
+     * reached by pointing {@code CODEX_HOME} at a Skill Manager home, because
+     * that variable names the config directory ITSELF rather than its parent,
+     * so {@code CodexAgent.pluginsDir()} becomes the store's own
+     * {@code plugins/}. Reproducing the defect requires writing the bad value;
+     * asserting the fix requires reproducing the defect.
+     *
+     * @param name  one of the managed variables
+     * @param value the deliberately wrong value
+     */
+    static ProcessBuilder applyWithAgentHomeOverride(NodeContext ctx, ProcessBuilder pb,
+                                                     Path smHome, String name, String value) {
+        apply(ctx, pb, smHome);
+        pb.environment().put(name, value);
+        return pb;
+    }
+
+    /**
      * Only the four agent variables, for a child that is an <em>agent</em> CLI
      * rather than skill-manager — {@code claude plugin list} reads the same
      * roots but has no {@code SKILL_MANAGER_HOME} to speak of.

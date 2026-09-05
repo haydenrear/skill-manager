@@ -1644,6 +1644,16 @@ validationGraph {
         // the same sync without the link must NOT refuse.
         node("sources/home-integrity/SyncStaysInsideItsHome.java")
 
+        // #311: an install does not delete THIS home's own plugins. Runs a
+        // REAL install against a real cloned home with CODEX_HOME (then
+        // GEMINI_HOME) pointed at that home -- the misconfiguration that made
+        // CodexAgent.pluginsDir() the store's own plugins/ and had the
+        // legacy-layout cleanup empty it, exit 0, silently. The unit test
+        // drives the cleanup helper; this one shows the operator's experience.
+        // Carries two controls: the victim must HOLD a plugin first, and the
+        // install it was asked to do must still have happened.
+        node("sources/home-integrity/InstallKeepsItsOwnPlugins.java")
+
         // HIS-16 (#237) / DEF-046+DEF-047: a `project` verb run from a working
         // directory inside ANOTHER repository does not touch that repository's
         // home. SKILL_MANAGER_HOME names the driver's home, the confinement
