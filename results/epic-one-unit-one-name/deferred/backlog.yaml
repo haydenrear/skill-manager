@@ -73,3 +73,74 @@ findings:
     candidate_owner: OUN-1 (the addressing rule), then OUN-2 (the gate)
     status: open
 
+  # The meta-harness effort's DEF-282..285, verified here 2026-09-05 and
+  # SCHEDULED rather than deferred (OUN-9..OUN-12, schedule_revision 2). Kept
+  # in the backlog under their original ids so the two ledgers can be joined.
+  - id: DEF-282
+    found_by: meta-harness effort; verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      A cloned home carries auth.token verbatim -- mode 0600, keys
+      access_token/refresh_token/expires_at. OBSERVED, not inferred: a clone of
+      a home holding a planted real-shaped token had the token. So any image
+      built by copying a home ships a working refresh token for the operator's
+      registry account, with no build-time signal. skill-manager #281 filed
+      this as an unverified inference; it is verified.
+    reproduction: >
+      skill-manager home clone --from A --to B, where A holds an auth.token;
+      then ls -l B/auth.token.
+    why_deferred: not deferred -- scheduled as OUN-9, delivered to main
+    candidate_owner: OUN-9 (#281)
+    status: scheduled
+
+  - id: DEF-283
+    found_by: meta-harness effort; verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      bin/cli wrappers bake this home's absolute path (tla-spec-dev among
+      them). `home repair` reports 0 findings because its rule is "does this
+      reach ANOTHER home", which an own-home absolute path does not -- the home
+      is internally consistent and non-portable at once. SkillScriptBackend
+      detects it and WARNS, reasoned in-source as not breaking already-shipped
+      units. Image builds green, dies at first use.
+    reproduction: >
+      grep -l "$HOME" <home>/bin/cli/* ; then `home repair --json` on the same
+      home reports no findings.
+    why_deferred: not deferred -- scheduled as OUN-10, delivered to main
+    candidate_owner: OUN-10 (#315)
+    status: scheduled
+
+  - id: DEF-284
+    found_by: meta-harness effort; partially verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      Three tiers, three gateway states: root owned=true, worktree
+      owned=false, project home with no gateway.properties at all, two of them
+      naming one port. The DIVERGENCE is confirmed; which state is wrong is
+      not, because no written rule says what a copy should believe.
+    reproduction: cat <each tier>/gateway.properties
+    why_deferred: not deferred -- scheduled as OUN-11, delivered to main
+    candidate_owner: OUN-11 (#317)
+    status: scheduled
+
+  - id: DEF-285
+    found_by: meta-harness effort; verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      The ~3% clone cost the three-tier home model was adopted on is an
+      implicit JDK side effect of clonefile(2) on APFS, with no fallback; the
+      node that asserts it SKIPS where the JDK cannot reflink, which is the
+      only platform CI runs. And pm/ is in PROVISIONABLE_ROOTS but NOT in
+      SKIPPED_DIRS, so a clone copies it -- 203 MB of Mach-O arm64 here (node
+      and uv), which cannot go into a Linux image.
+    reproduction: >
+      grep SKIPPED_DIRS in HomeCloner (pm absent); file <home>/pm/node/*/bin/node;
+      read the skip branch of HomeCloneCostsFarLessThanACopy.
+    why_deferred: not deferred -- scheduled as OUN-12, delivered to main
+    candidate_owner: OUN-12 (#316)
+    status: scheduled
+
