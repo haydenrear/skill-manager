@@ -1,0 +1,520 @@
+# Ticket plan -- one-unit-one-name.
+#
+# The spec-workflow slot is FREE for the first time in this repository's recent
+# history: child-home-materialization-workflow was closed on 2026-09-05 and
+# specs/current + specs/desired_program_model were removed from main. This plan
+# is still canonical for scheduling and issue assignment; scaffolding a TLA
+# workflow on top of it is an owner decision that has not been taken.
+version: 1
+schedule_revision: 1
+name: one-unit-one-name
+slug: one-unit-one-name
+branch: epic/one-unit-one-name
+base: "e07e577"
+repository: haydenrear/skill-manager
+ticket_prefix: OUN
+updated: "2026-09-05"
+
+purpose: >
+  A unit name does not mean one thing in a home, and nothing can tell you what
+  depends on what.
+
+  THREE FACTS, MEASURED 2026-09-05. (1) A skill contained in a plugin is not
+  addressable at all: MarkdownImportValidator.installedRoot resolves a `unit:`
+  name against plugins/, harnesses/, docs/ and skills/ and never looks inside a
+  plugin. skt has contained `unit-authoring` since it shipped; nothing imports
+  it, because nothing can. (2) There are TWO forward-edge mechanisms with two
+  different addressing schemes -- `skill-imports` in markdown frontmatter names
+  a unit BY NAME, `skill_references` in skill-manager.toml names it BY
+  COORDINATE -- and neither is recorded in installed/*.json, which holds only
+  name, version, gitHash, kind, origin, installSource, errors and installedAt.
+  So the reverse edge does not exist on disk in either spelling. (3) Asking
+  "what imports skill-manager?" today means recursive grep, and it returns a
+  DIFFERENT ANSWER PER HOME: 6 units in the project home, 8 in root.
+
+  The consolidation the owner wants -- skill-dev-skill gone, skill-manager-skill
+  living inside skt, one plugin -- is blocked on (1), and is unsafe without (3).
+  Moving skill-manager-skill today breaks 19 importing files, 14 of them inside
+  skt itself.
+
+  The gate this needs is the owner's: a unit name must resolve to ONE copy in a
+  home, and a plugin carrying a contained skill whose name already exists
+  standalone must be REFUSED rather than merged. That gate is also what makes
+  the migration sticky, because during migration both copies exist by
+  construction.
+
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-one-unit-one-name/deferred/backlog.yaml
+  rule: >
+    A failure case outside a ticket's declared slice is appended to the backlog
+    with its reproduction and left there. This epic touches the resolver, the
+    installer and the unit inventory at once; every one of those invites a
+    rewrite. Agents do not widen a ticket into one.
+
+review_policy:
+  cadence: wave
+  gate: true
+  merges: owner
+  walkthrough: required
+  artifact_root: results/epic-one-unit-one-name/reviews/
+  rule: >
+    The epic agent merges each wave's PRs into the epic branch in promotion
+    order, then writes the review artifact and stops. Silence is not approval.
+
+epic_goals:
+  - id: GOAL-one-name-one-copy
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-one-name-one-copy/
+    evaluation_ticket: OUN-8
+    statement: >
+      A unit name resolves to exactly one copy in a home. A plugin carrying a
+      contained skill whose name already exists as a standalone unit is refused,
+      not merged.
+    metric: "(home, unit-name) pairs that resolve to two distinct unit roots"
+    harness: >
+      A walker over every home that indexes every addressable unit name --
+      standalone AND plugin-contained -- and reports each name claimed twice,
+      with both roots. Reported per pair; one bad pair is the whole defect.
+    baseline:
+      value: >
+        0 today, but VACUOUSLY: a contained skill is not addressable, so no
+        contained name can collide with a standalone one. The number becomes
+        meaningful only once OUN-1 lands, which is why OUN-1 precedes the gate.
+      measured_at: "2026-09-05"
+    target: "0, non-vacuously, with the gate refusing a planted collision"
+
+  - id: GOAL-a-contained-skill-is-addressable
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-a-contained-skill-is-addressable/
+    evaluation_ticket: OUN-8
+    statement: >
+      A skill contained in a plugin can be named by `unit:` in a skill-import
+      and resolve, exactly as a standalone skill does.
+    metric: "does `unit: unit-authoring` resolve from a markdown skill-import"
+    harness: "a unit case that plants an import naming a plugin-contained skill and asserts it validates"
+    baseline:
+      value: >
+        no -- installedRoot has four branches (plugins/, harnesses/, docs/,
+        skills/) and none descends into a plugin's contained skills. Measured:
+        unit-authoring is in no installed/ record, no skills/ directory, and
+        nothing imports it.
+      measured_at: "2026-09-05"
+    target: "yes"
+
+  - id: GOAL-migration-lands-on-one-skt
+    kind: integration
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-migration-lands-on-one-skt/
+    evaluation_ticket: OUN-8
+    statement: >
+      Upgrading a home that holds the old shape leaves skill-dev-skill gone, no
+      standalone skill-manager, and exactly one skt -- without the collision
+      gate refusing the upgrade that causes it.
+    metric: "(skill-dev-skill present, standalone skill-manager present, skt count) after upgrading an old-shape home"
+    harness: "bootstrap a home at the pre-epic shape, upgrade it, and read the three counts"
+    baseline:
+      value: "(1, 1, 1) on the operator root home, measured 2026-09-05"
+      measured_at: "2026-09-05"
+    target: "(0, 0, 1)"
+
+  - id: GOAL-who-imports-this
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-who-imports-this/
+    evaluation_ticket: OUN-8
+    statement: >
+      One command answers "what in this home imports X" across BOTH edge
+      mechanisms, transitively, and terminates on a cycle.
+    metric: "can a single command answer it for skill-manager, covering skill-imports AND skill_references, transitively"
+    harness: >
+      A unit case over a fixture home containing both edge kinds and a
+      deliberate cycle; asserts the command names every importer, direct and
+      transitive, and returns rather than looping.
+    baseline:
+      value: >
+        no such command. Answering it on 2026-09-05 took recursive grep over two
+        homes and produced DIFFERENT ANSWERS -- 6 importing units in the project
+        home, 8 in root -- because the two mechanisms live in different files
+        with different addressing and neither is indexed.
+      measured_at: "2026-09-05"
+    target: "one command, both mechanisms, transitive, terminates on cycles"
+
+tickets:
+  - id: OUN-0
+    assignment_issue: "TBD"
+    title: "Baseline both edge mechanisms, and name the addressing rule once"
+    wave: 1
+    depends_on: []
+    blocks: ["OUN-1", "OUN-3"]
+    promotion_order: 1
+    promotion_predecessor: null
+    contribution: measurement-and-contract
+    slice: >
+      The measurement harnesses and the written rule. No resolver change, no
+      installer change, no unit removed.
+    objective: >
+      Measure the baselines for all four goals, and write down ONCE how a unit
+      name is addressed -- including that a contained skill is not addressable
+      today and that two mechanisms address by different keys.
+    existing_seam: >
+      MarkdownImportValidator.installedRoot is the name-addressed reader.
+      Resolver already carries requestedBy for coordinate-addressed
+      skill_references and already has cycle handling. Neither is being changed
+      here; both are being described and measured.
+    expected_effect: "four baselines where there are none, and one written rule"
+    local_signal: "the harnesses run and print numbers; the contained-skill case is RED"
+    test_constraint: >
+      The addressability baseline must be demonstrated on unit-authoring, which
+      exists and is unreachable -- not on a fixture invented for the purpose.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: ["plan/baseline"]
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: guard
+        expected_effect: "a number, and the note that today it is vacuous"
+        local_signal: "the walker runs over every home and reports 0 with the reason"
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: guard
+        expected_effect: "a failing case naming unit-authoring"
+        local_signal: "the case is RED on today's tree"
+      - goal: GOAL-who-imports-this
+        contribution: guard
+        expected_effect: "the two-mechanism finding written down with counts per home"
+        local_signal: "6 and 8 reproduced by the harness rather than by grep"
+
+  - id: OUN-1
+    assignment_issue: "TBD"
+    title: "A plugin-contained skill is addressable by name"
+    wave: 2
+    depends_on: ["OUN-0"]
+    blocks: ["OUN-2"]
+    promotion_order: 2
+    promotion_predecessor: "OUN-0"
+    contribution: capability
+    slice: >
+      installedRoot's resolution order and whatever store predicate it needs.
+      Not the collision gate -- that is OUN-2 and it depends on this.
+    objective: >
+      Add the missing branch so `unit: <name>` resolves a skill contained in an
+      installed plugin, and prove it on unit-authoring.
+    existing_seam: >
+      installedRoot already has four branches in a fixed order. A fifth is
+      additive; the ORDER is the design question, because a contained name that
+      shadows a standalone one is precisely the collision OUN-2 refuses.
+    expected_effect: "unit-authoring resolves; OUN-0's red case turns green"
+    local_signal: "the planted import naming a contained skill validates"
+    test_constraint: >
+      Resolution order must be asserted explicitly, not left to whichever branch
+      happens to be first: a test that only proves 'it resolves' cannot tell a
+      correct order from a lucky one.
+    conflict_keys:
+      production: ["resolve/installed-root"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: direct
+        expected_effect: "no -> yes"
+        local_signal: "the OUN-0 case flips green without being edited"
+
+  - id: OUN-3
+    assignment_issue: "TBD"
+    title: "`skt deps --who-imports` -- the reverse edge, recomputed, cycle-safe"
+    wave: 2
+    depends_on: ["OUN-0"]
+    blocks: ["OUN-4"]
+    promotion_order: 3
+    promotion_predecessor: "OUN-1"
+    contribution: capability
+    slice: >
+      One read-only command over one home. NOT a persisted index: the DAG is
+      recomputed on every invocation by owner decision, so there is no record
+      to drift from the units it describes.
+    objective: >
+      Answer "what imports X" over BOTH mechanisms -- name-addressed
+      skill-imports and coordinate-addressed skill_references -- transitively,
+      terminating on cycles, and print it as the fitness function an agent reads
+      before changing a unit.
+    existing_seam: >
+      Resolver already walks the coordinate-addressed edges with requestedBy and
+      already handles cycles; MarkdownImportValidator already parses the
+      name-addressed ones. The work is unifying two addressing schemes into one
+      answer, not building a graph from nothing.
+    expected_effect: "one command replaces two greps that disagreed"
+    local_signal: >
+      run against the project home it names the 6 importers of skill-manager;
+      against root, 8 -- and says why they differ
+    test_constraint: >
+      A fixture with a deliberate CYCLE is required. The command must return an
+      answer rather than loop or truncate silently, and the test must fail if it
+      does either.
+    conflict_keys:
+      production: ["cli/deps"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-who-imports-this
+        contribution: direct
+        expected_effect: "no command -> one command"
+        local_signal: "both mechanisms in one answer, cycle fixture terminates"
+
+  - id: OUN-2
+    assignment_issue: "TBD"
+    title: "Refuse a plugin whose contained skill name already exists standalone"
+    wave: 3
+    depends_on: ["OUN-1"]
+    blocks: ["OUN-5"]
+    promotion_order: 4
+    promotion_predecessor: "OUN-3"
+    contribution: guard
+    slice: >
+      The install/sync-time gate and its message. Not the migration that has to
+      survive it -- that is OUN-5.
+    objective: >
+      Make a name collision between a plugin-contained skill and a standalone
+      unit a hard refusal, naming both claimants and the two ways out (rename
+      the contained skill, or remove the standalone).
+    existing_seam: >
+      LiveInterpreter already refuses "unit 'X' is already installed at Y" for
+      standalone collisions. This is the same verdict for a claimant the current
+      inventory cannot see -- which is why it could not exist before OUN-1.
+    expected_effect: "a planted collision is refused; the refusal names both roots"
+    local_signal: "installing a plugin carrying a contained `skill-manager` fails with both paths named"
+    test_constraint: >
+      Refusal is HARD -- no warn-and-continue, no flag to force it. The owner's
+      rule is that a home never holds two versions of one name. A test must
+      assert the refusal cannot be overridden.
+    conflict_keys:
+      production: ["install/collision-gate"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: "the metric stops being vacuous and the gate holds it at 0"
+        local_signal: "planted collision refused; no-collision install unaffected"
+
+  - id: OUN-4
+    assignment_issue: "TBD"
+    title: "Remove skill-dev-skill from the repository and from onboarding"
+    wave: 3
+    depends_on: ["OUN-3"]
+    blocks: ["OUN-5"]
+    promotion_order: 5
+    promotion_predecessor: "OUN-2"
+    contribution: simplification
+    slice: >
+      The unit directory, the onboarding seed, the onboard graph's assertions
+      about it, skill-project.toml's prose, and the three skt doc mentions. NOT
+      the cleanup of homes that already hold it -- that is OUN-5.
+    objective: >
+      Delete skill-dev-skill. Nothing imports it and nothing invokes its CLI;
+      onboarding still seeds it and the onboard graph still asserts it.
+    existing_seam: >
+      OnboardSkillsInstalled asserts skills/skill-dev-skill and
+      installed/skill-dev-skill.json exist. Its installer was patched on
+      2026-09-03 to unbreak the onboard graph, which is evidence it is still
+      wired in, not evidence it is wanted.
+    expected_effect: "one fewer unit in the repo; onboard still green"
+    local_signal: "OUN-3's command reports zero importers before the deletion"
+    test_constraint: >
+      Prove absence with OUN-3's command, not with grep. That is the point of
+      sequencing OUN-3 first, and it is the epic's own dogfooding of its tool.
+    conflict_keys:
+      production: ["units/skill-dev-skill"]
+      tla: []
+      adapters: []
+      test_graph: ["onboard"]
+      workflow: []
+    goals:
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: direct
+        expected_effect: "the unit stops shipping, so new homes never acquire it"
+        local_signal: "onboard graph green with the assertions removed"
+      - goal: GOAL-who-imports-this
+        contribution: enabling
+        expected_effect: "the tool is used in anger to justify a deletion"
+        local_signal: "zero importers, printed, recorded as the evidence"
+
+  - id: OUN-5
+    assignment_issue: "TBD"
+    title: "Migration: retire skill-dev-skill and the superseded standalone skill-manager"
+    wave: 4
+    depends_on: ["OUN-2", "OUN-4"]
+    blocks: ["OUN-6"]
+    promotion_order: 6
+    promotion_predecessor: "OUN-4"
+    contribution: capability
+    slice: >
+      The one-time migration an existing home goes through on upgrade. Not the
+      move of skill-manager-skill into skt -- that is OUN-6 and it depends on
+      this landing first.
+    objective: >
+      Make an existing home reach the new shape without OUN-2's gate refusing
+      the very upgrade that fixes it: retire skill-dev-skill, and retire the
+      standalone skill-manager IN THE SAME TRANSACTION as adopting the skt that
+      supersedes it.
+    existing_seam: >
+      home sync / upgrade already reconcile a home against a source. What is new
+      is a retirement that must be ordered BEFORE the collision check within one
+      operation, and must be idempotent for a home already migrated.
+    expected_effect: "an old-shape home upgrades cleanly instead of being refused"
+    local_signal: "a fixture home at the pre-epic shape upgrades to (0, 0, 1)"
+    test_constraint: >
+      The gate must NOT be weakened to let migration through. The migration is
+      ordered before it, and a test must prove the gate still refuses an
+      ordinary collision during and after migration. A migration that works by
+      disabling the guard has produced the state the guard exists to prevent.
+    conflict_keys:
+      production: ["migration/unit-retirement"]
+      tla: []
+      adapters: []
+      test_graph: ["home-sync"]
+      workflow: []
+    goals:
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: direct
+        expected_effect: "(1, 1, 1) -> (0, 0, 1)"
+        local_signal: "fixture home reaches the target triple; re-running changes nothing"
+      - goal: GOAL-one-name-one-copy
+        contribution: guard
+        expected_effect: "the gate survives the migration that would trip it"
+        local_signal: "planted collision still refused mid-migration"
+
+  - id: OUN-6
+    assignment_issue: "TBD"
+    title: "Move skill-manager-skill into the skt plugin, keeping the unit name"
+    wave: 5
+    depends_on: ["OUN-5"]
+    blocks: ["OUN-7"]
+    promotion_order: 7
+    promotion_predecessor: "OUN-5"
+    contribution: simplification
+    slice: >
+      The unit's location and whatever the move needs to keep 19 importing files
+      resolving. Not the repository rename -- that is OUN-7.
+    objective: >
+      Relocate skill-manager-skill to live inside skt as a contained skill, under
+      the SAME unit name, so every existing `unit: skill-manager` import keeps
+      resolving through OUN-1's new branch.
+    existing_seam: >
+      OUN-1 makes contained skills addressable; OUN-2 refuses the collision this
+      move would otherwise create; OUN-5 removes the standalone copy first. This
+      ticket is the payoff of the three and is unsafe without any of them.
+    expected_effect: "one fewer top-level unit; all 19 imports still resolve"
+    local_signal: >
+      OUN-3's command reports the same importer set before and after the move --
+      6 in the project home -- with no import edited
+    test_constraint: >
+      Not one importing file may be rewritten to make this pass. If an import
+      needs editing, the addressing is wrong and OUN-1 is incomplete; that is
+      the signal, and it must fail rather than be papered over.
+    conflict_keys:
+      production: ["units/skill-manager-skill"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: "the name is claimed once, from inside skt"
+        local_signal: "the walker reports one root for skill-manager"
+
+  - id: OUN-7
+    assignment_issue: "TBD"
+    title: "Rename skill-publisher-skill to skt, and repoint what names the old repo"
+    wave: 6
+    depends_on: ["OUN-6"]
+    blocks: ["OUN-8"]
+    promotion_order: 8
+    promotion_predecessor: "OUN-6"
+    contribution: simplification
+    slice: >
+      The repository name and every recorded reference to it. No behaviour
+      change.
+    objective: >
+      Rename the hosting repository to skt so the repo, the plugin, the CLI and
+      the unit agree, and repoint installSource in existing records rather than
+      leaving them on a GitHub redirect.
+    existing_seam: >
+      installed/*.json carries installSource. GitHub redirects a renamed repo, so
+      nothing breaks loudly -- which is exactly the failure mode to avoid: a
+      record naming a repository that no longer exists under that name, working
+      only because a redirect is silently covering for it.
+    expected_effect: "one name for one thing, and records that say so"
+    local_signal: "no installed record names skill-publisher-skill; clones still work"
+    test_constraint: >
+      A redirect working is not the same as a record being right. Assert on the
+      recorded installSource, not on whether a clone succeeds.
+    conflict_keys:
+      production: ["units/skt-coords"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: enabling
+        expected_effect: "the surviving plugin is named consistently everywhere"
+        local_signal: "records repointed, verified by reading them"
+
+  - id: OUN-8
+    assignment_issue: "TBD"
+    title: "Terminal evaluation -- decide all four goals on the integrated result"
+    role: evaluation
+    wave: 7
+    depends_on: ["OUN-7"]
+    blocks: []
+    promotion_order: 9
+    promotion_predecessor: "OUN-7"
+    contribution: measurement
+    slice: "Measurement and the review artifact. No production change."
+    objective: >
+      Run every goal harness on the integrated epic, decide each goal against
+      its target, run the full graph sweep and a manual pass, and record bug
+      attribution by producing component.
+    existing_seam: >
+      scripts/measure_goals.py already exists from the previous epic, with the
+      contract that a harness prints {goal, metric, value, target, met} and
+      exits 0/1/2. This epic's harnesses join it rather than inventing a shape.
+    expected_effect: "four decided goals, with evidence"
+    local_signal: "measure_goals.py reports 4 of 4, or names which did not and why"
+    test_constraint: >
+      A goal that cannot be measured is reported UNMEASURED, never as met. The
+      previous epic had three of four goals mismeasured rather than unmet; the
+      harness contract exists because of it.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: ["plan/evaluation"]
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
+      - goal: GOAL-who-imports-this
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
