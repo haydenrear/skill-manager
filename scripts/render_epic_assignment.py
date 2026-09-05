@@ -62,7 +62,12 @@ def block(slug, plan, t):
     A(f"  schedule_revision: {int(plan['schedule_revision'])}")
     A("ticket:")
     A(f"  spec_id: {t['id']}")
-    A(f"  feature_branch: feature/{t['id'].lower()}")
+    # NOT lowered. `skt ticket new <id>` -- the sanctioned front door in
+    # git-epic-workflow rule 10 -- creates feature/<ID> verbatim. Declaring
+    # the lowercase spelling made the assignment disagree with the branch the
+    # tool actually produces, and on a case-insensitive filesystem the two
+    # spellings are one ref.
+    A(f"  feature_branch: feature/{t['id']}")
     A(f"  worktree: ../wt-{t['id'].lower()}")
     A(f"  pr_base: {plan['branch']}")
     A(f"  wave: {int(t['wave'])}")
