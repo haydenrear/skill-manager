@@ -23,7 +23,6 @@ a measurement script precisely so that nobody mistakes it for the product's
 answer. The product's answer is what OUN-3 adds.
 """
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

@@ -137,9 +137,15 @@ plugins/<name>     harnesses/<name>     docs/<name>     skills/<name>
 import naming it is reported as `references missing unit`, in the very home
 where the file is sitting on disk.
 
-### One name, one copy
+### One name, one copy — the rule, not yet the behaviour
 
-A unit name resolves to exactly one copy in a home. Two consequences:
+> **Status.** Everything above this line describes what the product does
+> today. This section and the next describe the rule being established by
+> epic `one-unit-one-name`. Neither the refusal nor the reverse-edge command
+> exists yet. They are written here so that one statement of the rule
+> precedes the code, rather than three readers each inventing their own.
+
+A unit name should resolve to exactly one copy in a home. Two consequences:
 
 - A plugin carrying a contained skill whose name already exists as a
   standalone unit in that home is **refused**, not merged. Two copies of one
@@ -151,22 +157,32 @@ A unit name resolves to exactly one copy in a home. Two consequences:
   the old copy in the same operation that installs the new one, and not
   before or after.
 
+**One case is already on disk and is not a violation.** A plugin may carry a
+contained skill with the plugin's own name — `skt` carries
+`plugins/skt/skills/skt` — and that is one unit under one name, the plugin's
+entry skill, not two claims on it. Measured 2026-09-05: 21 of this machine's
+homes are in that shape, and a rule that did not say so would refuse the
+`skt` plugin everywhere it is installed.
+
 ### The reverse edge is computed, never stored
 
 "What in this home imports X" has no answer on disk: neither mechanism is
 recorded in `installed/*.json`, which holds only name, version, gitHash,
-kind, origin, installSource, errors and installedAt. The answer is recomputed
-from the unit trees on demand.
+kind, origin, installSource, errors and installedAt. There is no command that
+answers it either — `skill-manager deps` walks forward only. Answering it
+today means re-reading every unit tree in the home.
 
-That is deliberate. A stored index is a second record of the edges, and a
-second record can disagree with the units it describes — a home is a *copy*,
-so an index copied with it describes the home it was built in, not the one
-you are standing in.
+When that command exists it will recompute, not store. A stored index is a
+second record of the edges, and a second record can disagree with the units
+it describes — a home is a *copy*, so an index copied with it describes the
+home it was built in, not the one you are standing in.
 
 Two properties any such computation must have, because the edges are not a
 tree:
 
 - **transitive** — the whole chain, not the direct importers. Units here
   depend on each other through intermediaries.
-- **cycle-safe** — mark a name before expanding it. `skill-imports` edges do
-  form loops, and a walk that does not mark returns to the same unit forever.
+- **cycle-safe** — mark a name before expanding it. The edges do form loops:
+  in this machine's root home `git-epic-workflow` imports `git-issue-workflow`
+  and `git-issue-workflow` imports `git-epic-workflow` back. A walk that does
+  not mark returns to the same unit forever.

@@ -22,7 +22,6 @@ unit trees every time. That is what this module does.
 import json
 import os
 import re
-import sys
 from pathlib import Path
 
 # The four directories MarkdownImportValidator.installedRoot searches, in its
@@ -33,11 +32,15 @@ STANDALONE_DIRS = (("plugins", "plugin"), ("harnesses", "harness"),
 
 FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\s*?(\r?\n|\Z)", re.S)
 IMPORT_UNIT = re.compile(r"^\s*(?:-\s*)?(?:unit|skill)\s*:\s*(.+?)\s*$", re.M)
-SKILL_IMPORTS_BLOCK = re.compile(
-    r"^skill-imports\s*:\s*(.*?)(?=^\S|\Z)", re.S | re.M)
+SKILL_IMPORTS_KEY = re.compile(r"^skill-imports\s*:\s*(.*)$")
 TOML_REFS = re.compile(r"^\s*(?:skill_)?references\s*=\s*\[(.*?)\]", re.S | re.M)
 TOML_STR = re.compile(r"""["']([^"']+)["']""")
 
+# A DELIBERATE DIVERGENCE from the product, which validates every markdown
+# file under a unit root with no exclusions. Vendored trees and build output
+# would otherwise be read as authored edges. Verified against both homes on
+# 2026-09-05: including these directories changes neither the 8 nor the 6.
+# If that ever stops being true the divergence has started mattering.
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venvs",
              "build", "target", ".gradle", "dist"}
 
@@ -102,6 +105,43 @@ def _read(path: Path) -> str:
         return ""
 
 
+def _imports_block(front: str):
+    """The lines belonging to a top-level `skill-imports:` key.
+
+    Line-based, not one regex. The regex form terminated the block at the
+    first line starting with a non-space character, which swallowed the
+    perfectly ordinary YAML that puts sequence items at zero indent:
+
+        skill-imports:
+        - unit: alpha        <- `-` is non-space, so the block ended here
+          path: a.md
+
+    and reported the file as importing nothing. No unit in any home on this
+    machine is written that way today, so no measured number changes -- which
+    is exactly why it would have gone unnoticed.
+    """
+    lines = front.splitlines()
+    out = []
+    for i, line in enumerate(lines):
+        m = SKILL_IMPORTS_KEY.match(line)
+        if not m:
+            continue
+        inline = m.group(1).strip()
+        if inline and inline not in ("|", ">"):
+            out.append(inline)          # `skill-imports: []` and friends
+        for rest in lines[i + 1:]:
+            if not rest.strip():
+                out.append(rest)
+                continue
+            # A sibling top-level key ends the block. A sequence item (`-`)
+            # and any indented line do not.
+            if not rest[0].isspace() and not rest.lstrip().startswith("-"):
+                break
+            out.append(rest)
+        break
+    return "\n".join(out)
+
+
 def parse_imports(text: str):
     """Unit names named by a `skill-imports:` frontmatter block.
 
@@ -111,11 +151,11 @@ def parse_imports(text: str):
     m = FRONTMATTER.match(text)
     if not m:
         return []
-    block = SKILL_IMPORTS_BLOCK.search(m.group(1))
+    block = _imports_block(m.group(1))
     if not block:
         return []
     names = []
-    for raw in IMPORT_UNIT.finditer(block.group(1)):
+    for raw in IMPORT_UNIT.finditer(block):
         name = _unquote(raw.group(1))
         # `unit:` inside a nested reason/description line would be a false
         # positive; a unit name has no whitespace.
