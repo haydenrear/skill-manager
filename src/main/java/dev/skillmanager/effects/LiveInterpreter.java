@@ -888,6 +888,28 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // for plugins). Per-(agent, unit) try/catch so one failure doesn't
         // sink the whole sweep.
         for (dev.skillmanager.project.Projector proj : projectors.projectors()) {
+            // #311, the second face. A projector's target directories are
+            // derived from agent-home environment variables, and CODEX_HOME /
+            // GEMINI_HOME name the config directory ITSELF — so pointing
+            // either at a Skill Manager home makes proj.skillsDir() this
+            // store's own skills/. Projecting there does not "link the unit
+            // into the agent"; it replaces the installed unit with a symlink
+            // to its own path. Measured 2026-09-05: every unit installed under
+            // CODEX_HOME=<home> became a self-referential link, exit 0.
+            //
+            // Skipped rather than failed: the install itself succeeded and the
+            // store is intact, which is the part worth protecting. What the
+            // operator loses is the agent link, and the warning says so.
+            if (ctx.store().ownsUnitDirectory(proj.skillsDir())
+                    || ctx.store().ownsUnitDirectory(proj.pluginsDir())) {
+                Log.warn("skipping %s projection: its target (%s) is this home's own "
+                                + "unit directory, not an agent's. Check CODEX_HOME / "
+                                + "GEMINI_HOME — those name the config directory itself, "
+                                + "so pointing one at a Skill Manager home aims agent "
+                                + "projection at the store (#311).",
+                        proj.agentId(), proj.skillsDir());
+                continue;
+            }
             for (AgentUnit u : units) {
                 try {
                     List<dev.skillmanager.project.Projection> plan = proj.planProjection(u, ctx.store());
@@ -994,10 +1016,21 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // Legacy cleanup: pre-marketplace builds left symlinks under
         // <agentPluginsDir>/<name>. Drop them so the harness doesn't
         // try to load the plugin from the wrong namespace.
+        //
+        // The store goes in because that directory comes from an agent-home
+        // environment variable, and two of those variables name the config
+        // directory itself — so `CODEX_HOME=<a skill-manager home>` aims this
+        // cleanup at the store's own plugins/ and used to empty it (#311).
         for (dev.skillmanager.agent.Agent agent : dev.skillmanager.agent.Agent.all()) {
             try {
-                dev.skillmanager.project.PluginMarketplace.cleanupLegacyAgentPluginEntries(
-                        agent.pluginsDir(), currentPlugins);
+                List<java.nio.file.Path> dropped =
+                        dev.skillmanager.project.PluginMarketplace.cleanupLegacyAgentPluginEntries(
+                                agent.pluginsDir(), currentPlugins, ctx.store());
+                // Deleting a plugin entry silently is half of what made #311
+                // hard to see. Say so.
+                for (java.nio.file.Path p : dropped) {
+                    Log.warn("removed legacy %s plugin entry %s", agent.id(), p);
+                }
             } catch (IOException io) {
                 Log.warn("legacy plugin cleanup for %s: %s", agent.id(), io.getMessage());
             }

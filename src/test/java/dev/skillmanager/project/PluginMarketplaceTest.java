@@ -142,7 +142,8 @@ public final class PluginMarketplaceTest {
             // be touched.
             Files.createDirectories(agentDir.resolve("third-party"));
 
-            PluginMarketplace.cleanupLegacyAgentPluginEntries(agentDir, List.of("plug-a", "plug-b"));
+            List<Path> removed = PluginMarketplace.cleanupLegacyAgentPluginEntries(
+                    agentDir, List.of("plug-a", "plug-b"), h.store());
 
             assertFalse(Files.exists(agentDir.resolve("plug-a"), LinkOption.NOFOLLOW_LINKS),
                     "skill-manager-managed plug-a removed");
@@ -150,6 +151,85 @@ public final class PluginMarketplaceTest {
                     "skill-manager-managed plug-b removed");
             assertTrue(Files.exists(agentDir.resolve("third-party"), LinkOption.NOFOLLOW_LINKS),
                     "harness-installed third-party untouched");
+            assertEquals(2, removed.size(),
+                    "and it REPORTS what it deleted — silence is half of #311");
+        });
+
+        // #311. CODEX_HOME and GEMINI_HOME name the config directory itself,
+        // not its parent, so CodexAgent.pluginsDir() is `$CODEX_HOME/plugins`.
+        // Point either variable at a Skill Manager home and that expression is
+        // the STORE's own plugins/ — and this method used to delete every
+        // installed plugin out of it while the install reported success.
+        suite.test("#311: the store's own plugins/ is refused, not cleaned", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("plug-a", UnitKind.PLUGIN);
+            h.scaffoldUnitDir("plug-b", UnitKind.PLUGIN);
+            Path storePlugins = h.store().pluginsDir();
+            assertTrue(Files.isDirectory(storePlugins.resolve("plug-a")), "installed before");
+
+            List<Path> removed = PluginMarketplace.cleanupLegacyAgentPluginEntries(
+                    storePlugins, List.of("plug-a", "plug-b"), h.store());
+
+            assertTrue(Files.isDirectory(storePlugins.resolve("plug-a")),
+                    "plug-a survives — the store's plugins/ is not an agent's");
+            assertTrue(Files.isDirectory(storePlugins.resolve("plug-b")), "and so does plug-b");
+            assertEquals(0, removed.size(), "nothing was removed");
+        });
+
+        suite.test("#311: the store's own skills/ is refused too — the second face", () -> {
+            // The same misconfiguration reaches TWO write paths. The plugin
+            // cleanup deletes; the agent projection replaces each installed
+            // unit with a symlink pointing at its own path. Both ask the store
+            // the same question now, so both are covered by one guard.
+            TestHarness h = TestHarness.create();
+            assertTrue(h.store().ownsUnitDirectory(h.store().skillsDir()),
+                    "the store owns its skills/");
+            assertTrue(h.store().ownsUnitDirectory(h.store().pluginsDir()),
+                    "and its plugins/");
+            assertTrue(h.store().ownsUnitDirectory(h.store().root()),
+                    "and its root");
+            assertFalse(h.store().ownsUnitDirectory(
+                            h.store().root().resolve(".codex").resolve("skills")),
+                    "but NOT the default agent location inside the home — a guard "
+                            + "that broad would disable projection in every ordinary home");
+        });
+
+        suite.test("#311: the other three store unit directories are refused too", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("plug-a", UnitKind.PLUGIN);
+            for (Path owned : List.of(h.store().root(), h.store().skillsDir(),
+                    h.store().docsDir(), h.store().harnessesDir())) {
+                Files.createDirectories(owned);
+                Files.createDirectories(owned.resolve("plug-a"));
+                assertEquals(0, PluginMarketplace.cleanupLegacyAgentPluginEntries(
+                                owned, List.of("plug-a"), h.store()).size(),
+                        owned + " is the store's own, not an agent's");
+                assertTrue(Files.isDirectory(owned.resolve("plug-a")), "still there: " + owned);
+            }
+        });
+
+        // THE COMPANION. Without it, "nothing was removed" is also what a
+        // cleanup that stopped working entirely would report — and the
+        // DEFAULT agent directory does live inside the home
+        // (<home>/.codex/plugins when CODEX_HOME is unset), so a refusal
+        // written as "anywhere under the home" would disable the cleanup in
+        // every ordinary home.
+        suite.test("#311 companion: an agent dir INSIDE the home is still cleaned", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("plug-a", UnitKind.PLUGIN);
+            Path insideHome = h.store().root().resolve(".codex").resolve("plugins");
+            Files.createDirectories(insideHome);
+            Files.createSymbolicLink(insideHome.resolve("plug-a"),
+                    h.store().unitDir("plug-a", UnitKind.PLUGIN));
+
+            List<Path> removed = PluginMarketplace.cleanupLegacyAgentPluginEntries(
+                    insideHome, List.of("plug-a"), h.store());
+
+            assertEquals(1, removed.size(), "the default agent location is still cleaned");
+            assertFalse(Files.exists(insideHome.resolve("plug-a"), LinkOption.NOFOLLOW_LINKS),
+                    "the stale entry is gone");
+            assertTrue(Files.isDirectory(h.store().pluginsDir().resolve("plug-a")),
+                    "and the unit the symlink POINTED AT is untouched");
         });
 
         suite.test("per-home marketplace identity: non-root store gets a suffixed, stable name", () -> {
