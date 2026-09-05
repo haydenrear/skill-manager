@@ -1,0 +1,19 @@
+{
+ "goal": "GOAL-one-name-one-copy",
+ "metric": "(home, unit-name) pairs that resolve to two distinct unit roots",
+ "scanned_homes": 33,
+ "live_pairs": 0,
+ "latent_pairs": 0,
+ "value": "0 live, 0 latent over 33 homes",
+ "target": "0 live AND 0 latent",
+ "vacuous": false,
+ "why": "no (home, unit-name) pair resolves to two roots, but the other half of this goal \u2014 an installer that REFUSES a planted collision \u2014 has no probe yet. OUN-2 adds it.",
+ "live": [],
+ "latent": [],
+ "pairs_clean": true,
+ "gate": {
+  "refuses_a_planted_collision": null,
+  "probed_by": "OUN-2"
+ },
+ "met": null
+}

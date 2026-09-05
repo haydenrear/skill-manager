@@ -8,7 +8,7 @@ Counted once each. My own instrument errors are counted too: a measurement
 that reports the wrong number costs more than most product bugs, and leaving
 them out flatters the ledger.
 
-Through wave 1 (OUN-0).
+Through wave 2 (OUN-0, OUN-1, OUN-3).
 
 ## The table
 
@@ -17,12 +17,15 @@ Through wave 1 (OUN-0).
 | **Epic scaffolding — assignments that emit unexecuted strings** | **4** | nonexistent `spec_unit` script; hardcoded per-epic maps + stale `BASE`; `feature/oun-0` vs `feature/OUN-0`; a rationale naming a closed workflow |
 | **Measurement instruments (mine)** | 4 | zero-indent `skill-imports` parsed as none; hardcoded operator path as the protected-home guard; temp homes leaked on kill; agent-home axes unpinned in the probe |
 | **Spec promotion / close-out** | 2 | accepted `spec_manifest.yaml` replaced by the workflow's; CI hardcoded `specs/current/tests` |
+| **Measurement instruments (mine)** — wave 2 | 2 | the harness measured the PREVIOUS build; the harness DELETED the home it was measuring |
+| **Product — agent-home boundary** | 1 | `install` removes `<home>/plugins/` when `CODEX_HOME`/`GEMINI_HOME` names a Skill Manager home (#311) |
+| **Dev loop — build caching** | 1 | jbang keys its cache on the entry script, so `./skill-manager` runs a build older than its own sources |
 | **Documentation** | 1 | unimplemented behaviour written in the present tense in a doc that ships into homes |
 
-Eleven, and **not one of them is in the product's resolver, installer or
-store** — the surfaces this epic exists to change. That is what a
-measurement-only ticket should produce, and it means the count says nothing
-yet about the epic's actual subject.
+Fifteen. Through wave 1 not one was in the product's resolver, installer or
+store — correct for a measurement-only ticket. Wave 2 found the first product
+defect (#311), and it is **not** in the surfaces this epic changes either: it
+is in the agent-home boundary, reached by a harness, not by the resolver work.
 
 ## The largest class is the machinery, not the product
 
@@ -77,3 +80,41 @@ and turned every CI run on every branch red before collecting a test.
 *Recommendation:* neither defect is about specs. Both are about **a step that
 assumes a transient tree is permanent.** Worth checking whether anything else
 in CI or the skills names `specs/current` unconditionally.
+
+## Wave 2: the instruments produced more defects than the feature did
+
+OUN-1's product change is one branch in one method and four test cases. It
+worked the first time. What did not work was everything used to *observe* it,
+and both failures had the same signature — **the harness reported a defect
+the product did not have.**
+
+**It was measuring the previous build.** jbang keys its cache on the hash of
+the ENTRY script. `SkillManager.java` barely changes, so editing anything
+under `src/main/java` leaves the cached jar in place and `./skill-manager`
+keeps running the old one. `RunTests.java` is a different entry script, so the
+unit suite rebuilt and went green while the harness, driving the wrapper,
+stayed red. Two instruments disagreeing about the same change, and the one
+that was wrong was the one closer to the user.
+
+**It was deleting the home it measured.** Wave 1's review added
+`CLAUDE_HOME`/`CODEX_HOME`/`GEMINI_HOME` pinning to the probe on the theory
+that more pinning is safer. `CODEX_HOME` and `GEMINI_HOME` are the config
+*directory*, not its parent, so pointing either at a Skill Manager home makes
+`install` remove `<home>/plugins/<plugin>` — exit 0, silent. The probe emptied
+the plugins directory and then reported that a plugin-contained skill was not
+addressable. Both statements true, unrelated, the second caused by the first.
+
+*Recommendation, and it is the same one both times:* **a measurement must
+assert the conditions it depends on.** The harness now checks that the CLI it
+ran is newer than the sources, and that the unit it is asking about is still
+on disk after the probe. Neither check is clever; the absence of both is what
+turned a working change into an hour of chasing.
+
+## And a defect worth having found
+
+#311 is the wave's only product defect and it came from misusing the product,
+which is the least respectable way to find one and does not make it less real:
+**silent deletion of a store directory, reported as success.** It joins #262
+and #289 in the "which home does this write?" class, with the distinguishing
+property that this one's answer is destructive rather than merely wrong.
+
