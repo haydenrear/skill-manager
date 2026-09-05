@@ -1,0 +1,12 @@
+epic/one-unit-one-name — goal ledger
+
+  NOT MET     GOAL-one-name-one-copy                 0 live, 22 latent over 30 homes  (target 0 live AND 0 latent)
+              why: 0 live is VACUOUS while contained skills are unaddressable: the latent pairs cannot collide because only one of their tw
+  NOT MET     GOAL-a-contained-skill-is-addressable  no  (target yes)
+              why: unit-authoring exists at /Users/hayde/IdeaProjects/wt-oun-0/.skill-manager/plugins/skt/skills/unit-authoring in the very
+  NOT MET     GOAL-migration-lands-on-one-skt        root (1, 1, 1); 0 of 28 homes at (0, 0, 1)  (target (0, 0, 1))
+              why: no migration exists yet -- OUN-5 writes it. This reads the triple where it stands so the migration is graded against a n
+  NOT MET     GOAL-who-imports-this                  no such command  (target one command, both mechanisms, transitive, terminates on cycles)
+              why: `skill-manager deps` walks forward only and `skt` has no deps subcommand; the reverse edge is recorded in no file, so th
+
+  0 of 4 met

@@ -1,0 +1,414 @@
+{
+ "goal": "GOAL-one-name-one-copy",
+ "metric": "(home, unit-name) pairs that resolve to two distinct unit roots",
+ "scanned_homes": 29,
+ "live_pairs": 0,
+ "latent_pairs": 21,
+ "value": "0 live, 21 latent over 29 homes",
+ "target": "0 live AND 0 latent",
+ "vacuous": true,
+ "why": "0 live is VACUOUS while contained skills are unaddressable: the latent pairs cannot collide because only one of their two roots can be named. OUN-1 makes them live.",
+ "live": [],
+ "latent": [
+  {
+   "home": "root",
+   "home_path": "/Users/hayde/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "wt-oun-0",
+   "home_path": "/Users/hayde/IdeaProjects/wt-oun-0/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/wt-oun-0/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/wt-oun-0/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "acp-cdc-ai-python",
+   "home_path": "/Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "commit-diff-context-parent",
+   "home_path": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "commit-diff-context-parent-eval-024",
+   "home_path": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "deploy-cdc",
+   "home_path": "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "embabel-meta-skill",
+   "home_path": "/Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "git-epic-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-epic-skill/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/git-epic-skill/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/git-epic-skill/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "git-issue-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-skill/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/git-issue-skill/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/git-issue-skill/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "git-issue-workflow-skill",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "git-issue-workflow-skill-27-close-reason",
+   "home_path": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "meta-harness",
+   "home_path": "/Users/hayde/IdeaProjects/meta-harness/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "meta-orchestrator",
+   "home_path": "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "skill-manager",
+   "home_path": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "skill-manager-integration-repository",
+   "home_path": "/Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "tla-spec-dev",
+   "home_path": "/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "wt-16-concurrent-agent-registration-cannot-lose",
+   "home_path": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "wt-epic-cdc-index-mvp",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-cdc-index-mvp/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "wt-epic-computeq-multiproject-validation",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "wt-epic-meta-harness-loop",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  },
+  {
+   "home": "wt-epic-mh-testing",
+   "home_path": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+   "name": "skt",
+   "roots": [
+    {
+     "kind": "plugin",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager/plugins/skt",
+     "addressable_today": true,
+     "contained_in": null
+    },
+    {
+     "kind": "contained-skill",
+     "root": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager/plugins/skt/skills/skt",
+     "addressable_today": false,
+     "contained_in": "skt"
+    }
+   ]
+  }
+ ],
+ "met": false
+}

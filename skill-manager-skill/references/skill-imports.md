@@ -99,3 +99,74 @@ Nothing re-checks them there, and the agent reading that frontmatter gets
 no signal that the edge is dead. A validated import is a statement about
 the home the unit was installed into, not about the home you are standing
 in.
+
+## How A Unit Name Is Addressed
+
+This is the rule, stated once, because it was previously only implicit in
+two different readers and they do not agree.
+
+### Two mechanisms, two keys
+
+| | `skill-imports` | `skill_references` |
+| --- | --- | --- |
+| lives in | markdown frontmatter, any `.md` under a unit root | the unit's own root manifest (`skill-manager.toml`, `skill-manager-plugin.toml`) |
+| addresses a unit by | **name** | **coordinate** (`github:owner/repo`, a path, a registry ref) |
+| resolved by | `MarkdownImportValidator`, against **this home's** store | `Resolver`, at install time, by fetching |
+| means | this file extends behaviour documented over there | install that unit too |
+| recorded in `installed/*.json` | no | no |
+
+**The name and the coordinate are not the same key, and the mapping between
+them is not obvious.** `github:haydenrear/skill-manager-skill` installs a
+unit named `skill-manager`; `github:haydenrear/skill-publisher-skill`
+installs one named `skt`. The repository name is not the unit name. The only
+place the two are joined is each unit's `installed/<name>.json`, whose
+`origin` field records the coordinate it came from — and nothing in the
+product performs that join.
+
+### The four branches, in order
+
+A `unit:` name is resolved by searching the home's store in exactly this
+order, first hit wins:
+
+```
+plugins/<name>     harnesses/<name>     docs/<name>     skills/<name>
+```
+
+**None of them descends into a plugin's contained skills.** A skill at
+`plugins/<plugin>/skills/<skill>` is not addressable by name at all — an
+import naming it is reported as `references missing unit`, in the very home
+where the file is sitting on disk.
+
+### One name, one copy
+
+A unit name resolves to exactly one copy in a home. Two consequences:
+
+- A plugin carrying a contained skill whose name already exists as a
+  standalone unit in that home is **refused**, not merged. Two copies of one
+  name is not a version conflict to be reconciled; it is an ambiguity the
+  four-branch search would silently resolve by directory order.
+- Moving a unit between shapes — standalone skill to plugin-contained skill —
+  keeps the name and moves the copy. Both existing at once is exactly the
+  state the refusal exists to prevent, which is why a migration has to retire
+  the old copy in the same operation that installs the new one, and not
+  before or after.
+
+### The reverse edge is computed, never stored
+
+"What in this home imports X" has no answer on disk: neither mechanism is
+recorded in `installed/*.json`, which holds only name, version, gitHash,
+kind, origin, installSource, errors and installedAt. The answer is recomputed
+from the unit trees on demand.
+
+That is deliberate. A stored index is a second record of the edges, and a
+second record can disagree with the units it describes — a home is a *copy*,
+so an index copied with it describes the home it was built in, not the one
+you are standing in.
+
+Two properties any such computation must have, because the edges are not a
+tree:
+
+- **transitive** — the whole chain, not the direct importers. Units here
+  depend on each other through intermediaries.
+- **cycle-safe** — mark a name before expanding it. `skill-imports` edges do
+  form loops, and a walk that does not mark returns to the same unit forever.
