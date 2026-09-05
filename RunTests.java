@@ -82,6 +82,7 @@ import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
 import dev.skillmanager.registry.PublishDetectsPluginTest;
 import dev.skillmanager.registry.PublishDetectsSkillTest;
+import dev.skillmanager.resolve.UnitEdgeGraphTest;
 import dev.skillmanager.validation.MarkdownImportValidatorTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.ProjectSyncErrorReportingTest;
@@ -235,6 +236,7 @@ public class RunTests {
         failures += PublishDetectsPluginTest.run();
         failures += PublishDetectsSkillTest.run();
         failures += MarkdownImportValidatorTest.run();
+        failures += UnitEdgeGraphTest.run();
         failures += ProjectMarkdownImportsTest.run();
         failures += LocalInstallIsNotAnErrorTest.run();
         failures += ScaffoldPluginTest.run();
