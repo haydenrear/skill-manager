@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.26.0](https://github.com/haydenrear/skill-manager/compare/v0.25.1...v0.26.0) (2026-09-05)
+
+
+### Features
+
+* **clone:** a new home gets its own shims, so the shape stops propagating ([ad4d7a0](https://github.com/haydenrear/skill-manager/commit/ad4d7a0ba1ac3f03c07509658d36bc302034f754))
+* **epic:** HBR-2's fix has to reach 37 copies, so where it lands is a decision ([8a04eb0](https://github.com/haydenrear/skill-manager/commit/8a04eb017374e0fdfedaf139526ce8435556ee17))
+* **epic:** measure the three baselines that were guesses ([9c156fe](https://github.com/haydenrear/skill-manager/commit/9c156fe2d44c8ff4add35f0858a5ad57b26d9d53))
+* **epic:** stage home-boundary-resolution and substrate-home-model ([a8af33b](https://github.com/haydenrear/skill-manager/commit/a8af33b6e40f9550e7a8642015355912bdf98829))
+* **exec:** predict the credential trap, since the symptom cannot be read ([bbd83eb](https://github.com/haydenrear/skill-manager/commit/bbd83ebdd86e542e61e5f2d45d9e4aeeabffa32c))
+* **hbr-1:** the shim resolution rule, written where a unit author meets it ([3cbcba8](https://github.com/haydenrear/skill-manager/commit/3cbcba85c6ad049a9dd56e35fae2f38f64d28cef))
+* **hbr-5:** give every goal a harness, and measure the two that never were ([6291de7](https://github.com/haydenrear/skill-manager/commit/6291de75c1ea7df7a3ca8d5064046ffc33f20b37))
+* **repair:** migrate a shadowing mirror into this home's own shim ([b7e52f1](https://github.com/haydenrear/skill-manager/commit/b7e52f161f7726b20d88c775c9fddc4b7fae730a))
+
+
+### Bug Fixes
+
+* **epic:** correct three HBR tickets from a code survey ([e29e1d9](https://github.com/haydenrear/skill-manager/commit/e29e1d9d0526586d261658820f3f28694b54fd6a))
+* **epic:** HBR's contract test cannot assert on behaviour, and here is why ([b43ad9c](https://github.com/haydenrear/skill-manager/commit/b43ad9ceed95d98e283c4c6c9df3b23af85be865))
+* **epic:** the assignments were not valid, and neither were the plans ([cf8a3ae](https://github.com/haydenrear/skill-manager/commit/cf8a3ae9c12ffaedf0c0aa755773e0d2bd48cb5e))
+* **exec:** isolating a home stops de-authenticating the agent in it ([2a829f1](https://github.com/haydenrear/skill-manager/commit/2a829f15e5e3bee40d37b3ea1599d0f4923eb42d))
+* **hbr-1:** a home-relative shim still credits the tree it runs out of ([437f0af](https://github.com/haydenrear/skill-manager/commit/437f0aff266f6e0d4120ddae8b40fd4c3da27c95))
+* **hbr-1:** the two installers in this tree stop freezing the home that installed them ([29715f8](https://github.com/haydenrear/skill-manager/commit/29715f801a3db05658798ba0891088e69dfe82dc))
+* **hbr-5:** measure the skt that RUNS, and take back a fix HBR-3 already made ([135d277](https://github.com/haydenrear/skill-manager/commit/135d277d2db6511ed9680604183728429b0b7ef0))
+* **hbr-5:** the goal-1 walker asked the wrong question — 55 was really 2 ([ad40ee6](https://github.com/haydenrear/skill-manager/commit/ad40ee68ca0589921f4b953079cac8b603885e09))
+* **installer:** a shim resolves its unit from the home it lives in (HBR-1, [#262](https://github.com/haydenrear/skill-manager/issues/262)) ([331cda8](https://github.com/haydenrear/skill-manager/commit/331cda82bbd8b5eb825de59ee7318a1ced282ab5))
+* **install:** the generated wrapper's primary path must not need PATH ([05dddbc](https://github.com/haydenrear/skill-manager/commit/05dddbc0690caf6e999448eb2d1c29099236acaf))
+* **launch:** a help request names no home, so the shim answers it ([5681017](https://github.com/haydenrear/skill-manager/commit/5681017a3110f2bc137323206b75fa1c63c24c66))
+* **launch:** a help request names no home, so the shim answers it (HBR-2) ([0162f53](https://github.com/haydenrear/skill-manager/commit/0162f53e96c00aa85a5bd2a222f0628082a24f20))
+* **repair:** a sanctioned parent mirror is still wrong when this home has its own copy ([a343030](https://github.com/haydenrear/skill-manager/commit/a34303051014ec4e0b57075256024d91987ffbad))
+* **skill-dev:** the installer asked PATH for a CLI, and PATH answers with another home's ([02223e6](https://github.com/haydenrear/skill-manager/commit/02223e6041da4b53ff449a09a69c655e6f05d1e8))
+
 ## [0.25.1](https://github.com/haydenrear/skill-manager/compare/v0.25.0...v0.25.1) (2026-08-27)
 
 
