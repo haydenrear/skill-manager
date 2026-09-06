@@ -186,6 +186,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.SnapshotMcpDeps e -> snapshotMcpDeps(e, ctx);
             case SkillEffect.RejectIfAlreadyInstalled e -> rejectIfInstalled(e, ctx);
             case SkillEffect.RejectIfTopLevelInstalled e -> rejectIfTopLevelInstalled(e, ctx);
+            case SkillEffect.RejectContainedNameCollision e -> rejectContainedNameCollision(e, ctx);
             case SkillEffect.CheckInstallPolicyGate e -> checkInstallPolicyGate(e, ctx);
             case SkillEffect.BuildResolveGraphFromSource e -> ResolveGraphHandlers.buildFromSource(e, ctx);
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> ResolveGraphHandlers.buildFromBundledSkills(e, ctx);
@@ -1359,6 +1360,79 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return EffectReceipt.okAndHalt(e,
                 "unit '" + e.unitName() + "' is already installed at " + at
                         + " — remove it first (skill-manager remove " + e.unitName() + ")");
+    }
+
+    /**
+     * One name, one copy: refuse a plugin whose contained skill name is
+     * already claimed in this home.
+     *
+     * <p>Three things are deliberately NOT collisions:
+     *
+     * <ul>
+     *   <li><b>the plugin's own entry skill.</b> A contained skill whose name
+     *       equals its carrying plugin's is that plugin, one unit under one
+     *       name — {@code skt} carries {@code plugins/skt/skills/skt} in every
+     *       home it is installed into, and refusing that would refuse skt
+     *       everywhere.</li>
+     *   <li><b>the plugin's own previous installation.</b> Upgrading a plugin
+     *       means its contained skills are already on disk under it; counting
+     *       those would make the second install of any plugin impossible.</li>
+     *   <li><b>a name claimed by a unit being installed in the SAME
+     *       operation</b> is still a collision — but it is the resolver's to
+     *       report, not this gate's, and it already does.</li>
+     * </ul>
+     */
+    private EffectReceipt rejectContainedNameCollision(
+            SkillEffect.RejectContainedNameCollision e, EffectContext ctx) {
+        var graph = ctx.resolvedGraph().orElse(null);
+        if (graph == null) return EffectReceipt.skipped(e, "no resolved graph in context");
+        SkillStore store = ctx.store();
+        for (var r : graph.resolved()) {
+            if (!(r.unit() instanceof dev.skillmanager.model.PluginUnit plugin)) continue;
+            String pluginName = r.name();
+            for (var contained : plugin.containedSkills()) {
+                String name = contained.name();
+                if (name == null || name.isBlank()) continue;
+                // The plugin's own entry skill. One unit, one name.
+                if (name.equals(pluginName)) continue;
+                Path claimant = existingClaimant(store, pluginName, name);
+                if (claimant == null) continue;
+                return EffectReceipt.okAndHalt(e,
+                        "refusing to install plugin '" + pluginName + "': the skill it "
+                                + "contains as '" + name + "' is already installed at "
+                                + claimant + ".\n"
+                                + "  a unit name resolves to exactly one copy in a home, and "
+                                + "installing this would give '" + name + "' two.\n"
+                                + "  either remove the existing one (skill-manager remove "
+                                + name + "),\n"
+                                + "  or rename the skill inside the plugin.",
+                        new ContextFact.HaltWithExitCode(3,
+                                "contained skill name '" + name + "' is already claimed"));
+            }
+        }
+        return EffectReceipt.ok(e);
+    }
+
+    /**
+     * Where {@code name} is already installed, ignoring anything belonging to
+     * {@code pluginBeingInstalled} — or null when the name is free.
+     */
+    private static Path existingClaimant(SkillStore store, String pluginBeingInstalled,
+                                         String name) {
+        if (store.contains(name)) return store.skillDir(name);
+        if (store.containsPlugin(name)) return store.pluginsDir().resolve(name);
+        if (store.containsDocRepo(name)) return store.docsDir().resolve(name);
+        if (store.containsHarness(name)) return store.harnessesDir().resolve(name);
+        for (Path root : store.containedSkillDirs(name)) {
+            // A contained skill under the plugin we are replacing is that
+            // plugin's own previous copy, not a competing claim.
+            Path carrier = root.getParent() == null ? null : root.getParent().getParent();
+            String carrierName = carrier == null || carrier.getFileName() == null
+                    ? null : carrier.getFileName().toString();
+            if (pluginBeingInstalled.equals(carrierName)) continue;
+            return root;
+        }
+        return null;
     }
 
     private EffectReceipt buildInstallPlan(SkillEffect.BuildInstallPlan e, EffectContext ctx) {

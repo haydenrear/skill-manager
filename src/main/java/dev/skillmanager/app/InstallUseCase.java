@@ -190,6 +190,12 @@ public final class InstallUseCase {
         // to a unit already in the store.
         stage1Effects.add(new SkillEffect.RejectIfTopLevelInstalled());
 
+        // And the same verdict for a claimant the inventory could not see
+        // before OUN-1: a plugin whose CONTAINED skill name is already taken.
+        // One name, one copy — no flag, because two copies of one name is an
+        // ambiguity to be resolved by the operator, not confirmed by them.
+        stage1Effects.add(new SkillEffect.RejectContainedNameCollision());
+
         // Plan-build at exec time so handlers see fresh state.
         boolean planGatewayEffects = withGateway || dryRun;
         stage1Effects.add(new SkillEffect.BuildInstallPlan(forceScripts, planGatewayEffects));

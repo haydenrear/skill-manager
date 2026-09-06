@@ -280,6 +280,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] reject if %s already installed", n, e.unitName());
             case SkillEffect.RejectIfTopLevelInstalled e ->
                     Log.step("[%d] reject if top-level resolved unit already installed", n);
+            case SkillEffect.RejectContainedNameCollision e ->
+                    Log.step("[%d] reject if a contained skill name is already claimed", n);
             case SkillEffect.CheckInstallPolicyGate e ->
                     Log.step("[%d] check install policy gate (yes=%s)", n, e.yes());
             case SkillEffect.CheckBuildPolicyGate e ->
