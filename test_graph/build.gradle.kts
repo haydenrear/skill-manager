@@ -338,7 +338,7 @@ validationGraph {
      * `skill-manager onboard`. Two halves:
      *
      *   1. The Spring `SkillBootstrapper` bean has seeded
-     *      `skill-manager`, `skill-publisher`, and `skill-dev-skill`
+     *      `skill-manager` and `skill-publisher`
      *      into the registry by
      *      the time `registry.up` reports healthy
      *      (`onboard.seeded.by.server`).
@@ -1402,45 +1402,16 @@ validationGraph {
         node("sources/common/HomeMembershipLaw.java").dependsOn("uninstall.prunes.the.subgraph")
     }
 
-    testGraph("skill-dev-smoke") {
-        node("sources/common/EnvPrepared.java")
-        node("sources/resolve/ResolverCyclesVerified.java")
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/smoke/GatewayUp.java")
-
-        node("sources/skill-dev/SkillDevInstalled.java")
-        node("sources/skill-dev/SkillDevUnitsInstalled.java")
-        node("sources/skill-dev/SkillDevEditSkill.java")
-        node("sources/skill-dev/SkillDevEditPlugin.java")
-        node("sources/skill-dev/SkillDevEditDocRepo.java")
-        node("sources/skill-dev/SkillDevEditHarness.java")
-        node("sources/skill-dev/SkillDevConflictResolved.java")
-
-        node("sources/common/ServersDown.java")
-                .dependsOn("skill-dev.edit.skill",
-                        "skill-dev.edit.plugin",
-                        "skill-dev.edit.doc",
-                        "skill-dev.edit.harness",
-                        "skill-dev.conflict.resolved")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
-        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
-        // check per graph: every home this graph produced must satisfy
-        // `home verify`, and where it refuses, the remedy IT PRINTED must
-        // clear it. Six defects of that shape were each found by hand on
-        // one home; the graph that would have caught them was always the
-        // one nobody had added a check to. Depends on this graph's last
-        // node so it runs last, and FAILS if it finds no home — a law
-        // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
-        // THE MEMBERSHIP LAW, the second post-condition and the one a
-        // re-realized home does NOT satisfy: `home verify` passes on a
-        // home that is internally consistent and wrong about what it
-        // holds (DEF-047). Same structural discovery, same "zero homes
-        // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
-    }
+    // skill-dev-smoke was here until OUN-4. It existed to drive the
+    // skill-dev CLI end to end, and that unit is gone: its
+    // open/status/sync/git/close is covered by `skt publish`, `skt ticket`
+    // and `sync --from --merge`, and `deps --who-imports skill-dev-skill`
+    // reported zero importers before the deletion.
+    //
+    // Removed rather than left red. A registered graph that cannot pass is
+    // worse than one that does not exist: the nightly goes red for a
+    // reason nobody can act on, and the graph-count metric keeps counting
+    // it as coverage.
 
     /*
      * onboarding: the walk a fresh repository takes from "no home" to "a

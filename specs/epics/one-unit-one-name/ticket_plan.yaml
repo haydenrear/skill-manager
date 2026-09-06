@@ -6,7 +6,7 @@
 # is still canonical for scheduling and issue assignment; scaffolding a TLA
 # workflow on top of it is an owner decision that has not been taken.
 version: 1
-schedule_revision: 2
+schedule_revision: 3
 name: one-unit-one-name
 slug: one-unit-one-name
 branch: epic/one-unit-one-name
@@ -158,10 +158,13 @@ epic_goals:
       it landed in rather than the one it came from, and can be built on a
       platform that is not the one it was made on.
     metric: >
-      four independently checkable properties of a copied home: (a) no
+      three independently checkable properties of a copied home: (a) no
       credential travels, (b) no bin/cli entry names the source home, (c) the
-      gateway state the copy inherits is the one the copy should have, (d) the
-      copy is usable on Linux
+      copy is usable on Linux.
+
+      A FOURTH was scoped and withdrawn at schedule_revision 3 -- the gateway
+      state a copy inherits (DEF-284, OUN-11, issue #317). It is deferred, not
+      solved; it is out of the GOAL so the goal can be decided.
     harness: >
       A probe that copies a home the way an image build would -- not `home
       clone`, which is the APFS-only path -- and answers the four questions on
@@ -182,7 +185,34 @@ epic_goals:
         it SKIPS where the JDK cannot reflink -- which is the only platform CI
         runs.
       measured_at: "2026-09-05"
-    target: "4 of 4"
+    target: "3 of 3"
+
+  - id: GOAL-a-copied-home-knows-its-gateway-state
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-a-copied-home-knows-its-gateway-state/
+    evaluation_ticket: OUN-11
+    statement: >
+      What a copied home believes about the gateway is decided by a written
+      rule, not inherited by accident.
+    metric: "do the tiers hold a state some written rule predicts"
+    harness: >
+      Read gateway.properties in each tier and compare against the rule. The
+      rule has to exist first; that is the ticket's own constraint.
+    baseline:
+      value: >
+        no rule exists. Measured 2026-09-05: root gateway.owned=true, worktree
+        gateway.owned=false, project home has no gateway.properties at all,
+        and two of the three name one port.
+      measured_at: "2026-09-05"
+    target: "the tiers agree with a rule that is written down"
+    carried_to: >
+      SPLIT OUT AND CARRIED at schedule_revision 3. This began as property (c)
+      of GOAL-a-home-survives-being-copied-into-an-image, and bundling it there
+      was the mistake: four independent properties in one goal meant retiring
+      one contributor forced a choice between moving the whole goal and moving
+      none of it. The plan validator refused the halfway state, correctly.
+      Split out, it carries whole to substrate-home-model (#274) with OUN-11,
+      and the remaining three properties stay here and stay decidable.
 
 tickets:
   - id: OUN-0
@@ -519,7 +549,7 @@ tickets:
     title: "Terminal evaluation -- decide every goal on the integrated result"
     role: evaluation
     wave: 7
-    depends_on: ["OUN-7", "OUN-9", "OUN-10", "OUN-11", "OUN-12"]
+    depends_on: ["OUN-7", "OUN-9", "OUN-10", "OUN-12"]
     blocks: []
     promotion_order: 13
     promotion_predecessor: "OUN-12"
@@ -675,6 +705,36 @@ tickets:
         local_signal: every bin/cli entry in the copy resolves within the copy
 
   - id: OUN-11
+    status: retired
+    retirement:
+      resolution: carried
+      successor_workflow: substrate-home-model
+      successor_issue: https://github.com/haydenrear/skill-manager/issues/317
+      schedule_revision: 3
+      decided_at: "2026-09-05"
+      decided_by: owner
+      reason: >
+        "let's defer that one for now - we don't really use it." CARRIED, not
+        abandoned: the gateway divergence (DEF-284) is confirmed and
+        unexplained, and the question of what a copied home should believe
+        belongs to substrate-home-model (#274) -- the workflow that owns a
+        home crossing a machine boundary -- rather than to an epic about unit
+        names. OUN-11's own constraint was that the RULE be written before any
+        code changed, and nobody is available to state it here.
+      receipt: specs/.history/one-unit-one-name/retired-ticket-011-OUN-11/manifest.json
+      affected_goals:
+        - goal: GOAL-a-copied-home-knows-its-gateway-state
+          disposition: carried
+          successor_workflow: substrate-home-model
+          successor_issue: https://github.com/haydenrear/skill-manager/issues/317
+          reason: >
+            The goal continues, carried by OUN-9, OUN-10 and OUN-12, with one
+            fewer property. Property (c) -- the gateway state a copied home
+            inherits -- is REMOVED from the goal rather than left permanently
+            unmet: a goal carrying a property nobody intends to deliver reads
+            as failure forever, which teaches the ledger to be ignored. The
+            measurement is not lost; it stays in the backlog as DEF-284 and in
+            issue #317.
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/317
     delivery: main
     delivery_reason: >
@@ -713,17 +773,17 @@ tickets:
       measurement must be of real tier state. This one arrived as an
       observation without a stated contract, so inventing the contract to fit
       the current state would settle nothing.
+    goals:
+      - goal: GOAL-a-copied-home-knows-its-gateway-state
+        contribution: direct
+        expected_effect: "no rule -> a written rule the tiers agree with"
+        local_signal: the measured divergence is gone or explained by the rule
     conflict_keys:
       production: ["gateway/home-state"]
       tla: []
       adapters: []
       test_graph: ["home-clone"]
       workflow: []
-    goals:
-      - goal: GOAL-a-home-survives-being-copied-into-an-image
-        contribution: direct
-        expected_effect: property (c) no -> yes
-        local_signal: the three tiers agree with the written rule
 
   - id: OUN-12
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/316
@@ -742,7 +802,7 @@ tickets:
     blocks:
       - OUN-8
     promotion_order: 12
-    promotion_predecessor: OUN-11
+    promotion_predecessor: OUN-10
     contribution: primary
     slice: >
       The copy path's platform assumptions and what a copy carries that is

@@ -174,9 +174,16 @@ findings:
       naming one port. The DIVERGENCE is confirmed; which state is wrong is
       not, because no written rule says what a copy should believe.
     reproduction: cat <each tier>/gateway.properties
-    why_deferred: not deferred -- scheduled as OUN-11, delivered to main
-    candidate_owner: OUN-11 (#317)
-    status: scheduled
+    why_deferred: >
+      Owner decision 2026-09-05: "let's defer that one for now - we don't
+      really use it." OUN-11 is RETIRED-CARRIED at schedule_revision 3, with a
+      receipt at specs/.history/one-unit-one-name/retired-ticket-011-OUN-11/.
+      The question of what a copied home should believe belongs to
+      substrate-home-model (#274) -- the workflow that owns a home crossing a
+      machine boundary -- rather than to an epic about unit names. The
+      measurement is preserved here and in #317; nothing was implemented.
+    candidate_owner: substrate-home-model (#274), carried from OUN-11
+    status: carried
 
   - id: DEF-285
     found_by: meta-harness effort; verified by this epic 2026-09-05
@@ -226,8 +233,21 @@ findings:
       the SAME TLA set three waves later. Doing the model edit once, there,
       rather than twice is probably the cheaper order -- which would make OUN-4
       depend on OUN-7 instead of preceding it.
-    candidate_owner: owner decision on scope; then OUN-4 re-planned
-    status: open
+    candidate_owner: OUN-4, widened at the owner's instruction
+    status: resolved
+    resolution: >
+      Owner decision 2026-09-05: delete everything to do with skill-dev-skill,
+      Java included. OUN-4 took the full cost -- the unit, both bundled lists
+      (BundledSkills AND OnboardCommand, which the compiler cannot relate), the
+      skill-dev-smoke graph and its 9 sources, the accepted program model's
+      SkillDocSurfaces / SkillDevSkillWorkflows / ExpectedSkillDocCoverage, the
+      CLI metadata doc surfaces, and the onboard assertions -- which were
+      INVERTED rather than deleted, so onboarding now proves it does not seed
+      the retired unit.
+      The scheduling observation stands unused: OUN-7 still edits the same TLA
+      set, but the edit here was a DELETION (drop a name from a set) rather
+      than the containment modelling of DEF-OUN-006, so it was cheap and did
+      not need to wait.
 
   - id: DEF-OUN-006
     found_by: OUN-2B (adding plugin-graph assertions for the OUN-1/OUN-2 change)
@@ -277,4 +297,29 @@ findings:
       on, so the ambiguity is documented instead of renamed.
     candidate_owner: OUN-2B (done)
     status: closed
+
+  - id: DEF-OUN-008
+    found_by: OUN-4 (answering the owner's question about which manifest)
+    found_at: "2026-09-05"
+    severity: minor
+    summary: >
+      The manifest in DEF-OUN-001 is specs/program_model/spec_manifest.yaml --
+      the REPOSITORY's own accepted model, not a unit store. Owner ruled it
+      skippable on that basis. But the search that settled it turned up
+      something adjacent: three installed units ship their own specs/ trees
+      INSIDE the home's unit store -- spec-double-compiler (program_model,
+      current AND desired_program_model), deploy-helm, and test-graph. Those
+      DO travel with every home copy and every migration.
+    reproduction: >
+      find "$SKILL_MANAGER_HOME" -name spec_manifest.yaml -maxdepth 6
+    why_deferred: >
+      Not obviously wrong -- a unit's specs/ are part of that unit's content
+      and copying them is correct. Recorded because the owner's rule was "if
+      it's in the .skill-manager home in some unit store, we need to make sure
+      when migration occurs it's flawless", and this is the set of files that
+      rule actually points at. Worth one look during OUN-5: in particular
+      spec-double-compiler ships a specs/current/ -- a WORKFLOW tree, not a
+      baseline -- inside its installed copy.
+    candidate_owner: OUN-5 (migration), one check
+    status: open
 

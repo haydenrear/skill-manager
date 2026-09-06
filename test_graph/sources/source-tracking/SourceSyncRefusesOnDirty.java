@@ -33,8 +33,8 @@ import java.nio.file.StandardOpenOption;
  * {@code --from} sync that is the directory on the command line, and the
  * printed remedy dropped it — {@code skill-manager sync <name> --merge}, run
  * as printed, merges the RECORDED ORIGIN instead. For a unit installed from
- * github and being synced from a {@code skill-dev} worktree — the flow
- * {@code skill-dev-skill} documents — that is a different source and a
+ * github and being synced from a local worktree — the flow `sync --from
+ * <dir> --merge` documents — that is a different source and a
  * different merge. So the assertion is now the property the deleted recipe
  * was carrying: the re-run command names the {@code --from} directory, and
  * the banner names the source it would merge.
