@@ -560,7 +560,19 @@ validationGraph {
         node("sources/smoke/HelloPluginPublished.java")
         node("sources/smoke/HelloPluginInstalled.java")
         node("sources/smoke/HelloPluginRegisteredWithHarness.java")
+        // TWO SENSES OF "ADDRESSABLE", one word apart, and the graph now
+        // covers both. This one: a contained skill has no independent
+        // identity as a REGISTRY unit, so `install hello-impl` fails.
         node("sources/smoke/plugin/PluginContainedSkillNotAddressable.java")
+        // And this one (OUN-1): an import NAMING a contained skill resolves.
+        // Until OUN-1 it was reported as a missing unit while the skill sat on
+        // disk in the same home. Only the first sense was covered, which is
+        // how that survived from the day skt shipped `unit-authoring`.
+        node("sources/smoke/plugin/PluginContainedSkillResolvesByName.java")
+        // OUN-2: one name, one copy. The refusal, with the message an
+        // operator has to choose from — and the control that keeps the gate
+        // from refusing skt, whose entry skill carries the plugin's own name.
+        node("sources/smoke/plugin/PluginNameCollisionRefused.java")
 
         // Plugin install with both plugin-level and contained-skill
         // CLI + MCP deps — exercises the install pipeline's walk and
@@ -587,6 +599,8 @@ validationGraph {
 
         node("sources/common/ServersDown.java")
                 .dependsOn("plugin.contained.skill.not.addressable",
+                        "plugin.contained.skill.resolves.by.name",
+                        "plugin.name.collision.refused",
                         "plugin.markdown.import.targets",
                         "plugin.uninstalled.mixed.orphans",
                         "plugin.skill_script.force.sync")
