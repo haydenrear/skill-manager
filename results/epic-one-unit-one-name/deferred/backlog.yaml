@@ -428,3 +428,34 @@ findings:
       rule that a unit may only supersede units it previously published).
     candidate_owner: whoever needs the third row
     status: open
+
+  - id: DEF-OUN-013
+    found_by: OUN-6 (moving skill-manager into skt and syncing a real home)
+    found_at: "2026-09-06"
+    severity: blocking
+    summary: >
+      A contained skill carries no upstream coordinate, so a manifest
+      `skill_references` entry naming a repository cannot be satisfied by the
+      contained copy. Measured: the OUN-5 migration retires the standalone
+      skill-manager and, four lines later in the SAME sync,
+      BuildResolveGraphFromUnmetReferences re-clones
+      github:haydenrear/skill-manager-skill and reinstalls it, because
+      git-epic-workflow references it by coordinate. Exit 0, both lines true,
+      nothing reports the contradiction.
+    reproduction: >
+      clone a home holding standalone skill-manager and git-epic-workflow;
+      sync an skt that contains a skill-manager contained skill;
+      grep the output for "retired skill-manager" and "installed skill-manager"
+    why_deferred: >
+      NOT deferred -- it BLOCKS OUN-6, and OUN-6's own test_constraint says so:
+      "if an import needs editing, the addressing is wrong and OUN-1 is
+      incomplete; that is the signal, and it must fail rather than be papered
+      over." Recorded here because the fix is an amendment ticket the owner has
+      to schedule, not something OUN-6 may absorb.
+      The fix is one field: a contained skill records the repository it came
+      from, and a coordinate reference resolves against it. That is the SAME
+      field the multi-plugin vendoring design needs (two plugins carrying one
+      nested skill, propagating changes between copies), which is why it is
+      worth doing properly rather than working around.
+    candidate_owner: an amendment ticket ordered before OUN-6
+    status: open
