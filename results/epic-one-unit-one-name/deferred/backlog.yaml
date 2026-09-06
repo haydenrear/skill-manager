@@ -321,5 +321,101 @@ findings:
       spec-double-compiler ships a specs/current/ -- a WORKFLOW tree, not a
       baseline -- inside its installed copy.
     candidate_owner: OUN-5 (migration), one check
+    status: closed
+    resolution: >
+      Looked at during OUN-5, 2026-09-06. The three specs/ trees are unit
+      CONTENT and nothing in the migration touches them: RetireSupersededUnits
+      only removes units named in UnitSupersession.TABLE, and none of
+      spec-double-compiler, deploy-helm or test-graph is in it.
+      spec-double-compiler's specs/current/ is a workflow tree with an open
+      ticket (AT-01) and it travels with every copy, which is correct for the
+      unit that OWNS it -- the hazard would be spec tooling run inside a home
+      finding that tree instead of the repository's, and that belongs to
+      spec-double-compiler rather than to this epic. Filed onward as
+      DEF-OUN-011. The look itself produced the ticket's near-miss instead:
+      every installed unit is a git checkout (DEF-OUN-010).
+
+
+  - id: DEF-OUN-009
+    found_by: OUN-12
+    found_at: "2026-09-06"
+    severity: minor
+    summary: >
+      There is no copy-on-write fallback on Linux, and after OUN-12 there is
+      still none -- what changed is that the cost is now DECLARED and asserted
+      rather than skipped. Restoring block sharing on a Linux filesystem that
+      supports it (btrfs, XFS) needs FICLONE, which the JDK does not expose;
+      shelling out to `cp --reflink` per file is a process per file, and per
+      tree does not fit HomeCloner's filtered walk. On ext4 -- what GitHub
+      runners use -- there is no reflink to ask for at all.
+    reproduction: >
+      run home.clone.costs.far.less.than.a.copy on Linux; declared=FULL_COPY
+      and the measured cost is the full apparent size
+    why_deferred: >
+      OUN-12's objective was "make the copy work, and its cost KNOWN, where
+      clonefile(2) does not exist". A known cost is delivered. A cheap one is a
+      different piece of work with a native-call dependency, and it only pays
+      off on the subset of Linux filesystems that reflink.
+    candidate_owner: substrate-home-model
     status: open
 
+  - id: DEF-OUN-010
+    found_by: OUN-5 (checking DEF-OUN-008)
+    found_at: "2026-09-06"
+    severity: major
+    summary: >
+      Every installed unit is a git checkout -- skills/<unit>/.git exists on
+      the real root home for skill-manager and skill-dev-skill alike. Any
+      operation that deletes a unit tree therefore deletes a working copy, and
+      a home is the only place a unit's history lives until `unit publish`
+      moves it. OUN-5's migration would have done exactly that on the one path
+      every existing home has to take.
+    reproduction: >
+      ls -d "$SKILL_MANAGER_HOME"/skills/*/.git
+    why_deferred: >
+      NOT deferred for the migration -- UnitSupersession.blockedFrom refuses
+      there now. Recorded because the general case is untouched: `remove` and
+      `uninstall` delete a checkout with unpushed commits without asking, and
+      home close-out is the only seam that currently guards it. Whether the
+      ordinary remove path should carry the same guard is an owner decision
+      with a real cost (it makes `remove` refuse on a dirty unit).
+    candidate_owner: owner decision, then a ticket outside this epic
+    status: open
+
+  - id: DEF-OUN-011
+    found_by: OUN-5 (closing DEF-OUN-008)
+    found_at: "2026-09-06"
+    severity: minor
+    summary: >
+      spec-double-compiler's installed copy ships specs/current/ -- an OPEN
+      spec workflow, active_ticket AT-01 -- inside every home. It is the
+      unit's own content and copying it is correct, but it means a home
+      contains a second thing that looks exactly like a workflow tree to any
+      tool that searches for one.
+    reproduction: >
+      cat "$SKILL_MANAGER_HOME"/skills/spec-double-compiler/specs/current/spec_manifest.yaml
+    why_deferred: >
+      Belongs to spec-double-compiler, not to an epic about unit names. Worth
+      one check that tla-spec-dev anchors on the repository root rather than
+      on the nearest specs/current it can find.
+    candidate_owner: spec-double-compiler
+    status: open
+
+  - id: DEF-OUN-012
+    found_by: OUN-5
+    found_at: "2026-09-06"
+    severity: minor
+    summary: >
+      Supersession is a hard-coded table in the product. The general mechanism
+      -- a `supersedes = [...]` key in the incoming unit's manifest -- was
+      deliberately NOT built, because the retirement would then be believed on
+      the word of a unit fetched from a repository, which could name any
+      installed unit as superseded and have it removed.
+    reproduction: n/a -- a design position, recorded so the next case does not
+      re-decide it from scratch
+    why_deferred: >
+      Two rows do not justify a mechanism, and the mechanism as stated has a
+      trust problem that needs solving before it ships (signed manifests, or a
+      rule that a unit may only supersede units it previously published).
+    candidate_owner: whoever needs the third row
+    status: open
