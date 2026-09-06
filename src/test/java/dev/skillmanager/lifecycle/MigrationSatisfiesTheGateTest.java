@@ -3,12 +3,15 @@ package dev.skillmanager.lifecycle;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.app.InstallUseCase;
+import dev.skillmanager.app.SyncUseCase;
 import dev.skillmanager.effects.Executor;
+import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.store.SkillStore;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
@@ -63,6 +66,13 @@ public final class MigrationSatisfiesTheGateTest {
                             h.store().pluginsDir().resolve(CARRIER).resolve("skills").resolve(MOVED)),
                     "the name still resolves — to the copy the carrier holds. That is what "
                             + "makes retiring it safe rather than destructive");
+
+            // The home must be CONSISTENT afterwards, not merely missing a
+            // directory. home.membership.law reads exactly this pair, and an
+            // installed/ record naming a tree the home does not hold is its
+            // definition of a LOST unit — "a unit nobody removed".
+            assertFalse(Files.exists(h.store().root().resolve("installed/" + MOVED + ".json")),
+                    "the installed record goes with the tree");
         });
 
         suite.test("the obsolete unit goes too, without needing a name collision", () -> {
@@ -81,7 +91,7 @@ public final class MigrationSatisfiesTheGateTest {
             h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
             install(h.store(), pluginCarrying(CARRIER, MOVED));
 
-            assertEquals(0, UnitSupersession.due(h.store(), java.util.List.of(CARRIER)).size(),
+            assertEquals(0, UnitSupersession.dueInThisHome(h.store()).size(),
                     "a retirement of something that is not installed is not an operation — "
                             + "which is what makes a migrated home safe to migrate again");
         });
@@ -132,19 +142,41 @@ public final class MigrationSatisfiesTheGateTest {
             // this ticket. Until it does, an skt that does not carry the skill
             // must not retire the only copy in the home.
             assertEquals(0,
-                    (int) UnitSupersession.due(h.store(), java.util.List.of(CARRIER)).stream()
+                    (int) UnitSupersession.dueInThisHome(h.store()).stream()
                             .filter(r -> MOVED.equals(r.unit())).count(),
-                    "no contained copy on disk yet, so nothing is due");
+                    "no contained copy on disk yet, so nothing is due. This is now the ONLY "
+                            + "thing standing between the home and a deleted unit: the sync "
+                            + "path no longer waits to be told the carrier is involved");
         });
 
-        suite.test("nothing is due when the carrier is not the unit being installed", () -> {
+        // THIS CASE USED TO ASSERT THE OPPOSITE, and the assertion was the
+        // defect written down: keyed on the target list, `sync skill-manager`
+        // named the retired unit but not its carrier and fired nothing, so the
+        // one command a person runs after being told about this migration was
+        // the one command that did not perform it.
+        suite.test("a home that is DUE is due whatever is being synced", () -> {
             TestHarness h = TestHarness.create();
-            h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
             h.scaffoldUnitDir(OBSOLETE, UnitKind.SKILL);
 
-            assertEquals(0,
-                    UnitSupersession.due(h.store(), java.util.List.of("some-other-unit")).size(),
-                    "installing an unrelated unit does not trigger somebody else's migration");
+            assertEquals(1,
+                    (int) UnitSupersession.dueInThisHome(h.store()).stream()
+                            .filter(r -> OBSOLETE.equals(r.unit())).count(),
+                    "the home holds a unit that was deleted upstream; which unit somebody "
+                            + "happens to be syncing does not change that");
+        });
+
+        suite.test("the target list decides mandatory vs reported, not what is due", () -> {
+            UnitSupersession.Retirement moved = UnitSupersession.TABLE.stream()
+                    .filter(r -> MOVED.equals(r.unit())).findFirst().orElseThrow();
+
+            assertTrue(UnitSupersession.isMandatory(moved, java.util.List.of(CARRIER)),
+                    "the carrier is what is being synced, so proceeding without the "
+                            + "retirement produces the two-copies state on purpose");
+            assertFalse(UnitSupersession.isMandatory(moved, java.util.List.of("deploy-helm")),
+                    "an unrelated sync must not be held hostage by a migration it did not "
+                            + "ask for — it reports and moves on");
+            assertFalse(UnitSupersession.isMandatory(moved, null),
+                    "and no list at all is not a licence to halt");
         });
 
         // ------------------------------------- the destructive half, guarded
@@ -187,6 +219,86 @@ public final class MigrationSatisfiesTheGateTest {
                     "there is no history to lose, so there is nothing to refuse over");
         });
 
+        // ---------------------------------------------- THE SYNC PATH
+
+        // The path OUN-5 declared (its test_graph key is "home-sync") and did
+        // not exercise. Install is how a home ACQUIRES the carrier; sync is how
+        // every project home that already has it reaches the new shape on its
+        // own, which is the case that actually happens to people.
+
+        suite.test("a plain sync retires what the home is due", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(OBSOLETE, UnitKind.SKILL);
+            h.scaffoldUnitDir("acme-tool", UnitKind.SKILL);
+
+            sync(h.store(), List.of("acme-tool", OBSOLETE));
+
+            assertFalse(Files.exists(h.store().skillDir(OBSOLETE)),
+                    "the unit deleted upstream is gone after an ordinary sync — nobody had "
+                            + "to know it needed retiring");
+            assertTrue(Files.isDirectory(h.store().skillDir("acme-tool")),
+                    "and the unit that was actually being synced is untouched");
+        });
+
+        suite.test("syncing the RETIRED unit by name performs its retirement", () -> {
+            // The regression this whole follow-up exists for. Keyed on the
+            // target list, `sync skill-manager` named the retired unit but not
+            // its carrier, so nothing fired — and that is the exact command
+            // someone runs after being told this migration exists.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
+            installCarrier(h.store());
+
+            sync(h.store(), List.of(MOVED));
+
+            assertFalse(Files.exists(h.store().skillDir(MOVED)),
+                    "naming the retired unit is enough; the home is what decides what is due");
+        });
+
+        suite.test("the sync plans the retirement before it commits units", () -> {
+            TestHarness h = TestHarness.create();
+            var program = SyncUseCase.buildProgram(h.store(), null,
+                    new SyncUseCase.Options(null, false, false, false, false, false, false, false),
+                    List.of(new SyncUseCase.Target.Git("acme-tool")), List.of());
+
+            // STAGE 2, and deliberately: stage 1 is where the git pulls
+            // happen, so the carrier on disk is only current once stage 1 has
+            // run. Asking "what does the carrier contain" any earlier reads
+            // the copy the sync is about to replace.
+            var tail = program.stage2().apply(
+                    new dev.skillmanager.effects.EffectContext(h.store(), null));
+            int retire = indexOf(tail, SkillEffect.RetireSupersededUnits.class);
+            int commit = indexOf(tail, SkillEffect.CommitUnitsToStore.class);
+            int validate = indexOf(tail, SkillEffect.ValidateMarkdownImports.class);
+
+            assertTrue(retire >= 0, "the retirement is planned on the sync path at all");
+            assertTrue(commit < 0 || retire < commit,
+                    "and before the commit — after it, the home has held two copies of one "
+                            + "name for the length of an operation");
+            assertTrue(validate < 0 || retire < validate,
+                    "and before import validation, which would otherwise be resolving names "
+                            + "against a home with two answers for one of them");
+            assertEquals(-1, indexOf(program.stage1(), SkillEffect.RetireSupersededUnits.class),
+                    "and NOT in stage 1, where the pulls have not happened yet");
+        });
+
+        suite.test("an unrelated sync is not held hostage by a blocked retirement", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(OBSOLETE, UnitKind.SKILL);
+            h.scaffoldUnitDir("acme-tool", UnitKind.SKILL);
+            gitInitWithACommit(h.store().skillDir(OBSOLETE));   // unpublished work
+
+            sync(h.store(), List.of("acme-tool"));
+
+            assertTrue(Files.isDirectory(h.store().skillDir(OBSOLETE)),
+                    "the retirement is refused, as it must be — that checkout holds history "
+                            + "no other copy has");
+            assertTrue(Files.isDirectory(h.store().skillDir("acme-tool")),
+                    "and the sync the operator actually asked for still happened. A migration "
+                            + "that halts `sync deploy-helm` over somebody else's uncommitted "
+                            + "edit is a migration holding the whole home hostage");
+        });
+
         suite.test("every row names a reason an operator can act on", () -> {
             for (UnitSupersession.Retirement r : UnitSupersession.TABLE) {
                 assertTrue(r.reason() != null && r.reason().length() > 30,
@@ -200,6 +312,29 @@ public final class MigrationSatisfiesTheGateTest {
     }
 
     // ------------------------------------------------------------- fixtures
+
+    /** A sync over the named units, as SyncCommand builds one. */
+    private static void sync(SkillStore store, java.util.List<String> unitNames) throws Exception {
+        java.util.List<SyncUseCase.Target> targets = new java.util.ArrayList<>();
+        for (String name : unitNames) targets.add(new SyncUseCase.Target.Git(name));
+        var program = SyncUseCase.buildProgram(store, null,
+                new SyncUseCase.Options(null, false, false, false, false, false, false, false),
+                targets, java.util.List.of());
+        new Executor(store, null).runStaged(program);
+    }
+
+    /** Put the carrier in the home, carrying the moved skill, as OUN-6 will. */
+    private static void installCarrier(SkillStore store) throws Exception {
+        install(store, pluginCarrying(CARRIER, MOVED));
+    }
+
+    private static int indexOf(dev.skillmanager.effects.Program<?> program, Class<?> type) {
+        java.util.List<SkillEffect> effects = program.effects();
+        for (int i = 0; i < effects.size(); i++) {
+            if (type.isInstance(effects.get(i))) return i;
+        }
+        return -1;
+    }
 
     private static InstallUseCase.Report install(SkillStore store, Path unitDir) {
         var program = InstallUseCase.buildProgram(

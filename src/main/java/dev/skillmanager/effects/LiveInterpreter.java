@@ -1445,18 +1445,39 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt retireSupersededUnits(SkillEffect.RetireSupersededUnits e,
                                                 EffectContext ctx) {
         SkillStore store = ctx.store();
-        List<UnitSupersession.Retirement> due =
-                e.carriers() == null || e.carriers().isEmpty()
-                        ? UnitSupersession.due(store, ctx.resolvedGraph().orElse(null))
-                        : UnitSupersession.due(store, e.carriers());
+        // Two readings, and which one applies is decided by whether the
+        // caller handed us names. Install passes none and asks the resolved
+        // graph "is the carrier arriving?". Sync passes its target names and
+        // asks the HOME "are you due?", because a home holding both copies is
+        // already broken and did not need anyone to install anything to get
+        // that way.
+        boolean fromHome = e.carriers() != null && !e.carriers().isEmpty();
+        List<UnitSupersession.Retirement> due = fromHome
+                ? UnitSupersession.dueInThisHome(store)
+                : UnitSupersession.due(store, ctx.resolvedGraph().orElse(null));
         if (due.isEmpty()) return EffectReceipt.ok(e);
 
         // BEFORE anything is removed, and about every row rather than the
         // one in hand: a migration that retires the first unit and then
         // refuses over the second has already done the destructive half.
+        List<UnitSupersession.Retirement> retirable = new ArrayList<>();
         for (UnitSupersession.Retirement retirement : due) {
             String blocked = UnitSupersession.blockedFrom(store, retirement.unit());
-            if (blocked == null) continue;
+            if (blocked == null) {
+                retirable.add(retirement);
+                continue;
+            }
+            if (!UnitSupersession.isMandatory(retirement, e.carriers())) {
+                // Riding along with an unrelated sync. Reported and skipped:
+                // halting here would make `sync deploy-helm` fail because
+                // skill-manager has an uncommitted edit, and the home is no
+                // worse than it was a second ago.
+                Log.warn("migration: '%s' is still due but %s — publish it "
+                                + "(skill-manager unit publish %s) and it will be retired on "
+                                + "the next sync",
+                        retirement.unit(), blocked, retirement.unit());
+                continue;
+            }
             return EffectReceipt.okAndHalt(e,
                     "refusing to retire '" + retirement.unit() + "': " + blocked + ".\n"
                             + "  " + retirement.reason() + ", but a home is the only place a "
@@ -1471,8 +1492,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
                                     + retirement.unit() + "'"));
         }
 
+        if (retirable.isEmpty()) return EffectReceipt.ok(e);
+
         List<String> retired = new ArrayList<>();
-        for (UnitSupersession.Retirement retirement : due) {
+        for (UnitSupersession.Retirement retirement : retirable) {
             String hint = UnitSupersession.reinstallHint(store, retirement.unit());
             try {
                 var program = dev.skillmanager.app.RemoveUseCase.buildProgram(
