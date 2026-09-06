@@ -459,3 +459,36 @@ findings:
       worth doing properly rather than working around.
     candidate_owner: an amendment ticket ordered before OUN-6
     status: open
+
+  - id: DEF-OUN-014
+    found_by: OUN-6 (verifying the move end to end)
+    found_at: "2026-09-06"
+    severity: blocking
+    summary: >
+      On the SYNC path the retirement checks its precondition and a later
+      effect in the same operation invalidates it. RetireSupersededUnits runs
+      before BuildResolveGraphFromUnmetReferences and CommitUnitsToStore. It
+      asks "does the carrier contain this skill" -- true, of the carrier as it
+      stands at that moment -- retires the standalone, and then the commit
+      writes a DIFFERENT copy of the carrier over it. If that copy does not
+      carry the skill, the home ends with NO copy at all. Exit 0.
+    reproduction: >
+      clone a home holding standalone skill-manager; sync skt from a local dir
+      whose tree carries a contained skill-manager, while the coordinate
+      github:haydenrear/skt resolves to a remote main that does not carry it
+      yet. Measured 2026-09-06: skills/skill-manager gone,
+      plugins/skt/skills/ = {skt, unit-authoring}, installed/skill-manager.json
+      gone, exit 0.
+    why_deferred: >
+      NOT deferred -- it is mine, from OUN-5, and it is on the migration path.
+      Not data loss (the guard still refuses a checkout with unpublished work,
+      so what is removed is recoverable by reinstall) but it leaves a home
+      silently short a unit.
+      The fix is an ordering split that is more correct than what I wrote: the
+      INSTALL path must retire BEFORE the collision gate, because the gate is
+      what it exists to satisfy; the SYNC path has no gate and must retire
+      AFTER CommitUnitsToStore, once the carrier is definitively in place.
+      Check-then-act across effects is the class; the carrier is the thing
+      checked and a later effect is what replaces it.
+    candidate_owner: a fix on the OUN-5 line, before OUN-6 can be verified
+    status: open
