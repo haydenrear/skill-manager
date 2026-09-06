@@ -314,6 +314,33 @@ public final class SkillScriptBackend implements InstallerBackend {
             List<String> frozen = dev.skillmanager.store.ShimHomeContract
                     .frozenHomePaths(store.root(), shim);
             if (frozen.isEmpty()) continue;
+
+            // FIX IT, don't only name it. The installer that wrote this shim
+            // is the unit's own and is not ours to change; the FILE is, and
+            // rewriting it to derive the home from its own location costs the
+            // shim nothing where it stands and makes a copy of the home work.
+            // See ShimHomeContract.selfDerivingRewrite for what it refuses.
+            String rewritten = dev.skillmanager.store.ShimHomeContract
+                    .selfDerivingRewrite(store.root(), shim);
+            if (rewritten != null) {
+                try {
+                    // Preserve the stamp: binStamps() uses mtime to decide
+                    // which shims this install touched, and bumping it would
+                    // make the next pass re-examine a file we just settled.
+                    java.nio.file.attribute.FileTime stamp =
+                            Files.getLastModifiedTime(shim);
+                    Files.writeString(shim, rewritten);
+                    Files.setLastModifiedTime(shim, stamp);
+                    Log.info("cli: rewrote bin/cli/%s to resolve the home it is standing in "
+                                    + "(it had this home's absolute path baked in, which a "
+                                    + "copy of the home would not have)",
+                            now.getKey());
+                    continue;
+                } catch (IOException io) {
+                    Log.warn("cli: could not rewrite bin/cli/%s (%s); reporting the freeze "
+                            + "instead", now.getKey(), io.getMessage());
+                }
+            }
             Log.warn("cli: skill-script %s wrote bin/cli/%s with this home's absolute path "
                             + "baked in (%s). %s — copy that shim into another home and it "
                             + "will still run THIS one's copy. Derive the home from the shim's "
