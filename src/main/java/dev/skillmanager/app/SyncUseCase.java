@@ -337,6 +337,16 @@ public final class SyncUseCase {
         // unmet (steady-state sync), the graph is empty and the commit /
         // plan / provenance / run effects are no-ops. Same shape as the
         // install path's BuildResolveGraphFromSource preamble.
+        // OUN-5, on the other path a home reaches the new shape by. Sync has
+        // no collision gate to be refused by, which makes it the QUIETER
+        // failure: the carrier is updated in place, both copies of the name
+        // then exist, and OUN-1's rule resolves it to the standalone one — so
+        // the home keeps running the copy the upgrade was supposed to
+        // replace, with nothing reported. Placed after the Sync* effects so
+        // the carrier on disk is the new one when we ask what it contains.
+        effects.add(new SkillEffect.RetireSupersededUnits(
+                targets.stream().map(Target::skillName)
+                        .filter(java.util.Objects::nonNull).toList()));
         effects.add(new SkillEffect.BuildResolveGraphFromUnmetReferences(liveSkills));
         effects.add(new SkillEffect.CommitUnitsToStore());
         effects.add(new SkillEffect.ValidateMarkdownImports(

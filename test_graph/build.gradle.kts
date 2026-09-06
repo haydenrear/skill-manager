@@ -573,6 +573,14 @@ validationGraph {
         // operator has to choose from — and the control that keeps the gate
         // from refusing skt, whose entry skill carries the plugin's own name.
         node("sources/smoke/plugin/PluginNameCollisionRefused.java")
+        // OUN-5: and the one operation that has to get PAST that refusal —
+        // the upgrade retiring the standalone unit the carrier supersedes.
+        // Every existing home was stuck behind the gate above; the retirement
+        // runs before it, in the same operation, and only for the two names
+        // UnitSupersession.TABLE holds. Its controls are the real content: an
+        // ordinary collision must still be refused in the same home
+        // afterwards, or this node passes against a deleted gate.
+        node("sources/smoke/plugin/PluginSupersessionMigrates.java")
 
         // Plugin install with both plugin-level and contained-skill
         // CLI + MCP deps — exercises the install pipeline's walk and
@@ -601,6 +609,7 @@ validationGraph {
                 .dependsOn("plugin.contained.skill.not.addressable",
                         "plugin.contained.skill.resolves.by.name",
                         "plugin.name.collision.refused",
+                        "plugin.supersession.migrates",
                         "plugin.markdown.import.targets",
                         "plugin.uninstalled.mixed.orphans",
                         "plugin.skill_script.force.sync")

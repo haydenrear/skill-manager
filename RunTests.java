@@ -239,6 +239,7 @@ public class RunTests {
         failures += MarkdownImportValidatorTest.run();
         failures += UnitEdgeGraphTest.run();
         failures += ContainedNameCollisionIsRefusedTest.run();
+        failures += dev.skillmanager.lifecycle.MigrationSatisfiesTheGateTest.run();
         failures += ProjectMarkdownImportsTest.run();
         failures += LocalInstallIsNotAnErrorTest.run();
         failures += ScaffoldPluginTest.run();

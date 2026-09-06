@@ -39,6 +39,7 @@ public sealed interface SkillEffect permits
         SkillEffect.SnapshotMcpDeps,
         SkillEffect.RejectIfAlreadyInstalled,
         SkillEffect.RejectContainedNameCollision,
+        SkillEffect.RetireSupersededUnits,
         SkillEffect.BuildResolveGraphFromSource,
         SkillEffect.BuildResolveGraphFromBundledSkills,
         SkillEffect.BuildResolveGraphFromUnmetReferences,
@@ -536,6 +537,35 @@ public sealed interface SkillEffect permits
      * it.
      */
     record RejectContainedNameCollision() implements SkillEffect {}
+
+    /**
+     * Retire the units this version of skill-manager supersedes, before the
+     * gate above is asked about them.
+     *
+     * <h2>The ordering IS the ticket</h2>
+     *
+     * <p>From OUN-2, installing a plugin whose contained skill name is already
+     * claimed is refused outright and there is no flag past it. The standalone
+     * {@code skill-manager} skill and the copy inside {@code skt} are exactly
+     * that shape, so an existing home cannot take the upgrade that fixes it:
+     * the state the gate refuses is the state the home is already IN, and
+     * reaching the new shape means passing through it.
+     *
+     * <p>So this effect runs immediately before the gate, in the same
+     * operation, and removes only what {@link
+     * dev.skillmanager.lifecycle.UnitSupersession#TABLE} names — and only when
+     * the unit named as the successor is the one being installed. Everything
+     * else still reaches the gate untouched. The gate is SATISFIED, not
+     * weakened: after this runs there is genuinely one claimant, which is the
+     * property the gate is checking for.
+     *
+     * @param carriers the unit names being installed or synced, for the paths
+     *                 that have no resolved graph to read them from. Null or
+     *                 empty means "read the resolved graph".
+     */
+    record RetireSupersededUnits(java.util.List<String> carriers) implements SkillEffect {
+        public RetireSupersededUnits() { this(java.util.List.of()); }
+    }
 
     /**
      * Categorize the install plan and enforce the
