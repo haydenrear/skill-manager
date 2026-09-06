@@ -8,7 +8,8 @@ Counted once each. My own instrument errors are counted too: a measurement
 that reports the wrong number costs more than most product bugs, and leaving
 them out flatters the ledger.
 
-Through wave 2 (OUN-0, OUN-1, OUN-3), plus the #311 fix and OUN-9.
+Through wave 5 (OUN-0..OUN-5, OUN-9, OUN-10, OUN-12), plus the #311 fix
+and the OUN-11 retirement.
 
 ## The table
 
@@ -22,8 +23,11 @@ Through wave 2 (OUN-0, OUN-1, OUN-3), plus the #311 fix and OUN-9.
 | **Dev loop — build caching** | 1 | jbang keys its cache on the entry script, so `./skill-manager` runs a build older than its own sources |
 | **Product — home portability across a machine boundary** | 4 | DEF-282 a clone carries `auth.token`; DEF-283 `bin/cli` bakes an absolute home path; DEF-284 the gateway state a copy inherits; DEF-285 CoW is APFS-only and `pm/` is Mach-O |
 | **Documentation** | 1 | unimplemented behaviour written in the present tense in a doc that ships into homes |
+| **Test-and-registration ergonomics (mine)** — waves 3–5 | 4 | a suite registered against an anchor that exists on one branch only, so ALL PASSED with it never running; `shebang.contains("sh")` matching a temp dir named `shim-home-1234`; `assertEquals(1, …count())` failing as "expected \<1\> but was \<1\>" on long-vs-int; a graph node reading its control AFTER the cleanup that erased it |
+| **Deletion tickets leave the hole behind** | 1 | OUN-4 removed `skill-dev-skill` from git and left its nested `.git/` plus untracked build litter in the working tree, which then blocked the next worktree's clean-slate check |
+| **Plan modelling (mine)** | 2 | a goal bundling four independent properties, so retiring one contributor forced all-or-nothing; the metric renumbered at the retirement while the baseline prose kept the old letters |
 
-Fifteen. Through wave 1 not one was in the product's resolver, installer or
+Twenty-two. Through wave 1 not one was in the product's resolver, installer or
 store — correct for a measurement-only ticket. Wave 2 found the first product
 defect (#311), and it is **not** in the surfaces this epic changes either: it
 is in the agent-home boundary, reached by a harness, not by the resolver work.
@@ -161,3 +165,96 @@ commit.
 Every other graph tolerated the variable, which is what made it look like a
 finding. Recorded so the next sweep does not re-diagnose it.
 
+
+
+---
+
+# Waves 3–5: the shape changes
+
+Waves 1 and 2 were dominated by the epic's own machinery and by my
+instruments. Waves 3–5 are the first where **the product's own findings are
+the biggest class** — DEF-282 through DEF-285, four defects about a home
+crossing a machine boundary, none of which any test on this repository could
+have caught, because every one of them is invisible on the machine that made
+the home.
+
+## The near-miss worth more than any of the bugs
+
+OUN-5 retires the standalone `skill-manager` and `skill-dev-skill` from a home
+on upgrade. I went to check DEF-OUN-008 — the owner's "if it's in a unit store,
+migration has to be flawless" — and looked at what those two units are on the
+real root home:
+
+```
+/Users/hayde/.skill-manager/skills/skill-manager/.git/
+/Users/hayde/.skill-manager/skills/skill-dev-skill/.git/
+```
+
+**Every installed unit is a git checkout.** A retirement is an uninstall, an
+uninstall deletes the tree, and a home is the only place a unit's history lives
+until `unit publish` moves it. The migration as designed would have silently
+eaten unpushed skill edits — the single worst thing a migration can do, on the
+one path every existing home is required to take.
+
+It is not in the defect count because it never shipped. It is here because of
+**how** it was found: not by a test, not by review, but by opening the actual
+directory the code was about to delete. The unit tests I had already written
+all passed, and would have passed against the destructive version, because
+`TestHarness.scaffoldUnitDir` does not create git repos — the fixture was
+tidier than the world.
+
+*Recommendation:* where a change deletes something, the fixture has to be built
+from what the real thing looks like, not from the minimum that satisfies the
+type. `UnitSupersession.blockedFrom` now refuses, and its control pushes to a
+real bare remote so "published" is proved rather than assumed.
+
+## The registration defect recurred, and the fix caught it
+
+OUN-10's suite was registered by anchoring an edit on a string that existed on
+the epic branch and not on `main`. The edit silently did nothing and the run
+said **ALL PASSED**. The correction was one line — assert the anchor is
+present before replacing it.
+
+That assertion **fired for real two tickets later**, on OUN-5, where the
+anchor I guessed (`dev.skillmanager.effects.ContainedNameCollisionIsRefusedTest.run()`)
+was written in the file as an imported short name. A silent no-op became a
+loud failure in the same session that introduced the guard.
+
+*The generalisable part:* every edit that is "insert next to X" is a claim
+about X, and an unverified claim about a file is exactly as reliable as an
+unverified claim about anything else.
+
+## An attribution I got wrong, corrected in public
+
+The owner reported test-graph runs "failing on CI because of otel". I turned
+the SDK off — the `Exporter failed` lines are real, from the Spring server's
+`PeriodicMetricReader` with no collector on the runner — and then said plainly
+that it fixes **none** of the seven failing graphs, which fail for five other
+reasons, three of them "the runner is not a developer's machine".
+
+Recorded here because the tempting move was to ship the change and let the
+green PR imply the diagnosis. A fix that does not fix the reported problem is
+worth less than the sentence saying so.
+
+## What the four portability findings have in common
+
+DEF-282 (credential), DEF-283 (frozen shim), DEF-284 (gateway), DEF-285
+(CoW + Mach-O) were filed from **outside** this repository, by the effort trying
+to put a home in a container. Every one is a property of a home *elsewhere*:
+
+- the credential is correct where it was written and a leak where it lands;
+- the shim resolves where it was written and dies where it lands;
+- the clone economics hold where they were measured and vanish where they land;
+- `pm/` executes where it was built and answers ENOEXEC where it lands.
+
+**No test that runs on the machine that made the home can see any of them.**
+That is the class, and it is why three of the four fixes are about making the
+home *carry an answer* — a skipped file, a self-deriving path, a platform stamp
+— rather than about making the copy smarter. The fourth, the gateway, was
+retired to `substrate-home-model` because nobody could state the rule it should
+hold to, and inventing a rule to fit the current state settles nothing.
+
+*Recommendation for the container work:* the meta-harness image build should
+run `home clone --portable` and then `home verify` **inside the image**, not on
+the host. Two of these four would have been caught at build time by exactly
+that, and the other two now announce themselves in the clone output.

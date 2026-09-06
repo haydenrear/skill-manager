@@ -167,11 +167,17 @@ epic_goals:
       solved; it is out of the GOAL so the goal can be decided.
     harness: >
       A probe that copies a home the way an image build would -- not `home
-      clone`, which is the APFS-only path -- and answers the four questions on
+      clone`, which is the APFS-only path -- and answers the three questions on
       the result. Reported per property; one bad property is the whole defect.
     baseline:
       value: >
-        0 of 4, measured 2026-09-05 on this machine. (a) auth.token is copied
+        0 of 4 AS SCOPED THEN, measured 2026-09-05 on this machine, and the
+        letters below are the ORIGINAL four. (c) was withdrawn to
+        GOAL-a-copied-home-knows-its-gateway-state at schedule_revision 3, so
+        the (d) here is the (c) of the metric above. The prose is left as it
+        was measured rather than renumbered: a baseline is a record of a
+        reading, and rewriting the reading to match a later scope is how a
+        ledger stops being evidence. (a) auth.token is copied
         verbatim, 0600, keys access_token/refresh_token/expires_at -- observed
         by cloning a home holding one, not inferred from the absence of an
         exclusion. (b) bin/cli/tla-spec-dev execs an absolute path into its own
