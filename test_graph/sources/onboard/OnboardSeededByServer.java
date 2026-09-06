@@ -57,18 +57,21 @@ public class OnboardSeededByServer {
             // seeds the plugin's CONTAINED skills (skt, unit-authoring).
             boolean sktSeen = body != null && body.contains("\"skt\"");
             boolean authoringSeen = body != null && body.contains("\"unit-authoring\"");
-            boolean devSeen = body != null && body.contains("\"skill-dev-skill\"");
-            return (managerSeen && sktSeen && authoringSeen && devSeen
+            // INVERTED by OUN-4, not deleted. skill-dev-skill was seeded here
+            // until the unit was retired; asserting it is ABSENT is what
+            // catches a seed list that quietly grows the unit back.
+            boolean retiredAbsent = body != null && !body.contains("\"skill-dev-skill\"");
+            return (managerSeen && sktSeen && authoringSeen && retiredAbsent
                     ? NodeResult.pass("onboard.seeded.by.server")
                     : NodeResult.fail("onboard.seeded.by.server",
                             "missing seeded skills — manager=" + managerSeen
                                     + " skt=" + sktSeen
                                     + " unitAuthoring=" + authoringSeen
-                                    + " skillDev=" + devSeen))
+                                    + " retiredSkillDevAbsent=" + retiredAbsent))
                     .assertion("skill_manager_seeded", managerSeen)
                     .assertion("skt_seeded", sktSeen)
                     .assertion("unit_authoring_seeded", authoringSeen)
-                    .assertion("skill_dev_seeded", devSeen);
+                    .assertion("retired_skill_dev_is_NOT_seeded", retiredAbsent);
         });
     }
 

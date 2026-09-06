@@ -40,9 +40,6 @@ def test_program_model_skill_docs_cover_modeled_workflows() -> None:
     } | {
         ("skill-publisher-skill", workflow)
         for workflow in _tla_set(tla, "SkillPublisherSkillWorkflows")
-    } | {
-        ("skill-dev-skill", workflow)
-        for workflow in _tla_set(tla, "SkillDevSkillWorkflows")
     }
 
     metadata_expected = {

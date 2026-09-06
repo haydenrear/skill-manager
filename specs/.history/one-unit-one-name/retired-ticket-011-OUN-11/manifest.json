@@ -1,0 +1,34 @@
+{
+  "ticket": "OUN-11",
+  "ordinal": 11,
+  "epic": "one-unit-one-name",
+  "schedule_revision": 3,
+  "retired_at": "2026-09-05",
+  "resolution": "carried",
+  "decided_by": "owner",
+  "reason": "The gateway divergence (DEF-284) is confirmed and unexplained, but the gateway is not on the path to the container work this amendment exists to unblock, and OUN-11's own constraint was that the rule be written before any code changed. Nobody is available to state that rule and nobody is being hurt by its absence.",
+  "delivered": false,
+  "no_delivery_receipt": {
+    "branch": null,
+    "pull_request": null,
+    "commits": [],
+    "files_changed": [],
+    "verified": "No branch was created, no PR opened, no code written for OUN-11. The measurement that prompted it is preserved: DEF-284 in results/epic-one-unit-one-name/deferred/backlog.yaml carries the reproduction, and issue #317 carries the analysis."
+  },
+  "affected_goals": [
+    {
+      "goal": "GOAL-a-home-survives-being-copied-into-an-image",
+      "disposition": "carried",
+      "reason": "The goal drops from four properties to three. Property (c) \u2014 the gateway state a copied home inherits \u2014 is REMOVED from the goal rather than left permanently unmet: a goal carrying a property nobody intends to deliver reads as failure forever, which teaches the ledger to be ignored. The remaining three (no credential travels, no bin/cli entry names the source home, the copy is usable on Linux) are unchanged and still decided by OUN-8.",
+      "successor_workflow": "substrate-home-model",
+      "successor_issue": "https://github.com/haydenrear/skill-manager/issues/317"
+    }
+  ],
+  "evidence": {
+    "issue": "https://github.com/haydenrear/skill-manager/issues/317",
+    "backlog_finding": "DEF-284",
+    "measurement": "root gateway.owned=true, worktree gateway.owned=false, project home has no gateway.properties at all; two of the three name one port. Measured 2026-09-05."
+  },
+  "successor_workflow": "substrate-home-model",
+  "successor_issue": "https://github.com/haydenrear/skill-manager/issues/317"
+}

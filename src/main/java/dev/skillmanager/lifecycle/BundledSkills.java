@@ -24,10 +24,13 @@ public final class BundledSkills {
 
     private BundledSkills() {}
 
+    // skill-dev-skill was here until OUN-4. It installed a `skill-dev` CLI
+    // whose open/status/sync/git/close is now covered by `skt publish`, `skt
+    // ticket` and `sync --from --merge`; `deps --who-imports skill-dev-skill`
+    // reported zero importers in the only home that still held it.
     private static final Map<String, String> GITHUB_COORDS = Map.of(
             "skill-manager", "github:haydenrear/skill-manager-skill",
-            "skt", "github:haydenrear/skill-publisher-skill",
-            "skill-dev-skill", "github:haydenrear/skill-dev-skill"
+            "skt", "github:haydenrear/skill-publisher-skill"
     );
 
     private static final Set<String> NAMES = GITHUB_COORDS.keySet();

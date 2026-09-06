@@ -69,7 +69,7 @@ def test_program_model_accepts_bounded_cli_disclosure_case_surface() -> None:
 def test_program_model_validation_surfaces_remain_registered() -> None:
     graph = (ROOT / "test_graph/build.gradle.kts").read_text(encoding="utf-8")
 
-    for graph_name in ("smoke", "doc-smoke", "plugin-smoke", "skill-dev-smoke"):
+    for graph_name in ("smoke", "doc-smoke", "plugin-smoke"):
         assert f'testGraph("{graph_name}")' in graph
 
     selector = _load_ci_graph_selector()
@@ -81,9 +81,9 @@ def test_program_model_validation_surfaces_remain_registered() -> None:
     for graph_name in ("smoke", "plugin-smoke"):
         assert graph_name in core, f"{graph_name} left CI's core set"
 
-    # At minimum nightly. `doc-smoke` and `skill-dev-smoke` are budgeted to the
+    # At minimum nightly. `doc-smoke` is budgeted to the
     # schedule, not dropped — the distinction is the whole point of #113.
-    for graph_name in ("smoke", "doc-smoke", "plugin-smoke", "skill-dev-smoke"):
+    for graph_name in ("smoke", "doc-smoke", "plugin-smoke"):
         assert graph_name in full, f"{graph_name} is in no CI graph set"
 
 
