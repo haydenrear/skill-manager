@@ -463,7 +463,15 @@ findings:
   - id: DEF-OUN-014
     found_by: OUN-6 (verifying the move end to end)
     found_at: "2026-09-06"
-    severity: blocking
+    severity: minor
+    severity_corrected: >
+      Filed as `blocking`. It is not. The alarming half of what I measured --
+      no copy of the skill anywhere -- was an artifact of MY OWN transitional
+      state: the move sits on an unmerged branch, so the carrier that landed
+      was `main`, which does not carry the skill yet. Once the branch merges,
+      that sequence is benign. The standalone being gone from skills/ is the
+      GOAL, not the defect, and I conflated "retired from skills/" with
+      "absent everywhere".
     summary: >
       On the SYNC path the retirement checks its precondition and a later
       effect in the same operation invalidates it. RetireSupersededUnits runs
@@ -480,15 +488,17 @@ findings:
       plugins/skt/skills/ = {skt, unit-authoring}, installed/skill-manager.json
       gone, exit 0.
     why_deferred: >
-      NOT deferred -- it is mine, from OUN-5, and it is on the migration path.
-      Not data loss (the guard still refuses a checkout with unpublished work,
-      so what is removed is recoverable by reinstall) but it leaves a home
-      silently short a unit.
+      The residual is a narrow check-then-act weakness, worth a comment and a
+      cheap post-condition rather than a ticket: it needs a carrier that is
+      AHEAD locally and BEHIND remotely in the same operation, which is a
+      developer's machine mid-rollout. Not data loss either -- the guard still
+      refuses a checkout with unpublished work, so what is removed is
+      recoverable by reinstall.
       The fix is an ordering split that is more correct than what I wrote: the
       INSTALL path must retire BEFORE the collision gate, because the gate is
       what it exists to satisfy; the SYNC path has no gate and must retire
       AFTER CommitUnitsToStore, once the carrier is definitively in place.
       Check-then-act across effects is the class; the carrier is the thing
       checked and a later effect is what replaces it.
-    candidate_owner: a fix on the OUN-5 line, before OUN-6 can be verified
+    candidate_owner: a comment and a post-condition on the OUN-5 line
     status: open
