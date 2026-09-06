@@ -300,6 +300,7 @@ public class RunTests {
         failures += dev.skillmanager.store.ShimHomeContractTest.run();
         // OUN-10: the same rule read on the OTHER side of a copy.
         failures += dev.skillmanager.store.ShimSurvivesACopyTest.run();
+        failures += dev.skillmanager.store.CopyCrossesAPlatformTest.run();
         failures += dev.skillmanager.launch.DurableCliPinTest.run();
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
         failures += dev.skillmanager.store.HomeDriftGateTest.run();
