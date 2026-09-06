@@ -196,3 +196,36 @@ findings:
     candidate_owner: OUN-12 (#316)
     status: scheduled
 
+  - id: DEF-OUN-005
+    found_by: OUN-4 (scoping the deletion before making it)
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      OUN-4's declared slice cannot be executed as written. It lists the unit
+      directory, the onboarding seed, the onboard graph's assertions,
+      skill-project.toml prose and three skt doc mentions. It does not account
+      for: (a) a whole registered test graph, `skill-dev-smoke`, with 9 source
+      files and 7 nodes, which exists to drive the unit and cannot pass without
+      it; (b) the ACCEPTED program model -- SkillManager.tla names
+      "skill-dev-skill" in a set and defines SkillDevSkillWorkflows, with
+      spec_manifest and two program-model tests following it; (c) onboarding
+      seeds skill-dev-skill from github:haydenrear/skill-dev-skill, a SEPARATE
+      repository, so "delete it from the repository" is ambiguous between the
+      in-repo directory and the unit onboarding installs.
+    reproduction: >
+      grep -rl skill-dev --exclude-dir=.history . ; and
+      grep -n skill-dev src/main/java/dev/skillmanager/lifecycle/BundledSkills.java
+    why_deferred: >
+      NOT deferred as unimportant -- stopped because a partial deletion leaves
+      the worst possible state: unit gone, a registered graph red, and the
+      accepted model describing a unit that does not exist. OUN-3's command
+      confirms the premise (zero importers of skill-dev-skill in the only home
+      that holds it), so the deletion is right; its cost is three times what
+      the plan priced.
+      NOTE FOR SCHEDULING: OUN-7 (rename skill-publisher-skill to skt) edits
+      the SAME TLA set three waves later. Doing the model edit once, there,
+      rather than twice is probably the cheaper order -- which would make OUN-4
+      depend on OUN-7 instead of preceding it.
+    candidate_owner: owner decision on scope; then OUN-4 re-planned
+    status: open
+
