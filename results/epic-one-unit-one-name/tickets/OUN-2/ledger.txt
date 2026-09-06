@@ -1,0 +1,9 @@
+epic/one-unit-one-name — goal ledger
+
+  MET         GOAL-one-name-one-copy                 0 live, 0 latent over 37 homes; gate refuses a planted collision  (target 0 live AND 0 latent)
+  MET         GOAL-a-contained-skill-is-addressable  yes  (target yes)
+  NOT MET     GOAL-migration-lands-on-one-skt        root (1, 1, 1); 0 of 34 homes at (0, 0, 1)  (target (0, 0, 1))
+              why: no migration exists yet -- OUN-5 writes it. This reads the triple where it stands so the migration is graded against a n
+  MET         GOAL-who-imports-this                  one command, agreeing with an independent walk in 34 of 34 homes  (target one command, both mechanisms, transitive, terminates on cycles)
+
+  3 of 4 met

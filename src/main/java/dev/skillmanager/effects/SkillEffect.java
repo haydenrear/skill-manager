@@ -38,6 +38,7 @@ public sealed interface SkillEffect permits
         SkillEffect.InstallPackageManager,
         SkillEffect.SnapshotMcpDeps,
         SkillEffect.RejectIfAlreadyInstalled,
+        SkillEffect.RejectContainedNameCollision,
         SkillEffect.BuildResolveGraphFromSource,
         SkillEffect.BuildResolveGraphFromBundledSkills,
         SkillEffect.BuildResolveGraphFromUnmetReferences,
@@ -503,6 +504,38 @@ public sealed interface SkillEffect permits
      * concrete name.
      */
     record RejectIfTopLevelInstalled() implements SkillEffect {}
+
+    /**
+     * Refuse a plugin whose contained skill name is already claimed in this
+     * home. One name, one copy.
+     *
+     * <h2>Why this could not exist before OUN-1</h2>
+     *
+     * <p>{@link RejectIfTopLevelInstalled} has always refused a collision it
+     * can SEE — a unit name already under {@code skills/}, {@code plugins/},
+     * {@code docs/} or {@code harnesses/}. A plugin's contained skills were
+     * not in that inventory at all, so a plugin carrying a skill named
+     * {@code skill-manager} installed cleanly beside the standalone
+     * {@code skill-manager} and the name silently had two answers. Making
+     * contained skills addressable is what turns that from invisible into a
+     * collision worth refusing.
+     *
+     * <h2>Hard, and with no way past it</h2>
+     *
+     * <p>There is no flag. Two copies of one name is not a version conflict
+     * to be reconciled by preference — it is an ambiguity that the
+     * five-branch search would resolve by directory order, silently and
+     * differently depending on which branch matched first. The refusal names
+     * both claimants and both ways out, because the operator has to choose
+     * one of them rather than be asked to confirm.
+     *
+     * <p>It is also what makes migration sticky on purpose: retiring a
+     * standalone unit in favour of a plugin-contained one of the same name
+     * has to happen in ONE operation, since both existing at once is exactly
+     * the state this refuses. OUN-5 satisfies the gate rather than weakening
+     * it.
+     */
+    record RejectContainedNameCollision() implements SkillEffect {}
 
     /**
      * Categorize the install plan and enforce the
