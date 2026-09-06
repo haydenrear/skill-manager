@@ -380,7 +380,16 @@ findings:
       ordinary remove path should carry the same guard is an owner decision
       with a real cost (it makes `remove` refuse on a dirty unit).
     candidate_owner: owner decision, then a ticket outside this epic
-    status: open
+    status: filed
+    issue: https://github.com/haydenrear/skill-manager/issues/327
+    resolution: >
+      Filed 2026-09-06 at the owner's instruction, with a REPRODUCTION rather
+      than the inference this entry originally carried: a scratch home, a unit
+      installed from a git source, one commit on no remote and one uncommitted
+      edit, then `uninstall` -> exit 0, a tick, and both gone. The issue lists
+      four candidate shapes and states the cost, because guarding it makes
+      `remove` refuse on a dirty unit and that is a friction change on a
+      command people use casually.
 
   - id: DEF-OUN-011
     found_by: OUN-5 (closing DEF-OUN-008)
