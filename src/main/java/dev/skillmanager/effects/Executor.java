@@ -485,6 +485,7 @@ public final class Executor {
             case SkillEffect.SnapshotMcpDeps e -> List.of();
             case SkillEffect.RejectIfAlreadyInstalled e -> List.of();
             case SkillEffect.RejectIfTopLevelInstalled e -> List.of();
+            case SkillEffect.RejectContainedNameCollision e -> List.of();
             case SkillEffect.CheckInstallPolicyGate e -> List.of();
             // The BuildResolveGraphFrom* family stages temp dirs (cleaned
             // up by CleanupResolvedGraph alwaysAfter) and writes to
@@ -774,6 +775,7 @@ public final class Executor {
             case SkillEffect.SnapshotMcpDeps e -> List.of();
             case SkillEffect.RejectIfAlreadyInstalled e -> List.of();
             case SkillEffect.RejectIfTopLevelInstalled e -> List.of();
+            case SkillEffect.RejectContainedNameCollision e -> List.of();
             case SkillEffect.CheckInstallPolicyGate e -> List.of();
             // The BuildResolveGraphFrom* family — no post-state
             // rollback needed (temp dirs cleaned by CleanupResolvedGraph

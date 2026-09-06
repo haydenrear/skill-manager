@@ -21,11 +21,81 @@ That is why the goal's baseline reads 0 VACUOUSLY. Reporting only the live
 count would say "already met" about a condition nothing can currently violate.
 """
 import json
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import unit_graph as g  # noqa: E402
+
+
+REPO = Path(__file__).resolve().parent.parent
+TMP_PREFIX = "oun2-collision-gate-"
+
+
+def probe_gate():
+    """Does the installer REFUSE a planted collision?
+
+    The second half of this goal, and the half a walker cannot answer. The
+    target is "0, non-vacuously, WITH THE GATE REFUSING A PLANTED COLLISION" —
+    counting pairs shows there is nothing wrong right now; only planting one
+    shows the product would not let it happen.
+
+    Plants a plugin carrying a skill named after a unit that is already in a
+    scratch clone, installs it, and reads the verdict. Returns (refused, why).
+    """
+    src = Path(os.environ.get("SKILL_MANAGER_HOME") or (REPO / ".skill-manager"))
+    if not (src / "skills").is_dir():
+        return None, f"source home {src} has no skills/ to collide with"
+    victim = next((p.name for p in sorted((src / "skills").iterdir())
+                   if p.is_dir() and not p.name.startswith(".")), None)
+    if victim is None:
+        return None, f"{src} holds no standalone skill to collide with"
+
+    tmp = Path(tempfile.mkdtemp(prefix=TMP_PREFIX))
+    try:
+        home = tmp / "home"
+        clone = subprocess.run([str(REPO / "skill-manager"), "home", "clone",
+                                "--from", str(src), "--to", str(home)],
+                               cwd=REPO, capture_output=True, text=True, timeout=1800)
+        if clone.returncode != 0:
+            return None, "home clone failed: " + (clone.stdout + clone.stderr)[-300:]
+
+        plugin = tmp / "planted-plugin"
+        (plugin / ".claude-plugin").mkdir(parents=True)
+        (plugin / ".claude-plugin" / "plugin.json").write_text(
+            '{"name":"planted-plugin","version":"0.0.1",'
+            '"description":"a planted collision"}\n', encoding="utf-8")
+        (plugin / "skill-manager-plugin.toml").write_text(
+            '[plugin]\nname = "planted-plugin"\nversion = "0.0.1"\n'
+            'description = "a planted collision"\n', encoding="utf-8")
+        inner = plugin / "skills" / victim
+        inner.mkdir(parents=True)
+        (inner / "SKILL.md").write_text(
+            f"---\nname: {victim}\ndescription: planted collision\n---\n\nbody\n",
+            encoding="utf-8")
+        (inner / "skill-manager.toml").write_text(
+            f'[skill]\nname = "{victim}"\nversion = "0.0.1"\n'
+            'description = "planted collision"\n', encoding="utf-8")
+
+        run = subprocess.run([str(REPO / "skill-manager"), "install", str(plugin), "--yes"],
+                             cwd=REPO, capture_output=True, text=True, timeout=900,
+                             env={**os.environ, "SKILL_MANAGER_HOME": str(home)})
+        out = run.stdout + run.stderr
+        landed = (home / "plugins" / "planted-plugin").is_dir()
+        refused = run.returncode != 0 and not landed
+        return refused, {
+            "collided_with": victim,
+            "exit": run.returncode,
+            "plugin_landed_anyway": landed,
+            "product_said": next((ln.strip() for ln in out.splitlines()
+                                  if "refusing to install plugin" in ln), None),
+        }
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def main() -> int:
@@ -79,17 +149,33 @@ def main() -> int:
     # exits 2 — so OUN-2 replacing this with a real probe is a visible task
     # rather than a hardcoded `False` somebody has to remember to flip.
     out["pairs_clean"] = not live and not latent
-    out["gate"] = {"refuses_a_planted_collision": None, "probed_by": "OUN-2"}
     if live or latent:
+        out["gate"] = {"refuses_a_planted_collision": None,
+                       "why": "not probed: there is already a live pair to fix"}
         out["met"] = False
         print(json.dumps(out, indent=1))
         return 1
-    out["met"] = None
-    out["why"] = ("no (home, unit-name) pair resolves to two roots, but the "
-                  "other half of this goal — an installer that REFUSES a "
-                  "planted collision — has no probe yet. OUN-2 adds it.")
+
+    # THE SECOND HALF, and it is what makes the first non-vacuous. Zero pairs
+    # says nothing is wrong now; only a planted collision shows the product
+    # would not let one happen.
+    refused, detail = probe_gate()
+    out["gate"] = {"refuses_a_planted_collision": refused, "detail": detail}
+    if refused is None:
+        out["met"] = None
+        out["why"] = ("no pair resolves to two roots, but the gate could not be "
+                      "probed, so the number is not yet non-vacuous: "
+                      + str(detail))
+        print(json.dumps(out, indent=1))
+        return 2
+    out["met"] = bool(refused)
+    out["value"] = out["value"] + ("; gate refuses a planted collision"
+                                   if refused else "; GATE DID NOT REFUSE")
+    out["why"] = None if refused else (
+        "no pair resolves to two roots, but the installer accepted a planted "
+        "collision — which is how the pairs got to zero, not proof they stay there")
     print(json.dumps(out, indent=1))
-    return 2
+    return 0 if out["met"] else 1
 
 
 if __name__ == "__main__":
