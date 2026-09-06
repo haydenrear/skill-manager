@@ -42,62 +42,63 @@ public class OnboardSkillsInstalled {
             if (home == null) {
                 return NodeResult.fail("onboard.skills.installed", "missing env.prepared context");
             }
-            // skill-publisher's repo ships the skt PLUGIN now: it installs
-            // to plugins/skt (plugin manifest + contained skills), while
-            // skill-manager and skill-dev-skill stay bundled skills.
+            // skill-publisher's repo ships the skt PLUGIN: it installs to
+            // plugins/skt (plugin manifest + contained skills), while
+            // skill-manager stays a bundled skill.
+            //
+            // skill-dev-skill was a third bundled skill until OUN-4. Its
+            // assertions are INVERTED rather than deleted: onboarding must now
+            // prove it does NOT seed it. Deleting them would have left the
+            // absence untested, and a seed that comes back is exactly the
+            // regression nobody would notice — the unit installs cleanly, it
+            // is simply not wanted.
             Path skillsDir = Path.of(home).resolve("skills");
             Path manager = skillsDir.resolve("skill-manager");
-            Path dev = skillsDir.resolve("skill-dev-skill");
+            Path retired = skillsDir.resolve("skill-dev-skill");
             Path skt = Path.of(home).resolve("plugins").resolve("skt");
             Path installedDir = Path.of(home).resolve("installed");
 
             boolean managerDirOk = Files.isDirectory(manager);
             boolean managerMdOk = Files.isRegularFile(manager.resolve("SKILL.md"));
-            boolean devDirOk = Files.isDirectory(dev);
-            boolean devMdOk = Files.isRegularFile(dev.resolve("SKILL.md"));
+            boolean retiredAbsent = !Files.exists(retired);
+            boolean retiredRecordAbsent =
+                    !Files.exists(installedDir.resolve("skill-dev-skill.json"));
             boolean sktDirOk = Files.isDirectory(skt);
             boolean sktManifestOk = Files.isRegularFile(skt.resolve("skill-manager-plugin.toml"));
             boolean sktContainedOk = Files.isRegularFile(
                     skt.resolve("skills").resolve("skt").resolve("SKILL.md"));
             boolean managerGitOk = Files.exists(manager.resolve(".git"));
-            boolean devGitOk = Files.exists(dev.resolve(".git"));
             String managerRecord = read(installedDir.resolve("skill-manager.json"));
-            String devRecord = read(installedDir.resolve("skill-dev-skill.json"));
             String managerGithub = "https://github.com/haydenrear/skill-manager-skill.git";
-            String devGithub = "https://github.com/haydenrear/skill-dev-skill.git";
             boolean managerRemoteOk = managerRecord.contains(managerGithub)
                     && managerGithub.equals(gitRemote(manager));
-            boolean devRemoteOk = devRecord.contains(devGithub)
-                    && devGithub.equals(gitRemote(dev));
 
             boolean pass = managerDirOk && managerMdOk
-                    && devDirOk && devMdOk
+                    && retiredAbsent && retiredRecordAbsent
                     && sktDirOk && sktManifestOk && sktContainedOk
-                    && managerGitOk && devGitOk
-                    && managerRemoteOk && devRemoteOk;
+                    && managerGitOk
+                    && managerRemoteOk;
             return (pass
                     ? NodeResult.pass("onboard.skills.installed")
                     : NodeResult.fail("onboard.skills.installed",
                             "managerDir=" + managerDirOk + " managerMd=" + managerMdOk
-                                    + " devDir=" + devDirOk + " devMd=" + devMdOk
+                                    + " retiredAbsent=" + retiredAbsent
+                                    + " retiredRecordAbsent=" + retiredRecordAbsent
                                     + " sktDir=" + sktDirOk
                                     + " sktManifest=" + sktManifestOk
                                     + " sktContained=" + sktContainedOk
                                     + " managerGit=" + managerGitOk
-                                    + " devGit=" + devGitOk
-                                    + " managerRemote=" + managerRemoteOk
-                                    + " devRemote=" + devRemoteOk))
+                                    + " managerRemote=" + managerRemoteOk))
                     .assertion("skill_manager_dir_present", managerDirOk)
                     .assertion("skill_manager_md_present", managerMdOk)
-                    .assertion("skill_dev_dir_present", devDirOk)
-                    .assertion("skill_dev_md_present", devMdOk)
+                    .assertion("retired_skill_dev_is_NOT_seeded", retiredAbsent)
+                    .assertion("and_no_installed_record_is_written_for_it",
+                            retiredRecordAbsent)
                     .assertion("skt_plugin_dir_present", sktDirOk)
                     .assertion("skt_plugin_manifest_present", sktManifestOk)
                     .assertion("skt_contained_skill_present", sktContainedOk)
                     .assertion("skill_manager_git_metadata_present", managerGitOk)
-                    .assertion("skill_dev_git_metadata_present", devGitOk)
-                    .assertion("skill_manager_origin_points_to_github", managerRemoteOk)
-                    .assertion("skill_dev_origin_points_to_github", devRemoteOk);
+                    .assertion("skill_manager_origin_points_to_github", managerRemoteOk);
         });
     }
 

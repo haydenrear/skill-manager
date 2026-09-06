@@ -61,13 +61,16 @@ public final class OnboardCommand implements Callable<Integer> {
     // skill-publisher-skill ships the skt PLUGIN now; the resolver
     // auto-detects the plugin shape and the install pipeline routes it to
     // plugins/<name> with its CLI deps and marketplace registration.
+    //
+    // THE SECOND LIST. BundledSkills.GITHUB_COORDS holds the same three
+    // facts for the reconciler, and OUN-4 had to remove skill-dev-skill from
+    // both — the compiler cannot relate them, and a retired unit left in
+    // either one is still onboarded by whichever path reads that copy.
     private static final List<BundledSkill> BUNDLED_SKILLS = List.of(
             new BundledSkill("skill-manager-skill", "skill-manager",
                     "github:haydenrear/skill-manager-skill"),
             new BundledSkill("skill-publisher-skill", "skt",
-                    "github:haydenrear/skill-publisher-skill"),
-            new BundledSkill("skill-dev-skill", "skill-dev-skill",
-                    "github:haydenrear/skill-dev-skill")
+                    "github:haydenrear/skill-publisher-skill")
     );
 
     @Option(names = "--install-dir",

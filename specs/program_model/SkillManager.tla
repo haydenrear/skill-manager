@@ -203,8 +203,13 @@ CliWorkflowCommandLinks ==
    <<"unbind-projection", "unbind">>,
    <<"upgrade-units", "upgrade">>}
 
+\* skill-dev-skill was a third surface until OUN-4 retired the unit. Its four
+\* workflows were all covered elsewhere -- force-skill-scripts,
+\* install-local-unit, project-env and sync-from-local-source are every one of
+\* them, and each is already claimed by skill-manager-skill or
+\* skill-publisher-skill -- so removing the surface removes no coverage.
 SkillDocSurfaces ==
-  {"skill-manager-skill", "skill-publisher-skill", "skill-dev-skill"}
+  {"skill-manager-skill", "skill-publisher-skill"}
 
 SkillManagerSkillWorkflows ==
   {"account-auth", "ads-manage", "bind-projection", "cli-lock-inspect",
@@ -222,14 +227,9 @@ SkillPublisherSkillWorkflows ==
   {"author-dependencies", "author-unit", "install-local-unit",
    "publish-unit", "skill-scripts"}
 
-SkillDevSkillWorkflows ==
-  {"force-skill-scripts", "install-local-unit", "project-env",
-   "sync-from-local-source"}
-
 ExpectedSkillDocCoverage ==
   ({"skill-manager-skill"} \X SkillManagerSkillWorkflows)
     \cup ({"skill-publisher-skill"} \X SkillPublisherSkillWorkflows)
-    \cup ({"skill-dev-skill"} \X SkillDevSkillWorkflows)
 
 RefsFor(units) ==
   {ref \in Units : \E u \in units: <<u, ref>> \in ReferenceEdges}

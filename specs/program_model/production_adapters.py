@@ -112,7 +112,6 @@ def load_cli_skill_docs_source(repo_root: str | Path) -> CliSkillDocsSnapshot:
     docs_by_surface = {
         "skill-manager-skill": read_skill_doc_surface(root / "skill-manager-skill"),
         "skill-publisher-skill": read_skill_doc_surface(root / "skill-publisher-skill"),
-        "skill-dev-skill": read_skill_doc_surface(root / "skill-dev-skill"),
     }
 
     coverage: set[tuple[str, str]] = set()
