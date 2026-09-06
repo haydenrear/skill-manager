@@ -110,6 +110,26 @@ concurrency:
 env:
   POSTGRES_IMAGE: pgvector/pgvector:pg16
 
+  # No collector runs on a hosted runner. The noise is the SERVER's, not the
+  # CLI's: `i.o.s.m.export.PeriodicMetricReader` in the Spring Boot process the
+  # graph nodes start, retrying http://localhost:4318 on its metric interval.
+  # CliObservability already installs a filter that swallows this for the CLI —
+  # verified locally against a dead endpoint, where the CLI logs nothing — so
+  # turning the SDK off at the job level is what reaches the server too.
+  #
+  # It is NOISE AND NOT A CAUSE, and the distinction is the reason this comment
+  # is long. The 2026-09-06 nightly failed seven graphs, "Exporter failed"
+  # appeared in three of the logs, and not one of the seven failed because of
+  # it: they failed on a content assertion, an uninstall-residue defect, a
+  # tripwire whose precondition does not hold on a fresh runner, and a missing
+  # sibling repository. Silencing the exporter makes those four legible; it
+  # fixes none of them.
+  #
+  # Retry is already off by default (OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED),
+  # so this buys log clarity rather than wall-clock. Unset it locally to get
+  # traces back against a real collector.
+  OTEL_SDK_DISABLED: "true"
+
 jobs:
   # ---------------------------------------------------------------------------
   # Which graphs run, decided once, from the build file.
