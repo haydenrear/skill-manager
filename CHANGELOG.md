@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.26.1](https://github.com/haydenrear/skill-manager/compare/v0.26.0...v0.26.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **agents:** an install must not write into this home's own unit storage ([2d16252](https://github.com/haydenrear/skill-manager/commit/2d16252a6b99f686d9b3895b92e7c2e494de8b3b)), closes [#311](https://github.com/haydenrear/skill-manager/issues/311)
+* **ci:** a closed spec workflow should not turn every run red ([bfca8a8](https://github.com/haydenrear/skill-manager/commit/bfca8a8bb13548f132ca453487294ab8deae11bd)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **cli:** a shim resolves the home it is standing in, not the one it was written in ([43e5fb9](https://github.com/haydenrear/skill-manager/commit/43e5fb9949a8d0debc6e4bcf1c6a25e72d3b3cec)), closes [#315](https://github.com/haydenrear/skill-manager/issues/315)
+* **specs:** restore the accepted manifest the close-out overwrote ([e7f30b4](https://github.com/haydenrear/skill-manager/commit/e7f30b478be709ae254d2f51dbc34a14cbf011df)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **store:** a copy of a home is not a copy of its login ([fb5fc05](https://github.com/haydenrear/skill-manager/commit/fb5fc052579c56efddb964f8ea11ea99ba329b8e)), closes [#281](https://github.com/haydenrear/skill-manager/issues/281)
+* **store:** a home copy that crosses a platform boundary ([cad0b83](https://github.com/haydenrear/skill-manager/commit/cad0b830ec58fd7746ece2b21fbae4707ed2529f))
+
 ## [0.26.0](https://github.com/haydenrear/skill-manager/compare/v0.25.1...v0.26.0) (2026-09-05)
 
 
