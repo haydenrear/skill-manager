@@ -229,3 +229,52 @@ findings:
     candidate_owner: owner decision on scope; then OUN-4 re-planned
     status: open
 
+  - id: DEF-OUN-006
+    found_by: OUN-2B (adding plugin-graph assertions for the OUN-1/OUN-2 change)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      The accepted program model's InstallUnit enumerates exactly three
+      outcomes -- EffectHalt("ALREADY_INSTALLED"), EffectHalt("RESOLVE_FAILED")
+      and Ok. OUN-2 adds a fourth the model does not have: a refusal when a
+      plugin's CONTAINED skill name is already claimed. So SkillManager.tla now
+      claims install has three outcomes and the product has four.
+    reproduction: >
+      Read InstallUnit in specs/program_model/SkillManager.tla against
+      LiveInterpreter.rejectContainedNameCollision.
+    why_deferred: >
+      Not a tweak. The model does not describe plugins or containment AT ALL --
+      `Units == {UnitA, UnitB}` is flat, and DocRepoA/HarnessA are separate
+      constants with no plugin equivalent. Adding this halt means introducing a
+      plugin constant, a containment relation, an MC.cfg constant, manifest
+      entries, and probably generated case adapters and program-model tests.
+      It also lands in the SAME FILE as two decisions already open with the
+      owner (OUN-4's scope, and DEF-OUN-001's 72 undescribed modules), and a
+      careless edit to that file put main in a red state on 2026-09-03.
+      The behaviour IS covered meanwhile: six unit cases and a plugin-smoke
+      node assert the refusal end to end. What is missing is the model saying
+      so, not the product doing so.
+    candidate_owner: bundle with the owner's decision on the program model
+    status: open
+
+  - id: DEF-OUN-007
+    found_by: OUN-2B (reading the plugin graph before adding to it)
+    found_at: "2026-09-05"
+    severity: minor
+    summary: >
+      `plugin.contained.skill.not.addressable` asserts that `install
+      hello-impl --registry` FAILS -- a contained skill has no independent
+      identity as a REGISTRY unit. That is still true after OUN-1 and the node
+      correctly stayed green. But its NAME now claims the thing OUN-1 made
+      false, and the two senses of "addressable" are one word apart. Only the
+      registry sense was ever covered, which is how a contained skill being
+      unreachable by NAME survived from the day skt shipped unit-authoring.
+    reproduction: read the node beside plugin.contained.skill.resolves.by.name
+    why_deferred: >
+      Addressed rather than deferred: the sibling node now covers the other
+      sense and both are registered with a comment saying which is which.
+      Renaming the original node would break its id, which other nodes depend
+      on, so the ambiguity is documented instead of renamed.
+    candidate_owner: OUN-2B (done)
+    status: closed
+
