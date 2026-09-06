@@ -298,6 +298,8 @@ public class RunTests {
         // shim generators that freeze another home's path into their bytes.
         // HBR-1 is what turns it green; do not delete it to get a clean run.
         failures += dev.skillmanager.store.ShimHomeContractTest.run();
+        // OUN-10: the same rule read on the OTHER side of a copy.
+        failures += dev.skillmanager.store.ShimSurvivesACopyTest.run();
         failures += dev.skillmanager.launch.DurableCliPinTest.run();
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
         failures += dev.skillmanager.store.HomeDriftGateTest.run();

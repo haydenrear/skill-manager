@@ -2,6 +2,7 @@ package dev.skillmanager.store;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -205,6 +206,119 @@ public final class ShimHomeContract {
      * @param home the home the shim was written into
      * @param shim the shim file
      */
+    /**
+     * The environment variable a rewritten shim derives its home into.
+     *
+     * <p>Named, not inlined, because the rewritten line has to be readable by
+     * whoever opens the shim next and wonders what happened to the absolute
+     * path they wrote.
+     */
+    public static final String SHIM_HOME_VAR = "SKILL_MANAGER_SHIM_HOME";
+
+    /**
+     * A frozen shim rewritten to resolve the home it is STANDING IN, or null
+     * when it cannot be rewritten safely.
+     *
+     * <h2>Why rewriting and not refusing</h2>
+     *
+     * <p>The install that produces these shims does not write them —
+     * {@code skill-script:} dependencies run the unit's own installer, and
+     * what lands in {@code bin/cli} is that installer's bytes. Refusing the
+     * install was considered and rejected in {@code SkillScriptBackend}: it
+     * would break every already-shipped unit that writes an absolute wrapper,
+     * including ones whose homes are never copied.
+     *
+     * <p>But skill-manager owns {@code bin/}. It can leave the installer
+     * alone and still fix the file afterwards, which is what this does — the
+     * shim keeps working exactly where it is, and starts working after a copy
+     * as well.
+     *
+     * <h2>What a copy meant before</h2>
+     *
+     * <p>{@code home clone} re-anchors these, so a cloned home was fine.
+     * Measured 2026-09-06: after a clone the shim points into the copy; after
+     * a plain {@code cp -R} — which is what a container image build does — it
+     * still points at the SOURCE home. So the image builds green and dies at
+     * first use, on a machine where the source path does not exist. A
+     * self-deriving shim needs no re-anchoring by anybody.
+     *
+     * <h2>Deliberately narrow</h2>
+     *
+     * <p>Returns null unless the file is a text shell script with a shebang.
+     * A compiled launcher, a Python console script with a frozen interpreter
+     * shebang, anything not obviously a shell body — those are reported by
+     * {@link #frozenHomePaths} and left alone. Half-rewriting a file whose
+     * shape is not understood is worse than the freeze.
+     */
+    public static String selfDerivingRewrite(Path home, Path shim) {
+        if (home == null || shim == null) return null;
+        List<String> frozen = frozenHomePaths(home, shim);
+        if (frozen.isEmpty()) return null;
+        String body;
+        try {
+            if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) return null;
+            body = Files.readString(shim);
+        } catch (IOException | RuntimeException notText) {
+            return null;
+        }
+        if (!body.startsWith("#!")) return null;
+        int firstNl = body.indexOf('\n');
+        if (firstNl < 0) return null;
+        String shebang = body.substring(0, firstNl);
+        if (!isShellShebang(shebang)) return null;
+        if (body.contains(SHIM_HOME_VAR)) return null;      // already rewritten
+
+        // Depth is fixed by the store: bin/cli/<name>, so the home is two up.
+        // Derived from the shim's OWN location, which is the whole point --
+        // wherever the file is, that is the home it belongs to.
+        String preamble = "\n# Rewritten by skill-manager: resolve the home this shim is standing in\n"
+                + "# rather than the one it was written into, so a copy of the home works.\n"
+                + SHIM_HOME_VAR + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n";
+
+        String rewritten = body.substring(firstNl + 1);
+        boolean changed = false;
+        for (Path root : rootSpellings(home)) {
+            String prefix = root.toString();
+            if (!rewritten.contains(prefix)) continue;
+            rewritten = rewritten.replace(prefix, "${" + SHIM_HOME_VAR + "}");
+            changed = true;
+        }
+        if (!changed) return null;
+        return shebang + preamble + rewritten;
+    }
+
+    /**
+     * Is this shebang a SHELL interpreter?
+     *
+     * <p>Reads the interpreter's own basename rather than searching the line.
+     * {@code shebang.contains("sh")} was the first attempt and it is wrong in
+     * a way that only shows up sometimes: any path component containing those
+     * two letters matches, so a Python console script under a directory named
+     * {@code shim-home-1234} was accepted as a shell script. Its own test
+     * caught it.
+     */
+    private static boolean isShellShebang(String shebang) {
+        String line = shebang.substring(2).trim();
+        if (line.isEmpty()) return false;
+        String[] words = line.split("\\s+");
+        // `#!/usr/bin/env bash` names the interpreter in the second word.
+        String interpreter = words[words.length - 1];
+        int slash = interpreter.lastIndexOf('/');
+        String name = slash < 0 ? interpreter : interpreter.substring(slash + 1);
+        return switch (name) {
+            case "sh", "bash", "zsh", "dash", "ksh" -> true;
+            default -> false;
+        };
+    }
+
+    /** Both spellings of the home root, for the reason frozenHomePaths gives. */
+    private static Set<Path> rootSpellings(Path home) {
+        Set<Path> roots = new LinkedHashSet<>();
+        roots.add(real(home));
+        roots.add(home.toAbsolutePath().normalize());
+        return roots;
+    }
+
     public static List<String> frozenHomePaths(Path home, Path shim) {
         if (home == null || shim == null) return List.of();
         // BOTH spellings, for HomeCloner.rootSpellings' reason: a home
