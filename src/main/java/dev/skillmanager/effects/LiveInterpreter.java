@@ -28,6 +28,7 @@ import dev.skillmanager.policy.Policy;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
+import dev.skillmanager.lifecycle.UnitSupersession;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.sync.SkillSync;
 import dev.skillmanager.tools.ToolDependency;
@@ -187,6 +188,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.RejectIfAlreadyInstalled e -> rejectIfInstalled(e, ctx);
             case SkillEffect.RejectIfTopLevelInstalled e -> rejectIfTopLevelInstalled(e, ctx);
             case SkillEffect.RejectContainedNameCollision e -> rejectContainedNameCollision(e, ctx);
+            case SkillEffect.RetireSupersededUnits e -> retireSupersededUnits(e, ctx);
             case SkillEffect.CheckInstallPolicyGate e -> checkInstallPolicyGate(e, ctx);
             case SkillEffect.BuildResolveGraphFromSource e -> ResolveGraphHandlers.buildFromSource(e, ctx);
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> ResolveGraphHandlers.buildFromBundledSkills(e, ctx);
@@ -1410,6 +1412,101 @@ public final class LiveInterpreter implements ProgramInterpreter {
                                 "contained skill name '" + name + "' is already claimed"));
             }
         }
+        return EffectReceipt.ok(e);
+    }
+
+    /**
+     * OUN-5. Retire what this upgrade supersedes, before the gate above is
+     * asked about it.
+     *
+     * <h2>Why this runs a whole nested program</h2>
+     *
+     * <p>A retirement IS an uninstall, and an uninstall in this codebase is
+     * not "delete the directory": it unmaterializes every projection, removes
+     * the bindings, unregisters MCP servers, prunes orphaned CLI deps and
+     * records the audit entry — thirteen effects with their own
+     * compensations. Reimplementing a subset of that inside one handler is how
+     * a migration leaves a home with dangling agent symlinks and a registered
+     * MCP server for a unit that no longer exists. {@code
+     * ProjectDependencyResolver} composes programs the same way, for the same
+     * reason.
+     *
+     * <h2>The window, stated rather than hidden</h2>
+     *
+     * <p>This runs before the install it is clearing the way for, so there is
+     * an interval in which the old unit is gone and the new one has not
+     * landed. If the install then fails, the home is short a unit. The
+     * interval is small — resolve has already succeeded by the time we get
+     * here, so the incoming unit exists and is readable — and the remedy is
+     * printed with the origin the home recorded, because an operator who can
+     * see the one command that undoes it does not need the interval to be
+     * impossible.
+     */
+    private EffectReceipt retireSupersededUnits(SkillEffect.RetireSupersededUnits e,
+                                                EffectContext ctx) {
+        SkillStore store = ctx.store();
+        List<UnitSupersession.Retirement> due =
+                e.carriers() == null || e.carriers().isEmpty()
+                        ? UnitSupersession.due(store, ctx.resolvedGraph().orElse(null))
+                        : UnitSupersession.due(store, e.carriers());
+        if (due.isEmpty()) return EffectReceipt.ok(e);
+
+        // BEFORE anything is removed, and about every row rather than the
+        // one in hand: a migration that retires the first unit and then
+        // refuses over the second has already done the destructive half.
+        for (UnitSupersession.Retirement retirement : due) {
+            String blocked = UnitSupersession.blockedFrom(store, retirement.unit());
+            if (blocked == null) continue;
+            return EffectReceipt.okAndHalt(e,
+                    "refusing to retire '" + retirement.unit() + "': " + blocked + ".\n"
+                            + "  " + retirement.reason() + ", but a home is the only place a "
+                            + "unit's history lives until it is published — and an uninstall "
+                            + "deletes the checkout.\n"
+                            + "  publish it first (skill-manager unit publish "
+                            + retirement.unit() + "), or remove it yourself if you do not "
+                            + "want the work (skill-manager remove " + retirement.unit()
+                            + "), then re-run this.",
+                    new ContextFact.HaltWithExitCode(3,
+                            "the migration would destroy unpublished work in '"
+                                    + retirement.unit() + "'"));
+        }
+
+        List<String> retired = new ArrayList<>();
+        for (UnitSupersession.Retirement retirement : due) {
+            String hint = UnitSupersession.reinstallHint(store, retirement.unit());
+            try {
+                var program = dev.skillmanager.app.RemoveUseCase.buildProgram(
+                        store, gateway, retirement.unit(), null, true, true);
+                var outcome = new Executor(store, gateway).run(program);
+                // rolledBack is the nested program's own verdict: it undid
+                // itself, so the unit is still there and the collision below
+                // is still real. Failing here is the honest answer — the
+                // alternative is an upgrade that reports success and leaves
+                // the home in the state the gate refuses.
+                if (outcome.rolledBack()) {
+                    return EffectReceipt.failed(e,
+                            "could not retire '" + retirement.unit() + "', which "
+                                    + retirement.carrier() + " supersedes; the removal rolled "
+                                    + "itself back.\n  the upgrade cannot continue while both "
+                                    + "copies of the name exist. Remove it yourself "
+                                    + "(skill-manager remove " + retirement.unit()
+                                    + ") and re-run.");
+                }
+            } catch (IOException | RuntimeException ex) {
+                return EffectReceipt.failed(e,
+                        "could not retire '" + retirement.unit() + "': " + ex.getMessage());
+            }
+            retired.add(retirement.unit());
+            Log.info("retired %s — %s", retirement.unit(), retirement.reason());
+            if (retirement.kind() == UnitSupersession.Kind.OBSOLETE && hint != null) {
+                Log.info("  it came from %s; if you need it back, this upgrade is not what "
+                        + "removed the reason it went away.", hint);
+            } else if (hint != null) {
+                Log.info("  if this upgrade does not complete, put it back with "
+                        + "`skill-manager install %s`.", hint);
+            }
+        }
+        Log.ok("migration: retired %s", String.join(", ", retired));
         return EffectReceipt.ok(e);
     }
 
