@@ -126,19 +126,61 @@ public final class UnitSupersession {
     }
 
     /**
-     * The same question for a path that has no resolved graph — {@code sync},
-     * where the carrier has already been updated on disk and the names being
-     * synced are all that is known.
+     * Every retirement this home is due, read from the home itself.
+     *
+     * <h2>Why this does not ask what is being synced</h2>
+     *
+     * <p>The install path asks "is the carrier arriving?", because there the
+     * collision is about to be CREATED and the retirement is what clears the
+     * way for it. Sync is the other shape: a home that holds both copies is
+     * <b>already broken</b>, and it got that way without anyone installing
+     * anything — the carrier was updated in place by an earlier sync and the
+     * standalone simply stayed.
+     *
+     * <p>Keying the sync-side retirement on "is skt in the target list" made
+     * the fix arrive only for the whole-home sweep. {@code sync skill-manager}
+     * — the exact command someone runs to bring the skill-manager unit up to
+     * date, and the one most likely to be typed by a person who has just been
+     * told about this migration — named the retired unit and not its carrier,
+     * so nothing fired. Same for {@code upgrade skill-manager}. The home stayed
+     * in the two-copies state and said nothing.
+     *
+     * <p>Broadening it is safe because the conditions have not moved:
+     * {@link Kind#MOVED_INTO_CARRIER} still requires the carrier to be present
+     * and to ACTUALLY CONTAIN a skill of that name, which is only true of a
+     * home that is already holding two copies of one name.
      */
-    public static List<Retirement> due(SkillStore store, List<String> carrierNames) {
-        if (carrierNames == null || carrierNames.isEmpty()) return List.of();
+    public static List<Retirement> dueInThisHome(SkillStore store) {
         List<Retirement> out = new ArrayList<>();
         for (Retirement retirement : TABLE) {
-            if (!carrierNames.contains(retirement.carrier())) continue;
             if (!isDue(store, null, retirement)) continue;
             out.add(retirement);
         }
         return out;
+    }
+
+    /**
+     * Whether a due retirement must stop the operation when it cannot be
+     * performed, as opposed to being reported and skipped.
+     *
+     * <p>The distinction is the difference between an operation this
+     * retirement is FOR and an operation it is merely riding along with.
+     *
+     * <ul>
+     *   <li><b>Mandatory</b> — the carrier is what is being installed or
+     *       synced. Proceeding without the retirement produces exactly the
+     *       state the collision gate exists to refuse, so the operation
+     *       stops.</li>
+     *   <li><b>Opportunistic</b> — some unrelated unit is being synced and
+     *       this home happens to be due. Halting there would make
+     *       {@code sync deploy-helm} fail because {@code skill-manager} has an
+     *       uncommitted edit, which is a migration holding an unrelated
+     *       command hostage. It reports and moves on; the home is no worse
+     *       than it was a second ago.</li>
+     * </ul>
+     */
+    public static boolean isMandatory(Retirement retirement, List<String> namesInScope) {
+        return namesInScope != null && namesInScope.contains(retirement.carrier());
     }
 
     /**

@@ -109,9 +109,72 @@ public class PluginSupersessionMigrates {
                 && !Files.isDirectory(home.resolve("plugins/colliding-after-migration"))
                 && Files.isDirectory(home.resolve("skills/" + BYSTANDER));
 
+        // ---- and the OTHER route a home takes: its own sync ------------
+        // The path every project home takes on its own, and the one OUN-5
+        // declared (test_graph key "home-sync") without exercising. It has no
+        // collision gate to be refused by, which is what made its failure the
+        // quiet one: both copies exist and the home keeps running the copy the
+        // upgrade meant to replace.
+        //
+        // IN A HOME OF ITS OWN, and built the way a real home reaches this
+        // state rather than by planting files. The first attempt wrote the
+        // standalone's tree and installed/ record straight onto disk, which
+        // produced a unit with a record and no units.lock entry — a shape the
+        // product never creates — and left the SHARED fixture home holding an
+        // installed/ record for a tree that was then retired.
+        // home.membership.law caught it as "LOST [skill-manager] — a unit
+        // nobody removed", which is precisely its job.
+        //
+        // The real chronology, reproduced: the standalone is installed while
+        // nothing carries the name; the carrier arrives WITHOUT it, so nothing
+        // is due; then the carrier gains the skill the way a git pull of skt
+        // delivers it — and only then is the home in the two-copies state that
+        // sync has to notice.
+        Path syncHome = Files.createTempDirectory("supersession-sync-").resolve("home");
+        Files.createDirectories(syncHome);
+        String syncHomeStr = syncHome.toString();
+
+        ProcessRecord seedStandalone = install(ctx, syncHomeStr,
+                skill(scratch, MOVED), "sync-seed-standalone");
+        // A SCRATCH ROOT OF ITS OWN. plugin() builds at <root>/<pluginName>,
+        // and the install half already built a carrier of this name carrying
+        // skill-manager at scratch/skt. Reusing the root left both contained
+        // skills in one tree, so the "carrier without the skill" carried it
+        // after all and the migration fired during the seed — which the
+        // twoCopiesAgain control caught, exactly as a control should.
+        Path plainScratch = Files.createTempDirectory("supersession-plain-");
+        ProcessRecord seedCarrier = install(ctx, syncHomeStr,
+                plugin(plainScratch, CARRIER, "unrelated-skill"), "sync-seed-carrier");
+        boolean carrierArrivedWithoutTheSkill =
+                !Files.exists(syncHome.resolve("plugins/" + CARRIER + "/skills/" + MOVED));
+
+        // What the carrier's own upgrade delivers: a contained skill of the
+        // name the standalone already holds.
+        Path carried = syncHome.resolve("plugins/" + CARRIER + "/skills/" + MOVED);
+        Files.createDirectories(carried);
+        Files.writeString(carried.resolve("SKILL.md"),
+                "---\nname: " + MOVED + "\ndescription: carried\n---\n\nbody\n");
+        Files.writeString(carried.resolve("skill-manager.toml"),
+                "[skill]\nname = \"" + MOVED + "\"\nversion = \"0.0.1\"\n"
+                        + "description = \"carried\"\n");
+
+        Path standaloneCopy = syncHome.resolve("skills/" + MOVED);
+        boolean twoCopiesAgain = seedStandalone.exitCode() == 0 && seedCarrier.exitCode() == 0
+                && carrierArrivedWithoutTheSkill
+                && Files.isDirectory(standaloneCopy) && Files.isDirectory(carried);
+
+        ProcessRecord synced = sm(ctx, syncHomeStr, "sync-retired-unit", "sync", MOVED);
+        boolean syncRetiredIt = !Files.exists(standaloneCopy)
+                // The RECORD goes with the tree. An installed/ entry naming a
+                // tree the home does not hold is a LOST unit, and a migration
+                // that leaves one has not migrated the home.
+                && !Files.exists(syncHome.resolve("installed/" + MOVED + ".json"))
+                && synced.exitCode() == 0;
+
         boolean pass = upgradeSucceeded && carrierLanded && standaloneRetired
                 && nameStillResolves && obsoleteRetired && saidWhatItRetired
-                && bystanderSurvived && ordinaryCollisionStillRefused;
+                && bystanderSurvived && ordinaryCollisionStillRefused
+                && twoCopiesAgain && syncRetiredIt;
 
         return (pass ? NodeResult.pass(SPEC.id())
                 : NodeResult.fail(SPEC.id(),
@@ -123,9 +186,14 @@ public class PluginSupersessionMigrates {
                                 + " saidWhatItRetired=" + saidWhatItRetired
                                 + " bystanderSurvived=" + bystanderSurvived
                                 + " ordinaryCollisionStillRefused="
-                                + ordinaryCollisionStillRefused))
+                                + ordinaryCollisionStillRefused
+                                + " twoCopiesAgain=" + twoCopiesAgain
+                                + " carrierArrivedWithoutTheSkill="
+                                + carrierArrivedWithoutTheSkill
+                                + " syncRetiredIt=" + syncRetiredIt
+                                + " (syncExit=" + synced.exitCode() + ")"))
                 .process(seedMoved).process(seedObsolete).process(seedBystander)
-                .process(upgrade).process(refused)
+                .process(upgrade).process(refused).process(synced)
                 .assertion("an_old_shape_home_takes_the_upgrade_that_would_have_collided",
                         upgradeSucceeded && carrierLanded)
                 .assertion("the_superseded_standalone_is_retired", standaloneRetired)
@@ -135,6 +203,10 @@ public class PluginSupersessionMigrates {
                 .assertion("CONTROL_a_unit_the_table_does_not_name_survives", bystanderSurvived)
                 .assertion("CONTROL_an_ordinary_collision_is_still_refused_afterwards",
                         ordinaryCollisionStillRefused)
+                .assertion("a_sync_NAMING_THE_RETIRED_UNIT_performs_the_retirement",
+                        syncRetiredIt)
+                .assertion("CONTROL_the_second_home_really_did_hold_two_copies_of_the_name",
+                        twoCopiesAgain)
                 .log("The gate is SATISFIED, not weakened: after the retirement there is "
                         + "genuinely one claimant, which is the property the gate checks.");
     }
@@ -181,8 +253,14 @@ public class PluginSupersessionMigrates {
     }
 
     private static ProcessRecord install(NodeContext ctx, String home, Path unit, String label) {
-        ProcessBuilder pb = new ProcessBuilder(
-                SmEnv.cli().toString(), "install", unit.toString(), "--yes");
+        return sm(ctx, home, label, "install", unit.toString(), "--yes");
+    }
+
+    private static ProcessRecord sm(NodeContext ctx, String home, String label, String... args) {
+        java.util.List<String> command = new java.util.ArrayList<>();
+        command.add(SmEnv.cli().toString());
+        command.addAll(java.util.Arrays.asList(args));
+        ProcessBuilder pb = new ProcessBuilder(command);
         SmEnv.apply(ctx, pb, home);
         return Procs.run(ctx, label, pb);
     }

@@ -25,9 +25,11 @@ and the OUN-11 retirement.
 | **Documentation** | 1 | unimplemented behaviour written in the present tense in a doc that ships into homes |
 | **Test-and-registration ergonomics (mine)** — waves 3–5 | 4 | a suite registered against an anchor that exists on one branch only, so ALL PASSED with it never running; `shebang.contains("sh")` matching a temp dir named `shim-home-1234`; `assertEquals(1, …count())` failing as "expected \<1\> but was \<1\>" on long-vs-int; a graph node reading its control AFTER the cleanup that erased it |
 | **Deletion tickets leave the hole behind** | 1 | OUN-4 removed `skill-dev-skill` from git and left its nested `.git/` plus untracked build litter in the working tree, which then blocked the next worktree's clean-slate check |
-| **Plan modelling (mine)** | 2 | a goal bundling four independent properties, so retiring one contributor forced all-or-nothing; the metric renumbered at the retirement while the baseline prose kept the old letters |
+| **Plan modelling (mine)** | 3 | a goal bundling four independent properties, so retiring one contributor forced all-or-nothing; the metric renumbered at the retirement while the baseline prose kept the old letters; a goal graded as a CENSUS of the homes on one laptop, which no amount of correct code moves |
+| **Wired but not exercised (mine)** | 2 | OUN-5's sync path keyed on the target list, so `sync skill-manager` — the retired unit named without its carrier — performed no migration; and a passing test that asserted exactly that behaviour was correct |
+| **Fixtures that are not the world (mine)** | 3 | a migration fixture with no git checkouts, where every real unit is one; a two-copies fixture planted as a record with no lock entry, a shape the product never creates; and a graph node that built it inside the SHARED fixture home and left it damaged |
 
-Twenty-two. Through wave 1 not one was in the product's resolver, installer or
+Twenty-eight. Through wave 1 not one was in the product's resolver, installer or
 store — correct for a measurement-only ticket. Wave 2 found the first product
 defect (#311), and it is **not** in the surfaces this epic changes either: it
 is in the agent-home boundary, reached by a harness, not by the resolver work.
@@ -258,3 +260,84 @@ hold to, and inventing a rule to fit the current state settles nothing.
 run `home clone --portable` and then `home verify` **inside the image**, not on
 the host. Two of these four would have been caught at build time by exactly
 that, and the other two now announce themselves in the clone output.
+
+
+---
+
+# The follow-up the owner's question produced
+
+OUN-5 merged, and the owner asked: *"I'm a bit concerned also that the
+migration path isn't well defined?"* It was not. Two defects, both mine, in
+work that was green an hour earlier.
+
+**The declared slice was not delivered.** OUN-5's own conflict key is
+`test_graph: ["home-sync"]` — the sync path was in the ticket from the start.
+I wired the effect into `SyncUseCase` and wrote every test against `install`.
+The wiring compiled and read correctly, and the trigger was keyed on "is the
+carrier among the sync targets", so:
+
+| command | migrated? |
+| --- | --- |
+| `sync` (whole home) | yes — the sweep names every unit, `skt` among them |
+| `sync skill-manager` | **no** — names the retired unit, not its carrier |
+
+The second is the command a person runs after being told the migration exists.
+
+**And a green test asserted the defect was correct.** `"nothing is due when the
+carrier is not the unit being installed"` passed in the merged PR, and what it
+encoded was the bug.
+
+*The generalisable part, and it is not the one I would have guessed:* the
+ticket's own metadata said where the risk was. `test_graph: ["home-sync"]` is a
+declaration that the sync path is in scope, written down before any code
+existed, and I read it as a merge-conflict key rather than as a coverage
+obligation. **The conflict keys are a checklist of surfaces the ticket must
+prove it did not break, and nothing checks that the tests touch them.**
+
+*Recommendation:* the close gate should compare a ticket's declared
+`conflict_keys.test_graph` against the graphs its evidence actually names. A
+ticket declaring `home-sync` and citing only `plugin-smoke` should have to say
+why — which is a check on the same footing as the assignment validator
+resolving what it declares, and would have caught this before the PR opened.
+
+## And a goal that could not be met by writing correct code
+
+The same conversation retired the census. `GOAL-migration-lands-on-one-skt`
+graded "how many of the 38 homes on this laptop hold (0,0,1)", which counts
+homes nobody has synced yet and reads *not yet upgraded* and *cannot be
+upgraded* as one number. Every home migrates itself when it syncs, so the
+mechanism is the thing to grade — now measured once per route, `install` and
+`sync`, with the real homes reported as context.
+
+Filed as plan modelling rather than as an instrument defect, because the
+harness was faithfully measuring the wrong question.
+
+
+## The same lesson twice in one afternoon, from opposite directions
+
+The git-checkout near-miss was a fixture **tidier** than the world:
+`scaffoldUnitDir` makes no git repositories, so the tests could not see that a
+retirement deletes a working copy.
+
+The two-copies fixture was a fixture **sloppier** than the world: it planted an
+`installed/` record with no `units.lock.toml` entry, a half-registered state the
+product never produces, and the retirement then left an orphaned record that
+`home.membership.law` failed the graph over.
+
+Both were caught by something other than the tests written for the change — the
+first by opening a real home, the second by a law node written for an unrelated
+reason that runs over every home a graph produces. Neither would have been
+caught by more of the tests I was writing.
+
+*What generalises:* the fixture is a claim about the world, and it is the one
+claim in a test that nothing checks. Where a change touches a state the product
+GETS INTO rather than one it merely accepts, the fixture has to be built by the
+product's own operations — install it, sync it, let it arrive — not assembled
+from the files that state happens to consist of. Both defects here are the same
+sentence: *I wrote down what the state looks like instead of asking the product
+to reach it.*
+
+The corrected fixtures do the second thing, and the goal harness gained the two
+assertions that would have caught the difference on its own: the command must
+exit 0, and the home must hold no `installed/` record for a tree it does not
+have.
