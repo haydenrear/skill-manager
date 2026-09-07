@@ -73,3 +73,66 @@ narrower. Not chosen yet.
 `max: 3` has never been reached, and run 4's eight calls included one legitimate
 orientation call and one git fallback. Whether orientation should count against
 the budget is an owner decision, not something the harness should assume.
+
+---
+
+# Run 6 — the first run whose failures are the product's
+
+Fixture rebuilt properly: the workspace is now made by `build-env.sh` with the
+product's own commands (`git init`, then `skill-manager home clone`), and the
+hook only copies it in. Score 0.50, Bash 18x, $0.88.
+
+The count is still high, and this time **the trace says why, and it is not the
+harness.** `skt ticket new` was reached at call 8 and failed three times:
+
+```
+1) usage: skt ticket [-h] [--base BASE] [--path PATH] …        exit 1
+2) error: cannot resolve base 'aad7f036bb5ab2310a1b3a0904d385a0c37dd751'
+   fix:   git fetch origin, then pass --base <existing-ref>     exit 1
+3) error: working tree is not clean — an epic worktree pins its base
+          from a clean slate                                    exit 1
+```
+
+Everything after call 8 is the agent diagnosing those, including probing whether
+it may write into `.git` at all.
+
+## Finding 1 — mine, and fixed
+
+(3) is the fixture. The home was copied in *after* the initial commit, leaving
+`.skill-manager/` untracked, so the tree was not clean. A real epic checkout
+gitignores its per-checkout home; the fixture now does too and the workspace
+comes up clean on `epic/demo-epic`.
+
+Same shape as the very first thing that happened in this session, when a
+leftover `skill-dev-skill/` blocked `skt ticket new` for exactly this reason.
+
+## Finding 2 — product, and the single-CLI-update kind
+
+`--base <sha>` is refused with **"cannot resolve base"**, and the remedy offered
+is `git fetch origin, then pass --base <existing-ref>`. The SHA was valid and
+present *locally*; the repository simply has no `origin`. So the advice cannot
+be followed, and an agent that does exactly what the error says gets nowhere.
+
+Two candidate fixes, both small:
+
+* resolve `--base` against the local object database before asking for a ref,
+  and only mention `git fetch` when the object genuinely is not present; or
+* keep the refusal and change the remedy to name the local case —
+  *"pass a ref that exists here, or `--base HEAD`"*.
+
+This is precisely the class the suite was built to find: **an agent is stopped
+by a message it cannot act on, and one CLI change unblocks it.**
+
+## Finding 3 — product, smaller
+
+The agent's first invocation was a usage error. `skt ticket` takes
+`{new,close,info,list,sweep}` then `ticket_id`, and the agent guessed a
+different form. Worth checking whether `skt ticket --help` leads with the shape
+of a call rather than with the option list.
+
+## What the suite has now proved it can do
+
+Three actionable findings from one $0.88 run, two of them product defects with
+one-line fixes, and the third an eval-config bug that the trace distinguished
+from the other two. That distinction is the whole value: without the trace, all
+three read as "the agent could not provision a worktree".
