@@ -204,3 +204,70 @@ Three product defects, each reachable only by watching an agent work:
 
 258 passing skt tests saw none of them. That is the argument for evals as
 evidence -- but the evidence is the TRACE, not the score.
+
+---
+
+# Runs 9-14: the environment, and where this stops
+
+| run | Bash | cost | what changed |
+|---|---:|---:|---|
+| 9 | 19 | $1.15 | PATH in run.sh; launcher PATH separated from agent PATH |
+| 10 | — | $0.00 | `execution.env` REFUSED: only `EVAL_*` keys allowed |
+| 11 | 16 | $1.03 | env back in run.sh; hook stops advertising absolute paths |
+| 12 | — | $1.24 | interrupted |
+| 13 | 15 | $1.28 | git shim carrying TMPDIR — still failed: sandbox cannot read under the operator's home |
+| 14 | 21 | $1.29 | build tree under `/private/tmp`; environment VERIFIED |
+
+**The environment is now proved before any agent runs.** `verify_env` runs
+`skt ticket new` for real in a throwaway corner of the fixture and fails setup
+if it does not work. Five facts are encoded in it, each of which cost a failed
+run to find and costs nothing to check:
+
+1. **PATH is the only variable that reaches the sandbox** — `TMPDIR` and
+   `SKILL_MANAGER_HOME` both came back `<unset>` inside a run, and
+   `execution.env` refuses anything but `EVAL_*`.
+2. Apple's `git` writes an xcrun cache into `TMPDIR` before doing anything, so
+   a shim first on PATH carries it.
+3. The home's `bin/cli/skill-manager` execs **jbang**, so jbang must be on the
+   eval PATH or no home can be bootstrapped.
+4. **The sandbox cannot read under the operator's home directory** — the same
+   command works in a shell and fails in a run.
+5. `/tmp` and `/private/tmp` are the same directory and not the same string to
+   `home clone` (#330).
+
+## One more product finding, from run 14
+
+```
+skt ticket new --help          →  exit 1, usage: skt ticket [-h] …
+```
+
+`--help` AFTER the verb is a usage error rather than help for `new`. The epilog
+added at Finding 3 hangs off `skt ticket --help`, which is not what an agent
+reaches for when it wants to know what `new` takes.
+
+## Where the measurement stands, honestly
+
+Bash counts across fourteen runs: **14, 10, 9, 8, 18, 18, 15, 27, 19, —, 16, —,
+15, 21.** The environment improved monotonically; the counts did not. They never
+approached the `max: 3` budget and the spread is wider than any change made.
+
+**One run of one case is not evidence** — the reference says so, and this series
+is the demonstration. Quoting a number from a single run is what produced every
+wrong conclusion recorded above. A case needs several runs before its cost means
+anything, and that is a cost decision rather than a technical one: at ~$1.20 a
+run, five runs per case across six cases is ~$36.
+
+## What the suite has actually bought
+
+Four product defects, none reachable by a unit test, all found by watching an
+agent or by a $0 environment probe:
+
+* `skt` refused `--base <sha>` with a remedy the repository could not carry out
+* `skt ticket --help` led with options rather than the shape of a call
+* `git-epic-workflow` named the condition for using skt without saying how to
+  test it
+* `home clone` refuses a shim whose target its own message places inside the
+  home — #330, and it blocks cloning a clone, which is what `skt ticket new`
+  does for every ticket worktree
+
+The environment work is done and reusable. The measurement work has not started.
