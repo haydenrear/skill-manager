@@ -1,0 +1,35 @@
+schema_version: "1.0"
+name: epic-provisions-a-ticket-worktree
+description: >-
+  The epic agent provisions a ticket worktree at a declared path with its own
+  Skill Manager home. One front-door command does this. The question is not
+  whether the skill can do it -- it is whether the agent FINDS that command
+  among every unit in the home, and gets there cheaply.
+runs: 1
+# EVERY unit is loaded, deliberately. Loading only the two the task needs does
+# the retrieval for the agent and overfits progressive disclosure; the score
+# would then say nothing about a real session, where all of these are present.
+plugins:
+  - ../../units/deploy-helm
+  - ../../units/eval-skill
+  - ../../units/git-epic-workflow
+  - ../../units/git-issue
+  - ../../units/git-issue-workflow
+  - ../../units/skt
+  - ../../units/spec-double-compiler
+  - ../../units/test-graph
+  - ../../units/toolchain
+  - ../../units/tracing-observability
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    You are the epic agent for epic "demo-epic", currently on branch
+    epic/demo-epic in this repository.
+
+    Provision the ticket worktree for ticket DEMO-1 at the declared path
+    ./wt-demo-1, based on the current HEAD, with its own Skill Manager home.
+
+    Do not do the ticket's work. When you are done, report exactly which
+    command(s) you ran.
