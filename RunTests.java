@@ -285,6 +285,7 @@ public class RunTests {
         failures += dev.skillmanager.store.ClonedHomeDescentTest.run();
         failures += dev.skillmanager.store.DamagedHomeIsRepairableTest.run();
         failures += dev.skillmanager.store.HomeVerifyPathSpellingTest.run();
+        failures += dev.skillmanager.store.CloneReanchorsEveryAliasTest.run();
         failures += dev.skillmanager.store.ProvenanceRecordExemptionTest.run();
         failures += dev.skillmanager.cli.installer.CliShimPrunerTest.run();
         // HIS-9 (#226): the write-confinement guard, its two DEF-007 delete

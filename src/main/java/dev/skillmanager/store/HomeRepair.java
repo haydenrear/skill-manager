@@ -488,7 +488,17 @@ public final class HomeRepair {
                 Path mine = mappedIntoThisHome(foreign, candidate, store);
                 boolean fixable = mine != null;
                 findings.add(new Finding(Kind.FOREIGN_PATH_IN_SHIM, found.rel(),
-                        "runs " + candidate + ", which is inside the home at " + foreign,
+                        // The trailing aside is #330: the literal and the
+                        // resolved home can be two spellings of one directory,
+                        // and without it the sentence reads as its own
+                        // refutation. AFTER the "inside the home at" clause,
+                        // because foreignPathOf reads the span before it.
+                        "runs " + candidate + ", which is inside the home at " + foreign
+                                + (Fs.realOrNormalized(candidate).toString().equals(
+                                        candidate.toString())
+                                        ? ""
+                                        : " — the shim's path resolves to "
+                                                + Fs.realOrNormalized(candidate)),
                         fixable ? "rewrite that path to " + mine
                                 : "no path under this home stands where " + candidate
                                         + " does — rebuild the entry point with "
@@ -1104,6 +1114,16 @@ public final class HomeRepair {
      * <p>Recovered from the detail line's fixed prefix rather than re-scanning
      * the file, so detection and repair cannot end up disagreeing about which
      * occurrence is meant.
+     *
+     * <p><b>The span is a contract, so anything added to that line goes after
+     * it.</b> Everything between {@code "runs "} and
+     * {@code ", which is inside the home at "} is read as the path — a clause
+     * inserted there is parsed as part of the file name, the repair then looks
+     * for a file that does not exist, and it reports "the path is no longer in
+     * &lt;entry&gt;" about an entry the path is still in. Measured: five cases
+     * red at once when #330's resolved-spelling aside first went in the middle.
+     * It fails loudly, which is why the contract is written down here rather
+     * than defended by a parser that tolerates the mistake.
      */
     private static Path foreignPathOf(Finding finding) {
         String detail = finding.detail();

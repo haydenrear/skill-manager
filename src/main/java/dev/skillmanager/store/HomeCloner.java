@@ -1397,7 +1397,130 @@ public final class HomeCloner {
      */
     private static int reanchorProvisioned(Path srcRoot, Path dstRoot, List<Leak> overflows,
                                           List<String> danglingReferences) throws IOException {
-        byte[] needle = srcRoot.toString().getBytes(StandardCharsets.UTF_8);
+        int rewritten = reanchorProvisionedFor(
+                sourceSpellings(srcRoot), dstRoot, overflows, danglingReferences);
+        // Then look at what pass one LEFT, and only walk the tree a second time
+        // if it left an alias behind — which is the uncommon case. See
+        // #aliasSpellingsLeftInShims for why the alias cannot be computed up
+        // front and has to be read back out of the copy.
+        List<String> aliases = aliasSpellingsLeftInShims(srcRoot, dstRoot);
+        if (!aliases.isEmpty()) {
+            Log.detail("clone: source home also spelled %s in this copy's generated files — "
+                    + "re-anchoring those too", String.join(", ", aliases));
+            rewritten += reanchorProvisionedFor(
+                    aliases, dstRoot, overflows, danglingReferences);
+        }
+        danglingReferences.sort(String::compareTo);
+        return rewritten;
+    }
+
+    /**
+     * The spellings of {@code srcRoot} that can be DERIVED from it: the one the
+     * caller typed, and that one with its symlinks resolved.
+     *
+     * <p>Both, because a clone re-anchors to the spelling it was GIVEN, so a
+     * home created at {@code <s>/link/home} holds that spelling in its
+     * wrappers while a home created at {@code <s>/realdir/home} holds the
+     * other. Resolving once and scanning only for the result would be blind in
+     * exactly one of those two directions — the mistake #206 fixed on the
+     * verify side, spelled again here.
+     */
+    private static List<String> sourceSpellings(Path srcRoot) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        out.add(srcRoot.toString());
+        out.add(Fs.realOrNormalized(srcRoot).toString());
+        return List.copyOf(out);
+    }
+
+    /**
+     * Spellings of the source home that this copy still holds after pass one —
+     * recovered from the copy's own bytes rather than derived from
+     * {@code srcRoot}, which is the only way to get them.
+     *
+     * <h2>Why a second pass and not a wider first one, #330</h2>
+     *
+     * <p>A symlink cannot be inverted. Addressed as {@code <s>/realdir/home}
+     * there is no way to COMPUTE that {@code <s>/link/home} names the same
+     * directory, so {@link #sourceSpellings} cannot produce it and pass one
+     * cannot look for it. {@code HomeVerifyPathSpellingTest} pins that as a
+     * stated limit on the verify side, and this is the same limit reached from
+     * the clone side — where it is escapable, because the alias is not being
+     * guessed at: it is written down in the copy, in a shim, and one
+     * {@link Path#toRealPath} says whether it lands in the source home.
+     *
+     * <p>Measured on macOS, where {@code /tmp} is a symlink to
+     * {@code /private/tmp}: a home provisioned while it was addressed as
+     * {@code /tmp/…} and cloned while it was addressed as {@code /private/tmp/…}
+     * had every shim copied through untouched, and verification — which
+     * resolves properly — then failed the clone for a leak the clone was
+     * supposed to have removed. The rewriter compared spellings; the verifier
+     * compared files; they disagreed. Downstream, {@code skt ticket new} rolled
+     * back with "home bootstrap failed", two layers away from the cause.
+     *
+     * <p><b>The scope is the shim directories, and that is a limit, not an
+     * oversight.</b> They are where executed paths live and there are dozens of
+     * them; the provisioned surface is venvs and tool trees and runs to tens of
+     * thousands of files, and extracting path tokens from every one of them to
+     * hunt for a spelling that is usually not there would cost more than the
+     * whole clone. So: an alias that appears in a venv shebang and in NO shim
+     * is still missed here, and {@code verify} still reports it rather than the
+     * clone silently shipping it. If that case is ever measured, widen the
+     * discovery scope — do not widen the substitution.
+     */
+    private static List<String> aliasSpellingsLeftInShims(Path srcRoot, Path dstRoot) {
+        Path realSrc = Fs.realOrNormalized(srcRoot);
+        java.util.Set<String> known = new java.util.HashSet<>(sourceSpellings(srcRoot));
+        java.util.LinkedHashSet<String> aliases = new java.util.LinkedHashSet<>();
+        for (String dir : SHIM_DIR_NAMES) {
+            for (Path file : shimFilesUnder(dstRoot, dir)) {
+                for (String token : HomeRepair.absolutePathTokens(file)) {
+                    Path candidate;
+                    try {
+                        candidate = Path.of(token);
+                    } catch (RuntimeException notAPath) {
+                        continue;
+                    }
+                    if (!candidate.isAbsolute()) continue;
+                    Path resolved = Fs.realOrNormalized(candidate);
+                    if (!resolved.equals(realSrc) && !resolved.startsWith(realSrc)) continue;
+                    // The alias is the token with the part that lies INSIDE the
+                    // home taken back off, so it is derived from the two paths
+                    // rather than guessed from a common prefix.
+                    Path tail = realSrc.relativize(resolved);
+                    String alias = token;
+                    for (int i = tail.getNameCount(); i > 0; i--) {
+                        String segment = "/" + tail.getName(i - 1);
+                        if (!alias.endsWith(segment)) { alias = null; break; }
+                        alias = alias.substring(0, alias.length() - segment.length());
+                    }
+                    if (alias == null || alias.isBlank() || known.contains(alias)) continue;
+                    known.add(alias);
+                    aliases.add(alias);
+                }
+            }
+        }
+        return List.copyOf(aliases);
+    }
+
+    /** The regular files under one shim directory of {@code root}. */
+    private static List<Path> shimFilesUnder(Path root, String dir) {
+        Path shimDir = root.resolve(dir);
+        if (!Files.isDirectory(shimDir)) return List.of();
+        List<Path> files = new ArrayList<>();
+        collectShimFiles(shimDir, files, new ArrayList<>());
+        return files;
+    }
+
+    /** One substitution pass over the provisioned surface, for one set of needles. */
+    private static int reanchorProvisionedFor(List<String> spellings, Path dstRoot,
+                                              List<Leak> overflows,
+                                              List<String> danglingReferences) throws IOException {
+        // Longest first: where one spelling is a prefix of another, replacing
+        // the short one first would leave the long one's tail stranded.
+        List<byte[]> needles = spellings.stream()
+                .sorted(java.util.Comparator.comparingInt(String::length).reversed())
+                .map(spelling -> spelling.getBytes(StandardCharsets.UTF_8))
+                .toList();
         byte[] replacement = dstRoot.toString().getBytes(StandardCharsets.UTF_8);
         int[] rewritten = {0};
         Files.walkFileTree(dstRoot, new SimpleWalker((file, rel) -> {
@@ -1410,13 +1533,17 @@ public final class HomeCloner {
             } catch (IOException e) {
                 return;
             }
-            if (indexOf(content, needle, 0) < 0) return;
+            if (needles.stream().noneMatch(n -> indexOf(content, n, 0) >= 0)) return;
             if (looksBinary(content)) {
                 // Substituting inside a compiled artifact would change its
                 // length and corrupt it. Leave it; verify() will report it.
                 return;
             }
-            byte[] replaced = replaceAll(content, needle, replacement);
+            byte[] replaced = content;
+            for (byte[] needle : needles) {
+                replaced = replaceAll(replaced, needle, replacement);
+            }
+            if (java.util.Arrays.equals(replaced, content)) return;
             int overflow = shebangOverflow(replaced);
             if (overflow > 0) {
                 // Writing this would produce a tool that fails at exec time
@@ -1437,7 +1564,6 @@ public final class HomeCloner {
                 Log.warn("clone: could not re-anchor %s: %s", file, e.getMessage());
             }
         }));
-        danglingReferences.sort(String::compareTo);
         return rewritten[0];
     }
 
@@ -1966,7 +2092,7 @@ public final class HomeCloner {
             for (ForeignShimPath found : scan.foreign()) {
                 leaks.add(new Leak(found.rel(), Leak.FOREIGN_PATH_IN_SHIM,
                         "runs " + found.candidate() + ", which is inside the home at "
-                                + found.foreign()));
+                                + found.foreign() + resolvedAside(found.candidate())));
             }
         }
         List<String> declaredNotBuilt = partitionDeclared(dstRoot, dangling, unresolved);
@@ -2299,6 +2425,42 @@ public final class HomeCloner {
         return sanctionedParentShim(rel, link, foreign, root, null,
                 new java.util.HashMap<>(), new java.util.HashMap<>())
                 ? null : foreign;
+    }
+
+    /**
+     * {@code " (resolves to X)"} when {@code path} is spelled differently from
+     * what it resolves to, and {@code ""} when it is not.
+     *
+     * <h2>Why a message change is part of the fix for #330</h2>
+     *
+     * <p>The message this appends to reads "runs X, which is inside the home at
+     * Y". X is the shim's literal text and Y comes back RESOLVED, so on macOS
+     * the one finding could read <i>"runs /tmp/…/w/.skill-manager/skills/…,
+     * which is inside the home at /private/tmp/…/w/.skill-manager"</i> — two
+     * spellings of one directory, which reads as the check contradicting
+     * itself. It cost a wrong root cause on the issue that reported it: the
+     * check was right and the RE-ANCHOR was the broken half, and the message
+     * gave no way to tell those apart.
+     *
+     * <p>Only when they differ. Appending "resolves to <the same thing>" to
+     * every finding would be noise on the common case, and noise is how the
+     * signal in the uncommon one gets skipped.
+     *
+     * <p><b>At the END of the line, and that is not a style choice.</b>
+     * {@code HomeRepair.foreignPathOf} recovers the path this finding is about
+     * by reading the span between {@code "runs "} and
+     * {@code ", which is inside the home at "} — so text inserted INSIDE that
+     * span is parsed as part of the path. Placed there first, it turned five
+     * repair tests red with "the path is no longer in bin/cli/wrapper": the
+     * repair was looking for a file whose name ended in the aside. That span
+     * is a contract between two classes and this appends past the end of it.
+     */
+    private static String resolvedAside(Path path) {
+        if (path == null) return "";
+        Path real = Fs.realOrNormalized(path);
+        return real.toString().equals(path.toString())
+                ? ""
+                : " — the shim's path resolves to " + real;
     }
 
     /**
@@ -3254,6 +3416,29 @@ public final class HomeCloner {
         return -1;
     }
 
+    /**
+     * Replace {@code needle} with {@code replacement}, but only where the
+     * needle ends a path SEGMENT.
+     *
+     * <h2>Why the boundary, #330</h2>
+     *
+     * <p>The needle is a directory path and the substitution is a raw prefix
+     * replacement, so without this a home at {@code …/home} also rewrote its
+     * NEIGHBOUR {@code …/home-notes} — a directory that is not part of the home,
+     * was not copied, and whose path in the copy's shim then pointed at
+     * {@code <dest>-notes}, which exists nowhere. Found by the fixture for the
+     * missed-alias defect: the decoy case asserting that a path merely
+     * RESEMBLING the source home is left alone failed on the tip.
+     *
+     * <p>Silent, and worse than the defect it sat beside: the missed alias
+     * failed the clone loudly, while this one produced a clone that verified
+     * clean and handed over a tool pointing at nothing.
+     *
+     * <p>A hit qualifies when the next byte is {@code '/'} — the needle named
+     * an ancestor of a longer path — or when it is not a path-name byte at all,
+     * which is the needle standing alone as a value
+     * ({@code SKILL_MANAGER_HOME=<home>}, a quoted argument, end of file).
+     */
     private static byte[] replaceAll(byte[] content, byte[] needle, byte[] replacement) {
         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(content.length);
         int i = 0;
@@ -3263,11 +3448,32 @@ public final class HomeCloner {
                 out.write(content, i, content.length - i);
                 break;
             }
+            int after = hit + needle.length;
+            if (!endsPathSegment(content, after)) {
+                // Not this home: a longer name that merely starts with its
+                // path. Copy the hit through and carry on past it.
+                out.write(content, i, after - i);
+                i = after;
+                continue;
+            }
             out.write(content, i, hit - i);
             out.write(replacement, 0, replacement.length);
-            i = hit + needle.length;
+            i = after;
         }
         return out.toByteArray();
+    }
+
+    /**
+     * True when the byte at {@code at} cannot continue the path segment that
+     * ended just before it — end of content, a separator, or any byte that is
+     * not a plausible file-name character.
+     */
+    private static boolean endsPathSegment(byte[] content, int at) {
+        if (at >= content.length) return true;
+        char c = (char) (content[at] & 0xFF);
+        if (c == '/') return true;
+        return !(Character.isLetterOrDigit(c) || c == '.' || c == '_' || c == '-'
+                || c == '+' || c == '~' || c == '@' || c == '%' || (content[at] & 0x80) != 0);
     }
 
     /**
