@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.263",
+  "startedAt": "2026-09-07T13:24:29.146Z",
+  "durationSeconds": 3,
+  "costUsd": 0,
+  "partial": true,
+  "partialReason": "auth_failed",
+  "suite": {
+    "root": "/Users/hayde/IdeaProjects/skill-manager/evals/skill-harness",
+    "ablation": "none",
+    "threshold": 1,
+    "plugins": [
+      {
+        "name": "eval-plugin",
+        "path": "/Users/hayde/IdeaProjects/skill-manager/evals/skill-harness/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin",
+        "problem": "identity_unverified"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "catch-the-drift",
+      "dir": "units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin/evals/catch-the-drift",
+      "source": "mixed",
+      "promptMarkdown": "This repository carries an ecommerce backend and a TLA+ model of it under\n`specs/program_model/`. Somewhere in the last two commits the program\nstopped doing what the model says it does.\n\nFind the disagreement and repair it, then say which action of the model\nthe break sat under and what in the model would have caught it.\n\nThe model is the reference. Do not edit it.\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 1800,
+      "maxTurns": 60,
+      "graders": [
+        {
+          "name": "every-module-parses",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/parses",
+            "exists": true
+          }
+        },
+        {
+          "name": "names-the-action",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Score 1 only if the response names the model action the break sat under --\naccount creation, under whatever name the module gives it -- AND names what in\nthe model would have caught it (the invariant over the account store, or the\ngenerated conformance case for that action).\n\nTHIS GRADER SCORES THE RESPONSE. IT CANNOT SEE THE WORKSPACE.\nMeasured with a probe whose hook wrote `banana` into SECRET.txt: the judge\nvoted FAIL when the agent never mentioned the file, FAIL again when it READ the\nfile without quoting it, and PASS only when the word appeared in the reply. The\nverdict graders beside this one carry the artefact; this one is the diagnosis,\nand it is the only grader here a confident paragraph can move.",
+          "config": {
+            "criteria": "Score 1 only if the response names the model action the break sat under --\naccount creation, under whatever name the module gives it -- AND names what in\nthe model would have caught it (the invariant over the account store, or the\ngenerated conformance case for that action).\n\nTHIS GRADER SCORES THE RESPONSE. IT CANNOT SEE THE WORKSPACE.\nMeasured with a probe whose hook wrote `banana` into SECRET.txt: the judge\nvoted FAIL when the agent never mentioned the file, FAIL again when it READ the\nfile without quoting it, and PASS only when the word appeared in the reply. The\nverdict graders beside this one carry the artefact; this one is the diagnosis,\nand it is the only grader here a confident paragraph can move.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "the-model-was-not-edited-into-agreement",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/model-intact",
+            "exists": true
+          }
+        },
+        {
+          "name": "the-program-behaves-again",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/behaviour",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0,
+            "judgeCostUsd": 0,
+            "durationSeconds": 2,
+            "startedAt": "2026-09-07T13:24:29.390Z",
+            "error": "exit 1: Not logged in · Please run /login",
+            "tracePath": "/private/tmp/e-jM9Kov/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "every-module-parses",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/parses missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "names-the-action",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: judge call failed: Not logged in · Please run /login",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-model-was-not-edited-into-agreement",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/model-intact missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-program-behaves-again",
+                "passed": false,
+                "weight": 2,
+                "explanation": ".eval/behaviour missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0,
+    "overallPassRate": 0
+  }
+}
