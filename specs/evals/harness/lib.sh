@@ -43,6 +43,15 @@ branch_home() {
   rm -rf "$dst"; mkdir -p "$(dirname "$dst")"
   "$src/bin/cli/skill-manager" home clone --from "$src" --to "$dst" >/dev/null 2>&1 \
     || { echo "setup: could not branch the home from $src" >&2; return 1; }
+  # REPAIR THE BRANCH, because it will be cloned AGAIN.
+  #
+  # A branched home still carries paths naming the home it came from. That is
+  # harmless while nothing clones it, and `skt ticket new` clones it -- to give
+  # the ticket worktree its own home. The second clone then refuses:
+  #   "these paths name a THIRD home, so the clone does not re-anchor them
+  #    and the next clone copies them through unchanged"
+  # which is correct, and the remedy the product itself prints is this.
+  "$dst/bin/cli/skill-manager" home repair --home "$dst" --fix >/dev/null 2>&1 || true
 }
 
 # PROVE THE ENVIRONMENT BEFORE SPENDING A RUN ON IT.
