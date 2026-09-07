@@ -136,3 +136,71 @@ Three actionable findings from one $0.88 run, two of them product defects with
 one-line fixes, and the third an eval-config bug that the trace distinguished
 from the other two. That distinction is the whole value: without the trace, all
 three read as "the agent could not provision a worktree".
+
+---
+
+# Runs 7-8, and a correction to how I was reading all of them
+
+| run | Bash | cost | change |
+|---|---:|---:|---|
+| 7 | 15 | $0.79 | skt `--base` remedy + `--help` shape fixed |
+| 8 | 27 | $1.44 | git-epic-workflow names where skt lives |
+
+Both fixes were right and both numbers went the wrong way. The reason is that
+**the case cannot succeed in this sandbox at all**:
+
+```
+git: error: couldn't create cache file '/var/folders/.../T/xcrun_db-…'
+      (errno=Operation not permitted)
+Preparing worktree (new branch 'feature/DEMO-1')            exit 3
+```
+
+`git` on macOS is an **xcrun shim** that writes a cache file into the system
+TMPDIR. The eval sandbox denies that write, so `git worktree add` -- the
+operation this case exists to measure -- dies after "Preparing worktree".
+Every run since 4 has been an agent improvising against an impossible task, and
+improvising differently each time.
+
+## The correction
+
+I quoted 14 -> 10 -> 9 -> 8 as a trend and attributed each drop to a fix. With
+8, 18, 18, 15, 27 now in the same series, **the run-to-run variance is larger
+than every effect I claimed to measure.** `plugin_evals.md` says so plainly and
+I read past it:
+
+> One run's score from one case is not evidence of much; if a number is going
+> to be quoted, run it more than once.
+
+I quoted single runs seven times. The three product fixes stand on their own
+evidence -- a remedy naming a fetch the repository cannot do is wrong whatever
+the eval scores -- but **the numbers did not establish them, and I presented
+the numbers as if they had.**
+
+## What the case needs before it measures anything
+
+`git` must be usable in the sandbox. Candidates, none yet tried:
+
+* a `TMPDIR` the sandbox permits, exported for the session, so the xcrun shim
+  can write its cache;
+* `XCRUN_NO_CACHE=1`, which the agent itself tried at run 5 -- worth testing
+  as a session default rather than as a discovery;
+* a real git binary that is not the Apple wrapper, if one is installed.
+
+Until one of those holds, **this case is UNDECIDED, not failing**, and the
+distinction matters: `file_exists` and `tool_used` have no undecided state, so
+an environment that cannot run the task and a skill that cannot do it produce
+the same score.
+
+## What was actually learned, and it is not a number
+
+Three product defects, each reachable only by watching an agent work:
+
+1. `skt` refused `--base <sha>` with `git fetch origin` as the remedy, in a
+   repository with no origin. **Fixed.**
+2. `skt ticket --help` led with options rather than the shape of a call.
+   **Fixed.**
+3. `git-epic-workflow` gave the condition for using skt without saying how to
+   test it; an agent checked `skills/`, where a plugin never is. **Fixed.**
+
+258 passing skt tests saw none of them. That is the argument for evals as
+evidence -- but the evidence is the TRACE, not the score.
