@@ -7,7 +7,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 . "$ROOT/lib.sh"
 CASE="$(basename "$HERE")"
-BUILD="$ROOT/build/$CASE"
+BUILD="${EVAL_BUILD_ROOT:-/private/tmp/skill-evals}/$CASE"
 [ -d "$BUILD/units" ] || { echo "run ./setup.sh first" >&2; exit 1; }
 
 # TWO PATHS, and conflating them broke a run. The AGENT's PATH is the curated

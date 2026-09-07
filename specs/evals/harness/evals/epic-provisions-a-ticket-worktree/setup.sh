@@ -13,7 +13,26 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 . "$ROOT/lib.sh"
 CASE="$(basename "$HERE")"
 SRC="${1:-${SKILL_MANAGER_HOME:-$HOME/.skill-manager}}"
-BUILD="$ROOT/build/$CASE"
+# THE BUILD TREE LIVES UNDER /tmp, NOT IN THE REPOSITORY.
+#
+# The eval sandbox will not let the agent READ paths under the operator's home
+# directory. Measured: `skt ticket new --help` works from an ordinary shell and
+# fails inside a run with "the home ... holds no copy of skt
+# (plugins/skt/src/skt/cli.py)" -- the wrapper executes, because PATH resolves
+# it, and then cannot read the plugin source beside it. The sandbox keeps its
+# own temps under /private/tmp, so that root is reachable.
+#
+# AND /private/tmp, NOT /tmp. On macOS /tmp is a symlink to /private/tmp, and
+# a shim written under one spelling is checked against a home resolved to the
+# other: `home clone` then reports
+#   FOREIGN_PATH_IN_SHIM bin/cli/tla-spec-dev (runs /tmp/…/tla_spec_dev.py,
+#   which is inside the home at /private/tmp/…)
+# -- a message that says in its own words that the path it is refusing is
+# inside the home. Using the resolved spelling sidesteps it; the underlying
+# defect is filed separately.
+#
+# Override with EVAL_BUILD_ROOT if a machine wants them elsewhere.
+BUILD="${EVAL_BUILD_ROOT:-/private/tmp/skill-evals}/$CASE"
 
 rm -rf "$BUILD"; mkdir -p "$BUILD" "$(eval_tmpdir "$BUILD")"
 branch_home "$SRC" "$BUILD/home"
