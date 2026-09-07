@@ -245,6 +245,30 @@ skt ticket new --help          →  exit 1, usage: skt ticket [-h] …
 added at Finding 3 hangs off `skt ticket --help`, which is not what an agent
 reaches for when it wants to know what `new` takes.
 
+> **CORRECTION, 2026-09-07, on re-testing before fixing it — the exit code
+> above is wrong and it is mine.** Re-run against `skt` at `cbf5061`, which is
+> the exact commit this eval's home carried at run 14:
+>
+> ```
+> $ out=$(skt ticket new --help 2>&1); echo $?
+> 0
+> ```
+>
+> It exits **0** and prints the flat `ticket` parser's help. There is no usage
+> error and there never was; I recorded a code I did not measure, from one run,
+> into a file whose whole job is to be evidence.
+>
+> **The defect is real and it is the second sentence, not the first.** Every
+> flag of all five verbs, disambiguated in prose (`list/sweep:`, `epic mode:`),
+> with nothing saying which ones `new` takes. That is worse than exit 1, not
+> better: a wrong exit code announces itself, and an exit-0 non-answer does not.
+> Fixed by per-verb help for all five verbs.
+>
+> Same failure as the fourteen Bash counts below and as the wrong root cause on
+> #330: a single run read as a fact. The environment checks now block the class
+> of defect that was costing runs; nothing blocks this one but re-testing before
+> writing it down.
+
 ## Where the measurement stands, honestly
 
 Bash counts across fourteen runs: **14, 10, 9, 8, 18, 18, 15, 27, 19, —, 16, —,
@@ -271,3 +295,107 @@ agent or by a $0 environment probe:
   does for every ticket worktree
 
 The environment work is done and reusable. The measurement work has not started.
+
+---
+
+# Run 15 (2026-09-07, after #330 and the skt help fix): the case has never been measurable
+
+Score 0.25, 20 Bash calls, $1.23, 25 units loaded. **Do not read that score.**
+The run established, from tool results rather than inference, that the
+environment cannot support the task it asks for.
+
+## What the trace says
+
+```
+19  Bash  (mkdir -p .git/refs/index-bases/probe …) ; (touch ./probe-write …)
+    OUT   mkdir: .git/refs/index-bases/probe: Operation not permitted
+          touch: ./probe-write: Operation not permitted
+```
+
+**The workspace is read-only inside the sandbox.** The case asks the agent to
+create a worktree there. It cannot. No configuration of the skill, the PATH or
+the prompt changes that.
+
+Second, independently:
+
+```
+ 4  Bash  ls -l $BUILD/shims/ ; command -v git ; $BUILD/shims/git --version
+    OUT   ls: /private/tmp/skill-evals/…/shims/: Operation not permitted
+          /usr/bin/git
+          bash: /private/tmp/skill-evals/…/shims/git: Operation not permitted
+```
+
+**`$BUILD` is denied to the sandbox** — both the shims directory and, by the
+same token, `$BUILD/home`. Proof that the home was denied too, not assumed:
+`$BUILD/home/bin/cli` is PATH entry **2** and contains `skt`, and
+`command -v skt` returned `/Users/hayde/.skill-manager/bin/cli/skt` — the
+operator's live ROOT home, at entry ~20.
+
+So the branched home has never been what the agent used. Every run in the
+series above measured the operator's root home, reached through the PATH tail
+that `run.sh` appends (`export PATH="$(eval_path …):$PATH"`), which defeats the
+curation it is written to perform.
+
+## What the agent actually did — attribution
+
+**Not the skill's fault, and not the agent's.** It found the front door in
+three calls (`command -v skt`, `skt --help`, `skt ticket --help`), ran the
+right command with the right flags —
+
+```
+skt ticket new DEMO-1 --path ./wt-demo-1 --base HEAD
+```
+
+— and, when that failed on a ref it could not write, reported honestly that
+nothing was created and nothing partial was left behind. The other ~15 Bash
+calls were it diagnosing a broken `git` (PATH entry 1 denied, so `git` resolved
+to `/usr/bin/git`, the xcode-select stub, exit 72) and then a read-only tree.
+
+**Every one of those calls is a harness defect billed to the skill.** The
+grader counted 20 Bash calls against `max: 3` and scored 0.25. A skill that did
+its job scored a quarter because the environment could not let it finish.
+
+## What this retro-invalidates
+
+The fourteen-run series above — 14, 10, 9, 8, 18, 18, 15, 27, 19, —, 16, —, 15,
+21 — was not measuring progressive disclosure. It was measuring agents
+improvising against an impossible task in an environment they could not write
+to, using a home nobody intended. That is why the counts never moved with the
+changes: the changes were not in the causal path.
+
+It also corrects a claim I filed in tla-spec-dev#326. "PATH is the only
+variable that reaches the sandbox" is true. The accompanying belief that the
+branched home on that PATH is therefore what the agent uses is **false** — the
+path has to be one the sandbox permits, and `/private/tmp/skill-evals/…` is
+not. The workspace home at `<cwd>/.skill-manager` IS reachable (its `bin/cli`
+listed 12 shims), which is where a fix should point.
+
+## The open question, which is a design decision and not a patch
+
+Making this case measurable needs the agent to be able to WRITE its workspace.
+That is a `claude plugin eval` sandbox question, not a harness variable, and
+the options differ enough to be worth choosing deliberately rather than
+guessing at:
+
+1. find the sandbox setting that grants write to the case workspace;
+2. move the fixture inside whatever tree the sandbox already permits for
+   writes, and address the home from there;
+3. change what the case measures — grade the COMMAND the agent chooses rather
+   than the worktree it produces, which is measurable read-only and is closer
+   to the actual question (does it find the front door).
+
+Fixed meanwhile, because they were unambiguous:
+
+* `rewrite-case.py` computed the regenerated case and **never wrote it** — a
+  no-op since the day it was added, invisible because the committed unit list
+  happened to match what the build produced. When the source home changed from
+  the project home (10 units) to the root home (25), the case still named
+  `../../units/eval-skill` and the whole run failed to load at $0.00. It now
+  asserts its anchor and writes.
+* The `/private/tmp` pin is no longer a workaround: skill-manager#330 is fixed
+  and verified end to end on this shape.
+
+**`run.sh`'s `:$PATH` is deliberately NOT fixed yet.** Removing the appended
+operator PATH is correct in principle and would make things worse today: with
+`$BUILD` denied, that tail is the only reason the agent reaches a working `skt`
+at all. It comes out together with whichever option above is chosen.
