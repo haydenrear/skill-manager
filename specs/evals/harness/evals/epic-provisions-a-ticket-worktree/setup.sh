@@ -22,14 +22,24 @@ SRC="${1:-${SKILL_MANAGER_HOME:-$HOME/.skill-manager}}"
 # it, and then cannot read the plugin source beside it. The sandbox keeps its
 # own temps under /private/tmp, so that root is reachable.
 #
-# AND /private/tmp, NOT /tmp. On macOS /tmp is a symlink to /private/tmp, and
-# a shim written under one spelling is checked against a home resolved to the
-# other: `home clone` then reports
-#   FOREIGN_PATH_IN_SHIM bin/cli/tla-spec-dev (runs /tmp/…/tla_spec_dev.py,
-#   which is inside the home at /private/tmp/…)
-# -- a message that says in its own words that the path it is refusing is
-# inside the home. Using the resolved spelling sidesteps it; the underlying
-# defect is filed separately.
+# AND /private/tmp, NOT /tmp -- which WAS a workaround and is now just the
+# right spelling. On macOS /tmp is a symlink to /private/tmp. A home built
+# under one spelling and cloned under the other used to fail the clone
+# (skill-manager#330): `home clone` re-anchored generated files by
+# substituting ONE spelling of the source root, so every shim was copied
+# through untouched and verification -- which resolves properly -- reported
+# them. `skt ticket new` rolled back with "home bootstrap failed" two layers
+# from the cause, which is what this pin was working around.
+#
+# FIXED in skill-manager 93dcf5eb; verified end to end on this shape, and
+# regression-covered by CloneReanchorsEveryAliasTest rather than by this
+# harness. The pin stays because /private/tmp is what everything resolves to
+# and there is no reason to feed an alias in, NOT because the alias breaks.
+#
+# (The note that used to be here called the error message self-contradictory
+# and blamed the check. That was wrong: the check was right about a real leak
+# and the RE-ANCHOR was the broken half. Left recorded, because reading a
+# message instead of reproducing is how the issue got the wrong root cause.)
 #
 # Override with EVAL_BUILD_ROOT if a machine wants them elsewhere.
 BUILD="${EVAL_BUILD_ROOT:-/private/tmp/skill-evals}/$CASE"
