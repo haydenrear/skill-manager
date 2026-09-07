@@ -144,11 +144,25 @@ public final class Fs {
      *
      * <p>Because a comparison that can be defeated by a spelling is a
      * comparison that will be, and this codebase has now been defeated by one
-     * five times: the {@code [[vendored]]} validator, {@link
+     * six times: the {@code [[vendored]]} validator, {@link
      * dev.skillmanager.store.HomePaths}, the clone independence check, the
-     * project same-home guard, and — the reason this method exists — the launch
-     * PATH sanitizer, where the spelling was a SYMLINK rather than {@code /var}
-     * vs {@code /private/var}.
+     * project same-home guard, the launch PATH sanitizer — the reason this
+     * method exists, where the spelling was a SYMLINK rather than {@code /var}
+     * vs {@code /private/var} — and the clone's own RE-ANCHOR pass, #330.
+     *
+     * <p>The sixth is worth its own sentence, because it is the first where
+     * this method could not simply be called. {@code HomeCloner
+     * .reanchorProvisioned} rewrote generated files by substituting one
+     * spelling of the source root, so a home provisioned under {@code /tmp/…}
+     * and cloned as {@code /private/tmp/…} kept every shim it had — and
+     * verification, which resolves properly, then failed the clone for a leak
+     * the clone was supposed to have removed. The rewriter compared spellings;
+     * the verifier compared files. A symlink cannot be inverted, so no call
+     * here could have produced the missing spelling: the fix reads the alias
+     * out of the copy's own bytes and resolves THAT. Where a comparison must
+     * run over text rather than over paths, this method is not enough on its
+     * own, and the way out is to resolve each candidate rather than to guess
+     * the prefixes.
      *
      * <p>{@code LaunchEnv.isForeignHomeBin} walked the lexically normalized
      * path's ancestors, so a foreign home's {@code bin/cli} reached through a
