@@ -1,0 +1,2 @@
+{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command",
+  "command": "${CLAUDE_PLUGIN_ROOT}/hooks/place-fixture.sh" } ] } ] } }
