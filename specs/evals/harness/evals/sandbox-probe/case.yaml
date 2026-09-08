@@ -8,6 +8,7 @@ description: >-
 runs: 1
 plugins:
   - ../../units/toolchain
+  - ../../units/verify
 execution:
   max_turns: 6
   timeout_seconds: 180
@@ -16,7 +17,7 @@ execution:
     Run exactly this one command and report its output verbatim:
 
     ```
-    touch ./probe-write "$TMPDIR/probe-tmp" "$HOME/probe-home" /private/tmp/probe-ptmp
+    touch ./probe-write
     ```
 
     Do not run anything else.

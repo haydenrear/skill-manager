@@ -1,0 +1,1 @@
+{"name": "verify", "version": "0.1.0", "description": "Stop-hook verification: runs outside the Bash sandbox and writes the verdict paths graders read."}
