@@ -9,6 +9,7 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 CASE="$(basename "$HERE")"
 BUILD="${EVAL_BUILD_ROOT:-/private/tmp/skill-evals}/$CASE"
 [ -d "$BUILD/units" ] || { echo "run ./setup.sh first" >&2; exit 1; }
+eval_require_fresh "$BUILD" || exit 1
 
 # TWO PATHS, and conflating them broke a run. The AGENT's PATH is the curated
 # one and reaches it through the toolchain plugin's settings.json, written by
@@ -19,7 +20,10 @@ CLAUDE="$(command -v claude)" || { echo "no claude on PATH" >&2; exit 1; }
 
 export TMPDIR="$(eval_tmpdir "$BUILD")"
 export SKILL_MANAGER_HOME="$BUILD/home"
-export PATH="$(eval_path "$BUILD/home"):$PATH"
+# COMPLETE, not a prefix. Appending $PATH is what let run 15 resolve the
+# operator's live ~/.skill-manager/bin/cli/skt while the branched home sat
+# unreadable at entry 2 -- fourteen runs measured a home nobody intended.
+export PATH="$(eval_path "$BUILD/home")"
 
 KEEP=0; [ "${1:-}" = "--keep" ] && { KEEP=1; shift; }
 cleanup() {
@@ -33,4 +37,5 @@ cd "$BUILD"
 HOME="$ROOT/.evalhome-$CASE" CLAUDE_CODE_WALNUT_SPIRE=1 \
   "$CLAUDE" plugin eval . --case "$CASE" --ablation none --runs 1 \
     --keep-temp --max-cost-usd 2 \
-    --allow-tools Bash Read Write Edit Skill "$@"
+    --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(python3:*)' \
+      Read Write Edit Skill "$@"

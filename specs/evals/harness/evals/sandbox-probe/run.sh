@@ -6,6 +6,7 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 CASE="$(basename "$HERE")"
 BUILD="${EVAL_BUILD_ROOT:-/private/tmp/skill-evals}/$CASE"
 [ -d "$BUILD/units" ] || { echo "run ./setup.sh first" >&2; exit 1; }
+eval_require_fresh "$BUILD" || exit 1
 
 # The LAUNCHER's PATH must still find `claude`; resolve it before overriding.
 CLAUDE="$(command -v claude)" || { echo "no claude on PATH" >&2; exit 1; }

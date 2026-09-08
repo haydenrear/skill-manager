@@ -488,3 +488,81 @@ cases measure to the COMMAND chosen rather than the tree produced.
 
 Cost of learning this: ~$2.00 in probes, against ~$18 already spent on fourteen
 runs of a case that could never have passed.
+
+---
+
+# Plan A, working: the agent's own command, executed for real
+
+`score 0.83, $0.59, 246s` — and unlike every number above it, the graders now
+rest on something that happened rather than on a tool count.
+
+```
+✓ issues-the-front-door-command (3)      found among 26 loaded units
+✓ the-command-it-chose-actually-works(2) ITS command, replayed, exit 0
+✓ the-worktree-has-its-own-home (2)      worktree + own home, one command
+✓ nothing-outside-the-sandbox-was-touched(1)
+✓ reaches-a-skill (1)   ✓ skill-before-shell (1)   Skill@0 precedes Bash@1
+✗ one-command-not-a-reconstruction (2)   5 calls, ceiling 3
+```
+
+The Stop hook takes the front-door invocation out of the transcript's tool_use
+inputs, replays it against a home cloned into a throwaway `mktemp -d`, and
+writes the verdicts. The agent never had to write anything, which is what the
+sandbox forbids.
+
+**One run is not evidence.** The count went 18 → 26 → 5 → 2 → 5 across five runs
+of essentially the same case; treat 5 as "single digits", not as a measurement.
+
+## Four defects fixed here, all mine, none in a skill
+
+1. **The extractor only knew the spelling the skill does not teach.** It
+   required a literal `skt ticket new`. The agent wrote what
+   git-epic-workflow's SKILL.md actually prescribes — `SKT="…/bin/cli/skt";
+   [ -x "$SKT" ] || SKT="$(command -v skt)"; "$SKT" ticket new DEMO-1 --base
+   "$(git rev-parse HEAD)" --path ./wt-demo-1` — a textbook call, scored as a
+   miss. **A grader that penalises following the documentation is worse than no
+   grader.**
+
+2. **It captured its own separator.** `(?:^|[;&|]\s*)` was inside the match, so
+   the replay got `; ./…/skt ticket new --help 2>` and died on `syntax error
+   near unexpected token ';'`. Splitting on separators and judging each piece
+   replaced slicing a shell line with one regex.
+
+3. **It graded a `--help` probe as the provisioning command,** by taking the
+   first match instead of the last real one.
+
+4. **`cp -R` is not how a home moves.** Twice: unrepaired, the copy's shims
+   named the source home and the worktree clone refused with 9 ×
+   `FOREIGN_PATH_IN_SHIM` — correctly. Then with `home repair --fix`, "69 of 69
+   repaired", and it still failed at projection: the copied home had **0
+   installed records against the source's 52**. Repair fixes what a home POINTS
+   AT; it does not reconstruct what a home HOLDS. `home clone` does both.
+
+That fourth one nearly became a filed product bug. The control that stopped it:
+`verify_env` runs the same `skt ticket new` against a properly branched home at
+setup, and it passes. The failure was in how the harness copied, not in what the
+product did — and the product refused rather than handing over a worktree whose
+home no agent could read.
+
+## Safety, since the hook runs unsandboxed as the operator
+
+Nothing from the transcript is executed as written. Only the ARGUMENTS after
+`ticket new` / `wt new` replay, only when every token matches a conservative
+allowlist, and only through our own binary in a throwaway directory. Verified
+offline: `--path "$(rm -rf /)"` is rejected, not replayed. The
+`source-undamaged` grader compares the fixture tree before and after, so a
+containment leak shows up as a red rather than as silence.
+
+## Also fixed: a run can no longer measure a stale build
+
+`setup.sh` stamps a digest of `units-template/`, `evals/` and `lib.sh`; `run.sh`
+refuses if they have moved since. Editing the verifier and running without
+re-running setup cost a $1.15 run that measured code already fixed on disk —
+the fourth time this session a change was applied without confirming it took.
+
+## Still open
+
+* The cost ceiling (3) against real behaviour in single digits — decide against
+  a several-run distribution, not against this one.
+* Five cases remain: ticket open, ticket close, home bootstrap, sync-from-root,
+  worktree→project reconcile. The harness they need is now built.

@@ -135,8 +135,15 @@ eval_tmpdir() { printf '%s' "$1/tmp"; }
 # A home BRANCHED FOR THE EVAL: a real clone, never the operator's own home.
 # The run installs, syncs and provisions against it, and none of that reaches
 # the home it came from.
+# branch_home <src> <dst> [need_projections]
+#
+# `need_projections` is only for the home whose .claude the EVAL HOME is built
+# from. The fixture workspace also gets a branched home and does NOT need
+# agent projections -- the agent's skills come from the eval HOME, not from the
+# home sitting in the workspace under test. Guarding both alike failed setup on
+# a home that was perfectly correct for its job.
 branch_home() {
-  local src="$1" dst="$2"
+  local src="$1" dst="$2" need="${3:-no}"
   rm -rf "$dst"; mkdir -p "$(dirname "$dst")"
   "$src/bin/cli/skill-manager" home clone --from "$src" --to "$dst" >/dev/null 2>&1 \
     || { echo "setup: could not branch the home from $src" >&2; return 1; }
@@ -157,10 +164,12 @@ branch_home() {
   # and an eval built on it hands the agent a session with no skills in it at
   # all. This is what makes eval_claude_home possible.
   "$dst/bin/cli/skill-manager" sync >/dev/null 2>&1 || true
-  [ -d "$dst/.claude/skills" ] || {
-    echo "setup: sync did not derive $dst/.claude/skills -- the eval would run" >&2
-    echo "       with no skills projected, which measures nothing" >&2
-    return 1; }
+  if [ "$need" = "projections" ] && [ ! -d "$dst/.claude/skills" ]; then
+    echo "setup: sync did not derive $dst/.claude/skills -- the eval HOME is" >&2
+    echo "       built from that directory, so the run would start with no" >&2
+    echo "       skills projected, which measures nothing" >&2
+    return 1
+  fi
 }
 
 # PROVE THE ENVIRONMENT BEFORE SPENDING A RUN ON IT.
@@ -194,4 +203,32 @@ verify_env() {
   ( cd "$ws" && skt ticket close ENVPROBE >/dev/null 2>&1 || true
     rm -rf ./.envprobe )
   echo "verified: skt ticket new works in this environment"
+}
+
+# A RUN MUST NOT MEASURE A STALE BUILD.
+#
+# setup.sh copies units-template/ and the case dir into $BUILD; run.sh then
+# runs whatever is there. Edit a hook or a grader without re-running setup and
+# the next run silently measures the OLD one -- which happened, cost $1.15, and
+# produced a verifier failure that had already been fixed on disk. Same shape
+# as a patch applied without asserting its anchor, which this session has now
+# paid for four times.
+#
+# setup stamps what it copied; run refuses if the sources have moved since.
+eval_sources_digest() {
+  local root; root="$(eval_root)"
+  { find "$root/units-template" "$root/evals" -type f -exec shasum {} + 2>/dev/null | sort; \
+    shasum "$root/lib.sh" 2>/dev/null; } | shasum | cut -d' ' -f1
+}
+
+eval_stamp_sources() { eval_sources_digest > "$1/.sources"; }
+
+eval_require_fresh() {
+  local build="$1" now was
+  now="$(eval_sources_digest)"; was="$(cat "$build/.sources" 2>/dev/null || echo none)"
+  [ "$now" = "$was" ] && return 0
+  echo "run: the harness sources changed since setup.sh built $build." >&2
+  echo "     A run now would measure the OLD copy. Re-run ./setup.sh first." >&2
+  echo "     (stamped $was, sources $now)" >&2
+  return 1
 }

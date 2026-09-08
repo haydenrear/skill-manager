@@ -11,7 +11,7 @@ SRC="${1:-${SKILL_MANAGER_HOME:-$HOME/.skill-manager}}"
 BUILD="${EVAL_BUILD_ROOT:-/private/tmp/skill-evals}/$CASE"
 
 rm -rf "$BUILD"; mkdir -p "$BUILD" "$(eval_tmpdir "$BUILD")"
-branch_home "$SRC" "$BUILD/home"
+branch_home "$SRC" "$BUILD/home" projections
 
 # Only the harness's own units: this case tests the SANDBOX, not retrieval, and
 # loading 25 units to write one file would be paying for nothing.
@@ -39,3 +39,5 @@ cp -R "$HERE" "$BUILD/evals/$CASE"
 eval_claude_home "$BUILD" "$ROOT/.evalhome-$CASE"
 echo "probe env: $BUILD"
 echo "agent home: $ROOT/.evalhome-$CASE (skills: $(ls "$BUILD/home/.claude/skills" | wc -l | tr -d ' '))"
+
+eval_stamp_sources "$BUILD"
