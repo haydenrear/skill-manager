@@ -1,0 +1,28 @@
+schema_version: "1.0"
+name: ticket-agent-opens-a-ticket
+description: >-
+  A ticket agent is handed an ordinary issue and must provision the worktree it
+  will work in. One front-door command does the worktree AND its own Skill
+  Manager home. The question is whether the agent finds it among every unit in
+  the home, and whether it takes the ORDINARY route rather than the epic one --
+  there is no epic assignment here, so a declared --path would be wrong.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    Work issue TICKET-42 ("tidy the README") in this repository. It is an
+    ordinary issue: there is no epic assignment on it.
+
+    Do the FIRST step only — provision the worktree you will do the work in,
+    with its own Skill Manager home. Do not edit the README and do not open a
+    pull request.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command
+    will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once,
+    and report it. Do not probe the filesystem for a writable location and do
+    not attempt a different route — the command you choose is what is recorded.

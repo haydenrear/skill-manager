@@ -1,0 +1,25 @@
+schema_version: "1.0"
+name: syncs-a-stale-home-from-root
+description: >-
+  A project home carrying a unit that is behind its source. Copies do not update
+  themselves, so a skill fixed and merged yesterday is still absent from a home
+  cloned the day before -- and every worktree cloned from that home inherits the
+  staleness silently. The question is whether the agent finds the command that
+  ANSWERS "is this home current", rather than one that answers a different
+  question and exits 0.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    Something in this project's Skill Manager home may be out of date with the
+    unit repositories it came from. Find out, and bring it up to date.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so any command
+    that writes will fail with "Operation not permitted" however correct it is.
+    That is expected and is not yours to solve. Issue the commands you would
+    use and report them. Do not probe the filesystem for a writable location —
+    the commands you choose are what is recorded.
