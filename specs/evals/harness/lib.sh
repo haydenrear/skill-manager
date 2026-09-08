@@ -123,6 +123,30 @@ PYEOF
   return 0
 }
 
+# eval_path, but for a home that is NOT $build/home.
+#
+# A home's bin/cli shim BINDS the home it lives in and refuses to honour
+# SKILL_MANAGER_HOME -- it says so, by name. So driving the fixture's workspace
+# home while $build/home's bin/cli sits earlier on PATH produces:
+#
+#   skill-manager: refusing to run against a home you did not name.
+#     you named:  <workspace>/.skill-manager
+#     this shim would have edited: <build>/home
+#
+# ...and the fixture cannot build its worktree. Correct refusal, wrong PATH.
+# The build's shims stay first (they carry TMPDIR for git); only the home
+# changes.
+eval_path_for_home() {
+  local build home p d
+  build="$1"; home="$2"
+  p="$build/shims:$home/bin/cli"
+  for d in /opt/homebrew/bin /usr/local/bin \
+           /Library/Developer/CommandLineTools/usr/bin; do
+    [ -d "$d" ] && p="$p:$d"
+  done
+  printf '%s' "$p:/usr/bin:/bin"
+}
+
 # TMPDIR must be somewhere the sandbox permits WRITES. Apple's git wrapper
 # writes an xcrun cache into TMPDIR before doing anything else; with the system
 # TMPDIR it dies with
@@ -231,4 +255,123 @@ eval_require_fresh() {
   echo "     A run now would measure the OLD copy. Re-run ./setup.sh first." >&2
   echo "     (stamped $was, sources $now)" >&2
   return 1
+}
+
+# ---------------------------------------------------------------------------
+# THE SHARED SETUP. Everything every case needs, so a case's setup.sh is its
+# FIXTURE and nothing else.
+#
+# Factored out after the first case, not before it: the epic case was written
+# whole, run sixteen times, and the parts that turned out to be common are the
+# parts that are here. Guessing at this shape up front is how a harness grows
+# options nobody uses.
+#
+# A case supplies `build_fixture <build> <src-home>` and calls eval_build_case.
+eval_build_case() {
+  local build src root
+  build="$1"; src="$2"; root="$(eval_root)"
+
+  rm -rf "$build"; mkdir -p "$build" "$(eval_tmpdir "$build")"
+  branch_home "$src" "$build/home" projections
+
+  # ONE WRAPPER PER UNIT, so every case loads EVERY unit in the home. The thing
+  # under test is retrieval AMONG the skills; handing a case only the units its
+  # task needs does the retrieval for the agent and overfits disclosure.
+  mkdir -p "$build/units"
+  local d u p pn c
+  for d in "$build"/home/skills/*/; do
+    [ -d "$d" ] || continue; u="$(basename "$d")"
+    mkdir -p "$build/units/$u/.claude-plugin" "$build/units/$u/skills"
+    printf '{"name":"%s","version":"0.1.0","description":"live unit from the branched home"}\n' \
+      "$u" > "$build/units/$u/.claude-plugin/plugin.json"
+    ln -sfn "$d" "$build/units/$u/skills/$u"
+  done
+  for p in "$build"/home/plugins/*/; do
+    [ -d "$p" ] || continue; pn="$(basename "$p")"
+    mkdir -p "$build/units/$pn/.claude-plugin" "$build/units/$pn/skills"
+    printf '{"name":"%s","version":"0.1.0","description":"live plugin from the branched home"}\n' \
+      "$pn" > "$build/units/$pn/.claude-plugin/plugin.json"
+    for c in "$p"skills/*/; do [ -d "$c" ] && ln -sfn "$c" "$build/units/$pn/skills/$(basename "$c")"; done
+  done
+  cp -R "$root/units-template/." "$build/units/"
+
+  # PATH and TMPDIR as SESSION ENV, so the agent inherits them rather than
+  # discovering them.
+  cat > "$build/units/toolchain/.claude-plugin/settings.json" <<JSON
+{ "env": { "PATH": "$(eval_path "$build/home")",
+           "TMPDIR": "$(eval_tmpdir "$build")",
+           "SKILL_MANAGER_HOME": "$build/home" } }
+JSON
+
+  # A `git` SHIM carrying TMPDIR and XCRUN_NO_CACHE, because PATH is the only
+  # variable that reaches the sandbox and Apple's git writes an xcrun cache
+  # before it does anything. Putting the environment INSIDE something on PATH
+  # is deterministic; telling the agent to export it is advice it takes after
+  # the first failure.
+  mkdir -p "$build/shims"
+  local real_git; real_git="$(command -v git)"
+  cat > "$build/shims/git" <<GITSHIM
+#!/usr/bin/env bash
+export TMPDIR="$(eval_tmpdir "$build")"
+export XCRUN_NO_CACHE=1
+export SKILL_MANAGER_HOME="$build/home"
+exec "$real_git" "\$@"
+GITSHIM
+  chmod +x "$build/shims/git"
+}
+
+# A git checkout with a REAL branched home in it, which is what most fixtures
+# are. `branch` is checked out at the end; the agent dirs are gitignored the
+# way a real project gitignores them (without that, `skill-manager sync` makes
+# the tree dirty and every worktree command refuses on a clean-slate check).
+eval_fixture_checkout() {
+  local build src ws branch git
+  build="$1"; src="$2"; ws="$3"; branch="${4:-main}"
+  mkdir -p "$ws"
+  git="$(PATH="$(eval_path "$build/home")" command -v git)"
+  ( cd "$ws" && export TMPDIR="$(eval_tmpdir "$build")" && "$git" init -q . \
+    && "$git" config user.email eval@example.invalid && "$git" config user.name eval \
+    && printf 'demo project\n' > README.md \
+    && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n' > .gitignore \
+    && "$git" add -A && "$git" commit -qm initial && "$git" checkout -q -B "$branch" )
+}
+
+# Regenerate every case with THIS machine's unit list, then build the agent
+# home and stamp the sources. The last thing a setup.sh does.
+eval_finish_case() {
+  local build case_name root list c
+  build="$1"; case_name="$2"; root="$(eval_root)"
+  rm -rf "$build/evals"; cp -R "$root/evals" "$build/evals"
+  list=$(cd "$build/units" && ls | sed 's|^|  - ../../units/|')
+  for c in "$build"/evals/*/case.yaml; do
+    python3 "$root/rewrite-case.py" "$c" "$list" "$(eval_path "$build/home")" \
+            "$(eval_tmpdir "$build")" "$build/home"
+  done
+  eval_claude_home "$build" "$root/.evalhome-$case_name"
+  echo "home:  $build/home (branched for this eval)"
+  echo "units: $(ls "$build/units" | wc -l | tr -d ' ')"
+  eval_stamp_sources "$build"
+}
+
+# The run command every case uses. Differences that matter are the grants.
+eval_run_case() {
+  local build case_name root claude keep=0
+  build="$1"; case_name="$2"; shift 2
+  root="$(eval_root)"
+  [ -d "$build/units" ] || { echo "run ./setup.sh first" >&2; return 1; }
+  eval_require_fresh "$build" || return 1
+  # THE LAUNCHER's PATH must still find `claude` -- resolve it BEFORE the
+  # override. Overriding first resolved an older claude that answered
+  # "unknown command 'eval' (Did you mean enable?)".
+  claude="$(command -v claude)" || { echo "no claude on PATH" >&2; return 1; }
+  [ "${1:-}" = "--keep" ] && { keep=1; shift; }
+  export TMPDIR="$(eval_tmpdir "$build")"
+  export SKILL_MANAGER_HOME="$build/home"
+  export PATH="$(eval_path "$build/home")"   # COMPLETE, never "$(...):$PATH"
+  trap '[ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
+  ( cd "$build" && HOME="$root/.evalhome-$case_name" CLAUDE_CODE_WALNUT_SPIRE=1 \
+      "$claude" plugin eval . --case "$case_name" --ablation none --runs 1 \
+        --keep-temp --max-cost-usd 2 \
+        --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(skill-manager:*)' \
+          'Bash(python3:*)' Read Write Edit Skill "$@" )
 }

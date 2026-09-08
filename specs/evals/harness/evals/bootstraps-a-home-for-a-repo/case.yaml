@@ -1,0 +1,26 @@
+schema_version: "1.0"
+name: bootstraps-a-home-for-a-repo
+description: >-
+  A checkout that has never been given a Skill Manager home. Any install, sync,
+  bind or resolve run here writes the OPERATOR'S GLOBAL home instead -- which is
+  the hazard the one-time bootstrap exists to close. The question is whether the
+  agent recognises the state and runs the real bootstrap, rather than creating a
+  home-shaped directory that no command can use.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    This repository has no Skill Manager home of its own. Give it one, so that
+    work done here does not write the operator's global home.
+
+    Do that one step only.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command
+    will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once,
+    and report it. Do not probe the filesystem for a writable location and do
+    not attempt a different route — the command you choose is what is recorded.
