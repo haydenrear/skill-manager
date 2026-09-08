@@ -399,3 +399,92 @@ Fixed meanwhile, because they were unambiguous:
 operator PATH is correct in principle and would make things worse today: with
 `$BUILD` denied, that tail is the only reason the agent reaches a working `skt`
 at all. It comes out together with whichever option above is chosen.
+
+---
+
+# The sandbox, settled: what `plugin eval` permits and what it does not
+
+Sixteen probe runs (~$2.00 total, 10–13s each) with the new `sandbox-probe`
+case, changing one variable at a time. The findings are ordered by how much
+they cost to learn.
+
+## 1. `sandbox.filesystem.allowWrite` in settings.json is IGNORED
+
+`claude plugin eval` builds its own sandbox config and passes it down. From the
+2.1.263 binary, verbatim:
+
+```
+sandbox:{enabled:!0, failIfUnavailable:!0,
+         autoAllowBashIfSandboxed:!1, allowUnsandboxedCommands:!1,
+         filesystem:{ allowWrite:[e.home, e.tmpDir],
+                      denyWrite:[ ..., k.join(e.cwd,vt), ...home paths... ],
+                      allowRead :[e.home, e.tmpDir, ...pluginDirs, ...] }}
+```
+
+**"Edit the sandbox setting" is not an available option.** Confirmed by run,
+not only by reading: the same probe scored identically with the `sandbox` key
+present, absent, and with the operator's own `~/.claude` symlinked in its place.
+
+## 2. There are TWO gates, and they fail identically from the outside
+
+This is what made it expensive. Both produce a red grader and a plausible
+agent narration, and only the trace separates them.
+
+| gate | evidence | what passes it |
+| --- | --- | --- |
+| permission | `subtype: permission_denied`, `decision_reason_type: "mode"` — no shell ever starts | read-only commands, or an exact `--allow-tools 'Bash(<cmd>:*)'` grant |
+| sandbox | a normal shell error: `touch: ./probe-write: Operation not permitted` | writes under the run's own `home`/`tmpDir` only |
+
+Proven by bisect: `pwd; ls -a; command -v git` **runs**. The identical case with
+`touch ./probe-write` is refused at the permission gate under a bare
+`--allow-tools Bash`. Add `--allow-tools 'Bash(touch:*)'` and the same command
+**runs and is then refused by the sandbox**. That transition is the whole
+finding.
+
+Two corollaries measured on the way, both mine:
+
+* `permissions.defaultMode: "auto"` in the eval home's settings is not a fix and
+  is actively wrong — it *is* "don't ask" mode. It denied every Bash call.
+* `permissions.allow: ["Bash", ...]` in settings does not reach the run either.
+  `--allow-tools` is the only channel, and `'Bash(*)'` is not a valid widening —
+  the grant must name the command.
+
+## 3. The workspace is deny-written by design
+
+With the permission gate passed, `touch ./probe-write` in the run's cwd still
+returns *Operation not permitted*. **A case that asks the agent to CREATE a
+worktree cannot be graded by looking at the worktree.**
+
+`plugin_evals.md` already prescribes the way round this and I did not follow it:
+verify in a `Stop` hook — hooks run outside the sandbox — and grade the verdict
+path the hook writes. That is the reference's own section, written before this
+suite existed.
+
+## 4. `allowRead` is the run's tree plus THE PLUGIN DIRS, and nothing else
+
+This is why run 15 fell through to the operator's live root home: `$BUILD` is
+not readable inside a run, so the branched home on `PATH` does not exist as far
+as the agent is concerned. **Anything a run must read has to be inside a plugin
+directory.** The units already are — which is exactly why 25 of them loaded
+correctly. The branched home is not, and that is the concrete fix.
+
+## What is fixed in this commit
+
+* `eval_path` is documented as COMPLETE and `run.sh` no longer appends `$PATH`.
+  Appending it is what silently substituted the operator's root home.
+* `branch_home` now runs `skill-manager sync`, so the branched home derives its
+  own `.claude/skills` (20) and `.claude/plugins` — the standard agent context.
+* `eval_claude_home` builds the eval HOME's `.claude` from that, rather than
+  symlinking the operator's, so a run gets our real setup and not this machine's.
+* `sandbox-probe` is a permanent case: ~$0.12 and ~11s, and it answers "is this
+  environment measurable at all" before any case is billed against it.
+
+## What is NOT fixed, and needs a decision
+
+The provisioning cases still cannot be graded on their product. Making them
+measurable means either moving the branched home inside a plugin directory (for
+reads) **and** grading through a `Stop` hook (for writes), or changing what the
+cases measure to the COMMAND chosen rather than the tree produced.
+
+Cost of learning this: ~$2.00 in probes, against ~$18 already spent on fourteen
+runs of a case that could never have passed.
