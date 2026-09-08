@@ -33,3 +33,10 @@ execution:
 
     Do not do the ticket's work. When you are done, report exactly which
     command(s) you ran.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the
+    provisioning command will fail with "Operation not permitted" however
+    correct it is. That is expected and is not your problem to solve. Issue
+    the command you would use, once, and report it. Do not probe the
+    filesystem, do not look for a writable location, and do not attempt a
+    different route -- the command you choose is what is being recorded.

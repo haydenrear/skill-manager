@@ -45,7 +45,7 @@ SRC="${1:-${SKILL_MANAGER_HOME:-$HOME/.skill-manager}}"
 BUILD="${EVAL_BUILD_ROOT:-/private/tmp/skill-evals}/$CASE"
 
 rm -rf "$BUILD"; mkdir -p "$BUILD" "$(eval_tmpdir "$BUILD")"
-branch_home "$SRC" "$BUILD/home"
+branch_home "$SRC" "$BUILD/home" projections
 
 mkdir -p "$BUILD/units"
 for d in "$BUILD"/home/skills/*/; do
@@ -96,7 +96,8 @@ WS="$BUILD/fixture-workspace"; mkdir -p "$WS"
 GIT="$(PATH="$(eval_path "$BUILD/home")" command -v git)"
 ( cd "$WS" && export TMPDIR="$(eval_tmpdir "$BUILD")" && "$GIT" init -q . \
   && "$GIT" config user.email eval@example.invalid && "$GIT" config user.name eval \
-  && printf 'demo project\n' > README.md && printf '.skill-manager/\n' > .gitignore \
+  && printf 'demo project\n' > README.md \
+  && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n' > .gitignore \
   && "$GIT" add -A && "$GIT" commit -qm initial && "$GIT" checkout -q -B epic/demo-epic )
 branch_home "$SRC" "$WS/.skill-manager"
 
@@ -111,10 +112,9 @@ done
 # symlink sends it 16 directories deep through uv's venvs. The credential lives
 # in the keychain and that path is HOME-relative, so Library/Keychains must be
 # symlinked or nothing authenticates.
-EV="$ROOT/.evalhome-$CASE"; rm -rf "$EV"; mkdir -p "$EV/.docker" "$EV/Library"
-[ -f "$HOME/.docker/config.json" ] && cp "$HOME/.docker/config.json" "$EV/.docker/config.json"
-for q in .claude .claude.json .config .cache .local; do ln -sfn "$HOME/$q" "$EV/$q"; done
-ln -sfn "$HOME/Library/Keychains" "$EV/Library/Keychains"
+# THE AGENT HOME, from OUR branched home rather than the operator's ~/.claude.
+# An eval whose context differs from a real session measures the difference.
+eval_claude_home "$BUILD" "$ROOT/.evalhome-$CASE"
 
 verify_env "$BUILD" || {
   echo "setup: REFUSING to leave a broken environment behind." >&2
@@ -124,3 +124,5 @@ verify_env "$BUILD" || {
 echo "home:  $BUILD/home (branched for this eval)"
 echo "units: $(ls "$BUILD/units" | wc -l | tr -d ' ')"
 echo "PATH:  $(eval_path "$BUILD/home")"
+
+eval_stamp_sources "$BUILD"
