@@ -22,4 +22,4 @@ trap cleanup EXIT
 cd "$BUILD"
 HOME="$ROOT/.evalhome-$CASE" CLAUDE_CODE_WALNUT_SPIRE=1 \
   "$CLAUDE" plugin eval . --case "$CASE" --ablation none --runs 1 \
-    --keep-temp --max-cost-usd 1 --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(touch:*)' "$@"
+    --keep-temp --max-cost-usd 1 --allow-tools Bash 'Bash(git:*)' 'WebFetch(domain:github.com)' "$@"

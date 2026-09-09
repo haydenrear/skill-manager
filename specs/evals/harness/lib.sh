@@ -131,44 +131,35 @@ cfg = json.loads(path.read_text()) if path.exists() else {}
 cfg.setdefault("permissions", {})["defaultMode"] = "auto"
 cfg["permissions"]["allow"] = [
     "Bash", "Read", "Write", "Edit", "Skill", "Glob", "Grep",
-    # NETWORK IS A PERMISSION BEFORE IT IS A SANDBOX RULE, exactly as writes
-    # were. allowedDomains alone produced
-    #     deny network-outbound github.com:443 (user denied)
-    # -- an ASK, auto-denied in dontAsk. The settings docs pair allowedDomains
-    # with WebFetch(domain:...) allow rules; both halves are set below.
-    "WebFetch(domain:github.com)", "WebFetch(domain:codeload.github.com)",
-    "WebFetch(domain:objects.githubusercontent.com)",
+    # NO WebFetch DOMAIN RULES HERE. They belong in --allow-tools, which is
+    # where the eval reads them from -- see the note below eval_claude_home.
+    # Listing them in this file did nothing, and keeping them would suggest it
+    # was this that opened the network.
 ]
-# NETWORK: KEPT, AND INERT. Read this before trying it again.
+# NETWORK IS GRANTED BY --allow-tools, NOT BY THIS FILE.
 #
-# `plugin eval`'s sandbox config does carry `network:{allowedDomains:p}`, so
-# the capability exists. Reaching it from here does not work. Three probes,
-# each a separate run, each ending in the identical line:
+# The eval builds its sandbox with `network:{allowedDomains:p}`, and p is
+# computed (2.1.263):
 #
-#     deny network-outbound github.com:443 (user denied)
+#   let p = Y(r.flatMap((I)=>{ let q = Fr(I);
+#       return q.toolName === Cr && q.ruleContent?.startsWith("domain:")
+#              ? [q.ruleContent.slice(7)] : [] }))
 #
-#   1. sandbox.network.allowedDomains in this file          -> no effect
-#   2. permissions.allow ["WebFetch(domain:github.com)"]     -> no effect
-#   3. --allow-tools 'WebFetch(domain:github.com)' as well   -> no effect
+# with Cr === "WebFetch" and, from the call site $d(h,w,E,p,r,...) against
+# $d(e,t,r,...), r === operatorAllowedTools -- the `--allow-tools` list. So the
+# domains come from `--allow-tools 'WebFetch(domain:<host>)'` in run.sh, and
+# NOTHING in settings.json feeds them: `h` there reads sandbox only from
+# ye("policySettings"), which is managed settings.
 #
-# and `claude plugin eval --help` has no network flag. "(user denied)" is the
-# permission layer answering an ask in dontAsk mode, which is the same shape
-# the WRITE gate had -- but unlike writes, no combination of the two halves
-# opens it.
+# I REPORTED THIS AS IMPOSSIBLE ONCE, WRONGLY. The probe that "proved" it had
+# been REFUSED by the staleness guard -- sources changed, setup not re-run --
+# and I read the previous run's kept trace and called it a result. The guard
+# was working; the reading was not. Confirm a NEW temp dir before believing a
+# probe, which is what `kept temp:` in the run output is for.
 #
-# The one lever left is MANAGED settings
-# (/Library/Application Support/ClaudeCode/managed-settings.json), which the
-# CLI's own docs single out: with allowManagedDomainsOnly, "only allowedDomains
-# and WebFetch(domain:...) allow rules from managed settings are respected".
-# That file is machine-wide and affects every Claude Code session on the box,
-# so it is an operator decision and not something this harness writes.
-#
-# Left in place because it costs nothing and is correct in intent: if the
-# mechanism is ever enabled, these are the domains a currency check needs.
-cfg.setdefault("sandbox", {})["network"] = {
-    "allowedDomains": ["github.com", "*.github.com", "codeload.github.com",
-                       "objects.githubusercontent.com"],
-}
+# Verified, fresh run, first call:
+#   git ls-remote https://github.com/haydenrear/skt HEAD
+#   f00b724f69d0b8499b0c50cbd017a3ed32a49873    HEAD
 path.write_text(json.dumps(cfg, indent=2) + "\n")
 PYEOF
   # AUTH. The credential is in the login keychain and that path is HOME-relative,
@@ -555,5 +546,7 @@ eval_run_case() {
       "$claude" plugin eval . --case "$case_name" --ablation none --runs 1 \
         --keep-temp --max-cost-usd 2 \
         --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(skill-manager:*)' \
-          'Bash(python3:*)' Read Write Edit Skill "$@" )
+          'Bash(python3:*)' Read Write Edit Skill \
+          'WebFetch(domain:github.com)' 'WebFetch(domain:codeload.github.com)' \
+          'WebFetch(domain:objects.githubusercontent.com)' "$@" )
 }
