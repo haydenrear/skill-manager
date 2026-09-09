@@ -346,9 +346,13 @@ public final class ProjectChildHomeScaffolder {
     public static void reportKeptShim(String unitName, String surface, String depName, Path dest,
                                       ChildHomeMaterializer.ShimOutcome outcome) {
         if (!outcome.keptLocal()) return;
-        Log.warn("child home provisions %s %s itself (%s) — kept, not replaced with a link into "
+        // DETAIL: a child home provisioning its own CLI is the documented
+        // outcome, not a problem. Counted, and named in the log.
+        Log.detail("child home provisions %s %s itself (%s) — kept, not replaced with a link into "
                         + "the parent store (declared by %s)",
                 surface, depName, dest, unitName);
+        dev.skillmanager.bindings.ChildHomeTally.selfProvisionedCli(
+                dest == null ? null : String.valueOf(dest));
     }
 
     /**
@@ -404,9 +408,11 @@ public final class ProjectChildHomeScaffolder {
             if (desiredKeys.contains(key)) continue;
             Path unitDir = childStore.unitDir(existing.name(), existing.kind());
             if (materializer.isLocallyModified(existing.name(), existing.kind())) {
-                Log.warn("child home %s:%s is no longer a project dependency but has local "
+                Log.detail("child home %s:%s is no longer a project dependency but has local "
                                 + "changes — left in place (%s)",
                         existing.kind().name().toLowerCase(), existing.name(), unitDir);
+                dev.skillmanager.bindings.ChildHomeTally.keptAfterUndeclared(
+                        unitDir == null ? null : String.valueOf(unitDir));
                 heldBack.add(new ChildHomeMaterializer.UnitOutcome(
                         existing.name(), existing.kind(),
                         ChildHomeMaterializer.Status.SKIPPED_LOCAL_CHANGES, unitDir,

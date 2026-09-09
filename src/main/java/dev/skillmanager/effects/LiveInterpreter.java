@@ -286,6 +286,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
         dev.skillmanager.project.SkillProjectRegistry registry =
                 new dev.skillmanager.project.SkillProjectRegistry(ctx.store());
         List<String> failures = new ArrayList<>();
+        // The LAST gate, not the first: every iteration measures the same home,
+        // and the last one measured it after every project had finished moving
+        // bytes in it. Reporting the first would name a state that no longer
+        // exists by the time the command returns.
+        dev.skillmanager.store.DriftGate lastGate = null;
         for (String projectName : projectClaimers.keySet()) {
             try {
                 dev.skillmanager.project.SkillProjectLock lock =
@@ -301,7 +306,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         new dev.skillmanager.project.ProjectSyncUseCase(ctx.store(), e.gateway())
                                 .sync(project, new dev.skillmanager.project.ProjectDependencyResolver.Options(
                                                 true, e.withGateway()),
-                                        dev.skillmanager.project.ProjectSyncUseCase.Options.reconcileOnly());
+                                        // QUIETLY: the drift this measures is
+                                        // THIS home's, not the project's, so
+                                        // reporting it here prints the same
+                                        // block once per project. Emitted once,
+                                        // as a fact, after the loop.
+                                        dev.skillmanager.project.ProjectSyncUseCase.Options.reconcileQuietly());
+                if (result.drift() != null) lastGate = result.drift();
                 refreshedClaimers.addAll(projectLockUnitNames(result.resolved().lock()));
                 unitsToClear.addAll(refreshedClaimers);
                 facts.add(new ContextFact.ProjectSynced(
@@ -375,6 +386,21 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 }
                 facts.add(new ContextFact.ProjectSyncFailed(projectName, ex.getMessage()));
             }
+        }
+
+        // ONE report for the home, after every project has finished moving
+        // bytes in it. See ContextFact.HomeDriftPending for what this replaces.
+        if (lastGate != null) {
+            dev.skillmanager.store.HomeDescriptor.CliSpelling spelling =
+                    dev.skillmanager.store.HomeDescriptor.cliSpelling(ctx.store().root());
+            int files = lastGate.report().units().stream()
+                    .mapToInt(dev.skillmanager.store.DriftReport.UnitDrift::fileCount).sum();
+            facts.add(new ContextFact.HomeDriftPending(
+                    ctx.store().root().toString(),
+                    lastGate.report().units().size(),
+                    files,
+                    spelling.binary() + " home drift --ack " + spelling.homeArg(),
+                    lastGate.report().render()));
         }
 
         unitsToClear.addAll(unitFailures.keySet());

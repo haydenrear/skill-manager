@@ -117,6 +117,27 @@ public sealed interface ContextFact {
     record ProjectSyncFailed(String projectName, String message) implements ContextFact {}
 
     /**
+     * The home's own drift after a sync, reported ONCE however many projects
+     * the sync fanned out to.
+     *
+     * <h2>The defect this replaces</h2>
+     *
+     * <p>{@code ProjectSyncUseCase} measured drift on the home it ran in and
+     * printed it, and the fan-out calls it once per claiming project. Measured
+     * on a root home with four projects: the same block — headline plus sixteen
+     * rows naming the same 15 units and 622 files — printed FOUR times in one
+     * command, each asking for the same acknowledgement about the same home.
+     *
+     * @param home       the home whose units changed
+     * @param units      how many units changed
+     * @param files      how many files across them
+     * @param ackCommand the command that reads and acknowledges the change
+     * @param rows       the per-unit lines, for the log rather than the console
+     */
+    record HomeDriftPending(String home, int units, int files, String ackCommand,
+                            java.util.List<String> rows) implements ContextFact {}
+
+    /**
      * A claiming project was NOT refreshed after a parent-home unit sync,
      * because that project's own declared vendored paths are not durable.
      * Distinct from {@link ProjectSyncFailed} on purpose (DEF-103): the unit
