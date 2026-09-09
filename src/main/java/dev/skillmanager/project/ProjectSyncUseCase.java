@@ -64,9 +64,14 @@ public final class ProjectSyncUseCase {
      * @param rebuild tear the realization down and rebuild it, instead of
      *        reconciling in place
      */
-    public record Options(boolean pull, boolean rebuild, UnitTrunkPull.Options pullOptions) {
+    public record Options(boolean pull, boolean rebuild, UnitTrunkPull.Options pullOptions,
+                          boolean reportDrift) {
         public Options {
             pullOptions = pullOptions == null ? UnitTrunkPull.Options.defaults() : pullOptions;
+        }
+
+        public Options(boolean pull, boolean rebuild, UnitTrunkPull.Options pullOptions) {
+            this(pull, rebuild, pullOptions, true);
         }
 
         /** Pull the trunk, reconcile in place, hold back local edits. */
@@ -82,6 +87,30 @@ public final class ProjectSyncUseCase {
         /** The pre-#8 behaviour, for a realization that needs rebuilding. */
         public static Options rebuildOnly() {
             return new Options(false, true, UnitTrunkPull.Options.defaults());
+        }
+
+        /**
+         * Reconcile, and do NOT print the home's drift report.
+         *
+         * <h2>Why this exists</h2>
+         *
+         * <p>The drift measured here is the drift of {@code store} — the home
+         * the sync is running in — and NOT of the project's child home. When
+         * one unit sync fans out to every project claiming it, this class is
+         * called once per project against that same home, so the identical
+         * report is rendered once per project.
+         *
+         * <p>Measured on a root home with four claiming projects: the same
+         * "15 unit(s) changed, 622 files" block and its sixteen rows printed
+         * FOUR TIMES in one `skill-manager sync`, each one naming the same
+         * home and asking for the same acknowledgement. It reads as a loop
+         * waiting for an ack that no amount of waiting will produce.
+         *
+         * <p>The gate is still computed and still returned in the Result. The
+         * fan-out reports it ONCE, from the fact, after the loop.
+         */
+        public static Options reconcileQuietly() {
+            return new Options(false, false, UnitTrunkPull.Options.defaults(), false);
         }
     }
 
@@ -154,7 +183,7 @@ public final class ProjectSyncUseCase {
                 : reconcile(project, opts, pull);
 
         DriftGate gate = DriftGate.recordSince(store, before, "project sync").orElse(null);
-        if (gate != null) {
+        if (gate != null && sync.reportDrift()) {
             dev.skillmanager.store.HomeDescriptor.CliSpelling spelling =
                     dev.skillmanager.store.HomeDescriptor.cliSpelling(store.root());
             // CLASS 2 (#161): `home drift` takes --home, so the binding goes
