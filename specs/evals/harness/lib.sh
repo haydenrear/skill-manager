@@ -27,6 +27,25 @@ eval_path() {
   # shims FIRST: a `git` that carries TMPDIR and XCRUN_NO_CACHE with it,
   # because PATH is the only variable that reaches the sandbox.
   p="$build/shims:$home/bin/cli"
+  # A JAVA THE SANDBOX CAN READ, and this is not a detail.
+  #
+  # The home's `skill-manager` is a JVM program. macOS's /usr/bin/java exists
+  # but is a STUB that prints "Unable to locate a Java Runtime", and the real
+  # JDK sits under the operator's home -- which the eval sandbox cannot read.
+  # So the pinned CLI could not execute inside a run at all.
+  #
+  # Measured cost, in the sync case: `skt check --json` came back
+  # `cli.state: error`, `skt sync` failed the same way, and the agent -- quite
+  # rationally -- spent the next twenty Bash calls rebuilding the currency
+  # check by hand from units.lock and `git rev-parse` over skills/*/.git.
+  # 28 calls, $1.95, and not one of them was the skill's fault.
+  #
+  # Homebrew's JDK is outside the operator's home and IS readable.
+  local jdk
+  for jdk in /opt/homebrew/opt/openjdk/bin /opt/homebrew/opt/openjdk@21/bin \
+             /opt/homebrew/opt/openjdk@17/bin; do
+    [ -x "$jdk/java" ] && { p="$p:$jdk"; break; }
+  done
   for d in /opt/homebrew/bin /usr/local/bin \
            /Library/Developer/CommandLineTools/usr/bin; do
     [ -d "$d" ] && p="$p:$d"
@@ -140,6 +159,68 @@ eval_path_for_home() {
   local build home p d
   build="$1"; home="$2"
   p="$build/shims:$home/bin/cli"
+  # A JAVA THE SANDBOX CAN READ, and this is not a detail.
+  #
+  # The home's `skill-manager` is a JVM program. macOS's /usr/bin/java exists
+  # but is a STUB that prints "Unable to locate a Java Runtime", and the real
+  # JDK sits under the operator's home -- which the eval sandbox cannot read.
+  # So the pinned CLI could not execute inside a run at all.
+  #
+  # Measured cost, in the sync case: `skt check --json` came back
+  # `cli.state: error`, `skt sync` failed the same way, and the agent -- quite
+  # rationally -- spent the next twenty Bash calls rebuilding the currency
+  # check by hand from units.lock and `git rev-parse` over skills/*/.git.
+  # 28 calls, $1.95, and not one of them was the skill's fault.
+  #
+  # Homebrew's JDK is outside the operator's home and IS readable.
+  local jdk
+  for jdk in /opt/homebrew/opt/openjdk/bin /opt/homebrew/opt/openjdk@21/bin \
+             /opt/homebrew/opt/openjdk@17/bin; do
+    [ -x "$jdk/java" ] && { p="$p:$jdk"; break; }
+  done
+  for d in /opt/homebrew/bin /usr/local/bin \
+           /Library/Developer/CommandLineTools/usr/bin; do
+    [ -d "$d" ] && p="$p:$d"
+  done
+  printf '%s' "$p:/usr/bin:/bin"
+}
+
+# THE PATH THE AGENT ACTUALLY GETS, which is not the one setup uses.
+#
+# eval_path names absolute paths under $BUILD. Setup needs those -- it runs
+# outside the sandbox. THE AGENT CANNOT READ ANY OF THEM: `plugin eval`'s
+# allowRead is the run's own tree plus the plugin dirs, so `$BUILD/shims` and
+# `$BUILD/home/bin/cli` are "Operation not permitted" from inside a run.
+#
+# Measured, every case, first call:
+#
+#   $ skt status
+#   bash: /private/tmp/skill-evals/<case>/home/bin/cli/skt: Operation not permitted
+#
+# One wasted call per run before the agent starts looking for the real one --
+# across six cases and every rerun, which is the most repeated cost in the
+# suite. And with `$BUILD/shims` dead, the git wrapper in it never runs either,
+# so git falls through to /usr/bin/git, the xcode-select stub that exits 72.
+#
+# What the agent CAN reach: its own cwd, which the fixture hook fills with the
+# workspace INCLUDING a real `.skill-manager`. So the home's own bin/cli goes
+# on PATH RELATIVELY. A relative PATH entry resolves against cwd at exec time,
+# and cwd is the workspace -- so `skt` is on PATH for real, from the first
+# call, with no absolute path anyone has to guess.
+#
+# Nothing under $BUILD is on it. If a run needs something, it has to be
+# somewhere a run can read.
+eval_agent_path() {
+  local p d jdk
+  # BOTH RELATIVE, and both placed in the workspace by the fixture hook:
+  #   .eval-bin            a git the sandbox can actually reach (see the hook)
+  #   .skill-manager/bin/cli   the home's own front door
+  p=".eval-bin:.skill-manager/bin/cli"
+  for jdk in /opt/homebrew/opt/openjdk/bin /opt/homebrew/opt/openjdk@21/bin \
+             /opt/homebrew/opt/openjdk@17/bin; do
+    [ -x "$jdk/java" ] && { p="$p:$jdk"; break; }
+  done
+  # CommandLineTools BEFORE /usr/bin: /usr/bin/git is the xcode-select stub.
   for d in /opt/homebrew/bin /usr/local/bin \
            /Library/Developer/CommandLineTools/usr/bin; do
     [ -d "$d" ] && p="$p:$d"
@@ -180,6 +261,28 @@ branch_home() {
   #    and the next clone copies them through unchanged"
   # which is correct, and the remedy the product itself prints is this.
   "$dst/bin/cli/skill-manager" home repair --home "$dst" --fix >/dev/null 2>&1 || true
+  # AND BRING THE UNITS UNDER TEST TO THEIR REPO TIP.
+  #
+  # The branch is a copy of whatever the SOURCE home happened to hold, and a
+  # source home goes stale the moment a unit is fixed. Measured: the root home
+  # sat one commit behind skt while two defects the evals had just found were
+  # already fixed and pushed -- so a rerun would have measured code without
+  # them and reported the fix as ineffective. That is the same "one run of
+  # stale bytes" mistake this harness has now paid for three times.
+  #
+  # Uses EVAL_CLI (the repo's raw build) rather than the branch's own bin/cli
+  # shim, which binds the home it lives in and refuses --home.
+  local cli unit
+  cli="${EVAL_CLI:-$(cd "$(eval_root)/../../.." && pwd)/skill-manager}"
+  if [ -x "$cli" ]; then
+    for unit in ${EVAL_SYNC_UNITS:-skt git-issue-workflow git-epic-workflow}; do
+      "$cli" sync "$unit" --home "$dst" >/dev/null 2>&1 \
+        && echo "  synced $unit to tip in $(basename "$(dirname "$dst")")/$(basename "$dst")" >&2 \
+        || echo "  note: could not sync $unit into the branch (continuing)" >&2
+    done
+  else
+    echo "  note: no build at $cli — the branch keeps the source home's versions" >&2
+  fi
   # AND SYNC IT, so the branch derives its OWN agent projections.
   #
   # A clone drops every binding whose path named the home it came from -- it
@@ -213,19 +316,38 @@ verify_env() {
   local build home ws out
   build="$1"; home="$build/home"; ws="$build/fixture-workspace"
   export PATH="$(eval_path "$home")"
-  for t in git skt skill-manager jbang; do
+  for t in git skt skill-manager jbang java; do
     command -v "$t" >/dev/null 2>&1 || {
       echo "setup: '$t' is not on the eval PATH -- the home's CLI shim needs" >&2
-      echo "       jbang, and skt needs git; fix eval_path before running" >&2
+      echo "       jbang and java, and skt needs git; fix eval_path" >&2
       return 1; }
   done
-  out="$(cd "$ws" && skt ticket new ENVPROBE --path ./.envprobe 2>&1)" || {
+  # PRESENT IS NOT THE SAME AS WORKING, and the difference cost $1.95.
+  #
+  # `command -v skill-manager` finds the shim FILE. Running it needs a JVM, and
+  # macOS's /usr/bin/java is a STUB that resolves and then refuses. So the check
+  # that passed was "a file exists" while what a run needs is "this program
+  # answers" -- and the thing that discovered the gap was an agent, mid-run,
+  # spending twenty calls reconstructing a check by hand.
+  #
+  # This still cannot prove the SANDBOX can reach these: setup runs outside it,
+  # with different read permissions. That limit stands. It does prove the
+  # curated PATH names a CLI that executes.
+  local ran
+  ran="$(skill-manager --version 2>&1)" || {
+    echo "setup: the home's CLI is on PATH but does not RUN:" >&2
+    printf '%s\n' "$ran" | sed 's/^/         /' >&2
+    return 1; }
+  # A SIBLING path: `skt ticket new` now refuses an inside-the-repo worktree,
+  # because `ticket close` searches the repository's PARENT and could never
+  # find one. The probe uses the shape the product supports.
+  out="$(cd "$ws" && skt ticket new ENVPROBE --path ../.envprobe 2>&1)" || {
     echo "setup: the front door does not work in this environment. A run would" >&2
     echo "       measure that, not the skill. skt said:" >&2
     printf '%s\n' "$out" | sed 's/^/         /' >&2
     return 1; }
   ( cd "$ws" && skt ticket close ENVPROBE >/dev/null 2>&1 || true
-    rm -rf ./.envprobe )
+    rm -rf "$(dirname "$ws")/.envprobe" )
   echo "verified: skt ticket new works in this environment"
 }
 
@@ -297,10 +419,22 @@ eval_build_case() {
 
   # PATH and TMPDIR as SESSION ENV, so the agent inherits them rather than
   # discovering them.
+  # THE AGENT'S ENVIRONMENT. Three deliberate differences from setup's:
+  #
+  #   PATH   eval_agent_path -- nothing under $BUILD, because a run cannot read
+  #          it. The home's bin/cli is RELATIVE and resolves against cwd.
+  #   TMPDIR NOT SET. Overriding it with $BUILD/tmp pointed git's xcrun cache at
+  #          a directory the sandbox permits neither reads nor writes to; the
+  #          run's own TMPDIR is inside allowWrite and already correct.
+  #   XCRUN_NO_CACHE  set here instead, which is what the git shim carried and
+  #          the only reason that shim had to be on PATH at all.
+  #
+  # SKILL_MANAGER_HOME is also gone: it named $BUILD/home, which is unreadable,
+  # and the home's shim binds the home it lives in anyway -- `skt status` from
+  # the workspace resolves the right home with no variable at all.
   cat > "$build/units/toolchain/.claude-plugin/settings.json" <<JSON
-{ "env": { "PATH": "$(eval_path "$build/home")",
-           "TMPDIR": "$(eval_tmpdir "$build")",
-           "SKILL_MANAGER_HOME": "$build/home" } }
+{ "env": { "PATH": "$(eval_agent_path)",
+           "XCRUN_NO_CACHE": "1" } }
 JSON
 
   # A `git` SHIM carrying TMPDIR and XCRUN_NO_CACHE, because PATH is the only
@@ -365,9 +499,18 @@ eval_run_case() {
   # "unknown command 'eval' (Did you mean enable?)".
   claude="$(command -v claude)" || { echo "no claude on PATH" >&2; return 1; }
   [ "${1:-}" = "--keep" ] && { keep=1; shift; }
-  export TMPDIR="$(eval_tmpdir "$build")"
-  export SKILL_MANAGER_HOME="$build/home"
-  export PATH="$(eval_path "$build/home")"   # COMPLETE, never "$(...):$PATH"
+  # THE AGENT INHERITS WHAT THIS EXPORTS, which is the thing that actually
+  # decides its PATH -- the toolchain plugin's settings.json env does not
+  # override it. Measured: a probe with eval_agent_path in settings.json still
+  # resolved `skt` to $BUILD/home/bin/cli and got "Operation not permitted",
+  # because run.sh had exported the absolute path first.
+  #
+  # So the AGENT path is exported here (nothing under $BUILD, which a run
+  # cannot read; the home's bin/cli relative, resolving against the workspace
+  # cwd), and TMPDIR is left alone -- the run's own is inside allowWrite, and
+  # pointing it at $BUILD/tmp is what made git's xcrun cache unwritable.
+  export XCRUN_NO_CACHE=1
+  export PATH="$(eval_agent_path)"   # COMPLETE, never "$(...):$PATH"
   trap '[ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
   ( cd "$build" && HOME="$root/.evalhome-$case_name" CLAUDE_CODE_WALNUT_SPIRE=1 \
       "$claude" plugin eval . --case "$case_name" --ablation none --runs 1 \

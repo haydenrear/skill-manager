@@ -11,9 +11,8 @@ eval_require_fresh "$BUILD" || exit 1
 # The LAUNCHER's PATH must still find `claude`; resolve it before overriding.
 CLAUDE="$(command -v claude)" || { echo "no claude on PATH" >&2; exit 1; }
 
-export TMPDIR="$(eval_tmpdir "$BUILD")"
-export SKILL_MANAGER_HOME="$BUILD/home"
-export PATH="$(eval_path "$BUILD/home")"     # COMPLETE, not a prefix
+export XCRUN_NO_CACHE=1
+export PATH="$(eval_agent_path)"             # what a RUN can reach, see lib.sh
 
 KEEP=0; [ "${1:-}" = "--keep" ] && { KEEP=1; shift; }
 cleanup() { [ "$KEEP" = "1" ] && { echo "kept: $BUILD"; return; }
@@ -23,4 +22,4 @@ trap cleanup EXIT
 cd "$BUILD"
 HOME="$ROOT/.evalhome-$CASE" CLAUDE_CODE_WALNUT_SPIRE=1 \
   "$CLAUDE" plugin eval . --case "$CASE" --ablation none --runs 1 \
-    --keep-temp --max-cost-usd 1 --allow-tools 'Bash(touch:*)' "$@"
+    --keep-temp --max-cost-usd 1 --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' "$@"
