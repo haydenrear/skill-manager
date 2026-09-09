@@ -643,3 +643,63 @@ a real capability gap rather than a fixture problem:
 Recommendation: **1, then re-run**. It is the fix with value outside the eval —
 every offline agent has the same question — and it is what would turn thirty
 calls into one.
+
+---
+
+# Network: yes, via `--allow-tools` — and a correction
+
+**I reported this as impossible. It is not.** The probe that "proved" it had
+been **refused by the staleness guard** — sources changed, setup not re-run —
+and I read the *previous* run's kept trace and called it a result. The guard
+worked; the reading did not. `kept temp:` names the directory a run creates;
+comparing it before and after is the only way to know a probe happened.
+
+## The mechanism, from the 2.1.263 binary
+
+```js
+let p = Y(r.flatMap((I)=>{ let q = Fr(I);
+    return q.toolName === Cr && q.ruleContent?.startsWith("domain:")
+           ? [q.ruleContent.slice(7)] : [] }))
+```
+
+`Cr === "WebFetch"`, and the call site `$d(h,w,E,p,r,…)` against `$d(e,t,r,…)`
+makes `r === operatorAllowedTools`. So `network:{allowedDomains:p}` is fed by
+**`--allow-tools 'WebFetch(domain:<host>)'` and by nothing else** — settings
+cannot reach it, because that path reads sandbox only from
+`ye("policySettings")`. No managed-settings file is needed, and none was
+written.
+
+Verified twice on confirmed-fresh runs, first call:
+
+```
+git ls-remote https://github.com/haydenrear/skt HEAD
+f00b724f69d0b8499b0c50cbd017a3ed32a49873    HEAD
+```
+
+Every case now gets `github.com`, `codeload.github.com` and
+`objects.githubusercontent.com`.
+
+## What it bought, and what it did not
+
+`skt check`'s unverifiable list went from **19 units to 7** — the remainder are
+private repos needing auth. The network half of the currency question works.
+
+**And the case still costs 38 calls / $1.83.** The reason is a fixture defect
+of mine, not the sandbox: the same unit hash lives in **three** places —
+`installed/<unit>.json`, `units.lock.toml`, and the unit's own checkout HEAD —
+and the fixture plants staleness in the first while `skt check` reads another.
+So `skt check` reports the home healthy, correctly by its own reading, and the
+agent goes looking for the disagreement it was told exists.
+
+The earlier trace shows the agent doing exactly that three-way comparison by
+hand — `installed-record` vs `units.lock` vs `store-HEAD` — which is the shape
+of the real question underneath: **three records of one fact that can disagree,
+and a check that consults one of them.** That is worth its own look before this
+case is graded again.
+
+## Standing correction to the cost claims
+
+Numbers for this case across the pass: 28 → 36 → 38 calls. The environment
+fixes were real and are proved by the probe; none of them moved this case,
+because none of them was its bottleneck. Recorded in that direction because
+each was reported as an improvement before it was measured.
