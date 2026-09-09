@@ -187,7 +187,17 @@ PYEOF
 [ -s "$EV/front-door" ] || { say "no front-door command in the transcript; nothing to replay"; exit 0; }
 ARGS="$(cat "$EV/front-door")"
 if [ "$REPLAY" != "yes" ]; then
-  say "REPLAY=no for this case: the command was recorded, not re-issued"
+  # NOTHING WAS REPLAYED, SO NOTHING WAS TOUCHED -- and that verdict has to be
+  # WRITTEN, not merely true. `nothing-outside-the-sandbox-was-touched` reads
+  # a file; exiting before writing it made that grader GUARANTEED RED on every
+  # REPLAY=no case, which cost syncs-a-stale-home-from-root and
+  # reconciles-a-worktree-into-the-project-home a grader each, permanently.
+  #
+  # A grader that cannot pass is worse than a missing one: it reads as a
+  # finding about the skill on every run, and it is a fact about this hook.
+  echo ok > "$EV/source-undamaged"
+  say "REPLAY=no for this case: the command was recorded, not re-issued;"
+  say "source-undamaged is trivially true because nothing ran against it"
   exit 0
 fi
 say "replaying args: $ARGS"
