@@ -541,7 +541,26 @@ eval_run_case() {
   # pointing it at $BUILD/tmp is what made git's xcrun cache unwritable.
   export XCRUN_NO_CACHE=1
   export PATH="$(eval_agent_path)"   # COMPLETE, never "$(...):$PATH"
-  trap '[ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
+  # ARCHIVE THE RESULT WHERE THE SCORECARD CAN READ IT.
+  #
+  # A run writes aggregate-result.json under $BUILD, which run.sh then tears
+  # down -- so every score this suite has ever produced lived only in a
+  # terminal and in prose. `scripts/measure_goals.py` is this repo's scorecard
+  # and it reads harnesses, not narratives; nothing could join the two.
+  #
+  # One JSON per case, committed, newest wins. That is what makes an eval an
+  # instrument rather than an anecdote.
+  eval_archive_result() {
+    local b="$1" c="$2" newest dest
+    newest="$(ls -td "$b"/evals/results/*/ 2>/dev/null | head -1)"
+    [ -n "$newest" ] && [ -f "$newest/aggregate-result.json" ] || return 0
+    dest="$(eval_root)/../results/runs/$c"
+    mkdir -p "$dest"
+    cp "$newest/aggregate-result.json" "$dest/$(basename "${newest%/}").json"
+    echo "archived: specs/evals/results/runs/$c/$(basename "${newest%/}").json"
+  }
+  trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
+
   ( cd "$build" && HOME="$root/.evalhome-$case_name" CLAUDE_CODE_WALNUT_SPIRE=1 \
       "$claude" plugin eval . --case "$case_name" --ablation none --runs 1 \
         --keep-temp --max-cost-usd 2 \

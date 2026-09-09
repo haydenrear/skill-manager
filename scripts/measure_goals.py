@@ -55,6 +55,12 @@ EPICS = {
              "cmd": [PY311, "scripts/measure_goal_migration_lands_on_one_skt.py"]},
             {"goal": "GOAL-who-imports-this",
              "cmd": [PY311, "scripts/measure_goal_who_imports_this.py"]},
+            # THE EVAL SUITE, joined to the scorecard rather than left in prose.
+            # Reads the newest archived run per case under
+            # specs/evals/results/runs/. Reports UNMEASURED (exit 2) for any
+            # case with no recorded run -- never met, per OUN-8's constraint.
+            {"goal": "GOAL-the-front-door-is-found",
+             "cmd": [PY311, "scripts/measure_goal_the_front_door_is_found.py"]},
         ],
         "graphs": [],
     },
