@@ -703,3 +703,64 @@ Numbers for this case across the pass: 28 → 36 → 38 calls. The environment
 fixes were real and are proved by the probe; none of them moved this case,
 because none of them was its bottleneck. Recorded in that direction because
 each was reported as an improvement before it was measured.
+
+---
+
+# The loop closed: 6 of 6 find the front door, and the scorecard says so
+
+```
+MET  GOAL-the-front-door-is-found  6 of 6  (target 6 of 6)
+     3 of 5 met
+```
+
+Every case's front-door grader is green, from an archived run, read by
+`scripts/measure_goals.py` rather than asserted in prose.
+
+## What the CLI fixes bought, per case
+
+| case | score | Bash | cost | the fix it was failing on |
+| --- | --- | --- | --- | --- |
+| ticket-agent-closes-a-ticket | **1.00** | 1 | $0.28 | — |
+| ticket-agent-opens-a-ticket | 0.82 | 4 | $0.49 | skt positional base |
+| bootstraps-a-home-for-a-repo | 0.80 | 7 | $0.53 | `bootstrap-home.sh <dir>` |
+| epic-provisions-a-ticket-worktree | 0.75–0.83 | 5 | $0.51 | — |
+| syncs-a-stale-home-from-root | 0.57 | **14** | **$1.00** | `skt check` record-vs-checkout |
+| reconciles-a-worktree… | 0.57 | 6 | $0.51 | — |
+
+**The sync case is the measurement that matters**: 38 → 14 Bash calls,
+$1.83 → $1.00, on the run immediately after `skt check` learned to report a
+record that disagrees with its checkout. That is the thirty-call hand-rolled
+comparison replaced by one command answering the question.
+
+## Two harness defects the scorecard exposed, both mine
+
+1. **`epic-provisions` kept a bespoke `run.sh`** from before `lib.sh` had one,
+   so it was the only case that never archived — and the ledger read NOT RUN
+   after a sweep in which it had run and scored 0.83. A copy that drifts is
+   worse than a copy, because it looks like the thing it no longer is. Now on
+   the shared runner like everything else.
+
+2. **`nothing-outside-the-sandbox-was-touched` was GUARANTEED RED on every
+   `REPLAY=no` case.** The hook exited before writing the verdict, so `sync`
+   and `reconcile` each lost a grader permanently — and it read as a finding
+   about the skill on every run. A grader that cannot pass is worse than a
+   missing one. The no-replay path now writes it, with the log saying it is
+   trivially true because nothing ran.
+
+Neither was visible until the scores were wired into something that reads
+them. That is the argument for the wiring, made by the wiring.
+
+## What is still red, and it is one thing
+
+Every case now fails only `one-command-not-a-reconstruction`: 4, 5, 6, 7 and
+14 calls against ceilings of 3 and 4. **`ticket-agent-closes-a-ticket` hit
+1**, so the ceiling is achievable and is not the problem.
+
+The pattern in the traces is orientation, not reconstruction: `skt status`,
+`ls -a`, a `--help`, and then the right command. That is defensible behaviour
+and it is also the next dollar — the question is whether a session can be
+oriented BEFORE its first call rather than by spending three.
+
+Read `runs` before reading any of this. The Bash count for one case has been
+18, 26, 5, 2, 5, 10 and 14 across two days, and the ledger reports the newest
+run per case, not a distribution.

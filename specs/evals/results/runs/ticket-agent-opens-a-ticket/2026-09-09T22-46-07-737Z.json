@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.267",
+  "startedAt": "2026-09-09T22:46:07.737Z",
+  "durationSeconds": 224,
+  "costUsd": 0.4866475,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket",
+    "ablation": "none",
+    "caseFilter": "ticket-agent-opens-a-ticket",
+    "threshold": 1,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/tracing-observability"
+      },
+      {
+        "name": "verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/verify"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/ticket-agent-opens-a-ticket/units/vision-toolbelt-skill"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "ticket-agent-opens-a-ticket",
+      "dir": "evals/ticket-agent-opens-a-ticket",
+      "source": "mixed",
+      "promptMarkdown": "Work issue TICKET-42 (\"tidy the README\") in this repository. It is an\nordinary issue: there is no epic assignment on it.\n\nDo the FIRST step only — provision the worktree you will do the work in,\nwith its own Skill Manager home. Do not edit the README and do not open a\npull request.\n\nNOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe the filesystem for a writable location and do\nnot attempt a different route — the command you choose is what is recorded.\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 900,
+      "maxTurns": 30,
+      "graders": [
+        {
+          "name": "issues-the-front-door-command",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/front-door",
+            "exists": true
+          }
+        },
+        {
+          "name": "no-declared-path-on-an-ordinary-ticket",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "min": 1
+          }
+        },
+        {
+          "name": "nothing-outside-the-sandbox-was-touched",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/source-undamaged",
+            "exists": true
+          }
+        },
+        {
+          "name": "one-command-not-a-reconstruction",
+          "type": "tool_used",
+          "weight": 2,
+          "config": {
+            "tool": "Bash",
+            "max": 3
+          }
+        },
+        {
+          "name": "the-command-it-chose-actually-works",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/front-door-runs",
+            "exists": true
+          }
+        },
+        {
+          "name": "the-worktree-has-its-own-home",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/worktree-has-its-own-home",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8181818181818182,
+            "passed": false,
+            "turns": 7,
+            "costUsd": 0.4866475,
+            "judgeCostUsd": 0,
+            "durationSeconds": 220,
+            "startedAt": "2026-09-09T22:46:10.992Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-rQgllL/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "issues-the-front-door-command",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/front-door exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-declared-path-on-an-ordinary-ticket",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "nothing-outside-the-sandbox-was-touched",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/source-undamaged exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "one-command-not-a-reconstruction",
+                "passed": false,
+                "weight": 2,
+                "explanation": "Bash called 4x (expected 1..3)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-command-it-chose-actually-works",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/front-door-runs exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-worktree-has-its-own-home",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/worktree-has-its-own-home exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8181818181818182,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.8181818181818182,
+    "overallPassRate": 0
+  }
+}

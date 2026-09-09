@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.267",
+  "startedAt": "2026-09-09T23:05:27.507Z",
+  "durationSeconds": 256,
+  "costUsd": 0.9951390000000001,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/syncs-a-stale-home-from-root",
+    "ablation": "none",
+    "caseFilter": "syncs-a-stale-home-from-root",
+    "threshold": 1,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/tracing-observability"
+      },
+      {
+        "name": "verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/verify"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/vision-toolbelt-skill"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "syncs-a-stale-home-from-root",
+      "dir": "evals/syncs-a-stale-home-from-root",
+      "source": "mixed",
+      "promptMarkdown": "Something in this project's Skill Manager home may be out of date with the\nunit repositories it came from. Find out, and bring it up to date.\n\nNOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so any command\nthat writes will fail with \"Operation not permitted\" however correct it is.\nThat is expected and is not yours to solve. Issue the commands you would\nuse and report them. Do not probe the filesystem for a writable location —\nthe commands you choose are what is recorded.\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 900,
+      "maxTurns": 30,
+      "graders": [
+        {
+          "name": "nothing-outside-the-sandbox-was-touched",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/source-undamaged",
+            "exists": true
+          }
+        },
+        {
+          "name": "one-command-not-a-reconstruction",
+          "type": "tool_used",
+          "weight": 2,
+          "config": {
+            "tool": "Bash",
+            "max": 4
+          }
+        },
+        {
+          "name": "reaches-a-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "min": 1
+          }
+        },
+        {
+          "name": "reaches-the-currency-command",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/front-door",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5714285714285714,
+            "passed": false,
+            "turns": 19,
+            "costUsd": 0.9951390000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 253,
+            "startedAt": "2026-09-09T23:05:30.941Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-h4PAtv/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "nothing-outside-the-sandbox-was-touched",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/source-undamaged missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "one-command-not-a-reconstruction",
+                "passed": false,
+                "weight": 2,
+                "explanation": "Bash called 14x (expected 1..4)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-a-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-the-currency-command",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/front-door exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5714285714285714,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.5714285714285714,
+    "overallPassRate": 0
+  }
+}
