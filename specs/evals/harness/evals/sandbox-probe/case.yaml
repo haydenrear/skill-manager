@@ -8,6 +8,7 @@ description: >-
 runs: 1
 plugins:
   - ../../units/toolchain
+  - ../../units/fixture
   - ../../units/verify
 execution:
   max_turns: 6
@@ -17,7 +18,7 @@ execution:
     Run exactly this one command and report its output verbatim:
 
     ```
-    touch ./probe-write
+    skt status | head -5; echo "--- git:"; git --version
     ```
 
     Do not run anything else.

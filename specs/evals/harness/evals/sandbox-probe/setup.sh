@@ -18,9 +18,7 @@ branch_home "$SRC" "$BUILD/home" projections
 mkdir -p "$BUILD/units"
 cp -R "$ROOT/units-template/." "$BUILD/units/"
 cat > "$BUILD/units/toolchain/.claude-plugin/settings.json" <<JSON
-{ "env": { "PATH": "$(eval_path "$BUILD/home")",
-           "TMPDIR": "$(eval_tmpdir "$BUILD")",
-           "SKILL_MANAGER_HOME": "$BUILD/home" } }
+{ "env": { "PATH": "$(eval_agent_path)", "XCRUN_NO_CACHE": "1" } }
 JSON
 
 mkdir -p "$BUILD/shims"
@@ -32,6 +30,10 @@ export SKILL_MANAGER_HOME="$BUILD/home"
 exec /Library/Developer/CommandLineTools/usr/bin/git "\$@"
 SHIM
 chmod +x "$BUILD/shims/git"
+
+WS="$BUILD/fixture-workspace"
+eval_fixture_checkout "$BUILD" "$SRC" "$WS" main
+branch_home "$SRC" "$WS/.skill-manager"
 
 rm -rf "$BUILD/evals"; mkdir -p "$BUILD/evals"
 cp -R "$HERE" "$BUILD/evals/$CASE"
