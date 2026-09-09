@@ -18,7 +18,7 @@ build_fixture() {
   ( cd "$ws" \
     && export SKILL_MANAGER_HOME="$ws/.skill-manager" TMPDIR="$(eval_tmpdir "$build")" \
     && export PATH="$(eval_path_for_home "$build" "$ws/.skill-manager")" \
-    && "$ws/.skill-manager/bin/cli/skt" ticket new TICKET-9 --base HEAD --path ./wt-ticket-9 ) \
+    && "$ws/.skill-manager/bin/cli/skt" ticket new TICKET-9 --base HEAD --path ../wt-TICKET-9 ) \
     >"$build/fixture-ticket-9.log" 2>&1 || {
       sed 's/^/         /' "$build/fixture-ticket-9.log" >&2 echo "setup: could not create the worktree" >&2; return 1; }
   # AN EDIT INSIDE THE WORKTREE'S HOME, which is the whole subject. It is
@@ -26,7 +26,7 @@ build_fixture() {
   # not carry it, the PR does not carry it, and the epic branch does not carry
   # it. Without a real difference here the reconcile has nothing to move and a
   # do-nothing answer scores the same as a correct one.
-  local sk="$ws/wt-ticket-9/.skill-manager/skills/git-issue-workflow/SKILL.md"
+  local sk="$(dirname "$ws")/wt-TICKET-9/.skill-manager/skills/git-issue-workflow/SKILL.md"
   [ -f "$sk" ] || { echo "setup: no unit to edit in the worktree home" >&2; return 1; }
   printf '\n<!-- edited in the ticket worktree, %s -->\n' "TICKET-9" >> "$sk"
 }

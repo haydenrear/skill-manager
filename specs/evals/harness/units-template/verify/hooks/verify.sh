@@ -214,7 +214,13 @@ if [ ! -d "$SRC_WS/.git" ]; then say "no fixture at $SRC_WS -- cannot replay"; e
 # verify_env runs the same `skt ticket new` against a properly branched home at
 # setup, and it passes. `home clone` is the product's own operation for moving
 # a home; it is copy-on-write and it re-anchors as it goes.
-tar -C "$SRC_WS" --exclude=.skill-manager -cf - . 2>>"$LOG" \
+# EXCLUDE THE FIXTURE'S OWN WORKTREES. A git worktree's `.git` is a FILE
+# pointing into the parent repo's .git/worktrees/, which a copy does not carry,
+# so a copied `wt-*` arrives as a pile of UNTRACKED files -- and the next
+# `skt ticket new` refuses with "working tree is not clean — an epic worktree
+# pins its base from a clean slate". Correct refusal about a mess the copy
+# made. The sandbox builds its own worktree with REPLAY_PRE instead.
+tar -C "$SRC_WS" --exclude=.skill-manager --exclude='./wt-*' -cf - . 2>>"$LOG" \
   | tar -C "$SANDBOX" -xf - 2>>"$LOG" \
   || { say "checkout copy failed"; exit 0; }
 if [ -d "$SRC_WS/.skill-manager/bin/cli" ]; then
@@ -249,6 +255,29 @@ REPLAY_EXE="$SANDBOX/.skill-manager/$REPLAY_REL"
 [ -x "$REPLAY_EXE" ] || REPLAY_EXE="$BUILD/home/$REPLAY_REL"
 [ -x "$REPLAY_EXE" ] || { say "no $REPLAY_BIN to replay with"; exit 0; }
 say "replay binary: $REPLAY_EXE"
+
+# STATE THE VERB NEEDS, BUILT IN THE SANDBOX BY THE FRONT DOOR ITSELF.
+#
+# A `close` case has to have something to close. Copying the fixture's worktree
+# does not carry one: a git worktree's `.git` is a FILE pointing into the parent
+# repo's .git/worktrees/, and `skt ticket close` resolves a ticket by searching
+# git's worktree list -- so in a copied checkout it correctly reports
+#
+#     error: no worktree for ticket TICKET-7 … and nothing named '*-TICKET-7'
+#
+# and the replay measures the copy rather than the command. So the sandbox
+# builds the precondition with the product's own front door, and the agent's
+# arguments are then replayed against real state.
+if [ -n "${REPLAY_PRE:-}" ]; then
+  ( cd "$SANDBOX" \
+    && export SKILL_MANAGER_HOME="${REPLAY_HOME:-$SANDBOX/.skill-manager}" \
+    && export PATH="$BUILD/shims:$SANDBOX/.skill-manager/bin/cli:/opt/homebrew/bin:/Library/Developer/CommandLineTools/usr/bin:/usr/bin:/bin" \
+    && export TMPDIR="$BUILD/tmp" \
+    && eval "$REPLAY_PRE" ) >>"$LOG" 2>&1 \
+    && say "precondition built: $REPLAY_PRE" \
+    || { say "PRECONDITION FAILED ($REPLAY_PRE) -- not replaying; a red here is"
+         say "the harness's, not the agent's"; exit 0; }
+fi
 
 BEFORE="$(find "$SRC_WS" -maxdepth 2 | sort | shasum | cut -d' ' -f1)"
 

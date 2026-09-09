@@ -14,7 +14,7 @@ execution:
   timeout_seconds: 900
   allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
   prompt: |
-    Ticket TICKET-9's worktree at ./wt-ticket-9 contains skill changes made
+    Ticket TICKET-9's worktree at ../wt-TICKET-9 contains skill changes made
     while working it. Get those changes into this project's Skill Manager home
     so they are not lost when the worktree is eventually removed.
 
