@@ -23,13 +23,13 @@ build_fixture() {
   ( cd "$ws" \
     && export SKILL_MANAGER_HOME="$ws/.skill-manager" TMPDIR="$(eval_tmpdir "$build")" \
     && export PATH="$(eval_path_for_home "$build" "$ws/.skill-manager")" \
-    && "$ws/.skill-manager/bin/cli/skt" ticket new TICKET-7 --base HEAD --path ./wt-ticket-7 ) \
+    && "$ws/.skill-manager/bin/cli/skt" ticket new TICKET-7 --base HEAD --path ../wt-TICKET-7 ) \
     >"$build/fixture-ticket-7.log" 2>&1 || {
       sed 's/^/         /' "$build/fixture-ticket-7.log" >&2
       echo "setup: could not create the worktree this case is about -- a run" >&2
       echo "       would measure that, not the agent." >&2
       return 1; }
-  [ -d "$ws/wt-ticket-7/.skill-manager" ] || {
+  [ -d "$(dirname "$ws")/wt-TICKET-7/.skill-manager" ] || {
     echo "setup: the worktree has no home; the close gate would have nothing" >&2
     echo "       to protect and the case would be vacuous." >&2
     return 1; }

@@ -16,7 +16,7 @@ execution:
   allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
   prompt: |
     Ticket TICKET-7 is finished and its work is merged. Tear down the worktree
-    it was done in, at ./wt-ticket-7.
+    it was done in, at ../wt-TICKET-7.
 
     NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command
     will fail with "Operation not permitted" however correct it is. That is

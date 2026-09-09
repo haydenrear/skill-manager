@@ -29,7 +29,7 @@ execution:
     epic/demo-epic in this repository.
 
     Provision the ticket worktree for ticket DEMO-1 at the declared path
-    ./wt-demo-1, based on the current HEAD, with its own Skill Manager home.
+    ../wt-DEMO-1, based on the current HEAD, with its own Skill Manager home.
 
     Do not do the ticket's work. When you are done, report exactly which
     command(s) you ran.
