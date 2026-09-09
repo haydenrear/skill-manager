@@ -566,3 +566,80 @@ the fourth time this session a change was applied without confirming it took.
   a several-run distribution, not against this one.
 * Five cases remain: ticket open, ticket close, home bootstrap, sync-from-root,
   worktree→project reconcile. The harness they need is now built.
+
+---
+
+# The optimization loop, one pass: five CLI fixes and one case that cannot be measured
+
+The evals stopped being diagnostics this pass and became the thing that finds
+CLI defects. Five went out, all found by an agent failing in a way a human
+would not have thought to try.
+
+| # | fix | what the eval saw |
+| --- | --- | --- |
+| skt `14d4bc4` | `ticket new` takes a positional base | `skt ticket new TICKET-42 main` → *unrecognized arguments: main*, from an agent following git-issue-workflow's own docs |
+| skt `0499bd4` | refuse a declared path `close` can't find | `new --path ./wt-X` created it; `close X` searched the repo's PARENT and found nothing |
+| skt `f00b724` | UNKNOWN is not a kind of current | "all current (20 units); unverifiable: …all twenty…" |
+| git-issue-workflow `5c88a80` | `bootstrap-home.sh <dir>` positional | agent read the usage and still wrote the bare directory |
+| skill-manager `a83a27ac` | say the home's drift once | the same 17-line block four times in one sync |
+
+**Three of the five are one defect class**: a front door that takes its subject
+positionally beside one that demands a flag. An agent that learned either one
+is wrong at the other, and the documentation taught the spelling that failed.
+
+## The harness cost fixes, and what they did NOT fix
+
+`plugin eval`'s allowRead is the run's own tree plus the plugin dirs. The
+exported PATH named neither, so **every case** opened by resolving `skt` to
+`$BUILD/home/bin/cli` → *Operation not permitted*, and had a broken `git`.
+Three things fixed that, each proved with the $0.13 probe:
+
+* the **export** is what decides the agent's PATH — the toolchain plugin's
+  `settings.json` env does not override `run.sh`;
+* PATH lookup **cannot enumerate** `/Library/Developer/CommandLineTools/usr/bin`
+  (exec by absolute path works, directory search does not), so the fixture hook
+  writes a git shim into the workspace and PATH leads with `.eval-bin`;
+* a **JDK the sandbox can read** — the real one is under the operator's home,
+  and `/usr/bin/java` is a stub, so the home's JVM CLI could not execute at all.
+
+First call, before and after, same probe:
+
+```
+skt status    →  Operation not permitted        →  skt status — …/home/cwd
+git --version →  exit 72 (xcode-select stub)    →  git version 2.50.1
+```
+
+**And the sync case still cost more, not less: 28 → 36 calls, $1.95 → $2.02.**
+Stated plainly because the fixes were real and the number went the wrong way.
+
+## Why that case cannot be graded here
+
+`skt check` at call 2, in the run:
+
+```
+unverifiable (remote unreachable): acp-cdc-ai-python, … 19 units …
+```
+
+The sandbox denies network. The case asks *"find what is out of date and update
+it"*, and the tool that answers that question needs a remote. So the agent
+cannot learn WHICH unit is stale and reconstructs it from local evidence —
+`installed/*.json` against `units.lock.toml` against `git rev-parse` against the
+root home. Thirty calls of exactly that, and every one of them is the right
+thing to do given what it was told.
+
+**The case is unmeasurable offline as designed**, the same way the provisioning
+cases were unmeasurable before the Stop hook. Three ways out, and the first is
+a real capability gap rather than a fixture problem:
+
+1. **`skt check` could answer part of this offline.** The installed record and
+   the unit's own git checkout are both local; comparing them says "this home's
+   record disagrees with the checkout it holds" without any network. Only "is
+   there something newer upstream" needs the remote. Today an offline check
+   reports nothing but unverifiable.
+2. Re-aim the case at what IS answerable offline — `skt check` did find, and
+   name a fix for, "this home runs another home's copy for 4 entry points".
+3. Drop it and cover currency in the test graph, which has a network.
+
+Recommendation: **1, then re-run**. It is the fix with value outside the eval —
+every offline agent has the same question — and it is what would turn thirty
+calls into one.
