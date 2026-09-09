@@ -129,7 +129,46 @@ cfg = json.loads(path.read_text()) if path.exists() else {}
 # what "don't ask" already means -- it denied every write and cost four probe
 # runs to separate from the sandbox question underneath it.)
 cfg.setdefault("permissions", {})["defaultMode"] = "auto"
-cfg["permissions"]["allow"] = ["Bash", "Read", "Write", "Edit", "Skill", "Glob", "Grep"]
+cfg["permissions"]["allow"] = [
+    "Bash", "Read", "Write", "Edit", "Skill", "Glob", "Grep",
+    # NETWORK IS A PERMISSION BEFORE IT IS A SANDBOX RULE, exactly as writes
+    # were. allowedDomains alone produced
+    #     deny network-outbound github.com:443 (user denied)
+    # -- an ASK, auto-denied in dontAsk. The settings docs pair allowedDomains
+    # with WebFetch(domain:...) allow rules; both halves are set below.
+    "WebFetch(domain:github.com)", "WebFetch(domain:codeload.github.com)",
+    "WebFetch(domain:objects.githubusercontent.com)",
+]
+# NETWORK: KEPT, AND INERT. Read this before trying it again.
+#
+# `plugin eval`'s sandbox config does carry `network:{allowedDomains:p}`, so
+# the capability exists. Reaching it from here does not work. Three probes,
+# each a separate run, each ending in the identical line:
+#
+#     deny network-outbound github.com:443 (user denied)
+#
+#   1. sandbox.network.allowedDomains in this file          -> no effect
+#   2. permissions.allow ["WebFetch(domain:github.com)"]     -> no effect
+#   3. --allow-tools 'WebFetch(domain:github.com)' as well   -> no effect
+#
+# and `claude plugin eval --help` has no network flag. "(user denied)" is the
+# permission layer answering an ask in dontAsk mode, which is the same shape
+# the WRITE gate had -- but unlike writes, no combination of the two halves
+# opens it.
+#
+# The one lever left is MANAGED settings
+# (/Library/Application Support/ClaudeCode/managed-settings.json), which the
+# CLI's own docs single out: with allowManagedDomainsOnly, "only allowedDomains
+# and WebFetch(domain:...) allow rules from managed settings are respected".
+# That file is machine-wide and affects every Claude Code session on the box,
+# so it is an operator decision and not something this harness writes.
+#
+# Left in place because it costs nothing and is correct in intent: if the
+# mechanism is ever enabled, these are the domains a currency check needs.
+cfg.setdefault("sandbox", {})["network"] = {
+    "allowedDomains": ["github.com", "*.github.com", "codeload.github.com",
+                       "objects.githubusercontent.com"],
+}
 path.write_text(json.dumps(cfg, indent=2) + "\n")
 PYEOF
   # AUTH. The credential is in the login keychain and that path is HOME-relative,
