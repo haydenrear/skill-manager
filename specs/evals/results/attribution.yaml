@@ -263,6 +263,32 @@ findings:
       The corpus is real transcripts, not invented shapes. A guess about what
       agents write is what produced five of the six.
 
+  - id: EV-I-26
+    title: "the hook's python3 is 3.9; the shell's is 3.14, and the module would not load"
+    channel: operator-running-own-instrument
+    area: "the eval harness's Stop hook — interpreter it actually runs under"
+    detail: >
+      `python3` in this interactive shell is an alias for python 3.14. A Stop
+      hook is spawned with the operator's environment, where `python3` is
+      /usr/bin/python3 -- 3.9.6. The extracted module annotated a parameter
+      `re.Pattern | None`, which is a TypeError at IMPORT time on 3.9, so the
+      module never loaded, the extractor recognised nothing, and the four
+      graders below the early exit went red.
+    note: >
+      The module's own --self-test passed the whole time, because I ran it with
+      the shell's interpreter and not the hook's. Two interpreters, one name.
+      This is EV-I-25's exact lesson recurring one level up: the test surface
+      has to be the environment the thing runs in.
+    resolution: >
+      `from __future__ import annotations` so annotations are never evaluated,
+      and eval_build_case now runs the corpus under EVERY python3 that could
+      run it (/usr/bin/python3 and PATH's) BEFORE building -- a case whose
+      extractor fails its own tests is refused rather than run. Verified by
+      breaking the module in a copy of the tree: the build aborts and prints
+      which corpus entries failed.
+    class_of: instrument-defect-scored-as-the-subject
+    caught_by: offline-test-before-a-paid-run
+
   - id: EV-I-13
     title: "the sync fixture plants staleness in a record skt check does not read"
     channel: operator-running-own-instrument
