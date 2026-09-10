@@ -75,65 +75,29 @@ try: print(json.load(sys.stdin).get("transcript_path") or "")
 except Exception: print("")' 2>/dev/null)"
 say "transcript=$TRANSCRIPT"
 
-python3 - "$TRANSCRIPT" "$EV" "$VERB_RE" "${PROG_RE:-}" <<'PYEOF' 2>>"$LOG"
-import json, pathlib, re, shlex, sys
+# ONE IMPLEMENTATION, NOT TWO. The extraction rules used to live inline here,
+# where the only way to test them was a live eval run: ~$1.25 and a 5 GB
+# sandbox to read afterwards. SIX of this suite's findings are bugs in those
+# forty lines and every one of them is decidable against a string, so they
+# moved to lib/front_door.py with a corpus of commands agents really issued:
+#
+#     python3 units/verify/lib/front_door.py --self-test
+#
+# A copy of the rules here would drift from the copy the tests exercise, which
+# is the failure this import exists to prevent.
+python3 - "$TRANSCRIPT" "$EV" "$VERB_RE" "${PROG_RE:-}" "$CLAUDE_PLUGIN_ROOT/lib" <<'PYEOF' >>"$LOG" 2>&1
+import json, pathlib, sys
 transcript, ev = sys.argv[1], pathlib.Path(sys.argv[2])
-verb_re, prog_re = sys.argv[3], sys.argv[4] or r"skt|wt|skill-manager|bootstrap-home\.sh"
+verb_re, prog_re = sys.argv[3], sys.argv[4] or None
+sys.path.insert(0, sys.argv[5])
+import front_door
 
-# MATCH THE PROGRAM BY ITS BASENAME, NOT BY THE SHAPE OF ITS PATH.
-#
-# Three times now this grader has missed a CORRECT command because it only knew
-# one spelling, and each time the spelling it missed was the one the skill
-# actually teaches:
-#
-#   skt ticket new …                                    (literal -- matched)
-#   "$SKT" ticket new …                                 (missed: variable)
-#   "${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/skills/…/bootstrap-home.sh"
-#                                                       (missed: quoted path
-#                                                        with an expansion in it)
-#
-# A grader that penalises following the documentation is worse than no grader,
-# so the rule is now structural: take the first word of the segment, strip
-# quotes, take whatever follows the last "/", and ask whether THAT is a program
-# we care about. Every spelling of the path in front of it becomes irrelevant,
-# which is the only way this stops recurring.
-SEP   = re.compile(r"(?:\|\||&&|[;&|\n])")
-PROG  = re.compile(r"^(?:" + prog_re + r")$")
-VERB  = re.compile(r"^(?:" + verb_re + r")\b") if verb_re else None
-HELP  = re.compile(r"(?:^|\s)(?:--help|-h)(?:\s|$)")
-REDIR = re.compile(r"\s*\d?>>?.*$")
-# RULE 4: this hook runs UNSANDBOXED AS THE OPERATOR, so nothing from the
-# transcript executes as written. Only these argument shapes replay, and the
-# only command substitution allowed is a git rev-parse -- which is how the
-# skill teaches you to resolve a base.
-SAFE_ARG = re.compile(r"""(?x) ^(?:
-      [A-Za-z0-9_./:@=-]+
-    | --?[A-Za-z-]+
-    | "?\$\(git\s+rev-parse\s+[A-Za-z0-9_/^~-]+\)"?
-)$""")
+kw = {"verb_re": verb_re}
+if prog_re: kw["prog_re"] = prog_re
 
-VAR_ONLY = re.compile(r'^"?\$\{?\w+\}?"?$')
-
-def basename_of(tok):
-    """The program name, with every quote and path segment stripped away.
-
-    Quotes are removed from ANYWHERE in the word, not just its ends: the shell
-    lets them close mid-word (`"$HOME"/bin/thing`), and a strip() only reaches
-    the outside."""
-    tok = tok.replace('"', "").replace("'", "").strip()
-    return tok.rsplit("/", 1)[-1]
-
-def is_program(tok):
-    """The first word names a program we care about.
-
-    Two accepted shapes, and the second is not laxity. `SKT="…/bin/cli/skt";
-    "$SKT" ticket new …` is exactly what git-epic-workflow's SKILL.md
-    prescribes, and the variable hides the basename by design. A bare variable
-    is admitted only because the VERB is checked next -- `"$X" ticket new` is
-    unambiguous, and `"$X" status` matches nothing.
-    """
-    return bool(PROG.match(basename_of(tok))) or bool(VAR_ONLY.match(tok.strip()))
-
+# THE COMMANDS THE AGENT TRIED, from tool_use inputs and not from its prose.
+# The prose is what it says it did, and this file exists because a plausible
+# narration and a real result are different things.
 cmds = []
 if transcript and pathlib.Path(transcript).exists():
     for line in pathlib.Path(transcript).read_text(errors="replace").splitlines():
@@ -147,59 +111,16 @@ if transcript and pathlib.Path(transcript).exists():
 
 hits, unsafe = [], []
 for c in cmds:
-    for piece in SEP.split(c):
-        piece = REDIR.sub("", piece.strip())
-        if not piece or HELP.search(piece): continue
-        # WHITESPACE FIELDS, NOT shlex. This is the fourth extraction defect in
-        # this file and they share one cause: shell text is not a token stream.
-        # `shlex.split(posix=False)` SPLITS
-        #     "${SKILL_MANAGER_HOME:-$HOME/.skill-manager}"/skills/…/bootstrap-home.sh
-        # into two words at the closing quote, so the program's basename came
-        # out as `.skill-manager}` and a correct command scored as a miss --
-        # again. A plain split keeps a concatenated word whole, which is what
-        # the shell does with it.
-        # SPLIT FOR THE PROGRAM, shlex FOR THE ARGUMENTS. They are different
-        # problems and one tool does not solve both:
-        #
-        #   "${SKILL_MANAGER_HOME:-$HOME/...}/scripts/bootstrap-home.sh"
-        #       shlex SPLITS this at the closing quote -> basename ".skill-manager}"
-        #   --base "$(git rev-parse HEAD)"
-        #       .split() breaks this into --base / "$(git / rev-parse / HEAD)"
-        #       and the allowlist rejects `"$(git`
-        #
-        # The second is the FIFTH time this extractor has rejected the exact
-        # form git-epic-workflow's SKILL.md teaches, and it is what made
-        # epic-provisions look BIMODAL: 0.33 / 1.00 / 0.33, where the 1.00 run
-        # happened to resolve its SHA in a previous call so its arguments were
-        # literal. Not agent variance -- grader variance.
-        words = piece.split()
-        if not words or not is_program(words[0]): continue
-        try:
-            rest = shlex.split(piece, posix=False)[1:]
-        except ValueError:
-            rest = words[1:]
-        if VERB is None and VAR_ONLY.match(words[0].strip()):
-            continue   # nothing would distinguish `"$X" --root …` from any other tool
-        if VERB:
-            joined = " ".join(rest)
-            m = VERB.match(joined)
-            if not m: continue
-            tail = joined[m.end():].strip()
-            try:
-                rest = shlex.split(tail, posix=False) if tail else []
-            except ValueError:
-                rest = tail.split() if tail else []
-        if all(SAFE_ARG.match(t.replace('"', "").replace("'", "")) or SAFE_ARG.match(t)
-               for t in rest):
-            hits.append(" ".join(rest))
-        else:
-            unsafe.append(piece)
+    h, r = front_door.analyze(c, **kw)
+    hits += h; unsafe += r
 
 (ev / "commands.txt").write_text("\n---\n".join(cmds) + "\n" if cmds else "")
 (ev / "front-door-candidates.txt").write_text("\n".join(hits) + "\n" if hits else "")
 if unsafe:
     (ev / "front-door-rejected.txt").write_text("\n".join(unsafe) + "\n")
 if hits:
+    # LAST, not first: an agent that probes and then provisions has issued
+    # both, and the one to replay is the one it settled on.
     (ev / "front-door").write_text(hits[-1] + "\n")
 print(f"bash calls={len(cmds)} candidates={len(hits)} rejected={len(unsafe)}")
 PYEOF

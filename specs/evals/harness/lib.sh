@@ -423,6 +423,30 @@ eval_build_case() {
   local build src root
   build="$1"; src="$2"; root="$(eval_root)"
 
+  # THE GRADER'S OWN TESTS, BEFORE SPENDING A DOLLAR ON A RUN IT WOULD RED.
+  #
+  # A Stop hook runs with the OPERATOR's python3, not the interactive shell's.
+  # Here those are /usr/bin/python3 (3.9) and python 3.14, and a `re.Pattern |
+  # None` annotation is a TypeError at import time on the first. The module
+  # failed to load, the extractor recognised nothing, and FOUR graders went red
+  # for a reason with nothing to do with the agent -- which is exactly the red
+  # this suite has already spent ~$4 misreading.
+  #
+  # 20 ms against every interpreter that could run it beats one more $1.25 run
+  # whose score means nothing.
+  local py fd_self_test
+  fd_self_test="$root/units-template/verify/lib/front_door.py"
+  for py in /usr/bin/python3 python3; do
+    command -v "$py" >/dev/null 2>&1 || continue
+    if ! "$py" "$fd_self_test" --self-test >/dev/null 2>&1; then
+      echo "setup: the front-door extractor fails its own corpus under $py" >&2
+      "$py" "$fd_self_test" --self-test >&2 || true
+      echo "       Not building: every grader below the extractor would go red" >&2
+      echo "       for an instrument defect, at ~\$1.25 a run." >&2
+      return 1
+    fi
+  done
+
   # ROOM TO BUILD, CHECKED BEFORE BUILDING. A case is a ~5 GB home clone, and
   # a sweep builds one per case while the previous ones are still on disk.
   # Reaching ENOSPC does not fail a run politely: the harness writes every
