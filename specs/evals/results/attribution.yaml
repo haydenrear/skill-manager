@@ -226,6 +226,43 @@ findings:
       permanently and it read as a finding about the skill on every run. A
       grader that cannot pass is worse than a missing one.
 
+  - id: EV-I-24
+    title: "one unrecognised command scored as four separate findings"
+    channel: census
+    channel_note: "asked to define the problem precisely instead of calling it a case failure"
+    area: "the eval harness's Stop hook — the early exit at the front-door check"
+    detail: >
+      When the extractor recognises nothing the hook exits before writing
+      front-door-runs, worktree-has-its-own-home OR source-undamaged, so ONE
+      defect reds FOUR graders and reads as 0.17. That is why
+      epic-provisions looked like a collapse: it is one measurement failure,
+      counted four times, in a case whose agent issued the correct command.
+    note: >
+      I called this 'provisioning epics is failing'. The skill was not failing;
+      the grader was. The phrasing put a product defect where an instrument
+      defect was.
+    resolution: >
+      The graders still go red -- nothing was verified, and they should -- but
+      the hook now writes WHY-NO-FRONT-DOOR.txt naming the commands it saw and
+      the ones it rejected, and run.sh archives it beside the score. A red
+      carried no information before, which is why diagnosing this case cost
+      three sweeps and roughly four dollars.
+
+  - id: EV-I-25
+    title: "the extractor was only testable by spending $1.25 and reading 5 GB"
+    channel: census
+    area: "the eval harness's extractor — no offline test surface"
+    detail: >
+      Six findings in this ledger are bugs in ~40 lines of command parsing, and
+      every one was found by a live run. All six are decidable against a STRING.
+    resolution: >
+      Extracted to units-template/verify/lib/front_door.py with a CORPUS of
+      commands agents actually issued -- including all six regressions --
+      runnable as `python3 front_door.py --self-test` in milliseconds. 7 of 7.
+    note: >
+      The corpus is real transcripts, not invented shapes. A guess about what
+      agents write is what produced five of the six.
+
   - id: EV-I-13
     title: "the sync fixture plants staleness in a record skt check does not read"
     channel: operator-running-own-instrument

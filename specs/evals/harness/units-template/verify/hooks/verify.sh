@@ -204,7 +204,33 @@ if hits:
 print(f"bash calls={len(cmds)} candidates={len(hits)} rejected={len(unsafe)}")
 PYEOF
 
-[ -s "$EV/front-door" ] || { say "no front-door command in the transcript; nothing to replay"; exit 0; }
+# A RED THAT EXPLAINS ITSELF. This early exit is why one failure reads as
+# four: front-door, front-door-runs, worktree-has-its-own-home and
+# source-undamaged are all unwritten below it, so ONE unrecognised command
+# scores 0.17 and looks like a collapse.
+#
+# The graders still go red -- they should, nothing was verified -- but the
+# reason is now recorded beside them instead of living only in a 5 GB kept
+# sandbox. Diagnosing this case has cost three sweeps and ~$4 precisely
+# because a red carried no information.
+if [ ! -s "$EV/front-door" ]; then
+  {
+    echo "NO FRONT-DOOR COMMAND RECOGNISED."
+    echo "VERB_RE=$VERB_RE  PROG_RE=${PROG_RE:-<default>}"
+    echo
+    echo "The graders below this point are red because nothing was replayed,"
+    echo "NOT because each is a separate finding:"
+    echo "  front-door, front-door-runs, worktree-has-its-own-home, source-undamaged"
+    echo
+    echo "--- every Bash command the agent ran, which is what to match against ---"
+    cat "$EV/commands.txt" 2>/dev/null
+    echo "--- pieces that looked like the front door but failed the arg allowlist ---"
+    cat "$EV/front-door-rejected.txt" 2>/dev/null || echo "(none)"
+  } > "$EV/WHY-NO-FRONT-DOOR.txt"
+  say "no front-door command recognised — see .eval/WHY-NO-FRONT-DOOR.txt"
+  cp -R "$EV" "$BUILD/eval-diagnostics-$(date -u +%H%M%S)" 2>/dev/null || true
+  exit 0
+fi
 ARGS="$(cat "$EV/front-door")"
 if [ "$REPLAY" != "yes" ]; then
   # NOTHING WAS REPLAYED, SO NOTHING WAS TOUCHED -- and that verdict has to be
