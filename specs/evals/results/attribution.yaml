@@ -289,6 +289,38 @@ findings:
       files instead of prose -- which is the wiring paying for itself in the
       most direct way available: it contradicted me.
 
+  - id: EV-I-19
+    title: "a fix reported as applied that had never run — the && swallowed it"
+    channel: census
+    channel_note: "found by reading git show on the commit that claimed it"
+    area: "the eval harness's operator — me"
+    detail: >
+      The 'state the contract' rewrite of the toolchain hook was run as
+      `cd specs/evals/harness && python3 ...` from a shell already IN that
+      directory. The cd failed, the && swallowed the edit, and the `bash -n`
+      and the eval run that followed were separate statements -- so the block
+      printed 'syntax ok' and 'score 1.00' and looked applied. `git show` on
+      the commit shows it added the cd line and comments and nothing else.
+      I then attributed a 4->2 call improvement to a fix that did not exist.
+    class_of: read-a-stale-artifact-as-a-result
+    fix: "read the file back and count both the new text and the old; done for the rewrite that replaced it"
+
+  - id: EV-I-20
+    title: "the toolchain hook told the no-home case to give up on its own task"
+    channel: blind-judges
+    channel_note: "bootstraps-a-home-for-a-repo, 3 runs at 0.10 / 0.10 / 0.30"
+    area: "the eval harness's toolchain hook"
+    detail: >
+      For the one case whose subject IS a checkout with no home, the hook
+      announced `skt -> NOT ON PATH (that is a defect in the eval setup, not
+      something to work around)`. True about the path and exactly wrong as
+      advice: giving the checkout a home is the task. Red on the front-door
+      grader in all three runs.
+    note: >
+      CONSISTENT ACROSS THREE RUNS, which is what separated it from the
+      2-vs-4 coin flip one row up. At --runs 1 this and that noise are
+      indistinguishable, and I had been reading both as signal.
+
   - id: EV-I-17
     title: "the harness filled the disk and no command could run"
     channel: operator-doing-the-work
