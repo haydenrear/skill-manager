@@ -423,6 +423,24 @@ eval_build_case() {
   local build src root
   build="$1"; src="$2"; root="$(eval_root)"
 
+  # ROOM TO BUILD, CHECKED BEFORE BUILDING. A case is a ~5 GB home clone, and
+  # a sweep builds one per case while the previous ones are still on disk.
+  # Reaching ENOSPC does not fail a run politely: the harness writes every
+  # command's output to a file, so once the disk is full NO command can run at
+  # all -- not `df`, not `rm`. The recovery is manual and it is the operator's.
+  #
+  # This repo's own memory note says to measure worktree cost with FREE SPACE
+  # rather than `du`, because copy-on-write clones lie to `du`. That is what
+  # this does.
+  local free_gb
+  free_gb="$(df -g "$(dirname "$build")" 2>/dev/null | awk 'NR==2{print $4}')"
+  if [ -n "$free_gb" ] && [ "$free_gb" -lt "${EVAL_MIN_FREE_GB:-25}" ]; then
+    echo "setup: ${free_gb}G free, need ${EVAL_MIN_FREE_GB:-25}G — a case is a ~5G home clone" >&2
+    echo "       and a full disk stops every command, not just this one." >&2
+    echo "  free it:  rm -rf $(dirname "$build")/*  /private/tmp/e-*" >&2
+    echo "            (the second are --keep sandboxes; chmod -R u+w them first)" >&2
+    return 1
+  fi
   rm -rf "$build"; mkdir -p "$build" "$(eval_tmpdir "$build")"
   branch_home "$src" "$build/home" projections
 
@@ -562,7 +580,8 @@ eval_run_case() {
   trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
 
   ( cd "$build" && HOME="$root/.evalhome-$case_name" CLAUDE_CODE_WALNUT_SPIRE=1 \
-      "$claude" plugin eval . --case "$case_name" --ablation none --runs 1 \
+      "$claude" plugin eval . --case "$case_name" --ablation none \
+        --runs "${EVAL_RUNS:-1}" \
         --keep-temp --max-cost-usd 2 \
         --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(skill-manager:*)' \
           'Bash(python3:*)' Read Write Edit Skill \
