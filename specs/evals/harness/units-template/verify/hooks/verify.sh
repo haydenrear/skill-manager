@@ -158,9 +158,26 @@ for c in cmds:
         # out as `.skill-manager}` and a correct command scored as a miss --
         # again. A plain split keeps a concatenated word whole, which is what
         # the shell does with it.
+        # SPLIT FOR THE PROGRAM, shlex FOR THE ARGUMENTS. They are different
+        # problems and one tool does not solve both:
+        #
+        #   "${SKILL_MANAGER_HOME:-$HOME/...}/scripts/bootstrap-home.sh"
+        #       shlex SPLITS this at the closing quote -> basename ".skill-manager}"
+        #   --base "$(git rev-parse HEAD)"
+        #       .split() breaks this into --base / "$(git / rev-parse / HEAD)"
+        #       and the allowlist rejects `"$(git`
+        #
+        # The second is the FIFTH time this extractor has rejected the exact
+        # form git-epic-workflow's SKILL.md teaches, and it is what made
+        # epic-provisions look BIMODAL: 0.33 / 1.00 / 0.33, where the 1.00 run
+        # happened to resolve its SHA in a previous call so its arguments were
+        # literal. Not agent variance -- grader variance.
         words = piece.split()
         if not words or not is_program(words[0]): continue
-        rest = words[1:]
+        try:
+            rest = shlex.split(piece, posix=False)[1:]
+        except ValueError:
+            rest = words[1:]
         if VERB is None and VAR_ONLY.match(words[0].strip()):
             continue   # nothing would distinguish `"$X" --root …` from any other tool
         if VERB:
@@ -168,7 +185,10 @@ for c in cmds:
             m = VERB.match(joined)
             if not m: continue
             tail = joined[m.end():].strip()
-            rest = tail.split() if tail else []
+            try:
+                rest = shlex.split(tail, posix=False) if tail else []
+            except ValueError:
+                rest = tail.split() if tail else []
         if all(SAFE_ARG.match(t.replace('"', "").replace("'", "")) or SAFE_ARG.match(t)
                for t in rest):
             hits.append(" ".join(rest))
