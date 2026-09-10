@@ -12,6 +12,26 @@
 # executing /usr/bin/git successfully in a run where the agent could not.
 # So it reports what is on PATH and says to use it by name.
 set -uo pipefail
+# RESOLVE WHERE THE AGENT WILL, WHICH IS NOT WHERE THIS HOOK STARTS.
+#
+# The agent's PATH leads with RELATIVE entries -- `.eval-bin` and
+# `.skill-manager/bin/cli` -- because those are the only places a run can read
+# (see lib.sh eval_agent_path). A relative PATH entry resolves against the
+# CURRENT DIRECTORY, and this hook does not start in the workspace.
+#
+# So it reported, to every case:
+#
+#     skt           -> NOT ON PATH (… that is a defect in the eval setup …)
+#     skill-manager -> /opt/homebrew/bin/skill-manager
+#
+# Both false. The front door WAS on the agent's path, and the second line
+# handed it the operator's global homebrew CLI -- the exact "teaching it to
+# bypass the thing run.sh sets up" this file's own header warns about, one
+# rewrite later.
+#
+# An agent told the front door is absent goes looking for it, and that is the
+# 4-to-7 orientation calls every case was failing its cost grader on.
+cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null || true
 out="Toolchain for this session. PATH is already set correctly by the run"
 out="$out"$'\n'"script -- CALL THESE BY NAME, do not search for them and do not"
 out="$out"$'\n'"write absolute paths:"
