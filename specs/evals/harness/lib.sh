@@ -576,6 +576,18 @@ eval_run_case() {
     mkdir -p "$dest"
     cp "$newest/aggregate-result.json" "$dest/$(basename "${newest%/}").json"
     echo "archived: specs/evals/results/runs/$c/$(basename "${newest%/}").json"
+    # AND THE DIAGNOSTICS, when the verifier wrote any. A score says a case
+    # failed; this says WHY, and it is the difference between diagnosing from
+    # a 40 KB text file and diagnosing from a 5 GB kept sandbox that nothing
+    # expires (EV-I-23). Only written on a red, so a green run archives one
+    # small JSON as before.
+    local diag
+    for diag in "$b"/eval-diagnostics-*; do
+      [ -d "$diag" ] || continue
+      mkdir -p "$dest/diagnostics"
+      cp "$diag"/WHY-NO-FRONT-DOOR.txt "$dest/diagnostics/$(basename "${newest%/}")-$(basename "$diag").txt" 2>/dev/null \
+        && echo "  diagnostics: why the front door was not recognised"
+    done
   }
   trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
 
