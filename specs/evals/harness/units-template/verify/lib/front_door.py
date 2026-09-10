@@ -16,7 +16,16 @@ CORPUS below is the regression suite — every entry a command an agent actually
 issued in a run of this suite, not a shape someone imagined.
 
     python3 front_door.py --self-test
+
+RUNS ON /usr/bin/python3, WHICH IS 3.9 HERE. The interactive shell's python3
+is 3.14; a hook's is the system one, and `re.Pattern | None` in a signature is
+a TypeError at import on 3.9 — the module fails to load entirely and every
+grader below it goes red for a reason with nothing to do with the run. That
+is the fifth time this suite has produced a red that was purely instrumental.
+The future import makes annotations strings, so they are never evaluated.
 """
+from __future__ import annotations
+
 import re
 import shlex
 import sys
@@ -60,15 +69,22 @@ def is_program(tok: str, prog: re.Pattern, verb: re.Pattern | None) -> bool:
     return verb is not None and bool(VAR_ONLY.match(tok.strip()))
 
 
-def match(command: str, verb_re: str = r"(?:ticket\s+new|new)",
-          prog_re: str = DEFAULT_PROG) -> str | None:
-    """The front door's ARGUMENTS, or None.
+def analyze(command: str, verb_re: str = r"(?:ticket\s+new|new)",
+            prog_re: str = DEFAULT_PROG) -> tuple[list[str], list[str]]:
+    """(front-door argument strings, pieces that looked right but were refused).
+
+    The second list is why this returns a pair rather than a string. A red
+    grader used to carry no information at all, and diagnosing one such red
+    cost three sweeps and roughly four dollars — so the hook now names the
+    pieces it ALMOST took, and those are the next entries in CORPUS.
 
     Split for the program word, shlex for the arguments — different problems,
     and one tool solves neither alone. shlex splits `"${VAR}"/path/thing` at
     the closing quote; .split() breaks `--base "$(git rev-parse HEAD)"` into
     four fields.
     """
+    hits: list[str] = []
+    rejected: list[str] = []
     prog = re.compile(r"^(?:" + prog_re + r")$")
     verb = re.compile(r"^(?:" + verb_re + r")\b") if verb_re else None
     for piece in SEP.split(command):
@@ -96,8 +112,21 @@ def match(command: str, verb_re: str = r"(?:ticket\s+new|new)",
                 rest = tail.split() if tail else []
         if all(SAFE_ARG.match(t.replace('"', "").replace("'", "")) or SAFE_ARG.match(t)
                for t in rest):
-            return " ".join(rest)
-    return None
+            hits.append(" ".join(rest))
+        else:
+            rejected.append(piece)
+    return hits, rejected
+
+
+def match(command: str, verb_re: str = r"(?:ticket\s+new|new)",
+          prog_re: str = DEFAULT_PROG) -> str | None:
+    """The LAST front-door command's arguments, or None.
+
+    Last, not first: an agent that probes and then provisions has issued both,
+    and the one to replay is the one it settled on.
+    """
+    hits, _ = analyze(command, verb_re, prog_re)
+    return hits[-1] if hits else None
 
 
 # REAL COMMANDS FROM REAL TRANSCRIPTS. Every entry was issued by an agent in a
