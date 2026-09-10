@@ -32,10 +32,35 @@ set -uo pipefail
 # An agent told the front door is absent goes looking for it, and that is the
 # 4-to-7 orientation calls every case was failing its cost grader on.
 cd "${CLAUDE_PROJECT_DIR:-$PWD}" 2>/dev/null || true
+# ...AND cd WAS NOT ENOUGH, which two more measurements said.
+#
+# Both hooks run at SessionStart, so this one may announce a workspace the
+# FIXTURE hook has not placed yet -- the entry does not exist to be probed
+# from anywhere. And probing at all is what this file's own header warns
+# against: a hook cannot verify on the agent's behalf.
+#
+# So: STATE the entries the harness guarantees, probe only the absolute ones,
+# and be honest about the case that has no home.
 out="Toolchain for this session. PATH is already set correctly by the run"
 out="$out"$'\n'"script -- CALL THESE BY NAME, do not search for them and do not"
 out="$out"$'\n'"write absolute paths:"
-for t in git gh jbang python3 skt skill-manager; do
+# STATE WHAT IS TRUE FOR *THIS* CASE. bootstraps-a-home-for-a-repo is a
+# checkout with NO home -- that is its whole subject -- and the probing version
+# told it `skt -> NOT ON PATH (that is a defect in the eval setup, not
+# something to work around)`, i.e. gave up on the task's own premise. Three
+# runs, 0.10 / 0.10 / 0.30, red on the front-door grader in all three.
+# Consistent across three, so not the coin flip that produced the retraction.
+if [ -x .skill-manager/bin/cli/skt ]; then
+  out="$out"$'\n'"  skt, skill-manager -> this checkout's own home, ./.skill-manager/bin/cli"
+else
+  out="$out"$'\n'"  THIS CHECKOUT HAS NO ./.skill-manager, and that is a fact about the"
+  out="$out"$'\n'"  workspace rather than a broken setup -- giving it one may BE the task."
+  out="$out"$'\n'"  The skills are loaded either way: read one and follow what it says."
+fi
+out="$out"$'\n'"  git                -> ./.eval-bin/git (carries the sandbox's TMPDIR)"
+out="$out"$'\n'"Paths above are RELATIVE to this directory. Run them from here; there"
+out="$out"$'\n'"are no absolute paths to go looking for."
+for t in gh jbang python3; do
   if p="$(command -v "$t" 2>/dev/null)"; then out="$out"$'\n'"  $t -> $p"
   else out="$out"$'\n'"  $t -> NOT ON PATH (if a task needs it, that is a"
        out="$out"$'\n'"        defect in the eval setup, not something to work around)"; fi
