@@ -269,7 +269,50 @@ findings:
       permissive environment and is just as true about an earlier one. It now
       STATES the entries the harness guarantees and probes only the absolute
       ones.
-    effect_measured: "ticket-agent-opens-a-ticket: 4 calls / 0.82 -> 2 calls / 1.00, $0.49 -> $0.42"
+    effect_measured: >
+      NOT MEASURED, and the first version of this row said it was. The claim
+      was "4 calls / 0.82 -> 2 calls / 1.00". The archive of five runs of this
+      case on one day says otherwise:
+
+        12:00  1.00  2 calls   BEFORE any hook fix
+        12:13  0.82  4 calls   after the cd attempt
+        12:26  1.00  2 calls   after the contract rewrite
+        12:54  0.82  4 calls   after the contract rewrite
+
+      The 2-vs-4 split alternates and is UNCORRELATED with the change. The hook
+      really was announcing the front door as absent -- that is read from a
+      trace and stands -- and stating the contract instead is right on its own
+      terms. What does not stand is the cost effect I attributed to it.
+    correction: >
+      Seventh single-run causal claim this session, and the first one to reach
+      a commit message. The archive caught it because the scores are now in
+      files instead of prose -- which is the wiring paying for itself in the
+      most direct way available: it contradicted me.
+
+  - id: EV-I-17
+    title: "the harness filled the disk and no command could run"
+    channel: operator-doing-the-work
+    area: "the eval harness's build lifecycle"
+    detail: >
+      Each case builds a ~5 GB home; setup.sh builds the next before the
+      previous is gone, and every --keep run leaves a whole sandbox. Six cases
+      plus 31 kept sandboxes reached ENOSPC, at which point no Bash call could
+      run at all -- the harness writes each command's output to disk first.
+      This repo's own memory note says to measure worktree cost with free space
+      rather than du. I measured neither.
+    class_of: present-is-not-working
+
+  - id: EV-I-18
+    title: "--runs 1 makes every number in the ledger a single sample"
+    channel: census
+    channel_note: "found by reading the archive that EV-I-16's correction came out of"
+    area: "the eval harness's run count"
+    detail: >
+      Every score and every cost in this ledger is one run. The same case has
+      produced 2 and 4 Bash calls alternately within one hour, and 18/26/5/2/
+      5/10/14 across two days. A point estimate cannot separate a fix from a
+      coin flip, and it did not.
+    class_of: single-run-read-as-a-trend
 
   - id: EV-I-15
     title: "a patch applied without asserting its anchor, four times"
