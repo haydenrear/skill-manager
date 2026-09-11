@@ -635,3 +635,37 @@ findings:
       Posted as evidence on skill-manager#334.
     status: resolved
 
+  - id: DEF-OUN-017
+    found_by: >
+      the owner asking "and removed from onboarding already?" during the epic
+      close review
+    found_at: "2026-09-11"
+    severity: major
+    summary: >
+      The migration RETIRES the standalone `skill-manager` and onboarding still
+      BUNDLES it. UnitSupersession.TABLE carries
+      Retirement("skill-manager", "skt", MOVED_INTO_CARRIER), so a migrated home
+      drops the standalone. BundledSkills.GITHUB_COORDS still maps
+      "skill-manager" -> "github:haydenrear/skill-manager-skill", so a freshly
+      onboarded home installs it again. OUN-4 removed `skill-dev-skill` from
+      that same map and left `skill-manager` in it.
+    consequence: >
+      A fresh onboard clones skill-manager-skill, installs the standalone, and
+      the install path then immediately retires it against skt -- work done in
+      order to be undone. It is also part of why the owner sees repeated clones
+      of the bundled coordinates during a root sync.
+    not_a_crash: >
+      InstallUseCase adds RetireSupersededUnits to stage1Effects, BEFORE the
+      collision gate, so the gate does not refuse the onboard. That ordering was
+      deliberate and it holds. The defect is the wasted round trip and the
+      contradiction between two tables that describe the same fact.
+    reproduction: >
+      grep -n 'skill-manager' src/main/java/dev/skillmanager/lifecycle/BundledSkills.java
+      grep -n 'skill-manager' src/main/java/dev/skillmanager/lifecycle/UnitSupersession.java
+    candidate_owner: >
+      the same amendment ticket that narrows the addressing rule. Removing the
+      entry is one line; the question worth deciding with it is whether a unit
+      named in UnitSupersession.TABLE as MOVED_INTO_CARRIER should be refused
+      from BundledSkills by a test, so the two tables cannot disagree again.
+    status: open
+
