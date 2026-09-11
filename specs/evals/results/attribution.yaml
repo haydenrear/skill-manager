@@ -290,11 +290,36 @@ findings:
     caught_by: offline-test-before-a-paid-run
 
   - id: EV-I-13
-    title: "the sync fixture plants staleness in a record skt check does not read"
+    title: "the sync fixture manufactured a contradiction and scored the agent on it"
     channel: operator-running-own-instrument
-    area: "the eval harness's fixtures"
-    status: open
-    note: "the case is still graded on a disagreement it creates in the wrong place"
+    area: "the eval harness's syncs-a-stale-home-from-root fixture"
+    detail: >
+      The title this row carried was wrong, and measuring it said so. `skt
+      check` DOES read installed/<unit>.json. What the fixture built was a
+      record holding `6ce6538e` + 32 zeros with the checkout left at the tip --
+      under a comment claiming it rolled back to a real commit rather than
+      inventing a hash. `6ce6538` is real; that 40-character string is not, and
+      the checkout never moved.
+    measured: >
+      skt.check.collect() against both states, offline, in a synthetic home --
+      no network, no 5 GB clone. The fixture as it stood produces TWO verdicts
+      about one unit at once:
+        [record-disagrees-with-checkout] ... -> "skt sync demo"
+        ahead_of_remote: ['demo']            -> "nothing to pull"
+      The second is precisely the signal that makes an agent conclude the home
+      is current, and check.py's own comment records where that leads: ~30 Bash
+      calls reconstructing the check by hand. That is the behaviour this case
+      was scoring at 0.71.
+    resolution: >
+      The checkout is rolled back to a real HEAD~1 and the record names that
+      same full SHA, so the home is genuinely behind its source -- which is what
+      the case is named for. One verdict, and the right one:
+        [new-version] new version available -- pull with: skt sync <unit>
+      Origin is repointed at a bare mirror taken before the rollback, inside
+      the workspace: `skt check` resolves the tip with `git ls-remote`, and a
+      case whose score depends on whether github answered is measuring the
+      network. Verified offline end to end.
+    class_of: fixture-builds-a-state-the-case-is-not-about
 
   - id: EV-I-14
     title: "a probe refused by the staleness guard was read as a result"
@@ -402,21 +427,44 @@ findings:
     note: >
       The honest reading is that no number from this case means anything yet,
       including the 0.83 and 1.00 quoted for it earlier in this epic's results.
+    latest: >
+      2026-09-10, one run after the extractor was unified into lib/front_door.py:
+      1.00, all seven graders, ONE Bash call, $0.37. The command it issued was
+      CORPUS entry 3 -- the full `SKT=...; "$SKT" ticket new ... --base "$(git
+      rev-parse HEAD)"` preamble SKILL.md teaches, which older extractors
+      refused. n=1, so this is a data point and not a distribution.
+    still_open_because: >
+      EV-I-26 cannot be the cause of the earlier sweeps: it was introduced BY
+      the extraction, which came after them. And EV-I-21's argument fix was
+      verified deployed in a sweep that then scored 1.00/0.17/0.33. So a third
+      mechanism is still unaccounted for, and one green run does not retire it.
+    next_evidence: >
+      Cheap now rather than open-ended: the next red writes WHY-NO-FRONT-DOOR.txt
+      naming every command it saw and every piece it refused, archived beside
+      the score. That command becomes a CORPUS entry, and the corpus runs as a
+      build precondition -- so the same defect cannot reach a paid run twice.
 
   - id: EV-I-23
-    title: "the sweeps exhausted first the disk and then the machine's memory"
-    channel: operator-doing-the-work
-    area: "the eval harness's resource footprint"
+    title: "--keep-temp was unconditional, so every run leaked a ~5 GB sandbox"
+    channel: operator-running-own-instrument
+    area: "the eval harness's run lifecycle"
     detail: >
-      After ENOSPC (EV-I-17), three background tasks were killed for low
-      memory mid-sweep. 44 kept sandboxes had accumulated; removing them
-      returned 203G. A --keep sandbox is a whole run tree and nothing expires
-      them, so a diagnostic loop that keeps traces grows without bound.
-    fix_needed: >
-      --keep should retain the TRACE and drop the rest, or the harness should
-      reap sandboxes older than the current sweep. Neither is done.
-    status: open
+      eval_run_case passed --keep-temp on every invocation and nothing expired
+      the result. Six builds plus 31 kept sandboxes reached ENOSPC (EV-I-17),
+      and a full disk does not fail a run politely -- the harness writes each
+      command's output to a file first, so NO Bash call could run at all, not
+      `df` and not `rm`. Recovery was manual.
+    note: >
+      It was unconditional for a reason: a red could only be diagnosed by
+      reading the sandbox. EV-I-24 removed that reason.
+    resolution: >
+      --keep-temp is now passed only with --keep. A red is diagnosed from the
+      40 KB WHY-NO-FRONT-DOOR.txt archived beside the committed score instead
+      of from 5 GB kept until the disk fills, and eval_run_case warns when more
+      than three sandboxes have piled up -- before the disk guard, which only
+      speaks once there is too little left to build with.
     class_of: present-is-not-working
+
 
   - id: EV-I-19
     title: "a fix reported as applied that had never run — the && swallowed it"

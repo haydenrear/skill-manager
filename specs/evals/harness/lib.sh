@@ -571,6 +571,31 @@ eval_run_case() {
   # "unknown command 'eval' (Did you mean enable?)".
   claude="$(command -v claude)" || { echo "no claude on PATH" >&2; return 1; }
   [ "${1:-}" = "--keep" ] && { keep=1; shift; }
+  # --keep-temp WAS UNCONDITIONAL, AND THAT IS EV-I-23 AND THE CAUSE OF EV-I-17.
+  #
+  # Every run left a ~5 GB sandbox under /private/tmp/e-* that nothing expired.
+  # Six cases plus 31 of those reached ENOSPC, and a full disk does not fail a
+  # run politely: the harness writes each command's output to a file first, so
+  # no Bash call could run at all -- not `df`, not `rm`. Recovery was manual.
+  #
+  # It was unconditional because a red could only be diagnosed by reading the
+  # sandbox. That is no longer true: the Stop hook writes WHY-NO-FRONT-DOOR.txt
+  # naming every command it saw and every piece it refused, and the archiver
+  # above copies it next to the committed score. 40 KB of text, kept forever,
+  # instead of 5 GB kept until the disk fills.
+  #
+  # So the sandbox is now kept only when asked for, with --keep -- which also
+  # keeps $BUILD, since inspecting one without the other is rarely useful.
+  local keep_temp=""
+  [ "$keep" = 1 ] && keep_temp="--keep-temp"
+  # AND SAY WHAT HAS PILED UP, because the disk guard only speaks once there is
+  # too little left to build with.
+  local kept_n
+  kept_n="$(ls -d /private/tmp/e-* 2>/dev/null | wc -l | tr -d ' ')"
+  [ "${kept_n:-0}" -gt 3 ] && {
+    echo "note: $kept_n kept sandboxes under /private/tmp/e-* (~5G each)" >&2
+    echo "      reap: chmod -R u+w /private/tmp/e-* && rm -rf /private/tmp/e-*" >&2
+  }
   # THE AGENT INHERITS WHAT THIS EXPORTS, which is the thing that actually
   # decides its PATH -- the toolchain plugin's settings.json env does not
   # override it. Measured: a probe with eval_agent_path in settings.json still
@@ -618,7 +643,7 @@ eval_run_case() {
   ( cd "$build" && HOME="$root/.evalhome-$case_name" CLAUDE_CODE_WALNUT_SPIRE=1 \
       "$claude" plugin eval . --case "$case_name" --ablation none \
         --runs "${EVAL_RUNS:-1}" \
-        --keep-temp --max-cost-usd 2 \
+        $keep_temp --max-cost-usd 2 \
         --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(skill-manager:*)' \
           'Bash(python3:*)' Read Write Edit Skill \
           'WebFetch(domain:github.com)' 'WebFetch(domain:codeload.github.com)' \
