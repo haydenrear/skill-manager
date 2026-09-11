@@ -557,8 +557,9 @@ findings:
       But it is a correctness gap in this epic's OWN artifacts work rather than
       inherited from before it, so it wants a decision at the review rather
       than quiet acceptance.
+    issue: https://github.com/haydenrear/skill-manager/issues/334
     candidate_owner: >
-      an amendment ticket on the artifacts/teardown line. The likely shape is
+      skill-manager#334, on the artifacts/teardown line. The likely shape is
       that teardown reaps the ledger rows of a unit being uninstalled whether
       or not it could verify their outputs -- keeping the FILE when unsure is
       the safety property; keeping the ROW is what produces the phantom.
