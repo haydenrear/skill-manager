@@ -616,11 +616,22 @@ findings:
       It is an action on the operator's real home that deletes an edit whose
       origin is gone, so it is the owner's call and not an agent's, even though
       the content is plainly a test marker.
-    candidate_owner: >
-      the owner, at the review. Proposed: `skill-manager uninstall eval-skill`
-      with SKILL_MANAGER_HOME pinned to the project home, then verify the nine
-      paths above are gone and the other 9 units are byte-unchanged. Note that
-      skill-manager#334 predicts the ledger rows will SURVIVE that uninstall,
-      so this doubles as a live reproduction of it on a real home.
-    status: open
+    resolution: >
+      Owner approved 2026-09-11; `skill-manager uninstall eval-skill --yes` run
+      against the project home. Store removed, units.lock.toml rows 2 -> 0,
+      installed record gone, all 3 projection symlinks gone, the other 8 units
+      untouched, and `skill-manager sync` in that home now runs clean
+      (8 merged, no blocker, no exit 7). Paths naming it: 9 -> 5.
+    and_it_reproduced_334: >
+      Exactly as predicted, on a real home rather than a fixture. The census
+      did not move: 4 eval-skill artifacts before, 4 after, total 59 both
+      times -- every row flipped from materialized/ledger-and-home to
+      declared-only/ledger. `artifacts list` now reports 59 artifacts in a home
+      holding 55. Note the uninstall warned about the three PROJECTIONS only,
+      yet `unit-store:eval-skill` survives in the census with no warning at
+      all, so #334 is not confined to the unverifiable-output path.
+      `.materialization/skill/eval-skill.json` also survives, which is the
+      same residue DEF-121 documents from the other direction.
+      Posted as evidence on skill-manager#334.
+    status: resolved
 
