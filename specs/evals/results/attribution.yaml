@@ -263,6 +263,41 @@ findings:
       The corpus is real transcripts, not invented shapes. A guess about what
       agents write is what produced five of the six.
 
+  - id: EV-I-27
+    title: "a local unit origin baked at setup time is unreadable from the sandbox"
+    channel: operator-running-own-instrument
+    area: "the eval harness's fixture placement"
+    detail: >
+      The sync fixture gives git-issue-workflow a LOCAL source so the case does
+      not depend on github answering, and writes that source's absolute path
+      into installed/<unit>.json at setup time -- under $BUILD. The sandbox
+      cannot read $BUILD, and the workspace is COPIED to a fresh
+      /private/tmp/e-XXXXXX per run, so the recorded origin is unreadable from
+      the only place it is ever read.
+    measured: >
+      It does not surface as an error. `skt check` resolves the tip with `git
+      ls-remote <origin>`; an unreachable origin is `unverifiable`, which
+      produces NO notification at all:
+        origin readable   -> ['new-version']
+        origin unreadable -> NONE, unverifiable: ['demo']
+      The agent ran `skt check` as command 2 of 31, got silence, and
+      reconstructed the answer by hand over the next 29 calls.
+    resolution: >
+      The fixture hook runs outside the Bash sandbox and after the copy, so it
+      re-anchors any origin pointing into the source workspace -- the same job
+      HomeCloner.reanchorProvisioned does for shims. A github origin is left
+      alone, and so is a path that merely shares a prefix (fixture-workspace-2).
+    effect: >
+      31 commands -> 9. $1.54 -> $0.53 and 380s -> 159s, a 66% cost reduction
+      on the suite's most expensive case. The score is still 0.71: the cost
+      grader's ceiling is 4 and 9 is over it, but what remains is the agent
+      double-checking and reading a reference doc twice, which is the kind of
+      thing this case exists to measure.
+    found_by: >
+      commands.txt, archived for the first time on this run. Three sweeps of
+      scores could not say this; one 8 KB text file did.
+    class_of: instrument-defect-scored-as-the-subject
+
   - id: EV-I-26
     title: "the hook's python3 is 3.9; the shell's is 3.14, and the module would not load"
     channel: operator-running-own-instrument
