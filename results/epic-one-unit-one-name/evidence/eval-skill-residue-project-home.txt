@@ -1,0 +1,53 @@
+# eval-skill residue in the operator's PROJECT home — captured 2026-09-11, read-only.
+# Nothing here has been deleted; this is the evidence for DEF-OUN-016.
+
+## installed record
+{
+  "name" : "eval-skill",
+  "version" : "0.1.0",
+  "kind" : "GIT",
+  "installSource" : "UNKNOWN",
+  "origin" : "file:///private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/upstream/eval-skill.git",
+  "gitHash" : "e22a0f9b484d8cee5f8ac146d2704e20bb740694",
+  "gitRef" : "main",
+  "installedAt" : "2026-08-26T00:08:04.848687Z",
+  "errors" : [ ],
+  "unitKind" : "SKILL"
+}
+## store SKILL.md (the whole file)
+---
+name: eval-skill
+description: Minimal skill for issue 111 evaluation of harness composition and publish paths.
+version: 0.1.0
+---
+
+# eval-skill
+
+MARKER_SKILL_V1
+LOCAL_EDIT_EVAL_111 skill
+
+## uncommitted diff in the store
+diff --git a/SKILL.md b/SKILL.md
+index 3f5fd97..6e7ae9a 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -7,3 +7,4 @@ version: 0.1.0
+ # eval-skill
+ 
+ MARKER_SKILL_V1
++LOCAL_EDIT_EVAL_111 skill
+
+## every path in the home naming it
+.skill-manager/home.runtime.json
+.skill-manager/artifacts.lock.toml
+.skill-manager/audit.log
+.skill-manager/units.lock.toml
+.skill-manager/cache/skt-check.json
+.skill-manager/installed/eval-skill.projections.json
+.skill-manager/installed/eval-skill.json
+.skill-manager/skills/eval-skill/SKILL.md
+.skill-manager/.materialization/skill/eval-skill.json
+
+## origin, which no longer exists
+file:///private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/upstream/eval-skill.git
+ls: /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/upstream/eval-skill.git: No such file or directory

@@ -565,3 +565,62 @@ findings:
       the safety property; keeping the ROW is what produces the phantom.
     status: open
 
+  - id: DEF-OUN-016
+    found_by: >
+      the manual regression for this epic — `skill-manager sync` in the
+      operator's project home, which exits 7 and names one blocker
+    found_at: "2026-09-11"
+    severity: non-blocking
+    summary: >
+      The operator's PROJECT home carries a test-fixture unit, `eval-skill`,
+      whose origin is an ephemeral scratchpad path that no longer exists:
+        file:///private/tmp/claude-501/<session>/scratchpad/upstream/eval-skill.git
+      Its store holds an uncommitted one-line edit (`LOCAL_EDIT_EVAL_111`,
+      under `MARKER_SKILL_V1`), so every `skill-manager sync` of this home
+      stops with "extra local changes — sync would overwrite them" and exit 7,
+      and `skt check` reports it as "unverifiable (remote unreachable)".
+      The stop is CORRECT behaviour -- the command is refusing to destroy an
+      edit it cannot re-fetch. What is wrong is that the unit is there at all.
+    the_stop_is_the_feature: >
+      Worth recording because it looks like a defect and is not: this is the
+      "if it needs an ack, stop" behaviour working. 11 lines of output, one
+      named blocker, a log path, and no loop.
+    shape: >
+      FULLY INSTALLED and internally consistent -- skills/eval-skill,
+      installed/eval-skill.json, installed/eval-skill.projections.json,
+      .materialization/skill/eval-skill.json, 2 rows in units.lock.toml, plus
+      home.runtime.json, artifacts.lock.toml, audit.log and the skt-check cache.
+      Nine places name it and they agree with each other.
+    not_DEF_121: >
+      This is NOT the shape DEF-121 (epic-home-integrity-sync) describes, and
+      that matters because DEF-121's verified remedy is `rm -rf` of two paths.
+      DEF-121's home had a store and a .materialization record and NO
+      installed/ record -- nothing to keep in agreement, so a raw delete was
+      right. Here the unit IS installed. Running DEF-121's remedy against THIS
+      home would leave installed/, units.lock.toml, artifacts.lock.toml,
+      home.runtime.json and the projections all naming a unit whose files are
+      gone -- i.e. it would MANUFACTURE the damaged shape DEF-121 exists to
+      clean up. The CLI verb is the correct remedy here, and the raw delete is
+      the wrong one; in DEF-121 it is the other way round.
+    evidence: results/epic-one-unit-one-name/evidence/eval-skill-residue-project-home.txt
+    reproduction: >
+      skill-manager sync            # in <repo>/.skill-manager -> exit 7
+      skt check                     # -> unverifiable (remote unreachable): eval-skill
+      git -C <home>/skills/eval-skill status --short   # -> M SKILL.md
+    nothing_depends_on_it: >
+      Checked before proposing removal. The eval suite's committed
+      epic-provisions case.yaml still lists `../../units/eval-skill`, but
+      rewrite-case.py REGENERATES that block from the units actually built, and
+      the suite builds from the ROOT home, which has no eval-skill at all.
+    why_deferred: >
+      It is an action on the operator's real home that deletes an edit whose
+      origin is gone, so it is the owner's call and not an agent's, even though
+      the content is plainly a test marker.
+    candidate_owner: >
+      the owner, at the review. Proposed: `skill-manager uninstall eval-skill`
+      with SKILL_MANAGER_HOME pinned to the project home, then verify the nine
+      paths above are gone and the other 9 units are byte-unchanged. Note that
+      skill-manager#334 predicts the ledger rows will SURVIVE that uninstall,
+      so this doubles as a live reproduction of it on a real home.
+    status: open
+
