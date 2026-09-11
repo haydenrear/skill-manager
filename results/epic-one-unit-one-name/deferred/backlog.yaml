@@ -502,3 +502,65 @@ findings:
       checked and a later effect is what replaces it.
     candidate_owner: a comment and a post-condition on the OUN-5 line
     status: open
+
+  - id: DEF-OUN-015
+    found_by: >
+      the local full test-graph sweep run as this epic's validation step
+      (24 of 25 graphs green; artifact-dag red on one node)
+    found_at: "2026-09-11"
+    severity: non-blocking
+    summary: >
+      `skill-manager uninstall` removes a unit's materialized outputs but
+      leaves its LEDGER rows behind, so `artifacts list` names the removed
+      unit forever. After uninstalling ad-transient-unit the census still
+      reports 6 of its artifacts -- unit-store, cli-shim and three projections
+      -- each as `materialization: declared-only`, `origin: ledger`,
+      `presence: missing`. Every direct check agrees the files are gone
+      (`the_removed_units_store_entry_is_gone`, `..._cli_shim_is_gone`,
+      `..._lock_row_is_gone`, `the_provisioned_tree_..._is_gone` all pass),
+      so this is the ledger disagreeing with the home, not a deletion failure.
+      `artifacts.lock.toml` is also created by the install and not removed by
+      the uninstall, which is the whole of the byte-comparison difference
+      (onlyAfter=[F artifacts.lock.toml 3745], onlyBefore=[]).
+    mechanism: >
+      Not an oversight -- a deliberate refusal doing more than intended. The
+      uninstall prints, per projection:
+
+        ! kept projection:default:claude:ad-transient-unit#SYMLINK/... -- no
+          ledger row names an output for it, and this command deletes only
+          what the ledger recorded -- run `skill-manager artifacts record`
+          while the producer is still installed
+
+      "Delete only what the ledger recorded" is the right safety rule. But a
+      row the teardown declines to ACT on is also left in place as a row, and
+      nothing later reaps it, so a refusal to delete a file becomes a permanent
+      phantom in the census. It pruned the one orphan it could verify
+      (provisioned-tree) and kept the five it could not.
+    reproduction: >
+      python skills/test_graph/scripts/run.py artifact-dag
+        -> node uninstall.prunes.the.subgraph fails on
+           the_census_names_nothing_the_removed_unit_owned=false and
+           the_home_is_byte_comparable_to_before_the_install=false
+      Report: test_graph/build/validation-reports/<runId>/
+              node-logs/uninstall.prunes.the.subgraph.artifacts-list-after.log
+    not_a_regression_from_this_session: >
+      The graph and the teardown it exercises both landed 2026-08-16
+      (4d8929ed, 468daf8f). This node has been run locally twice -- 2026-09-04
+      and 2026-09-11 -- and failed identically both times, the first a week
+      before any work in this session. Nothing in this session touched the
+      artifacts subsystem; its commits are in sync, child-home and eval-harness
+      code.
+    why_deferred: >
+      Outside the declared slice of the eval/harness work this session is
+      doing, and the epic's deferment policy is batch/budget-5. It is also not
+      data loss: the files are deleted correctly and only the census is wrong.
+      But it is a correctness gap in this epic's OWN artifacts work rather than
+      inherited from before it, so it wants a decision at the review rather
+      than quiet acceptance.
+    candidate_owner: >
+      an amendment ticket on the artifacts/teardown line. The likely shape is
+      that teardown reaps the ledger rows of a unit being uninstalled whether
+      or not it could verify their outputs -- keeping the FILE when unsure is
+      the safety property; keeping the ROW is what produces the phantom.
+    status: open
+
