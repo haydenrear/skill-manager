@@ -587,15 +587,21 @@ eval_run_case() {
   # So the sandbox is now kept only when asked for, with --keep -- which also
   # keeps $BUILD, since inspecting one without the other is rarely useful.
   local keep_temp=""
-  [ "$keep" = 1 ] && keep_temp="--keep-temp"
+  if [ "$keep" = 1 ]; then keep_temp="--keep-temp"; fi
   # AND SAY WHAT HAS PILED UP, because the disk guard only speaks once there is
   # too little left to build with.
-  local kept_n
-  kept_n="$(ls -d /private/tmp/e-* 2>/dev/null | wc -l | tr -d ' ')"
-  [ "${kept_n:-0}" -gt 3 ] && {
+  # COUNTED WITH A GLOB, NOT WITH `ls ... | wc -l`, AND THAT IS NOT A STYLE
+  # PREFERENCE. The pipeline version ended the run: with no sandboxes present
+  # the glob does not expand, `ls` exits non-zero, `set -o pipefail` hands that
+  # status to the assignment, and `set -e` kills the function THERE -- silently,
+  # exit 0, no output whatsoever. Every run became a no-op that looked fine.
+  # A `bash -x` trace stopping dead on the assignment is what found it.
+  local kept_n=0 d
+  for d in /private/tmp/e-*; do [ -d "$d" ] && kept_n=$((kept_n + 1)); done
+  if [ "$kept_n" -gt 3 ]; then
     echo "note: $kept_n kept sandboxes under /private/tmp/e-* (~5G each)" >&2
     echo "      reap: chmod -R u+w /private/tmp/e-* && rm -rf /private/tmp/e-*" >&2
-  }
+  fi
   # THE AGENT INHERITS WHAT THIS EXPORTS, which is the thing that actually
   # decides its PATH -- the toolchain plugin's settings.json env does not
   # override it. Measured: a probe with eval_agent_path in settings.json still
@@ -634,8 +640,15 @@ eval_run_case() {
     for diag in "$b"/eval-diagnostics-*; do
       [ -d "$diag" ] || continue
       mkdir -p "$dest/diagnostics"
-      cp "$diag"/WHY-NO-FRONT-DOOR.txt "$dest/diagnostics/$(basename "${newest%/}")-$(basename "$diag").txt" 2>/dev/null \
+      # BOTH artifacts. commands.txt is written on every run and answers the
+      # COST grader -- `Bash called 32x (expected 1..4)` is unreadable without
+      # the 32 commands, and the sandbox that used to hold them is now torn
+      # down by default. WHY-NO-FRONT-DOOR.txt is written only on a red.
+      local stem="$dest/diagnostics/$(basename "${newest%/}")"
+      cp "$diag"/WHY-NO-FRONT-DOOR.txt "$stem-why-no-front-door.txt" 2>/dev/null \
         && echo "  diagnostics: why the front door was not recognised"
+      cp "$diag"/commands.txt "$stem-commands.txt" 2>/dev/null \
+        && echo "  diagnostics: $(grep -c '^---$' "$diag/commands.txt" 2>/dev/null | awk '{print $1+1}') commands the agent ran"
     done
   }
   trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT

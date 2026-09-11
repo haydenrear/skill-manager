@@ -125,6 +125,30 @@ if hits:
 print(f"bash calls={len(cmds)} candidates={len(hits)} rejected={len(unsafe)}")
 PYEOF
 
+# WHAT THE AGENT RAN, ARCHIVED ON EVERY RUN AND NOT ONLY ON A FRONT-DOOR RED.
+#
+# The first version of this copied .eval out only when the front door was
+# unrecognised, and the very next run showed why that is too narrow:
+# syncs-a-stale-home-from-root FOUND its front door and still failed, on
+# `one-command-not-a-reconstruction` -- Bash called 32x against a ceiling of 4.
+# The one artifact that would explain 32 calls is the list of the 32 commands,
+# and it had just been thrown away with the sandbox.
+#
+# commands.txt for that run is a few KB. The sandbox holding the same
+# information is ~5 GB, and keeping those is what filled the disk (EV-I-23).
+# So: always copy, and let the cheap artifact replace the expensive one
+# completely rather than for one grader.
+# A TRAP, NOT A CALL AT THE END. This hook has THREE exits -- the front-door
+# red, the REPLAY=no short-circuit, and the bottom -- and the version that
+# called this at the bottom archived nothing for syncs-a-stale-home-from-root,
+# whose case is REPLAY=no and leaves through the middle one. Verified offline:
+# a green REPLAY=no run produced no diagnostics directory at all.
+# On EXIT it fires however the hook leaves, including from an exit added later.
+eval_keep_diagnostics() {
+  cp -R "$EV" "$BUILD/eval-diagnostics-$(date -u +%H%M%S)" 2>/dev/null || true
+}
+trap eval_keep_diagnostics EXIT
+
 # A RED THAT EXPLAINS ITSELF. This early exit is why one failure reads as
 # four: front-door, front-door-runs, worktree-has-its-own-home and
 # source-undamaged are all unwritten below it, so ONE unrecognised command
@@ -149,7 +173,6 @@ if [ ! -s "$EV/front-door" ]; then
     cat "$EV/front-door-rejected.txt" 2>/dev/null || echo "(none)"
   } > "$EV/WHY-NO-FRONT-DOOR.txt"
   say "no front-door command recognised — see .eval/WHY-NO-FRONT-DOOR.txt"
-  cp -R "$EV" "$BUILD/eval-diagnostics-$(date -u +%H%M%S)" 2>/dev/null || true
   exit 0
 fi
 ARGS="$(cat "$EV/front-door")"
@@ -175,7 +198,9 @@ say "replaying args: $ARGS"
 # unsandboxed, so this containment is the only thing between an eval subject
 # and the operator's real tree.
 SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/eval-verify-XXXXXX")" || { say "mktemp failed"; exit 0; }
-trap 'rm -rf "$SANDBOX"' EXIT                                   # RULE 3 companion
+# CHAINED, because a second `trap ... EXIT` REPLACES the first rather than
+# adding to it -- and the first one is what archives the diagnostics.
+trap 'rm -rf "$SANDBOX"; eval_keep_diagnostics' EXIT            # RULE 3 companion
 if [ ! -d "$SRC_WS/.git" ]; then say "no fixture at $SRC_WS -- cannot replay"; exit 0; fi
 # COPY THE CHECKOUT WITH cp, AND THE HOME WITH `home clone`. They are not the
 # same operation, and using cp for both broke this twice:
