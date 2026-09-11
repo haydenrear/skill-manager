@@ -1,7 +1,7 @@
 # Epic close review — `one-unit-one-name`
 
 Written 2026-09-11 against `epic/one-unit-one-name` at `0bee19e1`, 63 commits
-ahead of `origin/main`. This is the whole-epic review the plan's
+ahead of `origin/main`. **Epic PR: [#335](https://github.com/haydenrear/skill-manager/pull/335).** This is the whole-epic review the plan's
 `review_policy` requires before finalization (`cadence: wave, gate: true,
 walkthrough: required`).
 
