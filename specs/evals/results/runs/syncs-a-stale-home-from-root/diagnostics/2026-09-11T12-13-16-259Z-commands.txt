@@ -1,0 +1,65 @@
+skt status 2>&1
+---
+skt check 2>&1
+---
+skt check --json 2>&1 | head -100
+---
+skt --help 2>&1
+---
+ls /private/tmp/e-ux4qAx/home/cwd/.skill-manager/ 2>&1; echo ---; ls /private/tmp/e-ux4qAx/home/cwd/.skill-manager/skills 2>&1
+---
+ls /private/tmp/skill-evals/syncs-a-stale-home-from-root/units/ 2>&1
+---
+cd /private/tmp/e-ux4qAx/home/cwd/.skill-manager && head -120 units.lock.toml 2>&1
+---
+cd /private/tmp/e-ux4qAx/home/cwd/.skill-manager/skills && for d in */; do d=${d%/}; if [ -d "$d/.git" ]; then printf "%-28s %s %s\n" "$d" "$(git -C $d rev-parse --short HEAD 2>/dev/null)" "$(git -C $d remote get-url origin 2>/dev/null)"; else printf "%-28s (no .git)\n" "$d"; fi; done 2>&1
+---
+G=$PWD/.eval-bin/git; cd .skill-manager/skills && for d in */; do d=${d%/}; if [ -d "$d/.git" ]; then printf "%-28s %-10s %s\n" "$d" "$($G -C $d rev-parse --short HEAD 2>&1 | tr -d '\n')" "$($G -C $d remote get-url origin 2>&1 | tr -d '\n')"; else printf "%-28s (no .git)\n" "$d"; fi; done 2>&1
+---
+G=$PWD/.eval-bin/git; U=/private/tmp/skill-evals/syncs-a-stale-home-from-root/units; for d in acp-cdc-ai-python debugging deploy-helm discovery git-epic-workflow git-integration-repo git-issue git-issue-workflow hyper-experiments hyper-experiments-finance llm-wiki plugin-repository slm-agent spec-double-compiler test-graph tracer-agent tracing-observability vision-toolbelt-skill; do printf "%-28s %s\n" "$d" "$($G -C $U/$d rev-parse HEAD 2>&1 | tr -d '\n')"; done 2>&1
+---
+G=$PWD/.eval-bin/git; S=.skill-manager/skills/git-issue-workflow; $G -C $S log --oneline -8 2>&1; echo "--- branches/refs:"; $G -C $S branch -a 2>&1; echo "--- is 5c88a80 known?"; $G -C $S cat-file -t 5c88a80d7cf5bf5444efb6db5046b04fbb779230 2>&1; echo "--- status:"; $G -C $S status --short 2>&1 | head
+---
+G=$PWD/.eval-bin/git; S=.skill-manager/skills/git-issue-workflow; echo "== origin/main:"; $G -C $S rev-parse origin/main 2>&1; echo "== main:"; $G -C $S rev-parse main 2>&1; echo "== 5c88a80 info:"; $G -C $S log --oneline -1 5c88a80 2>&1; echo "== is HEAD ancestor of 5c88a80?"; $G -C $S merge-base --is-ancestor HEAD 5c88a80 && echo YES-behind || echo no; echo "== log HEAD..5c88a80:"; $G -C $S log --oneline HEAD..5c88a80 2>&1 | head -20
+---
+G=$PWD/.eval-bin/git; cd .skill-manager/skills; for d in */; do d=${d%/}; [ -d "$d/.git" ] || continue; h=$($G -C $d rev-parse HEAD 2>/dev/null); m=$($G -C $d rev-parse main 2>/dev/null || $G -C $d rev-parse master 2>/dev/null); o=$($G -C $d rev-parse origin/main 2>/dev/null || $G -C $d rev-parse origin/master 2>/dev/null); ahead=$($G -C $d rev-list --count HEAD..${m:-HEAD} 2>/dev/null); aheadO=$($G -C $d rev-list --count HEAD..${o:-HEAD} 2>/dev/null); printf "%-26s HEAD=%.7s main=%.7s(+%s) origin=%.7s(+%s)\n" "$d" "$h" "$m" "${ahead:-?}" "$o" "${aheadO:-?}"; done 2>&1
+---
+G=$PWD/.eval-bin/git; S=.skill-manager/skills/git-issue-workflow; echo "== remotes:"; $G -C $S remote -v 2>&1; echo "== show 5c88a80:"; $G -C $S show --stat 5c88a80 2>&1 | head -40
+---
+skill-manager sync --help 2>&1; echo "=========="; skill-manager --help 2>&1 | head -60
+---
+grep -n "root\b" -m5 .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>&1 | head; echo "=== has positional-root arm?"; grep -n "unknown option\|unknown argument" .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>&1
+---
+skt sync --help 2>&1 | tail -30
+---
+G=$PWD/.eval-bin/git; R=/Users/hayde/.skill-manager; ls -d $R 2>&1; ls $R/skills 2>&1 | head -30; echo "== root store head:"; $G -C $R/skills/git-issue-workflow rev-parse --short HEAD 2>&1
+---
+G=$PWD/.eval-bin/git; R=/Users/hayde/.skill-manager/skills/git-issue-workflow; echo "root HEAD=$($G -C $R rev-parse --short HEAD) main=$($G -C $R rev-parse --short main 2>&1) origin/main=$($G -C $R rev-parse --short origin/main 2>&1)"; echo "== root lock entry:"; grep -A6 'name = "git-issue-workflow"' /Users/hayde/.skill-manager/units.lock.toml 2>&1
+---
+U=/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/git-issue-workflow; ls $U 2>&1; echo "== fix present in unit repo?"; grep -n "unknown option\|unknown argument\|a bare directory" $U/scripts/bootstrap-home.sh 2>&1
+---
+U=/private/tmp/skill-evals/syncs-a-stale-home-from-root/units/git-issue-workflow; find $U -maxdepth 3 2>&1 | head -40; echo "== fix?"; grep -rn "unknown option" $U/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>&1 | head
+---
+cd .skill-manager; ls installed 2>&1 | head; echo "== installed record:"; cat installed/git-issue-workflow*.json 2>/dev/null | head -40; echo "== show:"; skill-manager show git-issue-workflow 2>&1 | head -30
+---
+G=$PWD/.eval-bin/git; cd .skill-manager/sources 2>&1 && ls 2>&1 | head -40
+---
+env | grep -i skill 2>&1; echo "---"; which skill-manager skt 2>&1
+---
+G=$PWD/.eval-bin/git; S=.skill-manager/sources/git-issue-workflow.git; echo "== refs:"; $G -C $S show-ref 2>&1; echo "== main log:"; $G -C $S log --oneline -3 main 2>&1
+---
+skill-manager sync git-issue-workflow --git-latest --dry-run 2>&1 | tail -40
+---
+skt sync git-issue-workflow 2>&1 | tail -40
+---
+cd .skill-manager/installed && for f in *.json; do case "$f" in *projections*) continue;; esac; python3 -c "
+import json,sys
+d=json.load(open('$f'))
+print('%-28s %-12s %-10s %s' % (d.get('name'), d.get('installSource'), (d.get('gitHash') or '')[:7], d.get('origin')))
+" 2>/dev/null; done 2>&1
+---
+G=$PWD/.eval-bin/git; P=/private/tmp/skill-evals/syncs-a-stale-home-from-root/fixture-workspace/.skill-manager/sources/git-issue-workflow.git; $G -C $P show-ref 2>&1 | head
+---
+ls /private/tmp/skill-evals/syncs-a-stale-home-from-root/fixture-workspace/.skill-manager/sources/git-issue-workflow.git 2>&1 | head
+---
+skill-manager home repair --home /private/tmp/e-ux4qAx/home/cwd/.skill-manager --fix 2>&1 | tail -20
