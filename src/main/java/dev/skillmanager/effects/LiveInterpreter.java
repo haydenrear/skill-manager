@@ -28,6 +28,7 @@ import dev.skillmanager.policy.Policy;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
+import dev.skillmanager.lifecycle.UnitSupersession;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.sync.SkillSync;
 import dev.skillmanager.tools.ToolDependency;
@@ -35,12 +36,14 @@ import dev.skillmanager.tools.ToolInstallRecorder;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.Stream;
 import java.util.Map;
 
 /**
@@ -186,6 +189,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.SnapshotMcpDeps e -> snapshotMcpDeps(e, ctx);
             case SkillEffect.RejectIfAlreadyInstalled e -> rejectIfInstalled(e, ctx);
             case SkillEffect.RejectIfTopLevelInstalled e -> rejectIfTopLevelInstalled(e, ctx);
+            case SkillEffect.RejectContainedNameCollision e -> rejectContainedNameCollision(e, ctx);
+            case SkillEffect.RetireSupersededUnits e -> retireSupersededUnits(e, ctx);
             case SkillEffect.CheckInstallPolicyGate e -> checkInstallPolicyGate(e, ctx);
             case SkillEffect.BuildResolveGraphFromSource e -> ResolveGraphHandlers.buildFromSource(e, ctx);
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> ResolveGraphHandlers.buildFromBundledSkills(e, ctx);
@@ -283,6 +288,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
         dev.skillmanager.project.SkillProjectRegistry registry =
                 new dev.skillmanager.project.SkillProjectRegistry(ctx.store());
         List<String> failures = new ArrayList<>();
+        // The LAST gate, not the first: every iteration measures the same home,
+        // and the last one measured it after every project had finished moving
+        // bytes in it. Reporting the first would name a state that no longer
+        // exists by the time the command returns.
+        dev.skillmanager.store.DriftGate lastGate = null;
         for (String projectName : projectClaimers.keySet()) {
             try {
                 dev.skillmanager.project.SkillProjectLock lock =
@@ -298,7 +308,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         new dev.skillmanager.project.ProjectSyncUseCase(ctx.store(), e.gateway())
                                 .sync(project, new dev.skillmanager.project.ProjectDependencyResolver.Options(
                                                 true, e.withGateway()),
-                                        dev.skillmanager.project.ProjectSyncUseCase.Options.reconcileOnly());
+                                        // QUIETLY: the drift this measures is
+                                        // THIS home's, not the project's, so
+                                        // reporting it here prints the same
+                                        // block once per project. Emitted once,
+                                        // as a fact, after the loop.
+                                        dev.skillmanager.project.ProjectSyncUseCase.Options.reconcileQuietly());
+                if (result.drift() != null) lastGate = result.drift();
                 refreshedClaimers.addAll(projectLockUnitNames(result.resolved().lock()));
                 unitsToClear.addAll(refreshedClaimers);
                 facts.add(new ContextFact.ProjectSynced(
@@ -372,6 +388,21 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 }
                 facts.add(new ContextFact.ProjectSyncFailed(projectName, ex.getMessage()));
             }
+        }
+
+        // ONE report for the home, after every project has finished moving
+        // bytes in it. See ContextFact.HomeDriftPending for what this replaces.
+        if (lastGate != null) {
+            dev.skillmanager.store.HomeDescriptor.CliSpelling spelling =
+                    dev.skillmanager.store.HomeDescriptor.cliSpelling(ctx.store().root());
+            int files = lastGate.report().units().stream()
+                    .mapToInt(dev.skillmanager.store.DriftReport.UnitDrift::fileCount).sum();
+            facts.add(new ContextFact.HomeDriftPending(
+                    ctx.store().root().toString(),
+                    lastGate.report().units().size(),
+                    files,
+                    spelling.binary() + " home drift --ack " + spelling.homeArg(),
+                    lastGate.report().render()));
         }
 
         unitsToClear.addAll(unitFailures.keySet());
@@ -1392,6 +1423,293 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return EffectReceipt.okAndHalt(e,
                 "unit '" + e.unitName() + "' is already installed at " + at
                         + " — remove it first (skill-manager remove " + e.unitName() + ")");
+    }
+
+    /**
+     * One name, one copy — and from OUN-13 that is a rule about a home's
+     * ROOT, not about plugins.
+     *
+     * <p>This gate used to refuse a plugin whose contained skill name was
+     * already claimed. It no longer does, because the premise stopped being
+     * true: a contained skill is addressed {@code plugin:skill}, so a
+     * standalone {@code x} and a contained {@code p:x} are two names, not one
+     * name with two answers. A plugin install cannot create two STANDALONE
+     * units, so it cannot violate the rule that remains.
+     *
+     * <p>It still walks the same ground and reports what it finds, because one
+     * case it cannot distinguish is genuinely wrong: the same unit existing
+     * twice, which is the state {@code skill-manager} is in mid-migration.
+     * {@link dev.skillmanager.lifecycle.UnitSupersession} retires that.
+     *
+     * <p>Three things were never collisions even under the old rule:
+     *
+     * <ul>
+     *   <li><b>the plugin's own entry skill.</b> A contained skill whose name
+     *       equals its carrying plugin's is that plugin, one unit under one
+     *       name — {@code skt} carries {@code plugins/skt/skills/skt} in every
+     *       home it is installed into, and refusing that would refuse skt
+     *       everywhere.</li>
+     *   <li><b>the plugin's own previous installation.</b> Upgrading a plugin
+     *       means its contained skills are already on disk under it; counting
+     *       those would make the second install of any plugin impossible.</li>
+     *   <li><b>a name claimed by a unit being installed in the SAME
+     *       operation</b> is still a collision — but it is the resolver's to
+     *       report, not this gate's, and it already does.</li>
+     * </ul>
+     */
+    private EffectReceipt rejectContainedNameCollision(
+            SkillEffect.RejectContainedNameCollision e, EffectContext ctx) {
+        var graph = ctx.resolvedGraph().orElse(null);
+        if (graph == null) return EffectReceipt.skipped(e, "no resolved graph in context");
+        SkillStore store = ctx.store();
+        List<ContextFact> notices = new ArrayList<>();
+        for (var r : graph.resolved()) {
+            if (!(r.unit() instanceof dev.skillmanager.model.PluginUnit plugin)) continue;
+            String pluginName = r.name();
+            // OUN-13 — THE REFUSAL THIS GATE KEEPS, AND IT IS THE ONE THAT
+            // MAKES EVERYTHING ELSE TRUE.
+            //
+            // A contained skill is addressed `plugin:skill` and carries NO
+            // coordinate of its own, because the plugin is the unit of change
+            // management: you update the plugin, as a whole. That is what lets
+            // two plugins carry a skill of the same name without a duplication
+            // problem — neither is independently updatable, so neither can
+            // drift from the other.
+            //
+            // A nested git repository inside a plugin is that invariant being
+            // broken on disk, and this file's own BundledSkills note already
+            // warned where it leads: "a contained skill must never carry [a
+            // remote] — a later sync would pull plugin-root content into a
+            // skill dir". Today no plugin anywhere contains one, so the rule
+            // holds by luck. This is the check that makes it hold on purpose.
+            Path nested = nestedRepoInside(plugin.sourcePath());
+            if (nested != null) {
+                return EffectReceipt.okAndHalt(e,
+                        "refusing to install plugin '" + pluginName + "': it contains a "
+                                + "nested git repository at " + nested + ".\n"
+                                + "  a plugin is the unit of change management — its skills "
+                                + "are updated by updating the plugin, as a whole,\n"
+                                + "  and a contained skill that carries its own remote would "
+                                + "pull plugin-root content into a skill directory.\n"
+                                + "  remove the nested repository, or ship that skill as a "
+                                + "unit of its own.",
+                        new ContextFact.HaltWithExitCode(3,
+                                "nested git repository inside plugin '" + pluginName + "'"));
+            }
+            for (var contained : plugin.containedSkills()) {
+                String name = contained.name();
+                if (name == null || name.isBlank()) continue;
+                // The plugin's own entry skill. One unit, one name.
+                if (name.equals(pluginName)) continue;
+                Path claimant = existingClaimant(store, pluginName, name);
+                if (claimant == null) continue;
+                // OUN-13: NOT A REFUSAL ANY MORE, AND THE REASON IS THAT THE
+                // TWO THINGS NOW HAVE DIFFERENT NAMES.
+                //
+                // The standalone is `name`; the contained one is
+                // `pluginName:name`. Neither shadows the other, so installing
+                // this does NOT give one name two answers — which was the
+                // entire premise of the refusal.
+                //
+                // What remains true, and is why this still says something: if
+                // those two are THE SAME unit rather than two units that share
+                // a word, the home now holds one copy too many. This cannot
+                // tell the difference — only a human or the supersession table
+                // can — so it reports and names the remedy instead of guessing.
+                // `UnitSupersession.TABLE` is what retires the known case.
+                notices.add(new ContextFact.ContainedNameAlsoClaimed(
+                        name, pluginName, claimant.toString()));
+            }
+        }
+        return EffectReceipt.ok(e, notices);
+    }
+
+    /**
+     * OUN-5. Retire what this upgrade supersedes, before the gate above is
+     * asked about it.
+     *
+     * <h2>Why this runs a whole nested program</h2>
+     *
+     * <p>A retirement IS an uninstall, and an uninstall in this codebase is
+     * not "delete the directory": it unmaterializes every projection, removes
+     * the bindings, unregisters MCP servers, prunes orphaned CLI deps and
+     * records the audit entry — thirteen effects with their own
+     * compensations. Reimplementing a subset of that inside one handler is how
+     * a migration leaves a home with dangling agent symlinks and a registered
+     * MCP server for a unit that no longer exists. {@code
+     * ProjectDependencyResolver} composes programs the same way, for the same
+     * reason.
+     *
+     * <h2>The window, stated rather than hidden</h2>
+     *
+     * <p>This runs before the install it is clearing the way for, so there is
+     * an interval in which the old unit is gone and the new one has not
+     * landed. If the install then fails, the home is short a unit. The
+     * interval is small — resolve has already succeeded by the time we get
+     * here, so the incoming unit exists and is readable — and the remedy is
+     * printed with the origin the home recorded, because an operator who can
+     * see the one command that undoes it does not need the interval to be
+     * impossible.
+     */
+    private EffectReceipt retireSupersededUnits(SkillEffect.RetireSupersededUnits e,
+                                                EffectContext ctx) {
+        SkillStore store = ctx.store();
+        // Two readings, and which one applies is decided by whether the
+        // caller handed us names. Install passes none and asks the resolved
+        // graph "is the carrier arriving?". Sync passes its target names and
+        // asks the HOME "are you due?", because a home holding both copies is
+        // already broken and did not need anyone to install anything to get
+        // that way.
+        boolean fromHome = e.carriers() != null && !e.carriers().isEmpty();
+        List<UnitSupersession.Retirement> due = fromHome
+                ? UnitSupersession.dueInThisHome(store)
+                : UnitSupersession.due(store, ctx.resolvedGraph().orElse(null));
+        if (due.isEmpty()) return EffectReceipt.ok(e);
+
+        // BEFORE anything is removed, and about every row rather than the
+        // one in hand: a migration that retires the first unit and then
+        // refuses over the second has already done the destructive half.
+        // WHAT IS IN SCOPE, AND WHY IT IS NOT JUST e.carriers().
+        //
+        // `isMandatory` asks "is the carrier one of the things this operation
+        // is bringing in" — if it is, proceeding would create the two-copies
+        // state deliberately, so a blocked retirement must HALT rather than be
+        // reported and skipped. The sync path passes its carriers explicitly.
+        // THE INSTALL PATH PASSES NONE: InstallUseCase builds
+        // `new SkillEffect.RetireSupersededUnits()` with no argument, so
+        // e.carriers() is empty and every retirement looked optional — the
+        // halt could not fire on the one path where the carrier is definitely
+        // arriving.
+        //
+        // It went unnoticed because the collision gate refused those installs
+        // for an unrelated reason, so the test asserting the halt was green
+        // against a refusal that came from somewhere else. OUN-13 narrowed
+        // that gate, the refusal stopped happening, and this surfaced.
+        //
+        // On the install path the scope IS the resolved graph: those are the
+        // units arriving.
+        var scopeGraph = ctx.resolvedGraph().orElse(null);
+        List<String> namesInScope = fromHome
+                ? e.carriers()
+                : (scopeGraph == null ? List.<String>of()
+                        : scopeGraph.resolved().stream()
+                                .map(dev.skillmanager.resolve.ResolvedGraph.Resolved::name)
+                                .toList());
+        List<UnitSupersession.Retirement> retirable = new ArrayList<>();
+        for (UnitSupersession.Retirement retirement : due) {
+            String blocked = UnitSupersession.blockedFrom(store, retirement.unit());
+            if (blocked == null) {
+                retirable.add(retirement);
+                continue;
+            }
+            if (!UnitSupersession.isMandatory(retirement, namesInScope)) {
+                // Riding along with an unrelated sync. Reported and skipped:
+                // halting here would make `sync deploy-helm` fail because
+                // skill-manager has an uncommitted edit, and the home is no
+                // worse than it was a second ago.
+                Log.warn("migration: '%s' is still due but %s — publish it "
+                                + "(skill-manager unit publish %s) and it will be retired on "
+                                + "the next sync",
+                        retirement.unit(), blocked, retirement.unit());
+                continue;
+            }
+            return EffectReceipt.okAndHalt(e,
+                    "refusing to retire '" + retirement.unit() + "': " + blocked + ".\n"
+                            + "  " + retirement.reason() + ", but a home is the only place a "
+                            + "unit's history lives until it is published — and an uninstall "
+                            + "deletes the checkout.\n"
+                            + "  publish it first (skill-manager unit publish "
+                            + retirement.unit() + "), or remove it yourself if you do not "
+                            + "want the work (skill-manager remove " + retirement.unit()
+                            + "), then re-run this.",
+                    new ContextFact.HaltWithExitCode(3,
+                            "the migration would destroy unpublished work in '"
+                                    + retirement.unit() + "'"));
+        }
+
+        if (retirable.isEmpty()) return EffectReceipt.ok(e);
+
+        List<String> retired = new ArrayList<>();
+        for (UnitSupersession.Retirement retirement : retirable) {
+            String hint = UnitSupersession.reinstallHint(store, retirement.unit());
+            try {
+                var program = dev.skillmanager.app.RemoveUseCase.buildProgram(
+                        store, gateway, retirement.unit(), null, true, true);
+                var outcome = new Executor(store, gateway).run(program);
+                // rolledBack is the nested program's own verdict: it undid
+                // itself, so the unit is still there and the collision below
+                // is still real. Failing here is the honest answer — the
+                // alternative is an upgrade that reports success and leaves
+                // the home in the state the gate refuses.
+                if (outcome.rolledBack()) {
+                    return EffectReceipt.failed(e,
+                            "could not retire '" + retirement.unit() + "', which "
+                                    + retirement.carrier() + " supersedes; the removal rolled "
+                                    + "itself back.\n  the upgrade cannot continue while both "
+                                    + "copies of the name exist. Remove it yourself "
+                                    + "(skill-manager remove " + retirement.unit()
+                                    + ") and re-run.");
+                }
+            } catch (IOException | RuntimeException ex) {
+                return EffectReceipt.failed(e,
+                        "could not retire '" + retirement.unit() + "': " + ex.getMessage());
+            }
+            retired.add(retirement.unit());
+            Log.info("retired %s — %s", retirement.unit(), retirement.reason());
+            if (retirement.kind() == UnitSupersession.Kind.OBSOLETE && hint != null) {
+                Log.info("  it came from %s; if you need it back, this upgrade is not what "
+                        + "removed the reason it went away.", hint);
+            } else if (hint != null) {
+                Log.info("  if this upgrade does not complete, put it back with "
+                        + "`skill-manager install %s`.", hint);
+            }
+        }
+        Log.ok("migration: retired %s", String.join(", ", retired));
+        return EffectReceipt.ok(e);
+    }
+
+    /**
+     * Where {@code name} is already installed, ignoring anything belonging to
+     * {@code pluginBeingInstalled} — or null when the name is free.
+     */
+    /**
+     * The first nested git repository under a plugin root, or null.
+     *
+     * <p>The plugin's OWN {@code .git} is not nested — that is the plugin
+     * being a repository, which is exactly right. Anything deeper is a unit
+     * inside a unit.
+     */
+    private static Path nestedRepoInside(Path pluginRoot) {
+        if (pluginRoot == null || !Files.isDirectory(pluginRoot)) return null;
+        Path skills = pluginRoot.resolve("skills");
+        if (!Files.isDirectory(skills)) return null;
+        try (Stream<Path> walk = Files.walk(skills, 3)) {
+            return walk.filter(pth -> pth.getFileName() != null
+                            && ".git".equals(pth.getFileName().toString())
+                            && Files.exists(pth))
+                    .findFirst()
+                    .orElse(null);
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    private static Path existingClaimant(SkillStore store, String pluginBeingInstalled,
+                                         String name) {
+        if (store.contains(name)) return store.skillDir(name);
+        if (store.containsPlugin(name)) return store.pluginsDir().resolve(name);
+        if (store.containsDocRepo(name)) return store.docsDir().resolve(name);
+        if (store.containsHarness(name)) return store.harnessesDir().resolve(name);
+        for (Path root : store.containedSkillDirs(name)) {
+            // A contained skill under the plugin we are replacing is that
+            // plugin's own previous copy, not a competing claim.
+            Path carrier = root.getParent() == null ? null : root.getParent().getParent();
+            String carrierName = carrier == null || carrier.getFileName() == null
+                    ? null : carrier.getFileName().toString();
+            if (pluginBeingInstalled.equals(carrierName)) continue;
+            return root;
+        }
+        return null;
     }
 
     private EffectReceipt buildInstallPlan(SkillEffect.BuildInstallPlan e, EffectContext ctx) {

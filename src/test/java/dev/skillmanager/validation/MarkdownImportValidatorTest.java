@@ -355,6 +355,96 @@ public final class MarkdownImportValidatorTest {
             }
         });
 
+        // OUN-1 for GOAL-a-contained-skill-is-addressable. This case was
+        // written by OUN-0 asserting the DEFECT — a contained skill reported
+        // as a missing unit while sitting on disk in the same store — and is
+        // inverted here, which is the whole point of having pinned it.
+        //
+        // Measured on the real tree: skt has carried `unit-authoring` since it
+        // shipped and nothing imported it, because nothing could.
+        suite.test("a plugin-contained skill IS addressable by name", () -> {
+            SkillStore store = store();
+            installTargetPlugin(store, "carrier-plugin", "docs/reference.md");
+            installContainedSkill(store, "carrier-plugin", "contained-skill", "reference.md");
+
+            Path roots = Files.createTempDirectory("md-import-contained-");
+            assertSize(0, validateImport(store, roots, "importer",
+                            "contained-skill", "reference.md"),
+                    "an import naming a plugin-contained skill resolves");
+
+            // The path check still applies INSIDE the contained root — the
+            // branch resolves a unit, it does not wave the file through.
+            List<MarkdownImportValidator.Violation> missing = validateImport(
+                    store, roots, "importer-bad-path", "contained-skill", "absent.md");
+            assertSize(1, missing, "a missing path inside a contained skill is still a violation");
+            assertContains(missing.get(0).message(), "missing path `absent.md`",
+                    "and it is reported as a missing PATH, not a missing unit");
+
+            // THE CONTROL. Without it, "no violations" is also what a
+            // validator that stopped checking would produce.
+            assertSize(1, validateImport(store, roots, "importer-absent",
+                            "no-such-skill", "reference.md"),
+                    "a name no plugin contains is still missing");
+        });
+
+        // THE ORDER, asserted explicitly. A case that only proves "it
+        // resolves" cannot tell a correct order from a lucky one, and the
+        // order is the entire design decision in OUN-1: the contained branch
+        // is LAST, so nothing that resolved before resolves differently now.
+        suite.test("a standalone unit wins over a contained skill of the same name", () -> {
+            SkillStore store = store();
+            installTargetPlugin(store, "carrier-plugin", "docs/reference.md");
+            // Same name, two roots, and a DIFFERENT file in each — so the
+            // violation tells us which root was chosen, which a bare
+            // "resolves" assertion cannot.
+            installTargetSkill(store, "shared", "only-in-standalone.md");
+            installContainedSkill(store, "carrier-plugin", "shared", "only-in-contained.md");
+
+            Path roots = Files.createTempDirectory("md-import-order-");
+            assertSize(0, validateImport(store, roots, "wants-standalone",
+                            "shared", "only-in-standalone.md"),
+                    "the standalone root answered");
+            assertSize(1, validateImport(store, roots, "wants-contained",
+                            "shared", "only-in-contained.md"),
+                    "the contained root did NOT answer — it is behind skills/ in the search");
+        });
+
+        suite.test("a plugin's entry skill of the plugin's own name resolves to the PLUGIN", () -> {
+            SkillStore store = store();
+            installTargetPlugin(store, "skt-like", "docs/plugin-only.md");
+            installContainedSkill(store, "skt-like", "skt-like", "skill-only.md");
+
+            Path roots = Files.createTempDirectory("md-import-entry-");
+            assertSize(0, validateImport(store, roots, "wants-plugin",
+                            "skt-like", "docs/plugin-only.md"),
+                    "plugins/ is checked first, so the name is the plugin");
+            assertSize(1, validateImport(store, roots, "wants-entry-skill",
+                            "skt-like", "skill-only.md"),
+                    "the same-named contained skill is not separately addressable — "
+                            + "one unit, one name. This is the shape skt is already in, "
+                            + "in 21 of this machine's homes.");
+        });
+
+        suite.test("two plugins containing one name resolve deterministically, by plugin name", () -> {
+            SkillStore store = store();
+            installTargetPlugin(store, "zebra-plugin", "docs/reference.md");
+            installTargetPlugin(store, "alpha-plugin", "docs/reference.md");
+            installContainedSkill(store, "zebra-plugin", "twice", "from-zebra.md");
+            installContainedSkill(store, "alpha-plugin", "twice", "from-alpha.md");
+
+            assertSize(2, store.containedSkillDirs("twice"),
+                    "the store reports BOTH roots rather than picking one silently");
+
+            Path roots = Files.createTempDirectory("md-import-ambiguous-");
+            assertSize(0, validateImport(store, roots, "wants-alpha",
+                            "twice", "from-alpha.md"),
+                    "resolution is by plugin name, so alpha-plugin answers");
+            assertSize(1, validateImport(store, roots, "wants-zebra",
+                            "twice", "from-zebra.md"),
+                    "deterministic, not arbitrary — but still an ambiguity, "
+                            + "which is OUN-2's gate to refuse at install time");
+        });
+
         return suite.runAll();
     }
 
@@ -474,6 +564,29 @@ public final class MarkdownImportValidatorTest {
         Files.writeString(root.resolve(".claude-plugin/plugin.json"),
                 "{\"name\":\"" + name + "\",\"version\":\"0.1.0\",\"description\":\"test\"}\n");
         Files.writeString(root.resolve(file), "reference\n");
+    }
+
+    /** A skill inside an installed plugin: plugins/<plugin>/skills/<name>. */
+    private static void installContainedSkill(SkillStore store, String plugin,
+                                              String name, String file) throws Exception {
+        Path root = store.pluginsDir().resolve(plugin).resolve("skills").resolve(name);
+        Files.createDirectories(root);
+        if (Path.of(file).getParent() != null) {
+            Files.createDirectories(root.resolve(file).getParent());
+        }
+        Files.writeString(root.resolve("SKILL.md"), "---\nname: " + name + "\n---\nbody\n");
+        Files.writeString(root.resolve(file), "reference\n");
+    }
+
+    /** One importer unit naming one target; returns the violations. */
+    private static List<MarkdownImportValidator.Violation> validateImport(
+            SkillStore store, Path roots, String importer, String unit, String path)
+            throws Exception {
+        Path dir = roots.resolve(importer);
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("SKILL.md"), mdUnitImport(unit, path));
+        return MarkdownImportValidator.validate(store, List.of(
+                new MarkdownImportValidator.UnitRoot(importer, UnitKind.SKILL, dir)));
     }
 
     private static void installTargetDocRepo(SkillStore store, String name, String file) throws Exception {

@@ -1,0 +1,27 @@
+schema_version: "1.0"
+name: reconciles-a-worktree-into-the-project-home
+description: >-
+  A ticket worktree whose Skill Manager home holds an edit that exists nowhere
+  else. It is gitignored, so it is not in the PR, not on the epic branch, and
+  not in the project home -- it reaches the tier above only through close-out.
+  The question is whether the agent knows that git does not carry this, and
+  reaches for the one operation that does.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    Ticket TICKET-9's worktree at ../wt-TICKET-9 contains skill changes made
+    while working it. Get those changes into this project's Skill Manager home
+    so they are not lost when the worktree is eventually removed.
+
+    Do not remove the worktree yet.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command
+    will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once,
+    and report it. Do not probe the filesystem for a writable location and do
+    not attempt a different route — the command you choose is what is recorded.

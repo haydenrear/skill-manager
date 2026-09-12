@@ -1,5 +1,6 @@
 package dev.skillmanager.store;
 
+import dev.skillmanager.pm.PmPlatform;
 import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.artifacts.ArtifactLedger;
 import dev.skillmanager.launch.LauncherShims;
@@ -159,6 +160,51 @@ public final class HomeRepair {
          * which is the destructive recovery this class serves against.
          */
         FOREIGN_PATH_IN_SHIM,
+
+        /**
+         * A shim that is a regular file whose text names THIS home, absolutely.
+         *
+         * <h3>Why this is a different kind from {@link #FOREIGN_PATH_IN_SHIM}</h3>
+         *
+         * <p>That one means "a path that reaches ANOTHER home", and this one
+         * reaches the right home — today. It is correct where it stands and
+         * wrong the moment the home is copied, which is what an image build
+         * does. That difference is exactly why nothing reported it: this
+         * class's rule was "does this reach another home", and an own-home
+         * absolute path does not.
+         *
+         * <p>OUN-10 fixed the WRITER, so shims written since derive their own
+         * home. It did not heal the homes that already had frozen ones —
+         * {@code SkillScriptBackend} only rewrites a shim whose skill-script
+         * dep is REINSTALLED, so one never reinstalled stays frozen forever.
+         * Measured on this machine, 2026-09-12: 11 across two homes, exactly
+         * the six names OUN-10 listed. DEF-OUN-018.
+         *
+         * <p>Repairable, and safely: the rewrite is the same
+         * {@link ShimHomeContract#selfDerivingRewrite} the installer applies,
+         * it costs the shim nothing where it stands, and it refuses any shim
+         * whose shape it cannot rewrite rather than guessing.
+         */
+        FROZEN_HOME_PATH_IN_SHIM,
+
+        /**
+         * A {@code pm/<tool>/<version>} directory with no platform stamp.
+         *
+         * <p>{@code pm/} is deliberately NOT in {@link HomeCloner#SKIPPED_DIRS}
+         * — the bytes travel with a copy on purpose. On a foreign host they are
+         * executable by permission bits and answer {@code ENOEXEC} in fact, so
+         * the home reports the tool as installed and something dies later, far
+         * from the copy that caused it. {@link PmPlatform} stamps every
+         * directory it provisions and treats a foreign stamp as not installed.
+         *
+         * <p>An UNSTAMPED directory is the pre-fix population: provisioned
+         * before the stamp existed, and indistinguishable from a native one to
+         * everything that looks. Stamping it asserts it was built here, which
+         * is true of a home that has not yet been copied — so this is
+         * repairable ONLY in a home that is still on the machine that made it,
+         * and the repair says so.
+         */
+        UNSTAMPED_PM_TREE,
 
         /**
          * A shim this home is SANCTIONED to mirror from its parent, whose
@@ -349,6 +395,11 @@ public final class HomeRepair {
         examined += foreignPathsInShims(root, findings);
         examined += prunedInheritedEntries(root, findings);
         examined += danglingCliPin(root, cliPin, findings);
+        // DEF-OUN-018. Both scanners count what they looked at, because a
+        // clean verdict over zero subjects is a check that ran out of scope
+        // rather than a clean home — the same reason `examined` exists at all.
+        examined += scanFrozenShims(root, findings);
+        examined += scanUnstampedPmTrees(root, findings);
         return new Report(root, examined, findings);
     }
 
@@ -488,7 +539,17 @@ public final class HomeRepair {
                 Path mine = mappedIntoThisHome(foreign, candidate, store);
                 boolean fixable = mine != null;
                 findings.add(new Finding(Kind.FOREIGN_PATH_IN_SHIM, found.rel(),
-                        "runs " + candidate + ", which is inside the home at " + foreign,
+                        // The trailing aside is #330: the literal and the
+                        // resolved home can be two spellings of one directory,
+                        // and without it the sentence reads as its own
+                        // refutation. AFTER the "inside the home at" clause,
+                        // because foreignPathOf reads the span before it.
+                        "runs " + candidate + ", which is inside the home at " + foreign
+                                + (Fs.realOrNormalized(candidate).toString().equals(
+                                        candidate.toString())
+                                        ? ""
+                                        : " — the shim's path resolves to "
+                                                + Fs.realOrNormalized(candidate)),
                         fixable ? "rewrite that path to " + mine
                                 : "no path under this home stands where " + candidate
                                         + " does — rebuild the entry point with "
@@ -885,19 +946,142 @@ public final class HomeRepair {
         return finding.kind() + "|" + finding.subject() + "|" + finding.detail();
     }
 
+    /**
+     * DEF-OUN-018, half one: shims that name THIS home absolutely.
+     *
+     * <p>Read with the same {@link ShimHomeContract} the installer uses, so a
+     * shape it declines to rewrite is a shape this declines to report — a
+     * finding nothing can act on is noise, and this class already carries one
+     * of those on purpose ({@code bin/cli} as a directory link) with the
+     * reason written down.
+     */
+    private static int scanFrozenShims(Path store, List<Finding> findings) {
+        int examined = 0;
+        for (String dirName : SHIM_DIRS) {
+            Path dir = store.resolve(dirName);
+            if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) continue;
+            try (var entries = Files.list(dir)) {
+                for (Path shim : entries.sorted().toList()) {
+                    if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) continue;
+                    examined++;
+                    if (ShimHomeContract.frozenHomePaths(store, shim).isEmpty()) continue;
+                    // Only report what can actually be rewritten. The contract
+                    // refuses a shape it does not understand rather than
+                    // half-rewriting it, and so does this.
+                    if (ShimHomeContract.selfDerivingRewrite(store, shim) == null) continue;
+                    String rel = store.relativize(shim).toString();
+                    findings.add(new Finding(Kind.FROZEN_HOME_PATH_IN_SHIM, rel,
+                            "names this home by absolute path, so it runs the home it was "
+                                    + "WRITTEN in rather than the one it is standing in — "
+                                    + "correct here, wrong the moment this home is copied",
+                            "skill-manager home repair --fix (or `sync <unit> "
+                                    + "--force-scripts`, which rewrites it on the way past)",
+                            true, shim));
+                }
+            } catch (IOException ignored) {
+                // A directory that cannot be listed is another kind's subject.
+            }
+        }
+        return examined;
+    }
+
+    /**
+     * DEF-OUN-018, half two: {@code pm} version directories with no platform
+     * stamp.
+     *
+     * <p>Repairable only where the home still sits on the machine that
+     * provisioned it, because stamping asserts "built here" and that claim is
+     * only true before a copy. A home that has already travelled must
+     * re-provision instead, which is what an unstamped tree makes it do
+     * anyway — so the unsafe case is the one that self-corrects.
+     */
+    private static int scanUnstampedPmTrees(Path store, List<Finding> findings) {
+        int examined = 0;
+        Path pm = store.resolve("pm");
+        if (!Files.isDirectory(pm, LinkOption.NOFOLLOW_LINKS)) return examined;
+        try (var tools = Files.list(pm)) {
+            for (Path tool : tools.sorted().toList()) {
+                if (!Files.isDirectory(tool, LinkOption.NOFOLLOW_LINKS)) continue;
+                try (var versions = Files.list(tool)) {
+                    for (Path version : versions.sorted().toList()) {
+                        if (!Files.isDirectory(version, LinkOption.NOFOLLOW_LINKS)) continue;
+                        examined++;
+                        if (Files.isRegularFile(version.resolve(PmPlatform.STAMP))) continue;
+                        String rel = store.relativize(version).toString();
+                        findings.add(new Finding(Kind.UNSTAMPED_PM_TREE, rel,
+                                "carries no platform stamp, so a copy of this home on another "
+                                        + "platform cannot tell these bytes are foreign — it "
+                                        + "reports the tool installed and fails with a format "
+                                        + "error later, far from the copy that caused it",
+                                "skill-manager home repair --fix stamps it for THIS platform, "
+                                        + "which is only true while the home is still on the "
+                                        + "machine that provisioned it",
+                                true, version));
+                    }
+                } catch (IOException ignored) {
+                    // Unreadable tool directory: nothing to claim about it.
+                }
+            }
+        } catch (IOException ignored) {
+            // No readable pm/: nothing to claim.
+        }
+        return examined;
+    }
+
     private static void apply(Path store, Finding finding) throws IOException {
         switch (finding.kind()) {
             case MISANCHORED_AGENT_LINK -> relink(
                     AgentHomes.homeRootFor(store).resolve(finding.subject()), finding.target());
             case PRUNED_INHERITED_ENTRY -> relink(
                     store.resolve(finding.subject()), finding.target());
-            case FOREIGN_PATH_IN_SHIM -> rewrite(
-                    store.resolve(finding.subject()), store, finding);
+            case FOREIGN_PATH_IN_SHIM -> {
+                Path shim = store.resolve(finding.subject());
+                rewrite(shim, store, finding);
+                // AND THEN MAKE IT SELF-DERIVING, in the same pass.
+                //
+                // The rewrite above maps the other home's path into this one,
+                // which leaves a shim naming THIS home absolutely — a
+                // FROZEN_HOME_PATH_IN_SHIM, i.e. the repairer producing the
+                // next finding for itself to clean up on a second pass. The
+                // re-detect loop did handle it, so the home ended correct
+                // either way; what it cost was a repair count that did not
+                // match the report, and a window in which the fixed home was
+                // still not copyable. Found by the count assertion, which is
+                // the reason that assertion is written as an equality.
+                String selfDeriving = ShimHomeContract.selfDerivingRewrite(store, shim);
+                if (selfDeriving != null) {
+                    java.nio.file.attribute.FileTime when = Files.getLastModifiedTime(shim);
+                    Files.writeString(shim, selfDeriving);
+                    Files.setLastModifiedTime(shim, when);
+                }
+            }
             // The same call `home shims` makes, on the same home, with the pin
             // detection already resolved. Rewriting the line by hand here would
             // be a second writer for a generated file that has one.
             case PARENT_SHIM_SHADOWS_LOCAL_COPY ->
                     materializeLocalShim(store.resolve(finding.subject()), store);
+            // DEF-OUN-018. The same rewrite the installer applies, and the
+            // same stamp the provisioner writes — neither is a second
+            // implementation of a rule that already has one.
+            case FROZEN_HOME_PATH_IN_SHIM -> {
+                Path shim = store.resolve(finding.subject());
+                WriteConfinement.checkWrite(shim, WHAT);
+                String rewritten = ShimHomeContract.selfDerivingRewrite(store, shim);
+                if (rewritten != null) {
+                    // Preserve the stamp, for the reason SkillScriptBackend
+                    // preserves it: binStamps() reads mtime to decide which
+                    // shims an install touched, and bumping it here would make
+                    // the next install re-examine a file we just settled.
+                    java.nio.file.attribute.FileTime when = Files.getLastModifiedTime(shim);
+                    Files.writeString(shim, rewritten);
+                    Files.setLastModifiedTime(shim, when);
+                }
+            }
+            case UNSTAMPED_PM_TREE -> {
+                Path version = store.resolve(finding.subject());
+                WriteConfinement.checkWrite(version.resolve(PmPlatform.STAMP), WHAT);
+                PmPlatform.stamp(version);
+            }
             case DANGLING_CLI_PIN -> {
                 WriteConfinement.checkWrite(store.resolve(finding.subject()), WHAT);
                 LauncherShims.write(new SkillStore(store), finding.target());
@@ -1104,6 +1288,16 @@ public final class HomeRepair {
      * <p>Recovered from the detail line's fixed prefix rather than re-scanning
      * the file, so detection and repair cannot end up disagreeing about which
      * occurrence is meant.
+     *
+     * <p><b>The span is a contract, so anything added to that line goes after
+     * it.</b> Everything between {@code "runs "} and
+     * {@code ", which is inside the home at "} is read as the path — a clause
+     * inserted there is parsed as part of the file name, the repair then looks
+     * for a file that does not exist, and it reports "the path is no longer in
+     * &lt;entry&gt;" about an entry the path is still in. Measured: five cases
+     * red at once when #330's resolved-spelling aside first went in the middle.
+     * It fails loudly, which is why the contract is written down here rather
+     * than defended by a parser that tolerates the mistake.
      */
     private static Path foreignPathOf(Finding finding) {
         String detail = finding.detail();

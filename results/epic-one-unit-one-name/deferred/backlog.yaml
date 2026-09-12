@@ -1,0 +1,859 @@
+# Deferred findings — epic/one-unit-one-name.
+# Append-only. A failure case found outside a ticket's declared slice lands here
+# with its reproduction and stays until triaged with the owner.
+version: 1
+epic: one-unit-one-name
+findings:
+  - id: DEF-OUN-001
+    found_by: OUN-0 (running the assignment's declared spec_unit validation)
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      The 2026-09-05 close-out of child-home-materialization-workflow (main,
+      e07e577) promoted the DESIRED workflow model onto specs/program_model
+      wholesale, replacing the accepted baseline's spec_manifest.yaml with the
+      workflow's working manifest. The accepted manifest carried `catalogs`,
+      `invariants`, `state_fields`, `actions`, `state_variables` and
+      `promotion_invariants`; the promoted one has `state_fields: []`,
+      `actions: []`, no catalogs section, and package `desired_program_cases`
+      instead of `skillmanager_program_cases`. One accepted-model contract
+      test has been red on main ever since.
+    reproduction: >
+      git worktree add --detach /tmp/rev e07e577 && cd /tmp/rev &&
+      uv run --with pytest pytest specs/program_model/tests -q
+        -> 1 failed, 10 passed
+           test_program_model_accepts_bounded_cli_disclosure_case_surface
+           (CliCommandCatalog is defined in SkillManager.tla but bound in
+           neither MC.cfg nor spec_manifest.yaml)
+      git checkout e07e577~1 && uv run --with pytest pytest specs/program_model/tests -q
+        -> 11 passed
+    why_deferred: >
+      Outside OUN-0's slice by a wide margin -- this is main's accepted spec
+      baseline, not this epic's measurement -- and the remedy is an owner
+      decision, not a repair: restoring specs/program_model from e07e577~1
+      keeps the accepted baseline but discards whatever the desired model
+      legitimately added, while merging the two is a spec-authoring task.
+      git-epic-workflow's own precondition ("specs/program_model is a complete
+      accepted baseline") is not currently satisfied, which is why this is
+      logged blocking rather than major.
+    candidate_owner: owner decision, then a main-branch fix outside this epic
+    status: partially_repaired
+    repair: >
+      OUN-0 restored specs/program_model/spec_manifest.yaml to the accepted
+      manifest from e07e577~1 (11 passed), because e07e577 changed exactly one
+      file in the baseline besides its 72 additions, and SkillManager.tla and
+      MC.cfg were not among them -- the baseline was left describing its own
+      spec with a manifest written for a different one. The 72 promoted
+      modules stay.
+    residual: >
+      Those 72 modules now have no entries in the accepted manifest, and the
+      promotion should probably have MERGED the two manifests rather than
+      replacing one with the other. Both are spec-authoring decisions for the
+      owner. Also: this repair currently lives only on the epic branch --
+      main is still red until it is carried there.
+
+  - id: DEF-OUN-002
+    found_by: OUN-0 (the one-name-one-copy walker)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      Every home carrying skt already claims the name `skt` twice -- the plugin
+      at plugins/skt and a contained skill at plugins/skt/skills/skt. 21 homes
+      on this machine. It is latent only because contained skills are
+      unaddressable, so OUN-1 turns all 21 live, and an OUN-2 gate written
+      without a rule for it would refuse the skt plugin everywhere, including
+      during its own migration.
+    reproduction: >
+      python3 scripts/measure_goal_one_name_one_copy.py | jq '.latent[0]'
+    why_deferred: >
+      NOT deferred as work -- it is an input OUN-1 and OUN-2 must design
+      against, and it was not visible when the plan was written. Recorded here
+      so the wave review triages it explicitly rather than each ticket agent
+      rediscovering it.
+    candidate_owner: OUN-1 (the addressing rule), then OUN-2 (the gate)
+    status: open
+
+  - id: DEF-OUN-003
+    found_by: OUN-1 (building the addressability harness)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      With CODEX_HOME or GEMINI_HOME pointed at a Skill Manager home root, an
+      ordinary `skill-manager install` of an unrelated unit REMOVES
+      <home>/plugins/<plugin>. Exit 0, nothing in the output about it. Each
+      variable does it independently; CLAUDE_HOME does not. The bytes survive
+      under plugin-marketplace/plugins/, but the addressable root is gone.
+      Filed as issue #311.
+    reproduction: >
+      skill-manager home clone --to /tmp/probe/home
+      ls /tmp/probe/home/plugins                       # skt
+      SKILL_MANAGER_HOME=/tmp/probe/home CODEX_HOME=/tmp/probe/home \
+        skill-manager install <any-local-unit> --yes   # exits 0
+      ls /tmp/probe/home/plugins                       # empty
+    why_deferred: >
+      Outside OUN-1's slice, which is installedRoot's resolution order.
+      Reaching it means changing agent registration and probably
+      WriteConfinement. Recorded major rather than blocking because it needs a
+      misconfiguration to trigger -- but the failure mode is silent deletion
+      of a store directory reported as success, which is the same "which home
+      does this write?" class as #262 and #289 with a destructive answer.
+    candidate_owner: outside this epic; issue #311
+    status: open
+
+  - id: DEF-OUN-004
+    found_by: OUN-1 (the addressability harness reporting a fix as absent)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      jbang keys its build cache on the hash of the ENTRY script.
+      SkillManager.java rarely changes, so editing anything under
+      src/main/java leaves the cached jar in place and `./skill-manager` keeps
+      running the PREVIOUS build. RunTests.java is a different entry script,
+      so unit tests rebuild and pass while any harness or manual check driving
+      the wrapper measures the last build. Measured: OUN-1's resolver change
+      passed every unit case while the harness still reported the defect.
+    reproduction: >
+      Edit any file under src/main/java, then run ./skill-manager <cmd>:
+      the change is absent. `jbang --fresh SkillManager.java --version` once
+      re-caches under the same key and every later wrapper invocation picks
+      the new build up.
+    why_deferred: >
+      OUN-1 works around it in the one harness that drives the CLI (it
+      compares source mtimes against the newest cached jar and rebuilds when
+      stale). The general fix belongs in the wrapper -- ./skill-manager should
+      not be able to run a build older than its own sources -- and that is a
+      dev-loop change, not a resolver change.
+    candidate_owner: outside this epic; the ./skill-manager wrapper
+    status: worked_around
+  # The meta-harness effort's DEF-282..285, verified here 2026-09-05 and
+  # SCHEDULED rather than deferred (OUN-9..OUN-12, schedule_revision 2). Kept
+  # in the backlog under their original ids so the two ledgers can be joined.
+  - id: DEF-282
+    found_by: meta-harness effort; verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      A cloned home carries auth.token verbatim -- mode 0600, keys
+      access_token/refresh_token/expires_at. OBSERVED, not inferred: a clone of
+      a home holding a planted real-shaped token had the token. So any image
+      built by copying a home ships a working refresh token for the operator's
+      registry account, with no build-time signal. skill-manager #281 filed
+      this as an unverified inference; it is verified.
+    reproduction: >
+      skill-manager home clone --from A --to B, where A holds an auth.token;
+      then ls -l B/auth.token.
+    why_deferred: not deferred -- scheduled as OUN-9, delivered to main
+    candidate_owner: OUN-9 (#281)
+    status: scheduled
+
+  - id: DEF-283
+    found_by: meta-harness effort; verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      bin/cli wrappers bake this home's absolute path (tla-spec-dev among
+      them). `home repair` reports 0 findings because its rule is "does this
+      reach ANOTHER home", which an own-home absolute path does not -- the home
+      is internally consistent and non-portable at once. SkillScriptBackend
+      detects it and WARNS, reasoned in-source as not breaking already-shipped
+      units. Image builds green, dies at first use.
+    reproduction: >
+      grep -l "$HOME" <home>/bin/cli/* ; then `home repair --json` on the same
+      home reports no findings.
+    why_deferred: not deferred -- scheduled as OUN-10, delivered to main
+    candidate_owner: OUN-10 (#315)
+    status: scheduled
+
+  - id: DEF-284
+    found_by: meta-harness effort; partially verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      Three tiers, three gateway states: root owned=true, worktree
+      owned=false, project home with no gateway.properties at all, two of them
+      naming one port. The DIVERGENCE is confirmed; which state is wrong is
+      not, because no written rule says what a copy should believe.
+    reproduction: cat <each tier>/gateway.properties
+    why_deferred: >
+      Owner decision 2026-09-05: "let's defer that one for now - we don't
+      really use it." OUN-11 is RETIRED-CARRIED at schedule_revision 3, with a
+      receipt at specs/.history/one-unit-one-name/retired-ticket-011-OUN-11/.
+      The question of what a copied home should believe belongs to
+      substrate-home-model (#274) -- the workflow that owns a home crossing a
+      machine boundary -- rather than to an epic about unit names. The
+      measurement is preserved here and in #317; nothing was implemented.
+    candidate_owner: substrate-home-model (#274), carried from OUN-11
+    status: carried
+
+  - id: DEF-285
+    found_by: meta-harness effort; verified by this epic 2026-09-05
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      The ~3% clone cost the three-tier home model was adopted on is an
+      implicit JDK side effect of clonefile(2) on APFS, with no fallback; the
+      node that asserts it SKIPS where the JDK cannot reflink, which is the
+      only platform CI runs. And pm/ is in PROVISIONABLE_ROOTS but NOT in
+      SKIPPED_DIRS, so a clone copies it -- 203 MB of Mach-O arm64 here (node
+      and uv), which cannot go into a Linux image.
+    reproduction: >
+      grep SKIPPED_DIRS in HomeCloner (pm absent); file <home>/pm/node/*/bin/node;
+      read the skip branch of HomeCloneCostsFarLessThanACopy.
+    why_deferred: not deferred -- scheduled as OUN-12, delivered to main
+    candidate_owner: OUN-12 (#316)
+    status: scheduled
+
+  - id: DEF-OUN-005
+    found_by: OUN-4 (scoping the deletion before making it)
+    found_at: "2026-09-05"
+    severity: blocking
+    summary: >
+      OUN-4's declared slice cannot be executed as written. It lists the unit
+      directory, the onboarding seed, the onboard graph's assertions,
+      skill-project.toml prose and three skt doc mentions. It does not account
+      for: (a) a whole registered test graph, `skill-dev-smoke`, with 9 source
+      files and 7 nodes, which exists to drive the unit and cannot pass without
+      it; (b) the ACCEPTED program model -- SkillManager.tla names
+      "skill-dev-skill" in a set and defines SkillDevSkillWorkflows, with
+      spec_manifest and two program-model tests following it; (c) onboarding
+      seeds skill-dev-skill from github:haydenrear/skill-dev-skill, a SEPARATE
+      repository, so "delete it from the repository" is ambiguous between the
+      in-repo directory and the unit onboarding installs.
+    reproduction: >
+      grep -rl skill-dev --exclude-dir=.history . ; and
+      grep -n skill-dev src/main/java/dev/skillmanager/lifecycle/BundledSkills.java
+    why_deferred: >
+      NOT deferred as unimportant -- stopped because a partial deletion leaves
+      the worst possible state: unit gone, a registered graph red, and the
+      accepted model describing a unit that does not exist. OUN-3's command
+      confirms the premise (zero importers of skill-dev-skill in the only home
+      that holds it), so the deletion is right; its cost is three times what
+      the plan priced.
+      NOTE FOR SCHEDULING: OUN-7 (rename skill-publisher-skill to skt) edits
+      the SAME TLA set three waves later. Doing the model edit once, there,
+      rather than twice is probably the cheaper order -- which would make OUN-4
+      depend on OUN-7 instead of preceding it.
+    candidate_owner: OUN-4, widened at the owner's instruction
+    status: resolved
+    resolution: >
+      Owner decision 2026-09-05: delete everything to do with skill-dev-skill,
+      Java included. OUN-4 took the full cost -- the unit, both bundled lists
+      (BundledSkills AND OnboardCommand, which the compiler cannot relate), the
+      skill-dev-smoke graph and its 9 sources, the accepted program model's
+      SkillDocSurfaces / SkillDevSkillWorkflows / ExpectedSkillDocCoverage, the
+      CLI metadata doc surfaces, and the onboard assertions -- which were
+      INVERTED rather than deleted, so onboarding now proves it does not seed
+      the retired unit.
+      The scheduling observation stands unused: OUN-7 still edits the same TLA
+      set, but the edit here was a DELETION (drop a name from a set) rather
+      than the containment modelling of DEF-OUN-006, so it was cheap and did
+      not need to wait.
+
+  - id: DEF-OUN-006
+    found_by: OUN-2B (adding plugin-graph assertions for the OUN-1/OUN-2 change)
+    found_at: "2026-09-05"
+    severity: major
+    summary: >
+      The accepted program model's InstallUnit enumerates exactly three
+      outcomes -- EffectHalt("ALREADY_INSTALLED"), EffectHalt("RESOLVE_FAILED")
+      and Ok. OUN-2 adds a fourth the model does not have: a refusal when a
+      plugin's CONTAINED skill name is already claimed. So SkillManager.tla now
+      claims install has three outcomes and the product has four.
+    reproduction: >
+      Read InstallUnit in specs/program_model/SkillManager.tla against
+      LiveInterpreter.rejectContainedNameCollision.
+    why_deferred: >
+      Not a tweak. The model does not describe plugins or containment AT ALL --
+      `Units == {UnitA, UnitB}` is flat, and DocRepoA/HarnessA are separate
+      constants with no plugin equivalent. Adding this halt means introducing a
+      plugin constant, a containment relation, an MC.cfg constant, manifest
+      entries, and probably generated case adapters and program-model tests.
+      It also lands in the SAME FILE as two decisions already open with the
+      owner (OUN-4's scope, and DEF-OUN-001's 72 undescribed modules), and a
+      careless edit to that file put main in a red state on 2026-09-03.
+      The behaviour IS covered meanwhile: six unit cases and a plugin-smoke
+      node assert the refusal end to end. What is missing is the model saying
+      so, not the product doing so.
+    candidate_owner: bundle with the owner's decision on the program model
+    status: open
+
+  - id: DEF-OUN-007
+    found_by: OUN-2B (reading the plugin graph before adding to it)
+    found_at: "2026-09-05"
+    severity: minor
+    summary: >
+      `plugin.contained.skill.not.addressable` asserts that `install
+      hello-impl --registry` FAILS -- a contained skill has no independent
+      identity as a REGISTRY unit. That is still true after OUN-1 and the node
+      correctly stayed green. But its NAME now claims the thing OUN-1 made
+      false, and the two senses of "addressable" are one word apart. Only the
+      registry sense was ever covered, which is how a contained skill being
+      unreachable by NAME survived from the day skt shipped unit-authoring.
+    reproduction: read the node beside plugin.contained.skill.resolves.by.name
+    why_deferred: >
+      Addressed rather than deferred: the sibling node now covers the other
+      sense and both are registered with a comment saying which is which.
+      Renaming the original node would break its id, which other nodes depend
+      on, so the ambiguity is documented instead of renamed.
+    candidate_owner: OUN-2B (done)
+    status: closed
+
+  - id: DEF-OUN-008
+    found_by: OUN-4 (answering the owner's question about which manifest)
+    found_at: "2026-09-05"
+    severity: minor
+    summary: >
+      The manifest in DEF-OUN-001 is specs/program_model/spec_manifest.yaml --
+      the REPOSITORY's own accepted model, not a unit store. Owner ruled it
+      skippable on that basis. But the search that settled it turned up
+      something adjacent: three installed units ship their own specs/ trees
+      INSIDE the home's unit store -- spec-double-compiler (program_model,
+      current AND desired_program_model), deploy-helm, and test-graph. Those
+      DO travel with every home copy and every migration.
+    reproduction: >
+      find "$SKILL_MANAGER_HOME" -name spec_manifest.yaml -maxdepth 6
+    why_deferred: >
+      Not obviously wrong -- a unit's specs/ are part of that unit's content
+      and copying them is correct. Recorded because the owner's rule was "if
+      it's in the .skill-manager home in some unit store, we need to make sure
+      when migration occurs it's flawless", and this is the set of files that
+      rule actually points at. Worth one look during OUN-5: in particular
+      spec-double-compiler ships a specs/current/ -- a WORKFLOW tree, not a
+      baseline -- inside its installed copy.
+    candidate_owner: OUN-5 (migration), one check
+    status: closed
+    resolution: >
+      Looked at during OUN-5, 2026-09-06. The three specs/ trees are unit
+      CONTENT and nothing in the migration touches them: RetireSupersededUnits
+      only removes units named in UnitSupersession.TABLE, and none of
+      spec-double-compiler, deploy-helm or test-graph is in it.
+      spec-double-compiler's specs/current/ is a workflow tree with an open
+      ticket (AT-01) and it travels with every copy, which is correct for the
+      unit that OWNS it -- the hazard would be spec tooling run inside a home
+      finding that tree instead of the repository's, and that belongs to
+      spec-double-compiler rather than to this epic. Filed onward as
+      DEF-OUN-011. The look itself produced the ticket's near-miss instead:
+      every installed unit is a git checkout (DEF-OUN-010).
+
+
+  - id: DEF-OUN-009
+    found_by: OUN-12
+    found_at: "2026-09-06"
+    severity: minor
+    summary: >
+      There is no copy-on-write fallback on Linux, and after OUN-12 there is
+      still none -- what changed is that the cost is now DECLARED and asserted
+      rather than skipped. Restoring block sharing on a Linux filesystem that
+      supports it (btrfs, XFS) needs FICLONE, which the JDK does not expose;
+      shelling out to `cp --reflink` per file is a process per file, and per
+      tree does not fit HomeCloner's filtered walk. On ext4 -- what GitHub
+      runners use -- there is no reflink to ask for at all.
+    reproduction: >
+      run home.clone.costs.far.less.than.a.copy on Linux; declared=FULL_COPY
+      and the measured cost is the full apparent size
+    why_deferred: >
+      OUN-12's objective was "make the copy work, and its cost KNOWN, where
+      clonefile(2) does not exist". A known cost is delivered. A cheap one is a
+      different piece of work with a native-call dependency, and it only pays
+      off on the subset of Linux filesystems that reflink.
+    candidate_owner: substrate-home-model
+    status: open
+
+  - id: DEF-OUN-010
+    found_by: OUN-5 (checking DEF-OUN-008)
+    found_at: "2026-09-06"
+    severity: major
+    summary: >
+      Every installed unit is a git checkout -- skills/<unit>/.git exists on
+      the real root home for skill-manager and skill-dev-skill alike. Any
+      operation that deletes a unit tree therefore deletes a working copy, and
+      a home is the only place a unit's history lives until `unit publish`
+      moves it. OUN-5's migration would have done exactly that on the one path
+      every existing home has to take.
+    reproduction: >
+      ls -d "$SKILL_MANAGER_HOME"/skills/*/.git
+    why_deferred: >
+      NOT deferred for the migration -- UnitSupersession.blockedFrom refuses
+      there now. Recorded because the general case is untouched: `remove` and
+      `uninstall` delete a checkout with unpushed commits without asking, and
+      home close-out is the only seam that currently guards it. Whether the
+      ordinary remove path should carry the same guard is an owner decision
+      with a real cost (it makes `remove` refuse on a dirty unit).
+    candidate_owner: owner decision, then a ticket outside this epic
+    status: filed
+    issue: https://github.com/haydenrear/skill-manager/issues/327
+    resolution: >
+      Filed 2026-09-06 at the owner's instruction, with a REPRODUCTION rather
+      than the inference this entry originally carried: a scratch home, a unit
+      installed from a git source, one commit on no remote and one uncommitted
+      edit, then `uninstall` -> exit 0, a tick, and both gone. The issue lists
+      four candidate shapes and states the cost, because guarding it makes
+      `remove` refuse on a dirty unit and that is a friction change on a
+      command people use casually.
+
+  - id: DEF-OUN-011
+    found_by: OUN-5 (closing DEF-OUN-008)
+    found_at: "2026-09-06"
+    severity: minor
+    summary: >
+      spec-double-compiler's installed copy ships specs/current/ -- an OPEN
+      spec workflow, active_ticket AT-01 -- inside every home. It is the
+      unit's own content and copying it is correct, but it means a home
+      contains a second thing that looks exactly like a workflow tree to any
+      tool that searches for one.
+    reproduction: >
+      cat "$SKILL_MANAGER_HOME"/skills/spec-double-compiler/specs/current/spec_manifest.yaml
+    why_deferred: >
+      Belongs to spec-double-compiler, not to an epic about unit names. Worth
+      one check that tla-spec-dev anchors on the repository root rather than
+      on the nearest specs/current it can find.
+    candidate_owner: spec-double-compiler
+    status: open
+
+  - id: DEF-OUN-012
+    found_by: OUN-5
+    found_at: "2026-09-06"
+    severity: minor
+    summary: >
+      Supersession is a hard-coded table in the product. The general mechanism
+      -- a `supersedes = [...]` key in the incoming unit's manifest -- was
+      deliberately NOT built, because the retirement would then be believed on
+      the word of a unit fetched from a repository, which could name any
+      installed unit as superseded and have it removed.
+    reproduction: n/a -- a design position, recorded so the next case does not
+      re-decide it from scratch
+    why_deferred: >
+      Two rows do not justify a mechanism, and the mechanism as stated has a
+      trust problem that needs solving before it ships (signed manifests, or a
+      rule that a unit may only supersede units it previously published).
+    candidate_owner: whoever needs the third row
+    status: open
+
+  - id: DEF-OUN-013
+    found_by: OUN-6 (moving skill-manager into skt and syncing a real home)
+    found_at: "2026-09-06"
+    severity: blocking
+    summary: >
+      A contained skill carries no upstream coordinate, so a manifest
+      `skill_references` entry naming a repository cannot be satisfied by the
+      contained copy. Measured: the OUN-5 migration retires the standalone
+      skill-manager and, four lines later in the SAME sync,
+      BuildResolveGraphFromUnmetReferences re-clones
+      github:haydenrear/skill-manager-skill and reinstalls it, because
+      git-epic-workflow references it by coordinate. Exit 0, both lines true,
+      nothing reports the contradiction.
+    reproduction: >
+      clone a home holding standalone skill-manager and git-epic-workflow;
+      sync an skt that contains a skill-manager contained skill;
+      grep the output for "retired skill-manager" and "installed skill-manager"
+    why_deferred: >
+      NOT deferred -- it BLOCKS OUN-6, and OUN-6's own test_constraint says so:
+      "if an import needs editing, the addressing is wrong and OUN-1 is
+      incomplete; that is the signal, and it must fail rather than be papered
+      over." Recorded here because the fix is an amendment ticket the owner has
+      to schedule, not something OUN-6 may absorb.
+      The fix is one field: a contained skill records the repository it came
+      from, and a coordinate reference resolves against it. That is the SAME
+      field the multi-plugin vendoring design needs (two plugins carrying one
+      nested skill, propagating changes between copies), which is why it is
+      worth doing properly rather than working around.
+    candidate_owner: an amendment ticket ordered before OUN-6
+    status: open
+
+  - id: DEF-OUN-014
+    found_by: OUN-6 (verifying the move end to end)
+    found_at: "2026-09-06"
+    severity: minor
+    severity_corrected: >
+      Filed as `blocking`. It is not. The alarming half of what I measured --
+      no copy of the skill anywhere -- was an artifact of MY OWN transitional
+      state: the move sits on an unmerged branch, so the carrier that landed
+      was `main`, which does not carry the skill yet. Once the branch merges,
+      that sequence is benign. The standalone being gone from skills/ is the
+      GOAL, not the defect, and I conflated "retired from skills/" with
+      "absent everywhere".
+    summary: >
+      On the SYNC path the retirement checks its precondition and a later
+      effect in the same operation invalidates it. RetireSupersededUnits runs
+      before BuildResolveGraphFromUnmetReferences and CommitUnitsToStore. It
+      asks "does the carrier contain this skill" -- true, of the carrier as it
+      stands at that moment -- retires the standalone, and then the commit
+      writes a DIFFERENT copy of the carrier over it. If that copy does not
+      carry the skill, the home ends with NO copy at all. Exit 0.
+    reproduction: >
+      clone a home holding standalone skill-manager; sync skt from a local dir
+      whose tree carries a contained skill-manager, while the coordinate
+      github:haydenrear/skt resolves to a remote main that does not carry it
+      yet. Measured 2026-09-06: skills/skill-manager gone,
+      plugins/skt/skills/ = {skt, unit-authoring}, installed/skill-manager.json
+      gone, exit 0.
+    why_deferred: >
+      The residual is a narrow check-then-act weakness, worth a comment and a
+      cheap post-condition rather than a ticket: it needs a carrier that is
+      AHEAD locally and BEHIND remotely in the same operation, which is a
+      developer's machine mid-rollout. Not data loss either -- the guard still
+      refuses a checkout with unpublished work, so what is removed is
+      recoverable by reinstall.
+      The fix is an ordering split that is more correct than what I wrote: the
+      INSTALL path must retire BEFORE the collision gate, because the gate is
+      what it exists to satisfy; the SYNC path has no gate and must retire
+      AFTER CommitUnitsToStore, once the carrier is definitively in place.
+      Check-then-act across effects is the class; the carrier is the thing
+      checked and a later effect is what replaces it.
+    candidate_owner: a comment and a post-condition on the OUN-5 line
+    status: open
+
+  - id: DEF-OUN-015
+    found_by: >
+      the local full test-graph sweep run as this epic's validation step
+      (24 of 25 graphs green; artifact-dag red on one node)
+    found_at: "2026-09-11"
+    severity: non-blocking
+    summary: >
+      `skill-manager uninstall` removes a unit's materialized outputs but
+      leaves its LEDGER rows behind, so `artifacts list` names the removed
+      unit forever. After uninstalling ad-transient-unit the census still
+      reports 6 of its artifacts -- unit-store, cli-shim and three projections
+      -- each as `materialization: declared-only`, `origin: ledger`,
+      `presence: missing`. Every direct check agrees the files are gone
+      (`the_removed_units_store_entry_is_gone`, `..._cli_shim_is_gone`,
+      `..._lock_row_is_gone`, `the_provisioned_tree_..._is_gone` all pass),
+      so this is the ledger disagreeing with the home, not a deletion failure.
+      `artifacts.lock.toml` is also created by the install and not removed by
+      the uninstall, which is the whole of the byte-comparison difference
+      (onlyAfter=[F artifacts.lock.toml 3745], onlyBefore=[]).
+    mechanism: >
+      Not an oversight -- a deliberate refusal doing more than intended. The
+      uninstall prints, per projection:
+
+        ! kept projection:default:claude:ad-transient-unit#SYMLINK/... -- no
+          ledger row names an output for it, and this command deletes only
+          what the ledger recorded -- run `skill-manager artifacts record`
+          while the producer is still installed
+
+      "Delete only what the ledger recorded" is the right safety rule. But a
+      row the teardown declines to ACT on is also left in place as a row, and
+      nothing later reaps it, so a refusal to delete a file becomes a permanent
+      phantom in the census. It pruned the one orphan it could verify
+      (provisioned-tree) and kept the five it could not.
+    reproduction: >
+      python skills/test_graph/scripts/run.py artifact-dag
+        -> node uninstall.prunes.the.subgraph fails on
+           the_census_names_nothing_the_removed_unit_owned=false and
+           the_home_is_byte_comparable_to_before_the_install=false
+      Report: test_graph/build/validation-reports/<runId>/
+              node-logs/uninstall.prunes.the.subgraph.artifacts-list-after.log
+    not_a_regression_from_this_session: >
+      The graph and the teardown it exercises both landed 2026-08-16
+      (4d8929ed, 468daf8f). This node has been run locally twice -- 2026-09-04
+      and 2026-09-11 -- and failed identically both times, the first a week
+      before any work in this session. Nothing in this session touched the
+      artifacts subsystem; its commits are in sync, child-home and eval-harness
+      code.
+    why_deferred: >
+      Outside the declared slice of the eval/harness work this session is
+      doing, and the epic's deferment policy is batch/budget-5. It is also not
+      data loss: the files are deleted correctly and only the census is wrong.
+      But it is a correctness gap in this epic's OWN artifacts work rather than
+      inherited from before it, so it wants a decision at the review rather
+      than quiet acceptance.
+    issue: https://github.com/haydenrear/skill-manager/issues/292
+    candidate_owner: >
+      skill-manager#292, on the artifacts/teardown line. The likely shape is
+      that teardown reaps the ledger rows of a unit being uninstalled whether
+      or not it could verify their outputs -- keeping the FILE when unsure is
+      the safety property; keeping the ROW is what produces the phantom.
+    status: open
+
+  - id: DEF-OUN-016
+    found_by: >
+      the manual regression for this epic — `skill-manager sync` in the
+      operator's project home, which exits 7 and names one blocker
+    found_at: "2026-09-11"
+    severity: non-blocking
+    summary: >
+      The operator's PROJECT home carries a test-fixture unit, `eval-skill`,
+      whose origin is an ephemeral scratchpad path that no longer exists:
+        file:///private/tmp/claude-501/<session>/scratchpad/upstream/eval-skill.git
+      Its store holds an uncommitted one-line edit (`LOCAL_EDIT_EVAL_111`,
+      under `MARKER_SKILL_V1`), so every `skill-manager sync` of this home
+      stops with "extra local changes — sync would overwrite them" and exit 7,
+      and `skt check` reports it as "unverifiable (remote unreachable)".
+      The stop is CORRECT behaviour -- the command is refusing to destroy an
+      edit it cannot re-fetch. What is wrong is that the unit is there at all.
+    the_stop_is_the_feature: >
+      Worth recording because it looks like a defect and is not: this is the
+      "if it needs an ack, stop" behaviour working. 11 lines of output, one
+      named blocker, a log path, and no loop.
+    shape: >
+      FULLY INSTALLED and internally consistent -- skills/eval-skill,
+      installed/eval-skill.json, installed/eval-skill.projections.json,
+      .materialization/skill/eval-skill.json, 2 rows in units.lock.toml, plus
+      home.runtime.json, artifacts.lock.toml, audit.log and the skt-check cache.
+      Nine places name it and they agree with each other.
+    not_DEF_121: >
+      This is NOT the shape DEF-121 (epic-home-integrity-sync) describes, and
+      that matters because DEF-121's verified remedy is `rm -rf` of two paths.
+      DEF-121's home had a store and a .materialization record and NO
+      installed/ record -- nothing to keep in agreement, so a raw delete was
+      right. Here the unit IS installed. Running DEF-121's remedy against THIS
+      home would leave installed/, units.lock.toml, artifacts.lock.toml,
+      home.runtime.json and the projections all naming a unit whose files are
+      gone -- i.e. it would MANUFACTURE the damaged shape DEF-121 exists to
+      clean up. The CLI verb is the correct remedy here, and the raw delete is
+      the wrong one; in DEF-121 it is the other way round.
+    evidence: results/epic-one-unit-one-name/evidence/eval-skill-residue-project-home.txt
+    reproduction: >
+      skill-manager sync            # in <repo>/.skill-manager -> exit 7
+      skt check                     # -> unverifiable (remote unreachable): eval-skill
+      git -C <home>/skills/eval-skill status --short   # -> M SKILL.md
+    nothing_depends_on_it: >
+      Checked before proposing removal. The eval suite's committed
+      epic-provisions case.yaml still lists `../../units/eval-skill`, but
+      rewrite-case.py REGENERATES that block from the units actually built, and
+      the suite builds from the ROOT home, which has no eval-skill at all.
+    why_deferred: >
+      It is an action on the operator's real home that deletes an edit whose
+      origin is gone, so it is the owner's call and not an agent's, even though
+      the content is plainly a test marker.
+    resolution: >
+      Owner approved 2026-09-11; `skill-manager uninstall eval-skill --yes` run
+      against the project home. Store removed, units.lock.toml rows 2 -> 0,
+      installed record gone, all 3 projection symlinks gone, the other 8 units
+      untouched, and `skill-manager sync` in that home now runs clean
+      (8 merged, no blocker, no exit 7). Paths naming it: 9 -> 5.
+    and_it_reproduced_334: >
+      Exactly as predicted, on a real home rather than a fixture. The census
+      did not move: 4 eval-skill artifacts before, 4 after, total 59 both
+      times -- every row flipped from materialized/ledger-and-home to
+      declared-only/ledger. `artifacts list` now reports 59 artifacts in a home
+      holding 55. Note the uninstall warned about the three PROJECTIONS only,
+      yet `unit-store:eval-skill` survives in the census with no warning at
+      all, so #334 is not confined to the unverifiable-output path.
+      `.materialization/skill/eval-skill.json` also survives, which is the
+      same residue DEF-121 documents from the other direction.
+      Posted as evidence on skill-manager#292.
+    status: resolved
+
+  - id: DEF-OUN-017
+    found_by: >
+      the owner asking "and removed from onboarding already?" during the epic
+      close review
+    found_at: "2026-09-11"
+    severity: major
+    summary: >
+      The migration RETIRES the standalone `skill-manager` and onboarding still
+      BUNDLES it. UnitSupersession.TABLE carries
+      Retirement("skill-manager", "skt", MOVED_INTO_CARRIER), so a migrated home
+      drops the standalone. BundledSkills.GITHUB_COORDS still maps
+      "skill-manager" -> "github:haydenrear/skill-manager-skill", so a freshly
+      onboarded home installs it again. OUN-4 removed `skill-dev-skill` from
+      that same map and left `skill-manager` in it.
+    consequence: >
+      A fresh onboard clones skill-manager-skill, installs the standalone, and
+      the install path then immediately retires it against skt -- work done in
+      order to be undone. It is also part of why the owner sees repeated clones
+      of the bundled coordinates during a root sync.
+    not_a_crash: >
+      InstallUseCase adds RetireSupersededUnits to stage1Effects, BEFORE the
+      collision gate, so the gate does not refuse the onboard. That ordering was
+      deliberate and it holds. The defect is the wasted round trip and the
+      contradiction between two tables that describe the same fact.
+    reproduction: >
+      grep -n 'skill-manager' src/main/java/dev/skillmanager/lifecycle/BundledSkills.java
+      grep -n 'skill-manager' src/main/java/dev/skillmanager/lifecycle/UnitSupersession.java
+    tried_and_reverted: >
+      Removing the entry was attempted 2026-09-12 and REVERTED the same day,
+      because it does not do what it looks like it does. The onboard seeds
+      from the local install dir, whose tree carries `skill-manager-skill/`,
+      so the unit arrives with or without the coordinate. What the coordinate
+      does is convert that local source to its GIT provenance -- without it
+      the unit is installed with LOCAL_DIR provenance and NO upstream, so
+      `skt check` calls it unverifiable and `sync` has nothing to pull. The
+      onboard graph caught it precisely: managerRemote=false with every other
+      assertion green. A unit installed with no way to update it is worse than
+      a unit installed and then retired.
+      The BundledAndSupersededDisagreeTest written alongside it was removed
+      with it: it encoded a rule the product cannot satisfy yet, and a test
+      that forbids the only correct current state is not a guard.
+    candidate_owner: >
+      OUN-6's end state, which is a change to what onboarding SEEDS rather
+      than to what provenance it records: stop seeding the standalone at all,
+      so skt's contained copy is the only one and there is nothing to retire.
+      Only then does removing the coordinate become correct -- and only then
+      does the two-tables test become writable.
+    status: open
+
+  - id: DEF-OUN-018
+    found_by: >
+      building the GOAL-a-home-survives-being-copied-into-an-image harness,
+      which the epic had declared and never measured
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      OUN-10 and OUN-12 fixed the CODE and left the existing population
+      unhealed, and nothing says so. Measured on the two real homes on this
+      machine, copied the way an image build copies one:
+        (a) no credential travels              MET
+        (b) no bin/cli entry names the source  NOT MET -- 11 frozen shims
+        (c) usable on another platform         NOT MET -- 6 unstamped pm trees
+      The frozen shims are exactly the six OUN-10 named (computeq,
+      helm-deploy, jinja2, monitoring, tla-spec-dev,
+      tracing-observability-install), and PmPlatform's own javadoc says "every
+      home provisioned before this change has no stamp".
+    the_fix_is_write_time_only: >
+      SkillScriptBackend rewrites a frozen shim only when a skill-script dep is
+      REINSTALLED -- binStamps() compares mtimes and examines only the shims
+      that install touched. A shim written before the fix and never reinstalled
+      stays frozen forever. PmPlatform.stamp is likewise called from
+      PackageManagerRuntime during provisioning, so an already-provisioned
+      version directory is never stamped retroactively.
+    a_remedy_exists_and_was_run: >
+      `skill-manager sync <unit> --force-scripts` heals it. Verified on the
+      project home: tracing-observability-install went from 1 line naming this
+      home to 0, and the sync reported `cli: 16 already present, 1 installed`.
+      It is per-unit, needs a flag most operators will not know to pass, and
+      there is no equivalent for the pm stamps short of re-provisioning.
+    why_it_matters_for_the_release: >
+      The goal exists because a home is about to be baked into a container
+      image. An image built from any home provisioned before these fixes
+      carries shims that run the BUILD machine's home path and pm trees a
+      foreign host will execute and get ENOEXEC from -- and both are invisible
+      to `home verify` and `home repair`, whose rule asks "does this reach
+      ANOTHER home", which an own-home absolute path does not.
+    candidate_owner: >
+      done in this epic, 2026-09-12. `home repair` grew two kinds --
+      FROZEN_HOME_PATH_IN_SHIM and UNSTAMPED_PM_TREE -- both repairable, using
+      the same ShimHomeContract.selfDerivingRewrite the installer applies and
+      the same PmPlatform.stamp the provisioner writes, so neither is a second
+      implementation of a rule that already has one.
+    verified: >
+      The project home went 5 findings -> 0: `repaired 5 of 5`, then `nothing
+      is damaged in a way this command knows about (43 entries examined)`, and
+      the goal harness re-read it as frozen: 0, unstamped: 0. The operator root
+      home still reads 6 and 4 because this session may not write it by hand.
+    and_it_found_one_more: >
+      Repairing a FOREIGN_PATH_IN_SHIM used to leave a shim naming THIS home
+      absolutely -- the repairer producing the next finding for itself to clean
+      up on a second pass. The re-detect loop did handle it, so homes ended
+      correct, but the repair count did not match the report and there was a
+      window where the fixed home was still not copyable. Both halves now
+      happen in one action. Caught by the equality assertion in
+      DamagedHomeIsRepairableTest, which is exactly why it is written as an
+      equality rather than a floor.
+    status: resolved
+
+  - id: DEF-OUN-019
+    found_by: >
+      scripts/release_regression.py, written for this release from where the
+      bugs cluster rather than from what is easy to check
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      `artifacts list` names artifacts that are not there, on BOTH real homes,
+      and the numbers are not small. Root home: 291 declared, 14 outputs whose
+      presence is `missing`, 1 row the ledger holds with no outputs at all.
+      Project home: 59 declared, 9 missing, 3 ledger-only. This is
+      skill-manager#292 at scale -- the three ledger-only rows in the project
+      home are exactly the ones the eval-skill uninstall left behind, measured
+      the same day.
+    why_a_cross_check_found_it: >
+      Nothing in the product disagrees with the ledger, because the ledger IS
+      what `artifacts list` reports. The disagreement is only visible by
+      reading the ledger's own claims back against the disk it describes,
+      which is what this check does.
+    candidate_owner: >
+      skill-manager#292 (DEF-HBR-003, epic-home-integrity-sync). NOT a new issue:
+      #334 was filed for it on 2026-09-11 and closed as a duplicate the next
+      day, because 95 open findings across three epic backlogs is more than
+      anyone searches before filing.
+    status: open
+
+  - id: DEF-OUN-020
+    found_by: the same cross-check
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      A HOME IS JUDGED BY THE CLI IT PINS, so a fix to a guard does not reach
+      the homes that most need it until they upgrade. Measured, same home,
+      same moment:
+        `~/.skill-manager/bin/cli/skill-manager home repair` (0.26.0, released)
+            -> "nothing is damaged in a way this command knows about
+                (73 entries examined)"
+        the same home judged by this branch's build
+            -> 8 findings: FROZEN_HOME_PATH_IN_SHIM and UNSTAMPED_PM_TREE
+    this_is_the_release_argument: >
+      Every home on this machine that has not upgraded is reporting itself
+      healthy against a rule that did not yet know about two defect classes.
+      That is not a criticism of the pin -- pinning is what makes a home
+      reproducible -- but it means "home repair says clean" is a statement
+      about a home AND the CLI it pins, and nothing in the output says which
+      version answered.
+    candidate_owner: >
+      a small change with outsized value: have `home repair` and `home verify`
+      print the build that produced the verdict, the way `skt status` prints
+      cli-ver. A verdict whose authority is invisible is the same shape as a
+      guard whose rule is too narrow -- the reader cannot tell what was
+      actually checked.
+    status: open
+
+  - id: DEF-OUN-021
+    found_by: >
+      the full test-graph sweep, on the first run after origin/main was merged
+      into the epic branch
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      OUN-10 made generated shims derive their own home instead of naming it,
+      and that made the CLONE's cold-artifact detector blind. `coldReason`
+      asks `missingReferencesIn`, which scans for literal spellings of the
+      home root; a self-deriving shim holds `${SKILL_MANAGER_SHIM_HOME}/cache/…`
+      and contains no literal root, so the scan found nothing, `writeColdShims`
+      replaced nothing, and a lazily-cloned home answered an unbuilt tool with
+      the kernel's words and exit 126:
+        line 5: …/cache/skill-script-ad-alpha-unit-ad-alpha-tool/bin/…:
+        No such file or directory
+      instead of naming the cold artifact and `skill-manager build` -- which is
+      the entire purpose of the cold shim.
+    the_same_shape_as_the_crater: >
+      A guard whose rule stopped matching the world: the scanner looks for
+      absolute paths, and the thing it guards stopped containing them. Neither
+      side is wrong on its own, which is why each shipped green on its own
+      branch.
+    only_visible_integrated: >
+      OUN-10 landed on main; the artifact graph lives on the epic branch. They
+      had never run in one tree until the merge, and the node passed on
+      2026-09-11 and failed on 2026-09-12 with no change to either.
+    resolution: >
+      destReferences also scans the token spelling, which resolves to the same
+      canonical path because the shim derives it from its own location.
+      NARROWED after a first attempt included `$SKILL_MANAGER_HOME` too --
+      that is the token ColdArtifactShim writes the missing tree as in its own
+      REFUSAL TEXT, so scanning it made a cold shim name a missing path
+      (itself) and the clone reported something dangling after the pass that
+      fixed it. Prose about a path is not a reference to one; three tests said
+      so at once.
+    status: resolved
+
+  - id: DEF-OUN-022
+    found_by: the same sweep, the node next door
+    found_at: "2026-09-12"
+    severity: minor
+    summary: >
+      `lazy.clone.declares.without.building` asserted that a clone's CLI-SHIMS
+      report `declared-only`. That was true only while a shim baked the source
+      home's absolute path -- such a shim is useless in a copy, so a clone had
+      no reason to carry the file. After OUN-10 the clone carries a shim that
+      WORKS, and reports its presence honestly as `materialized`.
+    why_it_is_not_a_regression: >
+      Nothing about lazy cloning changed: the PROVISIONED TREES the shims run
+      are still `declared-only`, and `the_clone_carries_no_built_cache_tree`
+      still holds from the filesystem side. The assertion was reading the
+      wrong artifact for its own subject.
+    resolution: >
+      Retargeted at the provisioned trees, which is what "declared without
+      building" was always about. The shim's own `agreement` stays
+      `unverifiable` precisely because the tree it would be checked against is
+      absent, so the model already said this correctly.
+    status: resolved
+

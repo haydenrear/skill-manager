@@ -41,6 +41,18 @@ public sealed interface ContextFact {
     record GatewayUnreachable(String host) implements ContextFact {}
 
     // ---- Commit / audit / provenance ----
+    /**
+     * OUN-13. A plugin's contained skill shares a word with a unit already in
+     * this home, and that is legal: they are addressed {@code name} and
+     * {@code plugin:name}, so neither shadows the other.
+     *
+     * <p>Reported rather than refused because one case hiding in it IS wrong
+     * — the same unit present twice — and nothing here can tell that from two
+     * units that merely share a word.
+     */
+    record ContainedNameAlsoClaimed(String name, String plugin, String claimant)
+            implements ContextFact {}
+
     record SkillCommitted(String name) implements ContextFact {}
     record CommitRolledBack(String name) implements ContextFact {}
     record AuditRecorded(String verb) implements ContextFact {}
@@ -115,6 +127,27 @@ public sealed interface ContextFact {
     record ProjectSynced(String projectName, String profile, int bindingsRemoved, int resolvedUnits)
             implements ContextFact {}
     record ProjectSyncFailed(String projectName, String message) implements ContextFact {}
+
+    /**
+     * The home's own drift after a sync, reported ONCE however many projects
+     * the sync fanned out to.
+     *
+     * <h2>The defect this replaces</h2>
+     *
+     * <p>{@code ProjectSyncUseCase} measured drift on the home it ran in and
+     * printed it, and the fan-out calls it once per claiming project. Measured
+     * on a root home with four projects: the same block — headline plus sixteen
+     * rows naming the same 15 units and 622 files — printed FOUR times in one
+     * command, each asking for the same acknowledgement about the same home.
+     *
+     * @param home       the home whose units changed
+     * @param units      how many units changed
+     * @param files      how many files across them
+     * @param ackCommand the command that reads and acknowledges the change
+     * @param rows       the per-unit lines, for the log rather than the console
+     */
+    record HomeDriftPending(String home, int units, int files, String ackCommand,
+                            java.util.List<String> rows) implements ContextFact {}
 
     /**
      * A claiming project was NOT refreshed after a parent-home unit sync,

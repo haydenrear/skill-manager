@@ -1,0 +1,24 @@
+{
+ "goal": "GOAL-one-name-one-copy",
+ "metric": "(home, unit-name) pairs that resolve to two distinct unit roots",
+ "scanned_homes": 36,
+ "live_pairs": 0,
+ "latent_pairs": 0,
+ "value": "0 live, 0 latent over 36 homes; gate refuses a planted collision",
+ "target": "0 live AND 0 latent",
+ "vacuous": false,
+ "why": null,
+ "live": [],
+ "latent": [],
+ "pairs_clean": true,
+ "gate": {
+  "refuses_a_planted_collision": true,
+  "detail": {
+   "collided_with": "deploy-helm",
+   "exit": 3,
+   "plugin_landed_anyway": false,
+   "product_said": "\u2717 \u270b halted: refusing to install plugin 'planted-plugin': the skill it contains as 'deploy-helm' is already installed at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/oun2-collision-gate-anxwxvbe/home/skills/deploy-helm."
+  }
+ },
+ "met": true
+}

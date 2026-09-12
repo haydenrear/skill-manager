@@ -354,6 +354,23 @@ public final class MarkdownImportValidator {
     }
 
     private static Optional<UnitRoot> installedRoot(SkillStore store, String name) {
+        // FIRST, AND BEFORE EVERY UNQUALIFIED BRANCH: `plugin:skill`.
+        //
+        // A qualified name cannot mean anything else, so checking it first
+        // costs no other name its meaning — a bare name contains no colon and
+        // falls straight through. It is the only form that is ALWAYS
+        // unambiguous, which is why the rest of this method can stay a
+        // convenience rather than a resolution strategy.
+        //
+        // It answers two things the bare form cannot. `skt` is the plugin and
+        // `skt:skt` is the skill inside it — one name each, where before the
+        // contained one was unaddressable because `plugins/skt` is checked
+        // first. And two plugins carrying the same skill name are `a:x` and
+        // `b:x`, not a tiebreak on plugin-name order.
+        if (SkillStore.isQualifiedName(name)) {
+            return store.qualifiedSkillDir(name)
+                    .map(dir -> new UnitRoot(name, UnitKind.SKILL, dir.toAbsolutePath()));
+        }
         if (store.containsPlugin(name)) {
             return Optional.of(new UnitRoot(
                     name, UnitKind.PLUGIN, store.pluginsDir().resolve(name).toAbsolutePath()));
@@ -369,6 +386,41 @@ public final class MarkdownImportValidator {
         if (store.contains(name)) {
             return Optional.of(new UnitRoot(
                     name, UnitKind.SKILL, store.skillDir(name).toAbsolutePath()));
+        }
+        // FIFTH, AND LAST ON PURPOSE. A skill contained in a plugin is a real
+        // unit with its own SKILL.md, and until this branch existed it was
+        // addressable by nothing: `skt` has carried `unit-authoring` since it
+        // shipped and no file could import it, because an import naming it
+        // was reported as a MISSING unit while sitting on disk in the same
+        // home.
+        //
+        // The position of this branch is the design decision, not the branch
+        // itself. Last means:
+        //
+        //   1. no name that resolved before resolves differently now. Adding
+        //      it earlier would let a contained skill shadow a standalone
+        //      unit of the same name, silently, by directory order — which is
+        //      the ambiguity the one-name-one-copy rule exists to forbid, not
+        //      a resolution strategy.
+        //   2. a plugin's own entry skill stays the plugin. `plugins/skt` is
+        //      checked first, so `skt` resolves to the plugin and never to
+        //      `plugins/skt/skills/skt`. One unit, one name.
+        //   3. a contained name resolves only when nothing standalone claims
+        //      it — which is exactly the state OUN-2's gate will make
+        //      mandatory rather than merely usual.
+        //
+        // When two plugins contain the same skill name the store returns both
+        // and this takes the first in plugin-name order. That tiebreak is no
+        // longer the only answer available: `plugin:skill` above names either
+        // one exactly, so this branch is a CONVENIENCE for the unambiguous
+        // case and not the resolution strategy it used to have to be. The
+        // collision gate no longer refuses this shape either — two distinct
+        // skills sharing a name in two plugins is legal, because neither is
+        // independently updatable and each has an exact name.
+        List<Path> contained = store.containedSkillDirs(name);
+        if (!contained.isEmpty()) {
+            return Optional.of(new UnitRoot(
+                    name, UnitKind.SKILL, contained.get(0).toAbsolutePath()));
         }
         return Optional.empty();
     }

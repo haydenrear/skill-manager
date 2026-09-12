@@ -49,7 +49,6 @@ public class CliSkillDocsCatalogCovered {
             Map<String, String> docsBySurface = new LinkedHashMap<>();
             docsBySurface.put("skill-manager-skill", markdownUnder(repoRoot.resolve("skill-manager-skill")));
             docsBySurface.put("skill-publisher-skill", markdownUnder(repoRoot.resolve("skill-publisher-skill")));
-            docsBySurface.put("skill-dev-skill", markdownUnder(repoRoot.resolve("skill-dev-skill")));
 
             List<String> missingWorkflowDocs = new ArrayList<>();
             List<String> missingHelpRoutes = new ArrayList<>();

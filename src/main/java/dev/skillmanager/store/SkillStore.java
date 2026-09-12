@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -263,6 +264,112 @@ public final class SkillStore {
         Path hd = harnessesDir.resolve(name);
         return Files.isDirectory(hd)
                 && Files.isRegularFile(hd.resolve(dev.skillmanager.model.HarnessParser.TOML_FILENAME));
+    }
+
+    /**
+     * Every {@code plugins/<plugin>/skills/<name>} directory carrying a
+     * {@code SKILL.md}, in plugin-name order.
+     *
+     * <h2>Why a LIST and not an Optional</h2>
+     *
+     * <p>Two installed plugins may each contain a skill of the same name.
+     * That is an ambiguity, not a preference, and a predicate that returned
+     * the first match would resolve it silently by directory order — the
+     * exact failure mode the one-name-one-copy rule exists to prevent. The
+     * caller gets both roots and decides; {@code installedRoot} picks the
+     * first deterministically and the collision gate refuses the install
+     * outright.
+     *
+     * <p>A contained skill whose name equals its carrying plugin's is
+     * returned here too, and is harmless: {@code installedRoot} checks
+     * {@code plugins/} first, so that name resolves to the plugin. The
+     * plugin and its entry skill are one unit under one name, which is the
+     * shape {@code skt} — carrying {@code plugins/skt/skills/skt} — is
+     * already in, in every home it is installed into.
+     */
+    public List<Path> containedSkillDirs(String name) {
+        if (name == null || name.isBlank() || name.contains("/")) return List.of();
+        if (!Files.isDirectory(pluginsDir)) return List.of();
+        List<Path> found = new ArrayList<>();
+        try (Stream<Path> plugins = Files.list(pluginsDir)) {
+            plugins.filter(Files::isDirectory)
+                    .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                    .forEach(plugin -> {
+                        Path candidate = plugin.resolve("skills").resolve(name);
+                        if (Files.isDirectory(candidate)
+                                && Files.isRegularFile(
+                                        candidate.resolve(SkillParser.SKILL_FILENAME))) {
+                            found.add(candidate);
+                        }
+                    });
+        } catch (IOException ignored) {
+            return List.of();
+        }
+        return List.copyOf(found);
+    }
+
+    /** True iff some installed plugin contains a skill named {@code name}. */
+    public boolean containsContainedSkill(String name) {
+        return !containedSkillDirs(name).isEmpty();
+    }
+
+    /**
+     * The skill a {@code plugin:skill} name addresses, or empty.
+     *
+     * <p>THE QUALIFIED FORM EXISTS BECAUSE THE BARE ONE CANNOT ALWAYS BE
+     * UNAMBIGUOUS. {@link #containedSkillDirs} returns every plugin carrying
+     * the name and its caller took the first in plugin-name order —
+     * deterministic, and still a tiebreak between two equally valid answers.
+     * {@code a:x} and {@code b:x} are simply different names, so there is
+     * nothing to break the tie between.
+     *
+     * <p>It also separates a plugin from its own entry skill: {@code skt}
+     * is the plugin and {@code skt:skt} is the skill inside it, which is the
+     * shape every home carrying skt is already in.
+     *
+     * <p>One colon, both halves non-blank, neither half a path. A name with
+     * two colons is not a deeper nesting — a plugin contains no plugins —
+     * so it is rejected rather than interpreted.
+     */
+    public Optional<Path> qualifiedSkillDir(String qualifiedName) {
+        String[] parts = splitQualified(qualifiedName);
+        if (parts == null) return Optional.empty();
+        Path candidate = pluginsDir.resolve(parts[0]).resolve("skills").resolve(parts[1]);
+        if (Files.isDirectory(candidate)
+                && Files.isRegularFile(candidate.resolve(SkillParser.SKILL_FILENAME))) {
+            return Optional.of(candidate);
+        }
+        return Optional.empty();
+    }
+
+    /** True iff {@code name} is syntactically a {@code plugin:skill} name. */
+    public static boolean isQualifiedName(String name) {
+        return splitQualified(name) != null;
+    }
+
+    /** The plugin half of a {@code plugin:skill} name, or empty. */
+    public static Optional<String> pluginOf(String qualifiedName) {
+        String[] parts = splitQualified(qualifiedName);
+        return parts == null ? Optional.empty() : Optional.of(parts[0]);
+    }
+
+    private static String[] splitQualified(String name) {
+        if (name == null) return null;
+        int colon = name.indexOf(':');
+        if (colon <= 0 || colon != name.lastIndexOf(':') || colon == name.length() - 1) {
+            return null;
+        }
+        String plugin = name.substring(0, colon);
+        String skill = name.substring(colon + 1);
+        if (plugin.isBlank() || skill.isBlank()) return null;
+        // A path separator in either half would escape the plugin's skills
+        // directory, which is the one thing this name must never do.
+        if (plugin.contains("/") || skill.contains("/")
+                || plugin.contains("\\") || skill.contains("\\")
+                || plugin.contains("..") || skill.contains("..")) {
+            return null;
+        }
+        return new String[] {plugin, skill};
     }
 
     /**

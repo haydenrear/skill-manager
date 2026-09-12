@@ -130,7 +130,10 @@ flows:
 - `references/mcp.md` - MCP dependency authoring and gateway-side
   runtime usage.
 - `references/skill-imports.md` - frontmatter `skill-imports` syntax,
-  semantics, and validation.
+  semantics, and validation; **how a unit name is addressed** - the two
+  edge mechanisms and their two keys, the four-branch search order, the
+  one-name-one-copy rule, and why the reverse edge is computed rather
+  than stored.
 - `scripts/env.sh` / `scripts/env.py` - resolve absolute paths for
   installed CLI dependencies and agent-visible skill paths.
 

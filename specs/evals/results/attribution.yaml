@@ -1,0 +1,572 @@
+# Bug attribution for the eval suite — CATCH rows.
+#
+# WHERE THIS BELONGS. `specs/deferred_findings.yaml` does not exist on main:
+# the rows live in sealed epic results, and creating that path from a branch
+# would collide with all of them on merge. So these are written here, per
+# bug_attribution.md §4's note, and move into the epic's sealed results at
+# close.
+#
+# WHY IT EXISTS AT ALL, stated because the omission is itself the finding:
+# every row below was already written — in a commit message, or in the results
+# narrative beside it. None of it was in a file anything reads. That is the
+# same defect as the eval scores living only in a terminal, and it went
+# unnoticed for the same reason: prose looks like a record.
+#
+# `area` NAMES THE APPARATUS when the defect is the apparatus (§6a). Without
+# that, a count of these rows reads as product quality and is inverted.
+
+meta:
+  epic: one-unit-one-name
+  window: "2026-09-07 .. 2026-09-10"
+  instrument: "specs/evals — six cases, claude plugin eval"
+  totals:
+    product: 11
+    instrument: 18
+  note: >
+    bug_attribution.md §6a records the first round of this same suite at 4
+    product / ~12 instrument and calls three-to-one the ORDINARY case rather
+    than a bad round. This window is 11 / 18 — the ratio improved while both
+    counts grew, which is what a maturing apparatus looks like. It is not
+    evidence the product is worse than it was.
+
+findings:
+
+  # ---------------------------------------------------------------- PRODUCT
+  - id: EV-P-01
+    title: "home clone re-anchored by one spelling of the source root"
+    channel: operator-running-own-instrument
+    channel_note: "the eval harness could not build a home under /tmp"
+    area: "HomeCloner.reanchorProvisioned — the clone's re-anchor pass"
+    pinned_by: "src/test/java/dev/skillmanager/store/CloneReanchorsEveryAliasTest.java"
+    fixed_by: 93dcf5eb
+    class_of: two-representations-of-one-fact
+
+  - id: EV-P-02
+    title: "clone rewrote a NEIGHBOUR directory whose name extends the home's"
+    channel: operator-running-own-instrument
+    channel_note: "found by the decoy case written for EV-P-01, which failed on the tip"
+    area: "HomeCloner byte substitution — no segment boundary"
+    pinned_by: "CloneReanchorsEveryAliasTest — 'a path that merely LOOKS like the source home'"
+    fixed_by: 93dcf5eb
+    note: >
+      Worse than the defect it sat beside: EV-P-01 failed the clone loudly,
+      this one verified clean and shipped a tool pointing at nothing.
+
+  - id: EV-P-03
+    title: "skt ticket new <ticket> <base> refused — the other front door takes it positionally"
+    channel: blind-judges
+    channel_note: "ticket-agent-opens-a-ticket; the agent followed git-issue-workflow's own docs"
+    area: "skt ticket new argument shape"
+    pinned_by: "tests/test_cli.py::test_positional_base_is_accepted"
+    fixed_by: skt@14d4bc4
+    class_of: positional-vs-flag
+
+  - id: EV-P-04
+    title: "bootstrap-home.sh <dir> refused — --root was mandatory"
+    channel: blind-judges
+    channel_note: "bootstraps-a-home-for-a-repo; the agent read the usage and still wrote the bare dir"
+    area: "bootstrap-home.sh argument shape"
+    pinned_by: ""
+    pin_note: "selftest.sh is 62 PASS / 50 FAIL on main, unrelated; verified by hand end to end"
+    fixed_by: git-issue-workflow@5c88a80
+    class_of: positional-vs-flag
+
+  - id: EV-P-05
+    title: "ticket new accepted a --path that ticket close could never find"
+    channel: blind-judges
+    channel_note: "ticket-agent-closes-a-ticket; reproduced by hand outside the eval before filing"
+    area: "skt ticket new / close — where a worktree lives"
+    pinned_by: "tests/test_epic_mode.py::test_inside_repo_path_is_refused"
+    fixed_by: skt@0499bd4
+    class_of: two-representations-of-one-fact
+
+  - id: EV-P-06
+    title: "skt check said 'all current' having verified nothing"
+    channel: blind-judges
+    channel_note: "syncs-a-stale-home-from-root; every unit unverifiable, headline said current"
+    area: "skt check verdict rendering"
+    pinned_by: "tests/test_check.py::test_nothing_verifiable_does_not_claim_current"
+    fixed_by: skt@f00b724
+
+  - id: EV-P-07
+    title: "skt check answered a question about the RECORD from the CHECKOUT"
+    channel: blind-judges
+    channel_note: >
+      syncs-a-stale-home-from-root. A stale record with a current checkout came
+      out as 'ahead of the remote tip (nothing to pull)'. The agent spent ~30
+      Bash calls reconstructing the comparison by hand.
+    area: "skt check — installed record vs store checkout"
+    pinned_by: "tests/test_check.py::test_a_stale_record_against_a_current_checkout_is_reported"
+    fixed_by: skt@04b2ba6
+    class_of: two-representations-of-one-fact
+    effect: "38 -> 14 Bash calls, $1.83 -> $1.00 on the next run"
+
+  - id: EV-P-08
+    title: "skt ticket new --help gave the flat parser, not help for the verb"
+    channel: blind-judges
+    area: "skt per-verb help"
+    pinned_by: "tests/test_cli.py::test_ticket_verb_help_is_about_that_verb"
+    fixed_by: skt@a5ed3ed
+    note: >
+      THE RECORD OF THIS ONE WAS WRONG. The eval note said 'exit 1, usage
+      error'. Re-tested against the exact commit the eval ran: exit 0. A code
+      recorded that was never measured, in a file whose job is evidence.
+
+  - id: EV-P-09
+    title: "sync printed the home's drift once per claiming project"
+    channel: operator-doing-the-work
+    channel_note: "the owner ran `skill-manager sync` and read four identical 17-line blocks"
+    area: "ProjectSyncUseCase drift reporting under the unit-sync fan-out"
+    pinned_by: "src/test/java/dev/skillmanager/project/SyncReportsDriftOnceTest.java"
+    fixed_by: a83a27ac
+
+  - id: EV-P-10
+    title: "child-home outcomes were warnings; 25 of them per sync, none actionable"
+    channel: operator-doing-the-work
+    area: "ChildHomeMaterializer / ProjectChildHomeScaffolder log levels"
+    pinned_by: "SyncReportsDriftOnceTest — the tally"
+    fixed_by: a83a27ac
+
+  - id: EV-P-11
+    title: "SourcesAreGreppableTest reported an unreadable file as a raw NUL, then hung on a symlink cycle"
+    channel: the-suite
+    channel_note: "surfaced by an eval home left under the repo"
+    area: "the repo's own test walk — an instrument defect in PRODUCT tests"
+    pinned_by: "SourcesAreGreppableTest — the isReadable and symlink guards"
+    fixed_by: 93dcf5eb
+
+  # ------------------------------------------------------------- INSTRUMENT
+  # area NAMES THE APPARATUS for every row below (§6a).
+  - id: EV-I-01
+    title: "rewrite-case.py computed the regenerated case and never wrote it"
+    channel: operator-running-own-instrument
+    area: "the eval harness's case regeneration"
+    pinned_by: ""
+    pin_note: "now asserts its own anchor and exits non-zero; no unit test for the harness yet"
+    note: "a no-op from the day it was added, invisible while the committed list happened to match"
+
+  - id: EV-I-02
+    title: "the front-door extractor knew only spellings the documentation does not teach"
+    channel: operator-running-own-instrument
+    area: "the eval harness's Stop-hook extractor"
+    instances: 4
+    detail: >
+      literal `skt` only; captured its own `;` separator; graded a --help probe
+      as the command; shlex.split(posix=False) splits `"${VAR}"/path/thing` at
+      the closing quote. EVERY ONE scored a CORRECT agent command as a miss.
+    class_of: grader-penalises-following-the-docs
+
+  - id: EV-I-03
+    title: "EVAL_CASE is not in a Stop hook's environment, so every case used the default front door"
+    channel: operator-running-own-instrument
+    area: "the eval harness's per-case dispatch"
+
+  - id: EV-I-04
+    title: "cp -R is not how a Skill Manager home moves"
+    channel: operator-running-own-instrument
+    area: "the eval harness's replay sandbox"
+    detail: >
+      unrepaired: 9 x FOREIGN_PATH_IN_SHIM, correctly refused. With `home
+      repair --fix`: '69 of 69 repaired' and still 0 installed records against
+      the source's 52. Repair fixes what a home POINTS AT, not what it HOLDS.
+    class_of: two-representations-of-one-fact
+
+  - id: EV-I-05
+    title: "the agent's PATH named paths the sandbox cannot read"
+    channel: operator-running-own-instrument
+    area: "the eval harness's PATH"
+    detail: >
+      $BUILD/shims and $BUILD/home/bin/cli are outside allowRead, so every case
+      opened with `skt: Operation not permitted`. PATH lookup also cannot
+      enumerate CommandLineTools, so git fell to the xcode-select stub.
+    class_of: present-is-not-working
+
+  - id: EV-I-06
+    title: "no JDK the sandbox could read, so the home's JVM CLI could not execute"
+    channel: operator-running-own-instrument
+    area: "the eval harness's PATH"
+    detail: "cost the sync case ~20 Bash calls compensating for a CLI that could not run"
+    class_of: present-is-not-working
+
+  - id: EV-I-07
+    title: "verify_env checked that files EXIST, not that the CLI RUNS"
+    channel: operator-running-own-instrument
+    area: "the eval harness's preflight"
+    class_of: present-is-not-working
+
+  - id: EV-I-08
+    title: "TMPDIR overridden to a path the sandbox permits neither read nor write"
+    channel: operator-running-own-instrument
+    area: "the eval harness's session env"
+
+  - id: EV-I-09
+    title: "fixtures declared ./wt-<x> where every doc says ../wt-<x>"
+    channel: operator-running-own-instrument
+    area: "the eval harness's fixtures"
+    note: "compounded EV-P-05 and made its first reading a case-sensitivity bug"
+
+  - id: EV-I-10
+    title: "the replay copied a git worktree, whose registration a copy does not carry"
+    channel: operator-running-own-instrument
+    area: "the eval harness's replay sandbox"
+
+  - id: EV-I-11
+    title: "epic-provisions kept a bespoke run.sh and was the only case that never archived"
+    channel: census
+    channel_note: "the goal ledger said NOT RUN after a sweep in which it ran and scored 0.83"
+    area: "the eval harness's per-case run scripts"
+    note: "a copy that drifts is worse than a copy — it looks like the thing it no longer is"
+
+  - id: EV-I-12
+    title: "nothing-outside-the-sandbox-was-touched was GUARANTEED RED on every REPLAY=no case"
+    channel: census
+    area: "the eval harness's Stop hook"
+    note: >
+      the hook exited before writing the verdict, so two cases lost a grader
+      permanently and it read as a finding about the skill on every run. A
+      grader that cannot pass is worse than a missing one.
+
+  - id: EV-I-24
+    title: "one unrecognised command scored as four separate findings"
+    channel: census
+    channel_note: "asked to define the problem precisely instead of calling it a case failure"
+    area: "the eval harness's Stop hook — the early exit at the front-door check"
+    detail: >
+      When the extractor recognises nothing the hook exits before writing
+      front-door-runs, worktree-has-its-own-home OR source-undamaged, so ONE
+      defect reds FOUR graders and reads as 0.17. That is why
+      epic-provisions looked like a collapse: it is one measurement failure,
+      counted four times, in a case whose agent issued the correct command.
+    note: >
+      I called this 'provisioning epics is failing'. The skill was not failing;
+      the grader was. The phrasing put a product defect where an instrument
+      defect was.
+    resolution: >
+      The graders still go red -- nothing was verified, and they should -- but
+      the hook now writes WHY-NO-FRONT-DOOR.txt naming the commands it saw and
+      the ones it rejected, and run.sh archives it beside the score. A red
+      carried no information before, which is why diagnosing this case cost
+      three sweeps and roughly four dollars.
+
+  - id: EV-I-25
+    title: "the extractor was only testable by spending $1.25 and reading 5 GB"
+    channel: census
+    area: "the eval harness's extractor — no offline test surface"
+    detail: >
+      Six findings in this ledger are bugs in ~40 lines of command parsing, and
+      every one was found by a live run. All six are decidable against a STRING.
+    resolution: >
+      Extracted to units-template/verify/lib/front_door.py with a CORPUS of
+      commands agents actually issued -- including all six regressions --
+      runnable as `python3 front_door.py --self-test` in milliseconds. 7 of 7.
+    note: >
+      The corpus is real transcripts, not invented shapes. A guess about what
+      agents write is what produced five of the six.
+
+  - id: EV-I-27
+    title: "a local unit origin baked at setup time is unreadable from the sandbox"
+    channel: operator-running-own-instrument
+    area: "the eval harness's fixture placement"
+    detail: >
+      The sync fixture gives git-issue-workflow a LOCAL source so the case does
+      not depend on github answering, and writes that source's absolute path
+      into installed/<unit>.json at setup time -- under $BUILD. The sandbox
+      cannot read $BUILD, and the workspace is COPIED to a fresh
+      /private/tmp/e-XXXXXX per run, so the recorded origin is unreadable from
+      the only place it is ever read.
+    measured: >
+      It does not surface as an error. `skt check` resolves the tip with `git
+      ls-remote <origin>`; an unreachable origin is `unverifiable`, which
+      produces NO notification at all:
+        origin readable   -> ['new-version']
+        origin unreadable -> NONE, unverifiable: ['demo']
+      The agent ran `skt check` as command 2 of 31, got silence, and
+      reconstructed the answer by hand over the next 29 calls.
+    resolution: >
+      The fixture hook runs outside the Bash sandbox and after the copy, so it
+      re-anchors any origin pointing into the source workspace -- the same job
+      HomeCloner.reanchorProvisioned does for shims. A github origin is left
+      alone, and so is a path that merely shares a prefix (fixture-workspace-2).
+    effect: >
+      31 commands -> 9. $1.54 -> $0.53 and 380s -> 159s, a 66% cost reduction
+      on the suite's most expensive case. The score is still 0.71: the cost
+      grader's ceiling is 4 and 9 is over it, but what remains is the agent
+      double-checking and reading a reference doc twice, which is the kind of
+      thing this case exists to measure.
+    found_by: >
+      commands.txt, archived for the first time on this run. Three sweeps of
+      scores could not say this; one 8 KB text file did.
+    class_of: instrument-defect-scored-as-the-subject
+
+  - id: EV-I-26
+    title: "the hook's python3 is 3.9; the shell's is 3.14, and the module would not load"
+    channel: operator-running-own-instrument
+    area: "the eval harness's Stop hook — interpreter it actually runs under"
+    detail: >
+      `python3` in this interactive shell is an alias for python 3.14. A Stop
+      hook is spawned with the operator's environment, where `python3` is
+      /usr/bin/python3 -- 3.9.6. The extracted module annotated a parameter
+      `re.Pattern | None`, which is a TypeError at IMPORT time on 3.9, so the
+      module never loaded, the extractor recognised nothing, and the four
+      graders below the early exit went red.
+    note: >
+      The module's own --self-test passed the whole time, because I ran it with
+      the shell's interpreter and not the hook's. Two interpreters, one name.
+      This is EV-I-25's exact lesson recurring one level up: the test surface
+      has to be the environment the thing runs in.
+    resolution: >
+      `from __future__ import annotations` so annotations are never evaluated,
+      and eval_build_case now runs the corpus under EVERY python3 that could
+      run it (/usr/bin/python3 and PATH's) BEFORE building -- a case whose
+      extractor fails its own tests is refused rather than run. Verified by
+      breaking the module in a copy of the tree: the build aborts and prints
+      which corpus entries failed.
+    class_of: instrument-defect-scored-as-the-subject
+    caught_by: offline-test-before-a-paid-run
+
+  - id: EV-I-13
+    title: "the sync fixture manufactured a contradiction and scored the agent on it"
+    channel: operator-running-own-instrument
+    area: "the eval harness's syncs-a-stale-home-from-root fixture"
+    detail: >
+      The title this row carried was wrong, and measuring it said so. `skt
+      check` DOES read installed/<unit>.json. What the fixture built was a
+      record holding `6ce6538e` + 32 zeros with the checkout left at the tip --
+      under a comment claiming it rolled back to a real commit rather than
+      inventing a hash. `6ce6538` is real; that 40-character string is not, and
+      the checkout never moved.
+    measured: >
+      skt.check.collect() against both states, offline, in a synthetic home --
+      no network, no 5 GB clone. The fixture as it stood produces TWO verdicts
+      about one unit at once:
+        [record-disagrees-with-checkout] ... -> "skt sync demo"
+        ahead_of_remote: ['demo']            -> "nothing to pull"
+      The second is precisely the signal that makes an agent conclude the home
+      is current, and check.py's own comment records where that leads: ~30 Bash
+      calls reconstructing the check by hand. That is the behaviour this case
+      was scoring at 0.71.
+    resolution: >
+      The checkout is rolled back to a real HEAD~1 and the record names that
+      same full SHA, so the home is genuinely behind its source -- which is what
+      the case is named for. One verdict, and the right one:
+        [new-version] new version available -- pull with: skt sync <unit>
+      Origin is repointed at a bare mirror taken before the rollback, inside
+      the workspace: `skt check` resolves the tip with `git ls-remote`, and a
+      case whose score depends on whether github answered is measuring the
+      network. Verified offline end to end.
+    class_of: fixture-builds-a-state-the-case-is-not-about
+
+  - id: EV-I-14
+    title: "a probe refused by the staleness guard was read as a result"
+    channel: operator-doing-the-work
+    area: "the eval harness's operator — me"
+    detail: >
+      Reported network access as impossible on the strength of a run that never
+      happened: sources had changed, the guard refused, and I read the previous
+      run's kept trace. The guard worked. `--allow-tools 'WebFetch(domain:...)'`
+      grants it, verified twice on confirmed-fresh runs.
+    class_of: read-a-stale-artifact-as-a-result
+
+  - id: EV-I-16
+    title: "the SessionStart hook told every agent the front door was NOT ON PATH"
+    channel: census
+    channel_note: "read from a kept trace while asking why every case failed its cost grader"
+    area: "the eval harness's toolchain hook"
+    detail: >
+      The agent's PATH leads with RELATIVE entries, which resolve against the
+      workspace; the hook resolved `command -v` from its own directory. So it
+      announced `skt -> NOT ON PATH (that is a defect in the eval setup)` and
+      `skill-manager -> /opt/homebrew/bin/skill-manager` -- the operator's
+      global CLI. Both false, and the second is the exact "teaching it to
+      bypass what run.sh sets up" the file's own header warns against.
+    effect: >
+      This is the cost grader. An agent told the front door is absent goes
+      looking, which is the 4-to-7 orientation calls EVERY case was red on.
+    class_of: present-is-not-working
+    resolution: >
+      cd-ing the hook to the workspace did NOT fix it -- measured, still NOT ON
+      PATH. Both hooks run at SessionStart and this one announces a workspace
+      the FIXTURE hook has not necessarily placed yet, so the entry does not
+      exist to be probed from anywhere. The file's own header already said a
+      hook cannot verify on the agent's behalf; that was written about a more
+      permissive environment and is just as true about an earlier one. It now
+      STATES the entries the harness guarantees and probes only the absolute
+      ones.
+    effect_measured: >
+      NOT MEASURED, and the first version of this row said it was. The claim
+      was "4 calls / 0.82 -> 2 calls / 1.00". The archive of five runs of this
+      case on one day says otherwise:
+
+        12:00  1.00  2 calls   BEFORE any hook fix
+        12:13  0.82  4 calls   after the cd attempt
+        12:26  1.00  2 calls   after the contract rewrite
+        12:54  0.82  4 calls   after the contract rewrite
+
+      The 2-vs-4 split alternates and is UNCORRELATED with the change. The hook
+      really was announcing the front door as absent -- that is read from a
+      trace and stands -- and stating the contract instead is right on its own
+      terms. What does not stand is the cost effect I attributed to it.
+    correction: >
+      Seventh single-run causal claim this session, and the first one to reach
+      a commit message. The archive caught it because the scores are now in
+      files instead of prose -- which is the wiring paying for itself in the
+      most direct way available: it contradicted me.
+
+  - id: EV-I-21
+    title: "epic-provisions was not bimodal — the extractor was"
+    channel: census
+    channel_note: "read from three kept traces after --runs 3 showed 0.33 / 1.00 / 0.33"
+    area: "the eval harness's Stop-hook extractor"
+    detail: >
+      The two failing runs issued the exact command SKILL.md teaches --
+      `"$SKT" ticket new DEMO-1 --base "$(git rev-parse HEAD)" --path ...`.
+      When the extractor moved from shlex to whitespace .split() to fix the
+      BASENAME bug, it broke quoted arguments CONTAINING SPACES: `--base
+      "$(git rev-parse HEAD)"` becomes four fields and `"$(git` fails the
+      allowlist. The 1.00 run passed only because it had resolved the SHA in a
+      PREVIOUS call, so its arguments were literal.
+    resolution: >
+      .split() for the program word (shlex splits `"${VAR}"/path/thing` at the
+      closing quote), shlex for the arguments (split() breaks a substitution
+      with spaces). Different problems; one tool solves neither alone.
+    note: >
+      FIFTH instance of EV-I-02's class: the grader rejecting the form the
+      documentation teaches. Every one of the five scored a CORRECT agent
+      command as a miss.
+    class_of: grader-penalises-following-the-docs
+    resolution: >
+      REAL BUG, NOT THIS CASE'S CAUSE. The parsing defect is genuine and is
+      fixed and verified offline against both documented forms. It did NOT
+      resolve epic-provisions: with the fix confirmed present in the source AND
+      in the deployed build, three more runs came back 1.00 / 0.17 / 0.33.
+      Recorded as unresolved rather than quietly dropped -- a ledger that keeps
+      the fixes that worked and loses the ones that did not is worse than none,
+      which is the same failure as the guaranteed-red grader in EV-I-12.
+    lesson: >
+      Diagnosed from a passing/failing contrast across three traces and stopped
+      there. The correlation was real and the mechanism was real, which is what
+      made it convincing. A correlation over three runs is one step of
+      evidence, not a cause.
+
+  - id: EV-I-22
+    title: "epic-provisions is unstable and the cause is still unknown"
+    channel: census
+    area: "the eval harness's epic case — cause unattributed"
+    status: open
+    detail: >
+      Three separate 3-run sweeps: 0.33/1.00/0.50, 0.33/1.00/0.33,
+      1.00/0.17/0.33. The failing runs go red on issues-the-front-door-command
+      and everything downstream of it. Two candidate causes are eliminated (the
+      shlex/split argument bug, and the toolchain hook) and no third is
+      established.
+    note: >
+      The honest reading is that no number from this case means anything yet,
+      including the 0.83 and 1.00 quoted for it earlier in this epic's results.
+    latest: >
+      2026-09-10, one run after the extractor was unified into lib/front_door.py:
+      1.00, all seven graders, ONE Bash call, $0.37. The command it issued was
+      CORPUS entry 3 -- the full `SKT=...; "$SKT" ticket new ... --base "$(git
+      rev-parse HEAD)"` preamble SKILL.md teaches, which older extractors
+      refused. n=1, so this is a data point and not a distribution.
+    still_open_because: >
+      EV-I-26 cannot be the cause of the earlier sweeps: it was introduced BY
+      the extraction, which came after them. And EV-I-21's argument fix was
+      verified deployed in a sweep that then scored 1.00/0.17/0.33. So a third
+      mechanism is still unaccounted for, and one green run does not retire it.
+    next_evidence: >
+      Cheap now rather than open-ended: the next red writes WHY-NO-FRONT-DOOR.txt
+      naming every command it saw and every piece it refused, archived beside
+      the score. That command becomes a CORPUS entry, and the corpus runs as a
+      build precondition -- so the same defect cannot reach a paid run twice.
+
+  - id: EV-I-23
+    title: "--keep-temp was unconditional, so every run leaked a ~5 GB sandbox"
+    channel: operator-running-own-instrument
+    area: "the eval harness's run lifecycle"
+    detail: >
+      eval_run_case passed --keep-temp on every invocation and nothing expired
+      the result. Six builds plus 31 kept sandboxes reached ENOSPC (EV-I-17),
+      and a full disk does not fail a run politely -- the harness writes each
+      command's output to a file first, so NO Bash call could run at all, not
+      `df` and not `rm`. Recovery was manual.
+    note: >
+      It was unconditional for a reason: a red could only be diagnosed by
+      reading the sandbox. EV-I-24 removed that reason.
+    resolution: >
+      --keep-temp is now passed only with --keep. A red is diagnosed from the
+      40 KB WHY-NO-FRONT-DOOR.txt archived beside the committed score instead
+      of from 5 GB kept until the disk fills, and eval_run_case warns when more
+      than three sandboxes have piled up -- before the disk guard, which only
+      speaks once there is too little left to build with.
+    class_of: present-is-not-working
+
+
+  - id: EV-I-19
+    title: "a fix reported as applied that had never run — the && swallowed it"
+    channel: census
+    channel_note: "found by reading git show on the commit that claimed it"
+    area: "the eval harness's operator — me"
+    detail: >
+      The 'state the contract' rewrite of the toolchain hook was run as
+      `cd specs/evals/harness && python3 ...` from a shell already IN that
+      directory. The cd failed, the && swallowed the edit, and the `bash -n`
+      and the eval run that followed were separate statements -- so the block
+      printed 'syntax ok' and 'score 1.00' and looked applied. `git show` on
+      the commit shows it added the cd line and comments and nothing else.
+      I then attributed a 4->2 call improvement to a fix that did not exist.
+    class_of: read-a-stale-artifact-as-a-result
+    fix: "read the file back and count both the new text and the old; done for the rewrite that replaced it"
+
+  - id: EV-I-20
+    title: "the toolchain hook told the no-home case to give up on its own task"
+    channel: blind-judges
+    channel_note: "bootstraps-a-home-for-a-repo, 3 runs at 0.10 / 0.10 / 0.30"
+    area: "the eval harness's toolchain hook"
+    detail: >
+      For the one case whose subject IS a checkout with no home, the hook
+      announced `skt -> NOT ON PATH (that is a defect in the eval setup, not
+      something to work around)`. True about the path and exactly wrong as
+      advice: giving the checkout a home is the task. Red on the front-door
+      grader in all three runs.
+    note: >
+      CONSISTENT ACROSS THREE RUNS, which is what separated it from the
+      2-vs-4 coin flip one row up. At --runs 1 this and that noise are
+      indistinguishable, and I had been reading both as signal.
+    resolution: >
+      Fixed and MEASURED: 0.10 / 0.10 / 0.30 -> 0.80 / 1.00 / 1.00, mean 0.17
+      -> 0.93. Consistent before and consistent after, which is what makes this
+      one an effect rather than the coin flip in EV-I-16.
+
+  - id: EV-I-17
+    title: "the harness filled the disk and no command could run"
+    channel: operator-doing-the-work
+    area: "the eval harness's build lifecycle"
+    detail: >
+      Each case builds a ~5 GB home; setup.sh builds the next before the
+      previous is gone, and every --keep run leaves a whole sandbox. Six cases
+      plus 31 kept sandboxes reached ENOSPC, at which point no Bash call could
+      run at all -- the harness writes each command's output to disk first.
+      This repo's own memory note says to measure worktree cost with free space
+      rather than du. I measured neither.
+    class_of: present-is-not-working
+
+  - id: EV-I-18
+    title: "--runs 1 makes every number in the ledger a single sample"
+    channel: census
+    channel_note: "found by reading the archive that EV-I-16's correction came out of"
+    area: "the eval harness's run count"
+    detail: >
+      Every score and every cost in this ledger is one run. The same case has
+      produced 2 and 4 Bash calls alternately within one hour, and 18/26/5/2/
+      5/10/14 across two days. A point estimate cannot separate a fix from a
+      coin flip, and it did not.
+    class_of: single-run-read-as-a-trend
+
+  - id: EV-I-15
+    title: "a patch applied without asserting its anchor, four times"
+    channel: operator-doing-the-work
+    area: "the eval harness's operator — me"
+    detail: >
+      Including a $1.15 run that measured a verifier already fixed on disk.
+      Closed by the source-digest staleness guard, which then caught two more.
+    class_of: read-a-stale-artifact-as-a-result

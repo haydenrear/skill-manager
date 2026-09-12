@@ -3,7 +3,7 @@
 # This repo is not a skill unit. There is no skill-manager.toml at its root: it
 # is the CLI's own source tree, and it is itself an integration-repository
 # snapshot carrying four leaf units as ordinary directories —
-# skill-dev-skill/, skill-manager-skill/, skill-publisher-skill/ and
+# skill-manager-skill/, skill-publisher-skill/ and
 # skills/test_graph/ — plus infra/homebrew-skill-manager/. So "a repo does not
 # declare its own unit" has nothing to bite on here, and what this manifest
 # declares is simply what an agent working in this checkout needs.
@@ -66,7 +66,7 @@ description = "The Skill Manager CLI: unit resolution and installation, agent-ho
 source = "github:haydenrear/tla-spec-dev"
 
 # --- authoring: this repo carries four leaf skill units as tracked directories
-#     (skill-dev-skill/, skill-manager-skill/, skill-publisher-skill/,
+#     (skill-manager-skill/, skill-publisher-skill/,
 #     skills/test_graph/), and refreshing or merging any of them is unit work.
 #     The skt plugin (shipped by the skill-publisher-skill repo; its
 #     unit-authoring contained skill) is the authority on SKILL.md

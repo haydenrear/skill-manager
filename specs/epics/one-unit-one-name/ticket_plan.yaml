@@ -1,0 +1,985 @@
+# Ticket plan -- one-unit-one-name.
+#
+# The spec-workflow slot is FREE for the first time in this repository's recent
+# history: child-home-materialization-workflow was closed on 2026-09-05 and
+# specs/current + specs/desired_program_model were removed from main. This plan
+# is still canonical for scheduling and issue assignment; scaffolding a TLA
+# workflow on top of it is an owner decision that has not been taken.
+version: 1
+schedule_revision: 5
+name: one-unit-one-name
+slug: one-unit-one-name
+branch: epic/one-unit-one-name
+base: "e07e577"
+repository: haydenrear/skill-manager
+ticket_prefix: OUN
+updated: "2026-09-06"
+
+# AMENDMENT, schedule_revision 2, 2026-09-05. Four findings from the
+# meta-harness effort (DEF-282..285) are scheduled here at the owner's
+# instruction, because a Skill Manager home is about to be baked into a
+# container image and none of the four survives that. They are a DIFFERENT
+# subject from the rest of this epic -- portability of a home across a machine
+# boundary, which is substrate-home-model's (#274) territory -- and they get
+# their own goal rather than being attached to the one-name goals. Recorded so
+# a later reader does not mistake the widened scope for drift.
+
+purpose: >
+  A unit name does not mean one thing in a home, and nothing can tell you what
+  depends on what.
+
+  THREE FACTS, MEASURED 2026-09-05. (1) A skill contained in a plugin is not
+  addressable at all: MarkdownImportValidator.installedRoot resolves a `unit:`
+  name against plugins/, harnesses/, docs/ and skills/ and never looks inside a
+  plugin. skt has contained `unit-authoring` since it shipped; nothing imports
+  it, because nothing can. (2) There are TWO forward-edge mechanisms with two
+  different addressing schemes -- `skill-imports` in markdown frontmatter names
+  a unit BY NAME, `skill_references` in skill-manager.toml names it BY
+  COORDINATE -- and neither is recorded in installed/*.json, which holds only
+  name, version, gitHash, kind, origin, installSource, errors and installedAt.
+  So the reverse edge does not exist on disk in either spelling. (3) Asking
+  "what imports skill-manager?" today means recursive grep, and it returns a
+  DIFFERENT ANSWER PER HOME: 6 units in the project home, 8 in root.
+
+  The consolidation the owner wants -- skill-dev-skill gone, skill-manager-skill
+  living inside skt, one plugin -- is blocked on (1), and is unsafe without (3).
+  Moving skill-manager-skill today breaks 19 importing files, 14 of them inside
+  skt itself.
+
+  The gate this needs is the owner's: a unit name must resolve to ONE copy in a
+  home, and a plugin carrying a contained skill whose name already exists
+  standalone must be REFUSED rather than merged. That gate is also what makes
+  the migration sticky, because during migration both copies exist by
+  construction.
+
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-one-unit-one-name/deferred/backlog.yaml
+  rule: >
+    A failure case outside a ticket's declared slice is appended to the backlog
+    with its reproduction and left there. This epic touches the resolver, the
+    installer and the unit inventory at once; every one of those invites a
+    rewrite. Agents do not widen a ticket into one.
+
+review_policy:
+  cadence: wave
+  gate: true
+  merges: owner
+  walkthrough: required
+  artifact_root: results/epic-one-unit-one-name/reviews/
+  rule: >
+    The epic agent merges each wave's PRs into the epic branch in promotion
+    order, then writes the review artifact and stops. Silence is not approval.
+
+epic_goals:
+  - id: GOAL-one-name-one-copy
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-one-name-one-copy/
+    evaluation_ticket: OUN-8
+    statement: >
+      A unit name resolves to exactly one copy in a home. A plugin carrying a
+      contained skill whose name already exists as a standalone unit is refused,
+      not merged.
+    metric: "(home, unit-name) pairs that resolve to two distinct unit roots"
+    harness: >
+      A walker over every home that indexes every addressable unit name --
+      standalone AND plugin-contained -- and reports each name claimed twice,
+      with both roots. Reported per pair; one bad pair is the whole defect.
+    baseline:
+      value: >
+        0 today, but VACUOUSLY: a contained skill is not addressable, so no
+        contained name can collide with a standalone one. The number becomes
+        meaningful only once OUN-1 lands, which is why OUN-1 precedes the gate.
+      measured_at: "2026-09-05"
+    target: "0, non-vacuously, with the gate refusing a planted collision"
+
+  - id: GOAL-a-contained-skill-is-addressable
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-a-contained-skill-is-addressable/
+    evaluation_ticket: OUN-8
+    statement: >
+      A skill contained in a plugin can be named by `unit:` in a skill-import
+      and resolve, exactly as a standalone skill does.
+    metric: "does `unit: unit-authoring` resolve from a markdown skill-import"
+    harness: "a unit case that plants an import naming a plugin-contained skill and asserts it validates"
+    baseline:
+      value: >
+        no -- installedRoot has four branches (plugins/, harnesses/, docs/,
+        skills/) and none descends into a plugin's contained skills. Measured:
+        unit-authoring is in no installed/ record, no skills/ directory, and
+        nothing imports it.
+      measured_at: "2026-09-05"
+    target: "yes"
+
+  - id: GOAL-migration-lands-on-one-skt
+    kind: integration
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-migration-lands-on-one-skt/
+    evaluation_ticket: OUN-8
+    statement: >
+      Upgrading a home that holds the old shape leaves skill-dev-skill gone, no
+      standalone skill-manager, and exactly one skt -- without the collision
+      gate refusing the upgrade that causes it, and BY EVERY ROUTE a home
+      takes.
+    metric: >
+      (skill-dev-skill present, standalone skill-manager present, skt count)
+      after upgrading a home at the pre-epic shape, measured once per route:
+      `install <carrier>` and `sync`.
+    harness: >
+      bootstrap a home at the pre-epic shape, upgrade it by each route, and
+      read the three counts. The homes that exist on the measuring machine are
+      READ and reported as context, and are not the verdict.
+    baseline:
+      value: "(1, 1, 1) on the operator root home, measured 2026-09-05"
+      measured_at: "2026-09-05"
+    target: "(0, 0, 1) by both routes"
+    # AMENDMENT, schedule_revision 4, 2026-09-06, at the owner's instruction:
+    # "each project and skill manager home is responsible for migration [...]
+    # We need to validate that instead of worrying about every home that
+    # exists."
+    #
+    # The metric was a census -- how many of the homes on this machine hold
+    # (0,0,1). That is not a property of the software. It counts homes nobody
+    # has synced yet and homes belonging to checkouts nobody has opened, it
+    # reads "not yet upgraded" and "cannot be upgraded" as one number, and no
+    # amount of correct code drives it to zero.
+    #
+    # It now grades the MECHANISM, by both routes, because every home migrates
+    # itself when it syncs. Widening from one route to two was not cosmetic:
+    # the sync route was wired and untested, and it did not work for `sync
+    # skill-manager` -- the single command a person runs after being told this
+    # migration exists.
+
+  - id: GOAL-who-imports-this
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-who-imports-this/
+    evaluation_ticket: OUN-8
+    statement: >
+      One command answers "what in this home imports X" across BOTH edge
+      mechanisms, transitively, and terminates on a cycle.
+    metric: "can a single command answer it for skill-manager, covering skill-imports AND skill_references, transitively"
+    harness: >
+      A unit case over a fixture home containing both edge kinds and a
+      deliberate cycle; asserts the command names every importer, direct and
+      transitive, and returns rather than looping.
+    baseline:
+      value: >
+        no such command. Answering it on 2026-09-05 took recursive grep over two
+        homes and produced DIFFERENT ANSWERS -- 6 importing units in the project
+        home, 8 in root -- because the two mechanisms live in different files
+        with different addressing and neither is indexed.
+      measured_at: "2026-09-05"
+    target: "one command, both mechanisms, transitive, terminates on cycles"
+
+  - id: GOAL-a-home-survives-being-copied-into-an-image
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-a-home-survives-being-copied-into-an-image/
+    evaluation_ticket: OUN-8
+    statement: >
+      A home copied onto another machine carries no credential, runs the copy
+      it landed in rather than the one it came from, and can be built on a
+      platform that is not the one it was made on.
+    metric: >
+      three independently checkable properties of a copied home: (a) no
+      credential travels, (b) no bin/cli entry names the source home, (c) the
+      copy is usable on Linux.
+
+      A FOURTH was scoped and withdrawn at schedule_revision 3 -- the gateway
+      state a copy inherits (DEF-284, OUN-11, issue #317). It is deferred, not
+      solved; it is out of the GOAL so the goal can be decided.
+    harness: >
+      A probe that copies a home the way an image build would -- not `home
+      clone`, which is the APFS-only path -- and answers the three questions on
+      the result. Reported per property; one bad property is the whole defect.
+    baseline:
+      value: >
+        0 of 4 AS SCOPED THEN, measured 2026-09-05 on this machine, and the
+        letters below are the ORIGINAL four. (c) was withdrawn to
+        GOAL-a-copied-home-knows-its-gateway-state at schedule_revision 3, so
+        the (d) here is the (c) of the metric above. The prose is left as it
+        was measured rather than renumbered: a baseline is a record of a
+        reading, and rewriting the reading to match a later scope is how a
+        ledger stops being evidence. (a) auth.token is copied
+        verbatim, 0600, keys access_token/refresh_token/expires_at -- observed
+        by cloning a home holding one, not inferred from the absence of an
+        exclusion. (b) bin/cli/tla-spec-dev execs an absolute path into its own
+        home, and `home repair` reports 0 findings because its rule is "does
+        this reach ANOTHER home", which an own-home absolute path does not.
+        (c) three tiers, three gateway states: root owned=true, worktree
+        owned=false, project home has no gateway.properties at all, all naming
+        one port. (d) pm/ is not in HomeCloner.SKIPPED_DIRS and is 203 MB of
+        Mach-O arm64 here; the CoW the three-tier model was adopted on is an
+        implicit side effect of clonefile(2) on APFS, and the node that asserts
+        it SKIPS where the JDK cannot reflink -- which is the only platform CI
+        runs.
+      measured_at: "2026-09-05"
+    target: "3 of 3"
+
+  - id: GOAL-a-copied-home-knows-its-gateway-state
+    kind: quality
+    evidence_root: results/epic-one-unit-one-name/goals/GOAL-a-copied-home-knows-its-gateway-state/
+    evaluation_ticket: OUN-11
+    statement: >
+      What a copied home believes about the gateway is decided by a written
+      rule, not inherited by accident.
+    metric: "do the tiers hold a state some written rule predicts"
+    harness: >
+      Read gateway.properties in each tier and compare against the rule. The
+      rule has to exist first; that is the ticket's own constraint.
+    baseline:
+      value: >
+        no rule exists. Measured 2026-09-05: root gateway.owned=true, worktree
+        gateway.owned=false, project home has no gateway.properties at all,
+        and two of the three name one port.
+      measured_at: "2026-09-05"
+    target: "the tiers agree with a rule that is written down"
+    carried_to: >
+      SPLIT OUT AND CARRIED at schedule_revision 3. This began as property (c)
+      of GOAL-a-home-survives-being-copied-into-an-image, and bundling it there
+      was the mistake: four independent properties in one goal meant retiring
+      one contributor forced a choice between moving the whole goal and moving
+      none of it. The plan validator refused the halfway state, correctly.
+      Split out, it carries whole to substrate-home-model (#274) with OUN-11,
+      and the remaining three properties stay here and stay decidable.
+
+tickets:
+  - id: OUN-0
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/299
+    title: "Baseline both edge mechanisms, and name the addressing rule once"
+    wave: 1
+    depends_on: []
+    blocks: ["OUN-1", "OUN-3"]
+    promotion_order: 1
+    promotion_predecessor: null
+    contribution: measurement-and-contract
+    slice: >
+      The measurement harnesses and the written rule. No resolver change, no
+      installer change, no unit removed.
+    objective: >
+      Measure the baselines for all four goals, and write down ONCE how a unit
+      name is addressed -- including that a contained skill is not addressable
+      today and that two mechanisms address by different keys.
+    existing_seam: >
+      MarkdownImportValidator.installedRoot is the name-addressed reader.
+      Resolver already carries requestedBy for coordinate-addressed
+      skill_references and already has cycle handling. Neither is being changed
+      here; both are being described and measured.
+    expected_effect: "four baselines where there are none, and one written rule"
+    local_signal: "the harnesses run and print numbers; the contained-skill case is RED"
+    test_constraint: >
+      The addressability baseline must be demonstrated on unit-authoring, which
+      exists and is unreachable -- not on a fixture invented for the purpose.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: ["plan/baseline"]
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: guard
+        expected_effect: "a number, and the note that today it is vacuous"
+        local_signal: "the walker runs over every home and reports 0 with the reason"
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: guard
+        expected_effect: "a failing case naming unit-authoring"
+        local_signal: "the case is RED on today's tree"
+      - goal: GOAL-who-imports-this
+        contribution: guard
+        expected_effect: "the two-mechanism finding written down with counts per home"
+        local_signal: "6 and 8 reproduced by the harness rather than by grep"
+
+  - id: OUN-1
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/300
+    title: "A plugin-contained skill is addressable by name"
+    wave: 2
+    depends_on: ["OUN-0"]
+    blocks: ["OUN-2"]
+    promotion_order: 2
+    promotion_predecessor: "OUN-0"
+    contribution: capability
+    slice: >
+      installedRoot's resolution order and whatever store predicate it needs.
+      Not the collision gate -- that is OUN-2 and it depends on this.
+    objective: >
+      Add the missing branch so `unit: <name>` resolves a skill contained in an
+      installed plugin, and prove it on unit-authoring.
+    existing_seam: >
+      installedRoot already has four branches in a fixed order. A fifth is
+      additive; the ORDER is the design question, because a contained name that
+      shadows a standalone one is precisely the collision OUN-2 refuses.
+    expected_effect: "unit-authoring resolves; OUN-0's red case turns green"
+    local_signal: "the planted import naming a contained skill validates"
+    test_constraint: >
+      Resolution order must be asserted explicitly, not left to whichever branch
+      happens to be first: a test that only proves 'it resolves' cannot tell a
+      correct order from a lucky one.
+    conflict_keys:
+      production: ["resolve/installed-root"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: direct
+        expected_effect: "no -> yes"
+        local_signal: "the OUN-0 case flips green without being edited"
+
+  - id: OUN-3
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/301
+    title: "`skt deps --who-imports` -- the reverse edge, recomputed, cycle-safe"
+    wave: 2
+    depends_on: ["OUN-0"]
+    blocks: ["OUN-4"]
+    promotion_order: 3
+    promotion_predecessor: "OUN-1"
+    contribution: capability
+    slice: >
+      One read-only command over one home. NOT a persisted index: the DAG is
+      recomputed on every invocation by owner decision, so there is no record
+      to drift from the units it describes.
+    objective: >
+      Answer "what imports X" over BOTH mechanisms -- name-addressed
+      skill-imports and coordinate-addressed skill_references -- transitively,
+      terminating on cycles, and print it as the fitness function an agent reads
+      before changing a unit.
+    existing_seam: >
+      Resolver already walks the coordinate-addressed edges with requestedBy and
+      already handles cycles; MarkdownImportValidator already parses the
+      name-addressed ones. The work is unifying two addressing schemes into one
+      answer, not building a graph from nothing.
+    expected_effect: "one command replaces two greps that disagreed"
+    local_signal: >
+      run against the project home it names the 6 importers of skill-manager;
+      against root, 8 -- and says why they differ
+    test_constraint: >
+      A fixture with a deliberate CYCLE is required. The command must return an
+      answer rather than loop or truncate silently, and the test must fail if it
+      does either.
+    conflict_keys:
+      production: ["cli/deps"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-who-imports-this
+        contribution: direct
+        expected_effect: "no command -> one command"
+        local_signal: "both mechanisms in one answer, cycle fixture terminates"
+
+  - id: OUN-2
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/302
+    title: "Refuse a plugin whose contained skill name already exists standalone"
+    wave: 3
+    depends_on: ["OUN-1"]
+    blocks: ["OUN-5"]
+    promotion_order: 4
+    promotion_predecessor: "OUN-3"
+    contribution: guard
+    slice: >
+      The install/sync-time gate and its message. Not the migration that has to
+      survive it -- that is OUN-5.
+    objective: >
+      Make a name collision between a plugin-contained skill and a standalone
+      unit a hard refusal, naming both claimants and the two ways out (rename
+      the contained skill, or remove the standalone).
+    existing_seam: >
+      LiveInterpreter already refuses "unit 'X' is already installed at Y" for
+      standalone collisions. This is the same verdict for a claimant the current
+      inventory cannot see -- which is why it could not exist before OUN-1.
+    expected_effect: "a planted collision is refused; the refusal names both roots"
+    local_signal: "installing a plugin carrying a contained `skill-manager` fails with both paths named"
+    test_constraint: >
+      Refusal is HARD -- no warn-and-continue, no flag to force it. The owner's
+      rule is that a home never holds two versions of one name. A test must
+      assert the refusal cannot be overridden.
+    conflict_keys:
+      production: ["install/collision-gate"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: "the metric stops being vacuous and the gate holds it at 0"
+        local_signal: "planted collision refused; no-collision install unaffected"
+
+  - id: OUN-4
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/303
+    title: "Remove skill-dev-skill from the repository and from onboarding"
+    wave: 3
+    depends_on: ["OUN-3"]
+    blocks: ["OUN-5"]
+    promotion_order: 5
+    promotion_predecessor: "OUN-2"
+    contribution: simplification
+    slice: >
+      The unit directory, the onboarding seed, the onboard graph's assertions
+      about it, skill-project.toml's prose, and the three skt doc mentions. NOT
+      the cleanup of homes that already hold it -- that is OUN-5.
+    objective: >
+      Delete skill-dev-skill. Nothing imports it and nothing invokes its CLI;
+      onboarding still seeds it and the onboard graph still asserts it.
+    existing_seam: >
+      OnboardSkillsInstalled asserts skills/skill-dev-skill and
+      installed/skill-dev-skill.json exist. Its installer was patched on
+      2026-09-03 to unbreak the onboard graph, which is evidence it is still
+      wired in, not evidence it is wanted.
+    expected_effect: "one fewer unit in the repo; onboard still green"
+    local_signal: "OUN-3's command reports zero importers before the deletion"
+    test_constraint: >
+      Prove absence with OUN-3's command, not with grep. That is the point of
+      sequencing OUN-3 first, and it is the epic's own dogfooding of its tool.
+    conflict_keys:
+      production: ["units/skill-dev-skill"]
+      tla: []
+      adapters: []
+      test_graph: ["onboard"]
+      workflow: []
+    goals:
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: direct
+        expected_effect: "the unit stops shipping, so new homes never acquire it"
+        local_signal: "onboard graph green with the assertions removed"
+      - goal: GOAL-who-imports-this
+        contribution: enabling
+        expected_effect: "the tool is used in anger to justify a deletion"
+        local_signal: "zero importers, printed, recorded as the evidence"
+
+  - id: OUN-5
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/304
+    title: "Migration: retire skill-dev-skill and the superseded standalone skill-manager"
+    wave: 4
+    depends_on: ["OUN-2", "OUN-4"]
+    blocks: ["OUN-6"]
+    promotion_order: 6
+    promotion_predecessor: "OUN-4"
+    contribution: capability
+    slice: >
+      The one-time migration an existing home goes through on upgrade. Not the
+      move of skill-manager-skill into skt -- that is OUN-6 and it depends on
+      this landing first.
+    objective: >
+      Make an existing home reach the new shape without OUN-2's gate refusing
+      the very upgrade that fixes it: retire skill-dev-skill, and retire the
+      standalone skill-manager IN THE SAME TRANSACTION as adopting the skt that
+      supersedes it.
+    existing_seam: >
+      home sync / upgrade already reconcile a home against a source. What is new
+      is a retirement that must be ordered BEFORE the collision check within one
+      operation, and must be idempotent for a home already migrated.
+    expected_effect: "an old-shape home upgrades cleanly instead of being refused"
+    local_signal: "a fixture home at the pre-epic shape upgrades to (0, 0, 1)"
+    test_constraint: >
+      The gate must NOT be weakened to let migration through. The migration is
+      ordered before it, and a test must prove the gate still refuses an
+      ordinary collision during and after migration. A migration that works by
+      disabling the guard has produced the state the guard exists to prevent.
+    conflict_keys:
+      production: ["migration/unit-retirement"]
+      tla: []
+      adapters: []
+      test_graph: ["home-sync"]
+      workflow: []
+    goals:
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: direct
+        expected_effect: "(1, 1, 1) -> (0, 0, 1)"
+        local_signal: "fixture home reaches the target triple; re-running changes nothing"
+      - goal: GOAL-one-name-one-copy
+        contribution: guard
+        expected_effect: "the gate survives the migration that would trip it"
+        local_signal: "planted collision still refused mid-migration"
+
+  - id: OUN-6
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/305
+    title: "Move skill-manager-skill into the skt plugin, keeping the unit name"
+    wave: 5
+    depends_on: ["OUN-5"]
+    blocks: ["OUN-7"]
+    promotion_order: 7
+    promotion_predecessor: "OUN-5"
+    contribution: simplification
+    slice: >
+      The unit's location and whatever the move needs to keep 19 importing files
+      resolving. Not the repository rename -- that is OUN-7.
+    objective: >
+      Relocate skill-manager-skill to live inside skt as a contained skill, under
+      the SAME unit name, so every existing `unit: skill-manager` import keeps
+      resolving through OUN-1's new branch.
+    existing_seam: >
+      OUN-1 makes contained skills addressable; OUN-2 refuses the collision this
+      move would otherwise create; OUN-5 removes the standalone copy first. This
+      ticket is the payoff of the three and is unsafe without any of them.
+    expected_effect: "one fewer top-level unit; all 19 imports still resolve"
+    local_signal: >
+      OUN-3's command reports the same importer set before and after the move --
+      6 in the project home -- with no import edited
+    test_constraint: >
+      Not one importing file may be rewritten to make this pass. If an import
+      needs editing, the addressing is wrong and OUN-1 is incomplete; that is
+      the signal, and it must fail rather than be papered over.
+    conflict_keys:
+      production: ["units/skill-manager-skill"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: "the name is claimed once, from inside skt"
+        local_signal: "the walker reports one root for skill-manager"
+
+  - id: OUN-7
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/306
+    title: "Rename skill-publisher-skill to skt, and repoint what names the old repo"
+    wave: 6
+    depends_on: ["OUN-6"]
+    blocks: ["OUN-8"]
+    promotion_order: 8
+    promotion_predecessor: "OUN-6"
+    contribution: simplification
+    slice: >
+      The repository name and every recorded reference to it. No behaviour
+      change.
+    objective: >
+      Rename the hosting repository to skt so the repo, the plugin, the CLI and
+      the unit agree, and repoint installSource in existing records rather than
+      leaving them on a GitHub redirect.
+    existing_seam: >
+      installed/*.json carries installSource. GitHub redirects a renamed repo, so
+      nothing breaks loudly -- which is exactly the failure mode to avoid: a
+      record naming a repository that no longer exists under that name, working
+      only because a redirect is silently covering for it.
+    expected_effect: "one name for one thing, and records that say so"
+    local_signal: "no installed record names skill-publisher-skill; clones still work"
+    test_constraint: >
+      A redirect working is not the same as a record being right. Assert on the
+      recorded installSource, not on whether a clone succeeds.
+    conflict_keys:
+      production: ["units/skt-coords"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    goals:
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: enabling
+        expected_effect: "the surviving plugin is named consistently everywhere"
+        local_signal: "records repointed, verified by reading them"
+    amendment:
+      schedule_revision: 5
+      decided_at: "2026-09-12"
+      decided_by: owner
+      kind: scope-reduced
+      what_the_objective_said: >
+        "Rename the hosting repository to skt so THE REPO, the plugin, the CLI
+        and the unit agree, and repoint installSource in existing records
+        rather than leaving them on a GitHub redirect."
+      what_shipped: >
+        The records half, in full: 0 installed records and 0 units.lock.toml
+        rows name skill-publisher-skill in either home, which is the ticket's
+        own local_signal and it passes. The REPOSITORY is still named
+        skill-publisher-skill, so "the repo, the plugin, the CLI and the unit
+        agree" is not true of the first of the four.
+      why: >
+        Renaming a GitHub repository redirects the old coordinate rather than
+        breaking it, so the records could be repointed without the rename and
+        the rename carries risk the records half does not. The decision was
+        made during delivery and recorded only as a comment in
+        skill-project.toml:
+          "# The tracked DIRECTORY stays skill-publisher-skill/; only the
+           installed unit renamed. Migration: references/migration.md"
+        A TOML comment is not this epic's receipt mechanism -- OUN-11 shows
+        what one looks like -- so the amendment is written here, at the close
+        review that found it.
+      residual: >
+        `skill-project.toml` still carries
+        `[plugins.skt] source = "github:haydenrear/skill-publisher-skill"`,
+        which is the coordinate the owner watched being cloned repeatedly
+        during a root sync. Carried, not dropped: the rename remains worth
+        doing and is cheap once nothing else is in flight.
+      affected_goals:
+        - goal: GOAL-migration-lands-on-one-skt
+          disposition: unaffected
+          reason: >
+            The goal is measured on the triple a home holds -- skill-dev-skill
+            present, standalone skill-manager present, skt count -- and none
+            of those reads the repository name. It reports MET by both routes.
+  - id: OUN-8
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/307
+    title: "Terminal evaluation -- decide every goal on the integrated result"
+    role: evaluation
+    wave: 8
+    depends_on: ["OUN-7", "OUN-9", "OUN-10", "OUN-12"]
+    blocks: []
+    promotion_order: 14
+    promotion_predecessor: "OUN-13"
+    contribution: measurement
+    slice: "Measurement and the review artifact. No production change."
+    objective: >
+      Run every goal harness on the integrated epic, decide each goal against
+      its target, run the full graph sweep and a manual pass, and record bug
+      attribution by producing component.
+    existing_seam: >
+      scripts/measure_goals.py already exists from the previous epic, with the
+      contract that a harness prints {goal, metric, value, target, met} and
+      exits 0/1/2. This epic's harnesses join it rather than inventing a shape.
+    expected_effect: "four decided goals, with evidence"
+    local_signal: "measure_goals.py reports 4 of 4, or names which did not and why"
+    test_constraint: >
+      A goal that cannot be measured is reported UNMEASURED, never as met. The
+      previous epic had three of four goals mismeasured rather than unmet; the
+      harness contract exists because of it.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: ["plan/evaluation"]
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
+      - goal: GOAL-migration-lands-on-one-skt
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
+      - goal: GOAL-a-home-survives-being-copied-into-an-image
+        contribution: direct
+        expected_effect: "0 of 4 -> 4 of 4"
+        local_signal: the copy probe answers all four properties yes
+      - goal: GOAL-who-imports-this
+        contribution: direct
+        expected_effect: "the goal is decided"
+        local_signal: "harness runs on the integrated tree"
+
+  # ---------------------------------------------------------------- amendment
+  # schedule_revision 2. Portability of a home across a machine boundary.
+  # Independent of the one-name chain: no shared conflict key, so wave 3.
+
+  # AMENDED IN at schedule_revision 4. DEF-OUN-013 said a contained skill
+  # "carries no upstream coordinate" and filed it as a blocking gap. It is not
+  # a gap -- it is the invariant stated backwards, and writing it down closes
+  # three findings instead of building a mechanism for one.
+  - id: OUN-13
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/336
+    title: A contained skill is addressed `plugin:skill`, and has no coordinate
+    wave: 7
+    depends_on: ["OUN-1", "OUN-2", "OUN-6"]
+    blocks: ["OUN-8"]
+    promotion_order: 13
+    promotion_predecessor: "OUN-12"
+    contribution: correctness
+    slice: >
+      Name resolution for contained skills, the collision gate's predicate, and
+      the two tables that disagree about `skill-manager`. NOT the artifacts
+      ledger (#334) and NOT the repository rename (OUN-7) -- both are named
+      elsewhere and neither is addressing.
+    objective: >
+      A contained skill is addressed `plugin:skill`, resolves by bare name only
+      as a convenience when exactly one unit claims it, and carries NO
+      coordinate -- `skill_references` naming one is refused and told to name
+      the plugin. The collision gate narrows to what actually collides: two
+      standalone units in a home's root. A plugin contains no nested git
+      repository, which is what makes "update the plugin, as a whole" true.
+    existing_seam: >
+      MarkdownImportValidator.installedRoot already has the five-branch order
+      and already documents the ambiguity this removes -- "when two plugins
+      contain the same skill name the store returns both and this takes the
+      first in plugin-name order". OUN-2's gate already exists and only its
+      predicate changes. Both facts the rule depends on already hold in the
+      field: no plugin anywhere contains a nested git repo, and nothing imports
+      a contained skill by bare name, so nothing that resolves today changes.
+    expected_effect: >
+      three findings close and no mechanism is added -- DEF-OUN-013 (blocking),
+      DEF-OUN-002, DEF-OUN-017
+    local_signal: >
+      `unit: skt:unit-authoring` resolves; `unit: unit-authoring` still
+      resolves; a planted standalone/contained name pair no longer refuses an
+      install; a planted nested repo inside a plugin does.
+    test_constraint: >
+      The permutations run against a REAL Skill Manager home in the test graph,
+      not a synthetic store, and they are added to the existing plugin graph
+      rather than a new one. Required: a root skill sharing a contained skill's
+      name with `plugin:skill` still resolving to the contained copy; TWO
+      plugins containing the same skill name, both resolving and neither
+      refused at install; a reference from inside a plugin to its own contained
+      skill; a reference from outside a plugin by `plugin:skill`; a
+      `skill_references` entry naming a contained skill, refused with the
+      plugin named in the message; and a nested git repo inside a plugin,
+      refused. The BundledSkills/UnitSupersession agreement is a unit test that
+      fails if any MOVED_INTO_CARRIER unit is also bundled.
+    conflict_keys:
+      production:
+        - validation/markdown-imports
+        - lifecycle/collision-gate
+        - lifecycle/bundled-skills
+      adapters: []
+      test_graph:
+        - plugin-smoke
+      tla: []
+      workflow: []
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: >
+          0 live / 11 latent -> the latent pairs that are a plugin versus its
+          own contained skill stop being pairs at all; what remains is the
+          standalone `skill-manager` the migration retires
+        local_signal: >
+          measure_goal_one_name_one_copy reports fewer latent pairs, and the
+          ones it still reports are all MOVED_INTO_CARRIER remnants
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: direct
+        expected_effect: >
+          addressable by name becomes addressable UNAMBIGUOUSLY, by a name that
+          cannot collide
+        local_signal: "`unit: skt:unit-authoring` resolves"
+
+  - id: OUN-9
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/281
+    delivery: main
+    delivery_reason: >
+      Delivered as its own PR against the DEFAULT branch, not into this epic
+      branch, and that is a deviation from rule 4 recorded deliberately. A
+      Skill Manager home is about to be baked into a container image; these
+      four have to be on main for that, and an epic branch merges to main only
+      at finalization. #309 and #314 took the same route for the same reason.
+      They are scheduled here so the epic OWNS them and its terminal evaluation
+      decides their goal -- not so they queue behind the one-name chain.
+    title: A copied home carries no credential
+    wave: 3
+    depends_on: []
+    blocks:
+      - OUN-8
+    promotion_order: 9
+    promotion_predecessor: OUN-7
+    contribution: primary
+    slice: >
+      HomeCloner's exclusion set and the decision about what a copy inherits.
+      Not the auth flow, not the registry, not the agent credential axis
+      (#263) -- only what travels when a home is copied.
+    objective: >
+      Decide, and enforce, whether a registry credential travels with a home,
+      and make the answer observable rather than inferable from the absence of
+      an exclusion.
+    existing_seam: >
+      HomeCloner.SKIPPED_ROOT_FILES already exists and already holds three
+      entries (audit.log, gateway.log, gateway.pid). The mechanism is there;
+      auth.token is simply not in it.
+    expected_effect: a copy carries no access_token or refresh_token
+    local_signal: >
+      clone a home holding an auth.token; the copy does not have one, and says
+      so rather than silently omitting it
+    test_constraint: >
+      The case must plant a REAL-SHAPED token (the three keys, mode 0600) and
+      assert on the copy, not assert on the contents of SKIPPED_ROOT_FILES.
+      #281 sat open as an unverified inference for exactly as long as nobody
+      cloned a home and looked.
+    conflict_keys:
+      production: ["store/home-cloner-exclusions"]
+      tla: []
+      adapters: []
+      test_graph: ["home-clone"]
+      workflow: []
+    goals:
+      - goal: GOAL-a-home-survives-being-copied-into-an-image
+        contribution: direct
+        expected_effect: property (a) no -> yes
+        local_signal: the cloned home has no auth.token
+
+  - id: OUN-10
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/315
+    delivery: main
+    delivery_reason: >
+      Delivered as its own PR against the DEFAULT branch, not into this epic
+      branch, and that is a deviation from rule 4 recorded deliberately. A
+      Skill Manager home is about to be baked into a container image; these
+      four have to be on main for that, and an epic branch merges to main only
+      at finalization. #309 and #314 took the same route for the same reason.
+      They are scheduled here so the epic OWNS them and its terminal evaluation
+      decides their goal -- not so they queue behind the one-name chain.
+    title: A shim survives its home being copied
+    wave: 4
+    depends_on: []
+    blocks:
+      - OUN-8
+    promotion_order: 10
+    promotion_predecessor: OUN-9
+    contribution: primary
+    slice: >
+      The shims skill-manager itself writes, and the gate on the ones it does
+      not. Not a rewrite of every unit's install script.
+    objective: >
+      An entry under bin/cli must resolve the home it is standing in, not the
+      home it was written in -- or the install must refuse to write it.
+    existing_seam: >
+      SkillScriptBackend.reportFrozenShims ALREADY detects this and already
+      names the remedy; it warns rather than failing, reasoned in-source as not
+      wanting to break already-shipped units. ShimHomeContract.check is the
+      same rule read after the copy. Both exist; neither stops the shim being
+      written.
+    expected_effect: no bin/cli entry in a copied home names the source home
+    local_signal: >
+      copy a home and run every bin/cli entry in it; none reaches the source
+    test_constraint: >
+      Assert on a COPIED home, not on the home the shims were written in --
+      the shim works in place, which is exactly why this has survived. The
+      warning's own words: "it goes wrong only later, in a home that does not
+      exist yet."
+    conflict_keys:
+      production: ["cli/shim-home-derivation"]
+      tla: []
+      adapters: []
+      test_graph: ["home-clone"]
+      workflow: []
+    goals:
+      - goal: GOAL-a-home-survives-being-copied-into-an-image
+        contribution: direct
+        expected_effect: property (b) no -> yes
+        local_signal: every bin/cli entry in the copy resolves within the copy
+
+  - id: OUN-11
+    status: retired
+    retirement:
+      resolution: carried
+      successor_workflow: substrate-home-model
+      successor_issue: https://github.com/haydenrear/skill-manager/issues/317
+      schedule_revision: 3
+      decided_at: "2026-09-05"
+      decided_by: owner
+      reason: >
+        "let's defer that one for now - we don't really use it." CARRIED, not
+        abandoned: the gateway divergence (DEF-284) is confirmed and
+        unexplained, and the question of what a copied home should believe
+        belongs to substrate-home-model (#274) -- the workflow that owns a
+        home crossing a machine boundary -- rather than to an epic about unit
+        names. OUN-11's own constraint was that the RULE be written before any
+        code changed, and nobody is available to state it here.
+      receipt: specs/.history/one-unit-one-name/retired-ticket-011-OUN-11/manifest.json
+      affected_goals:
+        - goal: GOAL-a-copied-home-knows-its-gateway-state
+          disposition: carried
+          successor_workflow: substrate-home-model
+          successor_issue: https://github.com/haydenrear/skill-manager/issues/317
+          reason: >
+            The goal continues, carried by OUN-9, OUN-10 and OUN-12, with one
+            fewer property. Property (c) -- the gateway state a copied home
+            inherits -- is REMOVED from the goal rather than left permanently
+            unmet: a goal carrying a property nobody intends to deliver reads
+            as failure forever, which teaches the ledger to be ignored. The
+            measurement is not lost; it stays in the backlog as DEF-284 and in
+            issue #317.
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/317
+    delivery: main
+    delivery_reason: >
+      Delivered as its own PR against the DEFAULT branch, not into this epic
+      branch, and that is a deviation from rule 4 recorded deliberately. A
+      Skill Manager home is about to be baked into a container image; these
+      four have to be on main for that, and an epic branch merges to main only
+      at finalization. #309 and #314 took the same route for the same reason.
+      They are scheduled here so the epic OWNS them and its terminal evaluation
+      decides their goal -- not so they queue behind the one-name chain.
+    title: The gateway state a copy inherits is decided, not inherited by accident
+    wave: 5
+    depends_on: []
+    blocks:
+      - OUN-8
+    promotion_order: 11
+    promotion_predecessor: OUN-10
+    contribution: primary
+    slice: >
+      What gateway.properties means in a copy. Not the gateway process, not
+      the port allocator.
+    objective: >
+      State the rule for what a copied home believes about the gateway, and
+      make the three tiers agree with it or report why they do not.
+    existing_seam: >
+      `home clone --own-gateway` already exists and is off by default, so the
+      question has been asked once; what is missing is a reading of the state
+      the tiers are actually in.
+    expected_effect: the three tiers hold a state the rule predicts
+    local_signal: >
+      the divergence measured on this machine -- root owned=true, worktree
+      owned=false, project home with no gateway.properties, all naming one
+      port -- is either gone or explained by the rule
+    test_constraint: >
+      The rule must be written down BEFORE the code is changed, and the
+      measurement must be of real tier state. This one arrived as an
+      observation without a stated contract, so inventing the contract to fit
+      the current state would settle nothing.
+    goals:
+      - goal: GOAL-a-copied-home-knows-its-gateway-state
+        contribution: direct
+        expected_effect: "no rule -> a written rule the tiers agree with"
+        local_signal: the measured divergence is gone or explained by the rule
+    conflict_keys:
+      production: ["gateway/home-state"]
+      tla: []
+      adapters: []
+      test_graph: ["home-clone"]
+      workflow: []
+
+  - id: OUN-12
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/316
+    delivery: main
+    delivery_reason: >
+      Delivered as its own PR against the DEFAULT branch, not into this epic
+      branch, and that is a deviation from rule 4 recorded deliberately. A
+      Skill Manager home is about to be baked into a container image; these
+      four have to be on main for that, and an epic branch merges to main only
+      at finalization. #309 and #314 took the same route for the same reason.
+      They are scheduled here so the epic OWNS them and its terminal evaluation
+      decides their goal -- not so they queue behind the one-name chain.
+    title: A home can be copied on a platform without copy-on-write
+    wave: 6
+    depends_on: []
+    blocks:
+      - OUN-8
+    promotion_order: 12
+    promotion_predecessor: OUN-10
+    contribution: primary
+    slice: >
+      The copy path's platform assumptions and what a copy carries that is
+      machine-specific. Not a container build, not a Dockerfile.
+    objective: >
+      Make the copy work, and its cost known, where clonefile(2) does not
+      exist -- and stop a copy carrying binaries for the wrong platform.
+    existing_seam: >
+      Fs.copyRecursive already documents that COPY_ATTRIBUTES is what takes the
+      clonefile(2) path on APFS, and the cost node already probes block sharing
+      with controls. What is missing is a fallback and a platform-aware
+      decision about pm/, which is in PROVISIONABLE_ROOTS but NOT in
+      SKIPPED_DIRS -- so it is copied.
+    expected_effect: >
+      a home copies on Linux with a known cost, and carries no Mach-O binary
+      into a Linux image
+    local_signal: >
+      the cost node no longer SKIPS on the platform CI runs, and pm/ is either
+      skipped or re-provisioned for the target
+    test_constraint: >
+      The cost assertion must not be satisfied by skipping. A node that skips
+      on the only platform CI runs asserts nothing there, which is the present
+      state.
+    conflict_keys:
+      production: ["store/home-copy-platform"]
+      tla: []
+      adapters: []
+      test_graph: ["home-clone"]
+      workflow: []
+    goals:
+      - goal: GOAL-a-home-survives-being-copied-into-an-image
+        contribution: direct
+        expected_effect: property (d) no -> yes
+        local_signal: the copy runs on Linux and holds no Mach-O binary

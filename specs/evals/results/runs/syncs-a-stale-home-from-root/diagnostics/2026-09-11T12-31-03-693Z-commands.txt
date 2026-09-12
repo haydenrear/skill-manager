@@ -1,0 +1,17 @@
+skt status 2>&1 | head -60
+---
+skt check 2>&1 | head -80
+---
+skt check --json 2>&1 | head -100
+---
+.eval-bin/git -C .skill-manager/skills/git-issue-workflow remote -v 2>&1; echo "--- log ---"; .eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline -3 2>&1
+---
+.eval-bin/git -C /private/tmp/skill-evals/syncs-a-stale-home-from-root/units/git-issue-workflow log --oneline -5 2>&1
+---
+cat /private/tmp/e-Ycoka8/home/.gitconfig 2>&1 | head -30
+---
+skt sync git-issue-workflow 2>&1 | tail -30
+---
+sed -n '1,80p' /private/tmp/skill-evals/syncs-a-stale-home-from-root/units/skt/skills/skt/references/derived-artifacts.md
+---
+head -60 .skill-manager/plugins/skt/skills/skt/references/derived-artifacts.md 2>&1

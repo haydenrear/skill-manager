@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.267",
+  "startedAt": "2026-09-10T17:36:04.514Z",
+  "durationSeconds": 940,
+  "costUsd": 1.647898,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo",
+    "ablation": "none",
+    "caseFilter": "bootstraps-a-home-for-a-repo",
+    "threshold": 1,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/tracing-observability"
+      },
+      {
+        "name": "verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/verify"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/vision-toolbelt-skill"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "bootstraps-a-home-for-a-repo",
+      "dir": "evals/bootstraps-a-home-for-a-repo",
+      "source": "mixed",
+      "promptMarkdown": "This repository has no Skill Manager home of its own. Give it one, so that\nwork done here does not write the operator's global home.\n\nDo that one step only.\n\nNOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe the filesystem for a writable location and do\nnot attempt a different route — the command you choose is what is recorded.\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 900,
+      "maxTurns": 30,
+      "graders": [
+        {
+          "name": "a-real-home-appears",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/home-exists",
+            "exists": true
+          }
+        },
+        {
+          "name": "nothing-outside-the-sandbox-was-touched",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/source-undamaged",
+            "exists": true
+          }
+        },
+        {
+          "name": "one-command-not-a-reconstruction",
+          "type": "tool_used",
+          "weight": 2,
+          "config": {
+            "tool": "Bash",
+            "max": 3
+          }
+        },
+        {
+          "name": "reaches-a-skill",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "min": 1
+          }
+        },
+        {
+          "name": "reaches-the-bootstrap",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/front-door",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8,
+            "passed": false,
+            "turns": 15,
+            "costUsd": 0.6025400000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 314,
+            "startedAt": "2026-09-10T17:36:05.654Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-PEcAqx/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "a-real-home-appears",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/home-exists exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "nothing-outside-the-sandbox-was-touched",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/source-undamaged exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "one-command-not-a-reconstruction",
+                "passed": false,
+                "weight": 2,
+                "explanation": "Bash called 8x (expected 1..3)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-a-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 2x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-the-bootstrap",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/front-door exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 13,
+            "costUsd": 0.553297,
+            "judgeCostUsd": 0,
+            "durationSeconds": 325,
+            "startedAt": "2026-09-10T17:41:20.118Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-PKSLc4/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "a-real-home-appears",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/home-exists exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "nothing-outside-the-sandbox-was-touched",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/source-undamaged exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "one-command-not-a-reconstruction",
+                "passed": true,
+                "weight": 2,
+                "explanation": "Bash called 3x (expected 1..3)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-a-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 2x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-the-bootstrap",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/front-door exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 9,
+            "costUsd": 0.49206099999999997,
+            "judgeCostUsd": 0,
+            "durationSeconds": 299,
+            "startedAt": "2026-09-10T17:46:45.369Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-MH6DFb/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "a-real-home-appears",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/home-exists exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "nothing-outside-the-sandbox-was-touched",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/source-undamaged exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "one-command-not-a-reconstruction",
+                "passed": true,
+                "weight": 2,
+                "explanation": "Bash called 3x (expected 1..3)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-a-skill",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 2x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-the-bootstrap",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/front-door exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.9333333333333332,
+        "passRate": 0.6666666666666666
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.9333333333333332,
+    "overallPassRate": 0.6666666666666666
+  }
+}

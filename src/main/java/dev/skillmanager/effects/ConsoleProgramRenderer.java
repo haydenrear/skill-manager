@@ -150,6 +150,16 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.GatewayUnreachable x -> Log.warn(
                     "gateway at %s is unreachable and not local — not attempting to start", x.host());
 
+            // OUN-13. Legal, and worth saying once: the two are addressed
+            // separately, so the only thing to check is whether they are the
+            // same unit — which nothing here can decide.
+            case ContextFact.ContainedNameAlsoClaimed x -> Log.warn(
+                    "'%s' now names two units here: %s, and the skill '%s' carries."
+                    + " They are addressed `%s` and `%s:%s`, so neither shadows the"
+                    + " other — if they are the SAME unit, retire the standalone with"
+                    + " `skill-manager remove %s`",
+                    x.name(), x.claimant(), x.plugin(), x.name(), x.plugin(), x.name(), x.name());
+
             // ---- commit / audit / provenance ----
             case ContextFact.SkillCommitted x -> Log.ok("installed %s", x.name());
             case ContextFact.CommitRolledBack x -> Log.warn("rollback: removed partially-committed %s", x.name());
@@ -238,6 +248,25 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             }
             case ContextFact.ProjectSyncFailed x ->
                     Log.warn("project-sync %s failed — %s", x.projectName(), x.message());
+
+            // ONE LINE ON THE CONSOLE, EVERY ROW IN THE LOG.
+            //
+            // This block used to be printed by ProjectSyncUseCase once per
+            // claiming project: on a root home with four projects, the same
+            // headline and its sixteen rows appeared FOUR times in one command,
+            // each naming the same home and asking for the same ack. Seventy
+            // lines saying one thing.
+            //
+            // The rows are not lost -- Log.detail records every one of them in
+            // the run log and prints them under --verbose. What reaches the
+            // console is the count and the command that clears it, because
+            // that is the whole of what the reader has to act on.
+            case ContextFact.HomeDriftPending x -> {
+                Log.warn("%d unit(s) changed in %s (%d file(s)) — a launch will refuse until "
+                                + "this is read: %s",
+                        x.units(), x.home(), x.files(), x.ackCommand());
+                for (String row : x.rows()) Log.detail("  %s", row);
+            }
             // DEF-103: a project skipped for its OWN non-durable vendored
             // declarations. Warned, never counted as a sync failure, and the
             // wording says which of the two happened so a reader cannot mistake
@@ -610,6 +639,12 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             side.add(projectionsMaterialized + " projection(s) materialized");
         }
         if (!side.isEmpty()) Log.ok("side effects: %s", String.join(", ", side));
+        // The child homes, as one line. Every unit held back, every self-
+        // provisioned CLI and every unit kept after a project stopped
+        // declaring it is in the run log by name; this says how much there
+        // was. Before this, a sync across five projects put twenty-five
+        // warnings on the console, none of them actionable.
+        dev.skillmanager.bindings.ChildHomeTally.render();
     }
 
     /**

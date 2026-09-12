@@ -30,7 +30,6 @@ public final class SkillManagerSkillDocsTest {
                             Path.of("skill-publisher-skill/references/skill-scripts.md"));
                     String pluginDocs = Files.readString(
                             Path.of("skill-publisher-skill/references/plugins.md"));
-                    String skillDev = Files.readString(Path.of("skill-dev-skill/SKILL.md"));
 
                     assertContains(skill, "skill projects", "front matter and body name skill projects");
                     assertContains(skill, "project child homes", "front matter names project child homes");
@@ -67,14 +66,11 @@ public final class SkillManagerSkillDocsTest {
                     assertContains(pluginDocs, "plugin-level `skill-script:` CLI dep",
                             "plugin docs route plugin private script setup correctly");
 
-                    assertContains(skillDev, "--force-scripts", "skill-dev docs document manual force sync");
-                    assertContains(skillDev, "skill-imports:", "skill-dev imports runtime CLI reference");
                 })
                 .test("bundled skill docs cover modeled CLI workflows", () -> {
                     Map<String, String> docsBySurface = new LinkedHashMap<>();
                     docsBySurface.put("skill-manager-skill", markdownUnder(Path.of("skill-manager-skill")));
                     docsBySurface.put("skill-publisher-skill", markdownUnder(Path.of("skill-publisher-skill")));
-                    docsBySurface.put("skill-dev-skill", markdownUnder(Path.of("skill-dev-skill")));
 
                     for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
                         String helpCommand = helpCommand(workflow.commandPath());

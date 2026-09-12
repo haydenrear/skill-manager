@@ -338,7 +338,7 @@ validationGraph {
      * `skill-manager onboard`. Two halves:
      *
      *   1. The Spring `SkillBootstrapper` bean has seeded
-     *      `skill-manager`, `skill-publisher`, and `skill-dev-skill`
+     *      `skill-manager` and `skill-publisher`
      *      into the registry by
      *      the time `registry.up` reports healthy
      *      (`onboard.seeded.by.server`).
@@ -560,7 +560,36 @@ validationGraph {
         node("sources/smoke/HelloPluginPublished.java")
         node("sources/smoke/HelloPluginInstalled.java")
         node("sources/smoke/HelloPluginRegisteredWithHarness.java")
+        // TWO SENSES OF "ADDRESSABLE", one word apart, and the graph now
+        // covers both. This one: a contained skill has no independent
+        // identity as a REGISTRY unit, so `install hello-impl` fails.
         node("sources/smoke/plugin/PluginContainedSkillNotAddressable.java")
+        // And this one (OUN-1): an import NAMING a contained skill resolves.
+        // Until OUN-1 it was reported as a missing unit while the skill sat on
+        // disk in the same home. Only the first sense was covered, which is
+        // how that survived from the day skt shipped `unit-authoring`.
+        node("sources/smoke/plugin/PluginContainedSkillResolvesByName.java")
+        // OUN-2, as amended by OUN-13. The node keeps its id because ids are
+        // load-bearing; its headline assertion is now the opposite. A plugin
+        // sharing a name with a standalone unit INSTALLS -- they are `x` and
+        // `p:x` -- and what must still hold is that the unit already holding
+        // the name is untouched, which is the property that was ever worth
+        // protecting. The entry-skill control is unchanged.
+        node("sources/smoke/plugin/PluginNameCollisionRefused.java")
+        // OUN-13: `plugin:skill`. The permutation that matters runs in this
+        // same home — a standalone `hello-impl` installed BESIDE the plugin
+        // that contains one, with both names resolving and neither shadowing
+        // the other. Under OUN-2 that install was refused; the node above now
+        // asserts it succeeds and the existing unit is untouched.
+        node("sources/smoke/plugin/PluginQualifiedNameResolves.java")
+        // OUN-5: and the one operation that has to get PAST that refusal —
+        // the upgrade retiring the standalone unit the carrier supersedes.
+        // Every existing home was stuck behind the gate above; the retirement
+        // runs before it, in the same operation, and only for the two names
+        // UnitSupersession.TABLE holds. Its controls are the real content: an
+        // ordinary collision must still be refused in the same home
+        // afterwards, or this node passes against a deleted gate.
+        node("sources/smoke/plugin/PluginSupersessionMigrates.java")
 
         // Plugin install with both plugin-level and contained-skill
         // CLI + MCP deps — exercises the install pipeline's walk and
@@ -587,6 +616,10 @@ validationGraph {
 
         node("sources/common/ServersDown.java")
                 .dependsOn("plugin.contained.skill.not.addressable",
+                        "plugin.contained.skill.resolves.by.name",
+                        "plugin.qualified.name.resolves",
+                        "plugin.name.collision.refused",
+                        "plugin.supersession.migrates",
                         "plugin.markdown.import.targets",
                         "plugin.uninstalled.mixed.orphans",
                         "plugin.skill_script.force.sync")
@@ -1415,45 +1448,16 @@ validationGraph {
         node("sources/common/HomeMembershipLaw.java").dependsOn("uninstall.prunes.the.subgraph")
     }
 
-    testGraph("skill-dev-smoke") {
-        node("sources/common/EnvPrepared.java")
-        node("sources/resolve/ResolverCyclesVerified.java")
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/smoke/GatewayUp.java")
-
-        node("sources/skill-dev/SkillDevInstalled.java")
-        node("sources/skill-dev/SkillDevUnitsInstalled.java")
-        node("sources/skill-dev/SkillDevEditSkill.java")
-        node("sources/skill-dev/SkillDevEditPlugin.java")
-        node("sources/skill-dev/SkillDevEditDocRepo.java")
-        node("sources/skill-dev/SkillDevEditHarness.java")
-        node("sources/skill-dev/SkillDevConflictResolved.java")
-
-        node("sources/common/ServersDown.java")
-                .dependsOn("skill-dev.edit.skill",
-                        "skill-dev.edit.plugin",
-                        "skill-dev.edit.doc",
-                        "skill-dev.edit.harness",
-                        "skill-dev.conflict.resolved")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
-        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
-        // check per graph: every home this graph produced must satisfy
-        // `home verify`, and where it refuses, the remedy IT PRINTED must
-        // clear it. Six defects of that shape were each found by hand on
-        // one home; the graph that would have caught them was always the
-        // one nobody had added a check to. Depends on this graph's last
-        // node so it runs last, and FAILS if it finds no home — a law
-        // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
-        // THE MEMBERSHIP LAW, the second post-condition and the one a
-        // re-realized home does NOT satisfy: `home verify` passes on a
-        // home that is internally consistent and wrong about what it
-        // holds (DEF-047). Same structural discovery, same "zero homes
-        // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
-    }
+    // skill-dev-smoke was here until OUN-4. It existed to drive the
+    // skill-dev CLI end to end, and that unit is gone: its
+    // open/status/sync/git/close is covered by `skt publish`, `skt ticket`
+    // and `sync --from --merge`, and `deps --who-imports skill-dev-skill`
+    // reported zero importers before the deletion.
+    //
+    // Removed rather than left red. A registered graph that cannot pass is
+    // worse than one that does not exist: the nightly goes red for a
+    // reason nobody can act on, and the graph-count metric keeps counting
+    // it as coverage.
 
     /*
      * onboarding: the walk a fresh repository takes from "no home" to "a

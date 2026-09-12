@@ -164,6 +164,10 @@ public final class SyncCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        // One tally per invocation, and the CLI is one invocation per process --
+        // but tests share a JVM, so a stale count from a previous case would
+        // otherwise be attributed to this one.
+        dev.skillmanager.bindings.ChildHomeTally.reset();
         SkillStore store = injectedStore != null
                 ? injectedStore
                 : home != null

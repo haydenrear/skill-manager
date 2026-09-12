@@ -1,0 +1,26 @@
+{
+ "goal": "GOAL-a-contained-skill-is-addressable",
+ "metric": "does `unit: unit-authoring` resolve from a markdown skill-import",
+ "value": "yes",
+ "target": "yes",
+ "met": true,
+ "contained_root": "/Users/hayde/IdeaProjects/wt-oun-1/.skill-manager/plugins/skt/skills/unit-authoring",
+ "contained_root_after_probe": [
+  "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/oun0-addressability-sg2e_j6k/home/plugins/skt/skills/unit-authoring"
+ ],
+ "control": {
+  "unit": "skill-manager",
+  "exit": 0,
+  "resolved": true
+ },
+ "probe": {
+  "unit": "unit-authoring",
+  "exit": 0,
+  "resolved": true
+ },
+ "product_said": null,
+ "swept_stale_temp_homes": 0,
+ "cli_rebuilt_before_probing": false,
+ "cli_was_stale_because": null,
+ "why": null
+}

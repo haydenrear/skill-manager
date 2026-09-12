@@ -102,6 +102,15 @@ public final class SourcesAreGreppableTest {
         try (var entries = Files.newDirectoryStream(dir)) {
             for (Path entry : entries) {
                 String name = entry.getFileName().toString();
+                // NEVER THROUGH A LINK. A symlinked directory is not a tracked
+                // source file and following one can leave the repository
+                // entirely -- or come back into it: a Skill Manager home
+                // projects units as symlinks, so an eval home left under the
+                // tree gives this walk a cycle and it recurses until the run
+                // is killed. Measured as a 30-minute timeout with 536 cases
+                // green and no verdict from this one, which is worse than the
+                // crash it replaced, because a timeout has no name on it.
+                if (Files.isSymbolicLink(entry)) continue;
                 if (Files.isDirectory(entry)) {
                     if (name.equals(".git") || name.equals("build") || name.equals(".gradle")
                             || name.equals("node_modules") || name.equals(".skill-manager")
@@ -113,6 +122,13 @@ public final class SourcesAreGreppableTest {
                     continue;
                 }
                 if (TEXT_EXTENSIONS.stream().noneMatch(name::endsWith)) continue;
+                // A path this walk cannot read is not a finding. Reached for
+                // real: an eval harness left a home behind whose skill links
+                // pointed at a torn-down scratch tree, and the dangling link
+                // came back as a NoSuchFileException with this check's name on
+                // it -- an unreadable file reported as a NUL byte, which is the
+                // one thing this check must never say.
+                if (!Files.isReadable(entry)) continue;
                 scanned.add(entry);
                 if (containsNul(entry)) offenders.add(repo.relativize(entry).toString());
             }

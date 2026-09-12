@@ -1,0 +1,10 @@
+EXIT=1
+value = root (1, 1, 1); 0 of 38 homes at (0, 0, 1)
+target = (0, 0, 1)
+met = False
+upgrade_works_on_a_fixture = True
+probe = {'before': [1, 1, 0], 'after': [0, 0, 1], 'upgrade_exit': 0, 'name_still_resolves_to': 'skt', 'product_said': 'retired skill-dev-skill — skill-dev-skill was deleted at OUN-4 (2026-09-06); skill development lives in skt now, and nothing publishes the old unit any more'}
+homes_in_scope = 38
+homes_at_target = 0
+
+[exited with code 0]

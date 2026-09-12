@@ -337,6 +337,26 @@ public final class SyncUseCase {
         // unmet (steady-state sync), the graph is empty and the commit /
         // plan / provenance / run effects are no-ops. Same shape as the
         // install path's BuildResolveGraphFromSource preamble.
+        // OUN-5, on the other path a home reaches the new shape by — and the
+        // path that matters most, because it is the one every project home
+        // takes on its own. Sync has no collision gate to be refused by, which
+        // makes it the QUIETER failure: the carrier is updated in place, both
+        // copies of the name then exist, and OUN-1's rule resolves it to the
+        // standalone one — so the home keeps running the copy the upgrade was
+        // supposed to replace, with nothing reported.
+        //
+        // The target names are passed for ONE purpose: deciding whether a
+        // retirement that cannot be performed stops this operation or is
+        // merely reported. What is DUE is read from the home, not from the
+        // targets. Keying it on the targets meant `sync skill-manager` — the
+        // command someone runs after being told about this migration — named
+        // the retired unit but not its carrier, and fired nothing.
+        //
+        // Placed after the Sync* effects so the carrier on disk is the new one
+        // when we ask what it contains.
+        effects.add(new SkillEffect.RetireSupersededUnits(
+                targets.stream().map(Target::skillName)
+                        .filter(java.util.Objects::nonNull).toList()));
         effects.add(new SkillEffect.BuildResolveGraphFromUnmetReferences(liveSkills));
         effects.add(new SkillEffect.CommitUnitsToStore());
         effects.add(new SkillEffect.ValidateMarkdownImports(

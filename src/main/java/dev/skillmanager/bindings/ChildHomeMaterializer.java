@@ -2354,8 +2354,14 @@ public final class ChildHomeMaterializer {
     }
 
     private static UnitOutcome heldBack(String name, UnitKind kind, Path dest, String detail) {
-        Log.warn("child home %s:%s — left as-is, not refreshed from the parent store: %s (%s)",
+        // DETAIL, NOT WARN. Holding a unit back is the mechanism working -- the
+        // alternative is deleting an agent's edits -- so it is not something
+        // the reader must act on, and a sync across five projects printed
+        // twenty-five of these. The run log keeps every one and --verbose still
+        // prints them; ChildHomeTally says how many there were.
+        Log.detail("child home %s:%s — left as-is, not refreshed from the parent store: %s (%s)",
                 kind.name().toLowerCase(), name, detail, dest);
+        ChildHomeTally.heldBack(dest == null ? null : String.valueOf(dest));
         return new UnitOutcome(name, kind, Status.SKIPPED_LOCAL_CHANGES, dest, detail);
     }
 

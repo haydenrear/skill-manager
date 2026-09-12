@@ -133,8 +133,6 @@ source_surfaces:
     - skill-publisher-skill/skills/skt/SKILL.md
     - skill-publisher-skill/skills/unit-authoring/SKILL.md
     - skill-publisher-skill/references
-    - skill-dev-skill/SKILL.md
-    - skill-dev-skill/README.md
 
 # Whole-program state: the 38 names in SkillManager.tla's VARIABLES block
 # (declared on line 18, names on lines 19-56); `vars` is their tuple.

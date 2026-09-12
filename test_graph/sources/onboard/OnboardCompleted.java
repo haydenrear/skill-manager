@@ -14,7 +14,7 @@ import java.nio.file.Path;
 /**
  * Drives {@code skill-manager onboard} against the per-run registry. The
  * onboard CLI installs the bundled skills (skill-manager-skill,
- * skill-publisher-skill, skill-dev-skill) from local paths and ensures
+ * skill-publisher-skill) from local paths and ensures
  * the gateway is up.
  *
  * <p>We pass {@code --install-dir} explicitly so the command doesn't

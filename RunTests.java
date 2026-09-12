@@ -82,6 +82,8 @@ import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
 import dev.skillmanager.registry.PublishDetectsPluginTest;
 import dev.skillmanager.registry.PublishDetectsSkillTest;
+import dev.skillmanager.effects.ContainedNameCollisionIsRefusedTest;
+import dev.skillmanager.resolve.UnitEdgeGraphTest;
 import dev.skillmanager.validation.MarkdownImportValidatorTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.ProjectSyncErrorReportingTest;
@@ -235,6 +237,9 @@ public class RunTests {
         failures += PublishDetectsPluginTest.run();
         failures += PublishDetectsSkillTest.run();
         failures += MarkdownImportValidatorTest.run();
+        failures += UnitEdgeGraphTest.run();
+        failures += ContainedNameCollisionIsRefusedTest.run();
+        failures += dev.skillmanager.lifecycle.MigrationSatisfiesTheGateTest.run();
         failures += ProjectMarkdownImportsTest.run();
         failures += LocalInstallIsNotAnErrorTest.run();
         failures += ScaffoldPluginTest.run();
@@ -280,6 +285,8 @@ public class RunTests {
         failures += dev.skillmanager.store.ClonedHomeDescentTest.run();
         failures += dev.skillmanager.store.DamagedHomeIsRepairableTest.run();
         failures += dev.skillmanager.store.HomeVerifyPathSpellingTest.run();
+        failures += dev.skillmanager.store.CloneReanchorsEveryAliasTest.run();
+        failures += dev.skillmanager.project.SyncReportsDriftOnceTest.run();
         failures += dev.skillmanager.store.ProvenanceRecordExemptionTest.run();
         failures += dev.skillmanager.cli.installer.CliShimPrunerTest.run();
         // HIS-9 (#226): the write-confinement guard, its two DEF-007 delete

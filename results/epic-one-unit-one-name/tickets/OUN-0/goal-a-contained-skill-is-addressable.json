@@ -1,0 +1,20 @@
+{
+ "goal": "GOAL-a-contained-skill-is-addressable",
+ "metric": "does `unit: unit-authoring` resolve from a markdown skill-import",
+ "value": "no",
+ "target": "yes",
+ "met": false,
+ "contained_root": "/Users/hayde/IdeaProjects/wt-oun-0/.skill-manager/plugins/skt/skills/unit-authoring",
+ "control": {
+  "unit": "skill-manager",
+  "exit": 0,
+  "resolved": true
+ },
+ "probe": {
+  "unit": "unit-authoring",
+  "exit": 11,
+  "resolved": false
+ },
+ "product_said": "\u2717     skill-imports[0] references missing unit `unit-authoring`; install it or fix the `unit` value",
+ "why": "unit-authoring exists at /Users/hayde/IdeaProjects/wt-oun-0/.skill-manager/plugins/skt/skills/unit-authoring in the very home the import was validated against. installedRoot has four branches -- plugins/, harnesses/, docs/, skills/ -- and none descends into a plugin's contained skills."
+}

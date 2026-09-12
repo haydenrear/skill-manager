@@ -1,0 +1,24 @@
+schema_version: "1.0"
+name: sandbox-probe
+description: >-
+  Proves the eval SANDBOX before any case is billed against it. Not a skill
+  test: it asks the agent to write a file and create a directory, which is
+  what every provisioning case needs and what run 15 proved the sandbox
+  refused. A red here means no other score in this suite means anything.
+runs: 1
+plugins:
+  - ../../units/toolchain
+  - ../../units/fixture
+  - ../../units/verify
+execution:
+  max_turns: 6
+  timeout_seconds: 180
+  allowed_tools: [Bash, Read, Write, Edit, Skill]
+  prompt: |
+    Run exactly this one command and report its output verbatim:
+
+    ```
+    git ls-remote https://github.com/haydenrear/skt HEAD
+    ```
+
+    Do not run anything else.
