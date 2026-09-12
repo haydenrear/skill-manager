@@ -59,6 +59,13 @@ EPICS = {
             # Reads the newest archived run per case under
             # specs/evals/results/runs/. Reports UNMEASURED (exit 2) for any
             # case with no recorded run -- never met, per OUN-8's constraint.
+            # The goal OUN-9, OUN-10 and OUN-12 serve, and the one the epic
+            # could not report at all until now: it had no harness, while
+            # OUN-8 -- whose whole slice is deciding the goals -- names it.
+            # Slow because it copies real homes; that is the measurement.
+            {"goal": "GOAL-a-home-survives-being-copied-into-an-image",
+             "cmd": [PY311, "scripts/measure_goal_a_home_survives_being_copied.py"],
+             "slow": True},
             {"goal": "GOAL-the-front-door-is-found",
              "cmd": [PY311, "scripts/measure_goal_the_front_door_is_found.py"]},
         ],
