@@ -25,11 +25,11 @@ public final class SourceProvenanceRecorderTest {
                         Path sourceRoot = Files.createTempDirectory("local-bundled-name-");
                         Skill skill = UnitFixtures.scaffoldSkill(
                                 sourceRoot.resolve("ordinary-local"),
-                                "skt",
+                                "skill-manager",
                                 DepSpec.empty());
                         ResolvedGraph graph = new ResolvedGraph();
                         graph.add(new ResolvedGraph.Resolved(
-                                "skt",
+                                "skill-manager",
                                 "0.1.0",
                                 skill.sourcePath().toString(),
                                 ResolvedGraph.SourceKind.LOCAL,
@@ -47,7 +47,7 @@ public final class SourceProvenanceRecorderTest {
                                         new SkillEffect.RecordSourceProvenance(graph)),
                                 receipts -> null), h.context());
 
-                        InstalledUnit installed = h.sourceOf("skt").orElseThrow();
+                        InstalledUnit installed = h.sourceOf("skill-manager").orElseThrow();
                         assertEquals(InstalledUnit.Kind.LOCAL_DIR, installed.kind(),
                                 "normal local source is not converted to bundled git provenance");
                         assertEquals(skill.sourcePath().toAbsolutePath().normalize().toString(),
@@ -85,16 +85,10 @@ public final class SourceProvenanceRecorderTest {
                 .test("registered onboard local bundled source records bundled github provenance", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path sourceRoot = Files.createTempDirectory("registered-bundled-root-");
-                        // `skt`, not `skill-manager`: OUN-13 unbundled the
-                        // latter because BundledSkills contradicted
-                        // UnitSupersession.TABLE, which retires it. The
-                        // subject here is a BUNDLED unit's local source being
-                        // converted to git provenance, so it needs a unit that
-                        // is actually bundled.
                         Skill skill = scaffoldSkillAt(
-                                sourceRoot.resolve("skill-publisher-skill"),
-                                "skt");
-                        h.context().registerBundledLocalSource("skt", skill.sourcePath());
+                                sourceRoot.resolve("skill-manager-skill"),
+                                "skill-manager");
+                        h.context().registerBundledLocalSource("skill-manager", skill.sourcePath());
 
                         ResolvedGraph graph = graphFor(skill);
                         new Executor(h.store(), null).runWithContext(new Program<>(
@@ -104,10 +98,10 @@ public final class SourceProvenanceRecorderTest {
                                         new SkillEffect.RecordSourceProvenance(graph)),
                                 receipts -> null), h.context());
 
-                        InstalledUnit installed = h.sourceOf("skt").orElseThrow();
+                        InstalledUnit installed = h.sourceOf("skill-manager").orElseThrow();
                         assertEquals(InstalledUnit.Kind.GIT, installed.kind(),
                                 "registered onboard local source is converted to git provenance");
-                        assertEquals("https://github.com/haydenrear/skill-publisher-skill.git",
+                        assertEquals("https://github.com/haydenrear/skill-manager-skill.git",
                                 installed.origin(),
                                 "origin is the bundled upstream");
                     }

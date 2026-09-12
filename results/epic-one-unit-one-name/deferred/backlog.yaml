@@ -662,11 +662,26 @@ findings:
     reproduction: >
       grep -n 'skill-manager' src/main/java/dev/skillmanager/lifecycle/BundledSkills.java
       grep -n 'skill-manager' src/main/java/dev/skillmanager/lifecycle/UnitSupersession.java
+    tried_and_reverted: >
+      Removing the entry was attempted 2026-09-12 and REVERTED the same day,
+      because it does not do what it looks like it does. The onboard seeds
+      from the local install dir, whose tree carries `skill-manager-skill/`,
+      so the unit arrives with or without the coordinate. What the coordinate
+      does is convert that local source to its GIT provenance -- without it
+      the unit is installed with LOCAL_DIR provenance and NO upstream, so
+      `skt check` calls it unverifiable and `sync` has nothing to pull. The
+      onboard graph caught it precisely: managerRemote=false with every other
+      assertion green. A unit installed with no way to update it is worse than
+      a unit installed and then retired.
+      The BundledAndSupersededDisagreeTest written alongside it was removed
+      with it: it encoded a rule the product cannot satisfy yet, and a test
+      that forbids the only correct current state is not a guard.
     candidate_owner: >
-      the same amendment ticket that narrows the addressing rule. Removing the
-      entry is one line; the question worth deciding with it is whether a unit
-      named in UnitSupersession.TABLE as MOVED_INTO_CARRIER should be refused
-      from BundledSkills by a test, so the two tables cannot disagree again.
+      OUN-6's end state, which is a change to what onboarding SEEDS rather
+      than to what provenance it records: stop seeding the standalone at all,
+      so skt's contained copy is the only one and there is nothing to retire.
+      Only then does removing the coordinate become correct -- and only then
+      does the two-tables test become writable.
     status: open
 
   - id: DEF-OUN-018
