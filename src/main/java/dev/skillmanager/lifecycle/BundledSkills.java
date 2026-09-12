@@ -28,19 +28,30 @@ public final class BundledSkills {
     // whose open/status/sync/git/close is now covered by `skt publish`, `skt
     // ticket` and `sync --from --merge`; `deps --who-imports skill-dev-skill`
     // reported zero importers in the only home that still held it.
-    // `skill-manager` was here until OUN-13, and it CONTRADICTED
-    // UnitSupersession.TABLE. That table retires the standalone
-    // `skill-manager` against skt (MOVED_INTO_CARRIER); this map installed it
-    // again on every fresh onboard, so a new home cloned
-    // skill-manager-skill, installed the standalone, and the install path
-    // retired it on the way through — work done in order to be undone, and
-    // part of why a root sync visibly re-cloned the bundled coordinates.
+    // `skill-manager` IS STILL HERE, AND DEF-OUN-017 EXPLAINS WHY REMOVING IT
+    // IS NOT A ONE-LINE CHANGE.
     //
-    // The skill still arrives: skt carries `skills/skill-manager`, which is
-    // the whole point of MOVED_INTO_CARRIER. Nothing is lost by not bundling
-    // it separately, and `bundledUnitIsNotSuperseded` fails if the two tables
-    // ever disagree again.
+    // The complaint is real: UnitSupersession.TABLE retires the standalone
+    // `skill-manager` into skt, and this map installs it again on every fresh
+    // onboard, so the install path retires it on the way through. Two tables
+    // describing one fact and disagreeing.
+    //
+    // But deleting the entry does NOT stop it being installed -- the onboard
+    // seeds from the local install dir, whose tree carries
+    // `skill-manager-skill/`, so the unit arrives either way. What the entry
+    // does is convert that local source to its GIT provenance. Without it the
+    // unit is installed with LOCAL_DIR provenance and no upstream at all:
+    // `skt check` reports it unverifiable and `sync` has nothing to pull
+    // from. Measured by the onboard graph, which went red on exactly that
+    // (`managerRemote=false`, every other assertion green).
+    //
+    // A unit installed with no way to update it is worse than a unit
+    // installed and retired. So the entry stays until the SEEDING stops --
+    // the standalone must not be seeded at all, which is OUN-6's end state
+    // and a change to what onboarding installs rather than to what provenance
+    // it records.
     private static final Map<String, String> GITHUB_COORDS = Map.of(
+            "skill-manager", "github:haydenrear/skill-manager-skill",
             "skt", "github:haydenrear/skill-publisher-skill"
     );
 
