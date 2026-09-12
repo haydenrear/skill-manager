@@ -263,6 +263,36 @@ current home — where the unit is fully installed and consistent across nine
 places — that remedy would *manufacture* the damaged shape `DEF-121` exists to
 clean up. Two correct remedies, opposite to each other, for the same unit name.
 
+## 9a. Resolved since this review was written (2026-09-12)
+
+Every blocker in §9 below has been answered. Kept rather than rewritten,
+because a review is a record of a reading.
+
+| § | item | outcome |
+| --- | --- | --- |
+| 1 | OUN-8 has no close record | **written** — `tickets/OUN-8/README.md`, verdict 5 of 6 |
+| 2 | the copied-home goal has no harness | **built and MET** — 3 of 3, both homes |
+| 3 | OUN-7's objective vs what shipped | **amended with a receipt** at `schedule_revision: 5` |
+| 4 | `DEF-OUN-013` open and blocking | **closed by OUN-13** (#336), with `DEF-OUN-002` |
+
+And four things this review did not know about, all found after it:
+
+- **The epic branch was 7 commits behind `main`**, including OUN-9, OUN-10 and
+  OUN-12 — the three tickets serving the goal §9 item 2 is about. Every number
+  in this review above was measured on a tree without them. Merged; two
+  integration defects surfaced immediately (`DEF-OUN-021`, `DEF-OUN-022`) and
+  are fixed.
+- **`home repair` reported 0 findings on a home holding 17** (`DEF-OUN-018`).
+  Two detectors added; both real homes now repair to zero, which is what moved
+  the copied-home goal to MET.
+- **`DEF-OUN-017`'s fix was wrong and is reverted**, with the dead end recorded:
+  un-bundling `skill-manager` leaves it installed with no upstream, because
+  onboarding seeds it from the local tree either way.
+- **#334 was a duplicate of #292**, filed two weeks after it. Closed; evidence
+  moved.
+
+Goal ledger now reads **5 of 6**, with all six measured for the first time.
+
 ## 9. Readiness — what actually blocks the close
 
 **Does not block.** #334 (pre-existing, filed, not a regression); the two NOT

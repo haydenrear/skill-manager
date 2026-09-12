@@ -6,7 +6,7 @@
 # is still canonical for scheduling and issue assignment; scaffolding a TLA
 # workflow on top of it is an owner decision that has not been taken.
 version: 1
-schedule_revision: 4
+schedule_revision: 5
 name: one-unit-one-name
 slug: one-unit-one-name
 branch: epic/one-unit-one-name
@@ -572,7 +572,45 @@ tickets:
         contribution: enabling
         expected_effect: "the surviving plugin is named consistently everywhere"
         local_signal: "records repointed, verified by reading them"
-
+    amendment:
+      schedule_revision: 5
+      decided_at: "2026-09-12"
+      decided_by: owner
+      kind: scope-reduced
+      what_the_objective_said: >
+        "Rename the hosting repository to skt so THE REPO, the plugin, the CLI
+        and the unit agree, and repoint installSource in existing records
+        rather than leaving them on a GitHub redirect."
+      what_shipped: >
+        The records half, in full: 0 installed records and 0 units.lock.toml
+        rows name skill-publisher-skill in either home, which is the ticket's
+        own local_signal and it passes. The REPOSITORY is still named
+        skill-publisher-skill, so "the repo, the plugin, the CLI and the unit
+        agree" is not true of the first of the four.
+      why: >
+        Renaming a GitHub repository redirects the old coordinate rather than
+        breaking it, so the records could be repointed without the rename and
+        the rename carries risk the records half does not. The decision was
+        made during delivery and recorded only as a comment in
+        skill-project.toml:
+          "# The tracked DIRECTORY stays skill-publisher-skill/; only the
+           installed unit renamed. Migration: references/migration.md"
+        A TOML comment is not this epic's receipt mechanism -- OUN-11 shows
+        what one looks like -- so the amendment is written here, at the close
+        review that found it.
+      residual: >
+        `skill-project.toml` still carries
+        `[plugins.skt] source = "github:haydenrear/skill-publisher-skill"`,
+        which is the coordinate the owner watched being cloned repeatedly
+        during a root sync. Carried, not dropped: the rename remains worth
+        doing and is cheap once nothing else is in flight.
+      affected_goals:
+        - goal: GOAL-migration-lands-on-one-skt
+          disposition: unaffected
+          reason: >
+            The goal is measured on the triple a home holds -- skill-dev-skill
+            present, standalone skill-manager present, skt count -- and none
+            of those reads the repository name. It reports MET by both routes.
   - id: OUN-8
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/307
     title: "Terminal evaluation -- decide every goal on the integrated result"
