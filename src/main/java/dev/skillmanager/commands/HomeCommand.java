@@ -11,6 +11,7 @@ import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.DriftGate;
 import dev.skillmanager.store.HomeCloseOut;
 import dev.skillmanager.store.HomeCloner;
+import dev.skillmanager.store.HomeCopyEconomics;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
 import dev.skillmanager.store.HomeProvenance;
@@ -25,6 +26,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -91,12 +93,20 @@ public final class HomeCommand {
                         + "home. The decision is written into the copy's home.policy.toml.")
         Boolean lazyArtifacts;
 
+        @Option(names = "--portable",
+                description = "Leave behind the directories whose bytes belong to THIS "
+                        + "machine — pm/, the bundled node and uv, which are Mach-O here and "
+                        + "unrunnable on Linux. For a copy that is going into an image or "
+                        + "onto another platform; the copy re-provisions them on first use.")
+        boolean portable;
+
         @Override
         public Integer call() throws Exception {
             Path source = from != null ? from : SkillStore.defaultStore().root();
             HomeCloner.Report report = HomeCloner.cloneHome(source, to, strict,
                     lazyArtifacts != null ? lazyArtifacts
-                            : HomePolicy.lazyArtifactsDefault(new SkillStore(to)));
+                            : HomePolicy.lazyArtifactsDefault(new SkillStore(to)),
+                    portable);
             // DEF-096. A clone copies what the source HOLDS; it cannot copy what
             // the source's manifest merely DECLARES. Measured on this
             // repository's own project home: skill-project.toml declares
@@ -1902,6 +1912,45 @@ public final class HomeCommand {
                 String.join(", ", HomeCloner.SKIPPED_DIRS.stream().sorted().toList()));
         Log.info("  re-anchored: %d links relativized, %d records, %d provisioned files",
                 report.linksRelativized(), report.stateReanchored(), report.provisionedRewritten());
+        // NAMED, not merely omitted. A transient file that silently fails to
+        // arrive is fine; a credential that silently fails to arrive is a
+        // confusing "not logged in" later, and one that silently DOES arrive
+        // is a token in an image (#281 / DEF-282). Either way the operator
+        // should be told, and told what to do about it.
+        // What this copy cost, and what it cannot be moved to. Both are
+        // things the operator has never been told and both are decided by
+        // the machine rather than by anything in the home: the clone
+        // economics the three-tier model rests on are an APFS side effect
+        // (DEF-285), and pm/ is the one directory whose BYTES are for this
+        // kernel. Printed at the moment of the copy, because the alternative
+        // is learning it from `Exec format error` on another machine.
+        Log.info("  cost:        %s",
+                HomeCopyEconomics.describe(report.dest(), report.bytes()));
+        // Reported by comparing the two homes rather than from the flag, so
+        // the line describes what HAPPENED. The finding this answers was
+        // precisely that 203 MB of Mach-O travelled with no build-time
+        // signal either way.
+        if (Files.isDirectory(report.source().resolve("pm"))
+                && !Files.exists(report.dest().resolve("pm"))) {
+            Log.info("  portable:    pm/ left behind — the bundled node and uv are built for "
+                    + "%s and this copy is going somewhere else. The copy re-provisions them "
+                    + "on first use; it needs neither of them to do that.",
+                    dev.skillmanager.util.Platform.currentKey());
+        }
+        String toolchains = dev.skillmanager.pm.PmPlatform.describeHome(report.dest());
+        if (!toolchains.isEmpty()) {
+            Log.info("  toolchains:  %s — built for this platform. A copy of THIS copy onto "
+                    + "another platform re-provisions them; `home clone --portable` leaves "
+                    + "them behind instead.", toolchains);
+        }
+        List<String> credentials = HomeCloner.credentialsNotCopied(report.source());
+        if (!credentials.isEmpty()) {
+            Log.info("  credentials: %s not copied — a copy of a home is not a copy of its "
+                            + "login, and a home that is imaged or moved would otherwise "
+                            + "carry a working refresh token. Run `skill-manager login` in "
+                            + "the copy if it needs registry access.",
+                    String.join(", ", credentials));
+        }
         if (!report.droppedRegistrations().isEmpty()) {
             // Named, not merely omitted. Dropping them is right (see
             // HomeCloner.DROPPED_STATE_DIRS) and it is still a change to what

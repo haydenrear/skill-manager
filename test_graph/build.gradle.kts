@@ -902,6 +902,24 @@ validationGraph {
         node("sources/home-clone/HomeCloneEditStaysInClone.java")
         node("sources/home-clone/HomeCloneWorksWithSourceRenamed.java")
         node("sources/home-clone/HomeCloneNoAgentHomeLeak.java")
+        // #281 / DEF-282: a copy of a home is not a copy of its login. Plants
+        // a real-shaped auth.token in the fixture, runs a REAL `home clone`,
+        // and reads the copy -- the unit test drives HomeCloner, this one
+        // shows the exit-0 "clean" report an operator would have read while
+        // the copy held a working refresh token. Carries three controls: the
+        // source keeps its own, an ordinary root file still travels, and the
+        // clone SAYS what it dropped rather than omitting it silently.
+        node("sources/home-clone/HomeCloneCarriesNoCredential.java")
+        // The other thing a copy carries that it should not: bytes for the
+        // wrong kernel. pm/ is NOT in SKIPPED_DIRS -- 203 MB of Mach-O arm64
+        // measured on this host -- so a macOS home copied into a Linux image
+        // reported node as installed and answered Exec format error at first
+        // use (DEF-285). Asserts both answers: the stamp, which holds for a
+        // copy made by `cp -R` or a Dockerfile COPY, and `home clone
+        // --portable`, which is the cheap path when skill-manager makes the
+        // copy itself. Two controls keep it specific: an ordinary clone still
+        // carries pm/, and a NATIVE toolchain in the same home still resolves.
+        node("sources/home-clone/CopyCarriesNoForeignBinary.java")
         // The undeclared property this home model rests on, with an oracle
         // rather than a comment. It does not depend on the fixture above: the
         // cost node needs a dedicated volume nobody else writes to.
@@ -919,6 +937,15 @@ validationGraph {
         // else on the host can perturb, and carries a hard-link control that
         // must read as shared plus a byte-copy control that must read as not
         // shared, in the same run as the measurement.
+        //
+        // OUN-12: it no longer SKIPS where the JDK cannot reflink. It used to,
+        // and CI runs Linux, so the property the whole home model rests on was
+        // asserted on developer laptops and nowhere else. It now compares the
+        // measurement against HomeCopyEconomics -- what the PRODUCT declares a
+        // copy onto this filesystem costs -- and fails when they disagree in
+        // either direction. On APFS that is the COPY_ATTRIBUTES defence
+        // verbatim; on ext4 it asserts the copy cost its full size, which is
+        // the number an operator sizing an image has never been told.
         //
         // See specs/desired_program_model/External.tla for what HomeSpec does
         // cover, and issue #60 for the decision.
@@ -1647,6 +1674,16 @@ validationGraph {
         // silent data loss an operator would have met. Carries its own control:
         // the same sync without the link must NOT refuse.
         node("sources/home-integrity/SyncStaysInsideItsHome.java")
+
+        // #311: an install does not delete THIS home's own plugins. Runs a
+        // REAL install against a real cloned home with CODEX_HOME (then
+        // GEMINI_HOME) pointed at that home -- the misconfiguration that made
+        // CodexAgent.pluginsDir() the store's own plugins/ and had the
+        // legacy-layout cleanup empty it, exit 0, silently. The unit test
+        // drives the cleanup helper; this one shows the operator's experience.
+        // Carries two controls: the victim must HOLD a plugin first, and the
+        // install it was asked to do must still have happened.
+        node("sources/home-integrity/InstallKeepsItsOwnPlugins.java")
 
         // HIS-16 (#237) / DEF-046+DEF-047: a `project` verb run from a working
         // directory inside ANOTHER repository does not touch that repository's

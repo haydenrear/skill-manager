@@ -166,6 +166,85 @@ public final class HomeCloner {
             Set.of("audit.log", "gateway.log", "gateway.pid");
 
     /**
+     * Directories whose BYTES are specific to the machine that provisioned
+     * them, omitted only from a copy that says it is leaving this machine.
+     *
+     * <p>{@code pm/} holds the bundled {@code node} and {@code uv}: 203 MB of
+     * Mach-O arm64 on this host, measured. An ordinary clone carries them and
+     * should — the copy is going to a worktree three directories away, on the
+     * same kernel, and re-downloading 203 MB to achieve the identical result
+     * would be absurd. A copy destined for an image is the other case, and it
+     * is the case the tooling could not express at all: the bytes travel,
+     * nothing warns, and the first {@code npm} on the far side answers
+     * {@code Exec format error}.
+     *
+     * <p>So it is a flag rather than a rule. {@code home clone --portable}
+     * omits these; the destination re-provisions from the network, which needs
+     * no {@code node} and no {@code uv} to do (see {@link
+     * dev.skillmanager.pm.PmPlatform}). A copy made any OTHER way — {@code cp
+     * -R}, a {@code COPY} in a Dockerfile — still carries them, which is why
+     * the stamp exists as well: the flag is the cheap path and the stamp is
+     * the one that holds when nobody used the flag.
+     */
+    public static final Set<String> PLATFORM_SPECIFIC_DIRS = Set.of("pm");
+
+    /**
+     * Root-level files a clone does not copy <b>because they are secrets</b>.
+     *
+     * <h2>Separate from {@link #SKIPPED_ROOT_FILES} on purpose</h2>
+     *
+     * <p>Those three are skipped because they are transient — a log and a pid
+     * belong to the run that made them. This one is skipped for a different
+     * reason and carries a different obligation: a transient file that
+     * silently does not arrive is fine, and a CREDENTIAL that silently does
+     * not arrive is a confusing "not logged in" later. So the clone names it
+     * (see {@link #credentialsNotCopied}) rather than merely omitting it.
+     *
+     * <h2>What was measured (#281, DEF-282)</h2>
+     *
+     * <p>{@code auth.token} holds {@code access_token}, {@code refresh_token}
+     * and {@code expires_at} at mode 0600. Before this, a clone carried it
+     * verbatim — observed 2026-09-05 by cloning a home holding one, not
+     * inferred from the absence of an exclusion, which is how #281 sat open
+     * as a question for weeks.
+     *
+     * <p>Every project home and every worktree home is a clone, so the token
+     * was already present in every per-checkout home on the machine. The
+     * sharper case is the one that prompted the fix: <b>a home copied into a
+     * container image shipped a working refresh token for the operator's
+     * registry account</b>, in an 881-byte file, in a home that otherwise
+     * looked exactly right, with no build-time signal.
+     *
+     * <h2>Not carried, rather than carried by default</h2>
+     *
+     * <p>A child home arguably SHOULD inherit registry auth — #281 says so —
+     * and the argument is real for the project and worktree tiers, where the
+     * copy stays on the operator's own machine. It does not survive the case
+     * where the copy leaves the machine, and a copy cannot tell which kind it
+     * is about to become. So the default is the safe one and logging in again
+     * is the remedy the clone prints.
+     */
+    public static final Set<String> CREDENTIAL_ROOT_FILES =
+            Set.of(dev.skillmanager.registry.AuthStore.FILENAME);
+
+    /**
+     * The credential files present in {@code source} that a clone of it will
+     * not carry — so the caller can say what it dropped.
+     *
+     * <p>Read from the SOURCE, because the answer the operator needs is "you
+     * had one and this copy does not", and the copy alone cannot tell that
+     * from "there was never one".
+     */
+    public static List<String> credentialsNotCopied(Path source) {
+        if (source == null) return List.of();
+        List<String> present = new ArrayList<>();
+        for (String name : CREDENTIAL_ROOT_FILES.stream().sorted().toList()) {
+            if (Files.isRegularFile(source.resolve(name))) present.add(name);
+        }
+        return List.copyOf(present);
+    }
+
+    /**
      * Directories a clone does not copy because their contents are
      * <b>claims of stewardship over directories outside the home</b>, and a
      * copy of a home is not a copy of those relationships.
@@ -568,6 +647,19 @@ public final class HomeCloner {
      */
     public static Report cloneHome(Path source, Path dest, boolean strict, boolean lazyArtifacts)
             throws IOException {
+        return cloneHome(source, dest, strict, lazyArtifacts, false);
+    }
+
+    /**
+     * Copy {@code source} to {@code dest}, optionally leaving behind the
+     * directories whose bytes belong to this machine.
+     *
+     * @param portable omit {@link #PLATFORM_SPECIFIC_DIRS} — for a copy that
+     *                 is going to another platform, where carrying them is
+     *                 both dead weight and a binary the far side cannot run
+     */
+    public static Report cloneHome(Path source, Path dest, boolean strict, boolean lazyArtifacts,
+                                   boolean portable) throws IOException {
         Path src = source.toAbsolutePath().normalize();
         Path dst = dest.toAbsolutePath().normalize();
         if (!Files.isDirectory(src)) {
@@ -592,7 +684,7 @@ public final class HomeCloner {
         Counters counters = new Counters();
         try {
             Files.createDirectories(dst);
-            return build(src, dst, strict, counters, lazyArtifacts);
+            return build(src, dst, strict, counters, lazyArtifacts, portable);
         } catch (IOException | RuntimeException e) {
             discardPartialClone(dst, preexisting);
             throw e;
@@ -600,13 +692,13 @@ public final class HomeCloner {
     }
 
     private static Report build(Path src, Path dst, boolean strict, Counters counters,
-                                boolean lazyArtifacts) throws IOException {
+                                boolean lazyArtifacts, boolean portable) throws IOException {
         // Enumerated from the SOURCE before the copy, because the copy is what
         // omits them: after copyTree there is nothing left in the destination
         // to enumerate, and a drop nobody can name is a drop nobody can undo.
         List<String> droppedRegistrations = registrationsIn(src);
         List<String> deferredTrees = new ArrayList<>();
-        copyTree(src, dst, counters, lazyArtifacts, deferredTrees);
+        copyTree(src, dst, counters, lazyArtifacts, portable, deferredTrees);
 
         List<String> droppedBindings = new ArrayList<>();
         List<String> droppedChildHomes = new ArrayList<>();
@@ -771,7 +863,8 @@ public final class HomeCloner {
     }
 
     private static void copyTree(Path src, Path dst, Counters counters,
-                                 boolean lazyArtifacts, List<String> deferredTrees)
+                                 boolean lazyArtifacts, boolean portable,
+                                 List<String> deferredTrees)
             throws IOException {
         Files.walkFileTree(src, new FileVisitor<Path>() {
             @Override
@@ -779,6 +872,9 @@ public final class HomeCloner {
                     throws IOException {
                 String rel = rel(src, dir);
                 if (!rel.isEmpty() && isSkipped(rel)) return FileVisitResult.SKIP_SUBTREE;
+                if (portable && !rel.isEmpty() && isPlatformSpecific(rel)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
                 if (lazyArtifacts && !rel.isEmpty() && deferrableVirtualenv(dir, rel)) {
                     // Left ABSENT, not created empty. `uv` decides what to do
                     // by looking for `pyvenv.cfg`, so an empty directory with
@@ -804,6 +900,7 @@ public final class HomeCloner {
                     throws IOException {
                 String rel = rel(src, file);
                 if (isSkipped(rel)) return FileVisitResult.CONTINUE;
+                if (portable && isPlatformSpecific(rel)) return FileVisitResult.CONTINUE;
                 Path target = dst.resolve(rel);
                 Files.createDirectories(target.getParent());
                 if (Files.isSymbolicLink(file)) {
@@ -3258,6 +3355,13 @@ public final class HomeCloner {
         }
     }
 
+    /** Whether a home-relative path is under a {@link #PLATFORM_SPECIFIC_DIRS} root. */
+    public static boolean isPlatformSpecific(String rel) {
+        String normalized = rel.replace(java.io.File.separatorChar, '/');
+        int slash = normalized.indexOf('/');
+        return PLATFORM_SPECIFIC_DIRS.contains(slash < 0 ? normalized : normalized.substring(0, slash));
+    }
+
     private static boolean isSkipped(String rel) {
         String normalized = rel.replace(java.io.File.separatorChar, '/');
         int slash = normalized.indexOf('/');
@@ -3270,6 +3374,7 @@ public final class HomeCloner {
         // Segment-wise, and the .pyc / .pyo suffix rule with it, both from the
         // one definition shared with the reconcile.
         if (Rederivable.isCache(normalized)) return true;
+        if (slash < 0 && CREDENTIAL_ROOT_FILES.contains(normalized)) return true;
         return slash < 0 && SKIPPED_ROOT_FILES.contains(normalized);
     }
 

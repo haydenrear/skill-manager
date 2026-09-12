@@ -156,7 +156,21 @@ public final class PackageManagerRuntime {
             }
         }
         Path bin = vdir.resolve("bin").resolve(tool);
-        return Files.isExecutable(bin) ? bin : null;
+        if (!Files.isExecutable(bin)) return null;
+        // Executable by permission bits is not the same as runnable on this
+        // machine, and `pm/` is the one directory a home copy carries whose
+        // bytes are machine-specific. A macOS home copied into a Linux image
+        // holds a Mach-O `node` the kernel answers ENOEXEC for; without this
+        // check the home reports it as installed and something else fails
+        // later with "Exec format error". Reporting it as ABSENT is what makes
+        // the caller re-provision it — see PmPlatform.
+        String foreign = PmPlatform.foreignReason(vdir, bin);
+        if (foreign != null) {
+            Log.warn("pm: %s/%s is not runnable here (%s) — treating it as not installed",
+                    pm.id, tool, foreign);
+            return null;
+        }
+        return bin;
     }
 
     /**
@@ -224,10 +238,22 @@ public final class PackageManagerRuntime {
         if (version == null || version.isBlank()) version = pm.defaultVersion;
 
         Path vdir = versionDir(pm, version);
-        if (Files.isDirectory(vdir) && Files.isExecutable(vdir.resolve("bin").resolve(pm.binaryName()))) {
-            Log.ok("pm: %s@%s already installed", pm.id, version);
-            setCurrent(pm, version);
-            return vdir;
+        Path installedBinary = vdir.resolve("bin").resolve(pm.binaryName());
+        if (Files.isDirectory(vdir) && Files.isExecutable(installedBinary)) {
+            String foreign = PmPlatform.foreignReason(vdir, installedBinary);
+            if (foreign == null) {
+                Log.ok("pm: %s@%s already installed", pm.id, version);
+                PmPlatform.stamp(vdir);
+                setCurrent(pm, version);
+                return vdir;
+            }
+            // The bytes are there and they are for another machine. Saying
+            // "already installed" here is how a copied home reports success
+            // and then fails at exec; re-provisioning is the whole point of
+            // pm/ being downloadable rather than sacred.
+            Log.warn("pm: %s@%s came from another platform (%s) — re-provisioning",
+                    pm.id, version, foreign);
+            Fs.deleteRecursive(vdir);
         }
 
         Path cache = store.cacheDir().resolve("pm-" + pm.id + "-" + version + ".tar.gz");
@@ -244,6 +270,10 @@ public final class PackageManagerRuntime {
 
         pm.installFromExtracted(workdir, vdir, version);
 
+        // Stamped at the moment the bytes land, with the platform they were
+        // downloaded for. This file is what a copy of this home carries to
+        // the other machine.
+        PmPlatform.stamp(vdir);
         setCurrent(pm, version);
         Log.ok("pm: installed %s@%s → %s", pm.id, version, vdir);
         Files.deleteIfExists(cache);

@@ -2,10 +2,13 @@
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/StorageSharing.java
 //SOURCES ../../../src/main/java/dev/skillmanager/shared/util/Fs.java
+//SOURCES ../../../src/main/java/dev/skillmanager/store/HomeCopyEconomics.java
+//SOURCES ../../../src/main/java/dev/skillmanager/util/Platform.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import dev.skillmanager.store.HomeCopyEconomics;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -172,53 +175,83 @@ public class HomeCloneCostsFarLessThanACopy {
                 boolean theProbeAnsweredForEveryFile = measured.probeAnsweredEverything()
                         && controls.probeAnsweredEverything();
 
-                // The gate is asked AFTER the controls have proved the probe
-                // works, so "this platform cannot reflink" can never be a
-                // broken probe wearing a skip as a disguise.
-                if (theProbeSeesAHardLinkAsShared && theProbeSeesAByteCopyAsUnshared
-                        && !theJdkCopyCanReflinkHere) {
-                    return skip("on " + measured.platform() + " the JDK's copy does not request a"
-                            + " reflink and this filesystem produced none for it, so the"
-                            + " clone economics the home model rests on do not exist here."
-                            + " The probe is working: it saw the hard-link control as shared"
-                            + " and the byte-copy control as unshared in this same run."
-                            + " byteIdentical=" + theTreeIsByteIdentical);
-                }
-
+                // What the PRODUCT says a copy onto this filesystem costs.
+                // Before OUN-12 there was nothing to ask, so a platform that
+                // does not share blocks had nothing to compare a measurement
+                // against and this node SKIPPED there — on Linux, the only
+                // platform CI runs. A declaration makes the measurement
+                // falsifiable in both directions instead.
+                HomeCopyEconomics.Strategy declared = HomeCopyEconomics.strategyFor(work);
                 boolean theCloneIsBackedByTheSourcesOwnBlocks =
                         clone.measurableBytes() >= PAYLOAD_BYTES / 2
                                 && clone.sharedFraction() >= SHARE_FLOOR;
+                boolean nothingIsShared = clone.nothingShared();
+
+                // The agreement assertion, and the only one that runs
+                // everywhere. On APFS it is the COPY_ATTRIBUTES defence
+                // verbatim. On ext4 it says "this copy cost its full size,
+                // which is what the product tells the operator it costs" — a
+                // real claim, and one that fails if a future JDK starts
+                // reflinking on Linux and nobody updates the declaration.
+                // That failure is worth having: it means the home model just
+                // got cheaper somewhere it was not before.
+                boolean theMeasurementMatchesTheDeclaration = switch (declared) {
+                    case SHARES_BLOCKS -> theCloneIsBackedByTheSourcesOwnBlocks;
+                    case FULL_COPY -> nothingIsShared;
+                    // The kernel can reflink and the JDK's willingness is
+                    // version-dependent, so either answer is legitimate and
+                    // only correctness is asserted.
+                    case MAY_SHARE_BLOCKS -> true;
+                };
 
                 boolean pass = theProbeSeesAHardLinkAsShared
                         && theProbeSeesAByteCopyAsUnshared
                         && theProbeAnsweredForEveryFile
-                        && theCloneIsBackedByTheSourcesOwnBlocks
+                        && theMeasurementMatchesTheDeclaration
                         && theTreeIsByteIdentical
                         && theApparentSizeIsUnchanged;
 
+                long costBytes = declared == HomeCopyEconomics.Strategy.SHARES_BLOCKS
+                        ? clone.measurableBytes() - clone.sharedBytes()
+                        : apparent - clone.sharedBytes();
                 String detail = "platform=" + measured.platform()
+                        + " fs=" + HomeCopyEconomics.filesystemOf(work)
+                        + " declared=" + declared
+                        + " jdkCanReflinkHere=" + theJdkCopyCanReflinkHere
                         + " apparent=" + StorageSharing.mb(apparent) + "MB cloneShared="
                         + StorageSharing.pct(clone.sharedFraction()) + " ("
                         + StorageSharing.mb(clone.sharedBytes()) + "/"
                         + StorageSharing.mb(clone.measurableBytes()) + "MB) floor="
                         + StorageSharing.pct(SHARE_FLOOR) + " viaInode=" + clone.viaInode()
-                        + " viaExtent=" + clone.viaExtent();
+                        + " viaExtent=" + clone.viaExtent()
+                        + " costOfThisCopy=" + StorageSharing.mb(costBytes) + "MB";
                 notes.add(detail);
+                notes.add("declared: " + HomeCopyEconomics.describe(work, apparent));
 
-                return (pass ? NodeResult.pass(SPEC.id()) : NodeResult.fail(SPEC.id(), detail))
+                NodeResult result =
+                        (pass ? NodeResult.pass(SPEC.id()) : NodeResult.fail(SPEC.id(), detail))
                         .assertion("the_probe_sees_a_hard_link_as_shared",
                                 theProbeSeesAHardLinkAsShared)
                         .assertion("the_probe_sees_a_plain_byte_copy_as_not_shared",
                                 theProbeSeesAByteCopyAsUnshared)
                         .assertion("the_probe_answered_for_every_file_it_was_asked_about",
                                 theProbeAnsweredForEveryFile)
-                        .assertion("the_clone_is_backed_by_the_sources_own_blocks",
-                                theCloneIsBackedByTheSourcesOwnBlocks)
+                        .assertion("the_measured_cost_is_what_the_product_declares_for_this_filesystem",
+                                theMeasurementMatchesTheDeclaration)
                         .assertion("the_cloned_tree_is_byte_identical_to_its_source",
                                 theTreeIsByteIdentical)
                         .assertion("the_clone_has_the_same_apparent_size_as_the_source",
-                                theApparentSizeIsUnchanged)
+                                theApparentSizeIsUnchanged);
+                if (declared == HomeCopyEconomics.Strategy.SHARES_BLOCKS) {
+                    // Named separately where it is the property under test, so
+                    // the envelope on the platform the home model was costed on
+                    // still says the thing in its own words.
+                    result = result.assertion("the_clone_is_backed_by_the_sources_own_blocks",
+                            theCloneIsBackedByTheSourcesOwnBlocks);
+                }
+                return result
                         .metric("apparentBytes", apparent)
+                        .metric("costOfThisCopyBytes", costBytes)
                         .metric("cloneSharedBytes", clone.sharedBytes())
                         .metric("cloneMeasurableBytes", clone.measurableBytes())
                         .metric("cloneSharedViaInode", clone.viaInode())
