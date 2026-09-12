@@ -41,6 +41,18 @@ public sealed interface ContextFact {
     record GatewayUnreachable(String host) implements ContextFact {}
 
     // ---- Commit / audit / provenance ----
+    /**
+     * OUN-13. A plugin's contained skill shares a word with a unit already in
+     * this home, and that is legal: they are addressed {@code name} and
+     * {@code plugin:name}, so neither shadows the other.
+     *
+     * <p>Reported rather than refused because one case hiding in it IS wrong
+     * — the same unit present twice — and nothing here can tell that from two
+     * units that merely share a word.
+     */
+    record ContainedNameAlsoClaimed(String name, String plugin, String claimant)
+            implements ContextFact {}
+
     record SkillCommitted(String name) implements ContextFact {}
     record CommitRolledBack(String name) implements ContextFact {}
     record AuditRecorded(String verb) implements ContextFact {}

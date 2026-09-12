@@ -240,6 +240,7 @@ public class RunTests {
         failures += UnitEdgeGraphTest.run();
         failures += ContainedNameCollisionIsRefusedTest.run();
         failures += dev.skillmanager.lifecycle.MigrationSatisfiesTheGateTest.run();
+        failures += dev.skillmanager.lifecycle.BundledAndSupersededDisagreeTest.run();
         failures += ProjectMarkdownImportsTest.run();
         failures += LocalInstallIsNotAnErrorTest.run();
         failures += ScaffoldPluginTest.run();

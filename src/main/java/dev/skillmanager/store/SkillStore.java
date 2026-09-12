@@ -280,6 +280,65 @@ public final class SkillStore {
     }
 
     /**
+     * The skill a {@code plugin:skill} name addresses, or empty.
+     *
+     * <p>THE QUALIFIED FORM EXISTS BECAUSE THE BARE ONE CANNOT ALWAYS BE
+     * UNAMBIGUOUS. {@link #containedSkillDirs} returns every plugin carrying
+     * the name and its caller took the first in plugin-name order —
+     * deterministic, and still a tiebreak between two equally valid answers.
+     * {@code a:x} and {@code b:x} are simply different names, so there is
+     * nothing to break the tie between.
+     *
+     * <p>It also separates a plugin from its own entry skill: {@code skt}
+     * is the plugin and {@code skt:skt} is the skill inside it, which is the
+     * shape every home carrying skt is already in.
+     *
+     * <p>One colon, both halves non-blank, neither half a path. A name with
+     * two colons is not a deeper nesting — a plugin contains no plugins —
+     * so it is rejected rather than interpreted.
+     */
+    public Optional<Path> qualifiedSkillDir(String qualifiedName) {
+        String[] parts = splitQualified(qualifiedName);
+        if (parts == null) return Optional.empty();
+        Path candidate = pluginsDir.resolve(parts[0]).resolve("skills").resolve(parts[1]);
+        if (Files.isDirectory(candidate)
+                && Files.isRegularFile(candidate.resolve(SkillParser.SKILL_FILENAME))) {
+            return Optional.of(candidate);
+        }
+        return Optional.empty();
+    }
+
+    /** True iff {@code name} is syntactically a {@code plugin:skill} name. */
+    public static boolean isQualifiedName(String name) {
+        return splitQualified(name) != null;
+    }
+
+    /** The plugin half of a {@code plugin:skill} name, or empty. */
+    public static Optional<String> pluginOf(String qualifiedName) {
+        String[] parts = splitQualified(qualifiedName);
+        return parts == null ? Optional.empty() : Optional.of(parts[0]);
+    }
+
+    private static String[] splitQualified(String name) {
+        if (name == null) return null;
+        int colon = name.indexOf(':');
+        if (colon <= 0 || colon != name.lastIndexOf(':') || colon == name.length() - 1) {
+            return null;
+        }
+        String plugin = name.substring(0, colon);
+        String skill = name.substring(colon + 1);
+        if (plugin.isBlank() || skill.isBlank()) return null;
+        // A path separator in either half would escape the plugin's skills
+        // directory, which is the one thing this name must never do.
+        if (plugin.contains("/") || skill.contains("/")
+                || plugin.contains("\\") || skill.contains("\\")
+                || plugin.contains("..") || skill.contains("..")) {
+            return null;
+        }
+        return new String[] {plugin, skill};
+    }
+
+    /**
      * Kind-agnostic install check: true if the unit's directory exists
      * with the appropriate manifest under any of {@code skills/},
      * {@code plugins/}, {@code docs/}, or {@code harnesses/}.

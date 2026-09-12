@@ -28,8 +28,19 @@ public final class BundledSkills {
     // whose open/status/sync/git/close is now covered by `skt publish`, `skt
     // ticket` and `sync --from --merge`; `deps --who-imports skill-dev-skill`
     // reported zero importers in the only home that still held it.
+    // `skill-manager` was here until OUN-13, and it CONTRADICTED
+    // UnitSupersession.TABLE. That table retires the standalone
+    // `skill-manager` against skt (MOVED_INTO_CARRIER); this map installed it
+    // again on every fresh onboard, so a new home cloned
+    // skill-manager-skill, installed the standalone, and the install path
+    // retired it on the way through — work done in order to be undone, and
+    // part of why a root sync visibly re-cloned the bundled coordinates.
+    //
+    // The skill still arrives: skt carries `skills/skill-manager`, which is
+    // the whole point of MOVED_INTO_CARRIER. Nothing is lost by not bundling
+    // it separately, and `bundledUnitIsNotSuperseded` fails if the two tables
+    // ever disagree again.
     private static final Map<String, String> GITHUB_COORDS = Map.of(
-            "skill-manager", "github:haydenrear/skill-manager-skill",
             "skt", "github:haydenrear/skill-publisher-skill"
     );
 

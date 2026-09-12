@@ -150,6 +150,16 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.GatewayUnreachable x -> Log.warn(
                     "gateway at %s is unreachable and not local — not attempting to start", x.host());
 
+            // OUN-13. Legal, and worth saying once: the two are addressed
+            // separately, so the only thing to check is whether they are the
+            // same unit — which nothing here can decide.
+            case ContextFact.ContainedNameAlsoClaimed x -> Log.warn(
+                    "'%s' now names two units here: %s, and the skill '%s' carries."
+                    + " They are addressed `%s` and `%s:%s`, so neither shadows the"
+                    + " other — if they are the SAME unit, retire the standalone with"
+                    + " `skill-manager remove %s`",
+                    x.name(), x.claimant(), x.plugin(), x.name(), x.plugin(), x.name(), x.name());
+
             // ---- commit / audit / provenance ----
             case ContextFact.SkillCommitted x -> Log.ok("installed %s", x.name());
             case ContextFact.CommitRolledBack x -> Log.warn("rollback: removed partially-committed %s", x.name());

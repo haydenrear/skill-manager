@@ -354,6 +354,23 @@ public final class MarkdownImportValidator {
     }
 
     private static Optional<UnitRoot> installedRoot(SkillStore store, String name) {
+        // FIRST, AND BEFORE EVERY UNQUALIFIED BRANCH: `plugin:skill`.
+        //
+        // A qualified name cannot mean anything else, so checking it first
+        // costs no other name its meaning — a bare name contains no colon and
+        // falls straight through. It is the only form that is ALWAYS
+        // unambiguous, which is why the rest of this method can stay a
+        // convenience rather than a resolution strategy.
+        //
+        // It answers two things the bare form cannot. `skt` is the plugin and
+        // `skt:skt` is the skill inside it — one name each, where before the
+        // contained one was unaddressable because `plugins/skt` is checked
+        // first. And two plugins carrying the same skill name are `a:x` and
+        // `b:x`, not a tiebreak on plugin-name order.
+        if (SkillStore.isQualifiedName(name)) {
+            return store.qualifiedSkillDir(name)
+                    .map(dir -> new UnitRoot(name, UnitKind.SKILL, dir.toAbsolutePath()));
+        }
         if (store.containsPlugin(name)) {
             return Optional.of(new UnitRoot(
                     name, UnitKind.PLUGIN, store.pluginsDir().resolve(name).toAbsolutePath()));
@@ -393,9 +410,13 @@ public final class MarkdownImportValidator {
         //      mandatory rather than merely usual.
         //
         // When two plugins contain the same skill name the store returns both
-        // and this takes the first in plugin-name order: deterministic, so the
-        // behaviour is testable, and still an ambiguity that the collision
-        // gate refuses at install time rather than resolving here.
+        // and this takes the first in plugin-name order. That tiebreak is no
+        // longer the only answer available: `plugin:skill` above names either
+        // one exactly, so this branch is a CONVENIENCE for the unambiguous
+        // case and not the resolution strategy it used to have to be. The
+        // collision gate no longer refuses this shape either — two distinct
+        // skills sharing a name in two plugins is legal, because neither is
+        // independently updatable and each has an exact name.
         List<Path> contained = store.containedSkillDirs(name);
         if (!contained.isEmpty()) {
             return Optional.of(new UnitRoot(

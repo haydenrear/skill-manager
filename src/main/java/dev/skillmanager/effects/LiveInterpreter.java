@@ -36,12 +36,14 @@ import dev.skillmanager.tools.ToolInstallRecorder;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.Stream;
 import java.util.Map;
 
 /**
@@ -1391,10 +1393,22 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     /**
-     * One name, one copy: refuse a plugin whose contained skill name is
-     * already claimed in this home.
+     * One name, one copy — and from OUN-13 that is a rule about a home's
+     * ROOT, not about plugins.
      *
-     * <p>Three things are deliberately NOT collisions:
+     * <p>This gate used to refuse a plugin whose contained skill name was
+     * already claimed. It no longer does, because the premise stopped being
+     * true: a contained skill is addressed {@code plugin:skill}, so a
+     * standalone {@code x} and a contained {@code p:x} are two names, not one
+     * name with two answers. A plugin install cannot create two STANDALONE
+     * units, so it cannot violate the rule that remains.
+     *
+     * <p>It still walks the same ground and reports what it finds, because one
+     * case it cannot distinguish is genuinely wrong: the same unit existing
+     * twice, which is the state {@code skill-manager} is in mid-migration.
+     * {@link dev.skillmanager.lifecycle.UnitSupersession} retires that.
+     *
+     * <p>Three things were never collisions even under the old rule:
      *
      * <ul>
      *   <li><b>the plugin's own entry skill.</b> A contained skill whose name
@@ -1415,9 +1429,40 @@ public final class LiveInterpreter implements ProgramInterpreter {
         var graph = ctx.resolvedGraph().orElse(null);
         if (graph == null) return EffectReceipt.skipped(e, "no resolved graph in context");
         SkillStore store = ctx.store();
+        List<ContextFact> notices = new ArrayList<>();
         for (var r : graph.resolved()) {
             if (!(r.unit() instanceof dev.skillmanager.model.PluginUnit plugin)) continue;
             String pluginName = r.name();
+            // OUN-13 — THE REFUSAL THIS GATE KEEPS, AND IT IS THE ONE THAT
+            // MAKES EVERYTHING ELSE TRUE.
+            //
+            // A contained skill is addressed `plugin:skill` and carries NO
+            // coordinate of its own, because the plugin is the unit of change
+            // management: you update the plugin, as a whole. That is what lets
+            // two plugins carry a skill of the same name without a duplication
+            // problem — neither is independently updatable, so neither can
+            // drift from the other.
+            //
+            // A nested git repository inside a plugin is that invariant being
+            // broken on disk, and this file's own BundledSkills note already
+            // warned where it leads: "a contained skill must never carry [a
+            // remote] — a later sync would pull plugin-root content into a
+            // skill dir". Today no plugin anywhere contains one, so the rule
+            // holds by luck. This is the check that makes it hold on purpose.
+            Path nested = nestedRepoInside(plugin.sourcePath());
+            if (nested != null) {
+                return EffectReceipt.okAndHalt(e,
+                        "refusing to install plugin '" + pluginName + "': it contains a "
+                                + "nested git repository at " + nested + ".\n"
+                                + "  a plugin is the unit of change management — its skills "
+                                + "are updated by updating the plugin, as a whole,\n"
+                                + "  and a contained skill that carries its own remote would "
+                                + "pull plugin-root content into a skill directory.\n"
+                                + "  remove the nested repository, or ship that skill as a "
+                                + "unit of its own.",
+                        new ContextFact.HaltWithExitCode(3,
+                                "nested git repository inside plugin '" + pluginName + "'"));
+            }
             for (var contained : plugin.containedSkills()) {
                 String name = contained.name();
                 if (name == null || name.isBlank()) continue;
@@ -1425,20 +1470,25 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 if (name.equals(pluginName)) continue;
                 Path claimant = existingClaimant(store, pluginName, name);
                 if (claimant == null) continue;
-                return EffectReceipt.okAndHalt(e,
-                        "refusing to install plugin '" + pluginName + "': the skill it "
-                                + "contains as '" + name + "' is already installed at "
-                                + claimant + ".\n"
-                                + "  a unit name resolves to exactly one copy in a home, and "
-                                + "installing this would give '" + name + "' two.\n"
-                                + "  either remove the existing one (skill-manager remove "
-                                + name + "),\n"
-                                + "  or rename the skill inside the plugin.",
-                        new ContextFact.HaltWithExitCode(3,
-                                "contained skill name '" + name + "' is already claimed"));
+                // OUN-13: NOT A REFUSAL ANY MORE, AND THE REASON IS THAT THE
+                // TWO THINGS NOW HAVE DIFFERENT NAMES.
+                //
+                // The standalone is `name`; the contained one is
+                // `pluginName:name`. Neither shadows the other, so installing
+                // this does NOT give one name two answers — which was the
+                // entire premise of the refusal.
+                //
+                // What remains true, and is why this still says something: if
+                // those two are THE SAME unit rather than two units that share
+                // a word, the home now holds one copy too many. This cannot
+                // tell the difference — only a human or the supersession table
+                // can — so it reports and names the remedy instead of guessing.
+                // `UnitSupersession.TABLE` is what retires the known case.
+                notices.add(new ContextFact.ContainedNameAlsoClaimed(
+                        name, pluginName, claimant.toString()));
             }
         }
-        return EffectReceipt.ok(e);
+        return EffectReceipt.ok(e, notices);
     }
 
     /**
@@ -1540,6 +1590,28 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * Where {@code name} is already installed, ignoring anything belonging to
      * {@code pluginBeingInstalled} — or null when the name is free.
      */
+    /**
+     * The first nested git repository under a plugin root, or null.
+     *
+     * <p>The plugin's OWN {@code .git} is not nested — that is the plugin
+     * being a repository, which is exactly right. Anything deeper is a unit
+     * inside a unit.
+     */
+    private static Path nestedRepoInside(Path pluginRoot) {
+        if (pluginRoot == null || !Files.isDirectory(pluginRoot)) return null;
+        Path skills = pluginRoot.resolve("skills");
+        if (!Files.isDirectory(skills)) return null;
+        try (Stream<Path> walk = Files.walk(skills, 3)) {
+            return walk.filter(pth -> pth.getFileName() != null
+                            && ".git".equals(pth.getFileName().toString())
+                            && Files.exists(pth))
+                    .findFirst()
+                    .orElse(null);
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
     private static Path existingClaimant(SkillStore store, String pluginBeingInstalled,
                                          String name) {
         if (store.contains(name)) return store.skillDir(name);
