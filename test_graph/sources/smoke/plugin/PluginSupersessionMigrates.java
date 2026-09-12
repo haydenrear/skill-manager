@@ -36,10 +36,20 @@ import java.nio.file.Path;
  *
  * <p>"The install succeeded" is what a DELETED gate produces too, and that is
  * the outcome the ticket's own constraint forbids: a migration that works by
- * disabling the guard has produced the state the guard exists to prevent. So
- * the same home, in the same run, must still refuse an ordinary collision
- * afterwards — and a unit the table does not name must survive a carrier that
- * claims its name.
+ * disabling the guard has produced the state the guard exists to prevent. So a
+ * unit the table does not name must survive a carrier that claims its name.
+ *
+ * <h2>OUN-13 changed one control's observable, not its subject</h2>
+ *
+ * <p>The second control used to be "an ordinary collision is still REFUSED
+ * afterwards". Nothing refuses that now: a contained skill is addressed
+ * {@code plugin:skill}, so a standalone {@code x} and a contained {@code p:x}
+ * are two names and there is no collision to refuse. The refusal is no longer
+ * available as evidence.
+ *
+ * <p>What the control was ever FOR is that the migration did not hand later
+ * installs a licence to evict, and that is now asserted directly: the next
+ * plugin installs, and the unrelated unit whose name it shares is untouched.
  */
 public class PluginSupersessionMigrates {
 
@@ -100,13 +110,23 @@ public class PluginSupersessionMigrates {
         // CONTROL 1. The bystander is not in the table, so nothing retired it.
         boolean bystanderSurvived = Files.isDirectory(home.resolve("skills/" + BYSTANDER));
 
-        // CONTROL 2. THE ONE THAT MATTERS. The gate is satisfied by the
-        // migration, not switched off by it: the very next plugin claiming an
-        // unrelated installed name is still refused, in this same home.
+        // CONTROL 2. THE ONE THAT MATTERS, with its observable changed by
+        // OUN-13 and its SUBJECT intact.
+        //
+        // It used to read: the very next plugin claiming an unrelated
+        // installed name is still REFUSED, proving the migration satisfied
+        // the gate rather than switching it off. Nothing refuses that now —
+        // the standalone is `x` and the contained one is `p:x`, two names —
+        // so the refusal is no longer available as evidence.
+        //
+        // What the control is actually for is that the migration did not hand
+        // later installs a licence to evict, and that is asserted directly:
+        // the next plugin installs, and the unrelated unit whose name it
+        // shares is UNTOUCHED.
         ProcessRecord refused = install(ctx, homeStr,
                 plugin(scratch, "colliding-after-migration", BYSTANDER), "collision-after");
-        boolean ordinaryCollisionStillRefused = refused.exitCode() != 0
-                && !Files.isDirectory(home.resolve("plugins/colliding-after-migration"))
+        boolean ordinaryCollisionStillRefused = refused.exitCode() == 0
+                && Files.isDirectory(home.resolve("plugins/colliding-after-migration"))
                 && Files.isDirectory(home.resolve("skills/" + BYSTANDER));
 
         // ---- and the OTHER route a home takes: its own sync ------------
@@ -201,14 +221,17 @@ public class PluginSupersessionMigrates {
                 .assertion("the_unit_deleted_upstream_is_retired_too", obsoleteRetired)
                 .assertion("the_upgrade_SAYS_what_it_retired", saidWhatItRetired)
                 .assertion("CONTROL_a_unit_the_table_does_not_name_survives", bystanderSurvived)
-                .assertion("CONTROL_an_ordinary_collision_is_still_refused_afterwards",
+                .assertion("CONTROL_a_later_plugin_installs_and_evicts_NOTHING",
                         ordinaryCollisionStillRefused)
                 .assertion("a_sync_NAMING_THE_RETIRED_UNIT_performs_the_retirement",
                         syncRetiredIt)
                 .assertion("CONTROL_the_second_home_really_did_hold_two_copies_of_the_name",
                         twoCopiesAgain)
-                .log("The gate is SATISFIED, not weakened: after the retirement there is "
-                        + "genuinely one claimant, which is the property the gate checks.");
+                .log("The retirement removes only what UnitSupersession.TABLE names. The "
+                        + "controls carry this node: a unit the table does not name survives a "
+                        + "carrier claiming it, and a later plugin sharing that name installs "
+                        + "WITHOUT evicting anything — which is what the refusal used to stand "
+                        + "in for before OUN-13 made `x` and `p:x` two names.");
     }
 
     // ------------------------------------------------------------- fixtures

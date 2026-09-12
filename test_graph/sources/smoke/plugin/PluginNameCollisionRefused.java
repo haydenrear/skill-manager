@@ -73,13 +73,25 @@ public class PluginNameCollisionRefused {
         ProcessRecord refused = install(ctx, homeStr, colliding, "install-colliding-plugin");
         String out = readLog(ctx.reportDir(), refused);
 
-        boolean rejected = refused.exitCode() != 0;
-        boolean pluginAbsent = !Files.isDirectory(home.resolve("plugins/colliding-plugin"));
+        // OUN-13 INVERTED THE HEADLINE ASSERTION AND KEPT EVERY OTHER ONE.
+        //
+        // OUN-2 refused this install because it believed the name would then
+        // have two answers. It does not: the standalone is `hello-impl` and
+        // the contained one is `colliding-plugin:hello-impl`. So the install
+        // now SUCCEEDS, and what must still hold is that the unit already
+        // holding the name is untouched — which was always the property worth
+        // protecting, and is the one a wrong implementation would break.
+        boolean accepted = refused.exitCode() == 0;
+        boolean pluginPresent = Files.isDirectory(home.resolve("plugins/colliding-plugin"));
         boolean victimIntact = Files.isDirectory(home.resolve("skills/" + CLAIMED));
+        // It is legal and it is still worth SAYING, because one case hiding in
+        // it is wrong: the same unit present twice. The notice names the
+        // qualified form, which is the answer to the question an operator is
+        // about to ask, and the remedy for the case that IS wrong.
         boolean namesBothClaimants = out.contains("colliding-plugin")
                 && out.contains(home.resolve("skills/" + CLAIMED).toString());
-        boolean namesBothRemedies = out.contains("skill-manager remove " + CLAIMED)
-                && out.contains("rename the skill inside the plugin");
+        boolean namesTheQualifiedForm = out.contains("colliding-plugin:" + CLAIMED);
+        boolean namesTheRemedy = out.contains("skill-manager remove " + CLAIMED);
 
         // THE CONTROL. A plugin whose contained skill has the PLUGIN's own
         // name is one unit under one name, and must install.
@@ -88,27 +100,32 @@ public class PluginNameCollisionRefused {
         boolean entrySkillAllowed = entrySkill.exitCode() == 0
                 && Files.isDirectory(home.resolve("plugins/twin-plugin"));
 
-        boolean pass = rejected && pluginAbsent && victimIntact
-                && namesBothClaimants && namesBothRemedies && entrySkillAllowed;
+        boolean pass = accepted && pluginPresent && victimIntact
+                && namesBothClaimants && namesTheQualifiedForm && namesTheRemedy
+                && entrySkillAllowed;
 
         return (pass ? NodeResult.pass(SPEC.id())
                 : NodeResult.fail(SPEC.id(),
-                        "rejected=" + rejected + " (rc=" + refused.exitCode() + ")"
-                                + " pluginAbsent=" + pluginAbsent
+                        "accepted=" + accepted + " (rc=" + refused.exitCode() + ")"
+                                + " pluginPresent=" + pluginPresent
                                 + " victimIntact=" + victimIntact
                                 + " namesBothClaimants=" + namesBothClaimants
-                                + " namesBothRemedies=" + namesBothRemedies
+                                + " namesTheQualifiedForm=" + namesTheQualifiedForm
+                                + " namesTheRemedy=" + namesTheRemedy
                                 + " entrySkillAllowed=" + entrySkillAllowed
                                 + " (rc=" + entrySkill.exitCode() + ")"))
                 .process(seed).process(refused).process(entrySkill)
-                .assertion("a_plugin_claiming_an_installed_name_is_refused", rejected)
-                .assertion("nothing_is_committed_and_the_existing_unit_is_untouched",
-                        pluginAbsent && victimIntact)
-                .assertion("the_refusal_names_both_claimants", namesBothClaimants)
-                .assertion("and_both_ways_out", namesBothRemedies)
+                .assertion("a_plugin_sharing_a_name_with_a_standalone_unit_installs", accepted)
+                .assertion("and_the_unit_already_holding_the_name_is_UNTOUCHED",
+                        pluginPresent && victimIntact)
+                .assertion("the_notice_names_both", namesBothClaimants)
+                .assertion("and_the_qualified_form_that_separates_them", namesTheQualifiedForm)
+                .assertion("and_the_remedy_for_the_case_that_IS_wrong", namesTheRemedy)
                 .assertion("CONTROL_a_plugins_own_entry_skill_still_installs", entrySkillAllowed)
-                .log("--yes is passed on every install here, so this also shows the refusal "
-                        + "is not a policy prompt that confirmation can answer.");
+                .log("OUN-2 refused this install; OUN-13 does not, because the premise went "
+                        + "away — `" + CLAIMED + "` and `colliding-plugin:" + CLAIMED + "` are "
+                        + "two names. What survived the change is the property worth having: "
+                        + "the unit already holding the name is untouched either way.");
     }
 
     // ------------------------------------------------------------- fixtures
