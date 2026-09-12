@@ -797,3 +797,63 @@ findings:
       actually checked.
     status: open
 
+  - id: DEF-OUN-021
+    found_by: >
+      the full test-graph sweep, on the first run after origin/main was merged
+      into the epic branch
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      OUN-10 made generated shims derive their own home instead of naming it,
+      and that made the CLONE's cold-artifact detector blind. `coldReason`
+      asks `missingReferencesIn`, which scans for literal spellings of the
+      home root; a self-deriving shim holds `${SKILL_MANAGER_SHIM_HOME}/cache/…`
+      and contains no literal root, so the scan found nothing, `writeColdShims`
+      replaced nothing, and a lazily-cloned home answered an unbuilt tool with
+      the kernel's words and exit 126:
+        line 5: …/cache/skill-script-ad-alpha-unit-ad-alpha-tool/bin/…:
+        No such file or directory
+      instead of naming the cold artifact and `skill-manager build` -- which is
+      the entire purpose of the cold shim.
+    the_same_shape_as_the_crater: >
+      A guard whose rule stopped matching the world: the scanner looks for
+      absolute paths, and the thing it guards stopped containing them. Neither
+      side is wrong on its own, which is why each shipped green on its own
+      branch.
+    only_visible_integrated: >
+      OUN-10 landed on main; the artifact graph lives on the epic branch. They
+      had never run in one tree until the merge, and the node passed on
+      2026-09-11 and failed on 2026-09-12 with no change to either.
+    resolution: >
+      destReferences also scans the token spelling, which resolves to the same
+      canonical path because the shim derives it from its own location.
+      NARROWED after a first attempt included `$SKILL_MANAGER_HOME` too --
+      that is the token ColdArtifactShim writes the missing tree as in its own
+      REFUSAL TEXT, so scanning it made a cold shim name a missing path
+      (itself) and the clone reported something dangling after the pass that
+      fixed it. Prose about a path is not a reference to one; three tests said
+      so at once.
+    status: resolved
+
+  - id: DEF-OUN-022
+    found_by: the same sweep, the node next door
+    found_at: "2026-09-12"
+    severity: minor
+    summary: >
+      `lazy.clone.declares.without.building` asserted that a clone's CLI-SHIMS
+      report `declared-only`. That was true only while a shim baked the source
+      home's absolute path -- such a shim is useless in a copy, so a clone had
+      no reason to carry the file. After OUN-10 the clone carries a shim that
+      WORKS, and reports its presence honestly as `materialized`.
+    why_it_is_not_a_regression: >
+      Nothing about lazy cloning changed: the PROVISIONED TREES the shims run
+      are still `declared-only`, and `the_clone_carries_no_built_cache_tree`
+      still holds from the filesystem side. The assertion was reading the
+      wrong artifact for its own subject.
+    resolution: >
+      Retargeted at the provisioned trees, which is what "declared without
+      building" was always about. The shim's own `agreement` stays
+      `unverifiable` precisely because the tree it would be checked against is
+      absent, so the model already said this correctly.
+    status: resolved
+
