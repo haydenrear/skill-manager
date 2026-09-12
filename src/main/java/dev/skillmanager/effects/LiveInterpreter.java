@@ -662,13 +662,41 @@ public final class LiveInterpreter implements ProgramInterpreter {
     /**
      * Reload skill-kind units from disk so the handler sees manifest
      * changes from a sync's merge step. Plugin-kind units pass through
-     * unchanged (kind-aware reload lands in ticket 11). Skills whose
-     * dirs vanished (rare — concurrent uninstall) keep the supplied
-     * stale value.
+     * unchanged (kind-aware reload lands in ticket 11).
+     *
+     * <h2>#342: a unit the store no longer holds is DROPPED</h2>
+     *
+     * <p>This used to "keep the supplied stale value" for a unit whose
+     * directory had vanished, on the stated assumption that it only happens
+     * through a rare concurrent uninstall. OUN-5 made it routine and
+     * deliberate: {@code RetireSupersededUnits} removes the standalone
+     * {@code skill-manager} DURING a sync, and every list in this program was
+     * captured before that ran.
+     *
+     * <p>So the migration retired the unit, unbound all three of its
+     * projections — the log says so — and then {@code SyncAgents} projected it
+     * again from the stale list, leaving
+     * {@code .claude/skills/skill-manager -> <home>/skills/skill-manager}
+     * dangling in every agent directory. Measured on a clone of a real
+     * pre-epic home; `home verify` called them "declared and not built" and
+     * `home repair` found nothing.
+     *
+     * <p>All four callers act ON each unit — tools, CLI, MCP, projections —
+     * so a unit that is not there is wrong for every one of them, and there is
+     * nothing to do for it but skip it.
+     *
+     * <p>Gone and unreadable are kept apart: a unit whose directory is absent
+     * is dropped, and one whose directory is present but fails to load keeps
+     * the stale value, which is the conservative direction and the case the
+     * old comment was really about.
      */
     private List<AgentUnit> freshen(List<AgentUnit> stale) {
         List<AgentUnit> out = new ArrayList<>(stale.size());
         for (AgentUnit u : stale) {
+            if (u.name() != null && !store.containsUnit(u.name())) {
+                Log.debug("skipping %s — it is not in this store any more", u.name());
+                continue;
+            }
             if (u instanceof dev.skillmanager.model.SkillUnit) {
                 try {
                     Skill reloaded = store.load(u.name()).orElse(null);
