@@ -669,3 +669,48 @@ findings:
       from BundledSkills by a test, so the two tables cannot disagree again.
     status: open
 
+  - id: DEF-OUN-018
+    found_by: >
+      building the GOAL-a-home-survives-being-copied-into-an-image harness,
+      which the epic had declared and never measured
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      OUN-10 and OUN-12 fixed the CODE and left the existing population
+      unhealed, and nothing says so. Measured on the two real homes on this
+      machine, copied the way an image build copies one:
+        (a) no credential travels              MET
+        (b) no bin/cli entry names the source  NOT MET -- 11 frozen shims
+        (c) usable on another platform         NOT MET -- 6 unstamped pm trees
+      The frozen shims are exactly the six OUN-10 named (computeq,
+      helm-deploy, jinja2, monitoring, tla-spec-dev,
+      tracing-observability-install), and PmPlatform's own javadoc says "every
+      home provisioned before this change has no stamp".
+    the_fix_is_write_time_only: >
+      SkillScriptBackend rewrites a frozen shim only when a skill-script dep is
+      REINSTALLED -- binStamps() compares mtimes and examines only the shims
+      that install touched. A shim written before the fix and never reinstalled
+      stays frozen forever. PmPlatform.stamp is likewise called from
+      PackageManagerRuntime during provisioning, so an already-provisioned
+      version directory is never stamped retroactively.
+    a_remedy_exists_and_was_run: >
+      `skill-manager sync <unit> --force-scripts` heals it. Verified on the
+      project home: tracing-observability-install went from 1 line naming this
+      home to 0, and the sync reported `cli: 16 already present, 1 installed`.
+      It is per-unit, needs a flag most operators will not know to pass, and
+      there is no equivalent for the pm stamps short of re-provisioning.
+    why_it_matters_for_the_release: >
+      The goal exists because a home is about to be baked into a container
+      image. An image built from any home provisioned before these fixes
+      carries shims that run the BUILD machine's home path and pm trees a
+      foreign host will execute and get ENOEXEC from -- and both are invisible
+      to `home verify` and `home repair`, whose rule asks "does this reach
+      ANOTHER home", which an own-home absolute path does not.
+    candidate_owner: >
+      a small ticket: make `home repair --fix` heal both -- rewrite frozen
+      shims via ShimHomeContract.selfDerivingRewrite, and stamp or drop
+      unstamped pm version directories. The repair command is where an
+      operator already looks, and today it reports 0 findings on a home that
+      has 17.
+    status: open
+
