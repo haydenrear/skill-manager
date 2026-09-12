@@ -557,9 +557,9 @@ findings:
       But it is a correctness gap in this epic's OWN artifacts work rather than
       inherited from before it, so it wants a decision at the review rather
       than quiet acceptance.
-    issue: https://github.com/haydenrear/skill-manager/issues/334
+    issue: https://github.com/haydenrear/skill-manager/issues/292
     candidate_owner: >
-      skill-manager#334, on the artifacts/teardown line. The likely shape is
+      skill-manager#292, on the artifacts/teardown line. The likely shape is
       that teardown reaps the ledger rows of a unit being uninstalled whether
       or not it could verify their outputs -- keeping the FILE when unsure is
       the safety property; keeping the ROW is what produces the phantom.
@@ -632,7 +632,7 @@ findings:
       all, so #334 is not confined to the unverifiable-output path.
       `.materialization/skill/eval-skill.json` also survives, which is the
       same residue DEF-121 documents from the other direction.
-      Posted as evidence on skill-manager#334.
+      Posted as evidence on skill-manager#292.
     status: resolved
 
   - id: DEF-OUN-017
@@ -754,7 +754,7 @@ findings:
       and the numbers are not small. Root home: 291 declared, 14 outputs whose
       presence is `missing`, 1 row the ledger holds with no outputs at all.
       Project home: 59 declared, 9 missing, 3 ledger-only. This is
-      skill-manager#334 at scale -- the three ledger-only rows in the project
+      skill-manager#292 at scale -- the three ledger-only rows in the project
       home are exactly the ones the eval-skill uninstall left behind, measured
       the same day.
     why_a_cross_check_found_it: >
@@ -762,7 +762,11 @@ findings:
       what `artifacts list` reports. The disagreement is only visible by
       reading the ledger's own claims back against the disk it describes,
       which is what this check does.
-    candidate_owner: skill-manager#334
+    candidate_owner: >
+      skill-manager#292 (DEF-HBR-003, epic-home-integrity-sync). NOT a new issue:
+      #334 was filed for it on 2026-09-11 and closed as a duplicate the next
+      day, because 95 open findings across three epic backlogs is more than
+      anyone searches before filing.
     status: open
 
   - id: DEF-OUN-020
