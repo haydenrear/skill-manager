@@ -728,3 +728,53 @@ findings:
       equality rather than a floor.
     status: resolved
 
+  - id: DEF-OUN-019
+    found_by: >
+      scripts/release_regression.py, written for this release from where the
+      bugs cluster rather than from what is easy to check
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      `artifacts list` names artifacts that are not there, on BOTH real homes,
+      and the numbers are not small. Root home: 291 declared, 14 outputs whose
+      presence is `missing`, 1 row the ledger holds with no outputs at all.
+      Project home: 59 declared, 9 missing, 3 ledger-only. This is
+      skill-manager#334 at scale -- the three ledger-only rows in the project
+      home are exactly the ones the eval-skill uninstall left behind, measured
+      the same day.
+    why_a_cross_check_found_it: >
+      Nothing in the product disagrees with the ledger, because the ledger IS
+      what `artifacts list` reports. The disagreement is only visible by
+      reading the ledger's own claims back against the disk it describes,
+      which is what this check does.
+    candidate_owner: skill-manager#334
+    status: open
+
+  - id: DEF-OUN-020
+    found_by: the same cross-check
+    found_at: "2026-09-12"
+    severity: major
+    summary: >
+      A HOME IS JUDGED BY THE CLI IT PINS, so a fix to a guard does not reach
+      the homes that most need it until they upgrade. Measured, same home,
+      same moment:
+        `~/.skill-manager/bin/cli/skill-manager home repair` (0.26.0, released)
+            -> "nothing is damaged in a way this command knows about
+                (73 entries examined)"
+        the same home judged by this branch's build
+            -> 8 findings: FROZEN_HOME_PATH_IN_SHIM and UNSTAMPED_PM_TREE
+    this_is_the_release_argument: >
+      Every home on this machine that has not upgraded is reporting itself
+      healthy against a rule that did not yet know about two defect classes.
+      That is not a criticism of the pin -- pinning is what makes a home
+      reproducible -- but it means "home repair says clean" is a statement
+      about a home AND the CLI it pins, and nothing in the output says which
+      version answered.
+    candidate_owner: >
+      a small change with outsized value: have `home repair` and `home verify`
+      print the build that produced the verdict, the way `skt status` prints
+      cli-ver. A verdict whose authority is invisible is the same shape as a
+      guard whose rule is too narrow -- the reader cannot tell what was
+      actually checked.
+    status: open
+
