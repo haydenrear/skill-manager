@@ -1536,6 +1536,32 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // BEFORE anything is removed, and about every row rather than the
         // one in hand: a migration that retires the first unit and then
         // refuses over the second has already done the destructive half.
+        // WHAT IS IN SCOPE, AND WHY IT IS NOT JUST e.carriers().
+        //
+        // `isMandatory` asks "is the carrier one of the things this operation
+        // is bringing in" — if it is, proceeding would create the two-copies
+        // state deliberately, so a blocked retirement must HALT rather than be
+        // reported and skipped. The sync path passes its carriers explicitly.
+        // THE INSTALL PATH PASSES NONE: InstallUseCase builds
+        // `new SkillEffect.RetireSupersededUnits()` with no argument, so
+        // e.carriers() is empty and every retirement looked optional — the
+        // halt could not fire on the one path where the carrier is definitely
+        // arriving.
+        //
+        // It went unnoticed because the collision gate refused those installs
+        // for an unrelated reason, so the test asserting the halt was green
+        // against a refusal that came from somewhere else. OUN-13 narrowed
+        // that gate, the refusal stopped happening, and this surfaced.
+        //
+        // On the install path the scope IS the resolved graph: those are the
+        // units arriving.
+        var scopeGraph = ctx.resolvedGraph().orElse(null);
+        List<String> namesInScope = fromHome
+                ? e.carriers()
+                : (scopeGraph == null ? List.<String>of()
+                        : scopeGraph.resolved().stream()
+                                .map(dev.skillmanager.resolve.ResolvedGraph.Resolved::name)
+                                .toList());
         List<UnitSupersession.Retirement> retirable = new ArrayList<>();
         for (UnitSupersession.Retirement retirement : due) {
             String blocked = UnitSupersession.blockedFrom(store, retirement.unit());
@@ -1543,7 +1569,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 retirable.add(retirement);
                 continue;
             }
-            if (!UnitSupersession.isMandatory(retirement, e.carriers())) {
+            if (!UnitSupersession.isMandatory(retirement, namesInScope)) {
                 // Riding along with an unrelated sync. Reported and skipped:
                 // halting here would make `sync deploy-helm` fail because
                 // skill-manager has an uncommitted edit, and the home is no

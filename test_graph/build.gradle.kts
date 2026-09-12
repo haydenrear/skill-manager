@@ -569,10 +569,19 @@ validationGraph {
         // disk in the same home. Only the first sense was covered, which is
         // how that survived from the day skt shipped `unit-authoring`.
         node("sources/smoke/plugin/PluginContainedSkillResolvesByName.java")
-        // OUN-2: one name, one copy. The refusal, with the message an
-        // operator has to choose from — and the control that keeps the gate
-        // from refusing skt, whose entry skill carries the plugin's own name.
+        // OUN-2, as amended by OUN-13. The node keeps its id because ids are
+        // load-bearing; its headline assertion is now the opposite. A plugin
+        // sharing a name with a standalone unit INSTALLS -- they are `x` and
+        // `p:x` -- and what must still hold is that the unit already holding
+        // the name is untouched, which is the property that was ever worth
+        // protecting. The entry-skill control is unchanged.
         node("sources/smoke/plugin/PluginNameCollisionRefused.java")
+        // OUN-13: `plugin:skill`. The permutation that matters runs in this
+        // same home — a standalone `hello-impl` installed BESIDE the plugin
+        // that contains one, with both names resolving and neither shadowing
+        // the other. Under OUN-2 that install was refused; the node above now
+        // asserts it succeeds and the existing unit is untouched.
+        node("sources/smoke/plugin/PluginQualifiedNameResolves.java")
         // OUN-5: and the one operation that has to get PAST that refusal —
         // the upgrade retiring the standalone unit the carrier supersedes.
         // Every existing home was stuck behind the gate above; the retirement
@@ -608,6 +617,7 @@ validationGraph {
         node("sources/common/ServersDown.java")
                 .dependsOn("plugin.contained.skill.not.addressable",
                         "plugin.contained.skill.resolves.by.name",
+                        "plugin.qualified.name.resolves",
                         "plugin.name.collision.refused",
                         "plugin.supersession.migrates",
                         "plugin.markdown.import.targets",
