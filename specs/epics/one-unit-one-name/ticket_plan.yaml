@@ -13,7 +13,7 @@ branch: epic/one-unit-one-name
 base: "e07e577"
 repository: haydenrear/skill-manager
 ticket_prefix: OUN
-updated: "2026-09-05"
+updated: "2026-09-06"
 
 # AMENDMENT, schedule_revision 2, 2026-09-05. Four findings from the
 # meta-harness effort (DEF-282..285) are scheduled here at the owner's
@@ -120,13 +120,36 @@ epic_goals:
     statement: >
       Upgrading a home that holds the old shape leaves skill-dev-skill gone, no
       standalone skill-manager, and exactly one skt -- without the collision
-      gate refusing the upgrade that causes it.
-    metric: "(skill-dev-skill present, standalone skill-manager present, skt count) after upgrading an old-shape home"
-    harness: "bootstrap a home at the pre-epic shape, upgrade it, and read the three counts"
+      gate refusing the upgrade that causes it, and BY EVERY ROUTE a home
+      takes.
+    metric: >
+      (skill-dev-skill present, standalone skill-manager present, skt count)
+      after upgrading a home at the pre-epic shape, measured once per route:
+      `install <carrier>` and `sync`.
+    harness: >
+      bootstrap a home at the pre-epic shape, upgrade it by each route, and
+      read the three counts. The homes that exist on the measuring machine are
+      READ and reported as context, and are not the verdict.
     baseline:
       value: "(1, 1, 1) on the operator root home, measured 2026-09-05"
       measured_at: "2026-09-05"
-    target: "(0, 0, 1)"
+    target: "(0, 0, 1) by both routes"
+    # AMENDMENT, schedule_revision 4, 2026-09-06, at the owner's instruction:
+    # "each project and skill manager home is responsible for migration [...]
+    # We need to validate that instead of worrying about every home that
+    # exists."
+    #
+    # The metric was a census -- how many of the homes on this machine hold
+    # (0,0,1). That is not a property of the software. It counts homes nobody
+    # has synced yet and homes belonging to checkouts nobody has opened, it
+    # reads "not yet upgraded" and "cannot be upgraded" as one number, and no
+    # amount of correct code drives it to zero.
+    #
+    # It now grades the MECHANISM, by both routes, because every home migrates
+    # itself when it syncs. Widening from one route to two was not cosmetic:
+    # the sync route was wired and untested, and it did not work for `sync
+    # skill-manager` -- the single command a person runs after being told this
+    # migration exists.
 
   - id: GOAL-who-imports-this
     kind: quality
