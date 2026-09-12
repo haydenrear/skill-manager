@@ -366,28 +366,11 @@ public final class ArtifactPrune {
                                Set<String> installed, Set<String> declaredLockKeys,
                                Set<String> claimed, Set<String> childClaimed,
                                ChildClaims childClaims, Path home) {
-        // Kinds whose teardown belongs to another verb. Their BYTES are never
-        // this command's to delete — a unit's store is removed by `uninstall`,
-        // and a second deleter of somebody else's checkout is the hazard the
-        // class javadoc spends a paragraph on.
-        //
-        // #292: THE ROW IS NOT THE BYTES. Excluding these kinds from deletion
-        // is right; excluding their dead ROWS from being reaped is what leaves
-        // `unit-store:<unit>` in the census of a home that uninstalled that
-        // unit — the last surviving phantom after the other five were fixed.
-        //
-        // So they are still never a path-deleting verdict. They can be a
-        // row-only one, and only when the owner is gone and nothing the row
-        // names is on disk: at that point the row is all that is left of the
-        // artifact, and removing it touches nothing.
-        boolean deadStoreRow = false;
+        // Kinds whose teardown belongs to another verb, filtered before
+        // anything else so they never even appear as candidates.
         if (artifact.kind() == ArtifactKind.UNIT_STORE
                 || artifact.kind() == ArtifactKind.UNIT_DIGEST) {
-            deadStoreRow = isDeadStoreRow(artifact, ledger, installed, home);
-            // Still a candidate for nothing else. A store whose owner is
-            // installed, or whose bytes are on disk, is simply not this
-            // command's business and never was.
-            if (!deadStoreRow) return null;
+            return null;
         }
         String owner = artifact.owner();
         if (owner == null) {
@@ -413,15 +396,6 @@ public final class ArtifactPrune {
                             + "(parentStoreShims) — a child home this pass cannot read is not "
                             + "the same answer as one that links at nothing");
         }
-        // #292, AFTER THE GATES AND NOT BEFORE THEM. The first version of this
-        // returned at the top of the method and skipped the two refusals above
-        // — so an unreadable child home no longer stopped the prune, which is
-        // the one thing those gates exist to do. Three tests said so at once.
-        if (deadStoreRow) {
-            return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, List.of(),
-                    "its owner is not installed here and none of its bytes are left — the "
-                            + "ledger row is all that remains, and nothing on disk is touched");
-        }
         if (declaredByInstalled(artifact, installed, declaredLockKeys)) return null;
         if (childClaimed.contains(artifact.id())) {
             String at = childClaims.claimOn(artifact);
@@ -437,40 +411,11 @@ public final class ArtifactPrune {
         }
 
         ArtifactLedger.Row row = ledger.byId(artifact.id()).orElse(null);
-        if (row == null) {
-            // Nothing in the ledger to act on, and the disk is not this
-            // command's authority. Unchanged.
+        if (row == null || row.outputs().isEmpty()) {
             return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
                     "no ledger row names an output for it, and this command deletes only what "
                             + "the ledger recorded — run `skill-manager artifacts record` while "
                             + "the producer is still installed");
-        }
-        if (row.outputs().isEmpty()) {
-            // #292 / DEF-HBR-003. THE ROW IS THE ARTIFACT HERE, and refusing
-            // to act on it is what produced the phantom.
-            //
-            // This used to REFUSE, on the same sentence as the branch above:
-            // "this command deletes only what the ledger recorded". True, and
-            // it answers the wrong question — there is nothing to DELETE. The
-            // owner is gone (every claim check above has already passed), the
-            // row names no output, so the only thing left of this artifact IS
-            // the row, and leaving it means `artifacts list` reports an
-            // artifact that does not exist and no command will ever reap.
-            //
-            // Measured on a real home 2026-09-12: uninstalling one unit left
-            // four such rows, the census unchanged at 59 in a home holding 55,
-            // every row flipped from materialized/ledger-and-home to
-            // declared-only/ledger. Across two homes: 291 declared with 14
-            // outputs missing, and 59 with 9.
-            //
-            // Keeping the FILE when unsure is the safety property worth
-            // having. Keeping the ROW is strictly worse than either
-            // alternative. So: prune, with no paths — this deletes nothing on
-            // disk, because there is nothing on disk to delete.
-            return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, List.of(),
-                    "its owner is not installed here and the ledger names no output for it — "
-                            + "the row is all that is left, and nothing on disk is touched",
-                    lockRowOf(artifact));
         }
 
         List<String> targets = new ArrayList<>();
@@ -506,39 +451,12 @@ public final class ArtifactPrune {
                                 + " any more, and its install left nothing on disk — only the "
                                 + "cli-lock.toml row is left to remove", lockOnly);
             }
-            // #292, the same fact reached from the other side: every output
-            // the row names is already absent. CLAIMED was the wrong verdict —
-            // nothing claims it, its owner is gone, and the row outlives both.
-            return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, List.of(),
-                    "its owner is gone and every output it names is already absent — only the "
-                            + "ledger row is left to remove, and nothing on disk is touched",
-                    lockRowOf(artifact));
+            return new Step(artifact.id(), artifact.kind(), owner, Verdict.CLAIMED, List.of(),
+                    "its owner is gone and nothing of it is left on disk");
         }
         return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, targets,
                 "declared by " + owner + ", which is not installed here any more",
                 lockRowOf(artifact));
-    }
-
-    /**
-     * A {@code unit-store} / {@code unit-digest} row with nothing behind it.
-     *
-     * <p>The BYTES of these kinds are never this command's to delete — a
-     * unit's store is removed by {@code uninstall}. The ROW is a different
-     * thing, and leaving it is what put {@code unit-store:<unit>} in the
-     * census of a home that had uninstalled that unit (#292).
-     */
-    private static boolean isDeadStoreRow(Artifact artifact, ArtifactLedger ledger,
-                                          Set<String> installed, Path home) {
-        String owner = artifact.owner();
-        if (owner == null || installed.contains(owner)) return false;
-        ArtifactLedger.Row row = ledger.byId(artifact.id()).orElse(null);
-        if (row == null) return false;
-        for (String relative : row.outputs()) {
-            if (Files.exists(home.resolve(relative).normalize(), LinkOption.NOFOLLOW_LINKS)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /** The lock key this shim's row is filed under, or null. */
@@ -767,25 +685,7 @@ public final class ArtifactPrune {
         }
         if (attempted || !pruned.isEmpty()) {
             try {
-                // WITHOUT WHAT WAS JUST PRUNED, and that exclusion is the
-                // other half of #292.
-                //
-                // The re-record reads ArtifactIndex, which merges the disk
-                // with THE LEDGER — a row whose outputs are gone still comes
-                // back as an Origin.LEDGER artifact. So re-recording from the
-                // index alone is a fixpoint: it writes back every row it was
-                // meant to drop, and a prune that reported success left the
-                // census exactly as it found it. That is why the count did not
-                // move on a real home: 59 before, 59 after.
-                //
-                // Filtering by the ids this pass actually pruned keeps the
-                // rule intact — the ledger is still re-recorded from what is
-                // on disk, minus the rows this pass decided were all that was
-                // left of a dead artifact.
-                Set<String> gone = new LinkedHashSet<>(pruned);
-                ArtifactLedger.of(ArtifactIndex.of(store).artifacts().stream()
-                        .filter(a -> !gone.contains(a.id()))
-                        .toList()).save(store);
+                ArtifactLedger.of(ArtifactIndex.of(store).artifacts()).save(store);
             } catch (IOException | RuntimeException e) {
                 Log.warn("artifacts prune: removed %d artifact(s) but could not re-record %s (%s)"
                         + " — the ledger now names things this home no longer has; re-run"

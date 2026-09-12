@@ -72,29 +72,10 @@ public final class ArtifactPruneTest {
 
             ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
             assertFalse(plan.prunes().isEmpty(), "there is something to catch up on");
-            // #292 CHANGED WHAT A PRUNE STEP CAN BE. It used to be true that
-            // every step named paths, and that is why this asserted it. A row
-            // whose outputs are all absent is now a step too — the row IS the
-            // artifact at that point, and refusing to touch it is what left
-            // `artifacts list` naming things the home does not have.
-            //
-            // So: every step still names an owner, and every step either
-            // removes files or says in its reason that it is removing only the
-            // row. The control below keeps this from passing over a plan that
-            // removes nothing at all.
-            int withPaths = 0;
             for (ArtifactPrune.Step step : plan.prunes()) {
                 assertTrue(step.owner() != null, "and every one of them names an owner");
-                if (!step.paths().isEmpty()) {
-                    withPaths++;
-                } else {
-                    assertContains(step.reason(), "nothing on disk is touched",
-                            "a step with no paths says so: " + step.reason());
-                }
+                assertFalse(step.paths().isEmpty(), "and the paths it would remove");
             }
-            assertTrue(withPaths > 0,
-                    "CONTROL: at least one step removes real files, so this is not passing "
-                            + "over a plan that only rewrites the ledger");
         });
 
         // --------------------------------------------------------- the refusals
