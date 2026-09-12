@@ -117,7 +117,35 @@ def main() -> int:
                               "addressable_today": u.addressable,
                               "contained_in": u.contained_in}
                              for u in claims]}
-            (live if sum(u.addressable for u in claims) > 1 else latent).append(row)
+            # OUN-13 REDEFINED WHAT A PAIR IS, and this is where the goal is
+            # actually decided.
+            #
+            # A standalone `x` and a contained `p:x` are no longer two answers
+            # to one name: they are addressed `x` and `p:x`. So a claim set
+            # holding ONE standalone and any number of contained skills is not
+            # a collision at all, however many plugins carry the word.
+            #
+            # Two things still are, and they are different from each other:
+            #
+            #   ROOT COLLISION  two standalone units share a name. This is the
+            #                   whole of the rule now, and nothing in the
+            #                   product can produce it.
+            #   DUPLICATE       the SAME unit present twice — a standalone the
+            #                   supersession table says has moved into a
+            #                   carrier that now also carries it. Legal to
+            #                   address, still one copy too many, and the
+            #                   migration is what clears it.
+            standalone = [u for u in claims if not u.contained_in]
+            contained = [u for u in claims if u.contained_in]
+            if len(standalone) > 1:
+                row["why_counted"] = "two standalone units share a name in this home's root"
+                live.append(row)
+            elif standalone and contained and g.moved_into_carrier(name):
+                row["why_counted"] = (
+                    f"`{name}` is recorded as moved into a carrier, and this home holds "
+                    f"both the standalone and the carrier's copy — the same unit twice")
+                latent.append(row)
+            # else: `x` and `p:x`, two names. Not a pair.
 
     out = {
         "goal": "GOAL-one-name-one-copy",
@@ -128,7 +156,13 @@ def main() -> int:
         "value": f"{len(live)} live, {len(latent)} latent over {len(homes)} homes",
         "target": "0 live AND 0 latent",
         "vacuous": len(live) == 0 and len(latent) > 0,
-        "why": ("0 live is VACUOUS while contained skills are unaddressable: "
+        "why": ("counted under OUN-13: a standalone `x` and a contained `p:x` are "
+                "TWO NAMES and not a pair. What is counted is two standalone units "
+                "sharing a name (nothing in the product can produce it), and the same "
+                "unit present twice — a standalone the supersession table says has "
+                "moved into a carrier that now carries it, which the migration clears. "
+                "The former reading said: "
+                "0 live is VACUOUS while contained skills are unaddressable: "
                 "the latent pairs cannot collide because only one of their two "
                 "roots can be named. OUN-1 makes them live."
                 if len(live) == 0 and latent else None),

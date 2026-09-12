@@ -368,3 +368,27 @@ def home_label(home: Path) -> str:
     if p.parent == Path(os.environ.get("HOME", "~")).expanduser():
         return "root"
     return p.parent.name
+
+
+# ---------------------------------------------------------------- OUN-13
+# The supersession table, mirrored from
+# src/main/java/dev/skillmanager/lifecycle/UnitSupersession.java. Read out of
+# the source rather than restated, so the two cannot drift: a name that stops
+# being MOVED_INTO_CARRIER there stops being counted here on the same commit.
+_MOVED_RE = re.compile(
+    r'new\s+Retirement\(\s*"([^"]+)"\s*,\s*"[^"]+"\s*,\s*Kind\.MOVED_INTO_CARRIER')
+
+
+def moved_into_carrier(name: str) -> bool:
+    """True if UnitSupersession.TABLE says this unit moved into a carrier.
+
+    A standalone unit with this name, in a home whose carrier also carries it,
+    is the SAME unit twice rather than two units sharing a word — which is the
+    one case `plugin:skill` addressing does not make legal.
+    """
+    src = (Path(__file__).resolve().parent.parent
+           / "src/main/java/dev/skillmanager/lifecycle/UnitSupersession.java")
+    try:
+        return name in set(_MOVED_RE.findall(src.read_text()))
+    except OSError:
+        return False
