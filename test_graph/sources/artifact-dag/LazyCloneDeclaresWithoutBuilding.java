@@ -146,11 +146,34 @@ public class LazyCloneDeclaresWithoutBuilding {
                     ids.contains(ArtifactDagSupport.unitStoreId(ArtifactDagSupport.UNIT_A))
                             && ids.contains(ArtifactDagSupport
                                     .unitStoreId(ArtifactDagSupport.UNIT_B));
+            // WHAT "UNBUILT" MEANS CHANGED WHEN OUN-10 LANDED, and this
+            // assertion was written before it.
+            //
+            // It read: the clone's cli-shims report `declared-only`. That was
+            // true while a shim baked the SOURCE home's absolute path — such a
+            // shim is useless in a copy, so a clone had no reason to carry the
+            // file. OUN-10 made shims derive the home they are standing in, so
+            // the clone now carries a shim that WORKS, and the file's presence
+            // is reported honestly as `materialized`.
+            //
+            // Nothing about lazy cloning regressed: what must still be unbuilt
+            // is the PROVISIONED TREE the shim runs, and that is what this now
+            // asserts. `the_clone_carries_no_built_cache_tree` below checks the
+            // same fact from the filesystem side, and the shim's own
+            // `agreement` stays `unverifiable` precisely because the tree it
+            // would be checked against is not there.
+            //
+            // Found by merging origin/main into this epic branch — the first
+            // time OUN-10 and this graph had ever run in the same tree.
+            String treeA = ArtifactDagSupport.treeId(ArtifactDagSupport.UNIT_A,
+                    ArtifactDagSupport.TOOL_A);
+            String treeB = ArtifactDagSupport.treeId(ArtifactDagSupport.UNIT_B,
+                    ArtifactDagSupport.TOOL_B);
             boolean every_declared_shim_reports_itself_unbuilt =
                     "declared-only".equals(ArtifactDagSupport.jsonString(
-                                    ArtifactDagSupport.sectionFor(json, shimA), "materialization"))
+                                    ArtifactDagSupport.sectionFor(json, treeA), "materialization"))
                             && "declared-only".equals(ArtifactDagSupport.jsonString(
-                                    ArtifactDagSupport.sectionFor(json, shimB),
+                                    ArtifactDagSupport.sectionFor(json, treeB),
                                     "materialization"));
             List<String> cloneTrees = ArtifactDagSupport.cacheTrees(clone);
             boolean the_clone_carries_no_built_cache_tree = cloneTrees.isEmpty();

@@ -1722,8 +1722,52 @@ public final class HomeCloner {
         String canonical = dstRoot.toAbsolutePath().normalize().toString();
         List<String> found = new ArrayList<>();
         for (String root : rootSpellings(dstRoot)) scanFor(text, root, canonical, found);
+        // AND THE TOKEN SPELLINGS, because a generated file stopped containing
+        // an absolute path.
+        //
+        // This scanner looks for literal root spellings, which is every
+        // spelling that existed when it was written. OUN-10 then made shims
+        // derive their own home — `${SKILL_MANAGER_SHIM_HOME}/cache/…` — and a
+        // literal scan finds nothing in one, so `coldReason` concluded the
+        // entry runs out of nothing and `writeColdShims` replaced it with
+        // nothing. A lazily-cloned home then answered `exec`ing a missing tree
+        // with the kernel's words and exit 126, which is exactly what the cold
+        // shim exists to prevent:
+        //
+        //     line 5: …/cache/skill-script-ad-alpha-unit-ad-alpha-tool/bin/…:
+        //     No such file or directory
+        //
+        // instead of naming the cold artifact and `skill-manager build`.
+        //
+        // The token IS this home at the moment it is read — the shim resolves
+        // it from its own location — so it normalizes to the same canonical
+        // path a literal would. Found by merging origin/main into this epic
+        // branch: OUN-10 and the artifact graph had never run in one tree.
+        for (String token : TOKEN_ROOT_SPELLINGS) scanFor(text, token, canonical, found);
         return found;
     }
+
+    /**
+     * The ways a generated file can name this home WITHOUT an absolute path.
+     *
+     * <p>ONLY {@code SKILL_MANAGER_SHIM_HOME}, which is what a self-deriving
+     * shim resolves from its own location ({@link
+     * ShimHomeContract#SHIM_HOME_VAR}) — i.e. a path this file will really
+     * run out of.
+     *
+     * <p>{@code SKILL_MANAGER_HOME} is deliberately NOT here, and the first
+     * attempt included it. That token is what {@code ColdArtifactShim} writes
+     * the missing tree as IN ITS OWN REFUSAL TEXT, so scanning for it made a
+     * cold shim name a missing path — itself — and the clone reported
+     * something still dangling after the very pass that fixed it. Prose about
+     * a path is not a reference to one; three tests said so at once.
+     *
+     * <p>Braced first: a scan for the unbraced form would match the opening of
+     * the braced one and take {@code }} as part of the path.
+     */
+    private static final List<String> TOKEN_ROOT_SPELLINGS = List.of(
+            "${" + ShimHomeContract.SHIM_HOME_VAR + "}",
+            "$" + ShimHomeContract.SHIM_HOME_VAR);
 
     /**
      * Every spelling of {@code root} a generated file in this home could hold:
