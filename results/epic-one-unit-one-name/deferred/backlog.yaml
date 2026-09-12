@@ -707,10 +707,24 @@ findings:
       to `home verify` and `home repair`, whose rule asks "does this reach
       ANOTHER home", which an own-home absolute path does not.
     candidate_owner: >
-      a small ticket: make `home repair --fix` heal both -- rewrite frozen
-      shims via ShimHomeContract.selfDerivingRewrite, and stamp or drop
-      unstamped pm version directories. The repair command is where an
-      operator already looks, and today it reports 0 findings on a home that
-      has 17.
-    status: open
+      done in this epic, 2026-09-12. `home repair` grew two kinds --
+      FROZEN_HOME_PATH_IN_SHIM and UNSTAMPED_PM_TREE -- both repairable, using
+      the same ShimHomeContract.selfDerivingRewrite the installer applies and
+      the same PmPlatform.stamp the provisioner writes, so neither is a second
+      implementation of a rule that already has one.
+    verified: >
+      The project home went 5 findings -> 0: `repaired 5 of 5`, then `nothing
+      is damaged in a way this command knows about (43 entries examined)`, and
+      the goal harness re-read it as frozen: 0, unstamped: 0. The operator root
+      home still reads 6 and 4 because this session may not write it by hand.
+    and_it_found_one_more: >
+      Repairing a FOREIGN_PATH_IN_SHIM used to leave a shim naming THIS home
+      absolutely -- the repairer producing the next finding for itself to clean
+      up on a second pass. The re-detect loop did handle it, so homes ended
+      correct, but the repair count did not match the report and there was a
+      window where the fixed home was still not copyable. Both halves now
+      happen in one action. Caught by the equality assertion in
+      DamagedHomeIsRepairableTest, which is exactly why it is written as an
+      equality rather than a floor.
+    status: resolved
 

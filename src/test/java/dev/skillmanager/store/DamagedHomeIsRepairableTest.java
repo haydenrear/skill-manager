@@ -183,8 +183,15 @@ public final class DamagedHomeIsRepairableTest {
                                     + "repair refused with: " + out.failed());
                     assertTrue(Files.isRegularFile(shim), "and it is a real file");
                     String text = Files.readString(shim);
-                    assertTrue(text.contains(fx.store.resolve("skills").resolve(UNIT).toString()),
-                            "which runs THIS home's copy; got: " + text);
+                    // DERIVED, NOT NAMED (DEF-OUN-018). The repair loop
+                    // re-detects after every action, so the shim this
+                    // materialized — which named this home absolutely — is
+                    // then rewritten to derive it. That is strictly better:
+                    // it runs this home's copy here AND after a copy.
+                    assertFalse(text.contains(fx.store.toString()),
+                            "it does not name this home absolutely; got: " + text);
+                    assertContains(text, "skills/" + UNIT,
+                            "and it still runs THIS home's copy, by a relative tail; got: " + text);
                     assertFalse(text.contains(fx.other.resolve("skills").resolve(UNIT).toString()),
                             "and no longer the other home's; got: " + text);
                     assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
@@ -463,9 +470,14 @@ public final class DamagedHomeIsRepairableTest {
                             "the UNREPAIRABLE path is untouched — a repair may not rewrite a "
                                     + "line no finding named, and least of all one it had just "
                                     + "declared it could not fix");
-                    assertContains(after, fx.store.resolve("skills").toString(),
-                            "while the repairable base path WAS rewritten, so this is not "
-                                    + "passing by doing nothing");
+                    // The repairable base path WAS rewritten, so this is not
+                    // passing by doing nothing — asserted on the TAIL, because
+                    // DEF-OUN-018 makes the rewritten shim derive this home
+                    // rather than name it.
+                    assertContains(after, "skills",
+                            "the repairable base path was rewritten into this home");
+                    assertFalse(after.contains(fx.store.toString()),
+                            "and it derives this home rather than naming it; got: " + after);
                     assertFalse(HomeRepair.detect(fx.store, fx.pin).clean(),
                             "and detection afterwards is still RED about the path that is "
                                     + "still wrong — a green verdict over surviving damage is "
@@ -549,15 +561,26 @@ public final class DamagedHomeIsRepairableTest {
                                     + "own opinion of how it went is not evidence (#142). got: "
                                     + outcome.after().findings());
                     assertEquals(outcome.before().findings().size(), outcome.repaired().size(),
-                            "and every finding it reported is one it carried out");
+                            "and every finding it reported is one it carried out; reported="
+                                    + outcome.before().findings() + " repaired="
+                                    + outcome.repaired());
 
                     // The repairs are the right ones, not merely absences.
                     assertEquals(fx.store.resolve("skills").resolve(UNIT),
                             Files.readSymbolicLink(fx.claudeSkills().resolve(UNIT)),
                             "the projection points at THIS home's store now");
-                    assertContains(Files.readString(fx.store.resolve("bin/cli/wrapper")),
-                            fx.store.toString(),
-                            "the wrapper runs this home's tree");
+                    // NOT "contains this home's path" any more, and that is
+                    // the point of DEF-OUN-018: the repaired wrapper DERIVES
+                    // its home instead of naming it, so it runs this home's
+                    // tree here AND after the home is copied. Asserted as the
+                    // absence of any absolute home path plus the presence of
+                    // the derivation, because "contains no path" alone is also
+                    // what an empty file produces.
+                    String repairedWrapper = Files.readString(fx.store.resolve("bin/cli/wrapper"));
+                    assertFalse(repairedWrapper.contains(fx.store.toString()),
+                            "the wrapper does not name this home: " + repairedWrapper);
+                    assertContains(repairedWrapper, "venvs/v/bin/wrapper",
+                            "and it still runs this home's tree, derived rather than baked");
                     assertTrue(Files.isSymbolicLink(fx.store.resolve("bin/cli").resolve(TOOL)),
                             "the pruned inherited entry is a link at the parent again");
                 })
@@ -1256,16 +1279,27 @@ public final class DamagedHomeIsRepairableTest {
             Path skills = Files.createDirectories(root.resolve(".claude").resolve("skills"));
             Files.createSymbolicLink(skills.resolve(UNIT), store.resolve("skills").resolve(UNIT));
 
-            // A generated WRAPPER, the regular-file shim shape, naming its own
-            // home. And the tree it names, in both homes, so a wrapper pointed
-            // at the wrong one still RESOLVES.
+            // A generated WRAPPER, the regular-file shim shape. And the tree
+            // it names, in both homes, so a wrapper pointed at the wrong one
+            // still RESOLVES.
+            //
+            // SELF-DERIVING, which is a change DEF-OUN-018 forced and which
+            // this comment used to contradict: it said "naming its own home",
+            // and that is the frozen shape OUN-10 fixed the writer for. A
+            // fixture that writes the pre-fix shape and calls the result
+            // healthy encodes the belief that a baked home path is fine — the
+            // belief that made an image built from such a home run the BUILD
+            // machine's paths. The healthy fixture now writes what current
+            // code writes; `damageFrozenShim` plants the old shape
+            // deliberately, where it belongs.
             for (Path s : List.of(store, other)) {
                 Path venv = Files.createDirectories(s.resolve("venvs").resolve("v").resolve("bin"));
                 Files.writeString(venv.resolve("wrapper"), "#!/bin/sh\nexit 0\n");
                 venv.resolve("wrapper").toFile().setExecutable(true);
                 Path shim = Files.createDirectories(s.resolve("bin/cli")).resolve("wrapper");
-                Files.writeString(shim, "#!/usr/bin/env bash\nexec \""
-                        + venv.resolve("wrapper") + "\" \"$@\"\n");
+                Files.writeString(shim, "#!/usr/bin/env bash\n"
+                        + "SM_HOME=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/../..\" && pwd)\"\n"
+                        + "exec \"$SM_HOME/venvs/v/bin/wrapper\" \"$@\"\n");
                 shim.toFile().setExecutable(true);
             }
 
@@ -1357,9 +1391,17 @@ public final class DamagedHomeIsRepairableTest {
 
         /** Shape 2: the wrapper's TEXT names the other home's tree. It still runs. */
         void damageShimText() throws IOException {
+            // WRITTEN, NOT DERIVED FROM THE HEALTHY ONE. This used to read the
+            // healthy wrapper and swap this home's path for the other's, which
+            // only worked while the healthy wrapper CONTAINED an absolute home
+            // path — i.e. while the fixture's idea of healthy was the frozen
+            // shape OUN-10 fixed. When that changed (DEF-OUN-018) this planted
+            // nothing at all and the FOREIGN_PATH_IN_SHIM tests went green over
+            // an undamaged home, which is the worst way for a test to pass.
             Path shim = store.resolve("bin/cli/wrapper");
-            Files.writeString(shim, Files.readString(shim, StandardCharsets.UTF_8)
-                    .replace(store.toString(), other.toString()), StandardCharsets.UTF_8);
+            Files.writeString(shim, "#!/usr/bin/env bash\nexec \""
+                            + other.resolve("venvs/v/bin/wrapper") + "\" \"$@\"\n",
+                    StandardCharsets.UTF_8);
             shim.toFile().setExecutable(true);
         }
 
@@ -1406,6 +1448,33 @@ public final class DamagedHomeIsRepairableTest {
         void damageEveryKind() throws IOException {
             damageAll();
             damageShadowedMirror();
+            damageFrozenShim();
+            damageUnstampedPmTree();
+        }
+
+        /**
+         * DEF-OUN-018. A shim that names THIS home absolutely — correct where
+         * it stands, wrong the moment the home is copied, and invisible to the
+         * rule that asks "does this reach ANOTHER home".
+         *
+         * <p>A separate entry from the healthy {@code wrapper} so the healthy
+         * one keeps proving the opposite.
+         */
+        void damageFrozenShim() throws IOException {
+            Path venv = Files.createDirectories(
+                    store.resolve("venvs").resolve("frozen").resolve("bin"));
+            Files.writeString(venv.resolve("frozen-tool"), "#!/bin/sh\nexit 0\n");
+            venv.resolve("frozen-tool").toFile().setExecutable(true);
+            Path shim = store.resolve("bin/cli").resolve("frozen-tool");
+            Files.writeString(shim, "#!/usr/bin/env bash\nexec \""
+                    + venv.resolve("frozen-tool") + "\" \"$@\"\n");
+            shim.toFile().setExecutable(true);
+        }
+
+        /** DEF-OUN-018. A pm version directory provisioned before stamps existed. */
+        void damageUnstampedPmTree() throws IOException {
+            Path version = Files.createDirectories(store.resolve("pm/node/22.9.0/bin"));
+            Files.writeString(version.resolve("node"), "#!/bin/sh\nexit 0\n");
         }
 
         /**
