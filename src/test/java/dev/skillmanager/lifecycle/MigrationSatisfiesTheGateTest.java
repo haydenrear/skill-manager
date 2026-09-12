@@ -88,23 +88,33 @@ public final class MigrationSatisfiesTheGateTest {
 
         // ------------------------------------ the gate, still doing its job
 
-        suite.test("an ORDINARY collision is still refused, after the migration", () -> {
+        // OUN-13 CHANGED THIS TEST'S OBSERVABLE, NOT ITS SUBJECT. It used to
+        // prove "the migration satisfies the gate rather than disabling it" by
+        // showing an ordinary same-name plugin was STILL refused afterwards.
+        // Same-name is no longer refused by anyone — a contained skill is
+        // `plugin:skill` and does not collide with a standalone — so the
+        // subject is now proved directly: the migration retires exactly the
+        // unit the table names, and touches nothing else, whatever installs
+        // after it.
+        suite.test("the migration retires what the table names and nothing else", () -> {
             TestHarness h = TestHarness.create();
             h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
             h.scaffoldUnitDir("acme-tool", UnitKind.SKILL);
 
             InstallUseCase.Report migrated = install(h.store(), pluginCarrying(CARRIER, MOVED));
             assertEquals(0, migrated.exitCode(), "the migration itself still goes through");
+            assertFalse(Files.isDirectory(h.store().skillDir(MOVED)),
+                    "the unit the table names is retired");
 
-            InstallUseCase.Report refused =
+            InstallUseCase.Report ordinary =
                     install(h.store(), pluginCarrying("acme-plugin", "acme-tool"));
 
-            assertTrue(refused.exitCode() != 0,
-                    "the gate is satisfied by the migration, not disabled by it");
-            assertFalse(Files.exists(h.store().pluginsDir().resolve("acme-plugin")),
-                    "and nothing was committed");
+            assertEquals(0, ordinary.exitCode(),
+                    "a plugin sharing a name with a standalone unit installs — they are "
+                            + "addressed `acme-tool` and `acme-plugin:acme-tool`");
             assertTrue(Files.isDirectory(h.store().skillDir("acme-tool")),
-                    "the unit holding the name is untouched");
+                    "and the standalone it shares a name with is UNTOUCHED — the migration "
+                            + "did not hand later installs a licence to evict");
         });
 
         suite.test("a name not in the table is never retired, whoever carries it", () -> {
@@ -116,7 +126,8 @@ public final class MigrationSatisfiesTheGateTest {
             // it" alone, this would delete a unit nobody agreed to retire.
             InstallUseCase.Report report = install(h.store(), pluginCarrying(CARRIER, "acme-tool"));
 
-            assertTrue(report.exitCode() != 0, "it is an ordinary collision and it is refused");
+            assertEquals(0, report.exitCode(), "the install itself is fine — sharing a name "
+                    + "with a standalone unit is legal under OUN-13");
             assertTrue(Files.isDirectory(h.store().skillDir("acme-tool")),
                     "and the unit is still there — the table is a list of two historical "
                             + "facts, not a licence for a carrier to evict whatever it likes");

@@ -6,7 +6,7 @@
 # is still canonical for scheduling and issue assignment; scaffolding a TLA
 # workflow on top of it is an owner decision that has not been taken.
 version: 1
-schedule_revision: 3
+schedule_revision: 4
 name: one-unit-one-name
 slug: one-unit-one-name
 branch: epic/one-unit-one-name
@@ -554,11 +554,11 @@ tickets:
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/307
     title: "Terminal evaluation -- decide every goal on the integrated result"
     role: evaluation
-    wave: 7
+    wave: 8
     depends_on: ["OUN-7", "OUN-9", "OUN-10", "OUN-12"]
     blocks: []
-    promotion_order: 13
-    promotion_predecessor: "OUN-12"
+    promotion_order: 14
+    promotion_predecessor: "OUN-13"
     contribution: measurement
     slice: "Measurement and the review artifact. No production change."
     objective: >
@@ -606,6 +606,85 @@ tickets:
   # ---------------------------------------------------------------- amendment
   # schedule_revision 2. Portability of a home across a machine boundary.
   # Independent of the one-name chain: no shared conflict key, so wave 3.
+
+  # AMENDED IN at schedule_revision 4. DEF-OUN-013 said a contained skill
+  # "carries no upstream coordinate" and filed it as a blocking gap. It is not
+  # a gap -- it is the invariant stated backwards, and writing it down closes
+  # three findings instead of building a mechanism for one.
+  - id: OUN-13
+    assignment_issue: https://github.com/haydenrear/skill-manager/issues/336
+    title: A contained skill is addressed `plugin:skill`, and has no coordinate
+    wave: 7
+    depends_on: ["OUN-1", "OUN-2", "OUN-6"]
+    blocks: ["OUN-8"]
+    promotion_order: 13
+    promotion_predecessor: "OUN-12"
+    contribution: correctness
+    slice: >
+      Name resolution for contained skills, the collision gate's predicate, and
+      the two tables that disagree about `skill-manager`. NOT the artifacts
+      ledger (#334) and NOT the repository rename (OUN-7) -- both are named
+      elsewhere and neither is addressing.
+    objective: >
+      A contained skill is addressed `plugin:skill`, resolves by bare name only
+      as a convenience when exactly one unit claims it, and carries NO
+      coordinate -- `skill_references` naming one is refused and told to name
+      the plugin. The collision gate narrows to what actually collides: two
+      standalone units in a home's root. A plugin contains no nested git
+      repository, which is what makes "update the plugin, as a whole" true.
+    existing_seam: >
+      MarkdownImportValidator.installedRoot already has the five-branch order
+      and already documents the ambiguity this removes -- "when two plugins
+      contain the same skill name the store returns both and this takes the
+      first in plugin-name order". OUN-2's gate already exists and only its
+      predicate changes. Both facts the rule depends on already hold in the
+      field: no plugin anywhere contains a nested git repo, and nothing imports
+      a contained skill by bare name, so nothing that resolves today changes.
+    expected_effect: >
+      three findings close and no mechanism is added -- DEF-OUN-013 (blocking),
+      DEF-OUN-002, DEF-OUN-017
+    local_signal: >
+      `unit: skt:unit-authoring` resolves; `unit: unit-authoring` still
+      resolves; a planted standalone/contained name pair no longer refuses an
+      install; a planted nested repo inside a plugin does.
+    test_constraint: >
+      The permutations run against a REAL Skill Manager home in the test graph,
+      not a synthetic store, and they are added to the existing plugin graph
+      rather than a new one. Required: a root skill sharing a contained skill's
+      name with `plugin:skill` still resolving to the contained copy; TWO
+      plugins containing the same skill name, both resolving and neither
+      refused at install; a reference from inside a plugin to its own contained
+      skill; a reference from outside a plugin by `plugin:skill`; a
+      `skill_references` entry naming a contained skill, refused with the
+      plugin named in the message; and a nested git repo inside a plugin,
+      refused. The BundledSkills/UnitSupersession agreement is a unit test that
+      fails if any MOVED_INTO_CARRIER unit is also bundled.
+    conflict_keys:
+      production:
+        - validation/markdown-imports
+        - lifecycle/collision-gate
+        - lifecycle/bundled-skills
+      adapters: []
+      test_graph:
+        - plugin-smoke
+      tla: []
+      workflow: []
+    goals:
+      - goal: GOAL-one-name-one-copy
+        contribution: direct
+        expected_effect: >
+          0 live / 11 latent -> the latent pairs that are a plugin versus its
+          own contained skill stop being pairs at all; what remains is the
+          standalone `skill-manager` the migration retires
+        local_signal: >
+          measure_goal_one_name_one_copy reports fewer latent pairs, and the
+          ones it still reports are all MOVED_INTO_CARRIER remnants
+      - goal: GOAL-a-contained-skill-is-addressable
+        contribution: direct
+        expected_effect: >
+          addressable by name becomes addressable UNAMBIGUOUSLY, by a name that
+          cannot collide
+        local_signal: "`unit: skt:unit-authoring` resolves"
 
   - id: OUN-9
     assignment_issue: https://github.com/haydenrear/skill-manager/issues/281

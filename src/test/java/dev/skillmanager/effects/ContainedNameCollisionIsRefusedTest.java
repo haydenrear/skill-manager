@@ -15,36 +15,56 @@ import static dev.skillmanager._lib.test.Tests.assertFalse;
 import static dev.skillmanager._lib.test.Tests.assertTrue;
 
 /**
- * OUN-2: one name, one copy — a plugin whose contained skill name is already
- * claimed is refused.
+ * OUN-13: a contained skill is addressed {@code plugin:skill}, so sharing a
+ * word with a standalone unit is not a collision.
  *
- * <p>This gate could not exist before OUN-1. The old refusal only saw names in
- * the four standalone branches; a plugin's contained skills were in no
- * inventory at all, so a plugin carrying a skill named {@code skill-manager}
- * installed cleanly beside the standalone {@code skill-manager} and the name
- * quietly had two answers.
+ * <p>OUN-2 built a gate that REFUSED a plugin whose contained skill name was
+ * already claimed, and this file asserted the refusal. The premise was that
+ * installing it would give one name two answers. Qualification removed the
+ * premise: the standalone is {@code x} and the contained one is
+ * {@code p:x}, two names, neither shadowing the other.
+ *
+ * <p>What the gate still refuses is the thing that would make the rule false
+ * — a nested git repository inside a plugin, i.e. a contained skill trying to
+ * be independently updatable. That is the invariant "update the plugin, as a
+ * whole" rests on, and the reason two plugins may carry a skill of the same
+ * name without a duplication problem.
  */
 public final class ContainedNameCollisionIsRefusedTest {
 
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("ContainedNameCollisionIsRefusedTest");
 
-        suite.test("a plugin carrying an already-claimed skill name is refused", () -> {
+        suite.test("a plugin sharing a name with a standalone unit INSTALLS", () -> {
             TestHarness h = TestHarness.create();
             h.scaffoldUnitDir("acme-tool", UnitKind.SKILL);
             Path plugin = pluginCarrying(h, "acme-plugin", "acme-tool");
 
             InstallUseCase.Report report = install(h.store(), plugin, false);
 
-            assertFalse(Files.exists(h.store().pluginsDir().resolve("acme-plugin")),
-                    "the plugin is not committed");
+            assertEquals(0, report.exitCode(), "no refusal: the two have different names");
+            assertTrue(Files.isDirectory(h.store().pluginsDir().resolve("acme-plugin")),
+                    "the plugin is committed");
             assertTrue(Files.isDirectory(h.store().skillDir("acme-tool")),
-                    "and the unit that already held the name is untouched");
-            assertTrue(report.exitCode() != 0,
-                    "the run reports a failure exit code, got " + report.exitCode());
+                    "and the standalone that shares the word is untouched");
         });
 
-        suite.test("the refusal names both claimants and both ways out", () -> {
+        suite.test("both are addressable, separately — the whole point", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("acme-tool", UnitKind.SKILL);
+            install(h.store(), pluginCarrying(h, "acme-plugin", "acme-tool"), false);
+
+            assertTrue(h.store().qualifiedSkillDir("acme-plugin:acme-tool").isPresent(),
+                    "`acme-plugin:acme-tool` names the contained copy");
+            assertContains(
+                    h.store().qualifiedSkillDir("acme-plugin:acme-tool").get().toString(),
+                    "plugins/acme-plugin/skills/acme-tool",
+                    "and it resolves INSIDE the plugin, not to the standalone");
+            assertTrue(Files.isDirectory(h.store().skillDir("acme-tool")),
+                    "while the bare name still names the standalone");
+        });
+
+        suite.test("it SAYS so, because one case hiding in this is wrong", () -> {
             TestHarness h = TestHarness.create();
             h.scaffoldUnitDir("acme-tool", UnitKind.SKILL);
             Path plugin = pluginCarrying(h, "acme-plugin", "acme-tool");
@@ -57,30 +77,56 @@ public final class ContainedNameCollisionIsRefusedTest {
                 }
             });
 
-            assertContains(out, "acme-plugin", "the refusal names the plugin being installed");
-            assertContains(out, h.store().skillDir("acme-tool").toString(),
-                    "and the path of the unit already holding the name — an operator has to "
-                            + "choose between two things, so both have to be on screen");
+            assertContains(out, "acme-plugin:acme-tool",
+                    "the notice shows the qualified name, which is the answer to the "
+                            + "question an operator is about to ask");
             assertContains(out, "skill-manager remove acme-tool",
-                    "one way out, spelled as a command");
-            assertContains(out, "rename the skill inside the plugin", "the other way out");
+                    "and the remedy for the case that IS wrong — the same unit twice");
         });
 
-        // THE CONSTRAINT THIS TICKET WAS GIVEN. Two copies of one name is not
-        // a version conflict to be reconciled by preference; it is an
-        // ambiguity the search would resolve by directory order. So there is
-        // no flag, and `--yes` is not one either: --yes answers policy
-        // prompts, and this is not a prompt.
-        suite.test("--yes does not get past it", () -> {
+        // TWO PLUGINS, ONE SKILL NAME. Under OUN-2 the second was refused; the
+        // resolver's own comment called the fallback "the first in plugin-name
+        // order ... still an ambiguity". There is no tiebreak to make now.
+        suite.test("two plugins may carry the same skill name", () -> {
             TestHarness h = TestHarness.create();
-            h.scaffoldUnitDir("acme-tool", UnitKind.SKILL);
-            Path plugin = pluginCarrying(h, "acme-plugin", "acme-tool");
 
-            InstallUseCase.Report report = install(h.store(), plugin, true);
+            assertEquals(0, install(h.store(), pluginCarrying(h, "alpha-plugin", "shared"), false)
+                    .exitCode(), "the first lands");
+            assertEquals(0, install(h.store(), pluginCarrying(h, "beta-plugin", "shared"), false)
+                    .exitCode(), "and so does the second — neither is updatable on its own");
 
+            assertTrue(h.store().qualifiedSkillDir("alpha-plugin:shared").isPresent(),
+                    "alpha-plugin:shared resolves");
+            assertTrue(h.store().qualifiedSkillDir("beta-plugin:shared").isPresent(),
+                    "beta-plugin:shared resolves");
+            assertEquals(2, h.store().containedSkillDirs("shared").size(),
+                    "the bare name is the ambiguous one, and it is nobody's answer now");
+        });
+
+        // THE REFUSAL THIS GATE KEEPS, and it is what makes everything above
+        // sound. A nested repo is a contained skill claiming its own upstream.
+        suite.test("a nested git repository inside a plugin IS refused", () -> {
+            TestHarness h = TestHarness.create();
+            Path plugin = pluginCarrying(h, "acme-plugin", "acme-inner");
+            Files.createDirectories(plugin.resolve("skills/acme-inner/.git"));
+            Files.writeString(plugin.resolve("skills/acme-inner/.git/HEAD"),
+                    "ref: refs/heads/main\n");
+
+            InstallUseCase.Report report = install(h.store(), plugin, false);
+
+            assertTrue(report.exitCode() != 0, "refused: a plugin is the unit of change");
             assertFalse(Files.exists(h.store().pluginsDir().resolve("acme-plugin")),
-                    "still refused with yes=true");
-            assertTrue(report.exitCode() != 0, "and still a failure exit code");
+                    "and nothing was committed");
+        });
+
+        suite.test("the plugin's OWN .git is not nested — that is just a repository", () -> {
+            TestHarness h = TestHarness.create();
+            Path plugin = pluginCarrying(h, "acme-plugin", "acme-inner");
+            Files.createDirectories(plugin.resolve(".git"));
+            Files.writeString(plugin.resolve(".git/HEAD"), "ref: refs/heads/main\n");
+
+            assertEquals(0, install(h.store(), plugin, false).exitCode(),
+                    "a plugin that IS a git repository is the normal case");
         });
 
         // THE skt SHAPE, and it is the reason this test file exists rather
