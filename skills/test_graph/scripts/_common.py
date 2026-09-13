@@ -664,11 +664,17 @@ def render_template(template_path: Path, replacements: dict[str, str]) -> str:
     return text
 
 
-def run_gradle(args: list[str], test_graph_root: str | Path | None = None) -> int:
+def run_gradle(
+    args: list[str],
+    test_graph_root: str | Path | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> int:
     """Invoke ``gradlew`` from the active scaffolded project.
 
     Inherits stdio so the user sees output live. Accepts the same
     ``test_graph_root`` override as :func:`target_project_root`.
+    ``extra_env`` adds variables that are not Gradle/JVM options, such as
+    the sweep ledger path run.py hands to its init script.
     """
     root = target_project_root(test_graph_root)
     prepare_provider_bindings_or_warn(root)
@@ -676,6 +682,8 @@ def run_gradle(args: list[str], test_graph_root: str | Path | None = None) -> in
     executable = str(gradlew) if gradlew.exists() else "gradle"
     cmd = [executable, *_bounded_gradle_args(args)]
     env = gradle_env_with_daemon_disabled()
+    if extra_env:
+        env.update(extra_env)
     proc = subprocess.run(cmd, cwd=root, env=env)
     return proc.returncode
 
