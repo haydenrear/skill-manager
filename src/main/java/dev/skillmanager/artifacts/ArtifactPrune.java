@@ -685,7 +685,7 @@ public final class ArtifactPrune {
         }
         if (attempted || !pruned.isEmpty()) {
             try {
-                ArtifactLedger.of(ArtifactIndex.of(store).artifacts()).save(store);
+                rerecord(ArtifactIndex.of(store), new java.util.HashSet<>(pruned)).save(store);
             } catch (IOException | RuntimeException e) {
                 Log.warn("artifacts prune: removed %d artifact(s) but could not re-record %s (%s)"
                         + " — the ledger now names things this home no longer has; re-run"
@@ -694,6 +694,47 @@ public final class ArtifactPrune {
             }
         }
         return pruned;
+    }
+
+    /**
+     * The ledger a pass re-records: the merged index, less what the pass
+     * pruned and the home can no longer see.
+     *
+     * <h2>Why not simply {@code ArtifactLedger.of(index.artifacts())}</h2>
+     *
+     * <p>Because that is a fixpoint (OHV-3, #292). {@link ArtifactIndex} merges
+     * the disk WITH the ledger — a row the backfill no longer derives comes back
+     * as {@link Artifact.Origin#LEDGER} — so every row this pass had just
+     * dropped was written straight back. Measured on a real home: 59 rows
+     * before a prune, 59 after.
+     *
+     * <h2>Why not "less every pruned id"</h2>
+     *
+     * <p>A pruned id is dropped only when it is ALSO proven gone: the backfill
+     * no longer derives it (origin {@code LEDGER}) and every in-home output it
+     * names is {@link Artifact.Presence#MISSING}. A {@code DANGLING} symlink is
+     * still on disk, and an {@code UNKNOWN} was not probed. Dropping the row of
+     * something still there leaves a file that no later teardown can reach,
+     * because the ledger is what teardown reads — the regression #292's reverted
+     * attempt produced.
+     */
+    static ArtifactLedger rerecord(ArtifactIndex index, Set<String> pruned) {
+        List<Artifact> keep = new ArrayList<>();
+        for (Artifact artifact : index.artifacts()) {
+            if (pruned.contains(artifact.id()) && provenGone(artifact)) continue;
+            keep.add(artifact);
+        }
+        return ArtifactLedger.of(keep);
+    }
+
+    /** The home no longer derives it, and nothing it names is on disk. */
+    static boolean provenGone(Artifact artifact) {
+        if (artifact.origin() != Artifact.Origin.LEDGER) return false;
+        for (Artifact.Output output : artifact.outputs()) {
+            if (output.scope() != Artifact.Scope.HOME) return false;
+            if (output.presence() != Artifact.Presence.MISSING) return false;
+        }
+        return true;
     }
 
     private static void dropLockRow(SkillStore store, Step step) {

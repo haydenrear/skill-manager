@@ -78,6 +78,91 @@ public final class ArtifactPruneTest {
             }
         });
 
+        // OHV-3 (a), #292. `apply` re-recorded the ledger from ArtifactIndex,
+        // which merges the disk WITH the ledger — so every row the pass had
+        // just pruned came straight back as Origin.LEDGER. Measured on a real
+        // home: 59 rows before a prune, 59 after. Nothing a prune decides can
+        // be observed to work while that is true.
+        suite.test("a prune stays pruned: the re-record does not restore what it dropped", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            record(store);
+            uninstall(store, "alpha");
+
+            List<String> pruned = ArtifactPrune.apply(store, ArtifactPrune.of(store, List.of()));
+            assertFalse(pruned.isEmpty(), "the fixture has something to prune");
+
+            ArtifactLedger after = ArtifactLedger.load(store);
+            ArtifactIndex index = ArtifactIndex.of(store);
+            // The two rows that exist ONLY because the ledger remembered them.
+            for (String id : List.of(
+                    ArtifactIds.provisionedTree("cache", "skill-script-alpha-alpha-script"),
+                    ArtifactIds.cliShim("pip", "alpha-pkg"))) {
+                assertTrue(pruned.contains(id), "pruned: " + id + " in " + pruned);
+                assertTrue(after.byId(id).isEmpty(),
+                        "the re-recorded ledger no longer names " + id);
+                assertTrue(index.byId(id).isEmpty(), "and neither does the census: " + id);
+            }
+            // No pruned id may come back as a ledger-only row. One that a live
+            // record still derives (this helper leaves alpha's projections.json)
+            // is the census describing a record that exists, not a phantom.
+            for (String id : pruned) {
+                index.byId(id).ifPresent(a -> assertFalse(
+                        a.origin() == Artifact.Origin.LEDGER,
+                        "a pruned id is not restored as a ledger-only row: " + id));
+            }
+            ArtifactPrune.Plan again = ArtifactPrune.of(store, List.of());
+            for (ArtifactPrune.Step step : again.prunes()) {
+                assertFalse(pruned.contains(step.id()),
+                        "a second prune has nothing of the first left to do: " + step.id());
+            }
+        });
+
+        // The other half of (a): the exclusion is "pruned AND the home can no
+        // longer see it". A pruned id whose output is still on disk — here
+        // re-created between plan and re-record — is not gone, and dropping its
+        // row would leave a file no later teardown could reach (#292's
+        // dangling-symlink regression).
+        suite.test("a pruned id the home can still see keeps its row", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            uninstall(store, "alpha");
+            Files.writeString(ArtifactLedger.file(store), """
+                    schema = 1
+                    recorded_at = "2026-01-01T00:00:00Z"
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/still-here"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/still-here"]
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/dangling-link"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/dangling-link"]
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/really-gone"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/really-gone"]
+                    """);
+            Files.createDirectories(store.root().resolve("cache/still-here"));
+            Files.createSymbolicLink(store.root().resolve("cache/dangling-link"),
+                    store.root().resolve("cache/nowhere"));
+
+            ArtifactLedger rebuilt = ArtifactPrune.rerecord(ArtifactIndex.of(store),
+                    java.util.Set.of("provisioned-tree:cache/still-here",
+                            "provisioned-tree:cache/dangling-link",
+                            "provisioned-tree:cache/really-gone"));
+            assertTrue(rebuilt.byId("provisioned-tree:cache/still-here").isPresent(),
+                    "an output still on disk keeps its row");
+            assertTrue(rebuilt.byId("provisioned-tree:cache/dangling-link").isPresent(),
+                    "a dangling symlink is on disk too, and keeps its row");
+            assertTrue(rebuilt.byId("provisioned-tree:cache/really-gone").isEmpty(),
+                    "only an output proven MISSING lets the row go");
+        });
+
         // --------------------------------------------------------- the refusals
 
         suite.test("a home with no ledger deletes nothing", () -> {
