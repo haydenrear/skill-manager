@@ -311,11 +311,17 @@ public final class ShimHomeContract {
         };
     }
 
-    /** Both spellings of the home root, for the reason frozenHomePaths gives. */
+    /**
+     * Every spelling of the home root — given, real, and their top-level
+     * aliases (#343, see {@link PathSpellings}) — LONGEST FIRST, because the
+     * caller does a textual replace: replacing {@code /var/x} before
+     * {@code /private/var/x} would leave {@code /private${SHIM_HOME}}.
+     */
     private static Set<Path> rootSpellings(Path home) {
+        List<String> spellings = new ArrayList<>(PathSpellings.of(home));
+        spellings.sort(java.util.Comparator.comparingInt(String::length).reversed());
         Set<Path> roots = new LinkedHashSet<>();
-        roots.add(real(home));
-        roots.add(home.toAbsolutePath().normalize());
+        for (String s : spellings) roots.add(Path.of(s));
         return roots;
     }
 
@@ -324,10 +330,10 @@ public final class ShimHomeContract {
         // BOTH spellings, for HomeCloner.rootSpellings' reason: a home
         // addressed through a symlink holds the spelling it was GIVEN in its
         // generated files, and a check against the resolved one alone reports
-        // clean without having looked.
+        // clean without having looked. And the alias spellings too (#343):
+        // handed /private/var/x, a shim holding /var/x/... is still this home.
         Set<Path> roots = new LinkedHashSet<>();
-        roots.add(home.toAbsolutePath().normalize());
-        roots.add(real(home));
+        for (String s : PathSpellings.of(home)) roots.add(Path.of(s));
         Set<String> out = new java.util.TreeSet<>();
         for (String token : HomeRepair.absolutePathTokens(shim)) {
             Path candidate;

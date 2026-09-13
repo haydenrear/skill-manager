@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES HomeCloneSupport.java
+//SOURCES ../lib/IntentionalDamage.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -259,7 +260,10 @@ public class HomeCloneFixtureBuilt {
                     HomeCloneSupport.names(realHome.resolve(".gemini/skills")));
 
             // --- the digest, taken LAST ------------------------------------
-            String sourceDigest = HomeCloneSupport.treeDigest(fixture);
+            // homeDigest, not treeDigest (#297): journals a live gateway
+            // appends to are not the state "cloning does not write to the
+            // source" is about.
+            String sourceDigest = HomeCloneSupport.homeDigest(fixture);
 
             boolean pass = unitsInstalled && descriptorWritten && inUnitLinkAbsolute
                     && linkShimAbsolute && toolchainRootsPresent && shimWorksInFixture
@@ -292,6 +296,13 @@ public class HomeCloneFixtureBuilt {
                     .metric("contentSelfReferences", (int) contentRefs)
                     .metric("symlinkSelfReferences", (int) symlinkRefs)
                     .publish("fixtureHome", fixtureStr)
+                    // Step 6 planted this on purpose. Declared, by entry, so
+                    // home.fixpoint.law judges every OTHER finding in this home
+                    // as usual and fails if verify stops seeing this one (#344).
+                    .publish(IntentionalDamage.KEY, IntentionalDamage.declare(fixture,
+                            List.of("venvs/hc-venv/bin/hc"),
+                            "home.clone.fixture.built step 6 plants a console script whose "
+                                    + "interpreter venvs/hc-venv/bin/python is never created"))
                     .publish("projectDir", projectDir.toString())
                     .publish("cloneStore", HomeCloneSupport.storeOf(projectDir).toString())
                     .publish("sourceDigest", sourceDigest)

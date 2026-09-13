@@ -428,6 +428,51 @@ final class HomeCloneSupport {
     }
 
     /**
+     * The top-level entries of a HOME that are journals rather than state:
+     * appended by whatever is running against the home, not by the command a
+     * node is asserting about.
+     *
+     * <p>#297, measured: a live gateway attached to the fixture home appends
+     * OTLP export failures to {@code gateway.log} every few seconds, so an
+     * 11-second clone window "changed the source home" with no state having
+     * moved. {@code gateway.log}, {@code gateway.pid} and {@code audit.log} are
+     * {@code HomeCloner.SKIPPED_ROOT_FILES} — the files a clone itself does not
+     * carry — and {@code logs}/{@code tmp} are the rest of
+     * {@code ArtifactDagSupport.JOURNALS}. Top level only, and only these names.
+     */
+    static final Set<String> HOME_JOURNALS =
+            Set.of("audit.log", "gateway.log", "gateway.pid", "logs", "tmp");
+
+    /**
+     * {@link #treeDigest} over a home, excluding {@link #HOME_JOURNALS} at its
+     * top level. For a claim about a home's STATE ("cloning did not write to the
+     * source"); a subtree such as one unit's authored file keeps
+     * {@link #treeDigest}, where no name is special.
+     */
+    static String homeDigest(Path home) throws IOException {
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (Exception e) {
+            throw new IOException("SHA-256 unavailable", e);
+        }
+        if (Files.isDirectory(home, LinkOption.NOFOLLOW_LINKS)) {
+            frame(digest, "D", "");
+            for (Path child : listSorted(home)) {
+                if (HOME_JOURNALS.contains(child.getFileName().toString())) continue;
+                digestInto(home, child, digest);
+            }
+        } else {
+            digestInto(home, home, digest);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (byte b : digest.digest()) {
+            sb.append(Character.forDigit((b >> 4) & 0xf, 16)).append(Character.forDigit(b & 0xf, 16));
+        }
+        return sb.toString();
+    }
+
+    /**
      * Stable SHA-256 over a tree exactly as it sits on disk: directory names,
      * file bytes, and symlink TARGETS — never what a link points at.
      *

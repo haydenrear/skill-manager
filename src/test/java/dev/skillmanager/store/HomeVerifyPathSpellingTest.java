@@ -114,6 +114,64 @@ public final class HomeVerifyPathSpellingTest {
                                     + viaReal);
                 })
 
+                .test("#343: alias spellings are derived in both directions from a root alias table", () -> {
+                    // Platform-independent half: the derivation itself, against
+                    // an explicit table shaped like macOS's `/var -> private/var`.
+                    // Runs identically on Linux CI, where / carries no such link.
+                    java.util.Map<Path, Path> aliases =
+                            java.util.Map.of(Path.of("/var"), Path.of("/private/var"));
+                    List<String> fromReal = PathSpellings.of(
+                            Path.of("/private/var/folders/zz/home"), aliases);
+                    assertTrue(fromReal.contains("/var/folders/zz/home"),
+                            "handed the resolved spelling, the alias is derived; got " + fromReal);
+                    assertEquals("/private/var/folders/zz/home", fromReal.get(0),
+                            "the given spelling stays first -- findings are reported in it");
+                    List<String> fromAlias = PathSpellings.of(
+                            Path.of("/var/folders/zz/home"), aliases);
+                    assertTrue(fromAlias.contains("/private/var/folders/zz/home"),
+                            "and the reverse, even for a path that does not exist; got " + fromAlias);
+                    List<String> unrelated = PathSpellings.of(Path.of("/opt/zz/home"), aliases);
+                    assertEquals(1, unrelated.size(),
+                            "a path under no alias gains nothing; got " + unrelated);
+                })
+
+                .test("#343: a home GIVEN by its /private/var path finds a reference written as /var", () -> {
+                    // The reproduction from #343, on the real filesystem. On macOS
+                    // every temp directory is reached through `/var -> private/var`;
+                    // this test builds the home at the RESOLVED spelling and writes
+                    // the shim in the ALIAS spelling -- the direction {given, real}
+                    // could not see, because both entries were /private/var/...
+                    Path home = Files.createTempDirectory("home-spelling-alias-").toRealPath()
+                            .resolve("home");
+                    List<String> aliases = PathSpellings.of(home).stream()
+                            .filter(s -> !s.equals(home.toString())).toList();
+                    if (aliases.isEmpty()) {
+                        // Linux: the temp root is under no top-level alias, so the
+                        // shape cannot occur and the derivation half above is the
+                        // whole test. Said, not silently passed.
+                        System.out.println("  (no root alias above " + home
+                                + " on this platform; alias derivation covered by the table test)");
+                        return;
+                    }
+                    Files.createDirectories(home.resolve("installed"));
+                    Files.createDirectories(home.resolve("skills"));
+                    Files.createDirectories(home.resolve("bin/cli"));
+                    String aliasRoot = aliases.get(0);
+                    assertTrue(!aliasRoot.contains(home.toString()) || aliasRoot.length() > home.toString().length(),
+                            "control: the alias spelling does not literally contain the given one");
+                    Path probe = home.resolve("bin/cli/probe");
+                    Files.writeString(probe, "#!/bin/sh\nexec \"" + aliasRoot
+                            + "/venvs/nope/bin/probe\" \"$@\"\n");
+                    probe.toFile().setExecutable(true, false);
+
+                    List<String> found = unresolved(home);
+                    assertTrue(!found.isEmpty(),
+                            "home verify handed " + home + " must report a shim naming "
+                                    + aliasRoot + "/venvs/nope/bin/probe, which does not exist");
+                    assertTrue(found.get(0).contains(home + "/venvs/nope/bin/probe"),
+                            "reported in the spelling the caller gave; got " + found);
+                })
+
                 .test("a reference that DOES resolve is reported by neither spelling", () -> {
                     // The other half of non-vacuity: a scan wired to "always
                     // report something" would satisfy both tests above.

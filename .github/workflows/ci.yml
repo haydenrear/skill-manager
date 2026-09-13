@@ -117,13 +117,15 @@ env:
   # verified locally against a dead endpoint, where the CLI logs nothing — so
   # turning the SDK off at the job level is what reaches the server too.
   #
-  # It is NOISE AND NOT A CAUSE, and the distinction is the reason this comment
-  # is long. The 2026-09-06 nightly failed seven graphs, "Exporter failed"
-  # appeared in three of the logs, and not one of the seven failed because of
-  # it: they failed on a content assertion, an uninstall-residue defect, a
-  # tripwire whose precondition does not hold on a fresh runner, and a missing
-  # sibling repository. Silencing the exporter makes those four legible; it
-  # fixes none of them.
+  # This comment used to call the exporter "NOISE AND NOT A CAUSE". For the
+  # 2026-09-06 nightly's log lines that was true, but it was not true of the
+  # home-clone content assertion it listed: #297 measured a live gateway
+  # attached to the fixture home appending OTLP export failures to its
+  # gateway.log, which HomeCloneSupport.treeDigest hashed, so "cloning does not
+  # write to the source home" failed on a journal append. This setting is what
+  # made that node pass on CI. OHV-5 fixes it where it lives -- the digest now
+  # excludes home journals (HomeCloneSupport.homeDigest) -- so it no longer
+  # depends on this variable, and a local run without it no longer flakes.
   #
   # Retry is already off by default (OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED),
   # so this buys log clarity rather than wall-clock. Unset it locally to get
@@ -604,6 +606,47 @@ jobs:
           npm install -g @openai/codex || echo "::warning::codex install failed — plugin-smoke will hit the missing-CLI branch"
           echo "claude → $(command -v claude || echo 'not on PATH')"
           echo "codex  → $(command -v codex || echo 'not on PATH')"
+
+      # PROVISIONING, NOT EXCLUSION (#345). ticket-lifecycle and onboarding
+      # drive the worktree scripts (new-change.sh, close-change.sh,
+      # bootstrap-home.sh) that ship in the git-issue-workflow skill, a
+      # different repository. TicketLifecycleSupport.scripts looks for
+      # $TICKET_LIFECYCLE_SCRIPTS first, then an integration.toml above the
+      # checkout, then the skill installed in ~/.skill-manager. A runner has
+      # none of the three, so both graphs failed at their first node on every
+      # nightly -- and on a laptop they passed ONLY through the operator's own
+      # root home. The lookup's first, most explicit branch is set here.
+      #
+      # PINNED BY SHA, so a green run names the scripts it measured and a push
+      # to that repository cannot turn this matrix red or green overnight. Bump
+      # it deliberately. Public repository: anonymous clone, no token.
+      - name: Provision git-issue-workflow scripts (ticket-lifecycle, onboarding)
+        if: matrix.graph == 'ticket-lifecycle' || matrix.graph == 'onboarding'
+        env:
+          GIW_REPO: https://github.com/haydenrear/git-issue-workflow-skill
+          GIW_SHA: fae9e9ef8145a612e8ed734e6029ca912e566875
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/git-issue-workflow"
+          git init -q "$dest"
+          git -C "$dest" fetch -q --depth 1 "$GIW_REPO" "$GIW_SHA"
+          git -C "$dest" checkout -q FETCH_HEAD
+          for s in new-change.sh close-change.sh bootstrap-home.sh; do
+            test -f "$dest/scripts/$s" || { echo "::error::git-issue-workflow@$GIW_SHA has no scripts/$s"; exit 1; }
+          done
+          echo "TICKET_LIFECYCLE_SCRIPTS=$dest/scripts" >> "$GITHUB_ENV"
+          echo "git-issue-workflow@$(git -C "$dest" rev-parse HEAD) -> $dest/scripts"
+
+      # PROVISIONING, NOT EXCLUSION (#345). home.tripwire.armed snapshots the
+      # real homes under $HOME and FAILS when none exist -- correctly: an empty
+      # baseline re-read as empty is clean and meaningless. A fresh runner has
+      # no agent home, so the guard fired on every nightly. The seed gives it a
+      # real-shaped one (a store with a skill + installed record, and each
+      # agent's skills/ projection) for any leaking write to land in. The
+      # script refuses to run where a home already exists.
+      - name: Seed an agent home under $HOME (home-tripwire)
+        if: matrix.graph == 'home-tripwire'
+        run: bash .github/scripts/seed-agent-home.sh
 
       - name: Plan graph
         run: |

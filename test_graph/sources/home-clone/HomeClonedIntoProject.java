@@ -2,6 +2,7 @@
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES HomeCloneSupport.java
 //SOURCES ../lib/HomeIsolation.java
+//SOURCES ../lib/IntentionalDamage.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -258,7 +259,9 @@ public class HomeClonedIntoProject {
                     leaks.isEmpty() == productionAgreesNoPathNamesTheSource;
 
             // --- the source home is untouched by the clone -----------------
-            String afterDigest = HomeCloneSupport.treeDigest(fixtureHome);
+            // homeDigest (#297): a live gateway's gateway.log append inside
+            // this window is not a write by the clone.
+            String afterDigest = HomeCloneSupport.homeDigest(fixtureHome);
             boolean sourceUnchangedByCloning = afterDigest.equals(sourceDigest);
 
             // ------------------------------------------------- DEF-096
@@ -396,7 +399,14 @@ public class HomeClonedIntoProject {
                     .metric("toleratedContentReferences", tolerated.size())
                     .metric("sanctionedDescentRecords", descent.size())
                     .metric("verifyExitCode", verify.exitCode())
-                    .publish("cloneJson", cloneJson);
+                    .publish("cloneJson", cloneJson)
+                    // The clone inherits the fixture's planted shim and, by
+                    // design, not venvs/ (toolchain roots are never carried), so
+                    // bin/cli/hc-venv-tool dangles here. Declared by entry (#344).
+                    .publish(IntentionalDamage.KEY, IntentionalDamage.declare(cloneStore,
+                            List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
+                            "clone of home.clone.fixture.built: inherits its planted "
+                                    + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/"));
         });
     }
 
