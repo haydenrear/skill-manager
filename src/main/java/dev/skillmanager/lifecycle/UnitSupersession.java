@@ -150,6 +150,40 @@ public final class UnitSupersession {
      * and to ACTUALLY CONTAIN a skill of that name, which is only true of a
      * home that is already holding two copies of one name.
      */
+    /**
+     * The repositories a moved unit used to be installed from. Units written
+     * before the move still reference the unit by that git coordinate, and once
+     * the standalone is retired no installed record carries the origin any
+     * more, so without this the reference reads as a missing dependency.
+     */
+    private static final java.util.Map<String, String> FORMER_SOURCES = java.util.Map.of(
+            "skill-manager", "https://github.com/haydenrear/skill-manager-skill");
+
+    /** The moved unit a git coordinate used to install, if it names one. */
+    public static java.util.Optional<String> movedUnitForSource(String url) {
+        if (url == null) return java.util.Optional.empty();
+        for (var e : FORMER_SOURCES.entrySet()) {
+            if (dev.skillmanager.source.UnitStore.sameOrigin(e.getValue(), url)) {
+                return java.util.Optional.of(e.getKey());
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /**
+     * True when {@code ref} names a moved unit — by name or by its former
+     * repository — whose carrier is in {@code present}.
+     */
+    public static boolean referenceServedByCarrier(dev.skillmanager.model.UnitReference ref,
+                                                   java.util.Collection<String> present) {
+        dev.skillmanager.model.Coord c = ref.coord();
+        if (c instanceof dev.skillmanager.model.Coord.SubElement sub) c = sub.unitCoord();
+        if (c instanceof dev.skillmanager.model.Coord.DirectGit g) {
+            return movedUnitForSource(g.url()).map(n -> servedByCarrier(n, present)).orElse(false);
+        }
+        return false;
+    }
+
     /** The table's row for {@code unit} when it has been moved into a carrier. */
     public static java.util.Optional<Retirement> movedIntoCarrier(String unit) {
         if (unit == null) return java.util.Optional.empty();
@@ -185,24 +219,41 @@ public final class UnitSupersession {
      * <p>A claim by a project that does NOT resolve the carrier is left alone
      * and returned, so the caller can report it and skip, never fail.
      *
-     * @return the projects whose claims were NOT released
+     * @return the projects and child homes whose claims were NOT released
      */
     public static List<String> releaseClaimsSatisfiedByCarrier(SkillStore store,
                                                               Retirement retirement)
             throws java.io.IOException {
         var locks = new dev.skillmanager.project.SkillProjectLockStore(store);
+        var childHomes = new dev.skillmanager.bindings.ChildHomeRegistry(store);
+        boolean moved = retirement.kind() == Kind.MOVED_INTO_CARRIER;
+
+        // Decide every claim before writing any: a retirement that is going to
+        // be skipped must leave no claim half-released behind it.
+        List<dev.skillmanager.project.SkillProjectLock> lockReleases = new ArrayList<>();
+        List<dev.skillmanager.bindings.ChildHomeRegistry.ChildHomeRecord> homeReleases = new ArrayList<>();
         List<String> unsatisfied = new ArrayList<>();
         for (var lock : locks.list()) {
-            boolean claims = lock.resolvedUnits().stream()
-                    .anyMatch(u -> u.name().equals(retirement.unit()));
-            if (!claims) continue;
-            boolean carrierResolved = retirement.kind() == Kind.MOVED_INTO_CARRIER
-                    && lock.resolvedUnits().stream()
-                            .anyMatch(u -> u.name().equals(retirement.carrier()));
-            if (!carrierResolved) {
-                unsatisfied.add(lock.projectName());
-                continue;
-            }
+            var names = lock.resolvedUnits().stream().map(u -> u.name()).toList();
+            if (!names.contains(retirement.unit())) continue;
+            if (moved && names.contains(retirement.carrier())) lockReleases.add(lock);
+            else unsatisfied.add(lock.projectName());
+        }
+        for (var record : childHomes.list()) {
+            if (!record.units().contains(retirement.unit())) continue;
+            if (moved && record.units().contains(retirement.carrier())) homeReleases.add(record);
+            else unsatisfied.add(record.id());
+        }
+        // A child home whose record lists the unit but cannot be decoded still
+        // claims it as far as RemoveUseCase is concerned; name it.
+        for (String id : childHomes.childHomesClaiming(retirement.unit())) {
+            boolean seen = homeReleases.stream().anyMatch(r -> r.id().equals(id))
+                    || unsatisfied.contains(id);
+            if (!seen) unsatisfied.add(id);
+        }
+        if (!unsatisfied.isEmpty()) return unsatisfied;
+
+        for (var lock : lockReleases) {
             List<dev.skillmanager.project.SkillProjectLock.ResolvedUnit> kept = new ArrayList<>();
             for (var u : lock.resolvedUnits()) {
                 if (!u.name().equals(retirement.unit())) kept.add(u);
@@ -211,7 +262,23 @@ public final class UnitSupersession {
                     lock.projectName(), lock.profile(), lock.manifestFile(), lock.resolvedAt(),
                     kept, lock.bindings(), lock.envs(), lock.libs()));
         }
-        return unsatisfied;
+        for (var record : homeReleases) {
+            List<String> kept = new ArrayList<>(record.units());
+            kept.remove(retirement.unit());
+            childHomes.write(new dev.skillmanager.bindings.ChildHomeRegistry.ChildHomeRecord(
+                    record.id(), record.parentHome(), record.childHome(), record.harnessName(),
+                    kept, record.createdAt()));
+        }
+        return List.of();
+    }
+
+    /**
+     * True when a reference that resolved to {@code name} is served by a
+     * carrier present in {@code present}: the unit was moved into that
+     * carrier, so the carrier's contained copy satisfies the reference.
+     */
+    public static boolean servedByCarrier(String name, java.util.Collection<String> present) {
+        return movedIntoCarrier(name).map(r -> present.contains(r.carrier())).orElse(false);
     }
 
     public static List<Retirement> dueInThisHome(SkillStore store) {

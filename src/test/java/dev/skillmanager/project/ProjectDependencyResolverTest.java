@@ -1461,6 +1461,16 @@ public final class ProjectDependencyResolverTest {
                                 version = "0.1.0"
                                 description = "contained"
                                 """);
+                        // An OLDER unit the project also declares still names the
+                        // moved unit — git-epic-workflow 0.4.0 on the real home.
+                        Path older = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "older-consumer", DepSpec.empty()).sourcePath();
+                        Files.writeString(older.resolve("skill-manager.toml"), """
+                                [skill]
+                                name = "older-consumer"
+                                version = "0.1.0"
+                                description = "still names the moved unit"
+                                """);
                         SkillProject project = project(repoRoot, """
                                 [project]
                                 name = "moved-unit-project"
@@ -1468,10 +1478,25 @@ public final class ProjectDependencyResolverTest {
                                 [skills.skill-manager]
                                 source = "%s"
 
+                                [skills.older-consumer]
+                                source = "%s"
+
                                 [plugins.skt]
                                 source = "%s"
-                                """.formatted(standalone, carrier));
+                                """.formatted(standalone, older, carrier));
 
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        // Then the installed consumer is the older one: it names
+                        // the moved unit by the repository it used to live in,
+                        // which no installed record carries once it is retired.
+                        Files.writeString(h.store().skillDir("older-consumer").resolve("skill-manager.toml"), """
+                                skill_references = ["github:haydenrear/skill-manager-skill"]
+
+                                [skill]
+                                name = "older-consumer"
+                                version = "0.1.0"
+                                description = "still names the moved unit"
+                                """);
                         resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
 
                         assertFalse(Files.exists(h.store().skillDir("skill-manager")),
@@ -1481,6 +1506,8 @@ public final class ProjectDependencyResolverTest {
                                 "the project does not claim the moved unit");
                         assertTrue(lock.resolvedUnits().stream().anyMatch(u -> u.name().equals("skt")),
                                 "CONTROL: the carrier is resolved and claimed");
+                        assertTrue(lock.resolvedUnits().stream().anyMatch(u -> u.name().equals("older-consumer")),
+                                "a unit still naming the moved unit resolves — the carrier serves the reference");
                     }
                 })
                 .runAll();

@@ -309,6 +309,41 @@ public final class MigrationSatisfiesTheGateTest {
                     "and that project's claim is untouched");
         });
 
+        suite.test("a child home registered with the carrier is released too", () -> {
+            // The second refusal the real root home hit once the lock claim was
+            // released: RemoveUseCase also refuses a unit a child home lists.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
+            claim(h.store(), "claiming-project", MOVED, CARRIER);
+            registerChildHome(h.store(), "project:claiming-project", MOVED, CARRIER);
+
+            InstallUseCase.Report report = install(h.store(), pluginCarrying(CARRIER, MOVED));
+
+            assertEquals(0, report.exitCode(), "the upgrade succeeds");
+            assertFalse(Files.exists(h.store().skillDir(MOVED)), "the standalone is retired");
+            var record = new dev.skillmanager.bindings.ChildHomeRegistry(h.store())
+                    .read("project:claiming-project").orElseThrow();
+            assertFalse(record.units().contains(MOVED), "the child home no longer lists it");
+            assertTrue(record.units().contains(CARRIER), "CONTROL: it still lists the carrier");
+        });
+
+        suite.test("one unsatisfied claim releases NOTHING — no half-released home", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
+            claim(h.store(), "claiming-project", MOVED, CARRIER);
+            registerChildHome(h.store(), "standalone-home", MOVED);   // no carrier
+
+            InstallUseCase.Report report = install(h.store(), pluginCarrying(CARRIER, MOVED));
+
+            assertEquals(0, report.exitCode(), "reported, not failed");
+            assertTrue(Files.isDirectory(h.store().skillDir(MOVED)), "the standalone stays");
+            assertTrue(new dev.skillmanager.project.SkillProjectLockStore(h.store())
+                            .read("claiming-project").orElseThrow().resolvedUnits().stream()
+                            .anyMatch(u -> u.name().equals(MOVED)),
+                    "the satisfiable lock claim was NOT released, because the retirement "
+                            + "is not going ahead");
+        });
+
         suite.test("the sync plans the retirement before it commits units", () -> {
             TestHarness h = TestHarness.create();
             var program = SyncUseCase.buildProgram(h.store(), null,
@@ -389,6 +424,15 @@ public final class MigrationSatisfiesTheGateTest {
                 new dev.skillmanager.project.SkillProjectLock(project, null,
                         "skill-project.toml", "2026-09-13T00:00:00Z", rows,
                         java.util.List.of(), java.util.List.of(), java.util.List.of()));
+    }
+
+    /** A child-home registration listing {@code units}, as a project resolve writes one. */
+    private static void registerChildHome(SkillStore store, String id, String... units) throws Exception {
+        new dev.skillmanager.bindings.ChildHomeRegistry(store).write(
+                new dev.skillmanager.bindings.ChildHomeRegistry.ChildHomeRecord(id,
+                        store.root().toString(),
+                        Files.createTempDirectory("child-home-").resolve(".skill-manager").toString(),
+                        null, java.util.List.of(units), "2026-09-13T00:00:00Z"));
     }
 
     /** Put the carrier in the home, carrying the moved skill, as OUN-6 will. */
