@@ -2278,7 +2278,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt pruneOrphanArtifacts(SkillEffect.PruneOrphanArtifacts e,
                                                EffectContext ctx) {
         try {
-            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()));
+            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()),
+                    e.knownOutputs());
             List<String> pruned = ArtifactPrune.apply(ctx.store(), plan);
             for (ArtifactPrune.Step step : plan.refusals()) {
                 Log.warn("kept %s — %s", step.id(), step.reason());

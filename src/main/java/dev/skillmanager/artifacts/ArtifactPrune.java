@@ -186,6 +186,68 @@ public final class ArtifactPrune {
      *               removals already left behind.
      */
     public static Plan of(SkillStore store, List<String> owners) throws IOException {
+        return of(store, owners, java.util.Map.of());
+    }
+
+    /**
+     * Every output path, absolute, of every LIVE artifact {@code unit} owns —
+     * the evidence a removal carries so its prune can prove a row's outputs
+     * are gone (OHV-3 b, #292).
+     *
+     * <h2>Why this exists</h2>
+     *
+     * <p>The ledger stores no external path ({@link ArtifactLedger}'s whole
+     * contract), so a projection's row names no output at all. "The ledger
+     * names no output" is not "nothing is on disk": #292's reverted attempt
+     * pruned such rows on that reading and left an agent symlink that no
+     * later teardown could reach. Captured while the unit is still installed,
+     * this is the one place its agent-side destinations are still knowable.
+     *
+     * <p>Only artifacts the home DERIVES now are included. A row that is
+     * already ledger-only lost its external paths when it was recorded, so its
+     * output list is incomplete and is not evidence of anything.
+     *
+     * <p>Never throws: no evidence means nothing is reaped on its strength,
+     * which is the conservative direction.
+     */
+    public static java.util.Map<String, List<String>> outputsOf(SkillStore store, String unit) {
+        java.util.Map<String, List<String>> out = new java.util.LinkedHashMap<>();
+        try {
+            Path home = store.root().toAbsolutePath().normalize();
+            for (Artifact artifact : ArtifactIndex.of(store).artifacts()) {
+                if (artifact.origin() == Artifact.Origin.LEDGER) continue;
+                if (!declaredBy(artifact, List.of(unit))) continue;
+                List<String> paths = new ArrayList<>();
+                boolean complete = true;
+                for (Artifact.Output output : artifact.outputs()) {
+                    if (output.path() == null || output.path().isBlank()) {
+                        complete = false;
+                        break;
+                    }
+                    paths.add(output.scope() == Artifact.Scope.HOME
+                            ? home.resolve(output.path()).normalize().toString()
+                            : output.path());
+                }
+                if (complete) out.put(artifact.id(), List.copyOf(paths));
+            }
+        } catch (IOException | RuntimeException e) {
+            Log.warn("could not capture %s's artifact outputs before removal (%s) — rows whose "
+                    + "outputs cannot be proven gone will be kept", unit, e.getMessage());
+            return java.util.Map.of();
+        }
+        return out;
+    }
+
+    /**
+     * @param knownOutputs {@link #outputsOf} captured before the owner was
+     *        removed; empty when the caller has none (a whole-home
+     *        {@code artifacts prune} over past removals).
+     */
+    public static Plan of(SkillStore store, List<String> owners,
+                          java.util.Map<String, List<String>> knownOutputs) throws IOException {
+        java.util.Map<String, List<String>> known =
+                knownOutputs == null ? java.util.Map.of() : knownOutputs;
+        Set<String> digestUnits = digestUnitNames(store);
         ArtifactIndex index = ArtifactIndex.of(store);
         ArtifactGraph graph = ArtifactGraph.of(index);
         ArtifactLedger ledger = ArtifactLedger.load(store);
@@ -207,7 +269,7 @@ public final class ArtifactPrune {
         for (Artifact artifact : index.artifacts()) {
             if (!owners.isEmpty() && !declaredBy(artifact, owners)) continue;
             Step step = decide(artifact, ledger, installed, declaredLockKeys, claimed,
-                    childClaimed, childClaims, home);
+                    childClaimed, childClaims, home, known, digestUnits);
             if (step != null) steps.add(step);
         }
         return new Plan(home.toString(), !ledger.isEmpty(), steps);
@@ -365,11 +427,26 @@ public final class ArtifactPrune {
     private static Step decide(Artifact artifact, ArtifactLedger ledger,
                                Set<String> installed, Set<String> declaredLockKeys,
                                Set<String> claimed, Set<String> childClaimed,
-                               ChildClaims childClaims, Path home) {
-        // Kinds whose teardown belongs to another verb, filtered before
-        // anything else so they never even appear as candidates.
-        if (artifact.kind() == ArtifactKind.UNIT_STORE
-                || artifact.kind() == ArtifactKind.UNIT_DIGEST) {
+                               ChildClaims childClaims, Path home,
+                               java.util.Map<String, List<String>> known,
+                               Set<String> digestUnits) {
+        // Kinds whose BYTES belong to another verb: a unit's store is removed
+        // by `uninstall`, and a second deleter of somebody else's checkout is
+        // the hazard the class javadoc spends a paragraph on. They are never a
+        // path-deleting verdict.
+        //
+        // OHV-3 (b), #292: THE ROW IS NOT THE BYTES. Filtering these kinds out
+        // entirely is what left `unit-store:<unit>` in the census of a home
+        // that had uninstalled the unit. So a dead row may be reaped — row
+        // only, after every gate below, and only when the owner is gone and
+        // none of the bytes are provably there.
+        boolean storeKind = artifact.kind() == ArtifactKind.UNIT_STORE
+                || artifact.kind() == ArtifactKind.UNIT_DIGEST;
+        // A store row the home still DERIVES is not a phantom — its record or
+        // its digest entry is live — so it stays out of the candidates, as
+        // before. Only a ledger-only store row is decided below.
+        if (storeKind && (artifact.owner() == null || installed.contains(artifact.owner())
+                || artifact.origin() != Artifact.Origin.LEDGER)) {
             return null;
         }
         String owner = artifact.owner();
@@ -411,11 +488,47 @@ public final class ArtifactPrune {
         }
 
         ArtifactLedger.Row row = ledger.byId(artifact.id()).orElse(null);
-        if (row == null || row.outputs().isEmpty()) {
+        // OHV-3 (b). Behind every gate and claim above, and not before them:
+        // #292's attempt first returned at the top of decide() and an
+        // unreadable child home stopped stopping the prune.
+        if (storeKind) {
+            String unproven = storeRowUnproven(artifact, row, home, known, digestUnits);
+            if (unproven == null) {
+                return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, List.of(),
+                        "its owner is not installed here and none of its bytes are left — the "
+                                + "ledger row is all that remains, and nothing on disk is touched");
+            }
+            return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
+                    "its owner is not installed here, but " + unproven + " — a unit's bytes "
+                            + "belong to `uninstall`, and the row is kept until they are "
+                            + "provably gone");
+        }
+        if (row == null) {
             return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
                     "no ledger row names an output for it, and this command deletes only what "
                             + "the ledger recorded — run `skill-manager artifacts record` while "
                             + "the producer is still installed");
+        }
+        if (row.outputs().isEmpty()) {
+            // #292 / DEF-HBR-003. The ledger keeps no external path, so a
+            // projection's row names no output — and "the ledger names no
+            // output" is NOT "nothing is on disk". #292's reverted attempt
+            // pruned on that reading and left an agent symlink no later
+            // teardown could reach. The row goes only when the outputs a
+            // removal captured BEFORE it ran (outputsOf) are all gone now.
+            List<String> evidence = known.get(artifact.id());
+            if (evidence != null && !evidence.isEmpty() && allAbsent(evidence)) {
+                return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, List.of(),
+                        "its owner is not installed here and every output it had ("
+                                + String.join(", ", evidence) + ") is gone — only the ledger "
+                                + "row is left, and nothing on disk is touched",
+                        lockRowOf(artifact));
+            }
+            return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
+                    "no ledger row names an output for it, and this pass cannot prove its "
+                            + "outputs are gone — the row is kept, because a row dropped over a "
+                            + "file still on disk leaves that file unreachable by any later "
+                            + "teardown");
         }
 
         List<String> targets = new ArrayList<>();
@@ -451,12 +564,104 @@ public final class ArtifactPrune {
                                 + " any more, and its install left nothing on disk — only the "
                                 + "cli-lock.toml row is left to remove", lockOnly);
             }
-            return new Step(artifact.id(), artifact.kind(), owner, Verdict.CLAIMED, List.of(),
-                    "its owner is gone and nothing of it is left on disk");
+            // #292: every output the row names is already absent. CLAIMED was
+            // the wrong word — nothing claims it — and it left the row forever.
+            // The row goes when the absence is PROVEN: the kind's outputs are
+            // always inside the home (so the row names all of them), or the
+            // outputs a removal captured before it ran are gone too.
+            List<String> evidence = known.get(artifact.id());
+            boolean proven = IN_HOME_OUTPUTS_ONLY.contains(artifact.kind())
+                    || (evidence != null && !evidence.isEmpty() && allAbsent(evidence));
+            if (proven) {
+                return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, List.of(),
+                        "its owner is gone and every output it names is already absent — only "
+                                + "the ledger row is left, and nothing on disk is touched",
+                        lockRowOf(artifact));
+            }
+            return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
+                    "its owner is gone and the outputs its row names are absent, but a "
+                            + artifact.kind().id() + " can have outputs outside this home that "
+                            + "the ledger does not record — the row is kept until they are "
+                            + "provably gone");
         }
         return new Step(artifact.id(), artifact.kind(), owner, Verdict.PRUNE, targets,
                 "declared by " + owner + ", which is not installed here any more",
                 lockRowOf(artifact));
+    }
+
+    /**
+     * Kinds whose every output {@link ArtifactBackfill} derives inside the
+     * home — so a ledger row, which keeps every in-home output, names ALL of
+     * them. {@code PROJECTION} and {@code DOC_IMPORT} are absent because they
+     * can land outside the home; {@code MCP_REGISTRATION} because it has none
+     * to name. A kind added here without that property turns "every output
+     * the row names is gone" back into the unproven claim #292 fell into.
+     */
+    static final Set<ArtifactKind> IN_HOME_OUTPUTS_ONLY = java.util.EnumSet.of(
+            ArtifactKind.CLI_SHIM, ArtifactKind.PROVISIONED_TREE,
+            ArtifactKind.MARKETPLACE_ENTRY, ArtifactKind.HARNESS_INSTANCE);
+
+    /** Whether nothing is at any of these absolute paths — a dangling link is something. */
+    static boolean allAbsent(List<String> absolutePaths) {
+        for (String path : absolutePaths) {
+            try {
+                if (Files.exists(Path.of(path), LinkOption.NOFOLLOW_LINKS)) return false;
+            } catch (RuntimeException unprobeable) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Why a dead {@code unit-store} / {@code unit-digest} row cannot be proven
+     * to have no bytes behind it, or null when it can.
+     */
+    private static String storeRowUnproven(Artifact artifact, ArtifactLedger.Row row, Path home,
+                                           java.util.Map<String, List<String>> known,
+                                           Set<String> digestUnits) {
+        if (artifact.origin() != Artifact.Origin.LEDGER) {
+            return "this home still derives it from its own records";
+        }
+        if (artifact.kind() == ArtifactKind.UNIT_DIGEST) {
+            if (digestUnits == null) {
+                return HomeDigestFile.NAME + " is present and could not be read";
+            }
+            return digestUnits.contains(artifact.owner())
+                    ? HomeDigestFile.NAME + " still names it" : null;
+        }
+        List<String> paths = new ArrayList<>();
+        if (row != null) {
+            for (String relative : row.outputs()) {
+                paths.add(home.resolve(relative).normalize().toString());
+            }
+        }
+        List<String> evidence = known.get(artifact.id());
+        if (evidence != null) paths.addAll(evidence);
+        if (paths.isEmpty()) return "nothing this pass holds names where its bytes were";
+        return allAbsent(paths) ? null : "its store is still on disk";
+    }
+
+    /** The {@code home.digest.json} spelling, in one place. */
+    private static final class HomeDigestFile {
+        static final String NAME = dev.skillmanager.store.HomeDigest.FILENAME;
+    }
+
+    /**
+     * The unit names {@code home.digest.json} carries: empty when there is no
+     * such file (no digest, no bytes), null when there is one this pass could
+     * not read — {@code HomeDigest.read} answers the same empty for both.
+     */
+    private static Set<String> digestUnitNames(SkillStore store) {
+        Path file = store.root().resolve(HomeDigestFile.NAME);
+        if (!Files.exists(file, LinkOption.NOFOLLOW_LINKS)) return Set.of();
+        var digest = dev.skillmanager.store.HomeDigest.read(store);
+        if (digest.isEmpty()) return null;
+        Set<String> names = new LinkedHashSet<>();
+        for (var unit : digest.get().units()) {
+            if (unit != null && unit.name() != null) names.add(unit.name());
+        }
+        return names;
     }
 
     /** The lock key this shim's row is filed under, or null. */

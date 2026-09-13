@@ -172,7 +172,16 @@ public final class RemoveUseCase {
         // artifacts and lock rows alone, and `uninstall` is the one that tears
         // them down. A prune that ran under both would make the two verbs
         // differ only in which artifacts they forgot to remove.
-        if (pruneCliOrphans) effects.add(new SkillEffect.PruneOrphanArtifacts(skillName));
+        //
+        // OHV-3 (b): the outputs are captured NOW, at program build, while the
+        // unit is still installed and every projection's destination is still
+        // derivable. The ledger keeps no external path, so after the removal
+        // this snapshot is the only thing that can prove an agent-side link is
+        // gone — and a row is reaped only when it proves exactly that.
+        if (pruneCliOrphans) {
+            effects.add(new SkillEffect.PruneOrphanArtifacts(skillName,
+                    dev.skillmanager.artifacts.ArtifactPrune.outputsOf(store, skillName)));
+        }
 
         // Plugin marketplace + harness CLI cleanup. Skip for skills —
         // the marketplace only catalogs plugins. For plugins, regenerate
