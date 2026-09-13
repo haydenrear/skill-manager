@@ -1720,7 +1720,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         + "`skill-manager install %s`.", hint);
             }
         }
-        if (!retired.isEmpty()) Log.ok("migration: retired %s", String.join(", ", retired));
+        if (!retired.isEmpty()) {
+            Log.ok("migration: retired %s", String.join(", ", retired));
+            Log.info("migration: nothing to edit — references and imports naming %s resolve to the "
+                            + "carrier's copy. A skill-project.toml declaring [skills.%s] can drop that "
+                            + "block; resolve skips it either way.",
+                    String.join(", ", retired), retired.get(0));
+        }
         return EffectReceipt.ok(e);
     }
 

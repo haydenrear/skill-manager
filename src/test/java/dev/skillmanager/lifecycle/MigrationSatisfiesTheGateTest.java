@@ -344,6 +344,85 @@ public final class MigrationSatisfiesTheGateTest {
                             + "is not going ahead");
         });
 
+        // ------------------ 0.27.1: the sync cloned the retired unit back
+
+        suite.test("a unit still naming the retired unit's OLD REPOSITORY does not reinstall it", () -> {
+            // tla-spec-dev on 0.27.1: git-epic-workflow 0.4.0 references
+            // github:haydenrear/skill-manager-skill. The sync retired the
+            // standalone, then its unmet-reference pass cloned it straight back.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
+            h.scaffoldUnitDir("older-consumer", UnitKind.SKILL);
+            Files.writeString(h.store().skillDir("older-consumer").resolve("skill-manager.toml"), """
+                    skill_references = ["github:haydenrear/skill-manager-skill"]
+
+                    [skill]
+                    name = "older-consumer"
+                    version = "0.1.0"
+                    description = "still names the old repository"
+                    """);
+            installCarrier(h.store());
+            assertFalse(Files.exists(h.store().skillDir(MOVED)), "precondition: retired");
+
+            sync(h.store(), List.of(CARRIER));
+
+            assertFalse(Files.exists(h.store().skillDir(MOVED)),
+                    "the sync does not clone the retired unit back");
+        });
+
+        suite.test("the resolver does not walk into a retired unit its carrier serves", () -> {
+            TestHarness h = TestHarness.create();
+            installCarrier(h.store());
+            Path consumer = Files.createTempDirectory("migration-consumer-").resolve("consumer");
+            Files.createDirectories(consumer);
+            Files.writeString(consumer.resolve("SKILL.md"),
+                    "---\nname: consumer\ndescription: x\n---\n\nbody\n");
+            Files.writeString(consumer.resolve("skill-manager.toml"), """
+                    skill_references = ["github:haydenrear/skill-manager-skill", "github:haydenrear/skill-dev-skill"]
+
+                    [skill]
+                    name = "consumer"
+                    version = "0.1.0"
+                    description = "x"
+                    """);
+            var outcome = new dev.skillmanager.resolve.Resolver(h.store()).resolveAll(
+                    List.of(new dev.skillmanager.resolve.Resolver.Coord(consumer.toString(), null)));
+            assertTrue(outcome.failures().isEmpty(),
+                    "no fetch was attempted for either retired unit: " + outcome.failures());
+            assertEquals(1, outcome.graph().resolved().size(), "only the consumer itself resolves");
+        });
+
+        suite.test("the carrier is recognised under every repository it has been published from", () -> {
+            assertEquals("skt", UnitSupersession.carrierForSource("https://github.com/haydenrear/skt.git").orElse(null),
+                    "its current repository");
+            assertEquals("skt", UnitSupersession.carrierForSource("https://github.com/haydenrear/skill-publisher-skill").orElse(null),
+                    "its former repository — the one old manifests declare as [skills.skill-publisher]");
+            assertTrue(UnitSupersession.carrierForSource("https://github.com/haydenrear/skill-manager-skill").isEmpty(),
+                    "CONTROL: the retired unit's own repository is not the carrier");
+        });
+
+        suite.test("served-by-carrier is narrow: standalone present, or carrier absent, is not served", () -> {
+            var byRepo = dev.skillmanager.model.UnitReference.parse("github:haydenrear/skill-manager-skill");
+            var byName = dev.skillmanager.model.UnitReference.parse("skill:skill-manager");
+            var other = dev.skillmanager.model.UnitReference.parse("github:haydenrear/some-other-skill");
+
+            TestHarness empty = TestHarness.create();
+            assertFalse(UnitSupersession.servedByInstalledCarrier(empty.store(), byRepo),
+                    "no carrier installed — the reference is a real dependency");
+
+            TestHarness both = TestHarness.create();
+            both.scaffoldUnitDir(MOVED, UnitKind.SKILL);
+            assertFalse(UnitSupersession.servedByInstalledCarrier(both.store(), byName),
+                    "the standalone is still here — nothing to serve");
+
+            TestHarness migrated = TestHarness.create();
+            installCarrier(migrated.store());
+            assertTrue(UnitSupersession.servedByInstalledCarrier(migrated.store(), byRepo), "by old repository");
+            assertTrue(UnitSupersession.servedByInstalledCarrier(migrated.store(), byName), "by name");
+            assertFalse(UnitSupersession.servedByInstalledCarrier(migrated.store(), other),
+                    "CONTROL: an unrelated repository is never served");
+        });
+
         suite.test("the sync plans the retirement before it commits units", () -> {
             TestHarness h = TestHarness.create();
             var program = SyncUseCase.buildProgram(h.store(), null,

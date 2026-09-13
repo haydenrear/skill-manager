@@ -166,6 +166,12 @@ final class ResolveGraphHandlers {
         for (Skill s : e.liveSkills()) {
             liveParents.add(s.name());
             for (UnitReference ref : s.skillReferences()) {
+                // A reference to a retired unit whose carrier is installed is
+                // served. Resolving it as "unmet" cloned the standalone straight
+                // back in the sync that had just retired it (0.27.1).
+                if (dev.skillmanager.lifecycle.UnitSupersession.servedByInstalledCarrier(store, ref)) {
+                    continue;
+                }
                 String coord = referenceToCoord(ref, store, s.name());
                 String installedName = ref.name();
                 if (installedName == null && ref.isDirectGit()) {

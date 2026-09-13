@@ -235,6 +235,11 @@ public final class Resolver {
             List<Ancestor> childAncestors = new ArrayList<>(p.ancestors);
             childAncestors.add(new Ancestor(key, unit.name()));
             for (UnitReference ref : unit.references()) {
+                if (dev.skillmanager.lifecycle.UnitSupersession.servedByInstalledCarrier(store, ref)) {
+                    // Served by the installed carrier — installing a unit that
+                    // still names a retired one must not reinstall it.
+                    continue;
+                }
                 String childSource;
                 String childVersion;
                 if (ref.isLocal()) {

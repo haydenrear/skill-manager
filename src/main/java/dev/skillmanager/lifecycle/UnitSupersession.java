@@ -151,15 +151,23 @@ public final class UnitSupersession {
      * home that is already holding two copies of one name.
      */
     /**
-     * The repositories a moved unit used to be installed from. Units written
+     * The repositories a retired unit used to be installed from. Units written
      * before the move still reference the unit by that git coordinate, and once
      * the standalone is retired no installed record carries the origin any
-     * more, so without this the reference reads as a missing dependency.
+     * more, so without this the reference reads as a missing dependency — and a
+     * sync CLONED IT BACK in the same operation that retired it (0.27.1, every
+     * project home with a stale git-epic-workflow).
      */
     private static final java.util.Map<String, String> FORMER_SOURCES = java.util.Map.of(
-            "skill-manager", "https://github.com/haydenrear/skill-manager-skill");
+            "skill-manager", "https://github.com/haydenrear/skill-manager-skill",
+            "skill-dev-skill", "https://github.com/haydenrear/skill-dev-skill");
 
-    /** The moved unit a git coordinate used to install, if it names one. */
+    /** Every repository a carrier has been published from, under any name. */
+    private static final java.util.Map<String, List<String>> CARRIER_SOURCES = java.util.Map.of(
+            "skt", List.of("https://github.com/haydenrear/skt",
+                    "https://github.com/haydenrear/skill-publisher-skill"));
+
+    /** The retired unit a git coordinate used to install, if it names one. */
     public static java.util.Optional<String> movedUnitForSource(String url) {
         if (url == null) return java.util.Optional.empty();
         for (var e : FORMER_SOURCES.entrySet()) {
@@ -170,18 +178,59 @@ public final class UnitSupersession {
         return java.util.Optional.empty();
     }
 
-    /**
-     * True when {@code ref} names a moved unit — by name or by its former
-     * repository — whose carrier is in {@code present}.
-     */
-    public static boolean referenceServedByCarrier(dev.skillmanager.model.UnitReference ref,
-                                                   java.util.Collection<String> present) {
+    /** The carrier a git coordinate installs, under its current or a former repository name. */
+    public static java.util.Optional<String> carrierForSource(String url) {
+        if (url == null) return java.util.Optional.empty();
+        for (var e : CARRIER_SOURCES.entrySet()) {
+            for (String source : e.getValue()) {
+                if (dev.skillmanager.source.UnitStore.sameOrigin(source, url)) {
+                    return java.util.Optional.of(e.getKey());
+                }
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /** The table's row for {@code unit}, of either kind. */
+    public static java.util.Optional<Retirement> retirementFor(String unit) {
+        if (unit == null) return java.util.Optional.empty();
+        return TABLE.stream().filter(r -> r.unit().equals(unit)).findFirst();
+    }
+
+    /** The row a reference names — by the unit's name, or by the repository it used to live in. */
+    public static java.util.Optional<Retirement> retirementNamedBy(dev.skillmanager.model.UnitReference ref) {
+        if (ref == null) return java.util.Optional.empty();
         dev.skillmanager.model.Coord c = ref.coord();
         if (c instanceof dev.skillmanager.model.Coord.SubElement sub) c = sub.unitCoord();
         if (c instanceof dev.skillmanager.model.Coord.DirectGit g) {
-            return movedUnitForSource(g.url()).map(n -> servedByCarrier(n, present)).orElse(false);
+            return movedUnitForSource(g.url()).flatMap(UnitSupersession::retirementFor);
         }
-        return false;
+        return retirementFor(ref.name());
+    }
+
+    /** True when {@code ref} names a retired unit whose carrier is in {@code present}. */
+    public static boolean referenceServedByCarrier(dev.skillmanager.model.UnitReference ref,
+                                                   java.util.Collection<String> present) {
+        return retirementNamedBy(ref).map(r -> present.contains(r.carrier())).orElse(false);
+    }
+
+    /**
+     * True when {@code ref} must NOT be installed into {@code store}: it names a
+     * retired unit, the standalone is gone, and the carrier that replaces it is
+     * installed (holding the unit, for a move). Installing it would undo the
+     * migration — the reference is already served.
+     */
+    public static boolean servedByInstalledCarrier(SkillStore store,
+                                                   dev.skillmanager.model.UnitReference ref) {
+        if (store == null) return false;
+        var retirement = retirementNamedBy(ref);
+        if (retirement.isEmpty()) return false;
+        Retirement r = retirement.get();
+        if (store.containsUnit(r.unit())) return false;
+        if (!store.containsPlugin(r.carrier())) return false;
+        if (r.kind() == Kind.OBSOLETE) return true;
+        return java.nio.file.Files.isDirectory(
+                store.pluginsDir().resolve(r.carrier()).resolve("skills").resolve(r.unit()));
     }
 
     /** The table's row for {@code unit} when it has been moved into a carrier. */
@@ -278,7 +327,7 @@ public final class UnitSupersession {
      * carrier, so the carrier's contained copy satisfies the reference.
      */
     public static boolean servedByCarrier(String name, java.util.Collection<String> present) {
-        return movedIntoCarrier(name).map(r -> present.contains(r.carrier())).orElse(false);
+        return retirementFor(name).map(r -> present.contains(r.carrier())).orElse(false);
     }
 
     public static List<Retirement> dueInThisHome(SkillStore store) {
