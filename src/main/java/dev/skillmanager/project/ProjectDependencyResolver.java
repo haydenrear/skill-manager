@@ -658,20 +658,41 @@ public final class ProjectDependencyResolver {
         return new ArrayList<>(rows.values());
     }
 
+    private static List<SkillProject.ProjectUnitRef> allInstallRefs(SkillProject project) {
+        List<SkillProject.ProjectUnitRef> refs = new ArrayList<>();
+        for (var r : project.skills()) if (r.install()) refs.add(r);
+        for (var r : project.plugins()) if (r.install()) refs.add(r);
+        for (var r : project.docs()) if (r.install()) refs.add(r);
+        for (var r : project.harnesses()) if (r.install()) refs.add(r);
+        return refs;
+    }
+
     private List<SkillProject.ProjectUnitRef> installableRefs(SkillProject project) {
         List<SkillProject.ProjectUnitRef> refs = new ArrayList<>();
-        // #175: a unit moved into a carrier the SAME project declares is served
-        // by the carrier's contained copy. Installing and locking it standalone
-        // would undo the migration on every resolve, and re-plant the project
-        // claim that blocked the 0.27.0 retirement.
-        java.util.Set<String> declaredPlugins = new java.util.HashSet<>();
-        for (var r : project.plugins()) if (r.install()) declaredPlugins.add(r.alias());
+        // #175: a retired unit whose carrier the SAME project declares is served
+        // by the carrier. Installing and locking it standalone would undo the
+        // migration on every resolve. The carrier counts as declared under ANY
+        // entry that installs it — `[skills.skill-publisher]` from the old
+        // repository name installs skt just as `[plugins.skt]` does.
+        java.util.Set<String> declared = new java.util.HashSet<>();
+        for (var r : allInstallRefs(project)) {
+            declared.add(r.alias());
+            unitName(r.reference(), project.projectRoot()).ifPresent(declared::add);
+            Coord c = r.reference().coord();
+            if (c instanceof Coord.SubElement sub) c = sub.unitCoord();
+            if (c instanceof Coord.DirectGit g) {
+                dev.skillmanager.lifecycle.UnitSupersession.carrierForSource(g.url()).ifPresent(declared::add);
+            }
+        }
         for (var r : project.skills()) {
             if (!r.install()) continue;
-            var moved = dev.skillmanager.lifecycle.UnitSupersession.movedIntoCarrier(r.alias());
-            if (moved.isPresent() && declaredPlugins.contains(moved.get().carrier())) {
-                dev.skillmanager.util.Log.debug(
-                        "project dependency %s is served by plugin %s", r.alias(), moved.get().carrier());
+            var retired = dev.skillmanager.lifecycle.UnitSupersession.retirementNamedBy(r.reference())
+                    .or(() -> dev.skillmanager.lifecycle.UnitSupersession.retirementFor(r.alias()));
+            if (retired.isPresent() && declared.contains(retired.get().carrier())) {
+                dev.skillmanager.util.Log.warn(
+                        "%s: [skills.%s] is served by the %s plugin now — nothing is installed for it. "
+                                + "Delete that block from skill-project.toml; references to %s need no edits.",
+                        project.name(), r.alias(), retired.get().carrier(), retired.get().unit());
                 continue;
             }
             refs.add(r);
