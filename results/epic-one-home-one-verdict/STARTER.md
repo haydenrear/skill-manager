@@ -8,6 +8,20 @@ That is deliberate — `git-epic-workflow` plan-and-schedule is your first
 action, and the goals below are a *proposal* to agree with the owner, not a
 decision already taken.
 
+## State of the world when this was written (2026-09-13)
+
+- **Released: skill-manager `v0.27.2`, skt `0.8.2`.** Root home and this repo's
+  project home are on both, `home verify` clean, `skt check` all current.
+- **The skill-manager → skt migration now completes in real project homes.**
+  0.27.0 rolled back on project claims, and 0.27.1 cloned the retired unit back in
+  the same sync. Both are fixed (#347, #349). It was validated on 39 real project
+  homes before release: 32 migrated, 1 correctly refused, 6 have no skt and are
+  now told how to install it. The full record:
+  `results/epic-one-home-one-verdict/attribution/2026-09-13-migration-0.27.md`.
+- **The previous epic (`one-unit-one-name`) is merged and released.** Its 15
+  ticket worktrees were NOT yet swept when this was written. See the sweep
+  status in `STARTER-PROMPT.md` before creating any worktree of your own.
+
 ## Read in this order
 
 1. **#337** — the epic, with the attribution that motivates it.
@@ -82,6 +96,20 @@ declared and unmeasured; the epic branch was 7 commits behind `main`; and the
 migration relinked the unit it had just retired, invisible to both guards, and
 was only found by cloning a real home and running `sync skt` in it.
 
+**Migrations are validated on REAL homes, not clones.** 0.27.0 passed on a
+clone and failed on the root home, because a clone drops project and child-home
+claims. 0.27.1 passed on the root home and failed in every project home, because
+their git-epic-workflow still referenced the retired unit's old repository. The
+only runs that found either defect were real homes. For anything that changes
+what a sync installs or retires: back up `installed/`, run this repo's
+`./skill-manager` against real project homes, and read the second sync.
+
+**An eval can only measure a released build.** The eval sandbox passes only
+`PATH`, and a home pinned to the repo's jbang build fails inside it ("Downloading
+JDK 17", network denied). To measure an unreleased build, export the fatjar the
+way `release.yml` does and point the branched homes' pins at it. Also, a run that
+hits `max_turns` loses its Stop-hook graders (#353), so read the trace, not the score.
+
 ## Still untested by that standard
 
 - **A fresh-machine onboard** — no home at all, from nothing.
@@ -90,6 +118,16 @@ was only found by cloning a real home and running `sync skt` in it.
 
 Neither blocks anything. Both are real gaps and belong in this epic's
 validation plan.
+
+## Outside this epic, but you will trip over them
+
+| issue | what | why it is not this epic |
+| --- | --- | --- |
+| #351 | Gemini consumes no plugins, so a migrated home has no `skill-manager` skill for Gemini | agent projection, not home verdicts |
+| #352 | Claude marketplace name drift (`skill-manager` vs `skill-manager-<hash>`) fails every plugin reinstall in project homes | plugin marketplace, not verdicts |
+| #353 | eval harness: a `max_turns` run loses every Stop-hook grader | eval harness (#328) |
+| #327 | `remove`/`uninstall` delete a unit checkout with unpushed commits | owner decision on `remove` friction |
+| #269 | (HBR-1) a child home's `bin/cli` shims point into another home, and child-home syncs rewrite the parent's shims | the open home-boundary-resolution epic |
 
 ## CI is red on `main` and that is in scope — #346
 
@@ -137,11 +175,12 @@ Two verdicts on one home, one minute apart, which is the whole epic in four
 lines:
 
 ```
-~/.skill-manager judged by the CLI that home pins (0.26.0, released)
+~/.skill-manager judged by the CLI that home pins (0.26.0 when first measured)
     → "nothing is damaged in a way this command knows about (73 entries examined)"
 the same home judged by a build carrying two more detectors
     → 8 findings
 ```
 
-Reproduce it before you change anything. If it no longer reproduces, the
-release landed and the baseline moved — re-measure rather than assuming.
+Reproduce it before you change anything, on `v0.27.2`. The root home has been
+repaired and migrated since this was first measured, so expect the numbers to
+have moved. Re-measure and record the new baseline rather than assuming.
