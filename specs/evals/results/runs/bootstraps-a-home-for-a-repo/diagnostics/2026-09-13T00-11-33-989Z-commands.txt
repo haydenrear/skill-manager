@@ -1,0 +1,3 @@
+sed -n '1,80p' /private/tmp/skill-evals/bootstraps-a-home-for-a-repo/units/git-issue-workflow/skills/git-issue-workflow/scripts/bootstrap-home.sh
+---
+"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/skills/git-issue-workflow/scripts/bootstrap-home.sh" --root /private/tmp/e-fsSrUH/home/cwd

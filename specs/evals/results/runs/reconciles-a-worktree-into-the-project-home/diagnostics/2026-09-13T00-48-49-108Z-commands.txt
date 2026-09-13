@@ -1,0 +1,11 @@
+skt status 2>&1 | head -60; echo "---LS---"; ls -a /private/tmp/e-PBZtNv/home/cwd 2>&1; echo "---WT---"; ls -a /private/tmp/e-PBZtNv/home/wt-TICKET-9 2>&1
+---
+ls -a /private/tmp/e-PBZtNv/home 2>&1; echo "---GITWT---"; ./.eval-bin/git worktree list 2>&1
+---
+ls -a /private/tmp/skill-evals/reconciles-a-worktree-into-the-project-home/wt-TICKET-9 2>&1; echo "---HOME---"; ls -a /private/tmp/skill-evals/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/.skill-manager 2>&1 | head
+---
+skill-manager home --help 2>&1 | head -60
+---
+skill-manager home sync --help 2>&1 | head -50
+---
+skill-manager home sync --from /private/tmp/skill-evals/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/.skill-manager --to /private/tmp/e-PBZtNv/home/cwd/.skill-manager 2>&1 | head -40
