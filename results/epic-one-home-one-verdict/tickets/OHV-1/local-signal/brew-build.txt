@@ -1,0 +1,9 @@
+skill-manager 0.27.2
+build:  artifact 862d3a4c6017 built 2026-09-13T17:38:37Z (skill-manager.jar)
+cli:    /opt/homebrew/Cellar/skill-manager/0.27.2/libexec/bin/skill-manager
+--- home repair (text)
+✓ nothing in /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager is damaged in a way this command knows about (41 entries examined)
+exit=0
+--- home repair --json
+{"home":"/Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager","examined":41,"clean":true,"findings":[]}
+exit=0
