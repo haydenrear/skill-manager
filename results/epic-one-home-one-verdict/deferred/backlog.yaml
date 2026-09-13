@@ -164,3 +164,25 @@ findings:
       after 6h46m, with nothing owning it.
     reproduction: ps -eo pid,etime,command | grep 'supersession-sync-.*gateway'
     disposition: pending
+
+  - id: DEF-OHV-009
+    found_by: schedule_revision 2 amendment
+    found_at_commit: c3310fc5
+    severity: minor
+    maps_to: "adjacent: git-epic-workflow skill (scripts/validate_epic_plan.py), not this epic"
+    summary: >
+      The plan validator cannot retire one contributor to a goal that other tickets
+      still serve. Retiring a ticket requires `affected_goals` to copy every goal it
+      relates to, with a disposition (accepted_missed, accepted_unmeasured or
+      carried). Any disposition then errors "retirement disposition conflicts with
+      active tickets" while another undelivered ticket serves that goal
+      (validate_epic_plan.py:1074-1084). A GUARD contributor that the owner drops
+      therefore cannot be retired without disposing the whole goal. This epic
+      re-scoped OHV-7 instead of retiring it.
+    reproduction: >
+      In specs/epics/one-home-one-verdict/ticket_plan.yaml at c3310fc5, set OHV-7
+      status: retired with a retirement block whose affected_goals carries
+      GOAL-ci-green-fresh-runner (any disposition), then run
+      validate_epic_plan.py -> error naming active tickets [OHV-3, OHV-5, OHV-8].
+    suggested_fix: allow a per-ticket goal disposition "withdrawn_contribution" for guard/enabling links, which leaves the goal active
+    disposition: pending
