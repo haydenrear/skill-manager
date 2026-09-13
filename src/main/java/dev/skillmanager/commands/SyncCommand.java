@@ -220,6 +220,19 @@ public final class SyncCommand implements Callable<Integer> {
                 name = retired.get().carrier();
             } else {
                 Log.error("not installed: %s", name);
+                // A carrier named before it has ever been installed: the one
+                // thing an operator told "sync skt" needs is how to get it.
+                boolean isCarrier = dev.skillmanager.lifecycle.UnitSupersession.TABLE.stream()
+                        .anyMatch(r -> r.carrier().equals(name));
+                if (isCarrier) {
+                    var standalone = dev.skillmanager.lifecycle.UnitSupersession.TABLE.stream()
+                            .filter(r -> r.carrier().equals(name) && store.containsUnit(r.unit()))
+                            .map(dev.skillmanager.lifecycle.UnitSupersession.Retirement::unit).toList();
+                    Log.info("%s is not in this home yet — install it: skill-manager install github:haydenrear/%s%s",
+                            name, name, standalone.isEmpty() ? ""
+                                    : " (that retires the standalone " + String.join(", ", standalone)
+                                            + " automatically)");
+                }
                 return 3;
             }
         }
