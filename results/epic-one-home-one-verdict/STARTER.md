@@ -11,8 +11,8 @@ decision already taken.
 ## Read in this order
 
 1. **#337** — the epic, with the attribution that motivates it.
-2. **#338, #339, #340, #341** — the tickets. #338 first; #339 and #340 depend
-   on it.
+2. **#338, #339, #340, #341, #346** — the tickets. #338 first; #339, #340 and
+   #341 depend on it. #346 (CI green on a fresh runner) depends on #343.
 3. `results/epic-one-unit-one-name/reviews/epic-close.md` — the previous
    epic's close review, including §9a "resolved since this review was written".
 4. The three deferred backlogs. There are **154 findings** in them and they
@@ -90,6 +90,29 @@ was only found by cloning a real home and running `sync skt` in it.
 
 Neither blocks anything. Both are real gaps and belong in this epic's
 validation plan.
+
+## CI is red on `main` and that is in scope — #346
+
+The nightly has failed every day since at least 2026-09-06, identically on
+`main` and on the epic that preceded this one. #346 owns it:
+
+- **#344** `home-clone`, `checkout-home` — `home.fixpoint.law` refuses a broken
+  shim the fixture plants on purpose.
+- **#345** `home-tripwire`, `ticket-lifecycle`, `onboarding` — cannot pass on a
+  fresh runner. The last two pass locally **only through the operator's own
+  `~/.skill-manager`**.
+- **#343** — `home verify` on macOS misses `/var/…` references when handed
+  `/private/var/…`. It is why local sweeps passed what CI failed, and #344
+  cannot be verified locally until it is fixed.
+
+**Do not trust a local sweep's count.** Gradle stops at the first failing
+graph, so every graph after an early red is silently not run, and
+`validation-reports/` still holds passing reports from earlier runs. That hid a
+real regression until CI ran it (`DEF-OUN-023`). Use CI's per-graph jobs:
+
+```bash
+gh workflow run ci.yml -R haydenrear/skill-manager --ref <branch> -f graph_set=full
+```
 
 ## How to validate anything here
 
