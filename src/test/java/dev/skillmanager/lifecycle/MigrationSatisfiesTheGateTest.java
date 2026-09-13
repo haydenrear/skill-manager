@@ -392,6 +392,43 @@ public final class MigrationSatisfiesTheGateTest {
             assertEquals(1, outcome.graph().resolved().size(), "only the consumer itself resolves");
         });
 
+        suite.test("published work behind STALE tracking refs is not read as unpublished", () -> {
+            // git-issue-skill and meta-orchestrator on 0.27.1: the standalone's
+            // HEAD was on origin, but refs/remotes/origin had not been fetched
+            // since, so the migration halted on "commits that are on no remote".
+            TestHarness h = TestHarness.create();
+            Path bare = Files.createTempDirectory("migration-remote-").resolve("remote.git");
+            git(bare.getParent(), "init", "-q", "--bare", "-b", "main", bare.toString());
+            Path unit = h.store().skillDir(MOVED);
+            Files.createDirectories(unit.getParent());
+            git(unit.getParent(), "clone", "-q", bare.toString(), unit.toString());
+            Files.writeString(unit.resolve("SKILL.md"), "---\nname: " + MOVED + "\ndescription: x\n---\n\nbody\n");
+            git(unit, "add", "-A");
+            git(unit, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "published");
+            // Push by URL, not by remote name: the commit reaches the remote
+            // but refs/remotes/origin/* is NOT updated — the stale-ref state.
+            git(unit, "push", "-q", bare.toString(), "HEAD:refs/heads/main");
+            assertTrue(dev.skillmanager.source.GitOps.publishedRefContaining(unit) == null,
+                    "precondition: the local refs alone say unpublished");
+
+            assertEquals(null, UnitSupersession.blockedFrom(h.store(), MOVED),
+                    "one fetch shows the work is published, so nothing blocks the retirement");
+        });
+
+        suite.test("CONTROL: work that really is on no remote still blocks the retirement", () -> {
+            TestHarness h = TestHarness.create();
+            Path bare = Files.createTempDirectory("migration-remote-").resolve("remote.git");
+            git(bare.getParent(), "init", "-q", "--bare", "-b", "main", bare.toString());
+            Path unit = h.store().skillDir(MOVED);
+            Files.createDirectories(unit.getParent());
+            git(unit.getParent(), "clone", "-q", bare.toString(), unit.toString());
+            Files.writeString(unit.resolve("SKILL.md"), "---\nname: " + MOVED + "\ndescription: x\n---\n\nbody\n");
+            git(unit, "add", "-A");
+            git(unit, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "never pushed");
+            assertEquals("it has commits that are on no remote", UnitSupersession.blockedFrom(h.store(), MOVED),
+                    "the fetch finds nothing, and the gate still refuses");
+        });
+
         suite.test("the carrier is recognised under every repository it has been published from", () -> {
             assertEquals("skt", UnitSupersession.carrierForSource("https://github.com/haydenrear/skt.git").orElse(null),
                     "its current repository");
@@ -503,6 +540,14 @@ public final class MigrationSatisfiesTheGateTest {
                 new dev.skillmanager.project.SkillProjectLock(project, null,
                         "skill-project.toml", "2026-09-13T00:00:00Z", rows,
                         java.util.List.of(), java.util.List.of(), java.util.List.of()));
+    }
+
+    private static void git(Path dir, String... args) throws Exception {
+        java.util.List<String> cmd = new java.util.ArrayList<>(List.of("git"));
+        cmd.addAll(List.of(args));
+        Process p = new ProcessBuilder(cmd).directory(dir.toFile()).redirectErrorStream(true).start();
+        String out = new String(p.getInputStream().readAllBytes());
+        if (p.waitFor() != 0) throw new IllegalStateException("git " + String.join(" ", args) + ": " + out);
     }
 
     /** A child-home registration listing {@code units}, as a project resolve writes one. */

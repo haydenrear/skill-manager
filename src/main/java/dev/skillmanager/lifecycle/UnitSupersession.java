@@ -446,7 +446,14 @@ public final class UnitSupersession {
             return "it has uncommitted changes";
         }
         if (GitOps.publishedRefContaining(dir) == null) {
-            return "it has commits that are on no remote";
+            // The local refs can be days stale: a home that never fetched reads
+            // every commit pulled since as "on no remote", and 0.27.1 halted
+            // project-home migrations on work that was already published. Ask
+            // the remote once before refusing; an unreachable one still refuses.
+            GitOps.fetchAllRemotes(dir);
+            if (GitOps.publishedRefContaining(dir) == null) {
+                return "it has commits that are on no remote";
+            }
         }
         return null;
     }

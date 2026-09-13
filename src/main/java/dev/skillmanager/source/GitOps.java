@@ -245,6 +245,15 @@ public final class GitOps {
         return null;
     }
 
+    /**
+     * Refresh every remote-tracking ref, quietly. False when any remote could
+     * not be reached — the caller keeps whatever the refs said before.
+     */
+    public static boolean fetchAllRemotes(Path dir) {
+        if (!isGitRepo(dir)) return false;
+        return run(dir, List.of("git", "fetch", "--all", "--no-tags", "--quiet")).exit == 0;
+    }
+
     public static String porcelainStatus(Path dir) {
         Result r = run(dir, List.of("git", "status", "--porcelain"));
         return r.exit == 0 ? r.stdout : "";

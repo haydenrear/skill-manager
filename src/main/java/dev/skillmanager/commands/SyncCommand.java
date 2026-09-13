@@ -210,8 +210,18 @@ public final class SyncCommand implements Callable<Integer> {
         // warning). Kind-agnostic check — sync handles both skills and
         // plugins.
         if (name != null && !name.isBlank() && !store.containsUnit(name)) {
-            Log.error("not installed: %s", name);
-            return 3;
+            // A retired unit is not "not installed" to the operator who was
+            // told to sync it: its carrier serves the name now. Saying "not
+            // installed: skill-manager" sent agents off to reinstall it.
+            var retired = dev.skillmanager.lifecycle.UnitSupersession.retirementFor(name);
+            if (retired.isPresent() && store.containsPlugin(retired.get().carrier())) {
+                Log.info("%s ships inside the %s plugin now — syncing %s", name,
+                        retired.get().carrier(), retired.get().carrier());
+                name = retired.get().carrier();
+            } else {
+                Log.error("not installed: %s", name);
+                return 3;
+            }
         }
 
         ResolvedTargets resolved = resolveTargets(store);
