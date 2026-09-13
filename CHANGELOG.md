@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.1](https://github.com/haydenrear/skill-manager/compare/v0.27.0...v0.27.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **migration:** a project claim no longer fails the skill-manager → skt retirement ([84f8ce1](https://github.com/haydenrear/skill-manager/commit/84f8ce13edc6315c1cf267215bb08190422c2c77)), closes [#175](https://github.com/haydenrear/skill-manager/issues/175)
+* **migration:** child-home claims and older references no longer block the retirement ([f833160](https://github.com/haydenrear/skill-manager/commit/f83316033ee0792a8a2a104eda35ab10e2688b79)), closes [#175](https://github.com/haydenrear/skill-manager/issues/175)
+
 ## [0.27.0](https://github.com/haydenrear/skill-manager/compare/v0.26.0...v0.27.0) (2026-09-13)
 
 
