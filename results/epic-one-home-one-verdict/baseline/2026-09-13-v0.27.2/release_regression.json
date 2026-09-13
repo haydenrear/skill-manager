@@ -1,0 +1,106 @@
+{
+  "checks": 6,
+  "disagreements": 3,
+  "could_not_measure": 0,
+  "results": [
+    {
+      "check": "census matches disk",
+      "home": "/Users/hayde/.skill-manager",
+      "measured": true,
+      "agrees": false,
+      "declared": 291,
+      "phantom_outputs": [
+        "unit-store:skill-dev-skill",
+        "unit-store:skill-manager",
+        "cli-shim:brew/claude",
+        "cli-shim:brew/codex",
+        "cli-shim:brew/docker",
+        "cli-shim:brew/gh",
+        "cli-shim:brew/helm",
+        "cli-shim:brew/k3d",
+        "cli-shim:brew/kubernetes-cli",
+        "cli-shim:brew/ollama",
+        "cli-shim:npm/@google/gemini-cli",
+        "cli-shim:pip/pytest",
+        "cli-shim:pip/tb-query",
+        "cli-shim:skill-script/skill-dev",
+        "provisioned-tree:cache/uv-tools"
+      ],
+      "ledger_only_rows": [
+        "projection:default:claude:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+        "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+        "projection:default:codex:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+        "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+        "projection:default:gemini:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+        "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+        "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+        "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+        "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+        "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+        "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+        "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+        "unit-digest:skill-dev-skill",
+        "unit-digest:skill-manager"
+      ]
+    },
+    {
+      "check": "record matches checkout",
+      "home": "/Users/hayde/.skill-manager",
+      "measured": true,
+      "agrees": true,
+      "disagreements": [],
+      "unreadable": []
+    },
+    {
+      "check": "repair agrees with copy-readiness",
+      "home": "/Users/hayde/.skill-manager",
+      "measured": true,
+      "agrees": false,
+      "home_repair_says_clean": true,
+      "copy_probe_says_ready": false,
+      "properties": {
+        "a_no_credential_travels": true,
+        "b_no_shim_names_the_source_home": false,
+        "c_usable_on_another_platform": true
+      }
+    },
+    {
+      "check": "census matches disk",
+      "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+      "measured": true,
+      "agrees": false,
+      "declared": 54,
+      "phantom_outputs": [
+        "cli-shim:brew/docker",
+        "cli-shim:brew/gh",
+        "cli-shim:brew/helm",
+        "cli-shim:brew/k3d",
+        "cli-shim:brew/kubernetes-cli",
+        "cli-shim:brew/opentofu",
+        "cli-shim:pip/pytest"
+      ],
+      "ledger_only_rows": []
+    },
+    {
+      "check": "record matches checkout",
+      "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+      "measured": true,
+      "agrees": true,
+      "disagreements": [],
+      "unreadable": []
+    },
+    {
+      "check": "repair agrees with copy-readiness",
+      "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+      "measured": true,
+      "agrees": true,
+      "home_repair_says_clean": true,
+      "copy_probe_says_ready": true,
+      "properties": {
+        "a_no_credential_travels": true,
+        "b_no_shim_names_the_source_home": true,
+        "c_usable_on_another_platform": true
+      }
+    }
+  ]
+}

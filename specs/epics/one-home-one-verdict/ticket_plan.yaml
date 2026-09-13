@@ -1,0 +1,577 @@
+# Ticket plan -- one-home-one-verdict (#337).
+#
+# STAGED SPEC WORKFLOW, by owner decision 2026-09-13 ("do 3"). The owner chose a
+# full TLA workflow, but `tla-spec-dev scaffold workflow` refuses on this
+# repository: the accepted program model lacks actions.yml, adapters.py,
+# providers.py, effect_provider_usage.yaml and tlc_projection.py. So:
+#   - wave 1 closes on evidence under results/, like the three preceding epics;
+#   - OHV-7 onboards the baseline in wave 1;
+#   - at wave-1 close the epic agent scaffolds specs/current +
+#     specs/desired_program_model ONCE, bumps schedule_revision, and re-renders
+#     the assignments of waves 2-5 to open and close through tla-spec-dev.
+# Every ticket from wave 2 on depends on OHV-7 for that reason.
+version: 1
+schedule_revision: 1
+name: one-home-one-verdict
+slug: one-home-one-verdict
+branch: epic/one-home-one-verdict
+base: "71c5146489fea3283e9df81dba311f53f4169c9e"
+repository: haydenrear/skill-manager
+ticket_prefix: OHV
+updated: "2026-09-13"
+spec_workflow:
+  state: staged
+  blocked_by: OHV-7
+  scaffold_at: wave-1 close, by the epic agent
+  refusal: >
+    tla-spec-dev --spec-root specs scaffold workflow --dry-run OHV-0 ... ->
+    "the accepted program model is incomplete", five baseline files missing.
+
+purpose: >
+  A home has no single description of itself, so every guard reimplements a
+  partial one.
+
+  41% of 154 findings across three epic backlogs are a guard whose rule is
+  narrower than its name; 25% are two records of one fact disagreeing; 19.5%
+  are a home's identity written as an absolute path. Five commands answer five
+  different questions about one home, and the kickoff baseline on v0.27.2
+  (results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/) measured all
+  five exiting 0 on root and this project home, which carry four damaged facts
+  each. The sharpest instance is DEF-OHV-001: `home repair` exempts a shim its
+  own rewrite left half-anchored, because its rule is "can I rewrite this", not
+  "does this name the home".
+
+adjacent:
+  - {issue: 351, why: "Gemini consumes no plugins -- agent projection, not home verdicts"}
+  - {issue: 353, why: "eval harness: a max_turns run loses Stop-hook graders (#328)"}
+  - {issue: 327, why: "remove/uninstall on unpushed checkouts -- owner decision on remove friction"}
+  - {issue: 269, why: "HBR-1 child-home shim boundary -- the open home-boundary-resolution epic"}
+  - {finding: DEF-OHV-006, why: "skt ticket sweep cannot prove squash-merged work -- skt plugin"}
+
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-one-home-one-verdict/deferred/backlog.yaml
+  rule: >
+    A failure case outside a ticket's declared slice is appended to the backlog
+    with its reproduction and left there. Two additions for this epic, agreed
+    2026-09-13: (1) search results/*/deferred/backlog.yaml and GitHub issues for
+    a duplicate BEFORE filing -- 155 predecessor findings are uncross-referenced
+    and #334 duplicated #292; (2) a finding about home state names the disk
+    observation that shows it, so it can be planted as a shape for
+    GOAL-one-verdict. Every defect is also recorded in bug attribution under
+    results/epic-one-home-one-verdict/attribution/.
+
+review_policy:
+  cadence: wave
+  gate: true
+  merges: owner
+  walkthrough: required
+  artifact_root: results/epic-one-home-one-verdict/reviews/
+  rule: >
+    The epic agent merges each wave's PRs into the epic branch in promotion
+    order, then writes the review artifact and stops. Silence is not approval.
+    Each wave's graph evidence is a CI run on the epic branch
+    (`gh workflow run ci.yml --ref epic/one-home-one-verdict -f graph_set=full`)
+    read from graphs-executed.json -- a local sweep's count is not evidence.
+
+validation_standards: >
+  Run the real thing on real homes: for any change to what a sync installs,
+  retires or reports, back up installed/ and run this repo's ./skill-manager
+  against real project homes (not commit-diff-context-parent unless the owner
+  says so). macOS can disagree with Linux CI on home-path scans (#343). An eval
+  measures only a released build.
+
+epic_goals:
+  - id: GOAL-one-verdict
+    kind: quality
+    evidence_root: results/epic-one-home-one-verdict/goals/GOAL-one-verdict/
+    evaluation_ticket: OHV-8
+    statement: >
+      One reader answers "is this home alright", `home verify` and `home repair`
+      are views over it, and no verdict command exits 0 on a home that reader
+      calls damaged.
+    metric: >
+      (1) planted shapes, in OHV-0's scratch home, that the reader and both
+      views report, out of all planted; (2) on root and this project home,
+      facts an independent disk observation finds damaged while any verdict
+      command exits 0; (3) fleet homes damaged by independent observation while
+      `home repair` exits 0 -- context, not verdict.
+    harness: "python3 scripts/measure_goal_one_verdict.py (built by OHV-0); python3 scripts/measure_goals.py --epic one-home-one-verdict"
+    baseline:
+      value: >
+        (1) no such instrument. (2) root 4, project 4 -- all five commands exit
+        0 on both (root: 3 half-rewritten shims, 15 missing census outputs + 14
+        ledger-only rows, another home's marketplace enabled in Codex and
+        Claude, 5 stale record versions; project: 3 dangling agent links + 1
+        orphaned projection record, 7 missing census outputs, 1 stale record
+        version). release_regression.py: 3 of 6 checks disagree. (3) 2 of 61
+        homes.
+      measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
+      evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/baseline.json
+    target: "(1) every planted shape reported by the reader and both views; (2) 0 on both homes; (3) reported, no threshold"
+
+  - id: GOAL-one-record
+    kind: quality
+    evidence_root: results/epic-one-home-one-verdict/goals/GOAL-one-record/
+    evaluation_ticket: OHV-8
+    statement: "A home holds one record of what it has: the census names nothing the disk does not hold, and a prune stays pruned."
+    metric: >
+      (1) census outputs missing on disk (independent stat) plus ledger-only
+      rows, on root and this project home; (2) rows a prune drops that the
+      re-record restores.
+    harness: "python3 scripts/measure_goal_one_record.py (built by OHV-0, wraps release_regression.py R1); test_graph artifact-dag uninstall.prunes.the.subgraph"
+    baseline:
+      value: "(1) root 15 missing + 14 ledger-only (stat: 18 missing, 3 unknown); project 7 + 0. (2) fixpoint: 59 before, 59 after (#340, 2026-09-12)"
+      measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
+      evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/release_regression.json
+    target: "(1) 0 and 0 on both homes; (2) 0"
+
+  - id: GOAL-no-own-home-path
+    kind: quality
+    evidence_root: results/epic-one-home-one-verdict/goals/GOAL-no-own-home-path/
+    evaluation_ticket: OHV-8
+    statement: "No generated file spells its own home's path; one token and one reader re-anchor it."
+    metric: >
+      (1) generated files spelling the home's own absolute path, on root, this
+      project home, and a raw copy of each; (2) the copied-home probe's
+      properties; (3) fleet homes with such a bin/cli entry -- context.
+    harness: "python3 scripts/measure_goal_no_own_home_path.py (built by OHV-0); python3 scripts/measure_goal_a_home_survives_being_copied.py"
+    baseline:
+      value: "(1) root 3 (computeq, helm-deploy, monitoring, half-rewritten, unreported by home repair); project 0. (2) root 2 of 3, project 3 of 3. (3) 51 of 61"
+      measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
+      evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/copied-home-root.json
+    target: "(1) 0; (2) 3 of 3 on both; (3) reported, no threshold"
+
+  - id: GOAL-one-marketplace-identity
+    kind: integration
+    evidence_root: results/epic-one-home-one-verdict/goals/GOAL-one-marketplace-identity/
+    evaluation_ticket: OHV-8
+    statement: "A home's plugin marketplace has one identity, and every agent registration agrees with it."
+    metric: >
+      (1) of #352's four shapes planted in a scratch home: reported by the
+      reader, cleared by `home repair --fix`, and 0 AGENT_SYNC_FAILED on the
+      next sync; (2) shapes present on root and this project home; (3) fleet
+      homes with shape 1, 3 or 4 -- context.
+    harness: "python3 scripts/measure_goal_one_marketplace_identity.py (built by OHV-0)"
+    baseline:
+      value: "(1) no such instrument. (2) root: shape 4 (Codex skill-manager-919db26e; Claude enables skt@ and cdc-agent-substrate-plugin@skill-manager-919db26e), shape 2 exposed; project: none. (3) shape 1/3/4 = 0/15/11, any = 24 of 61"
+      measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
+      evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/fleet.json
+    target: "(1) 4 of 4 reported and cleared, 0 AGENT_SYNC_FAILED; (2) 0; (3) reported, no threshold"
+
+  - id: GOAL-ci-green-fresh-runner
+    kind: integration
+    evidence_root: results/epic-one-home-one-verdict/goals/GOAL-ci-green-fresh-runner/
+    evaluation_ticket: OHV-8
+    statement: "The full graph set runs green on a fresh CI runner, and a local sweep reports only what it executed."
+    metric: "graphs_executed vs graphs_selected, and graphs_failed, in graphs-executed.json of a graph_set=full run on the epic tip"
+    harness: "gh workflow run ci.yml -R haydenrear/skill-manager --ref epic/one-home-one-verdict -f graph_set=full; gh run download <id> -n graphs-executed"
+    baseline:
+      value: "25 selected, 25 executed, 19 passed, 6 failed (artifact-dag, checkout-home, home-clone, home-tripwire, onboarding, ticket-lifecycle) -- run 34786751392"
+      measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
+      evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/ci-34786751392-graphs-executed.json
+    target: "executed == selected, 0 failed; any exclusion carries a recorded reason in select-graph-set.py EXCLUDED"
+
+  - id: GOAL-verdict-names-its-build
+    kind: quality
+    evidence_root: results/epic-one-home-one-verdict/goals/GOAL-verdict-names-its-build/
+    evaluation_ticket: OHV-8
+    statement: "Every verdict names the build that produced it."
+    metric: "verdict commands (home verify, home repair, home drift, artifacts list, skt check) whose output names the build, asserted across two different builds"
+    harness: "the OHV-1 two-build test, and python3 scripts/measure_goal_one_verdict.py's build column (OHV-0)"
+    baseline:
+      value: "0 of 5 -- the pinned repo build 0.27.2+g71c5146 and released 0.27.2 print identical verdicts"
+      measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
+      evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/raw/
+    target: "5 of 5, distinguishable across two builds"
+
+tickets:
+  - id: OHV-1
+    github_issue: https://github.com/haydenrear/skill-manager/issues/338
+    title: "Every verdict names the build that produced it"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 1
+    depends_on: []
+    blocks: ["OHV-2", "OHV-3", "OHV-4", "OHV-6", "OHV-8"]
+    promotion_order: 1
+    promotion_predecessor: null
+    slice: >
+      The build string in the output of home verify, home repair, home drift,
+      artifacts list and skt check (skt lives in skill-publisher-skill: publish
+      that half with `skt publish`), plus the attribution classifier over
+      results/*/deferred/backlog.yaml. No verdict changes.
+    conflict_keys:
+      production: ["cli/verdict-rendering", "skt/check-rendering", "scripts/classify-findings"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    validation:
+      tlc: "N/A: staged spec workflow -- no TLA workflow exists until OHV-7 lands and the epic agent scaffolds it at wave-1 close"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["plugin-smoke", "home-integrity"]
+      spec_graph: "N/A: staged spec workflow -- spec-conformance is kept green through validation.graphs of OHV-7"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-1/
+    goals:
+      - goal: GOAL-verdict-names-its-build
+        contribution: direct
+        expected_effect: "0 of 5 -> 5 of 5 verdict commands name their build"
+        local_signal: "run home repair on one home with ./skill-manager and with /opt/homebrew/bin/skill-manager; the two outputs differ in the build line"
+      - goal: GOAL-one-verdict
+        contribution: enabling
+        expected_effect: "none -- enabling only; makes before/after verdict comparisons attributable to a build"
+        local_signal: "N/A: enabling only"
+
+  - id: OHV-7
+    github_issue: https://github.com/haydenrear/skill-manager/issues/357
+    title: "Onboard the accepted spec baseline so a TLA workflow can be scaffolded"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 1
+    depends_on: []
+    blocks: ["OHV-2", "OHV-3", "OHV-4", "OHV-6", "OHV-8"]
+    promotion_order: 2
+    promotion_predecessor: OHV-1
+    slice: >
+      specs/program_model baseline files only: both views, both adapter
+      mappings, providers, effect-provider usage, TLC projection. No .tla
+      semantic change, no production change, no scaffold (the epic agent does it).
+    conflict_keys:
+      production: []
+      tla: ["specs/program_model/baseline-files"]
+      adapters: ["specs/program_model/adapters"]
+      test_graph: ["graph/spec-conformance"]
+      workflow: ["spec/baseline-onboarding"]
+    validation:
+      tlc: "bash specs/program_model/run_tlc.sh"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["spec-conformance"]
+      spec_graph: "spec-conformance"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-7/
+    goals:
+      - goal: GOAL-ci-green-fresh-runner
+        contribution: guard
+        expected_effect: "spec-conformance stays green; `scaffold workflow --dry-run` exits 0 where it refused"
+        local_signal: "tla-spec-dev --spec-root specs scaffold workflow --dry-run OHV-2 probe; python skills/test_graph/scripts/run.py spec-conformance"
+
+  - id: OHV-0
+    github_issue: https://github.com/haydenrear/skill-manager/issues/356
+    title: "The epic's goal harnesses and a home planted with every known defect shape"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 1
+    depends_on: []
+    blocks: ["OHV-2", "OHV-3", "OHV-4", "OHV-6", "OHV-8"]
+    promotion_order: 3
+    promotion_predecessor: OHV-7
+    slice: >
+      scripts/measure_goal_{one_verdict,one_record,no_own_home_path,one_marketplace_identity}.py,
+      their EPICS registration in scripts/measure_goals.py, and a test-side
+      planted-shape home builder. Reads real homes, never writes them. No
+      production change.
+    conflict_keys:
+      production: ["scripts/goal-harnesses"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: ["plan/baseline"]
+    validation:
+      tlc: "N/A: staged spec workflow -- no TLA workflow exists until OHV-7 lands"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["home-integrity"]
+      spec_graph: "N/A: staged spec workflow"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-0/
+    goals:
+      - goal: GOAL-one-verdict
+        contribution: enabling
+        expected_effect: "none -- enabling only; the matrix clause gets an instrument, and it reproduces root 4 / project 4"
+        local_signal: "python3 scripts/measure_goals.py --epic one-home-one-verdict"
+      - goal: GOAL-one-record
+        contribution: enabling
+        expected_effect: "none -- enabling only; reproduces root 15+14, project 7+0"
+        local_signal: "python3 scripts/measure_goal_one_record.py"
+      - goal: GOAL-no-own-home-path
+        contribution: enabling
+        expected_effect: "none -- enabling only; reproduces root 3 half-rewritten shims, separated from shims home repair already reports"
+        local_signal: "python3 scripts/measure_goal_no_own_home_path.py"
+      - goal: GOAL-one-marketplace-identity
+        contribution: enabling
+        expected_effect: "none -- enabling only; the four shapes planted and reproduced on root"
+        local_signal: "python3 scripts/measure_goal_one_marketplace_identity.py"
+
+  - id: OHV-5
+    github_issue: https://github.com/haydenrear/skill-manager/issues/346
+    title: "The full graph set runs green on a fresh CI runner, and local sweeps report what they ran"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 1
+    depends_on: []
+    blocks: ["OHV-4", "OHV-8"]
+    promotion_order: 4
+    promotion_predecessor: OHV-0
+    slice: >
+      #343 (home-path alias spellings in home verify), #344 (an intentionally
+      damaged marker the fixpoint law skips), #345 (provision the runner for
+      home-tripwire, ticket-lifecycle, onboarding), #297 (journal exclusion in
+      treeDigest), DEF-OUN-023 (run.py --all continues past a red and counts
+      only what it executed). artifact-dag stays OHV-3's.
+    conflict_keys:
+      production: ["store/root-spellings"]
+      tla: []
+      adapters: []
+      test_graph: ["laws/fixpoint", "graph/home-clone", "graph/checkout-home", "graph/home-tripwire", "graph/ticket-lifecycle", "graph/onboarding", "runner/run-all", "ci/select-graph-set"]
+      workflow: []
+    validation:
+      tlc: "N/A: staged spec workflow -- no TLA workflow exists until OHV-7 lands"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["home-clone", "checkout-home", "home-tripwire", "ticket-lifecycle", "onboarding", "plugin-smoke"]
+      spec_graph: "N/A: staged spec workflow"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-5/
+    goals:
+      - goal: GOAL-ci-green-fresh-runner
+        contribution: direct
+        expected_effect: "6 failed -> 1 failed (artifact-dag, owned by OHV-3); executed == selected"
+        local_signal: "gh workflow run ci.yml -R haydenrear/skill-manager --ref feature/OHV-5 -f graph_set=full, read graphs-executed.json"
+      - goal: GOAL-one-verdict
+        contribution: direct
+        expected_effect: "the /var vs /private/var planted shape (#343) is reported by home verify"
+        local_signal: "HomeVerifyPathSpellingTest with a /private/var-given home holding a /var reference"
+
+  - id: OHV-3
+    github_issue: https://github.com/haydenrear/skill-manager/issues/340
+    title: "One record of what a home holds"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 2
+    depends_on: ["OHV-0", "OHV-1", "OHV-7"]
+    blocks: ["OHV-8"]
+    promotion_order: 5
+    promotion_predecessor: OHV-5
+    slice: >
+      The ledger writer behind uninstall and retirement: fix the ArtifactPrune /
+      ArtifactIndex re-record fixpoint FIRST, then reap rows on uninstall and on
+      retirement (DEF-OHV-003), each change landed on its own against
+      plugin-smoke AND artifact-dag. #292 is the first proof. Detection of
+      census phantoms belongs to OHV-2's reader, not here.
+    conflict_keys:
+      production: ["artifacts/ledger-writer", "commands/uninstall", "lifecycle/retirement-ledger"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/artifact-dag"]
+      workflow: []
+    validation:
+      tlc: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["artifact-dag", "plugin-smoke"]
+      spec_graph: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-3/
+    goals:
+      - goal: GOAL-one-record
+        contribution: direct
+        expected_effect: "fixpoint 59->59 becomes a prune that stays pruned; root 15+14 and project 7+0 -> 0+0 after an owner-approved sync of each"
+        local_signal: "python3 scripts/measure_goal_one_record.py; python skills/test_graph/scripts/run.py artifact-dag"
+      - goal: GOAL-ci-green-fresh-runner
+        contribution: direct
+        expected_effect: "artifact-dag red -> green"
+        local_signal: "python skills/test_graph/scripts/run.py artifact-dag"
+      - goal: GOAL-one-verdict
+        contribution: guard
+        expected_effect: "no planted shape stops being reported"
+        local_signal: "python3 scripts/measure_goal_one_verdict.py --planted-only"
+
+  - id: OHV-2
+    github_issue: https://github.com/haydenrear/skill-manager/issues/339
+    title: "One reader for home state, with verify and repair as views over it"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 2
+    depends_on: ["OHV-0", "OHV-1", "OHV-7"]
+    blocks: ["OHV-4", "OHV-6", "OHV-8"]
+    promotion_order: 6
+    promotion_predecessor: OHV-3
+    slice: >
+      One canonical home-state reader; home verify and home repair re-expressed
+      as views. It reads agent links outside the home and projection records
+      (#339 comment, DEF-OHV-002) and census phantoms. Pin current answers as
+      tests first, then refactor. DamagedHomeIsRepairableTest's Kind.values()
+      guard survives intact. drift, skt check and artifacts list follow later.
+    conflict_keys:
+      production: ["store/home-state-reader", "store/home-repair-kinds", "commands/home-verify"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/home-integrity"]
+      workflow: []
+    validation:
+      tlc: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["home-integrity", "plugin-smoke", "home-clone"]
+      spec_graph: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-2/
+    goals:
+      - goal: GOAL-one-verdict
+        contribution: direct
+        expected_effect: "planted shapes reported by reader + both views: most of the matrix (all but #352's and the half-rewritten shim); project home 4 -> 1 unreported fact"
+        local_signal: "python3 scripts/measure_goal_one_verdict.py"
+      - goal: GOAL-one-record
+        contribution: guard
+        expected_effect: "the reader reports census phantoms; it writes nothing"
+        local_signal: "python3 scripts/measure_goal_one_record.py"
+
+  - id: OHV-4
+    github_issue: https://github.com/haydenrear/skill-manager/issues/341
+    title: "A home never spells its own path"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 3
+    depends_on: ["OHV-0", "OHV-1", "OHV-2", "OHV-5", "OHV-7"]
+    blocks: ["OHV-8"]
+    promotion_order: 7
+    promotion_predecessor: OHV-2
+    slice: >
+      One token (ShimHomeContract.SHIM_HOME_VAR) for every generated surface,
+      exec lines included; the reader's own-path detector on CONTENT, not on
+      whether a rewrite is available (DEF-OHV-001). Symlink targets stay
+      relative and out of scope.
+    conflict_keys:
+      production: ["store/shim-home-contract", "store/home-cloner-reanchor", "artifacts/cold-artifact-shim", "store/home-repair-kinds"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/home-clone"]
+      workflow: []
+    validation:
+      tlc: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["home-clone", "checkout-home", "plugin-smoke", "home-integrity"]
+      spec_graph: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-4/
+    goals:
+      - goal: GOAL-no-own-home-path
+        contribution: direct
+        expected_effect: "root 3 -> 0 after `home repair --fix`; copied-home probe 2 of 3 -> 3 of 3"
+        local_signal: "python3 scripts/measure_goal_no_own_home_path.py; python3 scripts/measure_goal_a_home_survives_being_copied.py"
+      - goal: GOAL-one-verdict
+        contribution: direct
+        expected_effect: "the half-rewritten-shim planted shape is reported; root 4 -> 3 unreported facts"
+        local_signal: "python3 scripts/measure_goal_one_verdict.py"
+
+  - id: OHV-6
+    github_issue: https://github.com/haydenrear/skill-manager/issues/352
+    title: "A home's plugin marketplace has one identity, and every agent registration agrees with it"
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 4
+    depends_on: ["OHV-0", "OHV-1", "OHV-2", "OHV-7"]
+    blocks: ["OHV-8"]
+    promotion_order: 8
+    promotion_predecessor: OHV-4
+    slice: >
+      Registration reconciled by identity and path, never substring; the
+      generated name derived, never trusted from disk; a registration into
+      another home's marketplace is a reader finding repaired by home repair
+      (Codex AND Claude enabledPlugins, DEF-OHV-005). Validated on tla-spec-dev,
+      meta-orchestrator, a wt-2xx worktree and meta-harness.
+    conflict_keys:
+      production: ["project/plugin-marketplace", "project/harness-plugin-cli", "store/home-repair-kinds"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/plugin-smoke"]
+      workflow: []
+    validation:
+      tlc: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["plugin-smoke", "home-clone", "home-integrity"]
+      spec_graph: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-6/
+    goals:
+      - goal: GOAL-one-marketplace-identity
+        contribution: direct
+        expected_effect: "4 of 4 planted shapes reported and cleared; root shape 4 -> 0; 0 AGENT_SYNC_FAILED on the named homes' next sync"
+        local_signal: "python3 scripts/measure_goal_one_marketplace_identity.py"
+      - goal: GOAL-one-verdict
+        contribution: direct
+        expected_effect: "#352's planted shapes reported; root 3 -> 2 unreported facts"
+        local_signal: "python3 scripts/measure_goal_one_verdict.py"
+
+  - id: OHV-8
+    github_issue: https://github.com/haydenrear/skill-manager/issues/358
+    title: "Terminal evaluation -- decide the six goals on the integrated epic"
+    status: planned
+    role: evaluation
+    owns_goals: ["GOAL-one-verdict", "GOAL-one-record", "GOAL-no-own-home-path", "GOAL-one-marketplace-identity", "GOAL-ci-green-fresh-runner", "GOAL-verdict-names-its-build"]
+    schedule_revision: 1
+    wave: 5
+    depends_on: ["OHV-0", "OHV-1", "OHV-2", "OHV-3", "OHV-4", "OHV-5", "OHV-6", "OHV-7"]
+    blocks: []
+    promotion_order: 9
+    promotion_predecessor: OHV-6
+    slice: >
+      Run every goal harness on the reconciled epic tip from a fresh start,
+      after all contributors merge; also the two things never tested for real:
+      an onboard from a machine with no home, and child-home fan-out. Report
+      baseline -> measured -> target per clause. No behavioural change.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: ["plan/evaluation"]
+    validation:
+      tlc: "N/A until the wave-1-close scaffold; re-rendered at that schedule revision"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["smoke", "onboard", "sponsored", "source-tracking", "git-latest-source-tracking", "plugin-smoke", "harness-smoke", "doc-smoke", "project-manifest", "project-resolve", "project-smoke", "spec-conformance", "project-child-home", "home-clone", "home-tripwire", "checkout-home", "home-sync", "ticket-lifecycle", "project-env", "project-libs", "project-profiles", "artifact-dag", "onboarding", "home-integrity", "sync-settles"]
+      spec_graph: "spec-conformance"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-8/
+    goals:
+      - goal: GOAL-one-verdict
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-one-record
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-no-own-home-path
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-one-marketplace-identity
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-ci-green-fresh-runner
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-verdict-names-its-build
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"

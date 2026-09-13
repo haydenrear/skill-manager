@@ -1,0 +1,166 @@
+# Deferred findings — epic one-home-one-verdict (#337)
+#
+# Append-only. Agents add entries; only the epic owner edits `disposition`.
+# Before adding: search results/*/deferred/backlog.yaml and GitHub issues for a
+# duplicate (the three predecessor backlogs hold 155 entries, and #334 was filed
+# two weeks after #292 recorded it).
+#
+# Seeded at kickoff (2026-09-13, main 71c51464, v0.27.2) by the baseline in
+# results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/.
+
+findings:
+  - id: DEF-OHV-001
+    found_by: kickoff baseline
+    found_at_commit: 71c51464
+    severity: major
+    maps_to: OHV-4 (#341); detection gap for OHV-2 (#339)
+    related: [DEF-OUN-018, DEF-283, DEF-HBR-001]
+    summary: >
+      Three root-home bin/cli shims (computeq, helm-deploy, monitoring) open with
+      "# Rewritten by skill-manager: resolve the home this shim is standing in"
+      and then exec an ABSOLUTE root path,
+      /Users/hayde/.skill-manager/cache/skill-script-deploy-helm-<tool>/venv/bin/<tool>.
+      The rewrite re-anchored the header and missed the skill-script venv exec line.
+    reproduction: >
+      head -6 ~/.skill-manager/bin/cli/computeq  -> line 6 holds the literal home.
+      skill-manager home repair --home ~/.skill-manager --json -> rc 0, 0 findings, 78 examined.
+      python3 scripts/measure_goal_a_home_survives_being_copied.py ~/.skill-manager
+      -> property (b) not met, offenders computeq/helm-deploy/monitoring.
+    evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/copied-home-root.json]
+    impact: >
+      GOAL-a-home-survives-being-copied-into-an-image (one-unit-one-name), MET at
+      2026-09-12, reads NOT MET on 0.27.2. A home copied into an image executes the
+      source host's venv path.
+    mechanism: >
+      HomeRepair reports FROZEN_HOME_PATH_IN_SHIM only when
+      ShimHomeContract.selfDerivingRewrite(store, shim) still returns a rewrite
+      (HomeRepair.java:971). The root shims are HALF-rewritten: the export line reads
+      ${SKILL_MANAGER_SHIM_HOME}, and the exec line is still literal. The rewriter has
+      nothing left to offer, so the detector exempts the shim. The same shim with no
+      rewrite at all IS reported (meta-orchestrator: FROZEN_HOME_PATH_IN_SHIM on
+      bin/cli/computeq, helm-deploy, monitoring). The detector's rule is "can I rewrite
+      this", not "does this name the home", and the repair path produces the shape it
+      then skips.
+    why_not_a_duplicate: >
+      DEF-HBR-001 is skill-dev-skill's install.sh generator, now retired. DEF-OUN-018
+      was the missing detector, which has been added. This is that detector exempting
+      a shim the rewriter left half-done.
+    suggested_fix: detect on content (any literal home spelling in an exec/export line), independent of whether a rewrite is available; make the rewrite cover exec lines
+    disposition: pending
+
+  - id: DEF-OHV-002
+    found_by: kickoff baseline
+    found_at_commit: 71c51464
+    severity: major
+    maps_to: OHV-2 (#339, comment 2026-09-13)
+    related: [DEF-047, DEF-054, "#339 comment"]
+    summary: >
+      This repo's checkout holds 3 dangling agent links,
+      .claude/.codex/.gemini/skills/skill-manager, pointing at the project home's
+      retired skills/skill-manager. There is also an orphaned
+      installed/skill-manager.projections.json. `home verify` says every reference
+      resolves, while `artifacts list` marks the same three projections
+      `agreement: disagrees`. Two commands give opposite answers about one fact.
+    reproduction: >
+      ls -l .claude/skills/skill-manager (dangling);
+      skill-manager home verify --home .skill-manager -> rc 0;
+      skill-manager artifacts list --json -> three projection rows with agreement=disagrees.
+    evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/baseline.json]
+    note: >
+      The 0.27.2 attribution's batch 3 reports "0 dangling agent links" over 31
+      homes. This repo's own project home was not in that batch.
+    disposition: pending
+
+  - id: DEF-OHV-003
+    found_by: kickoff baseline
+    found_at_commit: 71c51464
+    severity: minor
+    maps_to: OHV-3 (#340)
+    related: [DEF-066, DEF-HBR-003, DEF-OUN-015, DEF-OUN-019, "#292"]
+    summary: >
+      Retirement leaves ledger phantoms too, not only uninstall. The root census
+      carries 14 ledger-only rows for retired units: skill-dev-skill and
+      skill-manager projections (default, commit-diff-context-parent, meta-harness)
+      and their unit-digests. It also carries 15 missing outputs.
+    reproduction: python3 scripts/release_regression.py -> R1 root ledger_only_rows (14), phantom_outputs (15)
+    evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/release_regression.json]
+    disposition: pending
+
+  - id: DEF-OHV-004
+    found_by: kickoff baseline
+    found_at_commit: 71c51464
+    severity: minor
+    maps_to: OHV-3 (#340)
+    summary: >
+      installed/<unit>.json `version` is stale although `gitHash` matches the
+      checkout. On root: acp-cdc-ai-python 0.1.0 vs 0.2.0, git-epic-workflow 0.1.0
+      vs 0.4.1, git-issue-workflow 0.4.0 vs 0.4.1, git-issue 0.1.0 vs 0.4.0, skt
+      0.8.1 vs 0.8.2. On project: skt 0.8.1 vs 0.8.2. `skt check` compares hashes
+      and says all current; `skt status` prints the stale record version
+      ("skt 0.8.1").
+    reproduction: >
+      python3 -c "import json;print(json.load(open('.skill-manager/installed/skt.json'))['version'])" -> 0.8.1;
+      git -C .skill-manager/plugins/skt show HEAD:.claude-plugin/plugin.json | grep version -> 0.8.2
+    evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/baseline.json]
+    why_not_a_duplicate: no backlog entry or issue names a record version disagreeing with its checkout manifest
+    disposition: pending
+
+  - id: DEF-OHV-005
+    found_by: kickoff baseline
+    found_at_commit: 71c51464
+    severity: minor
+    maps_to: OHV-6 (#352), shape 4
+    summary: >
+      Shape 4's Claude-side variant: the root ~/.claude/settings.json enables
+      skt@skill-manager-919db26e and cdc-agent-substrate-plugin@skill-manager-919db26e,
+      which is commit-diff-context-parent's marketplace, alongside the root's own.
+      #352 records shape 4 for Codex only.
+    reproduction: python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['enabledPlugins'])"
+    evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/baseline.json]
+    suggested_fix: add to #352 as a comment, not a new issue
+    disposition: pending
+
+  - id: DEF-OHV-006
+    found_by: kickoff (previous epic's worktree sweep)
+    found_at_commit: 71c51464
+    severity: major
+    maps_to: "adjacent: skt plugin (skill-publisher-skill), not this epic"
+    summary: >
+      `skt ticket sweep` cannot prove merged work in a repository that squash-merges.
+      Without --target or --epic it prints "would remove" for all 14 worktrees and
+      skips containment ("containment was not checked"). With --target origin/main,
+      13 of 14 are BLOCKED for "commits not contained", although every PR is merged:
+      the seven main-based PRs are commit-contained, and the six epic-based ones
+      reached main through #335's squash, with a 0-file tree diff. The default path
+      is narrower than its name, and the explicit path cannot recognise the merge
+      style this repository uses.
+    reproduction: >
+      skt ticket list --target origin/main  -> 13 BLOCKED;
+      skt ticket sweep  -> 14 would remove, note "containment was not checked";
+      gh pr view <n> --json mergeCommit + git merge-base --is-ancestor -> all merged into their base
+    evidence: [results/epic-one-home-one-verdict/attribution/2026-09-13-kickoff-baseline.md]
+    suggested_fix: accept PR-merged (gh) or tree-equivalence as containment; make the no-target default refuse rather than skip
+    disposition: pending
+
+  - id: DEF-OHV-007
+    found_by: kickoff baseline
+    found_at_commit: 71c51464
+    severity: minor
+    maps_to: none (instrument)
+    summary: >
+      scripts/measure_goals.py ignores --help and runs the full goal ledger,
+      several minutes across every home on the machine.
+    reproduction: python3 scripts/measure_goals.py --help
+    disposition: pending
+
+  - id: DEF-OHV-008
+    found_by: kickoff baseline
+    found_at_commit: 71c51464
+    severity: minor
+    maps_to: "adjacent: OHV-5 (#346) test hygiene"
+    summary: >
+      A test-fixture gateway outlived its test. pid 92590 was running
+      `gateway.server --config /var/folders/.../supersession-sync-10428141792301021182/home/...`
+      after 6h46m, with nothing owning it.
+    reproduction: ps -eo pid,etime,command | grep 'supersession-sync-.*gateway'
+    disposition: pending
