@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.27.0](https://github.com/haydenrear/skill-manager/compare/v0.26.0...v0.27.0) (2026-09-13)
+
+
+### Features
+
+* **cli:** deps --who-imports — the reverse edge, recomputed, cycle-safe ([9ac7b82](https://github.com/haydenrear/skill-manager/commit/9ac7b82c093f6adbf587d3dc0f2afe82c711b446)), closes [#301](https://github.com/haydenrear/skill-manager/issues/301)
+* **epic:** OUN-0 — baselines for all four goals, and the addressing rule ([59be78a](https://github.com/haydenrear/skill-manager/commit/59be78aec62b37049fda4e9e0230eb71c0d14917)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **goals:** the copied-home goal has a harness, and it reports 1 of 3 ([39021d2](https://github.com/haydenrear/skill-manager/commit/39021d26b4bad31832ff49888d9b60438bb53edd))
+* **install:** refuse a plugin whose contained skill name is already claimed ([16fb325](https://github.com/haydenrear/skill-manager/commit/16fb32533baf7b60112329498622388757f89be9)), closes [#302](https://github.com/haydenrear/skill-manager/issues/302)
+* **migration:** retire what an upgrade supersedes, before the gate refuses it ([bcd410d](https://github.com/haydenrear/skill-manager/commit/bcd410d794b0e025179d97e443c3735a696ce6a6))
+* **repair:** home repair heals the two defects a copied home carries (DEF-OUN-018) ([ffa2108](https://github.com/haydenrear/skill-manager/commit/ffa2108b3bd25b7738f0120d55f34968943676c1))
+* **resolve:** a contained skill is addressed plugin:skill, and has no coordinate (OUN-13) ([4cdb356](https://github.com/haydenrear/skill-manager/commit/4cdb3564ece520dd36687eb6714aae8d36d2770c))
+* **resolve:** a plugin-contained skill is addressable by name ([ec21559](https://github.com/haydenrear/skill-manager/commit/ec21559b6f778a1d94aee8960956efab1736b7c2)), closes [#300](https://github.com/haydenrear/skill-manager/issues/300)
+* **units:** delete skill-dev-skill everywhere, and retire OUN-11 ([b130862](https://github.com/haydenrear/skill-manager/commit/b130862bfd290237c97826d8d60555f51b7e3a58)), closes [#303](https://github.com/haydenrear/skill-manager/issues/303)
+
+
+### Bug Fixes
+
+* **agents:** an install must not write into this home's own unit storage ([2d16252](https://github.com/haydenrear/skill-manager/commit/2d16252a6b99f686d9b3895b92e7c2e494de8b3b)), closes [#311](https://github.com/haydenrear/skill-manager/issues/311)
+* **artifacts:** the row is not the bytes — uninstall stops leaving phantoms ([#292](https://github.com/haydenrear/skill-manager/issues/292)) ([252c6c4](https://github.com/haydenrear/skill-manager/commit/252c6c48d1a70b3b8686c08d2cf6e606af22d769))
+* **ci:** a closed spec workflow should not turn every run red ([f6f7552](https://github.com/haydenrear/skill-manager/commit/f6f7552f0acbbddeada50ca60d66d2075683d51b)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **ci:** a closed spec workflow should not turn every run red ([bfca8a8](https://github.com/haydenrear/skill-manager/commit/bfca8a8bb13548f132ca453487294ab8deae11bd)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **cli:** a shim resolves the home it is standing in, not the one it was written in ([43e5fb9](https://github.com/haydenrear/skill-manager/commit/43e5fb9949a8d0debc6e4bcf1c6a25e72d3b3cec)), closes [#315](https://github.com/haydenrear/skill-manager/issues/315)
+* **clone:** OUN-10 made the cold-artifact detector blind, and only the merge showed it ([0e90b53](https://github.com/haydenrear/skill-manager/commit/0e90b534f9cf1aff84ed3d736b2b58d8f1fd104d))
+* **clone:** re-anchor by every spelling that reaches the source home ([#330](https://github.com/haydenrear/skill-manager/issues/330)) ([e4885dd](https://github.com/haydenrear/skill-manager/commit/e4885dde70933fee5b6ee1cf28a6e53d4259330c))
+* **epic:** declare the branch name the sanctioned command actually creates ([8d09ce6](https://github.com/haydenrear/skill-manager/commit/8d09ce6698b7f2ffe316ad5d513aa956108627c0))
+* **epic:** six defects found reviewing OUN-0's own diff ([b82be7e](https://github.com/haydenrear/skill-manager/commit/b82be7e560573cb58d43db1a51c6530abff4c658)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **epic:** the assignment named a workflow that no longer occupies the slot ([5a6c481](https://github.com/haydenrear/skill-manager/commit/5a6c48151c09ed7247f73153e7d79605a17cb30a))
+* **goals:** the one-name-one-copy harness measured the rule OUN-13 replaced ([9796d50](https://github.com/haydenrear/skill-manager/commit/9796d50fdd4091b080358f1cc39e7a88f8489427))
+* **home:** remove the eval-skill fixture from the project home — and [#334](https://github.com/haydenrear/skill-manager/issues/334) reproduced ([4236596](https://github.com/haydenrear/skill-manager/commit/4236596a631d1e7aef28521f6c8b68abe1776d49))
+* **migration:** the sync path was wired and never exercised ([ab53071](https://github.com/haydenrear/skill-manager/commit/ab530713015c0a8720e54cd8084c712fbd3f1906))
+* **specs:** restore the accepted manifest the close-out overwrote ([e7f30b4](https://github.com/haydenrear/skill-manager/commit/e7f30b478be709ae254d2f51dbc34a14cbf011df)), closes [#299](https://github.com/haydenrear/skill-manager/issues/299)
+* **store:** a copy of a home is not a copy of its login ([fb5fc05](https://github.com/haydenrear/skill-manager/commit/fb5fc052579c56efddb964f8ea11ea99ba329b8e)), closes [#281](https://github.com/haydenrear/skill-manager/issues/281)
+* **store:** a home copy that crosses a platform boundary ([cad0b83](https://github.com/haydenrear/skill-manager/commit/cad0b830ec58fd7746ece2b21fbae4707ed2529f))
+* **sync:** say the home's drift once, and count the child homes ([5c90a51](https://github.com/haydenrear/skill-manager/commit/5c90a51e810383e087e98b05afb88fcef60692be))
+* **sync:** the migration relinked the unit it had just retired ([#342](https://github.com/haydenrear/skill-manager/issues/342)) ([9deccc9](https://github.com/haydenrear/skill-manager/commit/9deccc9595800a1104e7ec749a566aa2c59c8dbe))
+
+
+### Reverts
+
+* **onboard:** keep skill-manager bundled — removing it left a unit with no upstream ([5504d87](https://github.com/haydenrear/skill-manager/commit/5504d87357406bc5201f3d7a368347376994a0f9))
+
 ## [0.26.0](https://github.com/haydenrear/skill-manager/compare/v0.25.1...v0.26.0) (2026-09-05)
 
 
