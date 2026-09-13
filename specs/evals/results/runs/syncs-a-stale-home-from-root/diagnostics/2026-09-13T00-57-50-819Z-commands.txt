@@ -1,0 +1,76 @@
+skt status 2>&1 | head -60
+---
+skt check 2>&1 | head -80
+---
+skt check --json 2>&1 | head -60
+---
+skill-manager list 2>&1 | grep -i "git-issue-workflow" ; echo "---"; skill-manager unit describe git-issue-workflow --json 2>&1 | head -60
+---
+skt check --json 2>&1 | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('notifications'), indent=2))"
+---
+skill-manager list --json 2>/dev/null | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+u=d['units'] if isinstance(d,dict) and 'units' in d else d
+for x in u:
+    if 'git-issue' in str(x.get('name','')): print(json.dumps(x,indent=2))
+" 2>&1 | head -60
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; git -C "$H/skills/git-issue-workflow" status --short 2>&1 | head -20; echo "--- log ---"; git -C "$H/skills/git-issue-workflow" log --oneline -3 2>&1; echo "--- stash ---"; git -C "$H/skills/git-issue-workflow" stash list 2>&1 | head
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; ls "$H/plugins/skt/skills/skt/references/" 2>&1; echo "==="; sed -n '1,80p' "$H/plugins/skt/skills/skt/references/derived-artifacts.md" 2>&1
+---
+skill-manager sync --help 2>&1 | head -40
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; git -C "$H/skills/git-issue-workflow" remote -v 2>&1; echo "=== remote tip ==="; git -C "$H/skills/git-issue-workflow" ls-remote origin HEAD 2>&1 | head -5
+---
+skill-manager sync git-issue-workflow --git-latest --dry-run --home /private/tmp/e-1DYo4s/home/cwd/.skill-manager 2>&1 | head -40
+---
+skt sync git-issue-workflow 2>&1 | tail -40
+---
+/private/tmp/e-1DYo4s/home/cwd/.skill-manager/bin/cli/skill-manager sync git-issue-workflow --git-latest -v 2>&1 | grep -iE "rc=128|permitted|denied|fatal|read-only|could not|clone" | head -25
+---
+rm -rf "$TMPDIR/giw-probe"; git clone --depth 1 https://github.com/haydenrear/git-issue-workflow-skill "$TMPDIR/giw-probe" 2>&1 | tail -5; echo "rc=$?"
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; git -C "$H/skills/git-issue-workflow" log --oneline -3 2>&1; echo "=== worktree status ==="; git -C "$H/skills/git-issue-workflow" status --short 2>&1|head; echo "=== ledger/installed ==="; grep -m1 -A3 '"sha"' "$H/installed/git-issue-workflow.json" 2>&1 | head
+---
+skt check 2>&1 | head -20; echo "=== installed record ==="; H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; ls "$H/installed/" 2>&1 | head -40
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; for u in git-epic-workflow git-integration-repo git-issue-workflow; do echo "=== $u ==="; python3 -c "
+import json,sys
+d=json.load(open('$H/installed/$u.json'))
+print('version',d.get('version'),'sha',(d.get('sha') or '')[:8])
+print('errors:',json.dumps(d.get('errors'),indent=2)[:600])
+"; done
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; ls "$H/logs/" 2>&1 | head; echo "=== recent skill-manager log ==="; ls -t "$H/logs/skill-manager/" 2>/dev/null | head -5
+---
+which -a git; echo "---"; command -v git; echo "--- PATH ---"; echo "$PATH" | tr ':' '\n' | head -10
+---
+rm -rf "$TMPDIR/probe2"; ( cd "$TMPDIR" && /usr/bin/git clone --depth 1 https://github.com/haydenrear/git-issue-workflow-skill "$TMPDIR/probe2" ) 2>&1 | tail -4; echo "rc=${PIPESTATUS[0]:-$?}"
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; python3 -c "
+import json
+d=json.load(open('$H/installed/git-issue-workflow.json'))
+for k,v in d.items():
+    if isinstance(v,(str,int,float,bool,type(None))): print(k,'=',v)
+    else: print(k,'=',json.dumps(v)[:200])
+"
+---
+skt check --json 2>&1 | python3 -c "
+import sys,json;d=json.load(sys.stdin)
+print('notifications:',json.dumps(d.get('notifications'),indent=2))
+print('upstream_stale:',d.get('upstream_stale'))
+print('ahead_of_remote:',d.get('ahead_of_remote'))
+"
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; grep -m3 -E '^version|^name' "$H/skills/git-issue-workflow/skill-manager.toml" 2>&1; echo "=== projections ==="; python3 -c "
+import json;d=json.load(open('$H/installed/git-issue-workflow.projections.json'));print(json.dumps(d,indent=2)[:800])"
+---
+skt status 2>&1 | grep -iE "git-issue-workflow|units |error|next"
+---
+skill-manager sync git-epic-workflow --git-latest --home /private/tmp/e-1DYo4s/home/cwd/.skill-manager 2>&1 | tail -20
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; git -C "$H/skills/git-epic-workflow" remote -v 2>&1 | head -2; echo "=== ls-remote ==="; git -C "$H/skills/git-epic-workflow" ls-remote origin HEAD 2>&1 | tail -3
+---
+H=/private/tmp/e-1DYo4s/home/cwd/.skill-manager; echo "=== what the sync brought in ==="; git -C "$H/skills/git-issue-workflow" show --stat --oneline 5c88a80 2>&1 | head -12; echo; echo "=== final check ==="; skt check 2>&1

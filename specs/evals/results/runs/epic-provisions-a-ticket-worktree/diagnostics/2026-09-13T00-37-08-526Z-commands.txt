@@ -1,0 +1,5 @@
+SKT="${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/bin/cli/skt"; echo "home=${SKILL_MANAGER_HOME:-$HOME/.skill-manager}"; if [ -x "$SKT" ]; then echo "skt-x: $SKT"; else echo "skt-x: NOT executable at $SKT"; SKT="$(command -v skt)"; echo "skt-path: ${SKT:-none}"; fi; git rev-parse HEAD; git rev-parse --abbrev-ref HEAD
+---
+skt ticket new DEMO-1 --base 1801172eb93c0ea68c7425ad8f6d2c94d7c94e82 --path ../wt-DEMO-1
+---
+git status --porcelain

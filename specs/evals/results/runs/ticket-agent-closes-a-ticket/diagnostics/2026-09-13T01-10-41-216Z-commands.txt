@@ -1,0 +1,5 @@
+ls -a . ./.skill-manager 2>&1 | head -50; echo "---"; command -v skt; echo "---"; ls ../ | head -30
+---
+skt ticket close TICKET-7
+---
+git -C "/private/tmp/e-jptWX1/home/cwd" worktree list
