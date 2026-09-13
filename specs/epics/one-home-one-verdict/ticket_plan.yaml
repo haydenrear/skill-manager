@@ -167,7 +167,7 @@ epic_goals:
     evaluation_ticket: OHV-8
     statement: "The full graph set runs green on a fresh CI runner, and a local sweep reports only what it executed."
     metric: "graphs_executed vs graphs_selected, and graphs_failed, in graphs-executed.json of a graph_set=full run on the epic tip"
-    harness: "gh workflow run ci.yml -R haydenrear/skill-manager --ref epic/one-home-one-verdict -f graph_set=full; gh run download <id> -n graphs-executed"
+    harness: "gh workflow run ci.yml -R haydenrear/skill-manager --ref epic/one-home-one-verdict -f graph_set=full; then gh run download \"$(gh run list -R haydenrear/skill-manager --workflow ci.yml --branch epic/one-home-one-verdict --event workflow_dispatch --limit 1 --json databaseId -q '.[0].databaseId')\" -R haydenrear/skill-manager -n graphs-executed and read graphs_executed, graphs_selected, graphs_failed"
     baseline:
       value: "25 selected, 25 executed, 19 passed, 6 failed (artifact-dag, checkout-home, home-clone, home-tripwire, onboarding, ticket-lifecycle) -- run 34786751392"
       measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
