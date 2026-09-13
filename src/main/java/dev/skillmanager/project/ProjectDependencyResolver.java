@@ -637,7 +637,22 @@ public final class ProjectDependencyResolver {
 
     private List<SkillProject.ProjectUnitRef> installableRefs(SkillProject project) {
         List<SkillProject.ProjectUnitRef> refs = new ArrayList<>();
-        for (var r : project.skills()) if (r.install()) refs.add(r);
+        // #175: a unit moved into a carrier the SAME project declares is served
+        // by the carrier's contained copy. Installing and locking it standalone
+        // would undo the migration on every resolve, and re-plant the project
+        // claim that blocked the 0.27.0 retirement.
+        java.util.Set<String> declaredPlugins = new java.util.HashSet<>();
+        for (var r : project.plugins()) if (r.install()) declaredPlugins.add(r.alias());
+        for (var r : project.skills()) {
+            if (!r.install()) continue;
+            var moved = dev.skillmanager.lifecycle.UnitSupersession.movedIntoCarrier(r.alias());
+            if (moved.isPresent() && declaredPlugins.contains(moved.get().carrier())) {
+                dev.skillmanager.util.Log.debug(
+                        "project dependency %s is served by plugin %s", r.alias(), moved.get().carrier());
+                continue;
+            }
+            refs.add(r);
+        }
         for (var r : project.plugins()) if (r.install()) refs.add(r);
         for (var r : project.docs()) if (r.install()) refs.add(r);
         for (var r : project.harnesses()) if (r.install()) refs.add(r);

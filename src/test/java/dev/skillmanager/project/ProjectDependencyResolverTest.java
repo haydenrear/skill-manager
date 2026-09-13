@@ -1433,6 +1433,56 @@ public final class ProjectDependencyResolverTest {
                                 "parent plugin remains installed");
                     }
                 })
+                .test("a skill moved into a plugin the project also declares is served by the plugin (#175)", () -> {
+                    // A manifest written before the move declares BOTH
+                    // [skills.skill-manager] and [plugins.skt]. Resolving it must
+                    // not reinstall the standalone and re-plant the claim that
+                    // blocked the 0.27.0 migration from retiring it.
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-moved-unit-");
+                        Path standalone = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "skill-manager", DepSpec.empty()).sourcePath();
+                        Path carrier = repoRoot.resolve("units/skt");
+                        Files.createDirectories(carrier.resolve(".claude-plugin"));
+                        Files.writeString(carrier.resolve(".claude-plugin/plugin.json"),
+                                "{\"name\":\"skt\",\"version\":\"0.1.0\",\"description\":\"carrier\"}\n");
+                        Files.writeString(carrier.resolve("skill-manager-plugin.toml"), """
+                                [plugin]
+                                name = "skt"
+                                version = "0.1.0"
+                                description = "carrier"
+                                """);
+                        Path contained = Files.createDirectories(carrier.resolve("skills/skill-manager"));
+                        Files.writeString(contained.resolve("SKILL.md"),
+                                "---\nname: skill-manager\ndescription: contained\n---\n\nbody\n");
+                        Files.writeString(contained.resolve("skill-manager.toml"), """
+                                [skill]
+                                name = "skill-manager"
+                                version = "0.1.0"
+                                description = "contained"
+                                """);
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "moved-unit-project"
+
+                                [skills.skill-manager]
+                                source = "%s"
+
+                                [plugins.skt]
+                                source = "%s"
+                                """.formatted(standalone, carrier));
+
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertFalse(Files.exists(h.store().skillDir("skill-manager")),
+                                "the standalone is not installed — the carrier serves it");
+                        var lock = new SkillProjectLockStore(h.store()).read("moved-unit-project").orElseThrow();
+                        assertFalse(lock.resolvedUnits().stream().anyMatch(u -> u.name().equals("skill-manager")),
+                                "the project does not claim the moved unit");
+                        assertTrue(lock.resolvedUnits().stream().anyMatch(u -> u.name().equals("skt")),
+                                "CONTROL: the carrier is resolved and claimed");
+                    }
+                })
                 .runAll();
     }
 

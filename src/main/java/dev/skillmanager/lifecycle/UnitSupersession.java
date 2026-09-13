@@ -150,6 +150,70 @@ public final class UnitSupersession {
      * and to ACTUALLY CONTAIN a skill of that name, which is only true of a
      * home that is already holding two copies of one name.
      */
+    /** The table's row for {@code unit} when it has been moved into a carrier. */
+    public static java.util.Optional<Retirement> movedIntoCarrier(String unit) {
+        if (unit == null) return java.util.Optional.empty();
+        for (Retirement r : TABLE) {
+            if (r.kind() == Kind.MOVED_INTO_CARRIER && r.unit().equals(unit)) {
+                return java.util.Optional.of(r);
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /**
+     * Release every project claim on a retiring unit that the carrier already
+     * satisfies, and name the claims it does not.
+     *
+     * <h2>Why this exists: 0.27.0 could not migrate a real root home</h2>
+     *
+     * <p>Retirement runs {@code RemoveUseCase}, which refuses a unit any
+     * project lock still claims. The 0.27.0 migration let that refusal fail
+     * the whole sync, so an operator's root home, whose projects
+     * {@code commit-diff-context-parent} and {@code meta-harness} declare
+     * {@code [skills.skill-manager]} exactly as the docs taught, rolled back
+     * 21 effects and stayed unmigrated. A clone of that home migrated fine,
+     * because a clone does not carry its source's project claims, which is how
+     * the release shipped. skill-manager#175.
+     *
+     * <p>A claim on a {@link Kind#MOVED_INTO_CARRIER} unit is not a reason to
+     * keep the standalone when the SAME project also resolves the carrier: the
+     * name that project depends on is served by the carrier's contained copy,
+     * which is the whole premise of the move. That claim is released — the
+     * standalone's row leaves the lock — and the retirement proceeds.
+     *
+     * <p>A claim by a project that does NOT resolve the carrier is left alone
+     * and returned, so the caller can report it and skip, never fail.
+     *
+     * @return the projects whose claims were NOT released
+     */
+    public static List<String> releaseClaimsSatisfiedByCarrier(SkillStore store,
+                                                              Retirement retirement)
+            throws java.io.IOException {
+        var locks = new dev.skillmanager.project.SkillProjectLockStore(store);
+        List<String> unsatisfied = new ArrayList<>();
+        for (var lock : locks.list()) {
+            boolean claims = lock.resolvedUnits().stream()
+                    .anyMatch(u -> u.name().equals(retirement.unit()));
+            if (!claims) continue;
+            boolean carrierResolved = retirement.kind() == Kind.MOVED_INTO_CARRIER
+                    && lock.resolvedUnits().stream()
+                            .anyMatch(u -> u.name().equals(retirement.carrier()));
+            if (!carrierResolved) {
+                unsatisfied.add(lock.projectName());
+                continue;
+            }
+            List<dev.skillmanager.project.SkillProjectLock.ResolvedUnit> kept = new ArrayList<>();
+            for (var u : lock.resolvedUnits()) {
+                if (!u.name().equals(retirement.unit())) kept.add(u);
+            }
+            locks.write(new dev.skillmanager.project.SkillProjectLock(
+                    lock.projectName(), lock.profile(), lock.manifestFile(), lock.resolvedAt(),
+                    kept, lock.bindings(), lock.envs(), lock.libs()));
+        }
+        return unsatisfied;
+    }
+
     public static List<Retirement> dueInThisHome(SkillStore store) {
         List<Retirement> out = new ArrayList<>();
         for (Retirement retirement : TABLE) {
