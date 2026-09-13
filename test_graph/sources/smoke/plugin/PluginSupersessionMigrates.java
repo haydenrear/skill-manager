@@ -213,6 +213,11 @@ public class PluginSupersessionMigrates {
         ProcessRecord resynced = sm(ctx, syncHomeStr, "resync-with-stale-consumer", "sync", MOVED);
         boolean syncDidNotCloneItBack = resynced.exitCode() == 0 && !Files.exists(standaloneCopy)
                 && !Files.exists(syncHome.resolve("installed/" + MOVED + ".json"));
+        // Leave nothing behind: the consumer's agent links live in the SHARED
+        // fixture agent home, and pointing into this scratch home they fail
+        // the fixpoint law as FOREIGN_HOME (measured, 2026-09-13).
+        ProcessRecord consumerRemoved = sm(ctx, syncHomeStr, "uninstall-stale-consumer",
+                "uninstall", "older-consumer", "--yes");
 
         boolean pass = installDidNotReinstall && syncDidNotCloneItBack
                 && upgradeSucceeded && carrierLanded && standaloneRetired
@@ -238,7 +243,7 @@ public class PluginSupersessionMigrates {
                                 + " (syncExit=" + synced.exitCode() + ")"))
                 .process(seedMoved).process(seedObsolete).process(seedBystander)
                 .process(upgrade).process(refused).process(synced)
-                .process(consumerInstalled).process(resynced)
+                .process(consumerInstalled).process(resynced).process(consumerRemoved)
                 .assertion("an_old_shape_home_takes_the_upgrade_that_would_have_collided",
                         upgradeSucceeded && carrierLanded)
                 .assertion("the_superseded_standalone_is_retired", standaloneRetired)
