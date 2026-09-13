@@ -857,3 +857,33 @@ findings:
       absent, so the model already said this correctly.
     status: resolved
 
+  - id: DEF-OUN-023
+    found_by: >
+      dispatching the full graph set for epic/one-unit-one-name on CI
+      (run 34759605784), which runs every graph as its own job
+    found_at: "2026-09-13"
+    severity: major
+    summary: >
+      Every local "24 of 25" full sweep reported after DEF-OUN-018 was wrong
+      about what it covered. Gradle stops at the first failing task, and the
+      full set orders `artifact-dag` BEFORE `onboarding`, `home-integrity` and
+      `sync-settles`. `artifact-dag` was red on #292 in every one of those
+      sweeps, so the three graphs after it never executed, and the count came
+      from reports left by earlier runs.
+    what_it_hid: >
+      A real regression from this epic. DEF-OUN-018 made the FOREIGN_PATH_IN_SHIM
+      repair self-deriving and its unit-test twin in DamagedHomeIsRepairableTest
+      was updated; the graph node home.integrity.damaged.home.is.repairable
+      still asserted the repaired wrapper CONTAINS this home's absolute path.
+      Main's nightly passes that graph on 09-11, 09-12 and 09-13; epic CI fails
+      it on `the_wrapper_runs_this_homes_own_tree`, every other assertion
+      green. Reproduced locally once the graph was run on its own.
+    the_counting_mistake: >
+      "N of 25" was computed by reading the newest reports directory, which
+      holds reports from earlier runs as well as this one. A graph that did not
+      execute in this sweep still has an old passing report there. The count
+      has to come from the run's own executed set -- CI's per-graph jobs, or
+      the `graphs_executed` artifact CLAUDE.md already describes -- never from
+      the reports directory.
+    status: open
+
