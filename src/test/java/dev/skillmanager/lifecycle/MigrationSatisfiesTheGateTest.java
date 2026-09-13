@@ -266,6 +266,49 @@ public final class MigrationSatisfiesTheGateTest {
                     "naming the retired unit is enough; the home is what decides what is due");
         });
 
+        // ------------------------------------------ #175: a project claims it
+
+        suite.test("a claim the carrier satisfies is released, and the unit retires", () -> {
+            // The 0.27.0 defect, on the shape a real root home is in: a project
+            // declares BOTH [skills.skill-manager] and [plugins.skt]. The sync
+            // used to fail and roll back on the claim.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
+            claim(h.store(), "claiming-project", MOVED, CARRIER);
+
+            InstallUseCase.Report report = install(h.store(), pluginCarrying(CARRIER, MOVED));
+
+            assertEquals(0, report.exitCode(), "the upgrade is not failed by the claim");
+            assertFalse(Files.exists(h.store().skillDir(MOVED)),
+                    "the standalone is retired — the project's dependency is served by the "
+                            + "carrier's contained copy");
+            var lock = new dev.skillmanager.project.SkillProjectLockStore(h.store())
+                    .read("claiming-project").orElseThrow();
+            assertFalse(lock.resolvedUnits().stream().anyMatch(u -> u.name().equals(MOVED)),
+                    "the claim is released from the project lock");
+            assertTrue(lock.resolvedUnits().stream().anyMatch(u -> u.name().equals(CARRIER)),
+                    "CONTROL: the carrier's row, and the rest of the lock, are kept");
+        });
+
+        suite.test("a claim the carrier does not satisfy is reported, never a failed upgrade", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir(MOVED, UnitKind.SKILL);
+            claim(h.store(), "legacy-project", MOVED);   // no carrier declared
+
+            InstallUseCase.Report report = install(h.store(), pluginCarrying(CARRIER, MOVED));
+
+            assertEquals(0, report.exitCode(),
+                    "one unretirable unit does not roll back everything else the upgrade did");
+            assertTrue(Files.isDirectory(h.store().pluginsDir().resolve(CARRIER)),
+                    "the carrier still landed");
+            assertTrue(Files.isDirectory(h.store().skillDir(MOVED)),
+                    "the standalone stays — its project still depends on it by name");
+            assertTrue(new dev.skillmanager.project.SkillProjectLockStore(h.store())
+                            .read("legacy-project").orElseThrow().resolvedUnits().stream()
+                            .anyMatch(u -> u.name().equals(MOVED)),
+                    "and that project's claim is untouched");
+        });
+
         suite.test("the sync plans the retirement before it commits units", () -> {
             TestHarness h = TestHarness.create();
             var program = SyncUseCase.buildProgram(h.store(), null,
@@ -332,6 +375,20 @@ public final class MigrationSatisfiesTheGateTest {
                 new SyncUseCase.Options(null, false, false, false, false, false, false, false),
                 targets, java.util.List.of());
         new Executor(store, null).runStaged(program);
+    }
+
+    /** A project lock claiming {@code units}, as `project resolve` writes one. */
+    private static void claim(SkillStore store, String project, String... units) throws Exception {
+        java.util.List<dev.skillmanager.project.SkillProjectLock.ResolvedUnit> rows =
+                new java.util.ArrayList<>();
+        for (String u : units) {
+            rows.add(new dev.skillmanager.project.SkillProjectLock.ResolvedUnit(
+                    u, u.equals(CARRIER) ? UnitKind.PLUGIN : UnitKind.SKILL, "0.1.0", null, true));
+        }
+        new dev.skillmanager.project.SkillProjectLockStore(store).write(
+                new dev.skillmanager.project.SkillProjectLock(project, null,
+                        "skill-project.toml", "2026-09-13T00:00:00Z", rows,
+                        java.util.List.of(), java.util.List.of(), java.util.List.of()));
     }
 
     /** Put the carrier in the home, carrying the moved skill, as OUN-6 will. */

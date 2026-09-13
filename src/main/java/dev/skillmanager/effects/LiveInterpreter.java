@@ -1660,6 +1660,30 @@ public final class LiveInterpreter implements ProgramInterpreter {
         List<String> retired = new ArrayList<>();
         for (UnitSupersession.Retirement retirement : retirable) {
             String hint = UnitSupersession.reinstallHint(store, retirement.unit());
+            // #175: A PROJECT CLAIM NEVER FAILS THE SYNC. In 0.27.0 the
+            // RemoveUseCase refusal below failed the whole operation and rolled
+            // back everything else it did, so a real root home whose projects
+            // declare [skills.skill-manager] could not migrate at all. A claim
+            // the carrier satisfies is released first; any other claim is
+            // reported and this retirement is skipped.
+            try {
+                List<String> unsatisfied =
+                        UnitSupersession.releaseClaimsSatisfiedByCarrier(store, retirement);
+                if (!unsatisfied.isEmpty()) {
+                    Log.warn("migration: '%s' is still due, but project(s) %s claim it and do "
+                                    + "not declare %s. In each skill-project.toml, replace "
+                                    + "[skills.%s] with [plugins.%s] and re-run "
+                                    + "`skill-manager project resolve`; it will be retired on "
+                                    + "the next sync",
+                            retirement.unit(), String.join(", ", unsatisfied),
+                            retirement.carrier(), retirement.unit(), retirement.carrier());
+                    continue;
+                }
+            } catch (IOException ex) {
+                Log.warn("migration: skipped retiring '%s' — could not read project claims (%s)",
+                        retirement.unit(), ex.getMessage());
+                continue;
+            }
             try {
                 var program = dev.skillmanager.app.RemoveUseCase.buildProgram(
                         store, gateway, retirement.unit(), null, true, true);
@@ -1679,8 +1703,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
                                     + ") and re-run.");
                 }
             } catch (IOException | RuntimeException ex) {
-                return EffectReceipt.failed(e,
-                        "could not retire '" + retirement.unit() + "': " + ex.getMessage());
+                // Reported and skipped, never a failed sync: one unit that
+                // cannot be retired must not roll back everything else this
+                // operation did (#175). A child-home claim lands here too.
+                Log.warn("migration: skipped retiring '%s' — %s", retirement.unit(),
+                        ex.getMessage());
+                continue;
             }
             retired.add(retirement.unit());
             Log.info("retired %s — %s", retirement.unit(), retirement.reason());
@@ -1692,7 +1720,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         + "`skill-manager install %s`.", hint);
             }
         }
-        Log.ok("migration: retired %s", String.join(", ", retired));
+        if (!retired.isEmpty()) Log.ok("migration: retired %s", String.join(", ", retired));
         return EffectReceipt.ok(e);
     }
 
