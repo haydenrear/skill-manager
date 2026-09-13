@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.27.2](https://github.com/haydenrear/skill-manager/compare/v0.27.1...v0.27.2) (2026-09-13)
+
+
+### Bug Fixes
+
+* **migration:** a sync no longer clones the retired unit back, and resolve finds the carrier under any name ([863d8f0](https://github.com/haydenrear/skill-manager/commit/863d8f09a8c8b098a01eaeae5f031bafbc21b846)), closes [#175](https://github.com/haydenrear/skill-manager/issues/175)
+* **migration:** check the remote before refusing, and redirect a sync that names the retired unit ([24674e9](https://github.com/haydenrear/skill-manager/commit/24674e9050ef2d2a76b3df0fa7e77d2e5fdaedad)), closes [#175](https://github.com/haydenrear/skill-manager/issues/175)
+* **project:** say once that a retired [skills.X] is served by its carrier ([514619a](https://github.com/haydenrear/skill-manager/commit/514619a66b537010a520ed4e9cccadec9f90e4a2))
+* **sync:** `sync skt` in a home without skt says how to get it ([888c406](https://github.com/haydenrear/skill-manager/commit/888c4068e103890fee21bbd1b8709d38c6415a4d)), closes [#175](https://github.com/haydenrear/skill-manager/issues/175)
+
 ## [0.27.1](https://github.com/haydenrear/skill-manager/compare/v0.27.0...v0.27.1) (2026-09-13)
 
 
