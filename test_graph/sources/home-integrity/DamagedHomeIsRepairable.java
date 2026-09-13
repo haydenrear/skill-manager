@@ -92,6 +92,16 @@ public class DamagedHomeIsRepairable {
     /** The wrapper this node plants, and re-points. */
     private static final String WRAPPER = "his13-wrapper";
 
+    /** Does {@code text} name {@code home} in either of its spellings? */
+    private static boolean namesEitherSpelling(String text, Path home) {
+        if (text.contains(home.toString())) return true;
+        try {
+            return text.contains(home.toRealPath().toString());
+        } catch (IOException notThere) {
+            return false;
+        }
+    }
+
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             try {
@@ -239,8 +249,24 @@ public class DamagedHomeIsRepairable {
         boolean projectionRepaired = Files.isSymbolicLink(projection)
                 && Files.readSymbolicLink(projection)
                         .equals(subject.resolve("skills").resolve(UNIT));
-        boolean wrapperRepaired = Files.readString(wrapper, StandardCharsets.UTF_8)
-                .contains(subject.toString());
+        // DERIVED, NOT NAMED — changed by DEF-OUN-018, and the unit-test twin
+        // of this assertion was updated in that change while this one was
+        // missed. It read `.contains(subject.toString())`: the repaired wrapper
+        // had to hold THIS home's absolute path. The repair now maps the other
+        // home's path into this one AND makes the shim derive its home from its
+        // own location, so a correct repair contains no absolute home path at
+        // all — and the old assertion went red on epic CI while every other
+        // assertion in this node stayed green.
+        //
+        // Both spellings of both homes are checked, because on macOS a temp
+        // path is reachable as /var/… and /private/var/…, and a `contains` on
+        // one spelling alone passes over the other without having looked.
+        String repairedWrapper = Files.readString(wrapper, StandardCharsets.UTF_8);
+        boolean wrapperRepaired =
+                !namesEitherSpelling(repairedWrapper, other)
+                        && !namesEitherSpelling(repairedWrapper, subject)
+                        && repairedWrapper.contains("SKILL_MANAGER_SHIM_HOME")
+                        && repairedWrapper.contains("skills/" + UNIT + "/SKILL.md");
         boolean otherHomeUntouched = otherBefore.equals(snapshot(other));
         // ASSERTED, not assumed. Review of PR #244: with `claudeHome` absent
         // from the fixture context this resolves to null, `snapshot(null)`
