@@ -25,8 +25,9 @@ decision already taken.
 ## Read in this order
 
 1. **#337** — the epic, with the attribution that motivates it.
-2. **#338, #339, #340, #341, #346** — the tickets. #338 first; #339, #340 and
-   #341 depend on it. #346 (CI green on a fresh runner) depends on #343.
+2. **#338, #339, #340, #341, #346, #352** — the tickets. #338 first; #339, #340,
+   #341 and #352 depend on it. #346 (CI green on a fresh runner) depends on #343.
+   #352 (OHV-6) was added 2026-09-13 — see *Marketplace identity* below.
 3. `results/epic-one-unit-one-name/reviews/epic-close.md` — the previous
    epic's close review, including §9a "resolved since this review was written".
 4. The three deferred backlogs. There are **154 findings** in them and they
@@ -119,12 +120,23 @@ hits `max_turns` loses its Stop-hook graders (#353), so read the trace, not the 
 Neither blocks anything. Both are real gaps and belong in this epic's
 validation plan.
 
+## Marketplace identity — #352 (OHV-6), added 2026-09-13
+
+Measured across all 53 homes on this machine, four shapes of one defect:
+Claude still registered under the pre-per-home name (2 homes: tla-spec-dev,
+meta-orchestrator), `ensureMarketplaceAdded` matching by substring, 13 cloned
+homes carrying their source's `marketplace.json` identity, and 9 Codex configs
+registering another home's marketplace (the root's `~/.codex` points into
+commit-diff-context-parent). Every one is invisible to `home verify`; the only
+trace is an `AGENT_SYNC_FAILED` line in a sync — which is why plugin updates,
+including skt 0.8.2's migration notice, may never reach Claude in those homes.
+Plant all four as `Kind`s rather than as one-off tests.
+
 ## Outside this epic, but you will trip over them
 
 | issue | what | why it is not this epic |
 | --- | --- | --- |
 | #351 | Gemini consumes no plugins, so a migrated home has no `skill-manager` skill for Gemini | agent projection, not home verdicts |
-| #352 | Claude marketplace name drift (`skill-manager` vs `skill-manager-<hash>`) fails every plugin reinstall in project homes | plugin marketplace, not verdicts |
 | #353 | eval harness: a `max_turns` run loses every Stop-hook grader | eval harness (#328) |
 | #327 | `remove`/`uninstall` delete a unit checkout with unpushed commits | owner decision on `remove` friction |
 | #269 | (HBR-1) a child home's `bin/cli` shims point into another home, and child-home syncs rewrite the parent's shims | the open home-boundary-resolution epic |

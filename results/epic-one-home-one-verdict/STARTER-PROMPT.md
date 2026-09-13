@@ -37,6 +37,9 @@ is planning, not implementation.
    - **#341 OHV-4**: a home never spells its own path.
    - **#346 OHV-5**: the full graph set runs green on a fresh CI runner. It carries
      **#343**, **#344** and **#345**, and depends on #343.
+   - **#352 OHV-6**: a home's plugin marketplace has one identity, and every agent
+     registration agrees with it. It depends on #338 and pairs with #339. It was
+     added 2026-09-13 with a 53-home measurement, and its four shapes are in the issue.
 3. `results/epic-one-unit-one-name/reviews/epic-close.md`, the previous close review.
 4. The three deferred backlogs under `results/*/deferred/backlog.yaml` (154
    findings), and `results/epic-one-home-one-verdict/attribution/2026-09-13-migration-0.27.md`.
@@ -53,9 +56,9 @@ questions about one home, and all five exit 0 on a home that is broken.
 - Only then create `epic/one-home-one-verdict`, scaffold the spec workflow, and
   write `ticket_plan.yaml`, including a terminal evaluation ticket against the
   goals as we actually agree them.
-- Out of scope, and don't absorb them: #351 (Gemini plugins), #352 (marketplace
-  name drift), #353 (eval `max_turns` graders), #327 (`remove` on unpushed work)
-  and #269 (the HBR epic's shim boundary). Name them in the plan as adjacent.
+- Out of scope, and don't absorb them: #351 (Gemini plugins), #353 (eval
+  `max_turns` graders), #327 (`remove` on unpushed work) and #269 (the HBR epic's
+  shim boundary). Name them in the plan as adjacent.
 
 **Hold to these, because earlier work learned each of them the hard way:**
 
