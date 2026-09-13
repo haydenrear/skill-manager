@@ -1,7 +1,7 @@
 # Starter prompt — epic `one-home-one-verdict`
 
 Paste the block below into a fresh agent session opened in
-`/Users/hayde/IdeaProjects/skill-manager`, on `main` at or after `v0.27.0`.
+`/Users/hayde/IdeaProjects/skill-manager`, on `main` at or after `v0.27.1`.
 
 ---
 
@@ -52,11 +52,13 @@ questions about one home, and all five exit 0 on a home that is broken.
   fixpoint: every row a prune drops comes straight back. Fix that first, and
   land each change on its own, verified against `plugin-smoke` *and*
   `artifact-dag`.
-- **The 0.27.0 migration cannot finish on a home whose projects still declare
-  `[skills.skill-manager]`** (#175). Retiring the standalone throws on the
-  project claim and rolls back the whole sync. This is why the root home is
-  still at `(0, 1, 1)`. Don't try to work around it by hand: `project remove`
-  is destructive.
+- **Migrations must be validated on the REAL home, not a clone.** 0.27.0 shipped a
+  migration that could not finish on the root home (#175). Projects there declared
+  `[skills.skill-manager]`, retiring the standalone threw on the project claim, and
+  the whole sync rolled back. A clone drops its source's project and child-home
+  claims, so the clone test passed. 0.27.1 (#347) fixed it, and the root home is
+  now at `(0, 0, 1)`. For any migration change, run this repo's `./skill-manager`
+  against `~/.skill-manager` itself, after backing up `projects/` and `installed/`.
 - **Record every defect you find in bug attribution** and in this epic's
   deferred backlog. Before filing a new issue, search all three backlogs and
   existing issues for duplicates.
