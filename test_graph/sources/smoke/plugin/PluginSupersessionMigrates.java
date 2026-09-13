@@ -191,7 +191,31 @@ public class PluginSupersessionMigrates {
                 && !Files.exists(syncHome.resolve("installed/" + MOVED + ".json"))
                 && synced.exitCode() == 0;
 
-        boolean pass = upgradeSucceeded && carrierLanded && standaloneRetired
+        // ---- 0.27.1: the sync cloned the retired unit straight back ------
+        // A unit written before the move still references the old repository
+        // (git-epic-workflow 0.4.0 in every project home). Installing it walks
+        // that reference, and the next sync's unmet-reference pass reads the
+        // retired unit as missing. Both must treat the carrier as serving it.
+        Path consumer = Files.createTempDirectory("supersession-consumer-").resolve("older-consumer");
+        Files.createDirectories(consumer);
+        Files.writeString(consumer.resolve("SKILL.md"),
+                "---\nname: older-consumer\ndescription: still names the old repository\n---\n\nbody\n");
+        Files.writeString(consumer.resolve("skill-manager.toml"), """
+                skill_references = ["github:haydenrear/skill-manager-skill"]
+
+                [skill]
+                name = "older-consumer"
+                version = "0.0.1"
+                description = "still names the old repository"
+                """);
+        ProcessRecord consumerInstalled = install(ctx, syncHomeStr, consumer, "install-stale-consumer");
+        boolean installDidNotReinstall = consumerInstalled.exitCode() == 0 && !Files.exists(standaloneCopy);
+        ProcessRecord resynced = sm(ctx, syncHomeStr, "resync-with-stale-consumer", "sync", MOVED);
+        boolean syncDidNotCloneItBack = resynced.exitCode() == 0 && !Files.exists(standaloneCopy)
+                && !Files.exists(syncHome.resolve("installed/" + MOVED + ".json"));
+
+        boolean pass = installDidNotReinstall && syncDidNotCloneItBack
+                && upgradeSucceeded && carrierLanded && standaloneRetired
                 && nameStillResolves && obsoleteRetired && saidWhatItRetired
                 && bystanderSurvived && ordinaryCollisionStillRefused
                 && twoCopiesAgain && syncRetiredIt;
@@ -214,6 +238,7 @@ public class PluginSupersessionMigrates {
                                 + " (syncExit=" + synced.exitCode() + ")"))
                 .process(seedMoved).process(seedObsolete).process(seedBystander)
                 .process(upgrade).process(refused).process(synced)
+                .process(consumerInstalled).process(resynced)
                 .assertion("an_old_shape_home_takes_the_upgrade_that_would_have_collided",
                         upgradeSucceeded && carrierLanded)
                 .assertion("the_superseded_standalone_is_retired", standaloneRetired)
@@ -227,6 +252,10 @@ public class PluginSupersessionMigrates {
                         syncRetiredIt)
                 .assertion("CONTROL_the_second_home_really_did_hold_two_copies_of_the_name",
                         twoCopiesAgain)
+                .assertion("a_unit_still_naming_the_old_repository_installs_without_reinstalling_it",
+                        installDidNotReinstall)
+                .assertion("and_the_next_sync_does_not_clone_the_retired_unit_back",
+                        syncDidNotCloneItBack)
                 .log("The retirement removes only what UnitSupersession.TABLE names. The "
                         + "controls carry this node: a unit the table does not name survives a "
                         + "carrier claiming it, and a later plugin sharing that name installs "
