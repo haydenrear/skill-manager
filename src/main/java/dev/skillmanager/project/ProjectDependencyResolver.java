@@ -658,6 +658,8 @@ public final class ProjectDependencyResolver {
         return new ArrayList<>(rows.values());
     }
 
+    private final java.util.Set<String> warnedServedByCarrier = new java.util.HashSet<>();
+
     private static List<SkillProject.ProjectUnitRef> allInstallRefs(SkillProject project) {
         List<SkillProject.ProjectUnitRef> refs = new ArrayList<>();
         for (var r : project.skills()) if (r.install()) refs.add(r);
@@ -689,7 +691,9 @@ public final class ProjectDependencyResolver {
             var retired = dev.skillmanager.lifecycle.UnitSupersession.retirementNamedBy(r.reference())
                     .or(() -> dev.skillmanager.lifecycle.UnitSupersession.retirementFor(r.alias()));
             if (retired.isPresent() && declared.contains(retired.get().carrier())) {
-                dev.skillmanager.util.Log.warn(
+                // installableRefs runs once for install and once for the lock;
+                // the operator is told once.
+                if (warnedServedByCarrier.add(project.name() + "\u0000" + r.alias())) dev.skillmanager.util.Log.warn(
                         "%s: [skills.%s] is served by the %s plugin now — nothing is installed for it. "
                                 + "Delete that block from skill-project.toml; references to %s need no edits.",
                         project.name(), r.alias(), retired.get().carrier(), retired.get().unit());
