@@ -1,0 +1,92 @@
+ls -a && echo "--- skt ---" && which skt; skt status 2>&1 | head -60
+---
+skt check 2>&1 | head -80
+---
+skt check --json 2>&1 | head -60
+---
+skt check --json 2>&1 | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print(json.dumps(d.get('notifications'),indent=2))
+for k in ('stale','unit_errors','errors'):
+    if k in d: print(k, json.dumps(d[k],indent=2))
+"
+---
+cd .skill-manager/skills/git-issue-workflow 2>/dev/null && /private/tmp/e-Pek0rk/home/cwd/.eval-bin/git remote -v && echo "--- log ---" && /private/tmp/e-Pek0rk/home/cwd/.eval-bin/git log --oneline -1 && echo "--- status ---" && /private/tmp/e-Pek0rk/home/cwd/.eval-bin/git status --short | head
+---
+cd /private/tmp/e-Pek0rk/home/cwd && .eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline 10aff2e2..5c88a80d 2>&1 | head -20; echo "--- ls-remote ---"; .eval-bin/git -C .skill-manager/skills/git-issue-workflow ls-remote origin HEAD 2>&1 | head -5
+---
+skt sync git-issue-workflow 2>&1 | tail -30
+---
+.skill-manager/bin/cli/skill-manager sync git-issue-workflow --git-latest 2>&1 | tail -40
+---
+.eval-bin/git clone --depth 1 https://github.com/haydenrear/git-issue-workflow-skill "$TMPDIR/gwi-probe-$$" 2>&1 | tail -20; echo "rc=$?"
+---
+.eval-bin/git -C "$TMPDIR/gwi-probe-93245" log --oneline -4 2>/dev/null; echo "--- version ---"; grep -m2 -E '^version' "$TMPDIR/gwi-probe-93245/skill-manager.toml" 2>/dev/null
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+echo "=== git-issue-workflow store after sync attempt ==="
+.eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline -1
+echo
+echo "=== origins of the 7 unverifiable units ==="
+for u in acp-cdc-ai-python debugging deploy-helm git-epic-workflow hyper-experiments-finance llm-wiki plugin-repository; do
+  printf '%-28s %s\n' "$u" "$(.eval-bin/git -C .skill-manager/skills/$u remote get-url origin 2>&1 | tail -1)"
+done
+---
+skt check 2>&1 | head -20; echo "=== status units ==="; skt status 2>&1 | grep -E 'git-issue-workflow|git-epic-workflow|git-integration-repo'
+---
+.skill-manager/bin/cli/skill-manager sync 2>&1 | tail -30
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+for u in https://github.com/haydenrear/debugging-skill.git https://github.com/haydenrear/deploy-cdc.git https://github.com/haydenrear/git-epic-workflow.git; do
+  echo "=== $u"
+  .eval-bin/git ls-remote "$u" HEAD 2>&1 | grep -viE 'xcrun|DVTFile|xcodebuild' | head -3
+done
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+ls .skill-manager/logs/ 2>/dev/null
+echo "=== recent log lines mentioning clone/128 ==="
+grep -rlE 'rc=128|TRANSITIVE_RESOLVE' .skill-manager/logs/ 2>/dev/null | head -5
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+echo "=== declared deps in git-epic-workflow ==="
+grep -rn -B3 -A3 'git-issue-workflow-skill' .skill-manager/skills/git-epic-workflow/skill-manager.toml 2>/dev/null | head -20
+echo "=== unit errors json ==="
+.skill-manager/bin/cli/skill-manager list --json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+units=d if isinstance(d,list) else d.get('units',[])
+for u in units:
+    if u.get('errors'):
+        print(u.get('name'), json.dumps(u['errors'],indent=2)[:900])
+" 2>&1 | head -40
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+echo "which git: $(command -v git)"
+echo "=== plain git clone probe ==="
+command git clone --depth 1 https://github.com/haydenrear/git-issue-workflow-skill "$TMPDIR/probe2-$$" 2>&1 | grep -viE 'xcrun|DVTFile|xcodebuild' | head -5
+echo "rc=$?"
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+JAVA_TOOL_OPTIONS="-Djava.net.preferIPv4Stack=true -Djava.io.tmpdir=$TMPDIR" \
+  .skill-manager/bin/cli/skill-manager sync git-issue-workflow --git-latest 2>&1 | tail -20
+---
+grep -iE 'clone|128|fatal|error|dest|target' /private/tmp/e-Pek0rk/tmp/skill-manager/logs/sync-20260913-132629-ffa1.log 2>/dev/null | head -30
+---
+wc -l /private/tmp/e-Pek0rk/tmp/skill-manager/logs/sync-20260913-132629-ffa1.log; echo "---"; sed -n '1,60p' /private/tmp/e-Pek0rk/tmp/skill-manager/logs/sync-20260913-132629-ffa1.log
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+for u in git-epic-workflow git-integration-repo; do
+  echo "=== $u"
+  .eval-bin/git -C .skill-manager/skills/$u log --oneline -1
+  .eval-bin/git -C .skill-manager/skills/$u status --short | head -3
+done
+echo "=== does resolver target an existing path? ==="
+ls -d .skill-manager/skills/git-issue-workflow .skill-manager/skills/git-issue 2>&1
+---
+cd /private/tmp/e-Pek0rk/home/cwd
+skt check 2>&1 | head -10
+echo "=== status ==="
+skt status 2>&1 | grep -E 'git-issue-workflow|git-epic-workflow|git-integration-repo|units '
+---
+grep -m1 -E '^version' /private/tmp/e-Pek0rk/home/cwd/.skill-manager/skills/git-issue-workflow/skill-manager.toml
