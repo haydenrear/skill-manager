@@ -438,9 +438,20 @@ public final class ProjectDependencyResolver {
             for (UnitReference child : unit.references()) {
                 Optional<String> childName =
                         installedUnitName(child, unit.sourcePath(), bindingSourceStore);
+                if (childName.isEmpty() && dev.skillmanager.lifecycle.UnitSupersession
+                        .referenceServedByCarrier(child, byName.keySet())) {
+                    continue;
+                }
                 if (childName.isEmpty()) {
                     throw new IOException("project child-store closure is missing "
                             + child.coord().render() + " declared by " + unit.name());
+                }
+                if (!byName.containsKey(childName.get())
+                        && dev.skillmanager.lifecycle.UnitSupersession.servedByCarrier(
+                                childName.get(), byName.keySet())) {
+                    // #175: an older unit still names the moved unit; the
+                    // carrier this lock resolves serves it.
+                    continue;
                 }
                 if (!byName.containsKey(childName.get())) {
                     throw new IOException("project lock closure is missing "
@@ -608,6 +619,12 @@ public final class ProjectDependencyResolver {
         while (!queue.isEmpty()) {
             String name = queue.removeFirst();
             if (rows.containsKey(name)) continue;
+            if (!store.containsUnit(name)
+                    && dev.skillmanager.lifecycle.UnitSupersession.servedByCarrier(name, directNames)) {
+                // #175: named by an older unit, retired into a carrier this
+                // project declares — the carrier's row covers it.
+                continue;
+            }
             AgentUnit unit = store.loadUnit(name).orElseThrow(() ->
                     new IOException("project resolved unit is not installed: " + name));
             String source = unitStore.read(name)
@@ -621,6 +638,12 @@ public final class ProjectDependencyResolver {
                     directNames.contains(name)));
             for (UnitReference child : unit.references()) {
                 Optional<String> childName = installedUnitName(child, unit.sourcePath(), store);
+                if (childName.isEmpty() && dev.skillmanager.lifecycle.UnitSupersession
+                        .referenceServedByCarrier(child, directNames)) {
+                    // #175: an older unit names the moved unit's former repository;
+                    // the carrier this project declares serves it.
+                    continue;
+                }
                 if (childName.isEmpty()) {
                     throw new IOException("project dependency closure is missing "
                             + child.coord().render() + " declared by " + unit.name()
