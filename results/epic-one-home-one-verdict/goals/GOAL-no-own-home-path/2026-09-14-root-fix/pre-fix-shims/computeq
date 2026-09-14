@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Rewritten by skill-manager: resolve the home this shim is standing in
+# rather than the one it was written into, so a copy of the home works.
+SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+export MONITORING_DEPLOY_CDC_ROOT="${SKILL_MANAGER_SHIM_HOME}/skills/deploy-helm"
+exec "/Users/hayde/.skill-manager/cache/skill-script-deploy-helm-computeq/venv/bin/computeq" "$@"
