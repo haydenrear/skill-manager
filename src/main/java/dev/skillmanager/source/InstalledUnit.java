@@ -171,4 +171,9 @@ public record InstalledUnit(
     public InstalledUnit withGitMoved(String newHash, String at) {
         return new InstalledUnit(name, version, kind, installSource, origin, newHash, gitRef, at, errors, unitKind);
     }
+
+    /** The same record describing a checkout whose manifest says {@code newVersion}. */
+    public InstalledUnit withVersion(String newVersion) {
+        return new InstalledUnit(name, newVersion, kind, installSource, origin, gitHash, gitRef, installedAt, errors, unitKind);
+    }
 }

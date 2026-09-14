@@ -331,6 +331,7 @@ public class RunTests {
         failures += ArtifactBuildTest.run();
         failures += LazyArtifactHomeTest.run();
         failures += ArtifactPruneTest.run();
+        failures += dev.skillmanager.source.RecordVersionRefreshTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();

@@ -194,7 +194,9 @@ public final class SyncFromLocalDirHandler {
             if (newHash != null) {
                 ctx.source(skillName).ifPresent(old -> {
                     try {
-                        ctx.writeSource(old.withGitMoved(newHash, UnitStore.nowIso()));
+                        // OHV-3 (c): and its version, from the manifest just copied in.
+                        ctx.writeSource(dev.skillmanager.source.RecordVersionRefresh.orSame(
+                                ctx.store(), old.withGitMoved(newHash, UnitStore.nowIso())));
                     } catch (IOException ignored) {}
                 });
             }
