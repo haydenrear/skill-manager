@@ -22,6 +22,14 @@ then a separate detection and `home verify`, and both are clean afterwards.
 Pending shapes are listed in `HomeVerdictsFixture.java`'s header and in the
 graph's registration comment, each naming the ticket that adds its node.
 
+The nodes read `home repair --json` stdout by parsing it; nothing matches it as
+text. `HomeVerdictsSupport.RepairReport` uses the SDK's Jackson mapper with
+`FAIL_ON_TRAILING_TOKENS` and matches `kind` and `subject` by field, regardless
+of key order or whitespace. `home.verdicts.clean.home` checks the parser itself:
+reordered keys match, while a near-miss subject, a stdout banner and trailing
+content do not. The epic agent asked for this change after the first local run.
+That run (`20260913-234634`) matched findings by exact key order.
+
 ## 2. Goal harnesses vs the kickoff baseline
 
 `python3 scripts/measure_goals.py --epic one-home-one-verdict` (run with
@@ -47,6 +55,21 @@ Every harness is read-only: `artifacts list --json`, `home repair --json`
 
 ## 3. Validation
 
+- `run.py home-verdicts` (local macOS, run `20260913-234634`): **9 of 9 nodes
+  passed**, BUILD SUCCESSFUL in 1m31s. `home.fixpoint.law` checked 1 home and
+  repaired 0. `home.membership.law` checked 1 home, observed 0 units and passed
+  its self-test. The damaged homes never reached either law.
+  Copied to `graph-home-verdicts-local/`. That was the first version, with the
+  text matcher.
+- `run.py home-verdicts` after the JSON-parser change (local macOS, run
+  `20260914-000125`): **9 of 9 nodes passed**, BUILD SUCCESSFUL in 1m08s,
+  including the parser self-check in `home.verdicts.clean.home`. This run is the
+  local evidence for the PR head. Copied to `graph-home-verdicts-local-json/`.
+- `run.py home-integrity` (local macOS, run `20260913-235031`): 19 of 19 nodes
+  passed, BUILD SUCCESSFUL in 2m19s.
+- `skill-manager home close-out --home <worktree>/.skill-manager --into
+  <project>/.skill-manager`: exit 0, "holds nothing that removing it would
+  destroy". No units were changed in the worktree home.
 - `jbang RunTests.java`: ALL PASSED, exit 0.
 - `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
 - `validate_epic_plan.py` with OHV-0 `status: closed`: OK.

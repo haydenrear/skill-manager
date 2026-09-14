@@ -8,6 +8,10 @@ import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.JsonMapper;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -169,21 +173,65 @@ final class HomeVerdictsSupport {
 
     // ------------------------------------------------------------- reading
 
-    /** stdout, alone, is exactly one JSON object. */
-    static boolean isOneJsonObject(String stdout) {
-        String s = stdout.strip();
-        return s.startsWith("{") && s.endsWith("}") && s.indexOf('\n') < 0;
+    /** One finding as {@code home repair --json} reports it: the two fields a node matches on. */
+    record Finding(String kind, String subject) {}
+
+    /**
+     * {@code home repair --json}'s stdout, PARSED with the SDK's Jackson mapper —
+     * never matched as text.
+     *
+     * <p>Nodes match findings by their {@code kind} and {@code subject} FIELDS, so
+     * key order, whitespace or an added field in the command's JSON does not
+     * redden this graph; only a change to what the report SAYS does. Later waves
+     * add nodes on top of this, so every node goes through here.
+     *
+     * @param object   stdout alone parsed as exactly one JSON object, with no
+     *                 trailing content (a banner on stdout fails this)
+     * @param clean    the report's boolean {@code clean} field; false when absent
+     * @param tree     the parsed object, or null
+     * @param findings every entry of {@code findings}, in order
+     */
+    record RepairReport(boolean object, boolean clean, JsonNode tree, List<Finding> findings) {
+
+        static RepairReport parse(String stdout) {
+            JsonNode tree;
+            try {
+                tree = JsonMapper.MAPPER.reader()
+                        .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                        .readTree(stdout == null ? "" : stdout);
+            } catch (IOException | RuntimeException notJson) {
+                return new RepairReport(false, false, null, List.of());
+            }
+            if (tree == null || !tree.isObject()) {
+                return new RepairReport(false, false, tree, List.of());
+            }
+            List<Finding> findings = new ArrayList<>();
+            JsonNode array = tree.path("findings");
+            if (array.isArray()) {
+                for (JsonNode f : array) {
+                    findings.add(new Finding(f.path("kind").asText(null),
+                            f.path("subject").asText(null)));
+                }
+            }
+            JsonNode clean = tree.path("clean");
+            return new RepairReport(true, clean.isBoolean() && clean.booleanValue(), tree,
+                    List.copyOf(findings));
+        }
+
+        /** A finding of {@code kind} about {@code subject}, matched by field. */
+        boolean reports(String kind, String subject) {
+            return findings.stream()
+                    .anyMatch(f -> kind.equals(f.kind()) && subject.equals(f.subject()));
+        }
+
+        /** Parsed, {@code clean:true}, and no findings: an unreadable report is never clean. */
+        boolean parsedClean() {
+            return object && clean && findings.isEmpty();
+        }
     }
 
-    /** The finding {@code kind} about {@code subject}, as {@code reportJson} spells it. */
-    static boolean reportsFinding(String json, String kind, String subject) {
-        return json.contains("{\"kind\":\"" + kind + "\",\"subject\":\"" + subject + "\"");
-    }
-
-    static int findingCount(String json) {
-        int n = 0;
-        for (int at = json.indexOf("{\"kind\":\""); at >= 0; at = json.indexOf("{\"kind\":\"", at + 1)) n++;
-        return n;
+    static RepairReport report(Verdict v) {
+        return RepairReport.parse(v.stdout());
     }
 
     // ------------------------------------------------------------- one shape
@@ -228,7 +276,7 @@ final class HomeVerdictsSupport {
             // "finds" the kind would also find it in a layout that is itself
             // damaged, and the assertion would be about the fixture.
             Verdict control = repairJson(ctx, "control", subject);
-            boolean controlClean = control.exit() == 0 && control.stdout().contains("\"clean\":true");
+            boolean controlClean = control.exit() == 0 && report(control).parsedClean();
 
             String rel = plant.plant(subject, neighbour);
 
@@ -239,14 +287,19 @@ final class HomeVerdictsSupport {
             Verdict after = repairJson(ctx, "detect-after-fix", subject);
             Verdict verifyAfter = verify(ctx, "verify-after-fix", subject);
 
+            RepairReport detected = report(detect);
+            RepairReport detectedAgain = report(detectAgain);
             boolean repairRed = detect.exit() == 1 && detectAgain.exit() == 1;
-            boolean stdoutIsJson = isOneJsonObject(detect.stdout());
-            boolean namesShape = reportsFinding(detect.stdout(), shape.kind(), rel);
-            boolean detectionIsStable = detect.stdout().equals(detectAgain.stdout());
+            boolean stdoutIsJson = detected.object();
+            boolean namesShape = detected.reports(shape.kind(), rel);
+            // Compared as parsed trees: the stability claim is about what the
+            // report says, not how it happened to be spaced.
+            boolean detectionIsStable = detected.object()
+                    && detected.tree().equals(detectedAgain.tree());
             boolean verifyExitAsToday = verify.exit() == shape.verifyExitToday();
             boolean verifyNames = verify.both().contains(shape.kind() + " " + rel);
             boolean verifyNamesAsToday = verifyNames == shape.verifyNamesToday();
-            boolean fixCleared = after.exit() == 0 && after.stdout().contains("\"clean\":true");
+            boolean fixCleared = after.exit() == 0 && report(after).parsedClean();
             boolean verifyCleanAfterFix = verifyAfter.exit() == 0;
 
             if (!controlClean) failures.add("control: the unplanted subject was not clean: exit "
@@ -283,7 +336,7 @@ final class HomeVerdictsSupport {
                     .assertion("home_verify_is_clean_after_the_fix", verifyCleanAfterFix)
                     .metric("verify.exit", verify.exit())
                     .metric("repair.exit", detect.exit())
-                    .metric("repair.findings", findingCount(detect.stdout()))
+                    .metric("repair.findings", detected.findings().size())
                     .log("shape=" + shape.kind() + " subject=" + rel
                             + " | repair=" + detect.exit() + " verify=" + verify.exit()
                             + " (names it: " + verifyNames + ") fix=" + fix.exit()

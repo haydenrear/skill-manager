@@ -38,10 +38,30 @@ public class CleanHomeHasNoVerdict {
             var verify = HomeVerdictsSupport.verify(ctx, "verify", home);
 
             boolean isAHome = repair.exit() != 2 && verify.exit() != 2;
-            boolean repairClean = repair.exit() == 0 && repair.stdout().contains("\"clean\":true");
-            boolean stdoutIsJson = HomeVerdictsSupport.isOneJsonObject(repair.stdout());
+            HomeVerdictsSupport.RepairReport parsed = HomeVerdictsSupport.report(repair);
+            boolean repairClean = repair.exit() == 0 && parsed.parsedClean();
+            boolean stdoutIsJson = parsed.object();
             boolean verifyClean = verify.exit() == 0;
-            boolean pass = isAHome && repairClean && stdoutIsJson && verifyClean;
+
+            // The parser every shape node matches through, shown to match by
+            // FIELD: keys reordered, whitespace added, an extra field, and a
+            // near-miss subject that must NOT match. A text matcher passes the
+            // first stdout the command happens to print and fails this.
+            var reordered = HomeVerdictsSupport.RepairReport.parse("""
+                    {
+                      "findings" : [ { "repairable" : true, "subject" : "bin/cli/x",
+                                       "detail" : "d", "kind" : "FROZEN_HOME_PATH_IN_SHIM" } ],
+                      "clean" : false, "examined" : 3, "home" : "/h"
+                    }
+                    """);
+            boolean parserMatchesByField = reordered.object()
+                    && reordered.reports("FROZEN_HOME_PATH_IN_SHIM", "bin/cli/x")
+                    && !reordered.reports("FROZEN_HOME_PATH_IN_SHIM", "bin/cli/xy")
+                    && !reordered.parsedClean()
+                    && !HomeVerdictsSupport.RepairReport.parse("banner\n{\"clean\":true}").object()
+                    && !HomeVerdictsSupport.RepairReport.parse("{\"clean\":true} trailing").object();
+
+            boolean pass = isAHome && repairClean && stdoutIsJson && verifyClean && parserMatchesByField;
             return (pass ? NodeResult.pass(SPEC.id())
                     : NodeResult.fail(SPEC.id(), "repair=" + repair.exit() + " verify=" + verify.exit()
                             + " stdout=" + HomeVerdictsSupport.head(repair.stdout())))
@@ -50,6 +70,8 @@ public class CleanHomeHasNoVerdict {
                     .assertion("home_repair_json_exits_0_and_says_clean", repairClean)
                     .assertion("home_repair_json_stdout_alone_is_one_json_object", stdoutIsJson)
                     .assertion("home_verify_exits_0", verifyClean)
+                    .assertion("the_finding_parser_matches_by_field_not_by_key_order_or_whitespace",
+                            parserMatchesByField)
                     .metric("repair.exit", repair.exit())
                     .metric("verify.exit", verify.exit())
                     .log("repair --json stdout: " + repair.stdout().strip());
