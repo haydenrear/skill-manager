@@ -137,11 +137,13 @@ public class HomeCloneCarriesNoCredential {
                 .assertion("CONTROL_the_clone_still_succeeds", cloneSucceeded)
                 .publish("credentialCloneHome", dest.toString())
                 // A copy of the fixture, so it inherits the planted shim without
-                // venvs/. Declared by entry for home.fixpoint.law (#344).
+                // venvs/, and the fixture's unstamped pm tree. Declared by entry
+                // for home.fixpoint.law (#344; pm tree since OHV-2, #339).
                 .publish(IntentionalDamage.KEY, IntentionalDamage.declare(dest,
-                        java.util.List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
+                        java.util.List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM, "pm/uv/0.0.0"),
                         "copy of home.clone.fixture.built: inherits its planted "
-                                + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/"))
+                                + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/, "
+                                + "and its unstamped pm/uv/0.0.0"))
                 .log("#281 sat open as an 'unverified inference' because it was reasoned "
                         + "from the absence of an exclusion. Measured 2026-09-05, before "
                         + "the fix: the copy had the token, mode 0600, contents intact.");

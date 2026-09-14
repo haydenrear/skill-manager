@@ -117,6 +117,9 @@ public final class HomeFixpointLaw {
                 if (declared != null) {
                     String output = first.out + "\n" + first.err;
                     Set<String> reported = IntentionalDamage.unresolvedEntries(output);
+                    // OHV-2: verify also names `home repair` findings, and a
+                    // planted shape may be reported only there.
+                    reported.addAll(IntentionalDamage.repairSubjects(output));
                     Set<String> unseen = new LinkedHashSet<>(declared.entries());
                     unseen.removeAll(reported);
                     if (!unseen.isEmpty()) {

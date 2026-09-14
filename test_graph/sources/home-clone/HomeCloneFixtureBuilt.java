@@ -296,13 +296,22 @@ public class HomeCloneFixtureBuilt {
                     .metric("contentSelfReferences", (int) contentRefs)
                     .metric("symlinkSelfReferences", (int) symlinkRefs)
                     .publish("fixtureHome", fixtureStr)
-                    // Step 6 planted this on purpose. Declared, by entry, so
+                    // Steps 4-6 planted these on purpose. Declared, by entry, so
                     // home.fixpoint.law judges every OTHER finding in this home
-                    // as usual and fails if verify stops seeing this one (#344).
+                    // as usual and fails if verify stops seeing one (#344).
+                    // Since OHV-2 (#339) verify also names `home repair`
+                    // findings: step 4's shim names this home absolutely
+                    // (FROZEN_HOME_PATH_IN_SHIM) and step 5's pm tree has no
+                    // platform stamp (UNSTAMPED_PM_TREE) — the legacy shapes
+                    // the clone's re-anchoring is asserted against.
                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(fixture,
-                            List.of("venvs/hc-venv/bin/hc"),
+                            List.of("venvs/hc-venv/bin/hc",
+                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
+                                    "pm/uv/0.0.0"),
                             "home.clone.fixture.built step 6 plants a console script whose "
-                                    + "interpreter venvs/hc-venv/bin/python is never created"))
+                                    + "interpreter venvs/hc-venv/bin/python is never created; "
+                                    + "step 4's shim is frozen and step 5's pm tree unstamped, "
+                                    + "both on purpose"))
                     .publish("projectDir", projectDir.toString())
                     .publish("cloneStore", HomeCloneSupport.storeOf(projectDir).toString())
                     .publish("sourceDigest", sourceDigest)
