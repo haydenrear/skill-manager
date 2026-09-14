@@ -53,6 +53,10 @@ import java.nio.file.Path;
  *   <tr><td>#352 shape 4: Codex marketplace and Claude enablement of another home's (OHV-6, DEF-OHV-005)</td>
  *       <td>home.verdicts.foreign.marketplace.registration</td>
  *       <td>1 FOREIGN_MARKETPLACE_REGISTRATION</td><td>1, names it; --fix removes only those entries</td></tr>
+ *   <tr><td>a skill-script install in a child writes through a bin/cli link into its parent (DEF-OHV-011, OHV-9)</td>
+ *       <td>home.verdicts.child.install.writes.only.itself</td>
+ *       <td colspan="2">not a verdict shape: install into the child, parent byte-identical,
+ *       child holds its own token-form shim</td></tr>
  * </table>
  *
  * <p>The three "0 until OHV-2" cells were GOAL-one-verdict clause (1) failing,

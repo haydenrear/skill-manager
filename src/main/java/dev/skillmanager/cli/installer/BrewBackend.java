@@ -64,17 +64,10 @@ public final class BrewBackend implements InstallerBackend {
             for (Path entry : (Iterable<Path>) entries::iterator) {
                 if (!Files.isExecutable(entry)) continue;
                 Path link = store.cliBinDir().resolve(entry.getFileName().toString());
-                if (Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)
-                        || Files.isSymbolicLink(link)) {
-                    Files.delete(link);
-                }
-                try {
-                    Files.createSymbolicLink(link, entry);
-                } catch (UnsupportedOperationException | IOException e) {
-                    // Fall back to copy on filesystems that reject symlinks.
-                    Files.copy(entry, link);
-                    Fs.makeExecutable(link);
-                }
+                // OHV-9 (#367): delete-then-link (copy on filesystems that reject
+                // symlinks), so an entry linking into another home is replaced,
+                // never written through. No detach needed here.
+                ForeignBinLinks.placeLink(link, entry);
             }
         }
         Log.ok("cli: installed brew %s; linked bins into %s", pkg, store.cliBinDir());

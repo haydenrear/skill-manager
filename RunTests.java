@@ -64,6 +64,8 @@ import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
 import dev.skillmanager.cli.installer.CliPresenceTest;
 import dev.skillmanager.cli.installer.InstallerFingerprintTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
+import dev.skillmanager.cli.installer.SkillScriptWriteThroughTest;
+import dev.skillmanager.cli.installer.BinCliWritersDoNotFollowLinksTest;
 import dev.skillmanager.artifacts.ArtifactBackfillTest;
 import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
 import dev.skillmanager.artifacts.ArtifactGraphTest;
@@ -184,6 +186,8 @@ public class RunTests {
         failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
+        failures += SkillScriptWriteThroughTest.run();
+        failures += BinCliWritersDoNotFollowLinksTest.run();
         failures += InstallerFingerprintTest.run();
         failures += CliPresenceTest.run();
         failures += CliArtifactMatrixTest.run();

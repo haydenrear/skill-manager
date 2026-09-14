@@ -242,11 +242,23 @@ final class HomeVerdictsSupport {
      * two node logs ({@code <label>.stdout.log}, {@code <label>.stderr.log}).
      */
     static Verdict sm(NodeContext ctx, String label, Path home, String... args) {
+        return smWithEnv(ctx, label, home, java.util.Map.of(), args);
+    }
+
+    /**
+     * {@link #sm} with extra environment on top of {@link SmEnv}'s. For
+     * variables SmEnv does not manage — OHV-9's install node points
+     * {@code SKILL_MANAGER_GATEWAY_URL} at an unreachable host so the install
+     * does not build a gateway venv.
+     */
+    static Verdict smWithEnv(NodeContext ctx, String label, Path home,
+                             java.util.Map<String, String> extraEnv, String... args) {
         List<String> argv = new ArrayList<>();
         argv.add(SmEnv.cli().toString());
         argv.addAll(List.of(args));
         ProcessBuilder pb = new ProcessBuilder(argv);
         SmEnv.apply(ctx, pb, home);
+        pb.environment().putAll(extraEnv);
         Instant started = Instant.now();
         Path out;
         Path err;

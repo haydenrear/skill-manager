@@ -225,7 +225,7 @@ public final class LauncherShims {
         List<Path> written = new java.util.ArrayList<>();
         for (String agent : AGENTS) {
             Path file = dir.resolve(agent);
-            Files.writeString(file, script(agent));
+            writeOwnFile(file, script(agent));
             Fs.makeExecutable(file);
             written.add(file);
         }
@@ -241,11 +241,26 @@ public final class LauncherShims {
         // exiting 0 without having exec'd something.
         Path cli = cliEntrypoint(store);
         Fs.ensureDir(cli.getParent());
-        Files.writeString(cli, cliScript(pin));
+        writeOwnFile(cli, cliScript(pin));
         Fs.makeExecutable(cli);
         written.add(cli);
 
         return new Result(dir, List.copyOf(written), pin);
+    }
+
+    /**
+     * Write a generated file this home owns, replacing a symlink rather than
+     * writing through it.
+     *
+     * <p>OHV-9 (#367): {@code Files.writeString} follows a symlink. These files
+     * are generated and are never links, so a link standing at one — for
+     * example a child home's {@code bin/cli/skill-manager} pointing at its
+     * parent's — would have had THIS home's pin written into the OTHER home.
+     * Deleting a link removes the link, not its target.
+     */
+    private static void writeOwnFile(Path file, String content) throws IOException {
+        if (Files.isSymbolicLink(file)) Files.delete(file);
+        Files.writeString(file, content);
     }
 
     /**
