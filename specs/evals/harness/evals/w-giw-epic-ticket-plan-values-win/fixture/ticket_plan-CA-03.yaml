@@ -1,0 +1,15 @@
+name: cut_the_apparatus
+tickets:
+- id: CA-03
+  wave: 2
+  promotion_order: 30
+  promotion_predecessor: CA-01
+  depends_on:
+  - CA-01
+  blocks:
+  - CA-05
+  conflict_keys:
+    production:
+    - src/adapter.py
+    adapters:
+    - adapter

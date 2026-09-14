@@ -1,0 +1,2 @@
+$ skt check
+skt check: all current (20 change-managed unit(s), tier project); unverifiable: acp-cdc-ai-python, debugging, deploy-helm, discovery, git-epic-workflow, git-integration-repo, git-issue, git-issue-workflow, hyper-experiments, hyper-experiments-finance, llm-wiki, plugin-repository, slm-agent, spec-double-compiler, test-graph, tracer-agent, tracing-observability, vision-toolbelt-skill, andrej-karpathy-skills, skt

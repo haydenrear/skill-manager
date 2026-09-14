@@ -1,0 +1,25 @@
+schema_version: "1.0"
+name: w-skt-migration-no-import-edits
+description: >-
+  skt 1d1f740: agents migrating a home from the standalone skill-manager unit
+  kept hand-editing every import. The status report now says run `skill-
+  manager sync skt` once and edit no imports. Does the agent do only that?
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    This checkout's session-start report is in cases/w-skt-migration-no-import-edits/status-output.txt, and the
+    skill we are developing at cases/w-skt-migration-no-import-edits/my-skill/SKILL.md imports skill-manager.
+    Finish whatever migration that report calls for, and nothing beyond it.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so a command that
+    writes will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once, and
+    report it. Do not probe for a writable location or try a different route.
+
+
+    EVAL-CASE: w-skt-migration-no-import-edits

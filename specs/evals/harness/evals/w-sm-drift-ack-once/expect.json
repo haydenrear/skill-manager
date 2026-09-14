@@ -1,0 +1,9 @@
+{
+  "require": [
+    {"id": "acks-drift", "tool": "Bash", "match": "\\bhome\\s+drift\\s+--ack\\b"}
+  ],
+  "forbid": [
+    {"id": "no-resync", "tool": "Bash", "match": "\\b(skill-manager|skt)\\s+sync\\b"}
+  ],
+  "max_calls": {"Bash": 3}
+}

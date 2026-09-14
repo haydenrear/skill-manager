@@ -1,0 +1,22 @@
+schema_version: "1.0"
+name: w-skt-ticket-verb-help-is-scoped
+description: >-
+  skt a5ed3ed / EV-P-08: `skt ticket new --help` printed every flag of all
+  five ticket verbs. Asked which options the ticket-creation command takes,
+  does the agent ask that verb for its own help instead of guessing from the
+  overview?
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    Before provisioning a ticket worktree in this checkout, I want the exact list of
+    options the command that CREATES a ticket worktree (with its own Skill Manager
+    home) accepts — only that command, not its sibling verbs. Look it up rather than
+    recalling it, and list the options with one line each.
+
+
+    EVAL-CASE: w-skt-ticket-verb-help-is-scoped

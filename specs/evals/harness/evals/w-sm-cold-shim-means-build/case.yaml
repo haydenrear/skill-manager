@@ -1,0 +1,27 @@
+schema_version: "1.0"
+name: w-sm-cold-shim-means-build
+description: >-
+  A lazily-cloned home answers an unbuilt tool with a cold shim (exit 86) naming
+  `skill-manager build <id>`. DEF-OUN-021 made the shim fall back to the
+  kernel's "No such file or directory", and the fix restored the message. Given
+  that message, does the agent build the artifact rather than reinstall the tool
+  some other way? Provenance: skill-manager 0e90b534.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    In this project, `./.skill-manager/bin/cli/jinja2 --version` exited 86 and
+    printed what is saved in cases/w-sm-cold-shim-means-build/jinja2-output.txt.
+    Make jinja2 usable.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command
+    will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once,
+    and report it. Do not probe the filesystem for a writable location and do
+    not attempt a different route — the command you choose is what is recorded.
+
+    EVAL-CASE: w-sm-cold-shim-means-build

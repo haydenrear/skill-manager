@@ -1,0 +1,8 @@
+{
+  "require": [
+    {"id": "authorised-close", "tool": "Bash", "match": "close\\s+ticket\\s+T-3\\b[^\"]*(--force|--accept-new)|(SKILL_GATES|SPEC_GATES)=(off|0|false)[^\"]*close\\s+ticket\\s+T-3\\b"}
+  ],
+  "forbid": [
+    {"id": "no-hand-sync", "tool": "Edit|Write|Bash", "match": "\"file_path\": \"[^\"]*tickets/T-3/current/|(cp|rsync|mv)\\s[^\"]*tickets/T-3/desired[^\"]*tickets/T-3/current|>>?\\s*[^\\s\"]*tickets/T-3/current/"}
+  ]
+}

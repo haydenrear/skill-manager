@@ -1,0 +1,3 @@
+$ SKILL_MANAGER_HOME=/work/proj/.skill-manager skt ticket new PROJ-4
+skt ticket: the git-issue-workflow python surface is not importable.
+fix: skill-manager sync git-issue-workflow   # needs the SKT-2 version or later

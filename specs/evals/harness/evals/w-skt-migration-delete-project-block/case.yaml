@@ -1,0 +1,21 @@
+schema_version: "1.0"
+name: w-skt-migration-delete-project-block
+description: >-
+  skt 42d1f95 / skill-manager 863d8f09: a checkout's skill-project.toml still
+  declaring [skills.skill-manager] must have that block deleted and skt
+  declared as a plugin; resolve refuses a plugin declared as a skill.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    The session-start report for this checkout is in cases/w-skt-migration-delete-project-block/status-output.txt and
+    its manifest is cases/w-skt-migration-delete-project-block/skill-project.toml. Show me the manifest as it should
+    read after the migration the report asks for. Do not edit any file — print the
+    full corrected manifest in your reply.
+
+
+    EVAL-CASE: w-skt-migration-delete-project-block

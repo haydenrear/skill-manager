@@ -1,0 +1,22 @@
+schema_version: "1.0"
+name: w-epic-plan-free-form-lane
+description: >-
+  An epic plan whose conflict_keys lanes are project names (`crates`, `docs`)
+  rather than production/tla/adapters/test_graph/workflow. git-epic-workflow
+  fix/drop-bs-gates 4d6a335: lanes are free-form; the installed assignment
+  validator required all five fixed lanes and rejected any other name, which sent
+  agents renaming lanes. The fixture passes the drop-gates validate_epic_plan.py
+  (exit 0, no warnings). Runs against the drop-gates checkout.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+
+    Validate the epic plan at cases/w-epic-plan-free-form-lane/ticket_plan.yaml
+    before I dispatch it, and tell me whether it is ready.
+
+    EVAL-CASE: w-epic-plan-free-form-lane

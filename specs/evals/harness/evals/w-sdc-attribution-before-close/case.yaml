@@ -1,0 +1,26 @@
+schema_version: "1.0"
+name: w-sdc-attribution-before-close
+description: >-
+  A blind agent handed a finished ticket and told to follow the close-out
+  process did no bug attribution, and said it would not have unprompted:
+  SKILL.md, the path agents walk, never mentioned it. Attribution is now step 13
+  of the ticket loop, before `close ticket`. Provenance: tla-spec-dev 5205556
+  (E-09), SKILL.md step 13 / references/bug_attribution.md.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 6
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    Ticket T-7 is finished: its spec-unit tests are green and the plan entry is
+    marked done. While working it, a spec-unit test caught that checkout accepted
+    a negative quantity. Follow this project's close-out process for T-7.
+    The spec root is cases/w-sdc-attribution-before-close/specs.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem is read-only, so writes and commands
+    that write will fail with "Operation not permitted". That is expected. Issue
+    what you would, once each, and report what you did in order.
+
+    EVAL-CASE: w-sdc-attribution-before-close

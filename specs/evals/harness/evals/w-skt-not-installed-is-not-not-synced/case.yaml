@@ -1,0 +1,27 @@
+schema_version: "1.0"
+name: w-skt-not-installed-is-not-not-synced
+description: >-
+  skt f601ee6 (fifth sighting in one epic): the ticket front door printed
+  `fix: skill-manager sync git-issue-workflow` for a home that had never
+  installed that unit, and sync cannot install. Given the old remedy and an
+  inventory without the unit, does the agent install rather than sync?
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    A colleague's `skt ticket new` refused with the output in
+    cases/w-skt-not-installed-is-not-not-synced/ticket-output.txt, and their home's unit inventory is in
+    cases/w-skt-not-installed-is-not-not-synced/installed-units.txt. Issue the one command that makes their front
+    door work again, for the home named in the output.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so a command that
+    writes will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once, and
+    report it. Do not probe for a writable location or try a different route.
+
+
+    EVAL-CASE: w-skt-not-installed-is-not-not-synced

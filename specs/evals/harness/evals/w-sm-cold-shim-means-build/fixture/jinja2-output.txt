@@ -1,0 +1,8 @@
+$ ./.skill-manager/bin/cli/jinja2 --version
+skill-manager: 'jinja2' is declared in this home and has not been built.
+  reason:  cli-shim:pip/jinja2-cli[yaml] is declared-only in this clone
+  home:    ./.skill-manager
+  build it:  skill-manager build 'cli-shim:pip/jinja2-cli[yaml]'
+        or:  skt build 'cli-shim:pip/jinja2-cli[yaml]'
+  note:    that command exits 1 even when it built what you asked for (ARTI-06); re-run this entry point rather than trusting its status.
+[exit 86]

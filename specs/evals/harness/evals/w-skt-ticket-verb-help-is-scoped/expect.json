@@ -1,0 +1,9 @@
+{
+  "require": [
+    {
+      "id": "asked-the-verb",
+      "tool": "Bash",
+      "match": "ticket\\s+new\\s+(?:\\S+\\s+)*(?:--help|-h)\\b"
+    }
+  ]
+}

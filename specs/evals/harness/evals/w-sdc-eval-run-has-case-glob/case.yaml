@@ -1,0 +1,25 @@
+schema_version: "1.0"
+name: w-sdc-eval-run-has-case-glob
+description: >-
+  `claude plugin eval` discovers cases with a recursive glob that follows
+  symlinked units into THEIR eval directories, so a run without `--case`
+  bills other suites' cases; and a case's `allowed_tools:` grants nothing
+  without the operator's `--allow-tools`, scoring a capable agent 0.
+  Provenance: tla-spec-dev b5cfb09, references/plugin_evals.md §2 (147-183).
+  The agent is asked for the command, not to run it -- running it would start
+  a billed nested eval.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    I want to run just the `catch-the-drift` eval case from spec-double-compiler's
+    example eval plugin (examples/agent_integration/eval-plugin), and that case
+    needs the Bash, Write and Edit tools. Give me the exact shell command to run
+    it. Do NOT run it yourself -- it is a billed run. Reply with the command in a
+    code block.
+
+    EVAL-CASE: w-sdc-eval-run-has-case-glob

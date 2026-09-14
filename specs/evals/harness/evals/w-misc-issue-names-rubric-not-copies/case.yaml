@@ -1,0 +1,23 @@
+schema_version: "1.0"
+name: w-misc-issue-names-rubric-not-copies
+description: >-
+  A charter that restated a table of judged results carried two wrong rows
+  forward across an instrument change. The git-issue skill now says an issue
+  names its rubric (which one, version, judges, where evidence lands) and never
+  pastes its dimensions, anchors or scoring rules. Given a rubric file, does
+  the drafted body name it without copying it? Provenance: git-issue-skill
+  e536d7e, 9519bf6.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 6
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    Draft, but do not create, the GitHub issue body for this ticket: "put the
+    payment adapter behind a port". Its goal is decided by the rubric in
+    cases/w-misc-issue-names-rubric-not-copies/rubric.md (version 3, scored by
+    two blind judges). Print the complete issue body in your reply.
+
+    EVAL-CASE: w-misc-issue-names-rubric-not-copies

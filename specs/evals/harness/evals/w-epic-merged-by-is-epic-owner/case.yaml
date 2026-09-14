@@ -1,0 +1,23 @@
+schema_version: "1.0"
+name: w-epic-merged-by-is-epic-owner
+description: >-
+  The user will merge ticket PRs personally. git-epic-workflow 2b227a7 (C1):
+  that answer lands ONCE, in the plan (`review_policy.merges: human`); the
+  rendered assignment still says `merged_by: epic-owner`, because the field names
+  the role opposite the ticket agent, not a person. Before, the plan accepted
+  `human` and the assignment validator refused it, and agents were stuck or
+  shipped contradicting bodies. Runs against the drop-gates checkout.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+
+    On epic cut-the-apparatus I am going to merge the ticket PRs into the epic
+    branch myself. Show me the plan's review_policy block and the `review:`
+    block of ticket CA-03's rendered assignment, as they should read now.
+
+    EVAL-CASE: w-epic-merged-by-is-epic-owner

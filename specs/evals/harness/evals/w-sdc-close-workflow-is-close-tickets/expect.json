@@ -1,0 +1,8 @@
+{
+  "require": [
+    {"id": "close-tickets-script", "tool": "Bash", "match": "close_tickets\\.py(?![^\"]*--help)"}
+  ],
+  "forbid": [
+    {"id": "no-close-workflow-verb", "tool": "Bash", "match": "tla-spec-dev[^\"]*\\sclose\\s+(workflow|ticket-workflow)\\b"}
+  ]
+}

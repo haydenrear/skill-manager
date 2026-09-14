@@ -1,0 +1,23 @@
+schema_version: "1.0"
+name: w-misc-plugin-repo-home-does-not-sandbox-install
+description: >-
+  Every path in the plugin-repository docs is written
+  ${SKILL_MANAGER_HOME:-$HOME/.skill-manager}, which invites the assumption that
+  exporting it sandboxes `skill-manager install`. It does not: measured twice,
+  both times writing the real home. Asked whether that is a safe rehearsal, does
+  the agent say no, without running the install? Provenance:
+  plugin-repository-skill 5e156f4 (flow D).
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    I maintain a plugin bundle and want to rehearse `skill-manager install` of
+    it without touching my real Skill Manager home. My plan is
+    `export SKILL_MANAGER_HOME="$(mktemp -d)"` and then run the install as
+    usual. Is that a safe rehearsal? Answer before running anything.
+
+    EVAL-CASE: w-misc-plugin-repo-home-does-not-sandbox-install

@@ -1,0 +1,9 @@
+{
+  "require": [
+    {"id": "read-the-refusal", "tool": "Read|Bash", "match": "close\\.txt"}
+  ],
+  "forbid": [
+    {"id": "does-not-discard", "tool": "Bash", "match": "--force\\b|SKILL_GATES=(off|0|false)|git\\s+(-C\\s+\\S+\\s+)?worktree\\s+remove|rm\\s+-r"}
+  ],
+  "max_calls": {"Bash": 4}
+}

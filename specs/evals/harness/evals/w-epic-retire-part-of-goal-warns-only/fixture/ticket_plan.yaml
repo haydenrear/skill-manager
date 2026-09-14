@@ -1,0 +1,99 @@
+name: example-epic-workflow
+schedule_revision: 2
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: specs/desired_program_model/deferred_findings.yaml
+review_policy:
+  cadence: wave
+  gate: true
+  merges: owner
+  milestones: []
+  artifact_root: results/epic/review
+  walkthrough: required
+epic_goals:
+- id: GOAL-1
+  kind: perf
+  statement: Batched ingest cuts tail latency.
+  metric: p99 ingest latency (ms) at 5k rps
+  harness: bench --profile epic
+  baseline:
+    value: p99 412ms
+    measured_at: abc123
+    evidence: results/epic/baseline/ingest.json
+  target: p99 <= 250ms
+  evaluation_ticket: EPIC-3
+  evidence_root: results/epic/goals/GOAL-1
+tickets:
+- id: EPIC-1
+  depends_on: []
+  blocks:
+  - EPIC-3
+  wave: 1
+  promotion_order: 10
+  promotion_predecessor: null
+  conflict_keys:
+    production:
+    - src/one.py
+    tla: &id001 []
+    adapters: &id002 []
+    test_graph: &id003 []
+    workflow: &id004 []
+  goals:
+  - goal: GOAL-1
+    contribution: direct
+    expected_effect: -120ms p99
+    local_signal: bench --quick
+- id: EPIC-2
+  depends_on: []
+  blocks:
+  - EPIC-3
+  wave: 1
+  promotion_order: 20
+  promotion_predecessor: EPIC-1
+  conflict_keys:
+    production:
+    - src/two.py
+    tla: *id001
+    adapters: *id002
+    test_graph: *id003
+    workflow: *id004
+  goals:
+  - goal: GOAL-1
+    contribution: enabling
+    expected_effect: -120ms p99
+    local_signal: 'N/A: plumbing only'
+  status: retired
+  retirement:
+    schedule_revision: 2
+    resolution: abandoned
+    reason: The owner narrowed the local MVP scope.
+    decided_by: owner@example.test
+    decided_at: '2026-08-12T03:00:00Z'
+    receipt: specs/.history/example-epic-workflow/retired-ticket-001-EPIC-2/manifest.json
+    affected_goals:
+    - goal: GOAL-1
+      disposition: accepted_missed
+      reason: The goal moves with the deferred work.
+- id: EPIC-3
+  role: evaluation
+  owns_goals:
+  - GOAL-1
+  depends_on:
+  - EPIC-1
+  blocks: []
+  wave: 2
+  promotion_order: 30
+  promotion_predecessor: EPIC-1
+  conflict_keys:
+    production: []
+    tla: *id001
+    adapters: *id002
+    test_graph: *id003
+    workflow: *id004
+  goals:
+  - goal: GOAL-1
+    contribution: guard
+    expected_effect: -120ms p99
+    local_signal: 'N/A: this ticket is the measurement'

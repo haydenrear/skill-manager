@@ -1,0 +1,5 @@
+{
+  "require": [],
+  "forbid": [],
+  "max_calls": {"Bash": 3}
+}

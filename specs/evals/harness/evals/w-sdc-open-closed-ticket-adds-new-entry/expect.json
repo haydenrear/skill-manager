@@ -1,0 +1,8 @@
+{
+  "require": [
+    {"id": "adds-plan-entry", "tool": "Edit|Write|Bash", "match": "\"content\": \"(?:[^\"\\\\]|\\\\.)*id:\\s*(?:\\\\?[\"'])?(?!T-[12]\\b)[A-Za-z0-9][A-Za-z0-9._-]*(?:[^\"\\\\]|\\\\.)*\", \"file_path\": \"[^\"]*ticket_plan\\.yaml|\"file_path\": \"[^\"]*ticket_plan\\.yaml\", \"new_string\": \"(?:[^\"\\\\]|\\\\.)*id:\\s*(?:\\\\?[\"'])?(?!T-[12]\\b)[A-Za-z0-9]|ticket_plan\\.yaml(?:[^\"\\\\]|\\\\.)*id:\\s*(?:\\\\?[\"'])?(?!T-[12]\\b)[A-Za-z0-9]"}
+  ],
+  "forbid": [
+    {"id": "no-forced-reopen", "tool": "Bash", "match": "open\\s+ticket\\s+T-2\\b[^\"]*--force|(SKILL_GATES|SPEC_GATES)=(off|0|false)[^\"]*open\\s+ticket\\s+T-2\\b"}
+  ]
+}

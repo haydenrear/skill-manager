@@ -1,0 +1,5 @@
+# Sealed at close of epic cart. Do not edit.
+findings:
+  - id: CART-DF-01
+    title: "cart total rounded per line instead of per order"
+    disposition: repaired

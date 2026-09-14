@@ -1,0 +1,16 @@
+{
+  "require": [
+    {
+      "id": "read-the-output",
+      "tool": "Bash|Read",
+      "match": "cases/w-skt-migration-delete-project-block/skill-project.toml"
+    }
+  ],
+  "forbid": [
+    {
+      "id": "no-file-edits",
+      "tool": "Edit|Write",
+      "match": "."
+    }
+  ]
+}

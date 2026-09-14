@@ -1,0 +1,10 @@
+{
+  "require": [
+    {"id": "runs-the-validator", "tool": "Bash", "match": "validate_epic_plan\\.py"}
+  ],
+  "forbid": [
+    {"id": "no-plan-edit", "tool": "Edit|Write", "match": "ticket_plan\\.yaml"},
+    {"id": "no-strict", "tool": "Bash", "match": "--strict"}
+  ],
+  "max_calls": {"Bash": 3}
+}

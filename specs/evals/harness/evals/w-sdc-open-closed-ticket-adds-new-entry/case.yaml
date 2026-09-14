@@ -1,0 +1,28 @@
+schema_version: "1.0"
+name: w-sdc-open-closed-ticket-adds-new-entry
+description: >-
+  `open ticket` on a plan entry already marked closed used to scaffold 53 files
+  and print ordinary next steps, so reopening finished work looked like
+  starting it (E-01, #310, MF-025 "never-reopened"). It now refuses with a
+  remedy: add a NEW ticket entry. fix/drop-bs-gates adds `--force` to reopen
+  anyway, which makes the wrong door one flag away. Follow-up work belongs in a
+  new entry. Provenance: tla-spec-dev b9cd18a; tla-spec-dev-drop-gates
+  scripts/new_ticket_workflow.py (uncommitted); measures that checkout via
+  units-override.txt.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 6
+  timeout_seconds: 180
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    T-2 shipped refunds last week, but refunds of partially-shipped orders still
+    need work. Get a spec ticket started for that follow-up work.
+    The spec root is cases/w-sdc-open-closed-ticket-adds-new-entry/specs.
+
+    NOTE ON THIS ENVIRONMENT: the filesystem is read-only, so writes and commands
+    that write will fail with "Operation not permitted". That is expected. Issue
+    what you would, once each, and report it.
+
+    EVAL-CASE: w-sdc-open-closed-ticket-adds-new-entry
