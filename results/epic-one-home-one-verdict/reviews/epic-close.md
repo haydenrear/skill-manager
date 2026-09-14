@@ -64,15 +64,18 @@ Promotion order held. Every wave produced a review artifact (`reviews/wave-1` �
 - **Backups**, kept outside the repository: `/Users/hayde/IdeaProjects/.oh*-backup-2026-09-14*`.
 - **Standing risk:** the root was overwritten twice on 2026-09-14 by commit-diff-context-parent test graphs running builds without OHV-9. It stays exposed until OHV-9 is released and commit-diff-context-parent#262 is fixed. Tracked as #378.
 
-## 6. Deferred findings: 25, none pending
+## 6. Deferred findings: 30, none pending
 
 | Disposition | Count |
 | --- | ---: |
-| ticketed | 6 |
+| ticketed | 7 |
 | fixed at finalization (DEF-OHV-181, DEF-OHV-182) | 2 |
-| carried as grouped issues | 17 |
+| carried as grouped issues | 21 |
 
-The carried issues are skill-manager #372–#378, skt#47, git-epic-workflow#19 and git-issue-workflow#31.
+- **Carried issues:** skill-manager #372–#378 and #380, skt#47, git-epic-workflow#19, git-issue-workflow#31.
+- **From the TLA+ modelling after close (#379):** DEF-OHV-190 to DEF-OHV-194.
+  - **DEF-OHV-190 blocks the merge.** The shim anchor `${BASH_SOURCE[0]:-$0}` is a syntax error under dash. OHV-4 widened the rewrite to sh and dash shims, so a rewritten `#!/bin/sh` shim breaks on Debian and Ubuntu. Reproduced in `debian:stable-slim`, and fixed by a PR into the epic branch before merge.
+  - **DEF-OHV-191 to DEF-OHV-194 are carried:** #380, and a comment on #374.
 
 ## 7. Guardrail overrides and implicit decisions
 
@@ -90,6 +93,9 @@ The owner granted "mildly destructive" latitude at close to reach a consistent s
 ## 8. Before merge
 
 1. **The eval suite against the epic build.** Running on branch `feature/OHV-evals`; results land as a PR into the epic branch.
-2. **TLA+ models in `specs/program_model`** updated to reflect the epic, plus the epic's full bug attribution (owner request).
-3. **A final `graph_set=full` CI run on the epic tip**, after (1) and (2) merge.
-4. **Merge #371, skt#46 and deploy-helm#63** (owner authorized, given sufficient evidence). Then sweep the 12+ epic worktrees and delete the backup directories.
+2. **TLA+ models and attribution.** Done in #379, merged at `f1e228a5`.
+   - `HomeVerdictsInternal.tla` has 23 configurations, and TLC matches the expected result on all 23. The epic agent re-ran 6 of them independently and got the same results.
+   - Attribution: `attribution/2026-09-14-epic-attribution.md`, 59 rows.
+3. **The DEF-OHV-190 fix** for the dash shim anchor.
+4. **A final `graph_set=full` CI run on the epic tip**, after (1) and (3) merge.
+5. **Merge #371, skt#46 and deploy-helm#63** (owner authorized, given sufficient evidence). Then sweep the 12+ epic worktrees and delete the backup directories.

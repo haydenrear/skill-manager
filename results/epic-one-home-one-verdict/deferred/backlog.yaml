@@ -451,3 +451,48 @@ findings:
     disposition: carried
     disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/375"]
     disposition_decided: "owner, 2026-09-14, finalization"
+
+  - id: DEF-OHV-190
+    found_by: TLA+ modelling after close (#379), confirmed by the epic agent in debian:stable-slim
+    found_at_commit: 43e5fb99
+    severity: major
+    summary: "The shim anchor line uses ${BASH_SOURCE[0]:-$0}, which is a syntax error under dash. OHV-4 widened the rewrite to sh/dash shebangs, so on Debian/Ubuntu a rewritten #!/bin/sh shim anchors at / and fails with rc 127."
+    reproduction: "#!/bin/sh script with the anchor line, run by sh in debian:stable-slim: 'Bad substitution', home=/"
+    disposition: ticketed
+    disposition_note: "merge-blocking fix PR into the epic branch (fix/OHV-dash-shim-anchor)"
+
+  - id: DEF-OHV-191
+    found_by: TLA+ modelling after close (#379)
+    severity: minor
+    summary: "PipBackend runs requireNoForeignWrite after try/finally, so a failing uv tool install skips the foreign-write check. SkillScriptBackend checks first."
+    reproduction: "src/main/java/dev/skillmanager/cli/installer/PipBackend.java:58-64"
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/380"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
+
+  - id: DEF-OHV-192
+    found_by: TLA+ modelling after close (#379), _finding_prunedresidue
+    severity: minor
+    summary: "Uninstall leaves a dangling agent link and keeps its row; repair --fix removes the link; no later prune can prove the row absent. Modelled, not reproduced."
+    reproduction: "specs/program_model/HomeVerdictsInternal_finding_prunedresidue.cfg"
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/374"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
+
+  - id: DEF-OHV-193
+    found_by: TLA+ modelling after close (#379), _finding_outrightpath
+    severity: minor
+    summary: "GOAL-a-home-writes-only-itself (2) holds only for writes through a bin/cli link; a write by absolute path into the parent home is not caught, and the goal text does not say so."
+    reproduction: "specs/program_model/HomeVerdictsInternal_finding_outrightpath.cfg"
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/380"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
+
+  - id: DEF-OHV-194
+    found_by: TLA+ modelling after close (#379)
+    severity: minor
+    summary: "artifacts list projection-agreement column is a second verdict not tied to home repair's detector (how DEF-OHV-002 was first seen)."
+    reproduction: "skill-manager artifacts list vs home repair --json on a home with an orphaned projection record"
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/374"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
