@@ -1,0 +1,67 @@
+# OHV-3 deferred findings. Budget 5; used 2. IDs DEF-OHV-130..139.
+deferred:
+  - id: DEF-OHV-130
+    found_by: OHV-3 real-home validation (census before/after a prune)
+    found_at_commit: 59196929
+    severity: minor
+    maps_to: GOAL-one-record clause (1); OHV-8 (#358) decides
+    blocking: false
+    summary: >
+      Most of the census's "outputs missing on disk" are not phantoms a prune can
+      reach: they are CLI shims DECLARED BY AN INSTALLED UNIT whose dependency is
+      satisfied from PATH, so no shim was ever written. `artifacts list` still
+      gives each one a home output `bin/cli/<tool>` (presence missing,
+      materialization declared-only). On this project home all 7 of 7 are that
+      shape (brew docker/gh/helm/k3d/kubernetes-cli/opentofu, pip pytest), and on
+      tla-spec-dev-2 11 of the 26 left after a prune are too; the rest there are
+      provisioned-tree rows (cache/stage-*, cache/publish, two .venv trees,
+      npm/hyper-experiments) whose owners are installed.
+    disk_observation: >
+      /Users/hayde/IdeaProjects/skill-manager/.skill-manager/bin/cli/docker absent;
+      `command -v docker` -> /opt/homebrew/bin/docker; artifacts list:
+      cli-shim:brew/docker owner=deploy-helm origin=ledger-and-home
+      outputs=[bin/cli/docker missing] materialization=declared-only.
+    why_not_this_ticket: >
+      OHV-3's slice is the prune fixpoint, teardown rows and the record version.
+      This is ArtifactBackfill declaring an output for a shim that is correctly
+      not materialized, i.e. what the census MODELS, and no prune verdict can
+      or should remove a row whose owner is installed. #122 records the related
+      "a dependency the machine already satisfies legitimately has no shim".
+    why_not_a_duplicate: >
+      Searched results/*/deferred/backlog.yaml (brew, bin/cli, PATH, missing
+      outputs) and GitHub (census missing brew shim; artifacts list missing output
+      cli-shim): DEF-OHV-003 counts the root's 15 missing outputs together with the
+      retirement rows but does not name this cause; no issue does.
+    reproduction: >
+      SKILL_MANAGER_HOME=<project home> ./skill-manager artifacts list --json, then
+      stat each home-scoped output; results/epic-one-home-one-verdict/tickets/OHV-3/real-homes/project-after.json
+    disposition: pending
+
+  - id: DEF-OHV-131
+    found_by: OHV-3 (b), whole-home prune on tla-spec-dev-2
+    found_at_commit: 59196929
+    severity: minor
+    maps_to: GOAL-one-record clause (1); DEF-OHV-003 residue; OHV-8 (#358) decides
+    blocking: false
+    summary: >
+      Ledger-only PROJECTION rows left by PAST removals (retired skill-manager and
+      skill-dev-skill: 6 on tla-spec-dev-2, 14 on root per DEF-OHV-003) are kept,
+      by design, by a whole-home `artifacts prune`: the ledger records no external
+      path, and nothing a later pass holds can prove their agent-side links are
+      gone. Going forward an uninstall or retirement captures that proof before it
+      runs (ArtifactPrune.outputsOf), so no NEW such rows are produced; the
+      existing ones need a separately decided remedy.
+    disk_observation: >
+      artifacts prune --dry-run on tla-spec-dev-2 after the prune: 0 planned, 6
+      REFUSED "no ledger row names an output for it, and this pass cannot prove its
+      outputs are gone". The links at <project>/.claude|.codex|.gemini/skills/<unit>
+      and ~/.<agent>/skills/<unit> were checked by hand (see README).
+    options: >
+      (1) resolve the id's `target/<name>` destKey against the agent roots the home
+      binds today and prune when every candidate is absent (a heuristic, and exactly
+      the "row names no output" reasoning #292 warned about, so it needs an owner);
+      (2) an explicit `artifacts forget <id>` verb, the operator's attestation;
+      (3) accept them, and have GOAL-one-record clause (1) count only rows a removal
+      produced after this ticket.
+    why_not_a_duplicate: DEF-OHV-003 names the rows; this names why the prune cannot reap them and the options.
+    disposition: pending
