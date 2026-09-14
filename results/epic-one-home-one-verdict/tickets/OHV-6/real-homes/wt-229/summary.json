@@ -1,0 +1,20 @@
+{
+  "label": "wt-229",
+  "backup": "/Users/hayde/IdeaProjects/wt-epic-one-home-one-verdict/results/epic-one-home-one-verdict/tickets/OHV-6-backups/wt-229-20260914T084442",
+  "marketplace_findings_before": [
+    "MARKETPLACE_IDENTITY_COPIED plugin-marketplace/.claude-plugin/marketplace.json"
+  ],
+  "kinds_before": [
+    "FROZEN_HOME_PATH_IN_SHIM",
+    "MARKETPLACE_IDENTITY_COPIED",
+    "UNSTAMPED_PM_TREE"
+  ],
+  "kinds_after_fix": [],
+  "marketplace_findings_after_fix": [],
+  "sync_agent_sync_failed_lines": [],
+  "sync_marketplace_lines": [],
+  "kinds_after_sync": [],
+  "marketplace_findings_after_sync": [],
+  "recorded_errors_after_sync": {},
+  "globals_changed": false
+}

@@ -1754,9 +1754,20 @@ validationGraph {
      *     (DEF-OHV-001): repair and verify name it, --fix clears it,
      *     a second --fix is a no-op ................ home.verdicts.half.rewritten.shim
      *
+     * OHV-6 (#352) adds the four marketplace-identity shapes, each planted in
+     * the scratch SUBJECT's own .claude/.codex (never the operator's, never the
+     * sandbox's): repair and verify name it, --fix clears it, and the entries
+     * the repair must not touch survive:
+     *   - 1 Claude registers this home's path under another name
+     *     (re-pointed with its enablements) ... home.verdicts.marketplace.under.another.name
+     *   - 2 enabled under the identity, only a name CONTAINING it
+     *     registered (the substring trap) ...... home.verdicts.marketplace.identity.unregistered
+     *   - 3 marketplace.json copied from another home ..... home.verdicts.copied.marketplace.identity
+     *   - 4 Codex marketplace + Claude enablement of another
+     *     home's marketplace (DEF-OHV-005) ...... home.verdicts.foreign.marketplace.registration
+     *
      * PENDING, with the ticket that adds each node:
      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
-     *   - #352's four marketplace-identity shapes (incl. DEF-OHV-005)  OHV-6 (#352)
      *
      * THE DAMAGED HOMES NEVER REACH THE LAWS. Both laws discover homes from
      * published context values, so shape nodes publish nothing and delete their
@@ -1777,6 +1788,10 @@ validationGraph {
         node("sources/home-verdicts/DanglingAgentLinkIsReported.java")
         node("sources/home-verdicts/OrphanedProjectionRecordIsReported.java")
         node("sources/home-verdicts/HalfRewrittenShimIsReported.java")
+        node("sources/home-verdicts/MarketplaceUnderAnotherNameIsReported.java")
+        node("sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java")
+        node("sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java")
+        node("sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java")
         node("sources/common/HomeFixpointLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
@@ -1786,7 +1801,11 @@ validationGraph {
                 "home.verdicts.verify.names.every.repair.finding",
                 "home.verdicts.dangling.agent.link",
                 "home.verdicts.orphaned.projection.record",
-                "home.verdicts.half.rewritten.shim")
+                "home.verdicts.half.rewritten.shim",
+                "home.verdicts.marketplace.under.another.name",
+                "home.verdicts.marketplace.identity.unregistered",
+                "home.verdicts.copied.marketplace.identity",
+                "home.verdicts.foreign.marketplace.registration")
         node("sources/common/HomeMembershipLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
@@ -1796,7 +1815,11 @@ validationGraph {
                 "home.verdicts.verify.names.every.repair.finding",
                 "home.verdicts.dangling.agent.link",
                 "home.verdicts.orphaned.projection.record",
-                "home.verdicts.half.rewritten.shim")
+                "home.verdicts.half.rewritten.shim",
+                "home.verdicts.marketplace.under.another.name",
+                "home.verdicts.marketplace.identity.unregistered",
+                "home.verdicts.copied.marketplace.identity",
+                "home.verdicts.foreign.marketplace.registration")
     }
 
     /**

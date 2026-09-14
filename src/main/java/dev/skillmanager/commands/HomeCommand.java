@@ -2524,6 +2524,11 @@ public final class HomeCommand {
                                 + (added.stderr().isBlank() ? added.stdout() : added.stderr()));
                         continue;
                     }
+                    // OHV-6 (#352 d): what the agent had, when it was not already
+                    // this identity at this path.
+                    if (!added.stdout().isBlank() && !added.stdout().startsWith("already")) {
+                        notes.add(driver.agentId() + ": " + added.stdout().strip());
+                    }
                     driver.refreshMarketplace(mp.root(), marketplaceName);
                     boolean allOk = true;
                     for (String plugin : plugins) {

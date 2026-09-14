@@ -1141,9 +1141,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
             try {
                 dev.skillmanager.project.HarnessPluginCli.Result added =
                         driver.ensureMarketplaceAdded(mp.root(), marketplaceName);
+                // OHV-6 (#352 d): the outcome names the identity it expected and
+                // what the agent had, success included.
                 facts.add(new ContextFact.HarnessPluginCli(
                         driver.agentId(), null, "marketplace-add", added.ok(),
-                        added.ok() ? null : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
+                        added.ok() ? blankToNull(added.stdout())
+                                : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
                 if (!added.ok()) failed++;
 
                 if (added.ok()) {
@@ -1164,7 +1167,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     if (!r.ok()) {
                         reinstallFailures.add(name);
                         tryAddError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
-                                driver.agentId() + " plugin install: " + truncate(r.stderr()));
+                                driver.agentId() + " plugin install " + name + "@" + marketplaceName
+                                        + " (this home's marketplace, at " + mp.root() + "): "
+                                        + truncate(r.stderr()));
                         failed++;
                     }
                 }
@@ -1194,6 +1199,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return failed == 0
                 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, failed + " harness CLI step(s) failed");
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.strip();
     }
 
     private static String truncate(String s) {

@@ -1,0 +1,12 @@
+! Telemetry export unavailable; continuing without telemetry.
+Resolved 4 packages in 13ms
+Installed 4 packages in 6ms
+ + jinja2==3.1.6
+ + jinja2-cli==0.8.2
+ + markupsafe==3.0.3
+ + pyyaml==6.0.3
+Installed 1 executable: jinja2
+warning: `/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/bin/cli` is not on your PATH. To use installed tools, run `export PATH="/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/bin/cli:$PATH"` or `uv tool update-shell`.
+! removed legacy claude plugin entry /Users/hayde/IdeaProjects/wt-229-library-attestation/.claude/plugins/cdc-agent-substrate-plugin
+! removed legacy claude plugin entry /Users/hayde/IdeaProjects/wt-229-library-attestation/.claude/plugins/skt
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260914-085424-654c.log

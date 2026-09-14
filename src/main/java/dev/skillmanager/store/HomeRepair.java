@@ -349,7 +349,62 @@ public final class HomeRepair {
          * record file and nothing else; the links it names are judged by
          * {@link #DANGLING_AGENT_LINK}.
          */
-        ORPHANED_PROJECTION_RECORD
+        ORPHANED_PROJECTION_RECORD,
+
+        /**
+         * #352 shape 1. An agent config of this home registers the home's own
+         * marketplace directory under a name that is not its identity
+         * ({@link dev.skillmanager.project.PluginMarketplace#name()}), or enables a
+         * plugin from that name. Measured in tla-spec-dev's and meta-orchestrator's
+         * checkouts: Claude registers the path as {@code skill-manager} (the
+         * pre-61e9553b name) and every sync fails with
+         * {@code Marketplace 'skill-manager-<hash>' not found}. {@code claude plugin
+         * marketplace add <path>} cannot heal it: it answers "already on disk" and
+         * keeps the old name.
+         *
+         * <p>Repaired by RENAMING — the registration and its enablements are
+         * re-pointed at the identity together
+         * ({@link dev.skillmanager.project.MarketplaceRegistrations#migrateToIdentity}),
+         * because a {@code sync <plugin>} reinstalls only what it names and a removed
+         * enablement is a plugin silently dropped.
+         */
+        MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME,
+
+        /**
+         * #352 shape 2's trace. A plugin enabled under this home's identity that the
+         * same agent config does not register at this home's marketplace directory.
+         * {@code ensureMarketplaceAdded} used to ask {@code list.contains(name)}: the
+         * root's {@code skill-manager} is a substring of every
+         * {@code skill-manager-<hash>}, so the root skipped its own {@code add}
+         * whenever a per-home marketplace was listed, and its enabled plugins named
+         * a marketplace that was not there. Repairable when this home has a
+         * manifest to register: {@code --fix} writes the registration the agent's
+         * own {@code marketplace add} writes.
+         */
+        MARKETPLACE_IDENTITY_UNREGISTERED,
+
+        /**
+         * #352 shape 3. {@code plugin-marketplace/.claude-plugin/marketplace.json}
+         * names an identity that is not this home's derived one — it was copied
+         * from another home (13 homes carried commit-diff-context-parent's or
+         * deploy-cdc's). Harness CLIs read the name from that file, so every agent
+         * then registers this home under the other home's name, the collision the
+         * per-home fingerprint exists to prevent. Repaired by regenerating the
+         * marketplace, which is the one writer of the file.
+         */
+        MARKETPLACE_IDENTITY_COPIED,
+
+        /**
+         * #352 shape 4, both sides (DEF-OHV-005 is Claude's). An agent config of this
+         * home registers or enables ANOTHER home's marketplace: a Codex
+         * {@code [marketplaces.*]} whose source is not this home's, a Claude
+         * {@code extraKnownMarketplaces} entry likewise, an enabled
+         * {@code <plugin>@<other skill-manager marketplace>}, or a Claude
+         * {@code known_marketplaces.json} entry for another home that something in
+         * the same config enables. Plugins then load twice, from two homes.
+         * Repaired by removing that one entry.
+         */
+        FOREIGN_MARKETPLACE_REGISTRATION
     }
 
     /** The suffix every projection ledger in {@code installed/} carries. */
@@ -478,7 +533,141 @@ public final class HomeRepair {
         // that say so.
         examined += danglingAgentLinks(root, findings);
         examined += orphanedProjectionRecords(root, findings);
+        // OHV-6 (#352): the marketplace identity, on disk and in the agent
+        // configs that register it. Manifest first, so a --fix pass renames or
+        // registers against the identity the manifest will then carry.
+        examined += marketplaceIdentity(root, findings);
         return new Report(root, examined, findings);
+    }
+
+    /**
+     * OHV-6 (#352) — the four marketplace-identity shapes. What is read, and what
+     * is deliberately not, is {@link dev.skillmanager.project.MarketplaceRegistrations}'s
+     * class comment; the agent directories are this home's structural ones
+     * ({@link #agentDirsOf}), never the environment's.
+     */
+    private static int marketplaceIdentity(Path store, List<Finding> findings) {
+        var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
+        String identity = mp.name();
+        Path manifest = mp.manifestPath();
+        boolean manifestHere = Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS);
+        int examined = 0;
+        if (manifestHere) {
+            examined++;
+            String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(manifest).orElse(null);
+            if (!identity.equals(claimed)) {
+                findings.add(new Finding(Kind.MARKETPLACE_IDENTITY_COPIED,
+                        relative(store, manifest),
+                        "names the marketplace " + claimed + ", but this home's identity is "
+                                + identity + " (derived from its store path " + store + ") — expected "
+                                + identity + ", found " + claimed + ": a copied manifest carries its "
+                                + "source's identity, and every agent registers this home under it",
+                        "skill-manager home repair --fix regenerates the marketplace, which writes "
+                                + identity + " (so does the next plugin `sync`)",
+                        true, manifest));
+            }
+        }
+        Path homeRoot = AgentHomes.homeRootFor(store);
+        List<Path> agentDirs = agentDirsOf(store);
+        var entries = dev.skillmanager.project.MarketplaceRegistrations.read(agentDirs.get(0), agentDirs.get(1));
+        examined += entries.size();
+        for (var judged : dev.skillmanager.project.MarketplaceRegistrations.judge(entries, identity, mp.root())) {
+            var entry = judged.entry();
+            String subject = entry.subject(homeRoot);
+            switch (judged.kind()) {
+                case UNDER_ANOTHER_NAME -> findings.add(new Finding(
+                        Kind.MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME, subject, judged.detail(),
+                        "skill-manager home repair --fix re-points it at " + identity + ", with every "
+                                + (entry.registration() ? entry.key() : entry.marketplace())
+                                + " registration of this directory and every plugin enabled from it in "
+                                + "the same agent's config; the next `sync` then updates and installs "
+                                + "from " + identity,
+                        true, entry.file()));
+                case IDENTITY_UNREGISTERED -> findings.add(new Finding(
+                        Kind.MARKETPLACE_IDENTITY_UNREGISTERED, subject, judged.detail(),
+                        manifestHere
+                                ? "skill-manager home repair --fix registers " + identity + " at "
+                                        + mp.root() + " in this agent's config, as its own `marketplace "
+                                        + "add` would"
+                                : "this home has no marketplace manifest to register — run "
+                                        + "`skill-manager sync`, which generates and registers it",
+                        manifestHere, entry.file()));
+                case FOREIGN -> findings.add(new Finding(
+                        Kind.FOREIGN_MARKETPLACE_REGISTRATION, subject, judged.detail(),
+                        carriedHere(entry, manifest)
+                                ? "skill-manager home repair --fix re-points it at " + pluginOf(entry) + "@"
+                                        + identity + ": this home's own marketplace carries "
+                                        + pluginOf(entry) + ", so removing the entry would drop the plugin"
+                                : "skill-manager home repair --fix removes this entry and nothing else",
+                        true, entry.file()));
+            }
+        }
+        return examined;
+    }
+
+    /**
+     * Carry out one agent-config marketplace finding against the config AS IT IS
+     * NOW: the entry is re-read and re-judged, so a finding a previous action
+     * already consumed is refused rather than acted on from stale prose.
+     */
+    private static void applyMarketplaceEntry(Path store, Finding finding) throws IOException {
+        var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
+        String identity = mp.name();
+        Path homeRoot = AgentHomes.homeRootFor(store);
+        List<Path> agentDirs = agentDirsOf(store);
+        var entries = dev.skillmanager.project.MarketplaceRegistrations.read(agentDirs.get(0), agentDirs.get(1));
+        var judged = dev.skillmanager.project.MarketplaceRegistrations.judge(entries, identity, mp.root())
+                .stream().filter(j -> j.entry().subject(homeRoot).equals(finding.subject()))
+                .findFirst()
+                .orElseThrow(() -> new IOException(finding.subject() + " no longer disagrees with " + identity));
+        var entry = judged.entry();
+        // Every file this agent's config spans, gated before any is written.
+        if (entry.agent() == dev.skillmanager.project.MarketplaceRegistrations.Agent.CLAUDE) {
+            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.knownMarketplaces(agentDirs.get(0)), WHAT);
+            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.claudeSettings(agentDirs.get(0)), WHAT);
+        } else {
+            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.codexConfig(agentDirs.get(1)), WHAT);
+        }
+        switch (judged.kind()) {
+            case UNDER_ANOTHER_NAME -> {
+                if (dev.skillmanager.project.MarketplaceRegistrations
+                        .migrateToIdentity(entry, entries, identity, mp.root()).isEmpty()) {
+                    throw new IOException("nothing re-pointed for " + finding.subject());
+                }
+            }
+            case IDENTITY_UNREGISTERED -> {
+                String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(mp.manifestPath()).orElse(null);
+                if (!identity.equals(claimed)) {
+                    throw new IOException("the manifest names " + claimed + ", not " + identity
+                            + "; registering it now would register the wrong identity");
+                }
+                dev.skillmanager.project.MarketplaceRegistrations.registerIdentity(entry, identity, mp.root());
+            }
+            case FOREIGN -> {
+                // An enablement of a plugin this home's own marketplace carries is
+                // RE-POINTED, not removed: `sync <plugin>` reinstalls only what it
+                // names, so removal would silently drop a plugin this home has.
+                boolean done = carriedHere(entry, mp.manifestPath())
+                        ? dev.skillmanager.project.MarketplaceRegistrations.rename(entry,
+                                pluginOf(entry) + "@" + identity)
+                        : dev.skillmanager.project.MarketplaceRegistrations.remove(entry);
+                if (!done) throw new IOException(finding.subject() + " is no longer in " + entry.file());
+            }
+        }
+    }
+
+    /** The plugin half of an enablement's {@code <plugin>@<marketplace>} key; null for a registration. */
+    private static String pluginOf(dev.skillmanager.project.MarketplaceRegistrations.Entry entry) {
+        if (entry.registration()) return null;
+        return entry.key().substring(0, entry.key().lastIndexOf('@'));
+    }
+
+    /** An enablement whose plugin this home's own manifest lists. */
+    private static boolean carriedHere(dev.skillmanager.project.MarketplaceRegistrations.Entry entry,
+                                       Path manifest) {
+        String plugin = pluginOf(entry);
+        return plugin != null
+                && dev.skillmanager.project.PluginMarketplace.manifestPluginNames(manifest).contains(plugin);
     }
 
     /**
@@ -1347,6 +1536,14 @@ public final class HomeRepair {
                 }
                 Files.deleteIfExists(record);
             }
+            // OHV-6 (#352). The manifest's one writer, not a name patch.
+            case MARKETPLACE_IDENTITY_COPIED -> {
+                var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
+                WriteConfinement.checkWrite(mp.manifestPath(), WHAT);
+                mp.regenerate();
+            }
+            case MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME, MARKETPLACE_IDENTITY_UNREGISTERED,
+                    FOREIGN_MARKETPLACE_REGISTRATION -> applyMarketplaceEntry(store, finding);
         }
     }
 

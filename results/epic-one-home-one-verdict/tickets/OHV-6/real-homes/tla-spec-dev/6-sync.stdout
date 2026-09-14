@@ -1,0 +1,18 @@
+✓ resolve: 0 unit(s)
+→ cli: skill-script slm — running /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/skills/slm-agent/skill-scripts/install-slm.sh
+→ cli: skill-script slm — writing output to /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/logs/skill-scripts/20260914-125024-750-slm-agent-slm.log
+gateway: runpod init from env: [RUNPOD_API_KEY]
+✓ gateway: registered runpod (NPM, scope=global-sticky)
+✓ units.lock.toml: wrote 28 unit(s) → /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/units.lock.toml
+---MCP-INSTALL-RESULTS-BEGIN---
+[ {
+  "serverId" : "runpod",
+  "status" : "deployed",
+  "scope" : "global-sticky",
+  "message" : "registered and deployed"
+} ]
+---MCP-INSTALL-RESULTS-END---
+✓ synced 1 unit(s) — 1 merged
+✓ agents: 18 unit(s) linked into claude, codex, gemini
+✓ tools: 4 already present
+✓ cli: 26 already present, 1 failed

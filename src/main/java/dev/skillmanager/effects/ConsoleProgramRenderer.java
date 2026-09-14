@@ -431,8 +431,13 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     "✓ marketplace: wrote %d plugin(s) → %s", x.pluginCount(), x.path());
             case ContextFact.HarnessPluginCli x -> {
                 if (x.ok()) {
-                    if (x.pluginName() == null) Log.detail("✓ %s: %s", x.agentId(), x.op());
-                    else Log.detail("✓ %s: %s %s", x.agentId(), x.op(), x.pluginName());
+                    if (x.pluginName() == null && x.message() != null) {
+                        Log.detail("✓ %s: %s — %s", x.agentId(), x.op(), x.message());
+                    } else if (x.pluginName() == null) {
+                        Log.detail("✓ %s: %s", x.agentId(), x.op());
+                    } else {
+                        Log.detail("✓ %s: %s %s", x.agentId(), x.op(), x.pluginName());
+                    }
                 } else {
                     if (x.pluginName() == null) Log.warn("%s: %s failed — %s",
                             x.agentId(), x.op(), x.message());

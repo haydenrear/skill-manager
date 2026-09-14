@@ -40,6 +40,19 @@ import java.nio.file.Path;
  *   <tr><td>half-rewritten own-home shim: token header, literal exec line (DEF-OHV-001, OHV-4)</td>
  *       <td>home.verdicts.half.rewritten.shim</td><td>1 FROZEN_HOME_PATH_IN_SHIM</td>
  *       <td>1, names it; --fix re-anchors the exec line, a second --fix is a no-op</td></tr>
+ *   <tr><td>#352 shape 1: Claude registers this home's path under another name (OHV-6)</td>
+ *       <td>home.verdicts.marketplace.under.another.name</td>
+ *       <td>1 MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME</td>
+ *       <td>1, names it; --fix re-points registration and enablement together</td></tr>
+ *   <tr><td>#352 shape 2: enabled under the identity, only a name containing it registered (OHV-6)</td>
+ *       <td>home.verdicts.marketplace.identity.unregistered</td>
+ *       <td>1 MARKETPLACE_IDENTITY_UNREGISTERED</td><td>1, names it; --fix registers the identity</td></tr>
+ *   <tr><td>#352 shape 3: marketplace.json copied from another home (OHV-6)</td>
+ *       <td>home.verdicts.copied.marketplace.identity</td><td>1 MARKETPLACE_IDENTITY_COPIED</td>
+ *       <td>1, names it; --fix regenerates the manifest</td></tr>
+ *   <tr><td>#352 shape 4: Codex marketplace and Claude enablement of another home's (OHV-6, DEF-OHV-005)</td>
+ *       <td>home.verdicts.foreign.marketplace.registration</td>
+ *       <td>1 FOREIGN_MARKETPLACE_REGISTRATION</td><td>1, names it; --fix removes only those entries</td></tr>
  * </table>
  *
  * <p>The three "0 until OHV-2" cells were GOAL-one-verdict clause (1) failing,
@@ -50,10 +63,6 @@ import java.nio.file.Path;
  *
  * <ul>
  *   <li>{@code /var} vs {@code /private/var} reference (#343) — <b>OHV-5 (#346)</b></li>
- *   <li>#352's four marketplace-identity shapes (1 Claude registers this path under
- *       another name; 2 generated name a substring of another; 3 generated name equal
- *       to another home's; 4 Codex/Claude registers or enables another home's
- *       marketplace, incl. DEF-OHV-005) — <b>OHV-6 (#352)</b></li>
  * </ul>
  *
  * <h2>This node</h2>

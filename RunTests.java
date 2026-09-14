@@ -232,6 +232,7 @@ public class RunTests {
         failures += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
+        failures += dev.skillmanager.project.MarketplaceRegistrationsTest.run();
         failures += HomeRefreshPluginsTest.run();
         failures += RefreshHarnessPluginsTest.run();
         failures += PublishDetectsPluginTest.run();

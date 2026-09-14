@@ -271,23 +271,113 @@ public final class HarnessPluginCli {
         @Override public String installHint() { return "brew install claude"; }
         @Override public boolean available() { return onPath(binary()); }
 
+        /**
+         * Is THIS marketplace registered under THIS identity at THIS path — and
+         * if not, make it so. OHV-6 (#352).
+         *
+         * <p>It used to ask {@code list.stdout().contains(name)}. The root's
+         * {@code skill-manager} is a substring of every {@code skill-manager-<hash>}
+         * (and of any listed path containing one), so the root skipped its own
+         * {@code add} whenever a per-home marketplace was listed (shape 2); and a
+         * path registered under a stale name was never noticed (shape 1). Adding
+         * does not heal shape 1 either: measured on Claude Code 2.1,
+         * {@code marketplace add <path>} on a path registered as {@code skill-manager}
+         * answers "already on disk" and keeps the old name. So:
+         *
+         * <ol>
+         *   <li>{@code list --json}, matched by exact name AND path;</li>
+         *   <li>a registration of this path under another name is removed (Claude
+         *       drops that name's enabled plugins with it), as is this identity
+         *       registered at another path;</li>
+         *   <li>{@code add}, then {@code list --json} again: the result is judged
+         *       by what Claude now registers, not by add's exit code;</li>
+         *   <li>plugins that were enabled under the removed name are installed
+         *       under the identity — {@code sync <plugin>} reinstalls only what it
+         *       names, so without this they would silently drop out.</li>
+         * </ol>
+         *
+         * <p>Every outcome names the identity and path it expected and what it found.
+         */
         @Override
         public Result ensureMarketplaceAdded(Path marketplaceRoot, String marketplaceName)
                 throws IOException {
-            // `claude plugin marketplace add` is idempotent in practice
-            // — a second add of the same name surfaces a warning the
-            // caller can ignore. We always try add; a non-zero exit
-            // bubbles up so the effect handler can record an error.
             Result list = runner.run(
-                    List.of(binary(), "plugin", "marketplace", "list"),
+                    List.of(binary(), "plugin", "marketplace", "list", "--json"),
                     claudeEnv());
-            if (list.ok() && list.stdout().contains(marketplaceName)) {
-                return new Result(0, "already-added", "");
+            List<Registered> found = list.ok() ? parseMarketplaceList(list.stdout()) : List.of();
+            if (registeredAt(found, marketplaceName, marketplaceRoot)) {
+                return new Result(0, "already registered: " + marketplaceName + " at "
+                        + marketplaceRoot, "");
             }
-            return runner.run(
+            List<String> notes = new ArrayList<>();
+            List<String[]> migrate = new ArrayList<>();
+            for (Registered r : found) {
+                boolean here = MarketplaceRegistrations.samePath(r.path(), marketplaceRoot);
+                if (here == r.name().equals(marketplaceName)) continue;
+                if (here) {
+                    for (String plugin : pluginsFrom(r.name())) migrate.add(new String[]{plugin, r.name()});
+                }
+                Result rm = runner.run(
+                        List.of(binary(), "plugin", "marketplace", "remove", r.name()), claudeEnv());
+                notes.add("expected " + marketplaceName + " at " + marketplaceRoot + ", found "
+                        + r.name() + " at " + r.path() + ": removed"
+                        + (rm.ok() ? "" : " (remove rc=" + rm.exitCode() + ")"));
+            }
+            Result add = runner.run(
                     List.of(binary(), "plugin", "marketplace", "add",
                             marketplaceRoot.toString(), "--scope", "user"),
                     claudeEnv());
+            if (!add.ok()) {
+                return new Result(add.exitCode(), String.join("; ", notes),
+                        (add.stderr().isBlank() ? add.stdout() : add.stderr()).strip()
+                                + " (expected marketplace " + marketplaceName + " at " + marketplaceRoot + ")");
+            }
+            Result again = runner.run(
+                    List.of(binary(), "plugin", "marketplace", "list", "--json"), claudeEnv());
+            if (again.ok()) {
+                List<Registered> after = parseMarketplaceList(again.stdout());
+                if (!registeredAt(after, marketplaceName, marketplaceRoot)) {
+                    return new Result(1, String.join("; ", notes),
+                            "expected marketplace " + marketplaceName + " at " + marketplaceRoot
+                                    + " after `claude plugin marketplace add`, found "
+                                    + describe(after));
+                }
+            } else {
+                notes.add("could not re-list to confirm (rc=" + again.exitCode() + ")");
+            }
+            for (String[] m : migrate) {
+                Result r = runner.run(
+                        List.of(binary(), "plugin", "install", m[0] + "@" + marketplaceName,
+                                "--scope", "user"),
+                        claudeEnv());
+                notes.add("migrated " + m[0] + "@" + m[1] + " -> " + m[0] + "@" + marketplaceName
+                        + (r.ok() ? "" : " FAILED: " + r.stderr().strip()));
+            }
+            return new Result(0, "registered " + marketplaceName + " at " + marketplaceRoot
+                    + (notes.isEmpty() ? "" : " — " + String.join("; ", notes)), "");
+        }
+
+        /** Plugin names Claude has installed or enabled from {@code marketplace}. */
+        private List<String> pluginsFrom(String marketplace) throws IOException {
+            Result r = runner.run(List.of(binary(), "plugin", "list", "--json"), claudeEnv());
+            List<String> out = new ArrayList<>();
+            if (!r.ok()) return out;
+            try {
+                var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(r.stdout());
+                if (tree != null && tree.isArray()) {
+                    for (var p : tree) {
+                        String id = p.path("id").asText("");
+                        int at = id.lastIndexOf('@');
+                        if (at > 0 && id.substring(at + 1).equals(marketplace)) {
+                            String name = id.substring(0, at);
+                            if (!out.contains(name)) out.add(name);
+                        }
+                    }
+                }
+            } catch (IOException | RuntimeException unparseable) {
+                // nothing to migrate that we can name
+            }
+            return out;
         }
 
         @Override
@@ -415,37 +505,78 @@ public final class HarnessPluginCli {
          *   <li>Not registered → run {@code add}.</li>
          * </ul>
          */
+        /**
+         * OHV-6 (#352): also reconcile THIS PATH registered under another name.
+         * Measured on codex-cli 0.154: {@code marketplace add <path>} on a path
+         * registered as {@code skill-manager} ADDS a second table under the new
+         * name, and {@code marketplace remove <old>} leaves
+         * {@code [plugins."<p>@<old>"]} enabled — so the old name's plugins are
+         * removed with {@code plugin remove} and re-added under the identity, and
+         * the outcome is judged by re-reading the config, not by add's exit code.
+         */
         private Result ensureRegisteredAt(Path marketplaceRoot, String marketplaceName)
                 throws IOException {
             String desired = marketplaceRoot.toAbsolutePath().toString();
-            Optional<String> existing = readMarketplaceSource(
-                    configPathOverride != null ? configPathOverride : codexConfigPath(),
-                    marketplaceName);
-            if (existing.isPresent()) {
-                String existingPath = existing.get();
-                if (sameSource(existingPath, desired)) {
-                    return new Result(0,
-                            "already added at " + existingPath,
-                            "");
+            Path config = configPathOverride != null ? configPathOverride : codexConfigPath();
+            List<MarketplaceRegistrations.Entry> entries = MarketplaceRegistrations.readCodexFile(config);
+            Optional<String> existing = readMarketplaceSource(config, marketplaceName);
+            boolean identityHere = existing.isPresent() && sameSource(existing.get(), desired);
+            List<String> notes = new ArrayList<>();
+            List<String[]> migrate = new ArrayList<>();
+            for (MarketplaceRegistrations.Entry e : entries) {
+                if (e.section() != MarketplaceRegistrations.Section.CODEX_MARKETPLACES) continue;
+                if (e.key().equals(marketplaceName) || e.source() == null || !sameSource(e.source(), desired)) {
+                    continue;
                 }
-                // Stale registration at a different path. With per-home
-                // names this can only be THIS home's own stale record (a
-                // moved store), never a sibling home's live registration.
-                // Remove first; ignore non-zero exits. Then re-add.
-                Result removed = runner.run(
-                        List.of(binary(), "plugin", "marketplace", "remove", marketplaceName),
-                        codexEnv());
-                Result added = runner.run(
-                        List.of(binary(), "plugin", "marketplace", "add", desired),
-                        codexEnv());
-                String msg = "stale registration at " + existingPath
-                        + " replaced with " + desired
-                        + (removed.ok() ? "" : " (remove rc=" + removed.exitCode() + ")");
-                return new Result(added.exitCode(), msg, added.stderr());
+                for (MarketplaceRegistrations.Entry p : entries) {
+                    if (p.section() != MarketplaceRegistrations.Section.CODEX_PLUGINS
+                            || !p.marketplace().equals(e.key())) continue;
+                    String plugin = p.key().substring(0, p.key().lastIndexOf('@'));
+                    runner.run(List.of(binary(), "plugin", "remove", p.key()), codexEnv());
+                    migrate.add(new String[]{plugin, e.key()});
+                }
+                Result rm = runner.run(
+                        List.of(binary(), "plugin", "marketplace", "remove", e.key()), codexEnv());
+                notes.add("expected " + marketplaceName + " at " + desired + ", found " + e.key()
+                        + " at " + e.source() + ": removed" + (rm.ok() ? "" : " (remove rc=" + rm.exitCode() + ")"));
             }
-            return runner.run(
-                    List.of(binary(), "plugin", "marketplace", "add", desired),
-                    codexEnv());
+            if (identityHere && migrate.isEmpty() && notes.isEmpty()) {
+                return new Result(0, "already added at " + existing.get(), "");
+            }
+            Result added = new Result(0, "", "");
+            if (!identityHere) {
+                if (existing.isPresent()) {
+                    // This identity at another path. With per-home names that is
+                    // THIS home's own stale record (a moved store), never a
+                    // sibling home's live registration. Remove; then re-add.
+                    Result removed = runner.run(
+                            List.of(binary(), "plugin", "marketplace", "remove", marketplaceName),
+                            codexEnv());
+                    notes.add("stale registration at " + existing.get() + " replaced with " + desired
+                            + (removed.ok() ? "" : " (remove rc=" + removed.exitCode() + ")"));
+                }
+                added = runner.run(
+                        List.of(binary(), "plugin", "marketplace", "add", desired), codexEnv());
+                if (!added.ok()) {
+                    return new Result(added.exitCode(), String.join("; ", notes),
+                            (added.stderr().isBlank() ? added.stdout() : added.stderr()).strip()
+                                    + " (expected marketplace " + marketplaceName + " at " + desired + ")");
+                }
+                Optional<String> now = readMarketplaceSource(config, marketplaceName);
+                if (Files.isRegularFile(config) && (now.isEmpty() || !sameSource(now.get(), desired))) {
+                    return new Result(1, String.join("; ", notes),
+                            "expected marketplace " + marketplaceName + " at " + desired + " in " + config
+                                    + " after `codex plugin marketplace add`, found "
+                                    + now.map(s -> marketplaceName + " at " + s).orElse("no " + marketplaceName));
+                }
+            }
+            for (String[] m : migrate) {
+                Result r = runner.run(
+                        List.of(binary(), "plugin", "add", m[0] + "@" + marketplaceName), codexEnv());
+                notes.add("migrated " + m[0] + "@" + m[1] + " -> " + m[0] + "@" + marketplaceName
+                        + (r.ok() || alreadyAdded(r) ? "" : " FAILED: " + r.stderr().strip()));
+            }
+            return new Result(added.exitCode(), String.join("; ", notes), added.stderr());
         }
 
         @Override
@@ -546,6 +677,62 @@ public final class HarnessPluginCli {
                 return false;
             }
         }
+    }
+
+    /** One marketplace an agent CLI lists: its name and the directory it reads. */
+    public record Registered(String name, String path) {}
+
+    /**
+     * {@code claude plugin marketplace list --json} ({@code [{name, source, path}]}),
+     * or its text form when the output is not JSON ({@code ❯ <name>} followed by
+     * {@code Source: Directory (<path>)}). Parsed into records so a check can ask
+     * about a NAME and a PATH, never about a substring of the listing.
+     */
+    static List<Registered> parseMarketplaceList(String stdout) {
+        List<Registered> out = new ArrayList<>();
+        if (stdout == null) return out;
+        try {
+            var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(stdout);
+            if (tree != null && tree.isArray()) {
+                for (var m : tree) {
+                    String name = m.path("name").asText(null);
+                    if (name == null) continue;
+                    String path = m.path("path").isTextual() ? m.path("path").asText()
+                            : m.path("installLocation").asText(null);
+                    out.add(new Registered(name, path));
+                }
+                return out;
+            }
+        } catch (IOException | RuntimeException notJson) {
+            // text form below
+        }
+        String name = null;
+        for (String raw : stdout.split("\n")) {
+            String line = raw.strip();
+            if (line.startsWith("❯ ")) {
+                if (name != null) out.add(new Registered(name, null));
+                name = line.substring(2).strip();
+            } else if (name != null && line.startsWith("Source:")) {
+                int open = line.indexOf('(');
+                int close = line.lastIndexOf(')');
+                out.add(new Registered(name, open >= 0 && close > open ? line.substring(open + 1, close) : null));
+                name = null;
+            }
+        }
+        if (name != null) out.add(new Registered(name, null));
+        return out;
+    }
+
+    static boolean registeredAt(List<Registered> found, String name, Path root) {
+        return found.stream().anyMatch(r -> r.name().equals(name)
+                && MarketplaceRegistrations.samePath(r.path(), root));
+    }
+
+    static String describe(List<Registered> found) {
+        if (found.isEmpty()) return "no marketplace registered";
+        List<String> parts = new ArrayList<>();
+        for (Registered r : found) parts.add(r.name() + " at " + r.path());
+        return String.join(", ", parts);
     }
 
     /**
