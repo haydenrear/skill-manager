@@ -1,0 +1,9 @@
+Bash {"command": "ls -a; ls cases/w-sm-cold-shim-means-build/ 2>/dev/null; cat cases/w-sm-cold-shim-means-build/jinja2-output.txt 2>/dev/null", "description": "List directory and read case output"}
+---
+Bash {"command": "ls .skill-manager; ls .skill-manager/bin/cli | head; cat README.md", "description": "Inspect skill-manager home layout"}
+---
+Skill {"skill": "skt:skill-manager"}
+---
+Read {"file_path": "/private/tmp/e-JZIt62/home/cwd/.skill-manager/plugins/skt/skills/skt/references/derived-artifacts.md"}
+---
+Bash {"command": "skill-manager build 'cli-shim:pip/jinja2-cli[yaml]'", "description": "Build the declared jinja2 CLI shim"}

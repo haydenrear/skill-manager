@@ -1,0 +1,15 @@
+Bash {"command": "ls -a /private/tmp/e-7Ur7SN/home/cwd", "description": "List working directory contents"}
+---
+Bash {"command": "./.eval-bin/git status -sb && ./.eval-bin/git branch -a && ./.eval-bin/git remote -v", "description": "Inspect git branches and remotes"}
+---
+Bash {"command": "ls -a /private/tmp/e-7Ur7SN/home/cwd/.skill-manager; echo ---; ls /private/tmp/e-7Ur7SN/home/cwd/cases | head; echo ---; cat /private/tmp/e-7Ur7SN/home/cwd/README.md", "description": "Inspect skill-manager home and repo files"}
+---
+Bash {"command": "which skt; echo \"rc=$?\"; ls /private/tmp/e-7Ur7SN/home/cwd/.eval-bin", "description": "Check for skt CLI on PATH"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt ticket new --help 2>&1 | head -60", "description": "Show ticket new help"}
+---
+Bash {"command": "skt ticket new DOCS-3 --base release/2.0; echo \"exit=$?\"", "description": "Provision ticket worktree via front door"}
+---
+Bash {"command": "git -C /private/tmp/e-7Ur7SN/home/cwd status --short; echo \"exit=$?\"", "description": "Run the fix line from the refusal"}

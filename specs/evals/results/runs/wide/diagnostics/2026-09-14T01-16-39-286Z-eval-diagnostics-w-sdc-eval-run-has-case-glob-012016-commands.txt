@@ -1,0 +1,11 @@
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/spec-double-compiler", "description": "List spec-double-compiler checkout"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/plugin_evals.md"}
+---
+Bash {"command": "find /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration -maxdepth 4 | head -60", "description": "List example eval plugin tree"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin && ls -la . evals 2>&1 | head -40", "description": "Inspect eval-plugin directory listing"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin/README.md"}

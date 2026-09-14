@@ -33,7 +33,10 @@ expect.json, next to case.yaml:
               its ceiling (tool_used can do this too; this one is recorded in
               the diagnostics beside the commands that spent it)
 
-`tool` and `match` are regexes; `match` is searched in the JSON of the input.
+`tool` and `match` are regexes; `match` is searched in the JSON of the input,
+or, when a rule names `field` (e.g. "file_path", "command"), in that one field
+only. Use `field` whenever a tool's input carries free text: a Write's content
+mentioning a path is not a write to that path.
 
 RUNS ON /usr/bin/python3 (3.9 here): no match statements, annotations lazy.
 
@@ -95,10 +98,28 @@ def tool_calls(events: list[dict]) -> list[tuple[str, str]]:
     return calls
 
 
+def _subject(rule: dict, text: str) -> str:
+    """What a rule searches: the whole input JSON, or one field of it.
+
+    `field` exists because searching the whole input read a Write's CONTENT as
+    if it were its PATH: an agent that wrote the right file, with a comment
+    naming the wrong one, tripped a forbid rule about writing the wrong one.
+    """
+    field = rule.get("field")
+    if not field:
+        return text
+    try:
+        value = json.loads(text).get(field)
+    except (ValueError, AttributeError):
+        return ""
+    return value if isinstance(value, str) else json.dumps(value)
+
+
 def _matches(rule: dict, calls: list[tuple[str, str]]) -> list[str]:
     tool = re.compile(r"(?:%s)\Z" % rule.get("tool", "Bash"))
     pattern = re.compile(rule["match"])
-    return [text for name, text in calls if tool.match(name) and pattern.search(text)]
+    return [text for name, text in calls
+            if tool.match(name) and pattern.search(_subject(rule, text))]
 
 
 def verdicts(expect: dict, calls: list[tuple[str, str]]) -> dict[str, bool]:
@@ -198,6 +219,19 @@ def self_test() -> int:
         [("BashOutput", '{"command": "x"}')]), {"require-b": False})
     check("budget exceeded", verdicts({"max_calls": {"Bash": 1}},
         [("Bash", "{}"), ("Bash", "{}")]), {"within-budget": False})
+    # Wide round 2: the right file written, the wrong one named in a comment.
+    wrote_right_file = [("Write", json.dumps({
+        "file_path": "specs/tickets/T-6/results/attribution.yaml",
+        "content": "# NOT specs/deferred_findings.yaml\n"}, sort_keys=True))]
+    wrote_wrong_file = [("Write", json.dumps({
+        "file_path": "specs/deferred_findings.yaml", "content": "rows: []\n"}, sort_keys=True))]
+    by_path = {"forbid": [{"id": "root", "tool": "Write", "field": "file_path",
+                           "match": "(^|/)specs/deferred_findings\\.yaml$"}]}
+    check("field ignores content", verdicts(by_path, wrote_right_file), {"forbid-root": True})
+    check("field still catches the path", verdicts(by_path, wrote_wrong_file), {"forbid-root": False})
+    check("no field searches everything", verdicts(
+        {"forbid": [{"id": "root", "tool": "Write", "match": "deferred_findings"}]},
+        wrote_right_file), {"forbid-root": False})
     for failure in failures:
         print("FAIL", failure)
     print("self-test: %d failure(s)" % len(failures))

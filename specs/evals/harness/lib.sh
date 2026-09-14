@@ -690,6 +690,9 @@ eval_run_case() {
         && echo "  diagnostics: why the front door was not recognised"
       cp "$diag"/commands.txt "$stem-commands.txt" 2>/dev/null \
         && echo "  diagnostics: $(grep -c '^---$' "$diag/commands.txt" 2>/dev/null | awk '{print $1+1}') commands the agent ran"
+      # The wide lane also keeps the transcript: a regex or llm red is only
+      # readable against the final response it scored.
+      cp "$diag"/transcript.jsonl "$stem-transcript.jsonl" 2>/dev/null || true
     done
   }
   # EVAL_KEEP_BUILD=1 keeps the BUILD (not the sandboxes) so the wide lane can

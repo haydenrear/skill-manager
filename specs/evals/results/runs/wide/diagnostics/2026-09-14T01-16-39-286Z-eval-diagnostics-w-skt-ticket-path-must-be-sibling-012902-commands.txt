@@ -1,0 +1,21 @@
+Read {"file_path": "/private/tmp/e-25n66h/home/cwd/cases/w-skt-ticket-path-must-be-sibling/assignment.yaml"}
+---
+Bash {"command": "pwd && ls -a && git status --short --branch 2>&1 | head -20", "description": "List working directory contents and git branch"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt status 2>&1 | head -60", "description": "Show skill manager status"}
+---
+Bash {"command": "skt ticket new --help 2>&1 | head -80", "description": "Show ticket new help"}
+---
+Bash {"command": "grep -rn \"sibling\" /private/tmp/skill-evals/wide/units/git-epic-workflow /private/tmp/skill-evals/wide/units/git-issue-workflow /private/tmp/skill-evals/wide/units/skt 2>/dev/null | head -30", "description": "Search skills for sibling guidance"}
+---
+Bash {"command": "grep -rn -- \"--path\" /private/tmp/skill-evals/wide/units/git-epic-workflow /private/tmp/skill-evals/wide/units/git-issue-workflow 2>/dev/null | head -30", "description": "Search skills for path flag guidance"}
+---
+Bash {"command": "sed -n '60,180p' /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md", "description": "Read epic ticket provisioning reference"}
+---
+Bash {"command": "git branch -a && git log --oneline -3 && echo \"--- HEAD:\" && git rev-parse HEAD && echo \"--- skt front door:\" && test -x \"${SKILL_MANAGER_HOME:-$PWD/.skill-manager}/bin/cli/skt\" && echo \"skt present: yes\" ; echo \"SMH=${SKILL_MANAGER_HOME:-unset}\"; git status --porcelain", "description": "Inspect branches, HEAD, and skt front door presence"}
+---
+Bash {"command": "skt ticket new 12-trim-readme --base 3920f2a1b563a3d21b95a3dc293e7a0168593e96 --path ../wt-12-trim-readme 2>&1 | tail -40", "description": "Provision ticket worktree with its own Skill Manager home"}
+---
+Read {"file_path": "/private/tmp/e-25n66h/home/cwd/.gitignore"}

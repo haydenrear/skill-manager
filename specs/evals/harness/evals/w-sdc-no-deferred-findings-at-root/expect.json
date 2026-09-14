@@ -3,6 +3,6 @@
     {"id": "ticket-attribution", "tool": "Write|Edit|Bash", "match": "tickets/T-6/results/attribution\\.yaml"}
   ],
   "forbid": [
-    {"id": "no-root-ledger", "tool": "Write|Edit|Bash", "match": "specs/deferred_findings\\.yaml"}
+    {"id": "no-root-ledger", "tool": "Write|Edit", "field": "file_path", "match": "(^|/)specs/deferred_findings\\.yaml$"}
   ]
 }
