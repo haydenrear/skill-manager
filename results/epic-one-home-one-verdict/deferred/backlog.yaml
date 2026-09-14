@@ -269,3 +269,22 @@ findings:
       It is not a detector defect.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml
     disposition: pending
+
+  # Filed by OHV-4 into results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml;
+  # merged here at wave-3 close. Full mechanism, timings and disk observation are in the ticket file.
+  - id: DEF-OHV-140
+    found_by: OHV-4, the home-verdicts timing the wave-2 review asked for
+    found_at_commit: 25b095ca
+    severity: major
+    maps_to: "adjacent: CliObservability / test_graph sandbox, not an epic ticket"
+    related: [DEF-065]
+    summary: >
+      Every skill-manager CLI process spent about 14 s waiting on its OTLP telemetry
+      export. CliObservability's default endpoint, http://localhost:4318, was held
+      open by the hung Docker Desktop backend, which accepted connections and never
+      answered. home-verdicts: 18 min instead of about 2 min. ROOT CAUSE CONFIRMED
+      2026-09-14: after the owner restarted the machine, `skill-manager --version`
+      took 1 s instead of 14.15 s.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml and tickets/OHV-4/timing/
+    suggested_fix: a short connect timeout and non-blocking export in CliObservability, and/or OTEL_SDK_DISABLED in the graph sandbox unless opted in
+    disposition: pending

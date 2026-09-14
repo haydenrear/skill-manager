@@ -13,7 +13,8 @@ Updated at wave-1 close, 2026-09-13. Free disk: 88 GiB.
 | `../wt-ohv-5` | `feature/OHV-5` | OHV-5 #346 | `de423138` | #362 `f38a9298` | exit 0, nothing held | clean, pushed | end-of-epic sweep |
 | `../wt-ohv-3` | `feature/OHV-3` | OHV-3 #340 | `de423138` | #361 `3d6d4cd4` | exit 0, nothing held | pushed; 1 uncommitted file at close (agent evidence draft), to check before the sweep | end-of-epic sweep |
 | `../wt-ohv-2` | `feature/OHV-2` | OHV-2 #339 | `3d6d4cd4` | #364 `48d23c51` | exit 0, nothing held | pushed | end-of-epic sweep |
-| `../wt-ohv-4` | `feature/OHV-4` | OHV-4 #341 | `48d23c51` | — | — | created at wave-2 close | wave 3 in progress |
+| `../wt-ohv-4` | `feature/OHV-4` | OHV-4 #341 | `48d23c51` | #365 `42486f86` | exit 0, nothing held | pushed | end-of-epic sweep |
+| `../wt-ohv-6` | `feature/OHV-6` | OHV-6 #352 | `42486f86` | — | — | created at wave-3 close | wave 4 in progress |
 
 No ticket home held a unit edit, so nothing was reconciled into the project home and nothing needs `unit publish`.
 
