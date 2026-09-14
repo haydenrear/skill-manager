@@ -56,5 +56,13 @@ for agent in .claude .codex .gemini; do
   ln -s "$store/skills/$unit" "$home/$agent/skills/$unit"
 done
 
+# The sibling Claude config the leak oracles fingerprint (TripwireSupport
+# .ownedConfig reads mcpServers / extraKnownMarketplaces / projects from it).
+# Present and empty, so a registration written into the REAL config by a
+# leaking command is a change from a real file rather than from ABSENT.
+if [ ! -e "$home/.claude.json" ]; then
+  printf '{}\n' > "$home/.claude.json"
+fi
+
 echo "seed-agent-home: seeded $unit under $home"
 find "$store" "$home/.claude" "$home/.codex" "$home/.gemini" -maxdepth 3 | sed "s|$home|~|"

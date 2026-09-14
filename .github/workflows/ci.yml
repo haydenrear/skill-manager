@@ -644,8 +644,14 @@ jobs:
       # real-shaped one (a store with a skill + installed record, and each
       # agent's skills/ projection) for any leaking write to land in. The
       # script refuses to run where a home already exists.
-      - name: Seed an agent home under $HOME (home-tripwire)
-        if: matrix.graph == 'home-tripwire'
+      #
+      # ticket-lifecycle and onboarding need it too, measured on run
+      # 34790343243: once the scripts above were found, both fixture nodes arm
+      # the same leak oracle over the real homes
+      # (the_leak_oracle_is_armed_over_the_operators_real_homes), and it fails
+      # on an empty $HOME for the same correct reason.
+      - name: Seed an agent home under $HOME (home-tripwire, ticket-lifecycle, onboarding)
+        if: matrix.graph == 'home-tripwire' || matrix.graph == 'ticket-lifecycle' || matrix.graph == 'onboarding'
         run: bash .github/scripts/seed-agent-home.sh
 
       - name: Plan graph
