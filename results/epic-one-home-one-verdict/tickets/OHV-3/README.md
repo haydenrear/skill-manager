@@ -14,14 +14,14 @@ and could not be bisected). Local graph report ids are under
 | (a) re-record fixpoint | `52c6db6c` | ArtifactPruneTest 22/22 (2 new, red first) | **passed** `20260913-233504` | red, only `uninstall.prunes.the.subgraph`: 5 surviving ids (was 6 — the tree row no longer comes back), byte-comparable false |
 | (b) teardown reaps rows, only where absence is proven | `7474f5d5` | ArtifactPruneTest 28/28 (6 new) | **passed** `20260913-235305`, incl. `home.fixpoint.law` | `the_census_names_nothing_the_removed_unit_owned` **true**, `survivingIds=[]`; red ONLY on `the_home_is_byte_comparable_to_before_the_install` (`onlyAfter=[F artifacts.lock.toml]`) `20260914-000249` |
 | (c) record version from checkout | `8f202a9f` | RecordVersionRefreshTest 3/3 (new); sync suites green | **passed** `20260914-000714` | unchanged from (b) `20260914-001142` |
-| (d) uninstall removes the ledger it created | `48a0ab45` | ArtifactPruneTest 31/31, UninstallCliCleanupTest 7/7 (5 new, red first); RunTests ALL PASSED | **could not run locally**, see note; CI run __CIRUN__ is the evidence | **fully green** locally, 10/10 nodes `20260914-013614` |
+| (d) uninstall removes the ledger it created | `48a0ab45` | ArtifactPruneTest 31/31, UninstallCliCleanupTest 7/7 (5 new, red first); RunTests ALL PASSED | **could not run locally**, see note; CI run 34798086104 is the evidence | **fully green** locally, 10/10 nodes `20260914-013614` |
 
 **Local plugin-smoke on (d) could not run.** After the host disk filled, Docker
 became unresponsive: `postgres.up` timed out after 90s (report `20260914-015014`,
 no node touching uninstall or the ledger ran), and `docker info` returned no
 server for more than 10 minutes. Docker was deliberately not restarted, because
 that would kill other agents' runs. On the epic agent's direction, the Linux
-plugin-smoke and artifact-dag jobs of CI run __CIRUN__ are (d)'s graph evidence.
+plugin-smoke and artifact-dag jobs of CI run 34798086104 are (d)'s graph evidence.
 
 `jbang RunTests.java`: ALL PASSED at (c) before the rebase, and ALL PASSED again
 on the rebased tree (`8f202a9f`). `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
