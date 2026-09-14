@@ -311,9 +311,15 @@ public final class SkillScriptBackend implements InstallerBackend {
             if (was != null && was.equals(now.getValue())) continue;
             Path shim = bin.resolve(now.getKey());
             if (Files.isSymbolicLink(shim) || !Files.isRegularFile(shim)) continue;
+            // OHV-4 (#341): gated on what the REWRITE can re-anchor (every line
+            // after the shebang, comments included), so a shim the installer
+            // wrote with the token on one line and this home spelled literally
+            // on its exec line is re-anchored HERE, at write time, instead of
+            // surviving as the half-rewritten shape DEF-OHV-001 measured on the
+            // root home. `frozen` is the DETECTOR's answer (what home repair
+            // would report: comment lines excluded) and only it is warned on.
             List<String> frozen = dev.skillmanager.store.ShimHomeContract
-                    .frozenHomePaths(store.root(), shim);
-            if (frozen.isEmpty()) continue;
+                    .frozenHomeLines(store.root(), shim);
 
             // FIX IT, don't only name it. The installer that wrote this shim
             // is the unit's own and is not ours to change; the FILE is, and
@@ -322,6 +328,7 @@ public final class SkillScriptBackend implements InstallerBackend {
             // See ShimHomeContract.selfDerivingRewrite for what it refuses.
             String rewritten = dev.skillmanager.store.ShimHomeContract
                     .selfDerivingRewrite(store.root(), shim);
+            if (rewritten == null && frozen.isEmpty()) continue;
             if (rewritten != null) {
                 try {
                     // Preserve the stamp: binStamps() uses mtime to decide
@@ -341,6 +348,9 @@ public final class SkillScriptBackend implements InstallerBackend {
                             + "instead", now.getKey(), io.getMessage());
                 }
             }
+            // Only what `home repair` would report: a comment-only spelling
+            // the rewrite could not write is prose, not a freeze.
+            if (frozen.isEmpty()) continue;
             Log.warn("cli: skill-script %s wrote bin/cli/%s with this home's absolute path "
                             + "baked in (%s). %s — copy that shim into another home and it "
                             + "will still run THIS one's copy. Derive the home from the shim's "
