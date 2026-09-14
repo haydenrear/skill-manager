@@ -1,0 +1,151 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 108 and seed -882922972687222789 with 1 worker on 10 cores with 16384MB heap and 64MB offheap memory [pid: 88918] (Mac OS X 26.6.2 aarch64, Oracle Corporation 21 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/hv-tlc/HomeVerdictsInternal_regression_foreignfixhalfrewrite/HomeVerdictsInternal.tla
+Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Integers.tla
+Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/FiniteSets.tla
+Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Naturals.tla
+Parsing file /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module HomeVerdictsInternal
+Starting... (2026-09-14 14:53:57)
+Computing initial states...
+Computed 2 initial states...
+Computed 4 initial states...
+Finished computing initial states: 6 distinct states generated at 2026-09-14 14:53:57.
+Error: Invariant ARepairedShimNamesNoHome is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ s_obs_foreign = FALSE
+/\ v_sanctioned = FALSE
+/\ s_export = "token"
+/\ s_observed = FALSE
+/\ p_link = "present"
+/\ w_phase = "clean"
+/\ v_phase = "planting"
+/\ s_copy_runs = "n/a"
+/\ p_proven_absent = FALSE
+/\ s_comment = FALSE
+/\ r_synced = FALSE
+/\ m_enabled = {"id_H"}
+/\ p_removal = "none"
+/\ r_head = "c1"
+/\ p_last_pruned = {}
+/\ v_verify_exit = 0
+/\ w_entry = [tool |-> "absent", launcher |-> "absent"]
+/\ m_sync_failed = FALSE
+/\ hv_group = "shims"
+/\ m_fixed = FALSE
+/\ s_settled = TRUE
+/\ v_damage = {}
+/\ w_linked_at_install = FALSE
+/\ v_verdict_build = "none"
+/\ m_reg = [id_H |-> "H", legacy |-> "none", id_O |-> "none"]
+/\ v_repair = {}
+/\ p_rows = {"projection", "shim"}
+/\ p_installed = TRUE
+/\ p_shim = "present"
+/\ s_last = "none"
+/\ w_script = "none"
+/\ w_parent = [tool |-> "parent_built", launcher |-> "parent_built"]
+/\ s_exec = "token"
+/\ r_hash = "c1"
+/\ m_manifest = "id_H"
+/\ w_outcome = "none"
+/\ r_version = "v1"
+/\ v_build = "none"
+/\ s_obs_frozen = FALSE
+/\ m_phase = "clean"
+
+State 2: <InstallShim line 443, col 3 to line 455, col 21 of module HomeVerdictsInternal>
+/\ s_obs_foreign = FALSE
+/\ v_sanctioned = FALSE
+/\ s_export = "literal"
+/\ s_observed = FALSE
+/\ p_link = "present"
+/\ w_phase = "clean"
+/\ v_phase = "planting"
+/\ s_copy_runs = "n/a"
+/\ p_proven_absent = FALSE
+/\ s_comment = FALSE
+/\ r_synced = FALSE
+/\ m_enabled = {"id_H"}
+/\ p_removal = "none"
+/\ r_head = "c1"
+/\ p_last_pruned = {}
+/\ v_verify_exit = 0
+/\ w_entry = [tool |-> "absent", launcher |-> "absent"]
+/\ m_sync_failed = FALSE
+/\ hv_group = "shims"
+/\ m_fixed = FALSE
+/\ s_settled = TRUE
+/\ v_damage = {}
+/\ w_linked_at_install = FALSE
+/\ v_verdict_build = "none"
+/\ m_reg = [id_H |-> "H", legacy |-> "none", id_O |-> "none"]
+/\ v_repair = {}
+/\ p_rows = {"projection", "shim"}
+/\ p_installed = TRUE
+/\ p_shim = "present"
+/\ s_last = "installed"
+/\ w_script = "none"
+/\ w_parent = [tool |-> "parent_built", launcher |-> "parent_built"]
+/\ s_exec = "token"
+/\ r_hash = "c1"
+/\ m_manifest = "id_H"
+/\ w_outcome = "none"
+/\ r_version = "v1"
+/\ v_build = "none"
+/\ s_obs_frozen = FALSE
+/\ m_phase = "clean"
+
+State 3: <RepairFixShim line 484, col 3 to line 498, col 21 of module HomeVerdictsInternal>
+/\ s_obs_foreign = FALSE
+/\ v_sanctioned = FALSE
+/\ s_export = "literal"
+/\ s_observed = FALSE
+/\ p_link = "present"
+/\ w_phase = "clean"
+/\ v_phase = "planting"
+/\ s_copy_runs = "n/a"
+/\ p_proven_absent = FALSE
+/\ s_comment = FALSE
+/\ r_synced = FALSE
+/\ m_enabled = {"id_H"}
+/\ p_removal = "none"
+/\ r_head = "c1"
+/\ p_last_pruned = {}
+/\ v_verify_exit = 0
+/\ w_entry = [tool |-> "absent", launcher |-> "absent"]
+/\ m_sync_failed = FALSE
+/\ hv_group = "shims"
+/\ m_fixed = FALSE
+/\ s_settled = TRUE
+/\ v_damage = {}
+/\ w_linked_at_install = FALSE
+/\ v_verdict_build = "none"
+/\ m_reg = [id_H |-> "H", legacy |-> "none", id_O |-> "none"]
+/\ v_repair = {}
+/\ p_rows = {"projection", "shim"}
+/\ p_installed = TRUE
+/\ p_shim = "present"
+/\ s_last = "fixed"
+/\ w_script = "none"
+/\ w_parent = [tool |-> "parent_built", launcher |-> "parent_built"]
+/\ s_exec = "token"
+/\ r_hash = "c1"
+/\ m_manifest = "id_H"
+/\ w_outcome = "none"
+/\ r_version = "v1"
+/\ v_build = "none"
+/\ s_obs_frozen = FALSE
+/\ m_phase = "clean"
+
+448 states generated, 380 distinct states found, 363 states left on queue.
+The depth of the complete state graph search is 3.
+The average outdegree of the complete state graph is 7 (minimum is 0, the maximum 31 and the 95th percentile is 31).
+Finished in 00s at (2026-09-14 14:53:57)
