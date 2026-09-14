@@ -14,6 +14,14 @@ and could not be bisected). Local graph report ids are under
 | (a) re-record fixpoint | `52c6db6c` | ArtifactPruneTest 22/22 (2 new, red first) | **passed** `20260913-233504` | red, only `uninstall.prunes.the.subgraph`: 5 surviving ids (was 6 — the tree row no longer comes back), byte-comparable false |
 | (b) teardown reaps rows, only where absence is proven | `7474f5d5` | ArtifactPruneTest 28/28 (6 new) | **passed** `20260913-235305`, incl. `home.fixpoint.law` | `the_census_names_nothing_the_removed_unit_owned` **true**, `survivingIds=[]`; red ONLY on `the_home_is_byte_comparable_to_before_the_install` (`onlyAfter=[F artifacts.lock.toml]`) `20260914-000249` |
 | (c) record version from checkout | `8f202a9f` | RecordVersionRefreshTest 3/3 (new); sync suites green | **passed** `20260914-000714` | unchanged from (b) `20260914-001142` |
+| (d) uninstall removes the ledger it created | `48a0ab45` | ArtifactPruneTest 31/31, UninstallCliCleanupTest 7/7 (5 new, red first); RunTests ALL PASSED | **could not run locally**, see note; CI run __CIRUN__ is the evidence | **fully green** locally, 10/10 nodes `20260914-013614` |
+
+**Local plugin-smoke on (d) could not run.** After the host disk filled, Docker
+became unresponsive: `postgres.up` timed out after 90s (report `20260914-015014`,
+no node touching uninstall or the ledger ran), and `docker info` returned no
+server for more than 10 minutes. Docker was deliberately not restarted, because
+that would kill other agents' runs. On the epic agent's direction, the Linux
+plugin-smoke and artifact-dag jobs of CI run __CIRUN__ are (d)'s graph evidence.
 
 `jbang RunTests.java`: ALL PASSED at (c) before the rebase, and ALL PASSED again
 on the rebased tree (`8f202a9f`). `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
@@ -84,6 +92,34 @@ none. The assertion was not touched. #292's three options:
 3. **accept it** and narrow the assertion, on the grounds that a home which has
    learned to describe itself is not damaged.
 
+### Owner decision (2026-09-13): option 1 → step (d)
+
+The epic agent relayed the owner's decision: **uninstall removes a ledger it
+created**, and the assertion stays exactly as strict as it is.
+
+* **How "the home had no ledger" is decided.** `RemoveUseCase.buildProgram`
+  checks whether `artifacts.lock.toml` is present when the removal's program is
+  built. That is before its own `RecordArtifactLedger` effect can write one, and
+  the product can observe it at uninstall time. No timestamp is involved. The
+  answer rides in `SkillEffect.PruneOrphanArtifacts.discardLedgerIfCreated`.
+  Retirement builds the same program, so it follows the same rule.
+* **What is removed.** After the prune, `ArtifactPrune.discardCreatedLedger`
+  deletes the file only if every artifact in the index is still derived from the
+  home, i.e. no ledger-only row remains. A ledger holding a row the home can no
+  longer derive is kept and named. That row is the only record of something, and
+  deleting the file would re-open #292's dangling-link trap by another route.
+* **What stays true.** A home that had a ledger keeps it. A no-ledger home is
+  exactly the state `artifacts.enumerated` asserts the census answers in, and a
+  prune there refuses without writing a ledger.
+
+Tests, written first (the stub was red on exactly the two "removes it" cases):
+`an uninstall in a home with no ledger leaves no ledger behind` and
+`an uninstall in a home that HAD a ledger keeps it` (`UninstallCliCleanupTest`,
+end to end through `Executor`); `a created ledger that only restates the home is
+discarded`, `a created ledger holding a row the home cannot derive is kept`, and
+`a prune in a no-ledger home refuses cleanly, writes no ledger, and the census
+answers from disk` (`ArtifactPruneTest`).
+
 ## (c) Installed record version
 
 `RecordVersionRefresh.refreshed(store, record)` restates `version` from the
@@ -93,8 +129,33 @@ the checkout's HEAD; anything else changes nothing. Applied in
 DEF-OHV-004's stale versions survive: nothing else writes the record there), and
 after `SyncFromLocalDirHandler` copies a checkout in.
 
-Not exercised on a real home: the real-home instructions for this ticket were
-prune + list + census, and a real `sync` was not run (see below).
+### Real-home proof: unit test only
+
+**(c) is proven by `RecordVersionRefreshTest` only.** The one real-home attempt was
+refused, and the epic agent directed that no further real-home sync be run.
+The real-home proof is carried to the evaluation ticket (OHV-8).
+
+The attempt, on tla-spec-dev-2, with a fresh backup of `installed/` taken first:
+`SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager
+/Users/hayde/IdeaProjects/wt-ohv-3/skill-manager sync acp-cdc-ai-python --yes`.
+That is the home's only stale record: 0.1.0 recorded, 0.2.0 in the manifest,
+with the hash equal to the checkout's HEAD.
+
+* **Exit 7, "extra local changes — `skill-manager sync <name> --merge`".** The
+  checkout carries an uncommitted `scripts/sources/uv.lock` edit, so the sync
+  refuses before any record write. That is correct behaviour. The record did not
+  change (0.1.0, same hash).
+* Inside `installed/`, 18 `*.projections.json` files were rewritten, and each
+  differed only in `createdAt`. All 18 were restored from the backup, and
+  `installed/` is byte-identical to its pre-sync hash list. `units.lock.toml` did
+  not change.
+* **Two side effects outside `installed/`**, which a file backup cannot undo:
+  1. the gateway re-registered the `runpod` MCP server ("runpod spec changed —
+     re-registering");
+  2. the agent pass re-linked 18 units into claude, codex and gemini.
+
+Evidence: `real-homes/sync-acp.txt`, `real-homes/sync-acp-record-before.json`,
+`real-homes/sync-acp-record-after.json`.
 
 ## Real homes
 
@@ -144,9 +205,11 @@ unchanged; project home's `artifacts.lock.toml` byte-identical.
   a missing home output), which no prune verdict should reach. Root was not
   touched per instructions; its 14 ledger-only rows are the DEF-OHV-131 shape
   (tla-spec-dev-2 reproduces it with 6). New removals no longer produce either.
-* "versions 5/1 -> 0/0 after a sync": code + unit test only; no real-home sync run.
+* "versions 5/1 -> 0/0 after a sync": proven by `RecordVersionRefreshTest` only; the one real-home
+  attempt was refused (exit 7, extra local changes), and the proof is carried to OHV-8.
 * GOAL-ci-green-fresh-runner "artifact-dag red -> green, plugin-smoke stays
-  green": plugin-smoke green; artifact-dag red on the owner-decision residual only.
+  green": after (d), artifact-dag is fully green locally (report `20260914-013614`,
+  10/10 nodes, including `home.fixpoint.law`); plugin-smoke: see the (d) row.
 
 ## CI
 
