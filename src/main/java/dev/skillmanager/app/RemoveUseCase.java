@@ -178,9 +178,18 @@ public final class RemoveUseCase {
         // derivable. The ledger keeps no external path, so after the removal
         // this snapshot is the only thing that can prove an agent-side link is
         // gone — and a row is reaped only when it proves exactly that.
+        //
+        // OHV-3 (d), the owner's decision on #292: whether the home HAD a
+        // ledger is read here, at program build — before RecordArtifactLedger
+        // above can write one. Absent now means the ledger present after the
+        // prune is this removal's own, and it goes again if it adds nothing.
+        // Decided from the file's presence, never from a timestamp.
         if (pruneCliOrphans) {
+            boolean hadLedger = java.nio.file.Files.isRegularFile(
+                    dev.skillmanager.artifacts.ArtifactLedger.file(store));
             effects.add(new SkillEffect.PruneOrphanArtifacts(skillName,
-                    dev.skillmanager.artifacts.ArtifactPrune.outputsOf(store, skillName)));
+                    dev.skillmanager.artifacts.ArtifactPrune.outputsOf(store, skillName),
+                    !hadLedger));
         }
 
         // Plugin marketplace + harness CLI cleanup. Skip for skills —

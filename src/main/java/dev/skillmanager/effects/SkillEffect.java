@@ -813,7 +813,8 @@ public sealed interface SkillEffect permits
      * lives in {@link dev.skillmanager.artifacts.ArtifactPrune}.
      */
     record PruneOrphanArtifacts(String unitName,
-                                java.util.Map<String, java.util.List<String>> knownOutputs)
+                                java.util.Map<String, java.util.List<String>> knownOutputs,
+                                boolean discardLedgerIfCreated)
             implements SkillEffect {
         /**
          * {@code knownOutputs}: every output path (absolute) of every artifact
@@ -821,12 +822,24 @@ public sealed interface SkillEffect permits
          * The ledger keeps no external path, so this is the only evidence that
          * a projection's agent-side link is gone — see
          * {@link dev.skillmanager.artifacts.ArtifactPrune#outputsOf}.
+         *
+         * <p>{@code discardLedgerIfCreated} (OHV-3 d, the owner's decision on
+         * #292): the home had no {@code artifacts.lock.toml} when this
+         * removal's program was built, so the one present after the prune was
+         * written by the removal's own {@link RecordArtifactLedger}. It is
+         * removed again when it adds nothing the home cannot derive — see
+         * {@link dev.skillmanager.artifacts.ArtifactPrune#discardCreatedLedger}.
          */
         public PruneOrphanArtifacts {
             knownOutputs = knownOutputs == null ? java.util.Map.of() : java.util.Map.copyOf(knownOutputs);
         }
 
-        public PruneOrphanArtifacts(String unitName) { this(unitName, java.util.Map.of()); }
+        public PruneOrphanArtifacts(String unitName,
+                                    java.util.Map<String, java.util.List<String>> knownOutputs) {
+            this(unitName, knownOutputs, false);
+        }
+
+        public PruneOrphanArtifacts(String unitName) { this(unitName, java.util.Map.of(), false); }
     }
 
     /**

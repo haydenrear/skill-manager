@@ -601,6 +601,48 @@ public final class ArtifactPrune {
             ArtifactKind.CLI_SHIM, ArtifactKind.PROVISIONED_TREE,
             ArtifactKind.MARKETPLACE_ENTRY, ArtifactKind.HARNESS_INSTANCE);
 
+    /**
+     * Remove a ledger that a removal CREATED, when it holds nothing the home
+     * cannot derive — OHV-3 (d), the owner's decision on #292's residual.
+     *
+     * <p>{@code RecordArtifactLedger} writes {@code artifacts.lock.toml} at the
+     * start of an uninstall so the prune has rows to act on. In a home that had
+     * no ledger, leaving that file behind is the one byte the install/uninstall
+     * pair did not restore ({@code the_home_is_byte_comparable_to_before_the_install}).
+     * WHETHER the removal created it is decided by the caller from observable
+     * state — the file's absence when the removal's program was built — never
+     * from a timestamp.
+     *
+     * <p>And only when the ledger adds nothing: every artifact in the index is
+     * still derived from the home (no {@link Artifact.Origin#LEDGER} row). A
+     * ledger-only row is the one record of something the disk no longer shows —
+     * #292's dangling-link trap — so a file holding one is kept and named. A
+     * home without the file is exactly the no-ledger state the backfill already
+     * answers in ({@code artifacts.enumerated}), and in which a prune refuses.
+     *
+     * @return whether the file was removed
+     */
+    public static boolean discardCreatedLedger(SkillStore store) {
+        Path file = ArtifactLedger.file(store);
+        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return false;
+        try {
+            for (Artifact artifact : ArtifactIndex.of(store).artifacts()) {
+                if (artifact.origin() == Artifact.Origin.LEDGER) {
+                    Log.warn("kept %s — this removal created it, but it still names %s, which the "
+                                    + "home can no longer derive, and it is the only record of it",
+                            ArtifactLedger.FILENAME, artifact.id());
+                    return false;
+                }
+            }
+            Files.deleteIfExists(file);
+            return true;
+        } catch (IOException | RuntimeException e) {
+            Log.warn("could not decide whether to remove the %s this removal created (%s) — kept",
+                    ArtifactLedger.FILENAME, e.getMessage());
+            return false;
+        }
+    }
+
     /** Whether nothing is at any of these absolute paths — a dangling link is something. */
     static boolean allAbsent(List<String> absolutePaths) {
         for (String path : absolutePaths) {

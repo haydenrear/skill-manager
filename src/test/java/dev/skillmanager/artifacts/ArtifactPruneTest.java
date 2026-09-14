@@ -278,6 +278,54 @@ public final class ArtifactPruneTest {
                     "and reaped once no digest holds it: " + byId(gone, id).reason());
         });
 
+        // ------------------------------- OHV-3 (d): a ledger the removal created
+
+        suite.test("a created ledger that only restates the home is discarded", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            record(store);
+            assertTrue(ArtifactPrune.discardCreatedLedger(store),
+                    "every row is still derivable from the home, so the file adds nothing");
+            assertFalse(Files.exists(ArtifactLedger.file(store), LinkOption.NOFOLLOW_LINKS),
+                    "and it is gone");
+            assertFalse(ArtifactIndex.of(store).artifacts().isEmpty(),
+                    "and the census still answers, from the disk");
+        });
+
+        // The safety half. A row the home can no longer derive is the ONLY
+        // record of something (#292's dangling-link trap); deleting the file
+        // would drop it exactly as a bad prune verdict would.
+        suite.test("a created ledger holding a row the home cannot derive is kept", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Files.writeString(ArtifactLedger.file(store), """
+                    schema = 1
+                    recorded_at = "2026-01-01T00:00:00Z"
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/remembered-only"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/remembered-only"]
+                    """);
+            assertFalse(ArtifactPrune.discardCreatedLedger(store),
+                    "a ledger-only row is knowledge the disk does not have");
+            assertTrue(Files.isRegularFile(ArtifactLedger.file(store)), "so the file stays");
+        });
+
+        suite.test("a prune in a no-ledger home refuses cleanly, writes no ledger, and the census "
+                + "answers from disk", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            uninstall(store, "alpha");
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
+            assertTrue(plan.prunes().isEmpty(), "nothing planned: " + plan.prunes());
+            ArtifactPrune.apply(store, plan);
+            assertFalse(Files.exists(ArtifactLedger.file(store), LinkOption.NOFOLLOW_LINKS),
+                    "refusing everything is not a reason to write a ledger");
+            ArtifactIndex index = ArtifactIndex.of(store);
+            assertFalse(index.ledgerPresent(), "still no ledger");
+            assertTrue(index.byId(ArtifactIds.unitStore("beta")).isPresent(),
+                    "and the census still names what the disk holds");
+        });
+
         // --------------------------------------------------------- the refusals
 
         suite.test("a home with no ledger deletes nothing", () -> {

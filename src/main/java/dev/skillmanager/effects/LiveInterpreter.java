@@ -2288,6 +2288,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 Log.ok("pruned %d orphaned artifact(s) of %s: %s",
                         pruned.size(), e.unitName(), String.join(", ", pruned));
             }
+            // OHV-3 (d): a ledger this removal created goes with it, when it
+            // adds nothing the home cannot derive.
+            if (e.discardLedgerIfCreated()) ArtifactPrune.discardCreatedLedger(ctx.store());
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
             // A removal that succeeded and left an orphan is a smaller failure
