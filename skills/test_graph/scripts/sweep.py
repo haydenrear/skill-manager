@@ -3,6 +3,12 @@
 
 WHY THIS EXISTS -- DEF-011, and the owner's instruction of 2026-08-24.
 
+UPDATE (OHV-7, DEF-OUN-023): `run.py --all` and `run.py A B C` no longer stop
+at the first red graph; they run Gradle with `--continue` and end with a summary
+counted from that invocation's own ledger. What remains unique here is per-graph
+resumption across a sweep and the CI selector's graph set. The paragraph below
+describes run.py before that change.
+
 `run.py --all` hands the whole set to Gradle as one task chain, and Gradle stops
 at the first failing task. So a red graph at position 1 yields "stopped at 1",
 which is indistinguishable from "only 1 graph exists". Measured 2026-08-21: one

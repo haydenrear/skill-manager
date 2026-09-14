@@ -286,7 +286,10 @@ These are the underlying Gradle tasks.
 
 `discover.py <graph>` wraps `validationPlanGraph` (for the human console output) and `validationGraphDot` (for `docs/<graph>.dot`), and renders `docs/<graph>.png` if `dot` is on PATH.
 
-`run.py --all` wraps `validationRunAll`.
+`run.py --all` wraps `validationRunAll --continue` with the sweep ledger init
+script (`scripts/sweep-ledger.init.gradle`); `run.py A B` wraps `A B --continue`
+the same way. Both end with an executed/passed/failed/not-run summary computed
+from that invocation only (`build/validation-sweeps/<sweepId>/sweep.json`).
 
 Prefer `validationReport --run-id=<runId>` when a report root contains
 pre-closure or pre-scope historical attempts. The default all-run mode remains
