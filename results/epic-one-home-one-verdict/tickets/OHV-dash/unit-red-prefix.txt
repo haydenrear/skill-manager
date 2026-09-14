@@ -1,0 +1,130 @@
+[jbang] Building jar for RunShimTests.java...
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+== ShimAnchorRunsUnderEveryShellTest (9 cases)
+  [FAIL] a frozen #!/bin/dash shim, rewritten, runs its tool from a COPY of the home: #!/bin/dash by path exited 127: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/shim-anchor-copy-6991064843802200514/home/bin/cli/acme: 4: Bad substitution
+/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/shim-anchor-copy-6991064843802200514/home/bin/cli/acme: 5: exec: //cache/acme/bin/acme: not found
+
+--- shim ---
+#!/bin/dash
+# Rewritten by skill-manager: resolve the home this shim is standing in
+# rather than the one it was written into, so a copy of the home works.
+SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+exec "${SKILL_MANAGER_SHIM_HOME}/cache/acme/bin/acme" "$@"
+: expected <0> but was <127>
+java.lang.AssertionError: #!/bin/dash by path exited 127: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/shim-anchor-copy-6991064843802200514/home/bin/cli/acme: 4: Bad substitution
+/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/shim-anchor-copy-6991064843802200514/home/bin/cli/acme: 5: exec: //cache/acme/bin/acme: not found
+
+--- shim ---
+#!/bin/dash
+# Rewritten by skill-manager: resolve the home this shim is standing in
+# rather than the one it was written into, so a copy of the home works.
+SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+exec "${SKILL_MANAGER_SHIM_HOME}/cache/acme/bin/acme" "$@"
+: expected <0> but was <127>
+	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
+	at dev.skillmanager.store.ShimAnchorRunsUnderEveryShellTest.lambda$run$0(ShimAnchorRunsUnderEveryShellTest.java:76)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ShimAnchorRunsUnderEveryShellTest.run(ShimAnchorRunsUnderEveryShellTest.java:165)
+	at RunShimTests.main(RunShimTests.java:37)
+  [PASS] a frozen #!/bin/sh shim, rewritten, runs its tool from a COPY of the home
+  [PASS] a frozen #!/usr/bin/env bash shim, rewritten, runs its tool from a COPY of the home
+  [PASS] a frozen #!/usr/bin/env zsh shim, rewritten, runs its tool from a COPY of the home
+  [PASS] a frozen #!/bin/ksh shim, rewritten, runs its tool from a COPY of the home
+  [FAIL] an EXISTING #!/bin/sh shim carrying the bash-only anchor is reported, repaired, and then runs under dash: expected false: #!/bin/sh: the [0] anchor is named
+java.lang.AssertionError: expected false: #!/bin/sh: the [0] anchor is named
+	at dev.skillmanager._lib.test.Tests.assertFalse(Tests.java:82)
+	at dev.skillmanager.store.ShimAnchorRunsUnderEveryShellTest.lambda$run$2(ShimAnchorRunsUnderEveryShellTest.java:95)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ShimAnchorRunsUnderEveryShellTest.run(ShimAnchorRunsUnderEveryShellTest.java:165)
+	at RunShimTests.main(RunShimTests.java:37)
+  [PASS] CONTROL: an EXISTING bash/zsh/ksh shim carrying the [0] anchor is NOT reported and is left byte-identical
+  [PASS] CONTROL: a half-rewritten BASH shim keeps its [0] anchor line; only the literal exec is re-anchored
+  [FAIL] the anchor the rewrite writes carries no array subscript: expected false: dash cannot parse ${NAME[i]}: SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+java.lang.AssertionError: expected false: dash cannot parse ${NAME[i]}: SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+	at dev.skillmanager._lib.test.Tests.assertFalse(Tests.java:82)
+	at dev.skillmanager.store.ShimAnchorRunsUnderEveryShellTest.lambda$run$5(ShimAnchorRunsUnderEveryShellTest.java:159)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ShimAnchorRunsUnderEveryShellTest.run(ShimAnchorRunsUnderEveryShellTest.java:165)
+	at RunShimTests.main(RunShimTests.java:37)
+   → 6 passed, 3 failed
+== ShimSurvivesACopyTest (14 cases)
+  [PASS] a frozen shim is rewritten to derive its own home
+  [PASS] the rewritten shim resolves inside a COPY, not the original
+  [PASS] CONTROL: the shim still names the script it is supposed to run
+  [PASS] a shim with no frozen path is left alone
+  [PASS] a shim that is not a shell script is refused, not half-rewritten
+  [PASS] rewriting is idempotent
+  [PASS] OHV-4: a HALF-rewritten shim is reported on content and re-anchored completely
+  [PASS] OHV-4: the rewritten half shim runs its tool from a COPY of the home
+  [PASS] OHV-4: the home root itself on an assignment line is frozen too
+  [PASS] OHV-4: a sibling home that shares the prefix is not this home
+  [PASS] OHV-4: a home spelled ONLY in a # comment is not a frozen line
+  [PASS] OHV-4: a venv-internal shebang is deliberately NOT reported
+  [PASS] OHV-4: a non-shell file spelling the home on an exec line is reported, not rewritten
+  [PASS] OHV-4: a home named by another spelling of itself is still this home
+   → 14 passed, 0 failed
+== DamagedHomeIsRepairableTest (31 cases)
+  [PASS] #289: a SANCTIONED parent mirror is a finding when this home holds its own copy of what it runs
+  [PASS] #289: --fix materializes this home's OWN shim, and it still runs
+  [PASS] #289: a mirror whose target this home CANNOT run is refused, not rewritten
+  [PASS] #289: a sanctioned mirror with NO local copy stays clean
+  [PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+  [PASS] a merely STALE home is not reported as damaged
+  [PASS] BLOCKER 1: one disk state, two policies, and the verdict follows the policy
+  [PASS] an EAGER home missing an entry no parent holds is not a repair this command can make
+  [PASS] OHV-2: dangling links into this home are found where the home RECORDS them, and --fix removes only what it owns
+  [PASS] OHV-6: the four marketplace-identity shapes, repaired by touching only what they name
+  [PASS] OHV-6: a foreign enablement of a plugin THIS home carries is re-pointed, not dropped
+  [PASS] every damage shape is reported, one line each, naming the repair
+  [PASS] OHV-4: a home spelled only in a # comment is not a finding, and --fix leaves the shim byte-identical
+  [PASS] BLOCKER 2: a rewrite replaces a PATH, not a substring, and keeps the shim running
+  [PASS] BLOCKER 2 postcondition: a rewrite that would break the shim is REFUSED
+  [PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+  [PASS] REPAIR makes detection clean, and it is DETECTION that says so
+  [PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+  [PASS] M3: a projection this home cannot back is reported UNREPAIRABLE, not relinked
+  [PASS] M3: a broken CLI pin with no locatable build is reported, with the runnable remedy
+  [PASS] the agent axis comes from the HOME and not from the ENVIRONMENT
+  [PASS] a repair cannot write outside the two axes of the home it was given
+  [PASS] `home repair` reports and exits 1; `--fix` repairs and exits 0
+  [PASS] a home damaged AFTER a repair goes red again — the verdict is not sticky
+  [PASS] HIS-9's measurement target: a home whose bin/cli IS a link is NAMED
+  [PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+  [PASS] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage
+  [PASS] DEF-104: verify and repair return the SAME verdict on a wrapper shim
+  [PASS] DEF-104: the SANCTION survives the widening — a clone's inherited wrapper is not a leak
+  [PASS] MAJOR-1: verify and repair agree when bin/cli IS A SYMLINK
+  [PASS] DEF-115: verify and repair return the SAME verdict on a SYMLINKED shim into another home
+   → 31 passed, 0 failed
+== SkillScriptBackendTest (7 cases)
+→ cli: skill-script force-script-bin - force rerun requested
+→ cli: skill-script force-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-9059587009113604214/skills/force-script-skill/skill-scripts/install.sh
+→ cli: skill-script force-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-9059587009113604214/logs/skill-scripts/20260914-191223-569-force-script-skill-force-script-bin.log
+✓ cli: installed force-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-9059587009113604214/bin/cli/force-script-bin
+  [PASS] force reruns matching-fingerprint skill-script with existing binary
+  [PASS] planner marks only skill-script deps forced
+  [PASS] planner scopes force-scripts to selected units
+→ cli: skill-script logged-script-bin - force rerun requested
+→ cli: skill-script logged-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-491748953770523371/skills/logged-script-skill/skill-scripts/install.sh
+→ cli: skill-script logged-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-491748953770523371/logs/skill-scripts/20260914-191223-762-logged-script-skill-logged-script-bin.log
+✓ cli: installed logged-script-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-491748953770523371/bin/cli/logged-script-bin
+  [PASS] skill-script stdout and stderr are written under store logs
+→ cli: skill-script failing-script-bin - force rerun requested
+→ cli: skill-script failing-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-16284008093310949205/skills/failing-script-skill/skill-scripts/install.sh
+→ cli: skill-script failing-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-16284008093310949205/logs/skill-scripts/20260914-191224-008-failing-script-skill-failing-script-bin.log
+  [PASS] skill-script failure includes log path and output tail
+→ cli: skill-script shim-token-bin - force rerun requested
+→ cli: skill-script shim-token-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-deploy-helm-5115713846816553028/skills/shim-token-skill/skill-scripts/install.sh
+→ cli: skill-script shim-token-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-deploy-helm-5115713846816553028/logs/skill-scripts/20260914-191224-167-shim-token-skill-shim-token-bin.log
+cli: rewrote bin/cli/shim-token-bin to resolve the home it is standing in (it had this home's absolute path baked in, which a copy of the home would not have)
+✓ cli: installed shim-token-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-deploy-helm-5115713846816553028/bin/cli/shim-token-bin
+  [PASS] OHV-4 (c): a deploy-helm installer's shim leaves the install with a token exec line
+→ cli: skill-script shim-token-bin - force rerun requested
+→ cli: skill-script shim-token-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-half-adopted-7240462730109845663/skills/shim-token-skill/skill-scripts/install.sh
+→ cli: skill-script shim-token-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-half-adopted-7240462730109845663/logs/skill-scripts/20260914-191224-496-shim-token-skill-shim-token-bin.log
+cli: rewrote bin/cli/shim-token-bin to resolve the home it is standing in (it had this home's absolute path baked in, which a copy of the home would not have)
+✓ cli: installed shim-token-bin -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-half-adopted-7240462730109845663/bin/cli/shim-token-bin
+  [PASS] OHV-4 (c): a half-adopted installer's shim leaves the install with a token exec line
+   → 7 passed, 0 failed
+TOTAL FAILURES: 3

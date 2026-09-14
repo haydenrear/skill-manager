@@ -194,6 +194,12 @@ public final class HomeRepair {
          * the rewrite refuses is now reported with {@code repairable=false}.
          * A venv-internal shebang ({@code #!<home>/venvs/.../python}) is
          * deliberately NOT reported; {@code frozenHomeLines} says why.
+         *
+         * <p><b>Also an sh/dash shim anchored with {@code ${BASH_SOURCE[0]}}</b>
+         * (DEF-OHV-190, {@link ShimHomeContract#bashOnlyAnchorLines}): it spells
+         * no home, but where {@code /bin/sh} is dash it resolves {@code /}, which
+         * is the same failure. The same anchor under bash, zsh or ksh works and is
+         * not reported.
          */
         FROZEN_HOME_PATH_IN_SHIM,
 
@@ -1395,13 +1401,21 @@ public final class HomeRepair {
                 for (Path shim : entries.sorted().toList()) {
                     if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) continue;
                     examined++;
-                    if (ShimHomeContract.frozenHomeLines(store, shim).isEmpty()) continue;
+                    boolean frozen = !ShimHomeContract.frozenHomeLines(store, shim).isEmpty();
+                    // DEF-OHV-190: an sh/dash shim anchored with the bash-only
+                    // line does not know its home either -- it resolves `/`.
+                    boolean bashOnlyAnchor = !ShimHomeContract.bashOnlyAnchorLines(shim).isEmpty();
+                    if (!frozen && !bashOnlyAnchor) continue;
                     boolean rewritable = ShimHomeContract.selfDerivingRewrite(store, shim) != null;
                     String rel = store.relativize(shim).toString();
                     findings.add(new Finding(Kind.FROZEN_HOME_PATH_IN_SHIM, rel,
-                            "names this home by absolute path, so it runs the home it was "
-                                    + "WRITTEN in rather than the one it is standing in — "
-                                    + "correct here, wrong the moment this home is copied",
+                            frozen
+                                    ? "names this home by absolute path, so it runs the home it was "
+                                            + "WRITTEN in rather than the one it is standing in — "
+                                            + "correct here, wrong the moment this home is copied"
+                                    : "derives its home with ${BASH_SOURCE[0]}, which its sh/dash "
+                                            + "interpreter cannot parse where /bin/sh is dash: the "
+                                            + "home resolves to / and every exec through it fails",
                             rewritable
                                     ? "skill-manager home repair --fix (or `sync <unit> "
                                             + "--force-scripts`, which rewrites it on the way past)"

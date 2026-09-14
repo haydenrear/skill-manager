@@ -216,6 +216,93 @@ public final class ShimHomeContract {
     public static final String SHIM_HOME_VAR = "SKILL_MANAGER_SHIM_HOME";
 
     /**
+     * The line a rewritten shim derives its home with: two directories above
+     * the shim's own location ({@code bin/cli/<name>}).
+     *
+     * <h2>Portable on purpose (DEF-OHV-190)</h2>
+     *
+     * <p>{@link #isShellShebang} accepts {@code sh}, {@code dash}, {@code bash},
+     * {@code zsh} and {@code ksh}, so this line has to parse and resolve under
+     * every one of them. {@code ${BASH_SOURCE:-$0}} does: bash expands an
+     * array named without a subscript to element 0 (the sourced file, or the
+     * script), and every other shell has no {@code BASH_SOURCE}, so it falls
+     * back to {@code $0}, which is the script path when a shim is executed.
+     * zsh included: its {@code $0} is the script, not the shell.
+     *
+     * <p>The line 43e5fb99 wrote, {@link #LEGACY_SHIM_HOME_ANCHOR}, used
+     * {@code ${BASH_SOURCE[0]:-$0}}. dash rejects the subscript as "Bad
+     * substitution", the command substitution is empty, {@code cd /../..}
+     * lands on {@code /}, and the exec goes to {@code //cache/...}: rc 127 on
+     * every Debian or Ubuntu {@code #!/bin/sh} shim. macOS's {@code /bin/sh} is
+     * bash, which is why nothing showed it. Pinned by
+     * {@code ShimAnchorRunsUnderEveryShellTest}, which RUNS the shim under each
+     * shell rather than reading this string.
+     *
+     * <p>Not symlink-resolving, like the line before it: a shim reached
+     * through a link from another directory derives the LINK's home. That is
+     * unchanged by this line and deliberately out of its scope.
+     */
+    public static final String SHIM_HOME_ANCHOR =
+            SHIM_HOME_VAR + "=\"$(cd \"$(dirname \"${BASH_SOURCE:-$0}\")/../..\" && pwd)\"";
+
+    /**
+     * The anchor 43e5fb99 wrote, exactly. Correct under bash, zsh and ksh
+     * (measured), broken under {@code sh}/{@code dash}; see
+     * {@link #bashOnlyAnchorLines}.
+     */
+    public static final String LEGACY_SHIM_HOME_ANCHOR =
+            SHIM_HOME_VAR + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"";
+
+    /** An array subscript on BASH_SOURCE: what dash cannot parse. */
+    private static final String BASH_SOURCE_SUBSCRIPT = "${BASH_SOURCE[";
+
+    /**
+     * The {@link #SHIM_HOME_VAR} assignment lines of {@code shim} that its own
+     * interpreter cannot run: a {@code sh} or {@code dash} shebang (directly or
+     * through {@code env}) and a {@code ${BASH_SOURCE[...]}} subscript on the
+     * assignment. Trimmed, in file order; empty is conformant.
+     *
+     * <h2>The rule for shims already on disk (DEF-OHV-190)</h2>
+     *
+     * <p>Shims carrying {@link #LEGACY_SHIM_HOME_ANCHOR} exist. Under a
+     * {@code bash}, {@code zsh} or {@code ksh} shebang they resolve their home
+     * correctly, so they are NOT reported and a rewrite leaves that line
+     * byte-identical: reporting them wholesale would turn {@code home verify}
+     * red on shims that work. Under {@code sh} or {@code dash} they resolve
+     * {@code /}, and that is a shim that does not know its home, the same
+     * failure {@code FROZEN_HOME_PATH_IN_SHIM} names, so {@code HomeRepair}
+     * reports it under that kind and {@link #selfDerivingRewrite} replaces the
+     * line with {@link #SHIM_HOME_ANCHOR}.
+     *
+     * <p>{@code #!/bin/sh} is reported even on a host whose {@code /bin/sh} is
+     * bash: the shim is broken the moment the home is copied to one where it
+     * is not, which is the move this contract exists for.
+     *
+     * <p>Only the {@link #SHIM_HOME_VAR} assignment is read. That is the line
+     * skill-manager writes; a unit's own installer that uses bash-isms under
+     * {@code #!/bin/sh} is that installer's defect, not a home finding.
+     */
+    public static List<String> bashOnlyAnchorLines(Path shim) {
+        if (shim == null) return List.of();
+        String body = readShim(shim);
+        if (body == null) return List.of();
+        return bashOnlyAnchorLinesIn(body);
+    }
+
+    private static List<String> bashOnlyAnchorLinesIn(String body) {
+        if (!body.startsWith("#!")) return List.of();
+        String[] lines = body.split("\n", -1);
+        if (!isPosixOnlyShebang(lines[0])) return List.of();
+        List<String> out = new ArrayList<>();
+        for (int i = 1; i < lines.length; i++) {
+            if (SHIM_HOME_ASSIGNMENT.matcher(lines[i]).find() && lines[i].contains(BASH_SOURCE_SUBSCRIPT)) {
+                out.add(lines[i].strip());
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    /**
      * A frozen shim rewritten to resolve the home it is STANDING IN, or null
      * when it cannot be rewritten safely.
      *
@@ -303,14 +390,18 @@ public final class ShimHomeContract {
         String shebang = body.substring(0, firstNl);
         if (!isShellShebang(shebang)) return null;
         List<String> spellings = spellingsLongestFirst(home);
-        if (!spelledAfterShebang(body, spellings)) return null;
+        // DEF-OHV-190: an sh/dash shim whose anchor is the bash-only line is
+        // re-anchored even when it spells no home literally -- it resolves `/`.
+        boolean posixOnly = isPosixOnlyShebang(shebang);
+        boolean bashOnlyAnchor = posixOnly && !bashOnlyAnchorLinesIn(body).isEmpty();
+        if (!spelledAfterShebang(body, spellings) && !bashOnlyAnchor) return null;
 
         // Depth is fixed by the store: bin/cli/<name>, so the home is two up.
         // Derived from the shim's OWN location, which is the whole point --
         // wherever the file is, that is the home it belongs to.
         String preamble = "\n# Rewritten by skill-manager: resolve the home this shim is standing in\n"
                 + "# rather than the one it was written into, so a copy of the home works.\n"
-                + SHIM_HOME_VAR + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n";
+                + SHIM_HOME_ANCHOR + "\n";
 
         String[] lines = body.substring(firstNl + 1).split("\n", -1);
         boolean assigned = false;
@@ -326,6 +417,20 @@ public final class ShimHomeContract {
                 return null;
             }
             if (assignment) assigned = true;
+            if (assignment && posixOnly && line.contains(BASH_SOURCE_SUBSCRIPT)) {
+                // Replaced IN PLACE, so the one assignment stays the one
+                // assignment. Only the exact line this class wrote is taken;
+                // any other subscripted form is not a shape we understand,
+                // and it stays reported with repairable=false.
+                String stripped = line.strip();
+                boolean exported = stripped.startsWith("export ");
+                String core = exported ? stripped.substring("export ".length()).strip() : stripped;
+                if (!core.equals(LEGACY_SHIM_HOME_ANCHOR)) return null;
+                lines[i] = line.substring(0, line.indexOf(stripped.charAt(0)))
+                        + (exported ? "export " : "") + SHIM_HOME_ANCHOR;
+                changed = true;
+                continue;
+            }
             if (!replaced.equals(line)) {
                 if (!assigned) needsPreamble = true;
                 lines[i] = replaced;
@@ -336,9 +441,22 @@ public final class ShimHomeContract {
         String rewritten = shebang + (needsPreamble ? preamble : "\n") + String.join("\n", lines);
         // POSTCONDITION: never hand back a shim that still spells the home on any
         // line the rewrite reads -- stricter than the detector, so a rewrite can
-        // never leave a finding behind either.
+        // never leave a finding behind either. Nor one whose own interpreter
+        // still cannot parse its anchor.
         if (spelledAfterShebang(rewritten, spellings)) return null;
+        if (!bashOnlyAnchorLinesIn(rewritten).isEmpty()) return null;
         return rewritten;
+    }
+
+    /**
+     * A shebang whose interpreter is {@code sh} or {@code dash}: a shell that
+     * may be POSIX-only, so bash array syntax is not guaranteed to parse. It
+     * is bash on macOS and dash on Debian and Ubuntu, and a shim moves between
+     * them with its home.
+     */
+    private static boolean isPosixOnlyShebang(String shebang) {
+        String name = interpreterName(shebang);
+        return "sh".equals(name) || "dash".equals(name);
     }
 
     /**
@@ -501,17 +619,22 @@ public final class ShimHomeContract {
      * caught it.
      */
     private static boolean isShellShebang(String shebang) {
+        String name = interpreterName(shebang);
+        return name != null && switch (name) {
+            case "sh", "bash", "zsh", "dash", "ksh" -> true;
+            default -> false;
+        };
+    }
+
+    /** The basename of a shebang's interpreter, or null for an empty shebang. */
+    private static String interpreterName(String shebang) {
         String line = shebang.substring(2).trim();
-        if (line.isEmpty()) return false;
+        if (line.isEmpty()) return null;
         String[] words = line.split("\\s+");
         // `#!/usr/bin/env bash` names the interpreter in the second word.
         String interpreter = words[words.length - 1];
         int slash = interpreter.lastIndexOf('/');
-        String name = slash < 0 ? interpreter : interpreter.substring(slash + 1);
-        return switch (name) {
-            case "sh", "bash", "zsh", "dash", "ksh" -> true;
-            default -> false;
-        };
+        return slash < 0 ? interpreter : interpreter.substring(slash + 1);
     }
 
     /**

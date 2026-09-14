@@ -245,7 +245,9 @@ public final class ShimSurvivesACopyTest {
     /**
      * DEF-OHV-001: the root home's bin/cli/computeq, as measured 2026-09-13 — the
      * token in the preamble and the export line, this home literal on the exec
-     * line — plus the tool it execs, which prints a marker.
+     * line — plus the tool it execs, which prints a marker. Its anchor is the
+     * pre-DEF-OHV-190 {@code ${BASH_SOURCE[0]:-$0}} line on purpose: that is
+     * what such shims carry, and under bash it must survive the repair.
      */
     private static Path halfRewrittenShim(Path home, String name) throws Exception {
         Path tool = home.resolve("cache/skill-script-deploy-helm-" + name + "/venv/bin/" + name);
