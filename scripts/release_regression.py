@@ -37,12 +37,25 @@ def homes() -> list[Path]:
 
 
 def cli(home: Path) -> Path:
+    # OHV-8: SKILL_MANAGER_MEASURE_CLI judges every home with one named build
+    # (with SKILL_MANAGER_HOME set per call in run()); unset, the home's pin.
+    import os
+    override = os.environ.get("SKILL_MANAGER_MEASURE_CLI")
+    if override:
+        return Path(override)
     return home / "bin" / "cli" / "skill-manager"
 
 
-def run(argv: list[str], timeout: int = 600) -> tuple[int, str]:
+def run(argv: list[str], timeout: int = 600, home: Path | None = None) -> tuple[int, str]:
+    # OHV-8: a named build (SKILL_MANAGER_MEASURE_CLI) is not bound to a home the
+    # way a pin is, so the home is passed explicitly. Without it the first OHV-8
+    # run judged `artifacts list` against no home at all (kept as run 1).
+    import os
+    env = dict(os.environ)
+    if home is not None:
+        env["SKILL_MANAGER_HOME"] = str(home)
     try:
-        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=env)
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 127, str(exc)
@@ -59,7 +72,7 @@ def check_census_matches_disk(home: Path) -> dict:
     # lesson, which cost a remedy that had never been run: `--home` is a flag
     # of SOME commands, not of the CLI. The home's own pinned shim binds the
     # home it lives in, which is the addressing that always works.
-    rc, out = run([str(cli(home)), "artifacts", "list", "--json"])
+    rc, out = run([str(cli(home)), "artifacts", "list", "--json"], home=home)
     if rc != 0:
         return {"check": "census matches disk", "home": str(home),
                 "measured": False, "why": f"artifacts list exited {rc}"}
@@ -92,7 +105,7 @@ def check_repair_agrees_with_copy_readiness(home: Path) -> dict:
     and a shim naming its OWN home does not, so a home that cannot survive
     being copied was reported clean. The harness copies and looks.
     """
-    rc, out = run([str(cli(home)), "home", "repair", "--home", str(home)])
+    rc, out = run([str(cli(home)), "home", "repair", "--home", str(home)], home=home)
     # READ THE EXIT CODE, NOT THE PROSE. The clean line is "nothing in X IS
     # DAMAGED in a way this command knows about", so a substring test for
     # "is damaged" calls a clean home damaged -- a checker making the same

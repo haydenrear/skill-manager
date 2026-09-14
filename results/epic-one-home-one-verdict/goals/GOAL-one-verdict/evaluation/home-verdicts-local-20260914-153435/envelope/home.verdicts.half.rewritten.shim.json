@@ -1,0 +1,125 @@
+{
+  "nodeId" : "home.verdicts.half.rewritten.shim",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:35:49.277478Z",
+  "endedAt" : "2026-09-14T15:36:01.261321Z",
+  "assertions" : [ {
+    "name" : "control_the_unplanted_home_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_exits_1_on_the_planted_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_stdout_alone_is_one_json_object",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_names_FROZEN_HOME_PATH_IN_SHIM_on_the_planted_subject",
+    "status" : "passed"
+  }, {
+    "name" : "detection_alone_changes_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_exits_1",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_names_the_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_fix_then_a_separate_detection_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_is_clean_after_the_fix",
+    "status" : "passed"
+  }, {
+    "name" : "the_fixed_shim_spells_no_form_of_its_own_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_exec_line_derives_the_home_from_the_token",
+    "status" : "passed"
+  }, {
+    "name" : "exactly_one_assignment_of_the_token_no_second_preamble",
+    "status" : "passed"
+  }, {
+    "name" : "the_fixed_shim_still_runs_its_tool",
+    "status" : "passed"
+  }, {
+    "name" : "a_second_fix_is_a_no_op",
+    "status" : "passed"
+  }, {
+    "name" : "the_damaged_homes_are_deleted",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "control",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:49.286897Z",
+    "endedAt" : "2026-09-14T15:35:50.456030Z",
+    "exitCode" : 0,
+    "pid" : 95367,
+    "log" : "node-logs/home.verdicts.half.rewritten.shim.control.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:50.514040Z",
+    "endedAt" : "2026-09-14T15:35:51.720549Z",
+    "exitCode" : 1,
+    "pid" : 95381,
+    "log" : "node-logs/home.verdicts.half.rewritten.shim.detect.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-again",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:51.721005Z",
+    "endedAt" : "2026-09-14T15:35:52.856040Z",
+    "exitCode" : 1,
+    "pid" : 95394,
+    "log" : "node-logs/home.verdicts.half.rewritten.shim.detect-again.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:52.856456Z",
+    "endedAt" : "2026-09-14T15:35:56.024561Z",
+    "exitCode" : 1,
+    "pid" : 95430,
+    "log" : "node-logs/home.verdicts.half.rewritten.shim.verify.stdout.log",
+    "error" : null
+  }, {
+    "label" : "fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager", "--json", "--fix" ],
+    "startedAt" : "2026-09-14T15:35:56.025068Z",
+    "endedAt" : "2026-09-14T15:35:57.321752Z",
+    "exitCode" : 0,
+    "pid" : 95487,
+    "log" : "node-logs/home.verdicts.half.rewritten.shim.fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:57.322134Z",
+    "endedAt" : "2026-09-14T15:35:58.581494Z",
+    "exitCode" : 0,
+    "pid" : 95533,
+    "log" : "node-logs/home.verdicts.half.rewritten.shim.detect-after-fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:58.581830Z",
+    "endedAt" : "2026-09-14T15:35:59.832132Z",
+    "exitCode" : 0,
+    "pid" : 95552,
+    "log" : "node-logs/home.verdicts.half.rewritten.shim.verify-after-fix.stdout.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "verify.exit" : 1,
+    "repair.exit" : 1,
+    "repair.findings" : 1,
+    "durationMs" : 11984
+  },
+  "logs" : [ "shape=FROZEN_HOME_PATH_IN_SHIM subject=bin/cli/half-tool | repair=1 verify=1 (names it: true) fix=0 after=0 verify-after=0\nrepair --json stdout: {\"home\":\"/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/half-rewritten-shim/subject/.skill-manager\",\"build\":\"skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)\",\"examined\":4,\"clean\":false,\"findings\":[{\"kind\":\"FROZEN_HOME_PATH_IN_SHIM\",\"subject\":\"bin/cli/half-tool\",\"detail\":\"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied\",\"repair\":\"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)\",\"repairable\":true}]}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:35:48.623239Z","executorEndedAt":"2026-09-14T15:36:01.310686Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.half.rewritten.shim.stdout.log","inputContextFile":"context/home.verdicts.half.rewritten.shim.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

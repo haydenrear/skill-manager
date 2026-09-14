@@ -1,0 +1,25 @@
+total 80
+drwxr-xr-x@ 24 hayde  wheel   768 Sep 14 11:49 .
+drwxr-xr-x@  9 hayde  wheel   288 Sep 14 11:49 ..
+drwxr-xr-x@  3 hayde  wheel    96 Sep 14 11:49 .materialization
+-rw-r--r--@  1 hayde  wheel   574 Sep 14 11:49 audit.log
+drwxr-xr-x@  4 hayde  wheel   128 Sep 14 11:49 bin
+drwxr-xr-x@  2 hayde  wheel    64 Sep 14 11:49 cache
+-rw-r--r--@  1 hayde  wheel   475 Sep 14 11:49 cli-lock.toml
+drwxr-xr-x@  2 hayde  wheel    64 Sep 14 11:49 docs
+-rw-r--r--@  1 hayde  wheel    60 Sep 14 11:49 gateway-config.json
+drwxr-xr-x@  3 hayde  wheel    96 Sep 14 11:49 gateway-data
+-rw-r--r--@  1 hayde  wheel  9502 Sep 14 11:49 gateway.log
+-rw-r--r--@  1 hayde  wheel     5 Sep 14 11:49 gateway.pid
+-rw-r--r--@  1 hayde  wheel   116 Sep 14 11:49 gateway.properties
+drwxr-xr-x@  2 hayde  wheel    64 Sep 14 11:49 harnesses
+drwxr-xr-x@  5 hayde  wheel   160 Sep 14 11:49 installed
+drwxr-xr-x@  3 hayde  wheel    96 Sep 14 11:49 logs
+drwxr-xr-x@  2 hayde  wheel    64 Sep 14 11:49 npm
+drwxr-xr-x@  5 hayde  wheel   160 Sep 14 11:49 plugin-marketplace
+drwxr-xr-x@  3 hayde  wheel    96 Sep 14 11:49 plugins
+-rw-r--r--@  1 hayde  wheel  1965 Sep 14 11:49 policy.toml
+drwxr-xr-x@  2 hayde  wheel    64 Sep 14 11:49 projects
+drwxr-xr-x@  3 hayde  wheel    96 Sep 14 11:49 skills
+-rw-r--r--@  1 hayde  wheel   204 Sep 14 11:49 units.lock.toml
+drwxr-xr-x@  2 hayde  wheel    64 Sep 14 11:49 venvs

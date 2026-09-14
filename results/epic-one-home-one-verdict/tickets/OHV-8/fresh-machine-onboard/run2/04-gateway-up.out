@@ -1,0 +1,8 @@
+bootstrapping gateway venv via `uv sync` in /Users/hayde/IdeaProjects/wt-ohv-8/virtual-mcp-gateway
+gateway pid=31925 log=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/gateway.log
+✓ gateway up at 127.0.0.1:51799
+  ADDED    claude (/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.claude/.claude.json)  → http://127.0.0.1:51799/mcp
+  ADDED    codex (/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.codex/config.toml)  → http://127.0.0.1:51799/mcp
+  ADDED    gemini (/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.gemini/settings.json)  → http://127.0.0.1:51799/mcp
+agent MCP configs: ADDED 3, UPDATED 0 → http://127.0.0.1:51799/mcp
+ACTION_REQUIRED: restart Claude / Codex for the virtual-mcp-gateway entry to take effect — without a restart the agent will not see any MCP tools.

@@ -1,0 +1,3 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine/home
+[jbang] [ERROR] Script or alias could not be found or read: '/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine/bin/SkillManager.java'
+[jbang] Run with --verbose or -x for more details. The --verbose or -x must be placed before the jbang command. I.e. jbang --verbose run [...]

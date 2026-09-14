@@ -1,0 +1,14 @@
+base:         http://127.0.0.1:51799
+mode:         attached
+owned:        false
+mcp:          http://127.0.0.1:51799/mcp
+servers:      http://127.0.0.1:51799/servers
+pid file:     /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/gateway.pid
+log file:     /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/gateway.log
+config file:  /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/gateway-config.json
+data dir:     /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/gateway-data  (dynamic-servers.json + mcp_binaries/)
+gateway src:  /Users/hayde/IdeaProjects/wt-ohv-8/virtual-mcp-gateway
+python:       /Users/hayde/IdeaProjects/wt-ohv-8/virtual-mcp-gateway/.venv/bin/python
+process:      running (pid=31925)
+health:       reachable
+status:       up

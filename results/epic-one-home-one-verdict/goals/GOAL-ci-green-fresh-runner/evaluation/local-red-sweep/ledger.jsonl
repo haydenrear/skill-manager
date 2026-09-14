@@ -1,0 +1,6 @@
+{"event":"scheduled","task":"doc-smoke","graph":true}
+{"event":"scheduled","task":"artifact-dag","graph":true}
+{"event":"scheduled","task":"sync-settles","graph":true}
+{"event":"finished","task":"doc-smoke","graph":true,"outcome":"passed","skipMessage":null,"failure":null,"runDirs":["/Users/hayde/IdeaProjects/wt-ohv-8/test_graph/build/validation-reports/20260914-154045"],"seconds":170.061}
+{"event":"finished","task":"artifact-dag","graph":true,"outcome":"failed","skipMessage":null,"failure":"Execution failed for task ':artifact-dag'.","runDirs":["/Users/hayde/IdeaProjects/wt-ohv-8/test_graph/build/validation-reports/20260914-154310"],"seconds":9.237}
+{"event":"finished","task":"sync-settles","graph":true,"outcome":"passed","skipMessage":null,"failure":null,"runDirs":["/Users/hayde/IdeaProjects/wt-ohv-8/test_graph/build/validation-reports/20260914-154313"],"seconds":22.933}

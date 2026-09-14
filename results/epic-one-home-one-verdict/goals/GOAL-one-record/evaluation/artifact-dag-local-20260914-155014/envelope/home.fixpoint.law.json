@@ -1,0 +1,24 @@
+{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:51:30.020119Z",
+  "endedAt" : "2026-09-14T15:51:45.892570Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 9,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 0,
+    "homesDamagedOnPurpose" : 0,
+    "durationMs" : 15872
+  },
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:51:29.213564Z","executorEndedAt":"2026-09-14T15:51:45.988100Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

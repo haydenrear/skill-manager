@@ -1,0 +1,96 @@
+{
+  "nodeId" : "uninstall.prunes.the.subgraph",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:51:17.568866Z",
+  "endedAt" : "2026-09-14T15:51:29.059839Z",
+  "assertions" : [ {
+    "name" : "the_resident_unit_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_transient_unit_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_grew_the_removed_units_artifacts",
+    "status" : "passed"
+  }, {
+    "name" : "the_uninstall_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "the_removed_units_store_entry_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_removed_units_cli_shim_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_removed_units_lock_row_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_resident_units_artifacts_survive",
+    "status" : "passed"
+  }, {
+    "name" : "the_provisioned_tree_the_removed_unit_produced_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_nothing_the_removed_unit_owned",
+    "status" : "passed"
+  }, {
+    "name" : "the_home_is_byte_comparable_to_before_the_install",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-resident",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:17.581935Z",
+    "endedAt" : "2026-09-14T15:51:20.650463Z",
+    "exitCode" : 0,
+    "pid" : 37305,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.install-resident.log",
+    "error" : null
+  }, {
+    "label" : "install-transient",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/units/ad-transient-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:20.665874Z",
+    "endedAt" : "2026-09-14T15:51:23.387134Z",
+    "exitCode" : 0,
+    "pid" : 37426,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.install-transient.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list-with",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:51:23.387395Z",
+    "endedAt" : "2026-09-14T15:51:25.204742Z",
+    "exitCode" : 0,
+    "pid" : 37546,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.artifacts-list-with.log",
+    "error" : null
+  }, {
+    "label" : "uninstall-transient",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "uninstall", "ad-transient-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:25.205589Z",
+    "endedAt" : "2026-09-14T15:51:27.221834Z",
+    "exitCode" : 0,
+    "pid" : 37619,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.uninstall-transient.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list-after",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:51:27.222096Z",
+    "endedAt" : "2026-09-14T15:51:29.052386Z",
+    "exitCode" : 0,
+    "pid" : 37700,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.artifacts-list-after.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "artifactsWithTransient" : 12,
+    "artifactsAfterUninstall" : 6,
+    "durationMs" : 11491
+  },
+  "logs" : [ "entries only in the AFTER inventory:\n  \nentries only in the BEFORE inventory:\n  " ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:51:16.884911Z","executorEndedAt":"2026-09-14T15:51:29.167549Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/uninstall.prunes.the.subgraph.stdout.log","inputContextFile":"context/uninstall.prunes.the.subgraph.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

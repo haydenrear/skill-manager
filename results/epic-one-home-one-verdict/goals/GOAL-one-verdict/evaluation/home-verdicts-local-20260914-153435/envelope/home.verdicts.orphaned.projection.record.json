@@ -1,0 +1,110 @@
+{
+  "nodeId" : "home.verdicts.orphaned.projection.record",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:35:39.800060Z",
+  "endedAt" : "2026-09-14T15:35:48.551811Z",
+  "assertions" : [ {
+    "name" : "control_the_unplanted_home_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_exits_1_on_the_planted_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_stdout_alone_is_one_json_object",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_names_ORPHANED_PROJECTION_RECORD_on_the_planted_subject",
+    "status" : "passed"
+  }, {
+    "name" : "detection_alone_changes_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_exits_1",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_names_the_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_fix_then_a_separate_detection_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_is_clean_after_the_fix",
+    "status" : "passed"
+  }, {
+    "name" : "the_damaged_homes_are_deleted",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "control",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:39.809461Z",
+    "endedAt" : "2026-09-14T15:35:40.982429Z",
+    "exitCode" : 0,
+    "pid" : 95148,
+    "log" : "node-logs/home.verdicts.orphaned.projection.record.control.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:41.042870Z",
+    "endedAt" : "2026-09-14T15:35:42.242099Z",
+    "exitCode" : 1,
+    "pid" : 95190,
+    "log" : "node-logs/home.verdicts.orphaned.projection.record.detect.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-again",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:42.242541Z",
+    "endedAt" : "2026-09-14T15:35:43.421104Z",
+    "exitCode" : 1,
+    "pid" : 95230,
+    "log" : "node-logs/home.verdicts.orphaned.projection.record.detect-again.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:43.421573Z",
+    "endedAt" : "2026-09-14T15:35:44.757249Z",
+    "exitCode" : 1,
+    "pid" : 95249,
+    "log" : "node-logs/home.verdicts.orphaned.projection.record.verify.stdout.log",
+    "error" : null
+  }, {
+    "label" : "fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager", "--json", "--fix" ],
+    "startedAt" : "2026-09-14T15:35:44.757753Z",
+    "endedAt" : "2026-09-14T15:35:46.044156Z",
+    "exitCode" : 0,
+    "pid" : 95302,
+    "log" : "node-logs/home.verdicts.orphaned.projection.record.fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:46.044546Z",
+    "endedAt" : "2026-09-14T15:35:47.235417Z",
+    "exitCode" : 0,
+    "pid" : 95330,
+    "log" : "node-logs/home.verdicts.orphaned.projection.record.detect-after-fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:47.235749Z",
+    "endedAt" : "2026-09-14T15:35:48.536379Z",
+    "exitCode" : 0,
+    "pid" : 95344,
+    "log" : "node-logs/home.verdicts.orphaned.projection.record.verify-after-fix.stdout.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "verify.exit" : 1,
+    "repair.exit" : 1,
+    "repair.findings" : 1,
+    "durationMs" : 8751
+  },
+  "logs" : [ "shape=ORPHANED_PROJECTION_RECORD subject=installed/hv-gone.projections.json | repair=1 verify=1 (names it: true) fix=0 after=0 verify-after=0\nrepair --json stdout: {\"home\":\"/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/orphaned-projection-record/subject/.skill-manager\",\"build\":\"skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)\",\"examined\":3,\"clean\":false,\"findings\":[{\"kind\":\"ORPHANED_PROJECTION_RECORD\",\"subject\":\"installed/hv-gone.projections.json\",\"detail\":\"records 1 projection(s) of hv-gone, and this home holds no installed/hv-gone.json and no hv-gone unit directory — the unit is gone and its record outlived it\",\"repair\":\"skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK\",\"repairable\":true}]}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:35:39.111630Z","executorEndedAt":"2026-09-14T15:35:48.608790Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.orphaned.projection.record.stdout.log","inputContextFile":"context/home.verdicts.orphaned.projection.record.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

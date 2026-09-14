@@ -1,0 +1,10 @@
+! Telemetry export unavailable; continuing without telemetry.
+✗ 3 finding(s) `home repair` reports in /Users/hayde/.skill-manager, of 324 entries examined — each is damage, and this check fails on it
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/computeq — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/helm-deploy — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/monitoring — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   3 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/.claude CODEX_HOME=/Users/hayde/.codex GEMINI_HOME=/Users/hayde/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde /Users/hayde/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/.skill-manager --fix, then re-run this check
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-115751-6c9f.log

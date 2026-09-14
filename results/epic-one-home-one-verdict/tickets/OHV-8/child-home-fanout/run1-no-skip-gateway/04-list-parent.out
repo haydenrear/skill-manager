@@ -1,0 +1,5 @@
+NAME                         KIND     VERSION    BINDINGS  SHA       SOURCE
+u-one                        skill    0.1.0      0         -         local_file
+u-shared                     skill    0.1.0      0         -         local_file
+u-three                      skill    0.1.0      0         -         local_file
+u-two                        skill    0.1.0      0         -         local_file

@@ -1,0 +1,62 @@
+{
+  "nodeId" : "every.lock.row.fingerprinted",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:24.740646Z",
+  "endedAt" : "2026-09-14T15:50:32.440178Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_lock_holds_a_row_for_every_declared_dep",
+    "status" : "passed"
+  }, {
+    "name" : "every_lock_row_carries_an_install_fingerprint",
+    "status" : "passed"
+  }, {
+    "name" : "every_install_fingerprint_is_graded",
+    "status" : "passed"
+  }, {
+    "name" : "every_install_fingerprint_names_its_basis",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_reports_the_fingerprint_the_lock_holds",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:24.751999Z",
+    "endedAt" : "2026-09-14T15:50:28.035718Z",
+    "exitCode" : 0,
+    "pid" : 35402,
+    "log" : "node-logs/every.lock.row.fingerprinted.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:28.036018Z",
+    "endedAt" : "2026-09-14T15:50:30.629286Z",
+    "exitCode" : 0,
+    "pid" : 35472,
+    "log" : "node-logs/every.lock.row.fingerprinted.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:50:30.630414Z",
+    "endedAt" : "2026-09-14T15:50:32.438987Z",
+    "exitCode" : 0,
+    "pid" : 35518,
+    "log" : "node-logs/every.lock.row.fingerprinted.artifacts-list.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "lockRows" : 2,
+    "durationMs" : 7700
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:24.034934Z","executorEndedAt":"2026-09-14T15:50:32.545832Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/every.lock.row.fingerprinted.stdout.log","inputContextFile":"context/every.lock.row.fingerprinted.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

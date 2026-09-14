@@ -58,7 +58,17 @@ def spellings(home: Path) -> list:
 
 
 def cli_for(home: Path):
-    """The home's own pinned CLI (binds the home it lives in), else skill-manager on PATH."""
+    """The home's own pinned CLI (binds the home it lives in), else skill-manager on PATH.
+
+    OHV-8: SKILL_MANAGER_MEASURE_CLI names one build to judge EVERY home with
+    (e.g. an epic checkout's raw ./skill-manager). The home is still bound by
+    SKILL_MANAGER_HOME and --home, which run() and every caller pass. A pin
+    judges a home with whatever build the pin names, which is not the build a
+    goal is decided on.
+    """
+    override = os.environ.get("SKILL_MANAGER_MEASURE_CLI")
+    if override:
+        return override
     pinned = home / "bin" / "cli" / "skill-manager"
     if pinned.exists():
         return str(pinned)

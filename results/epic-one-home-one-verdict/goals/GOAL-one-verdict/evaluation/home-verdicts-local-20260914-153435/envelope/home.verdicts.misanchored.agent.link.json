@@ -1,0 +1,110 @@
+{
+  "nodeId" : "home.verdicts.misanchored.agent.link",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:35:00.962361Z",
+  "endedAt" : "2026-09-14T15:35:09.549798Z",
+  "assertions" : [ {
+    "name" : "control_the_unplanted_home_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_exits_1_on_the_planted_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_stdout_alone_is_one_json_object",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_names_MISANCHORED_AGENT_LINK_on_the_planted_subject",
+    "status" : "passed"
+  }, {
+    "name" : "detection_alone_changes_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_exits_1",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_names_the_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_fix_then_a_separate_detection_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_is_clean_after_the_fix",
+    "status" : "passed"
+  }, {
+    "name" : "the_damaged_homes_are_deleted",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "control",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:00.971988Z",
+    "endedAt" : "2026-09-14T15:35:02.168219Z",
+    "exitCode" : 0,
+    "pid" : 94036,
+    "log" : "node-logs/home.verdicts.misanchored.agent.link.control.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:02.229206Z",
+    "endedAt" : "2026-09-14T15:35:03.439403Z",
+    "exitCode" : 1,
+    "pid" : 94079,
+    "log" : "node-logs/home.verdicts.misanchored.agent.link.detect.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-again",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:03.439764Z",
+    "endedAt" : "2026-09-14T15:35:04.621869Z",
+    "exitCode" : 1,
+    "pid" : 94116,
+    "log" : "node-logs/home.verdicts.misanchored.agent.link.detect-again.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:04.622262Z",
+    "endedAt" : "2026-09-14T15:35:05.821328Z",
+    "exitCode" : 1,
+    "pid" : 94158,
+    "log" : "node-logs/home.verdicts.misanchored.agent.link.verify.stdout.log",
+    "error" : null
+  }, {
+    "label" : "fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager", "--json", "--fix" ],
+    "startedAt" : "2026-09-14T15:35:05.821835Z",
+    "endedAt" : "2026-09-14T15:35:07.106748Z",
+    "exitCode" : 0,
+    "pid" : 94200,
+    "log" : "node-logs/home.verdicts.misanchored.agent.link.fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:07.107125Z",
+    "endedAt" : "2026-09-14T15:35:08.350819Z",
+    "exitCode" : 0,
+    "pid" : 94247,
+    "log" : "node-logs/home.verdicts.misanchored.agent.link.detect-after-fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:08.351199Z",
+    "endedAt" : "2026-09-14T15:35:09.534543Z",
+    "exitCode" : 0,
+    "pid" : 94281,
+    "log" : "node-logs/home.verdicts.misanchored.agent.link.verify-after-fix.stdout.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "verify.exit" : 1,
+    "repair.exit" : 1,
+    "repair.findings" : 1,
+    "durationMs" : 8587
+  },
+  "logs" : [ "shape=MISANCHORED_AGENT_LINK subject=.claude/skills/hv-unit | repair=1 verify=1 (names it: true) fix=0 after=0 verify-after=0\nrepair --json stdout: {\"home\":\"/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager\",\"build\":\"skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)\",\"examined\":2,\"clean\":false,\"findings\":[{\"kind\":\"MISANCHORED_AGENT_LINK\",\"subject\":\".claude/skills/hv-unit\",\"detail\":\"resolves into the store at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/neighbour/.skill-manager\",\"repair\":\"re-point it at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/misanchored-agent-link/subject/.skill-manager/skills/hv-unit\",\"repairable\":true}]}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:35:00.286631Z","executorEndedAt":"2026-09-14T15:35:09.613220Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.misanchored.agent.link.stdout.log","inputContextFile":"context/home.verdicts.misanchored.agent.link.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

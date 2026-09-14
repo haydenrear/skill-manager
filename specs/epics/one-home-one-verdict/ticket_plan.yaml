@@ -639,7 +639,7 @@ tickets:
   - id: OHV-8
     github_issue: https://github.com/haydenrear/skill-manager/issues/358
     title: "Terminal evaluation -- decide the six goals on the integrated epic"
-    status: planned
+    status: closed
     role: evaluation
     owns_goals: ["GOAL-one-verdict", "GOAL-one-record", "GOAL-no-own-home-path", "GOAL-one-marketplace-identity", "GOAL-ci-green-fresh-runner", "GOAL-verdict-names-its-build", "GOAL-a-home-writes-only-itself"]
     schedule_revision: 4
