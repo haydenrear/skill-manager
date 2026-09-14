@@ -1,7 +1,7 @@
 # OHV-9 (#367) — a skill-script install never writes through a link into another home
 
 Branch `feature/OHV-9`, from the epic at `926cd655`, with `4578ce78` (plan placeholder fix) merged in.
-Code commit: `6b017b94`. Graph node and evidence: later commits on the branch.
+Commits: `6b017b94` (a)+(b) and unit tests; `d2f77877` graph node; `2a430bb6` evidence (the CI run's head).
 
 DEF-OHV-011. On 2026-09-14 the operator's root `bin/cli/{computeq,helm-deploy,monitoring}` were rewritten
 through a CDC test project home whose same-named entries were symlinks to the root's shims. deploy-helm's
@@ -75,7 +75,14 @@ of the child home, `${SKILL_MANAGER_SHIM_HOME}` present), naming no form of the 
 Nothing is published and the scratch homes are deleted, so no `IntentionalDamage` declaration is needed and the
 fixpoint/membership laws see only the fixture's clean home.
 
-Local run: GRAPH_LOCAL_PLACEHOLDER
+Local runs (`graph/child-install-node-red-then-green.json`):
+
+| run | tree | node | graph |
+| --- | --- | --- | --- |
+| `20260914-144523` | this branch | passed, 9/9 assertions | 18/18 nodes passed, both laws green (208 s) |
+| `20260914-144857` | this branch with `SkillScriptBackend.java` from `9fc819ca` (pre-fix) | **failed**: parent byte-identical x2, child owns a real shim, token-form, names no parent, runs its tool | rc 1 |
+
+Control and install exit 0 pass in both, so the red run fails on the leak itself, not on setup.
 
 ## (d) deploy-helm helper
 
@@ -91,7 +98,12 @@ new: parent now = parent; child is link? no; child = child
 
 ## Validation
 
-VALIDATION_PLACEHOLDER
+- `jbang RunTests.java`: ALL PASSED (145 s), including `SkillScriptWriteThroughTest` 7/7 and `BinCliWritersDoNotFollowLinksTest` 7/7. Disk before: 85 GiB free.
+- `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
+- `python skills/test_graph/scripts/run.py home-verdicts`: green locally (above).
+- Read-only on the real root: `./skill-manager home repair --home ~/.skill-manager --json` (this build, no `--fix`): clean, 0 findings, 2 s — no DEF-OHV-140 slowness (`root-home-repair-readonly.json`).
+- `home close-out --home wt-ohv-9/.skill-manager --into skill-manager/.skill-manager`: exit 0, "holds nothing that removing it would destroy" (`close-out.txt`).
+- CI `graph_set=full`: run 34858642285 (https://github.com/haydenrear/skill-manager/actions/runs/34858642285) on `2a430bb6`: graphs_executed 26, graphs_passed 26, graphs_failed 0; 30 jobs success, 1 skipped. home-verdicts 18/18 nodes (the new node included); project-child-home 13/13, plugin-smoke 28/28, home-clone 16/16, checkout-home 8/8, home-integrity 19/19. Deferred by the selector as on every run: browser-auth, refresh-flow, password-reset, hyper-experiments. 26 not 27: this ticket adds a node to home-verdicts, not a graph. (`ci-34858642285-graphs-executed.json`)
 
 ## Goal contribution
 
@@ -100,7 +112,7 @@ VALIDATION_PLACEHOLDER
   or shown unable to follow, with a unit case each (npm, brew, tar, registry, relativize), plus LauncherShims found
   and fixed.
 - **GOAL-no-own-home-path** (guard): the child's shim is token-form (graph node + registry unit case).
-  GOAL_NO_OWN_HOME_PATH_PLACEHOLDER
+  `python3.12 scripts/measure_goal_no_own_home_path.py`: root 0; project 0, met (`goal-no-own-home-path.json`).
 
 ## Deferred findings
 
