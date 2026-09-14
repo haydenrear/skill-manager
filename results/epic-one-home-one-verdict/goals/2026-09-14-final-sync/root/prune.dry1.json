@@ -1,0 +1,189 @@
+{
+  "home" : "/Users/hayde/.skill-manager",
+  "ledgerPresent" : true,
+  "dryRun" : true,
+  "pruned" : [ {
+    "id" : "unit-store:skill-dev-skill",
+    "kind" : "unit-store",
+    "owner" : "skill-dev-skill",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "its owner is not installed here and none of its bytes are left — the ledger row is all that remains, and nothing on disk is touched"
+  }, {
+    "id" : "unit-store:skill-manager",
+    "kind" : "unit-store",
+    "owner" : "skill-manager",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "its owner is not installed here and none of its bytes are left — the ledger row is all that remains, and nothing on disk is touched"
+  }, {
+    "id" : "cli-shim:npm/gemini-cli",
+    "kind" : "cli-shim",
+    "owner" : "acp-cdc-ai-python",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "no installed unit declares npm:gemini-cli any more, and its install left nothing on disk — only the cli-lock.toml row is left to remove"
+  }, {
+    "id" : "cli-shim:npm/google",
+    "kind" : "cli-shim",
+    "owner" : "acp-cdc-ai-python",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "no installed unit declares npm:google any more, and its install left nothing on disk — only the cli-lock.toml row is left to remove"
+  }, {
+    "id" : "cli-shim:npm/google-gemini-cli",
+    "kind" : "cli-shim",
+    "owner" : "acp-cdc-ai-python",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "no installed unit declares npm:google-gemini-cli any more, and its install left nothing on disk — only the cli-lock.toml row is left to remove"
+  }, {
+    "id" : "cli-shim:skill-script/skill-dev",
+    "kind" : "cli-shim",
+    "owner" : "skill-dev-skill",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "its owner is gone and every output it names is already absent — only the ledger row is left, and nothing on disk is touched"
+  }, {
+    "id" : "provisioned-tree:cache/uv-tools",
+    "kind" : "provisioned-tree",
+    "owner" : "skill-dev-skill",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "its owner is gone and every output it names is already absent — only the ledger row is left, and nothing on disk is touched"
+  }, {
+    "id" : "harness-instance:learning-app-exp-ai-router",
+    "kind" : "harness-instance",
+    "owner" : "learning-app-ai-router",
+    "verdict" : "prune",
+    "paths" : [ "harnesses/instances/learning-app-exp-ai-router" ],
+    "reason" : "declared by learning-app-ai-router, which is not installed here any more"
+  }, {
+    "id" : "harness-instance:learning-app-exp-coordinator",
+    "kind" : "harness-instance",
+    "owner" : "learning-app-coordinator",
+    "verdict" : "prune",
+    "paths" : [ "harnesses/instances/learning-app-exp-coordinator" ],
+    "reason" : "declared by learning-app-coordinator, which is not installed here any more"
+  }, {
+    "id" : "harness-instance:learning-app-exp-domain-architect",
+    "kind" : "harness-instance",
+    "owner" : "learning-app-domain-architect",
+    "verdict" : "prune",
+    "paths" : [ "harnesses/instances/learning-app-exp-domain-architect" ],
+    "reason" : "declared by learning-app-domain-architect, which is not installed here any more"
+  }, {
+    "id" : "harness-instance:learning-app-exp-strategy-prototyper",
+    "kind" : "harness-instance",
+    "owner" : "learning-app-strategy-prototyper",
+    "verdict" : "prune",
+    "paths" : [ "harnesses/instances/learning-app-exp-strategy-prototyper" ],
+    "reason" : "declared by learning-app-strategy-prototyper, which is not installed here any more"
+  }, {
+    "id" : "harness-instance:learning-app-exp-tracer",
+    "kind" : "harness-instance",
+    "owner" : "learning-app-run-tracer",
+    "verdict" : "prune",
+    "paths" : [ "harnesses/instances/learning-app-exp-tracer" ],
+    "reason" : "declared by learning-app-run-tracer, which is not installed here any more"
+  }, {
+    "id" : "unit-digest:skill-dev-skill",
+    "kind" : "unit-digest",
+    "owner" : "skill-dev-skill",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "its owner is not installed here and none of its bytes are left — the ledger row is all that remains, and nothing on disk is touched"
+  }, {
+    "id" : "unit-digest:skill-manager",
+    "kind" : "unit-digest",
+    "owner" : "skill-manager",
+    "verdict" : "prune",
+    "paths" : [ ],
+    "reason" : "its owner is not installed here and none of its bytes are left — the ledger row is all that remains, and nothing on disk is touched"
+  } ],
+  "kept" : [ {
+    "id" : "projection:default:claude:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+    "kind" : "projection",
+    "owner" : "skill-dev-skill",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:codex:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+    "kind" : "projection",
+    "owner" : "skill-dev-skill",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:gemini:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+    "kind" : "projection",
+    "owner" : "skill-dev-skill",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  } ]
+}

@@ -1,0 +1,1805 @@
+diff --git a/RunTests.java b/RunTests.java
+index bc528f66..b8e7351c 100755
+--- a/RunTests.java
++++ b/RunTests.java
+@@ -64,6 +64,8 @@ import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
+ import dev.skillmanager.cli.installer.CliPresenceTest;
+ import dev.skillmanager.cli.installer.InstallerFingerprintTest;
+ import dev.skillmanager.cli.installer.SkillScriptBackendTest;
++import dev.skillmanager.cli.installer.SkillScriptWriteThroughTest;
++import dev.skillmanager.cli.installer.BinCliWritersDoNotFollowLinksTest;
+ import dev.skillmanager.artifacts.ArtifactBackfillTest;
+ import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
+ import dev.skillmanager.artifacts.ArtifactGraphTest;
+@@ -184,6 +186,8 @@ public class RunTests {
+         failures += ResolverCycleTest.run();
+         failures += PlanShapeInvariantTest.run();
+         failures += SkillScriptBackendTest.run();
++        failures += SkillScriptWriteThroughTest.run();
++        failures += BinCliWritersDoNotFollowLinksTest.run();
+         failures += InstallerFingerprintTest.run();
+         failures += CliPresenceTest.run();
+         failures += CliArtifactMatrixTest.run();
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/README.md b/results/epic-one-home-one-verdict/tickets/OHV-9/README.md
+new file mode 100644
+index 00000000..06224a51
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/README.md
+@@ -0,0 +1,119 @@
++# OHV-9 (#367) — a skill-script install never writes through a link into another home
++
++Branch `feature/OHV-9`, from the epic at `926cd655`, with `4578ce78` (plan placeholder fix) merged in.
++Commits: `6b017b94` (a)+(b) and unit tests; `d2f77877` graph node; `2a430bb6` evidence (the CI run's head).
++
++DEF-OHV-011. On 2026-09-14 the operator's root `bin/cli/{computeq,helm-deploy,monitoring}` were rewritten
++through a CDC test project home whose same-named entries were symlinks to the root's shims. deploy-helm's
++installer wrote its launcher with `cat >"$launcher"`, which follows a link. Nothing here was touched on any real
++home: every reproduction below is in scratch directories.
++
++## Reproduced first, failing then passing
++
++`src/test/java/dev/skillmanager/cli/installer/SkillScriptWriteThroughTest.java`, run alone on the epic tip
++before any production change (`unit/a-before-fix.txt`), then after (`unit/a-and-b-after-fix.txt`):
++
++| case | before | after |
++| --- | --- | --- |
++| a `cat >"$SKILL_MANAGER_HOME/bin/cli/tool"` installer in a child does not rewrite the parent's shim (backend) | **FAIL**: parent's shim became `# child-built` | PASS |
++| the same through `InstallerRegistry.installOne` over a **sanctioned** mirror (the parent claims the child — the CDC shape `refuseAForeignDestination` walks past) | **FAIL**: parent rewritten | PASS |
++| a detached link the script did not replace is restored with its exact target | FAIL (script saw the link present) | PASS |
++| a failing script still gets the link restored | pass (trivially: nothing was detached) | PASS |
++| a script that writes the other home's file by its own path fails the install, naming that home and path | FAIL (install succeeded) | PASS |
++| a script that recreates the link back out fails as a foreign write | FAIL (`ln: File exists`, no home named) | PASS |
++| a link resolving inside this home (`../../venvs/...`) is left in place | pass | PASS |
++
++## (a) SkillScriptBackend
++
++`ForeignBinLinks` (new, `cli/installer`), called around `Shell.runToLog` in `SkillScriptBackend.install`:
++
++1. **detach**: every `bin/cli` entry that is a symlink whose chain resolves outside this home's real root is recorded
++   (name, raw target, resolved target, stat of the resolved file) and unlinked. The chain is read hop by hop, so a
++   DANGLING link into another home is still detached (`Fs.realOrNormalized(entry)` alone stops at `bin/cli` and calls
++   it inside — unit case). `bin/cli` itself resolving outside is refused (`requireContainerInside`).
++2. the script runs; **restore** is in a `finally`: an absent name gets its link back exactly; a name the script made
++   into a link out of the home again is a foreign write (the original link is put back); anything else is the child's
++   own artifact and stays.
++3. the resolved target is stat'ed again — size, mtime (ns), file key; content never read. A difference is a foreign
++   write.
++4. `requireNoForeignWrite` throws before the exit-code check, naming the home (`LaunchEnv.looksLikeStoreRoot`
++   ancestor) and the path.
++
++Consequence, stated: a skill-script that actually runs in a child home over a sanctioned mirror now leaves the
++child owning its own artifact, where before it silently rewrote the parent's. A routine sync that the backend
++skips (fingerprint match, `ALREADY_PRESENT`) detaches nothing.
++
++## (b) Every other writer of bin/cli
++
++Unit cases: `BinCliWritersDoNotFollowLinksTest` (scratch parent/child; each asserts the parent's file is
++byte-identical).
++
++| writer | how it writes `bin/cli` | can it follow an existing link? | disposition | proof |
++| --- | --- | --- | --- | --- |
++| `SkillScriptBackend` | forked script (e.g. `cat >`) | **yes** — measured, red before | detach / restore / stat guard | `SkillScriptWriteThroughTest`, 7 cases |
++| `PipBackend` | forked `uv tool install` with `UV_TOOL_BIN_DIR=bin/cli` | not provable here — a process this code does not control, and no hermetic uv in the unit suite | **same guard** around the fork | the guard's cases above; stated as the limit |
++| `NpmBackend` | Java links each `npm/<unit>/bin/*` into `bin/cli` (npm itself writes its prefix, not `bin/cli`) | **no**: the entry is deleted first (a delete removes a link, not its target), then `createSymbolicLink`, copy fallback onto an absent path | routed through `ForeignBinLinks.placeLink` | placeLink case; copy-fallback case |
++| `BrewBackend` | same, from `$(brew --prefix)/bin` (brew writes its cellar) | **no**, same reason | `placeLink` | same two cases |
++| `TarBackend` | `deleteIfExists` + `Files.copy(REPLACE_EXISTING, COPY_ATTRIBUTES)` | **no**: delete first; `REPLACE_EXISTING` also replaces the link | routed through `ForeignBinLinks.placeCopy` | tar case |
++| `InstallerRegistry.takeOwnershipOfShim` / `restoreForeignShim` | delete the link / create one only where nothing exists | **no** | unchanged | ownership case |
++| `InstallerRegistry` → `HomeLinks.relativizeShims` | delete + recreate links whose target is INSIDE the home | **no**, and a foreign link is skipped | unchanged | relativize case |
++| `SkillScriptBackend.reportFrozenShims` | `Files.writeString` on a shim the script just wrote | only through a link, and it skips links; after the guard the entry is the child's own file | unchanged | registry case asserts the child's shim is token-form |
++| `LauncherShims` (`bin/cli/skill-manager`, `bin/launch/*`) | `Files.writeString` | **yes** — unit case red on the original code (`unit/b-launchershims-before-fix.txt`): the parent's entrypoint got the child's pin | unlink a link, then write (`writeOwnFile`) | LauncherShims case |
++| `CliShimPruner`, `CliDependencyCleaner` | delete only | no | unchanged (DEF-007's guards already there) | — |
++| `ChildHomeMaterializer.mirrorExistingShim`, `HomeCloner` | CREATE the child→parent links | n/a — they make the shape this ticket defends against; out of scope, not changed | unchanged | context |
++
++## (c) Graph node
++
++`test_graph/sources/home-verdicts/ChildInstallWritesOnlyItself.java`, `home.verdicts.child.install.writes.only.itself`,
++in `home-verdicts` and in both laws' `dependsOn`. Under the fixture's scratch root only: parent with real
++`bin/cli/wt-tool` and a neighbour entry; child whose `bin/cli/wt-tool` links to it; a `child-homes/` claim so the link
++is sanctioned; a unit whose skill-script writes `cat >"$SKILL_MANAGER_HOME/bin/cli/wt-tool"` with its paths expanded.
++Installs with the real CLI (`install <dir> --yes --no-bind-default`, gateway URL pointed at an unresolvable remote host
++so no gateway venv is built). Asserts: control (the link resolves to the parent's shim), install exit 0, **every file
++of the parent home byte-identical** (sha256, links by target), the child holds a real shim, token-form (no spelling
++of the child home, `${SKILL_MANAGER_SHIM_HOME}` present), naming no form of the parent, and it runs the child's tool.
++Nothing is published and the scratch homes are deleted, so no `IntentionalDamage` declaration is needed and the
++fixpoint/membership laws see only the fixture's clean home.
++
++Local runs (`graph/child-install-node-red-then-green.json`):
++
++| run | tree | node | graph |
++| --- | --- | --- | --- |
++| `20260914-144523` | this branch | passed, 9/9 assertions | 18/18 nodes passed, both laws green (208 s) |
++| `20260914-144857` | this branch with `SkillScriptBackend.java` from `9fc819ca` (pre-fix) | **failed**: parent byte-identical x2, child owns a real shim, token-form, names no parent, runs its tool | rc 1 |
++
++Control and install exit 0 pass in both, so the red run fails on the leak itself, not on setup.
++
++## (d) deploy-helm helper
++
++PR: https://github.com/haydenrear/deploy-helm/pull/63 (the unit's source `haydenrear/deploy-cdc` redirects to
++`haydenrear/deploy-helm`; base `main`, branch `fix/ohv-9-launcher-no-follow`, commit `cff6efb`). Adds
++`rm -f "$launcher"` before `cat >"$launcher"` in `skill-scripts/helpers/install-console-script.sh`. Not published, no
++home copy edited. Scratch proof (`d-helper-proof.txt`):
++
++```
++old: parent now = child
++new: parent now = parent; child is link? no; child = child
++```
++
++## Validation
++
++- `jbang RunTests.java`: ALL PASSED (145 s), including `SkillScriptWriteThroughTest` 7/7 and `BinCliWritersDoNotFollowLinksTest` 7/7. Disk before: 85 GiB free.
++- `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
++- `python skills/test_graph/scripts/run.py home-verdicts`: green locally (above).
++- Read-only on the real root: `./skill-manager home repair --home ~/.skill-manager --json` (this build, no `--fix`): clean, 0 findings, 2 s — no DEF-OHV-140 slowness (`root-home-repair-readonly.json`).
++- `home close-out --home wt-ohv-9/.skill-manager --into skill-manager/.skill-manager`: exit 0, "holds nothing that removing it would destroy" (`close-out.txt`).
++- CI `graph_set=full`: run 34858642285 (https://github.com/haydenrear/skill-manager/actions/runs/34858642285) on `2a430bb6`: graphs_executed 26, graphs_passed 26, graphs_failed 0; 30 jobs success, 1 skipped. home-verdicts 18/18 nodes (the new node included); project-child-home 13/13, plugin-smoke 28/28, home-clone 16/16, checkout-home 8/8, home-integrity 19/19. Deferred by the selector as on every run: browser-auth, refresh-flow, password-reset, hyper-experiments. 26 not 27: this ticket adds a node to home-verdicts, not a graph. (`ci-34858642285-graphs-executed.json`)
++
++## Goal contribution
++
++- **GOAL-a-home-writes-only-itself** (direct): (1) no → yes (unit reproduction + graph node); (2) no → yes (changed
++  target and link-back-out fail the install naming the other home); (3) unmeasured → yes: guarded (skill-script, pip)
++  or shown unable to follow, with a unit case each (npm, brew, tar, registry, relativize), plus LauncherShims found
++  and fixed.
++- **GOAL-no-own-home-path** (guard): the child's shim is token-form (graph node + registry unit case).
++  `python3.12 scripts/measure_goal_no_own_home_path.py`: root 0; project 0, met (`goal-no-own-home-path.json`).
++
++## Deferred findings
++
++None.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/ci-34858642285-graphs-executed.json b/results/epic-one-home-one-verdict/tickets/OHV-9/ci-34858642285-graphs-executed.json
+new file mode 100644
+index 00000000..10f68f7c
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/ci-34858642285-graphs-executed.json
+@@ -0,0 +1,261 @@
++{
++  "deferred": [
++    "browser-auth",
++    "refresh-flow",
++    "password-reset",
++    "hyper-experiments"
++  ],
++  "event": "workflow_dispatch",
++  "graphs": [
++    {
++      "executed": true,
++      "graph": "artifact-dag",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 10,
++      "nodes_declared": 10,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "checkout-home",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "doc-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 23,
++      "nodes_declared": 23,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "git-latest-source-tracking",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 12,
++      "nodes_declared": 12,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "harness-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 14,
++      "nodes_declared": 14,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-clone",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 16,
++      "nodes_declared": 16,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-integrity",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 19,
++      "nodes_declared": 19,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-sync",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 21,
++      "nodes_declared": 21,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-tripwire",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-verdicts",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 18,
++      "nodes_declared": 18,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "onboard",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "onboarding",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 23,
++      "nodes_declared": 23,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "plugin-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 28,
++      "nodes_declared": 28,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-child-home",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 13,
++      "nodes_declared": 13,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-env",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-libs",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-manifest",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-profiles",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-resolve",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 53,
++      "nodes_declared": 53,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "source-tracking",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "spec-conformance",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "sponsored",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "sync-settles",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 2,
++      "nodes_declared": 2,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "ticket-lifecycle",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++      "nodes_attempted": 14,
++      "nodes_declared": 14,
++      "outcome": "success",
++      "passed": true
++    }
++  ],
++  "graphs_executed": 26,
++  "graphs_failed": 0,
++  "graphs_passed": 26,
++  "graphs_registered": 30,
++  "graphs_selected": 26,
++  "graphs_unaccounted": 0,
++  "nodes_attempted": 359,
++  "nodes_declared": 359,
++  "ref": "refs/heads/feature/OHV-9",
++  "repository": "haydenrear/skill-manager",
++  "run_attempt": "1",
++  "run_id": "34858642285",
++  "run_url": "https://github.com/haydenrear/skill-manager/actions/runs/34858642285",
++  "schema": "test-graph-ci-execution/v1",
++  "scope": "full",
++  "sha": "2a430bb6a271fadbb9a056d02b17bb76319fbc50"
++}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/close-out.txt b/results/epic-one-home-one-verdict/tickets/OHV-9/close-out.txt
+new file mode 100644
+index 00000000..005cd4fa
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/close-out.txt
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++✓ /Users/hayde/IdeaProjects/wt-ohv-9/.skill-manager holds nothing that removing it would destroy
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/d-helper-proof.txt b/results/epic-one-home-one-verdict/tickets/OHV-9/d-helper-proof.txt
+new file mode 100644
+index 00000000..c6983f75
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/d-helper-proof.txt
+@@ -0,0 +1,2 @@
++old: parent now = child
++new: parent now = parent; child is link? no; child = child
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/goal-no-own-home-path.json b/results/epic-one-home-one-verdict/tickets/OHV-9/goal-no-own-home-path.json
+new file mode 100644
+index 00000000..eec80e3a
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/goal-no-own-home-path.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-no-own-home-path", "metric": "(1) bin/cli entries spelling the home's own absolute path, on root and this project home, split by whether `home repair` reports them", "target": "(1) 0 on both homes", "clause_2": "measured by scripts/measure_goal_a_home_survives_being_copied.py", "value": "root 0; project 0", "met": true, "homes": {"root": {"home": "/Users/hayde/.skill-manager", "entries": [], "unreported": [], "shebang_only_out_of_scope": [], "comment_only_not_a_reference": [], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}, "project": {"home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager", "entries": [], "unreported": [], "shebang_only_out_of_scope": [], "comment_only_not_a_reference": [], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}}}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/graph/child-install-node-red-then-green.json b/results/epic-one-home-one-verdict/tickets/OHV-9/graph/child-install-node-red-then-green.json
+new file mode 100644
+index 00000000..b11fc0e6
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/graph/child-install-node-red-then-green.json
+@@ -0,0 +1,32 @@
++{
++ "fixed": {
++  "run": "20260914-144523",
++  "status": "passed",
++  "assertions": {
++   "control_the_child_link_resolves_to_the_parents_shim": "passed",
++   "install_into_the_child_exits_0": "passed",
++   "the_parents_shim_is_byte_identical": "passed",
++   "every_parent_file_is_byte_identical_after_the_child_install": "passed",
++   "the_child_holds_its_own_real_shim": "passed",
++   "the_child_shim_is_token_form": "passed",
++   "the_child_shim_names_no_form_of_the_parent": "passed",
++   "the_child_shim_runs_the_childs_tool": "passed",
++   "the_scratch_homes_are_deleted": "passed"
++  }
++ },
++ "unfixed_SkillScriptBackend_from_9fc819ca": {
++  "run": "20260914-144857",
++  "status": "failed",
++  "assertions": {
++   "control_the_child_link_resolves_to_the_parents_shim": "passed",
++   "install_into_the_child_exits_0": "passed",
++   "the_parents_shim_is_byte_identical": "failed",
++   "every_parent_file_is_byte_identical_after_the_child_install": "failed",
++   "the_child_holds_its_own_real_shim": "failed",
++   "the_child_shim_is_token_form": "failed",
++   "the_child_shim_names_no_form_of_the_parent": "failed",
++   "the_child_shim_runs_the_childs_tool": "failed",
++   "the_scratch_homes_are_deleted": "passed"
++  }
++ }
++}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/root-home-repair-readonly.json b/results/epic-one-home-one-verdict/tickets/OHV-9/root-home-repair-readonly.json
+new file mode 100644
+index 00000000..56637daa
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/root-home-repair-readonly.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/.skill-manager","build":"skill-manager 0.27.2+gd2f77877e389 @ d2f77877e389 (refs/heads/feature/OHV-9)","examined":324,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/unit/a-and-b-after-fix.txt b/results/epic-one-home-one-verdict/tickets/OHV-9/unit/a-and-b-after-fix.txt
+new file mode 100644
+index 00000000..929a5abf
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/unit/a-and-b-after-fix.txt
+@@ -0,0 +1,16 @@
++  [PASS] OHV-9 (a): a cat > installer in a child does not rewrite the parent's shim (backend)
++  [PASS] OHV-9 (a): the same install through the registry over a sanctioned mirror leaves the parent byte-identical
++  [PASS] OHV-9 (a): a detached link the script did not replace is restored exactly
++  [PASS] OHV-9 (a): a failing script still gets the link restored
++  [PASS] OHV-9 (a): a script that writes the other home's file by its own path fails the install, naming that home
++  [PASS] OHV-9 (a): a script that recreates the link back out is a foreign write and fails
++  [PASS] OHV-9 (a): a link resolving inside this home is left in place while the script runs
++   → 7 passed, 0 failed
++  [PASS] OHV-9 (b): npm/brew placement (placeLink) replaces a link into another home, never writes it
++  [PASS] OHV-9 (b): npm/brew copy fallback (placeCopy, no options) replaces the link, never writes it
++  [PASS] OHV-9 (b): tar placement (placeCopy, REPLACE_EXISTING + COPY_ATTRIBUTES) replaces the link, never writes it
++  [PASS] OHV-9 (b): InstallerRegistry's post-install relativizeShims leaves a link into another home alone
++  [PASS] OHV-9 (b): InstallerRegistry take-ownership deletes the link and its restore recreates it; the parent is never written
++  [PASS] OHV-9 (a): a DANGLING link into another home is still detached (resolution does not stop at bin/cli)
++  [PASS] OHV-9 (b): LauncherShims replaces a bin/cli/skill-manager link into another home instead of writing its pin there
++   → 7 passed, 0 failed
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/unit/a-before-fix.txt b/results/epic-one-home-one-verdict/tickets/OHV-9/unit/a-before-fix.txt
+new file mode 100644
+index 00000000..6b111b96
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/unit/a-before-fix.txt
+@@ -0,0 +1,31 @@
++  [FAIL] OHV-9 (a): a cat > installer in a child does not rewrite the parent's shim (backend): the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
++echo parent-owned
++> but was <#!/usr/bin/env bash
++# child-built
++java.lang.AssertionError: the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
++echo parent-owned
++> but was <#!/usr/bin/env bash
++# child-built
++  [FAIL] OHV-9 (a): the same install through the registry over a sanctioned mirror leaves the parent byte-identical: the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
++echo parent-owned
++> but was <#!/usr/bin/env bash
++# child-built
++java.lang.AssertionError: the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
++echo parent-owned
++> but was <#!/usr/bin/env bash
++# child-built
++  [FAIL] OHV-9 (a): a detached link the script did not replace is restored exactly: the script ran with the foreign link detached: expected <detached
++> but was <present
++java.lang.AssertionError: the script ran with the foreign link detached: expected <detached
++> but was <present
++  [PASS] OHV-9 (a): a failing script still gets the link restored
++  [FAIL] OHV-9 (a): a script that writes the other home's file by its own path fails the install, naming that home: not true: a changed foreign target fails the install
++java.lang.AssertionError: not true: a changed foreign target fails the install
++  [FAIL] OHV-9 (a): a script that recreates the link back out is a foreign write and fails: naming the other home: skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
++ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists: expected <skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
++ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists> to contain </private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/parent/.skill-manager>
++java.lang.AssertionError: naming the other home: skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
++ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists: expected <skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
++ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists> to contain </private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/parent/.skill-manager>
++  [PASS] OHV-9 (a): a link resolving inside this home is left in place while the script runs
++   → 2 passed, 5 failed
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-9/unit/b-launchershims-before-fix.txt b/results/epic-one-home-one-verdict/tickets/OHV-9/unit/b-launchershims-before-fix.txt
+new file mode 100644
+index 00000000..81aa263e
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-9/unit/b-launchershims-before-fix.txt
+@@ -0,0 +1,19 @@
++  [PASS] OHV-9 (a): a cat > installer in a child does not rewrite the parent's shim (backend)
++  [PASS] OHV-9 (a): the same install through the registry over a sanctioned mirror leaves the parent byte-identical
++  [PASS] OHV-9 (a): a detached link the script did not replace is restored exactly
++  [PASS] OHV-9 (a): a failing script still gets the link restored
++  [PASS] OHV-9 (a): a script that writes the other home's file by its own path fails the install, naming that home
++  [PASS] OHV-9 (a): a script that recreates the link back out is a foreign write and fails
++  [PASS] OHV-9 (a): a link resolving inside this home is left in place while the script runs
++   → 7 passed, 0 failed
++  [PASS] OHV-9 (b): npm/brew placement (placeLink) replaces a link into another home, never writes it
++  [PASS] OHV-9 (b): npm/brew copy fallback (placeCopy, no options) replaces the link, never writes it
++  [PASS] OHV-9 (b): tar placement (placeCopy, REPLACE_EXISTING + COPY_ATTRIBUTES) replaces the link, never writes it
++  [PASS] OHV-9 (b): InstallerRegistry's post-install relativizeShims leaves a link into another home alone
++  [PASS] OHV-9 (b): InstallerRegistry take-ownership deletes the link and its restore recreates it; the parent is never written
++  [PASS] OHV-9 (a): a DANGLING link into another home is still detached (resolution does not stop at bin/cli)
++  [FAIL] OHV-9 (b): LauncherShims replaces a bin/cli/skill-manager link into another home instead of writing its pin there: the parent's CLI entrypoint is byte-identical: expected <#!/usr/bin/env bash
++> but was <#!/usr/bin/env bash
++java.lang.AssertionError: the parent's CLI entrypoint is byte-identical: expected <#!/usr/bin/env bash
++> but was <#!/usr/bin/env bash
++   → 6 passed, 1 failed
+diff --git a/specs/epics/one-home-one-verdict/ticket_plan.yaml b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+index 71644bcd..2f65c73f 100644
+--- a/specs/epics/one-home-one-verdict/ticket_plan.yaml
++++ b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+@@ -700,7 +700,7 @@ tickets:
+   - id: OHV-9
+     github_issue: https://github.com/haydenrear/skill-manager/issues/367
+     title: "A skill-script install never writes through a link into another home"
+-    status: planned
++    status: closed
+     role: implementation
+     schedule_revision: 4
+     added_at_revision_4: >
+diff --git a/src/main/java/dev/skillmanager/cli/installer/BrewBackend.java b/src/main/java/dev/skillmanager/cli/installer/BrewBackend.java
+index f1d758cb..d21e9533 100644
+--- a/src/main/java/dev/skillmanager/cli/installer/BrewBackend.java
++++ b/src/main/java/dev/skillmanager/cli/installer/BrewBackend.java
+@@ -64,17 +64,10 @@ public final class BrewBackend implements InstallerBackend {
+             for (Path entry : (Iterable<Path>) entries::iterator) {
+                 if (!Files.isExecutable(entry)) continue;
+                 Path link = store.cliBinDir().resolve(entry.getFileName().toString());
+-                if (Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+-                        || Files.isSymbolicLink(link)) {
+-                    Files.delete(link);
+-                }
+-                try {
+-                    Files.createSymbolicLink(link, entry);
+-                } catch (UnsupportedOperationException | IOException e) {
+-                    // Fall back to copy on filesystems that reject symlinks.
+-                    Files.copy(entry, link);
+-                    Fs.makeExecutable(link);
+-                }
++                // OHV-9 (#367): delete-then-link (copy on filesystems that reject
++                // symlinks), so an entry linking into another home is replaced,
++                // never written through. No detach needed here.
++                ForeignBinLinks.placeLink(link, entry);
+             }
+         }
+         Log.ok("cli: installed brew %s; linked bins into %s", pkg, store.cliBinDir());
+diff --git a/src/main/java/dev/skillmanager/cli/installer/ForeignBinLinks.java b/src/main/java/dev/skillmanager/cli/installer/ForeignBinLinks.java
+new file mode 100644
+index 00000000..1f8b2039
+--- /dev/null
++++ b/src/main/java/dev/skillmanager/cli/installer/ForeignBinLinks.java
+@@ -0,0 +1,277 @@
++package dev.skillmanager.cli.installer;
++
++import dev.skillmanager.launch.LaunchEnv;
++import dev.skillmanager.shared.util.Fs;
++import dev.skillmanager.store.SkillStore;
++import dev.skillmanager.util.Log;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.LinkOption;
++import java.nio.file.NoSuchFileException;
++import java.nio.file.Path;
++import java.nio.file.attribute.BasicFileAttributes;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Objects;
++
++/**
++ * Takes every {@code bin/cli} link that resolves OUTSIDE this home out of the
++ * way of a forked installer, puts back the ones it did not replace, and fails
++ * the install if the files those links pointed at changed while it ran.
++ *
++ * <h2>Why (OHV-9, #367, DEF-OHV-011)</h2>
++ *
++ * <p>On 2026-09-14 the operator's root home's {@code bin/cli/computeq},
++ * {@code helm-deploy} and {@code monitoring} were overwritten. A test project
++ * home held those names as symlinks to the root's real shims — a sanctioned
++ * parent-store mirror — and deploy-helm's skill-script ran in the project home
++ * and wrote its launcher with {@code cat >"$launcher"}. {@code cat >} follows a
++ * symlink. The bytes landed in the ROOT, and nothing here noticed:
++ * {@code binStamps} stamps links without following them and
++ * {@code reportFrozenShims} skips links.
++ *
++ * <p>No in-JVM check can see what a forked script writes, and no refusal can
++ * un-write bytes. So the only way to make the write IMPOSSIBLE is to take the
++ * link away before the fork: with the entry gone, {@code cat >} creates this
++ * home's own file, which is the file the install was supposed to produce.
++ *
++ * <h2>The contract</h2>
++ *
++ * <ol>
++ *   <li>{@link #detach}: every entry of {@code bin/cli} that is a symlink whose
++ *       chain resolves outside this home's real root is recorded (name, raw
++ *       target, resolved target, a stat of the resolved file) and unlinked. A
++ *       link resolving INSIDE this home — {@code ../../venvs/x/bin/x} — is left
++ *       alone. The link is deleted, never followed.</li>
++ *   <li>The caller runs the installer, and calls {@link #restore} in a
++ *       {@code finally} so a failing or throwing installer still gets the links
++ *       back.</li>
++ *   <li>{@link #restore}: for each detached name —
++ *     <ul>
++ *       <li>absent: the installer did not produce it; the link is recreated with
++ *           its exact raw target;</li>
++ *       <li>a symlink resolving outside this home again: the installer linked
++ *           back out, which is a foreign write — recorded, and the original link
++ *           is put back in its place;</li>
++ *       <li>anything else (a real file, a link inside this home): the
++ *           installer produced this home's own artifact; it stays.</li>
++ *     </ul>
++ *     Then the resolved target is stat'ed again (size, mtime, file key — its
++ *     content is never read); a difference is recorded as a foreign write.</li>
++ *   <li>{@link #requireNoForeignWrite}: throws naming the other home and the
++ *       path when anything was recorded.</li>
++ * </ol>
++ *
++ * <h2>What this does not cover</h2>
++ *
++ * <ul>
++ *   <li>A write through any path that is not a {@code bin/cli} entry — an
++ *       installer that spells the other home's path outright. The stat check
++ *       catches that only for the detached targets.</li>
++ *   <li>{@code bin/cli} itself being a link: that is refused before the fork by
++ *       {@code InstallerRegistry.installOne}'s container check, and re-asserted
++ *       here.</li>
++ * </ul>
++ */
++final class ForeignBinLinks {
++
++    /** One detached link. {@code before} is null when the target did not exist. */
++    record Detached(String name, Path rawTarget, Path resolved, Path otherHome, Stamp before) {}
++
++    /** What is compared, and nothing else: content is never read. */
++    record Stamp(long size, long mtimeNanos, Object fileKey) {}
++
++    private final Path binDir;
++    private final Path homeRoot;
++    private final String who;
++    private final List<Detached> detached;
++    private final List<String> foreignWrites = new ArrayList<>();
++    private boolean restored;
++
++    private ForeignBinLinks(Path binDir, Path homeRoot, String who, List<Detached> detached) {
++        this.binDir = binDir;
++        this.homeRoot = homeRoot;
++        this.who = who;
++        this.detached = detached;
++    }
++
++    /**
++     * Unlink every {@code bin/cli} entry that resolves outside {@code store}'s
++     * home. On any failure to unlink, puts back what was already unlinked and
++     * throws: running the installer with a link still in place is the defect.
++     */
++    static ForeignBinLinks detach(SkillStore store, String who) throws IOException {
++        Path bin = store.cliBinDir();
++        Path root = store.root();
++        List<Detached> out = new ArrayList<>();
++        ForeignBinLinks links = new ForeignBinLinks(bin, root, who, out);
++        if (!Files.isDirectory(bin, LinkOption.NOFOLLOW_LINKS)) return links;
++        dev.skillmanager.store.WriteConfinement.requireContainerInside(bin, root,
++                "the bin/cli " + who + " is about to run against");
++        Path realHome = Fs.realOrNormalized(root);
++        List<Path> entries;
++        try (var stream = Files.list(bin)) {
++            entries = stream.sorted().toList();
++        }
++        for (Path entry : entries) {
++            if (!Files.isSymbolicLink(entry)) continue;
++            Path resolved = resolveChain(entry);
++            if (resolved.startsWith(realHome)) continue;
++            Path raw = Files.readSymbolicLink(entry);
++            Detached d = new Detached(entry.getFileName().toString(), raw, resolved,
++                    homeOwning(resolved), stat(resolved));
++            try {
++                Files.delete(entry);
++            } catch (IOException cannot) {
++                links.restore();
++                throw new IOException(who + ": refusing to run — bin/cli/" + d.name()
++                        + " is a link to " + resolved + describeHome(d.otherHome())
++                        + " and could not be detached (" + cannot.getMessage()
++                        + "); the installer would write through it", cannot);
++            }
++            out.add(d);
++            Log.info("cli: %s — detached bin/cli/%s (a link to %s%s) while it runs, so it cannot "
++                    + "write through it", who, d.name(), resolved, describeHome(d.otherHome()));
++        }
++        return links;
++    }
++
++    /** Names detached, in order. For tests and logs. */
++    List<String> detachedNames() {
++        return detached.stream().map(Detached::name).toList();
++    }
++
++    /**
++     * Put back every detached link the installer did not replace, and record
++     * every foreign write. Never throws; idempotent. Call it in a finally.
++     */
++    void restore() {
++        if (restored) return;
++        restored = true;
++        Path realHome = Fs.realOrNormalized(homeRoot);
++        for (Detached d : detached) {
++            Path entry = binDir.resolve(d.name());
++            try {
++                if (!Files.exists(entry, LinkOption.NOFOLLOW_LINKS)) {
++                    Files.createSymbolicLink(entry, d.rawTarget());
++                } else if (Files.isSymbolicLink(entry) && !resolveChain(entry).startsWith(realHome)) {
++                    Path now = resolveChain(entry);
++                    Path home = homeOwning(now);
++                    foreignWrites.add("it re-created bin/cli/" + d.name() + " as a link to " + now
++                            + describeHome(home));
++                    Files.delete(entry);
++                    Files.createSymbolicLink(entry, d.rawTarget());
++                }
++                // Otherwise the installer produced this home's own entry: keep it.
++            } catch (IOException e) {
++                Log.warn("cli: %s — could not put back bin/cli/%s -> %s (%s); the tool is missing "
++                        + "from this home", who, d.name(), d.rawTarget(), e.getMessage());
++            }
++            Stamp after = stat(d.resolved());
++            if (!Objects.equals(d.before(), after)) {
++                foreignWrites.add("the file bin/cli/" + d.name() + " linked to, " + d.resolved()
++                        + describeHome(d.otherHome()) + ", changed while it ran ("
++                        + describe(d.before()) + " -> " + describe(after) + ")");
++            }
++        }
++    }
++
++    /** Throw when {@link #restore} recorded a write outside this home. */
++    void requireNoForeignWrite() throws IOException {
++        restore();
++        if (foreignWrites.isEmpty()) return;
++        throw new IOException(who + " wrote outside the home at " + homeRoot + ": "
++                + String.join("; ", foreignWrites)
++                + ". The install is refused. bin/cli links into another home are detached while an "
++                + "installer runs precisely so it cannot write through them (skill-manager#367).");
++    }
++
++    // ------------------------------------------- in-JVM placement (npm, brew, tar)
++
++    /**
++     * Make {@code link} a symlink to {@code source}, falling back to a copy on a
++     * filesystem that refuses links. The existing entry is DELETED first, and a
++     * delete removes a link rather than its target, so an entry that links into
++     * another home is replaced here and that home is never written. This is why
++     * {@link NpmBackend} and {@link BrewBackend} need no detach: the only thing
++     * they write into {@code bin/cli} goes through here (their package managers
++     * write their own prefixes, not {@code bin/cli}). Pinned by
++     * {@code BinCliWritersDoNotFollowLinksTest}.
++     */
++    static void placeLink(Path link, Path source) throws IOException {
++        Files.deleteIfExists(link);
++        try {
++            Files.createSymbolicLink(link, source);
++        } catch (UnsupportedOperationException | IOException e) {
++            placeCopy(source, link);
++        }
++    }
++
++    /**
++     * Copy {@code source} to {@code link}, deleting the entry first so a link
++     * into another home is replaced rather than written through. {@link TarBackend}
++     * places its binary through here with {@code REPLACE_EXISTING} and
++     * {@code COPY_ATTRIBUTES}.
++     */
++    static void placeCopy(Path source, Path link, java.nio.file.CopyOption... options) throws IOException {
++        Files.deleteIfExists(link);
++        Files.copy(source, link, options);
++        Fs.makeExecutable(link);
++    }
++
++    // ------------------------------------------------------------------ helpers
++
++    /**
++     * Where a link chain ends, fully resolved where it exists and resolved as
++     * far as it does where it dangles. Each hop is read, never followed by the
++     * filesystem, so a dangling link into another home is still seen as one —
++     * {@code Fs.realOrNormalized(entry)} alone would stop at {@code bin/cli} and
++     * call it inside.
++     */
++    static Path resolveChain(Path entry) {
++        Path cur = entry.toAbsolutePath().normalize();
++        for (int hops = 0; hops < 40 && Files.isSymbolicLink(cur); hops++) {
++            try {
++                Path target = Files.readSymbolicLink(cur);
++                Path parent = Fs.realOrNormalized(cur.getParent());
++                cur = parent.resolve(target).normalize();
++            } catch (IOException unreadable) {
++                break;
++            }
++        }
++        return Fs.realOrNormalized(cur);
++    }
++
++    /** The Skill Manager home {@code resolved} lies in, or null. The file need not exist. */
++    static Path homeOwning(Path resolved) {
++        for (Path p = resolved.getParent(); p != null; p = p.getParent()) {
++            if (LaunchEnv.looksLikeStoreRoot(p)) return p;
++        }
++        return null;
++    }
++
++    private static String describeHome(Path home) {
++        return home == null ? ", outside this home" : ", in the home at " + home;
++    }
++
++    /** Size, mtime, file key of the file itself; null when it does not exist. */
++    static Stamp stat(Path path) {
++        try {
++            BasicFileAttributes a = Files.readAttributes(path, BasicFileAttributes.class,
++                    LinkOption.NOFOLLOW_LINKS);
++            return new Stamp(a.size(),
++                    a.lastModifiedTime().to(java.util.concurrent.TimeUnit.NANOSECONDS), a.fileKey());
++        } catch (NoSuchFileException absent) {
++            return null;
++        } catch (IOException unreadable) {
++            // Unreadable reads as a distinct value, so going from readable to
++            // unreadable (or back) is a change rather than a silent pass.
++            return new Stamp(-1, -1, "unreadable: " + unreadable.getClass().getSimpleName());
++        }
++    }
++
++    private static String describe(Stamp s) {
++        return s == null ? "absent" : "size " + s.size() + ", mtime " + s.mtimeNanos() + "ns";
++    }
++}
+diff --git a/src/main/java/dev/skillmanager/cli/installer/NpmBackend.java b/src/main/java/dev/skillmanager/cli/installer/NpmBackend.java
+index c45cd82e..649f1ee9 100644
+--- a/src/main/java/dev/skillmanager/cli/installer/NpmBackend.java
++++ b/src/main/java/dev/skillmanager/cli/installer/NpmBackend.java
+@@ -66,16 +66,9 @@ public final class NpmBackend implements InstallerBackend {
+         try (Stream<Path> entries = Files.list(srcBin)) {
+             for (Path entry : (Iterable<Path>) entries::iterator) {
+                 Path link = store.cliBinDir().resolve(entry.getFileName().toString());
+-                if (Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+-                        || Files.isSymbolicLink(link)) {
+-                    Files.delete(link);
+-                }
+-                try {
+-                    Files.createSymbolicLink(link, entry);
+-                } catch (UnsupportedOperationException | IOException e) {
+-                    Files.copy(entry, link);
+-                    Fs.makeExecutable(link);
+-                }
++                // OHV-9 (#367): delete-then-link, so an entry linking into another
++                // home is replaced, never written through. No detach needed here.
++                ForeignBinLinks.placeLink(link, entry);
+             }
+         }
+         Log.ok("cli: installed npm %s → %s (linked into %s)", pkg, prefix, store.cliBinDir());
+diff --git a/src/main/java/dev/skillmanager/cli/installer/PipBackend.java b/src/main/java/dev/skillmanager/cli/installer/PipBackend.java
+index ffce69bd..7240597e 100644
+--- a/src/main/java/dev/skillmanager/cli/installer/PipBackend.java
++++ b/src/main/java/dev/skillmanager/cli/installer/PipBackend.java
+@@ -52,7 +52,16 @@ public final class PipBackend implements InstallerBackend {
+         Map<String, String> env = new LinkedHashMap<>(PackageCaches.sharedEnvEnsured(store.venvsDir()));
+         env.put("UV_TOOL_BIN_DIR", store.cliBinDir().toString());
+         env.put("UV_TOOL_DIR", store.venvsDir().toString());
+-        Shell.mustWithEnv(List.of(uv, "tool", "install", "--force", pkg), env);
++        // OHV-9 (#367): uv writes bin/cli entries itself, in a forked process
++        // this codebase does not control, so it gets the same detach/restore as
++        // a skill-script rather than an argument about how uv replaces files.
++        ForeignBinLinks foreign = ForeignBinLinks.detach(store, "uv tool install of " + pkg);
++        try {
++            Shell.mustWithEnv(List.of(uv, "tool", "install", "--force", pkg), env);
++        } finally {
++            foreign.restore();
++        }
++        foreign.requireNoForeignWrite();
+         Log.ok("cli: installed %s via uv tool (bin=%s)", pkg, store.cliBinDir());
+         return InstallOutcome.INSTALLED;
+     }
+diff --git a/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java b/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
+index e7f57a22..db063499 100644
+--- a/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
++++ b/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
+@@ -217,8 +217,24 @@ public final class SkillScriptBackend implements InstallerBackend {
+         Path logPath = skillScriptLogPath(store, skillName, dep.name());
+         Log.step("cli: skill-script %s — running %s", dep.name(), script);
+         Log.step("cli: skill-script %s — writing output to %s", dep.name(), logPath);
++        // OHV-9 (#367, DEF-OHV-011): a bin/cli link into another home is taken
++        // out of the script's way before it runs. `cat >"$SKILL_MANAGER_HOME/bin/cli/x"`
++        // follows a link, and that is how deploy-helm's installer, run in a
++        // project home, rewrote the operator's root shims. With the link gone
++        // the script writes this home's own file; links it did not replace are
++        // put back in the finally, and a foreign target that changed anyway
++        // fails the install below. See ForeignBinLinks.
++        ForeignBinLinks foreign = ForeignBinLinks.detach(store, "skill-script " + dep.name());
+         Map<String, Long> binBefore = binStamps(store);
+-        int rc = Shell.runToLog(cmd, env, logPath);
++        int rc;
++        try {
++            rc = Shell.runToLog(cmd, env, logPath);
++        } finally {
++            foreign.restore();
++        }
++        // Before the exit code: a script that wrote into another home and then
++        // failed has done the worse thing, and that is what must be read first.
++        foreign.requireNoForeignWrite();
+         reportFrozenShims(dep, store, binBefore);
+         if (rc != 0) {
+             throw new IOException("skill-script " + dep.name() + " exited " + rc
+diff --git a/src/main/java/dev/skillmanager/cli/installer/TarBackend.java b/src/main/java/dev/skillmanager/cli/installer/TarBackend.java
+index 6d344095..297bb062 100644
+--- a/src/main/java/dev/skillmanager/cli/installer/TarBackend.java
++++ b/src/main/java/dev/skillmanager/cli/installer/TarBackend.java
+@@ -73,9 +73,11 @@ public final class TarBackend implements InstallerBackend {
+             // reverting this line leaves the whole suite green (measured). It
+             // stays because unlink-then-write is the order that reads correctly
+             // at a glance, not because the previous spelling lost anything.
+-            Files.deleteIfExists(link);
+-            Files.copy(binary, link, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+-            Fs.makeExecutable(link);
++            //
++            // OHV-9 (#367): the delete is also why this backend cannot write
++            // through a bin/cli link into another home — see ForeignBinLinks.placeCopy.
++            ForeignBinLinks.placeCopy(binary, link,
++                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+             Log.ok("cli: installed %s -> %s", dep.name(), link);
+             return InstallOutcome.INSTALLED;
+         } finally {
+diff --git a/src/main/java/dev/skillmanager/launch/LauncherShims.java b/src/main/java/dev/skillmanager/launch/LauncherShims.java
+index 64e7a0d9..bcaba7ea 100644
+--- a/src/main/java/dev/skillmanager/launch/LauncherShims.java
++++ b/src/main/java/dev/skillmanager/launch/LauncherShims.java
+@@ -225,7 +225,7 @@ public final class LauncherShims {
+         List<Path> written = new java.util.ArrayList<>();
+         for (String agent : AGENTS) {
+             Path file = dir.resolve(agent);
+-            Files.writeString(file, script(agent));
++            writeOwnFile(file, script(agent));
+             Fs.makeExecutable(file);
+             written.add(file);
+         }
+@@ -241,13 +241,28 @@ public final class LauncherShims {
+         // exiting 0 without having exec'd something.
+         Path cli = cliEntrypoint(store);
+         Fs.ensureDir(cli.getParent());
+-        Files.writeString(cli, cliScript(pin));
++        writeOwnFile(cli, cliScript(pin));
+         Fs.makeExecutable(cli);
+         written.add(cli);
+ 
+         return new Result(dir, List.copyOf(written), pin);
+     }
+ 
++    /**
++     * Write a generated file this home owns, replacing a symlink rather than
++     * writing through it.
++     *
++     * <p>OHV-9 (#367): {@code Files.writeString} follows a symlink. These files
++     * are generated and are never links, so a link standing at one — for
++     * example a child home's {@code bin/cli/skill-manager} pointing at its
++     * parent's — would have had THIS home's pin written into the OTHER home.
++     * Deleting a link removes the link, not its target.
++     */
++    private static void writeOwnFile(Path file, String content) throws IOException {
++        if (Files.isSymbolicLink(file)) Files.delete(file);
++        Files.writeString(file, content);
++    }
++
+     /**
+      * The launcher body for {@code agent}.
+      *
+diff --git a/src/test/java/dev/skillmanager/cli/installer/BinCliWritersDoNotFollowLinksTest.java b/src/test/java/dev/skillmanager/cli/installer/BinCliWritersDoNotFollowLinksTest.java
+new file mode 100644
+index 00000000..1a7af1e9
+--- /dev/null
++++ b/src/test/java/dev/skillmanager/cli/installer/BinCliWritersDoNotFollowLinksTest.java
+@@ -0,0 +1,142 @@
++package dev.skillmanager.cli.installer;
++
++import dev.skillmanager._lib.test.Tests;
++import dev.skillmanager.model.CliDependency;
++import dev.skillmanager.store.HomeLinks;
++import dev.skillmanager.store.SkillStore;
++
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.LinkOption;
++import java.nio.file.Path;
++import java.nio.file.StandardCopyOption;
++import java.util.List;
++
++import static dev.skillmanager._lib.test.Tests.assertEquals;
++import static dev.skillmanager._lib.test.Tests.assertFalse;
++import static dev.skillmanager._lib.test.Tests.assertTrue;
++
++/**
++ * OHV-9 (#367) slice (b): every OTHER writer of {@code bin/cli}, asked the same
++ * question as the skill-script backend — handed a child home whose
++ * {@code bin/cli/<name>} links into a parent home, does it write the parent?
++ *
++ * <p>Each case drives the production code path the backend actually uses
++ * (npm and brew place their links through {@link ForeignBinLinks#placeLink},
++ * tar through {@link ForeignBinLinks#placeCopy}), and asserts the parent's file
++ * is byte-identical afterwards. The forked writers (skill-script, uv) cannot be
++ * argued about this way and are guarded by detach/restore instead; see
++ * {@link SkillScriptWriteThroughTest}.
++ */
++public final class BinCliWritersDoNotFollowLinksTest {
++
++    public static int run() throws Exception {
++        Tests.Suite suite = Tests.suite("BinCliWritersDoNotFollowLinksTest");
++
++        suite.test("OHV-9 (b): npm/brew placement (placeLink) replaces a link into another home, never writes it", () -> {
++            var pair = SkillScriptWriteThroughTest.Pair.make("wt-b-link-");
++            Path source = newSource(pair.child(), "npm-entry");
++
++            ForeignBinLinks.placeLink(pair.childShim(), source);
++
++            assertEquals(SkillScriptWriteThroughTest.PARENT_BYTES, Files.readString(pair.parentShim()),
++                    "the parent's shim is byte-identical");
++            assertTrue(Files.isSymbolicLink(pair.childShim()), "the child's entry is a link again");
++            assertEquals(source, Files.readSymbolicLink(pair.childShim()), "to this home's new source");
++        });
++
++        suite.test("OHV-9 (b): npm/brew copy fallback (placeCopy, no options) replaces the link, never writes it", () -> {
++            var pair = SkillScriptWriteThroughTest.Pair.make("wt-b-copy-");
++            Path source = newSource(pair.child(), "brew-entry");
++
++            ForeignBinLinks.placeCopy(source, pair.childShim());
++
++            assertEquals(SkillScriptWriteThroughTest.PARENT_BYTES, Files.readString(pair.parentShim()),
++                    "the parent's shim is byte-identical");
++            assertTrue(Files.isRegularFile(pair.childShim(), LinkOption.NOFOLLOW_LINKS), "the child holds a real file");
++            assertEquals("#!/bin/sh\necho brew-entry\n", Files.readString(pair.childShim()), "with the source's bytes");
++        });
++
++        suite.test("OHV-9 (b): tar placement (placeCopy, REPLACE_EXISTING + COPY_ATTRIBUTES) replaces the link, never writes it", () -> {
++            var pair = SkillScriptWriteThroughTest.Pair.make("wt-b-tar-");
++            Path source = newSource(pair.child(), "tar-entry");
++
++            ForeignBinLinks.placeCopy(source, pair.childShim(),
++                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
++
++            assertEquals(SkillScriptWriteThroughTest.PARENT_BYTES, Files.readString(pair.parentShim()),
++                    "the parent's shim is byte-identical");
++            assertTrue(Files.isRegularFile(pair.childShim(), LinkOption.NOFOLLOW_LINKS), "the child holds a real file");
++        });
++
++        suite.test("OHV-9 (b): InstallerRegistry's post-install relativizeShims leaves a link into another home alone", () -> {
++            var pair = SkillScriptWriteThroughTest.Pair.make("wt-b-relativize-");
++            Path raw = Files.readSymbolicLink(pair.childShim());
++
++            HomeLinks.relativizeShims(pair.child());
++
++            assertEquals(SkillScriptWriteThroughTest.PARENT_BYTES, Files.readString(pair.parentShim()),
++                    "the parent's shim is byte-identical");
++            assertEquals(raw, Files.readSymbolicLink(pair.childShim()), "the link is untouched");
++        });
++
++        suite.test("OHV-9 (b): InstallerRegistry take-ownership deletes the link and its restore recreates it; the parent is never written", () -> {
++            var pair = SkillScriptWriteThroughTest.Pair.make("wt-b-ownership-");
++            Path raw = Files.readSymbolicLink(pair.childShim());
++            CliDependency dep = SkillScriptWriteThroughTest.dep();
++
++            Path removed = InstallerRegistry.takeOwnershipOfShim(dep, pair.child());
++            assertEquals(raw, removed, "take-ownership removed the link and says what it pointed at");
++            assertFalse(Files.exists(pair.childShim(), LinkOption.NOFOLLOW_LINKS), "the link is gone");
++            InstallerRegistry.restoreForeignShim(dep, pair.child(), removed);
++
++            assertEquals(SkillScriptWriteThroughTest.PARENT_BYTES, Files.readString(pair.parentShim()),
++                    "the parent's shim is byte-identical");
++            assertEquals(raw, Files.readSymbolicLink(pair.childShim()), "the link is back, exactly");
++        });
++
++        suite.test("OHV-9 (a): a DANGLING link into another home is still detached (resolution does not stop at bin/cli)", () -> {
++            var pair = SkillScriptWriteThroughTest.Pair.make("wt-b-dangling-");
++            Path absentInParent = pair.parent().cliBinDir().resolve("not-yet");
++            Path dangling = pair.child().cliBinDir().resolve("not-yet");
++            Files.createSymbolicLink(dangling, absentInParent);
++
++            ForeignBinLinks links = ForeignBinLinks.detach(pair.child(), "test");
++            try {
++                assertEquals(List.of("not-yet", SkillScriptWriteThroughTest.TOOL), links.detachedNames(),
++                        "both the live and the dangling foreign link are detached");
++                assertFalse(Files.exists(dangling, LinkOption.NOFOLLOW_LINKS), "the dangling link is out of the way");
++            } finally {
++                links.restore();
++            }
++            links.requireNoForeignWrite();
++            assertEquals(absentInParent, Files.readSymbolicLink(dangling), "and restored exactly");
++            assertFalse(Files.exists(absentInParent, LinkOption.NOFOLLOW_LINKS), "nothing was created in the parent");
++        });
++
++        suite.test("OHV-9 (b): LauncherShims replaces a bin/cli/skill-manager link into another home instead of writing its pin there", () -> {
++            var pair = SkillScriptWriteThroughTest.Pair.make("wt-b-launcher-");
++            Path parentPin = pair.parent().cliBinDir().resolve("skill-manager");
++            String parentBytes = "#!/usr/bin/env bash\n# parent's own pin\nexit 0\n";
++            Files.writeString(parentPin, parentBytes, StandardCharsets.UTF_8);
++            Path childPin = pair.child().cliBinDir().resolve("skill-manager");
++            Files.createSymbolicLink(childPin, parentPin);
++            Path fakeCli = newSource(pair.child(), "fake-cli");
++
++            dev.skillmanager.launch.LauncherShims.write(pair.child(), fakeCli);
++
++            assertEquals(parentBytes, Files.readString(parentPin), "the parent's CLI entrypoint is byte-identical");
++            assertTrue(Files.isRegularFile(childPin, LinkOption.NOFOLLOW_LINKS), "the child holds its own entrypoint");
++        });
++
++        return suite.runAll();
++    }
++
++    private static Path newSource(SkillStore store, String label) throws Exception {
++        Path dir = Files.createDirectories(store.root().resolve("npm/" + label + "/bin"));
++        Path source = dir.resolve(label);
++        Files.writeString(source, "#!/bin/sh\necho " + label + "\n", StandardCharsets.UTF_8);
++        source.toFile().setExecutable(true, false);
++        return source;
++    }
++}
+diff --git a/src/test/java/dev/skillmanager/cli/installer/SkillScriptWriteThroughTest.java b/src/test/java/dev/skillmanager/cli/installer/SkillScriptWriteThroughTest.java
+new file mode 100644
+index 00000000..8f6e697e
+--- /dev/null
++++ b/src/test/java/dev/skillmanager/cli/installer/SkillScriptWriteThroughTest.java
+@@ -0,0 +1,252 @@
++package dev.skillmanager.cli.installer;
++
++import dev.skillmanager._lib.test.Tests;
++import dev.skillmanager.model.CliDependency;
++import dev.skillmanager.store.SkillStore;
++
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.LinkOption;
++import java.nio.file.Path;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++
++import static dev.skillmanager._lib.test.Tests.assertContains;
++import static dev.skillmanager._lib.test.Tests.assertEquals;
++import static dev.skillmanager._lib.test.Tests.assertFalse;
++import static dev.skillmanager._lib.test.Tests.assertTrue;
++
++/**
++ * OHV-9 (#367, DEF-OHV-011): a skill-script install never writes through a
++ * {@code bin/cli} link into another home.
++ *
++ * <p>The measured shape, from the operator's root home on 2026-09-14: a
++ * project home's {@code bin/cli/computeq} was a symlink to
++ * {@code ~/.skill-manager/bin/cli/computeq}, deploy-helm's installer ran in
++ * the project home and wrote its launcher with {@code cat >"$launcher"}, and
++ * {@code cat >} followed the link and rewrote the ROOT's file. Every case here
++ * builds that pair in scratch directories: a parent home with a real shim, and
++ * a child home whose same-named entry links to it.
++ */
++public final class SkillScriptWriteThroughTest {
++
++    static final String TOOL = "wt-tool";
++    static final String UNIT = "wt-unit";
++    static final String PARENT_BYTES = "#!/bin/sh\necho parent-owned\n";
++
++    public static int run() throws Exception {
++        Tests.Suite suite = Tests.suite("SkillScriptWriteThroughTest");
++
++        // THE REPRODUCTION, at the backend. deploy-helm's shape: the launcher
++        // is spelled through $SKILL_MANAGER_HOME/bin/cli and written with cat >.
++        suite.test("OHV-9 (a): a cat > installer in a child does not rewrite the parent's shim (backend)", () -> {
++            Pair pair = Pair.make("wt-backend-");
++            scaffold(pair.child, catInstaller());
++
++            new SkillScriptBackend().install(dep(), pair.child, UNIT);
++
++            assertEquals(PARENT_BYTES, Files.readString(pair.parentShim()),
++                    "the parent's shim is byte-identical after the child's install");
++            Path childShim = pair.childShim();
++            assertFalse(Files.isSymbolicLink(childShim), "the child's entry is no longer a link");
++            assertTrue(Files.isRegularFile(childShim, LinkOption.NOFOLLOW_LINKS),
++                    "the child holds its own real shim");
++            assertContains(Files.readString(childShim), "child-built", "and it is the child's bytes");
++        });
++
++        // THE REPRODUCTION, through the registry, with the link SANCTIONED: the
++        // parent claims the child, which is what the CDC project home had and
++        // why refuseAForeignDestination walked past it.
++        suite.test("OHV-9 (a): the same install through the registry over a sanctioned mirror leaves the parent byte-identical", () -> {
++            Pair pair = Pair.make("wt-registry-");
++            pair.claim();
++            scaffold(pair.child, catInstaller());
++
++            new InstallerRegistry().installOne(dep(), pair.child, UNIT);
++
++            assertEquals(PARENT_BYTES, Files.readString(pair.parentShim()),
++                    "the parent's shim is byte-identical after the child's install");
++            Path childShim = pair.childShim();
++            assertFalse(Files.isSymbolicLink(childShim), "the child's entry is its own, not a link");
++            assertTrue(dev.skillmanager.store.ShimHomeContract.frozenHomeLines(pair.child.root(), childShim).isEmpty(),
++                    "the child's shim is token-form: " + Files.readString(childShim));
++        });
++
++        suite.test("OHV-9 (a): a detached link the script did not replace is restored exactly", () -> {
++            Pair pair = Pair.make("wt-restore-");
++            Path rawTarget = Files.readSymbolicLink(pair.childShim());
++            scaffold(pair.child, """
++                    #!/usr/bin/env bash
++                    set -euo pipefail
++                    # While the script runs, the foreign link is not there to follow.
++                    if [ -e "$SKILL_MANAGER_BIN_DIR/%1$s" ] || [ -L "$SKILL_MANAGER_BIN_DIR/%1$s" ]; then
++                      echo present > "$SKILL_MANAGER_CACHE_DIR/observed"
++                    else
++                      echo detached > "$SKILL_MANAGER_CACHE_DIR/observed"
++                    fi
++                    printf '#!/bin/sh\\n' > "$SKILL_MANAGER_BIN_DIR/other-tool"
++                    chmod +x "$SKILL_MANAGER_BIN_DIR/other-tool"
++                    """.formatted(TOOL));
++
++            new SkillScriptBackend().install(depWithoutBinary(), pair.child, UNIT);
++
++            assertEquals("detached\n", Files.readString(pair.child.cacheDir().resolve("observed")),
++                    "the script ran with the foreign link detached");
++            assertTrue(Files.isSymbolicLink(pair.childShim()), "the link is back");
++            assertEquals(rawTarget, Files.readSymbolicLink(pair.childShim()), "with its exact target");
++            assertEquals(PARENT_BYTES, Files.readString(pair.parentShim()), "parent unchanged");
++        });
++
++        suite.test("OHV-9 (a): a failing script still gets the link restored", () -> {
++            Pair pair = Pair.make("wt-restore-fail-");
++            Path rawTarget = Files.readSymbolicLink(pair.childShim());
++            scaffold(pair.child, "#!/usr/bin/env bash\necho boom >&2\nexit 3\n");
++
++            boolean threw = false;
++            try {
++                new SkillScriptBackend().install(dep(), pair.child, UNIT);
++            } catch (IOException expected) {
++                threw = true;
++                assertContains(expected.getMessage(), "exited 3", "the script's failure is still the error");
++            }
++            assertTrue(threw, "a failing script fails the install");
++            assertTrue(Files.isSymbolicLink(pair.childShim()), "the link is back after the failure");
++            assertEquals(rawTarget, Files.readSymbolicLink(pair.childShim()), "with its exact target");
++        });
++
++        suite.test("OHV-9 (a): a script that writes the other home's file by its own path fails the install, naming that home", () -> {
++            Pair pair = Pair.make("wt-changed-");
++            scaffold(pair.child, """
++                    #!/usr/bin/env bash
++                    set -euo pipefail
++                    printf '#!/bin/sh\\necho overwritten\\n' > "%s"
++                    """.formatted(pair.parentShim()));
++
++            String message = null;
++            try {
++                new SkillScriptBackend().install(depWithoutBinary(), pair.child, UNIT);
++            } catch (IOException expected) {
++                message = expected.getMessage();
++            }
++            assertTrue(message != null, "a changed foreign target fails the install");
++            assertContains(message, pair.parent.root().toRealPath().toString(), "the message names the other home: " + message);
++            assertContains(message, "bin/cli/" + TOOL, "and the path: " + message);
++        });
++
++        suite.test("OHV-9 (a): a script that recreates the link back out is a foreign write and fails", () -> {
++            Pair pair = Pair.make("wt-relink-");
++            scaffold(pair.child, """
++                    #!/usr/bin/env bash
++                    set -euo pipefail
++                    ln -s "%s" "$SKILL_MANAGER_BIN_DIR/%s"
++                    """.formatted(pair.parentShim(), TOOL));
++
++            String message = null;
++            try {
++                new SkillScriptBackend().install(depWithoutBinary(), pair.child, UNIT);
++            } catch (IOException expected) {
++                message = expected.getMessage();
++            }
++            assertTrue(message != null, "a link recreated into the other home fails the install");
++            assertContains(message, pair.parent.root().toRealPath().toString(), "naming the other home: " + message);
++            assertEquals(PARENT_BYTES, Files.readString(pair.parentShim()), "parent unchanged");
++        });
++
++        suite.test("OHV-9 (a): a link resolving inside this home is left in place while the script runs", () -> {
++            Pair pair = Pair.make("wt-inside-");
++            Path venvTool = Files.createDirectories(pair.child.venvsDir().resolve("inner/bin")).resolve("inner");
++            Files.writeString(venvTool, "#!/bin/sh\n");
++            Path inner = pair.child.cliBinDir().resolve("inner");
++            Files.createSymbolicLink(inner, Path.of("../../venvs/inner/bin/inner"));
++            scaffold(pair.child, """
++                    #!/usr/bin/env bash
++                    set -euo pipefail
++                    if [ -L "$SKILL_MANAGER_BIN_DIR/inner" ]; then echo kept > "$SKILL_MANAGER_CACHE_DIR/inner"; fi
++                    """);
++
++            new SkillScriptBackend().install(depWithoutBinary(), pair.child, UNIT);
++
++            assertTrue(Files.exists(pair.child.cacheDir().resolve("inner")), "the in-home link was visible to the script");
++            assertEquals(Path.of("../../venvs/inner/bin/inner"), Files.readSymbolicLink(inner), "and is unchanged");
++        });
++
++        return suite.runAll();
++    }
++
++    // ---------------------------------------------------------------- fixture
++
++    /** A scratch parent home with a real {@code bin/cli/wt-tool}, and a child whose entry links to it. */
++    record Pair(SkillStore parent, SkillStore child) {
++        static Pair make(String prefix) throws IOException {
++            Path scratch = Files.createTempDirectory(prefix);
++            SkillStore parent = new SkillStore(scratch.resolve("parent/.skill-manager"));
++            parent.init();
++            SkillStore child = new SkillStore(scratch.resolve("child/.skill-manager"));
++            child.init();
++            Path parentShim = parent.cliBinDir().resolve(TOOL);
++            Files.writeString(parentShim, PARENT_BYTES, StandardCharsets.UTF_8);
++            parentShim.toFile().setExecutable(true, false);
++            Files.createSymbolicLink(child.cliBinDir().resolve(TOOL), parentShim);
++            return new Pair(parent, child);
++        }
++
++        Path parentShim() { return parent.cliBinDir().resolve(TOOL); }
++
++        Path childShim() { return child.cliBinDir().resolve(TOOL); }
++
++        /** The parent claims the child: the child's link is a sanctioned mirror. */
++        void claim() throws IOException {
++            Path dir = Files.createDirectories(parent.root().resolve("child-homes/wt-child"));
++            Files.writeString(dir.resolve("child-home.json"), """
++                    {
++                      "id" : "wt-child",
++                      "parentHome" : "%s",
++                      "childHome" : "%s",
++                      "units" : [ ],
++                      "createdAt" : "2026-09-14T00:00:00Z"
++                    }
++                    """.formatted(parent.root(), child.root()));
++        }
++    }
++
++    /** deploy-helm's install-console-script.sh, reduced to the two lines that matter. */
++    static String catInstaller() {
++        return """
++                #!/usr/bin/env bash
++                set -euo pipefail
++                launcher="${SKILL_MANAGER_HOME:?}/bin/cli/%1$s"
++                venv="$SKILL_MANAGER_CACHE_DIR/skill-script-%2$s-%1$s/venv"
++                mkdir -p "$venv/bin"
++                printf '#!/bin/sh\\necho child-built\\n' > "$venv/bin/%1$s"
++                chmod +x "$venv/bin/%1$s"
++                cat >"$launcher" <<EOF
++                #!/usr/bin/env bash
++                # child-built
++                exec "$venv/bin/%1$s" "\\$@"
++                EOF
++                chmod 0755 "$launcher"
++                """.formatted(TOOL, UNIT);
++    }
++
++    static CliDependency dep() {
++        return dep(TOOL);
++    }
++
++    static CliDependency depWithoutBinary() {
++        return dep(null);
++    }
++
++    private static CliDependency dep(String binary) {
++        Map<String, CliDependency.InstallTarget> install = new LinkedHashMap<>();
++        install.put("any", new CliDependency.InstallTarget(
++                null, null, binary, List.of(), null, "install.sh", List.of()));
++        return new CliDependency(TOOL, "skill-script:" + TOOL, null, null, TOOL, true, install);
++    }
++
++    static void scaffold(SkillStore store, String script) throws IOException {
++        Path scripts = Files.createDirectories(store.skillDir(UNIT).resolve(SkillScriptBackend.SCRIPTS_DIRNAME));
++        Files.writeString(scripts.resolve("install.sh"), script);
++    }
++}
+diff --git a/test_graph/build.gradle.kts b/test_graph/build.gradle.kts
+index 03b2c443..ddf8a073 100644
+--- a/test_graph/build.gradle.kts
++++ b/test_graph/build.gradle.kts
+@@ -1766,6 +1766,14 @@ validationGraph {
+      *   - 4 Codex marketplace + Claude enablement of another
+      *     home's marketplace (DEF-OHV-005) ...... home.verdicts.foreign.marketplace.registration
+      *
++     * OHV-9 (#367) adds the write-through shape (DEF-OHV-011), in scratch
++     * parent/child homes: the child's bin/cli/wt-tool links to the parent's
++     * real shim (a sanctioned mirror), and a skill-script in the child writes
++     * `cat >"$SKILL_MANAGER_HOME/bin/cli/wt-tool"`. The parent must be
++     * byte-identical and the child must hold its own token-form shim. No
++     * repair/verify here: the subject is what an INSTALL writes, and the
++     * homes are deleted, never published ...... home.verdicts.child.install.writes.only.itself
++     *
+      * PENDING, with the ticket that adds each node:
+      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
+      *
+@@ -1792,6 +1800,7 @@ validationGraph {
+         node("sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java")
+         node("sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java")
+         node("sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java")
++        node("sources/home-verdicts/ChildInstallWritesOnlyItself.java")
+         node("sources/common/HomeFixpointLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+@@ -1805,7 +1814,8 @@ validationGraph {
+                 "home.verdicts.marketplace.under.another.name",
+                 "home.verdicts.marketplace.identity.unregistered",
+                 "home.verdicts.copied.marketplace.identity",
+-                "home.verdicts.foreign.marketplace.registration")
++                "home.verdicts.foreign.marketplace.registration",
++                "home.verdicts.child.install.writes.only.itself")
+         node("sources/common/HomeMembershipLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+@@ -1819,7 +1829,8 @@ validationGraph {
+                 "home.verdicts.marketplace.under.another.name",
+                 "home.verdicts.marketplace.identity.unregistered",
+                 "home.verdicts.copied.marketplace.identity",
+-                "home.verdicts.foreign.marketplace.registration")
++                "home.verdicts.foreign.marketplace.registration",
++                "home.verdicts.child.install.writes.only.itself")
+     }
+ 
+     /**
+diff --git a/test_graph/sources/home-verdicts/ChildInstallWritesOnlyItself.java b/test_graph/sources/home-verdicts/ChildInstallWritesOnlyItself.java
+new file mode 100644
+index 00000000..6e2295a0
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/ChildInstallWritesOnlyItself.java
+@@ -0,0 +1,277 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeContext;
++import com.hayden.testgraphsdk.sdk.NodeResult;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.LinkOption;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++import java.util.TreeMap;
++import java.util.concurrent.TimeUnit;
++
++/**
++ * A skill-script install in a child home never writes through a {@code bin/cli}
++ * link into its parent (OHV-9, #367, DEF-OHV-011).
++ *
++ * <h2>The shape, as measured on the operator's root home on 2026-09-14</h2>
++ *
++ * <p>A test project home's {@code bin/cli/computeq}, {@code helm-deploy} and
++ * {@code monitoring} were symlinks to {@code ~/.skill-manager/bin/cli/<tool>} —
++ * a sanctioned parent-store mirror. deploy-helm's installer ran in the project
++ * home and wrote its launcher with {@code cat >"$launcher"}, which followed the
++ * link and rewrote the ROOT's shims. The install reported success.
++ *
++ * <h2>What this node plants, all under the fixture's scratch root</h2>
++ *
++ * <ul>
++ *   <li>a PARENT home with a real {@code bin/cli/wt-tool} (and a neighbour
++ *       entry, so "the parent is unchanged" is about more than one file);</li>
++ *   <li>a CHILD home whose {@code bin/cli/wt-tool} is an absolute symlink to the
++ *       parent's, and a {@code child-homes/} claim in the parent that makes the
++ *       link SANCTIONED — the CDC home's shape, and the one
++ *       {@code InstallerRegistry.refuseAForeignDestination} deliberately walks
++ *       past;</li>
++ *   <li>a unit whose skill-script writes
++ *       {@code cat >"$SKILL_MANAGER_HOME/bin/cli/wt-tool"} with this home's
++ *       paths expanded into it, as deploy-helm's helper does.</li>
++ * </ul>
++ *
++ * <p>Then it installs the unit into the child with the real CLI, and asserts:
++ * every file of the parent home is byte-identical (links compared by target);
++ * the child holds its own REAL shim; that shim is token-form (spells no form of
++ * the child home, derives it from {@code SKILL_MANAGER_SHIM_HOME}) and names no
++ * form of the parent; and it runs the child's tool.
++ *
++ * <p>Never the operator's homes, never {@code $HOME/.skill-manager}. The
++ * scratch directory is deleted in a finally and nothing is published, so the
++ * fixpoint and membership laws never see these homes (see
++ * {@code HomeVerdictsSupport}). The gateway URL points at an unresolvable
++ * remote host, so {@code EnsureGateway} reports it unreachable instead of
++ * building a venv: this graph stays Docker- and network-free.
++ */
++public class ChildInstallWritesOnlyItself {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.child.install.writes.only.itself")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "shim", "write-through", "ohv-9")
++            .timeout("600s");
++
++    static final String TOOL = "wt-tool";
++    static final String UNIT = "wt-unit";
++    static final String PARENT_BYTES = "#!/bin/sh\necho parent-owned\n";
++    /** Non-local and unresolvable: EnsureGateway answers "remote gateway unreachable" and moves on. */
++    static final String NO_GATEWAY = "http://gateway.home-verdicts.invalid:9";
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ChildInstallWritesOnlyItself::check);
++    }
++
++    private static NodeResult check(NodeContext ctx) {
++        String id = SPEC.id();
++        String scratchStr = ctx.get(HomeVerdictsSupport.FIXTURE, "scratchRoot").orElse(null);
++        if (scratchStr == null) {
++            return NodeResult.fail(id, "missing " + HomeVerdictsSupport.FIXTURE + " context (scratchRoot)");
++        }
++        Path work = Path.of(scratchStr).resolve("child-install-writes-only-itself");
++        NodeResult result;
++        try {
++            HomeVerdictsSupport.deleteRecursively(work);
++            Path parent = HomeVerdictsSupport.layOutHome(work.resolve("parent"));
++            Path child = HomeVerdictsSupport.layOutHome(work.resolve("child"));
++
++            Path parentShim = parent.resolve("bin/cli").resolve(TOOL);
++            Files.writeString(parentShim, PARENT_BYTES, StandardCharsets.UTF_8);
++            parentShim.toFile().setExecutable(true);
++            Path neighbour = parent.resolve("bin/cli/wt-neighbour");
++            Files.writeString(neighbour, "#!/bin/sh\necho neighbour\n", StandardCharsets.UTF_8);
++            neighbour.toFile().setExecutable(true);
++
++            Path childShim = child.resolve("bin/cli").resolve(TOOL);
++            Files.createSymbolicLink(childShim, parentShim);
++            claim(parent, child);
++            relaxPolicy(child);
++            Path unit = scaffoldUnit(work.resolve("units").resolve(UNIT));
++
++            // CONTROL: the leak shape is really there before the install.
++            boolean planted = Files.isSymbolicLink(childShim)
++                    && childShim.toRealPath().equals(parentShim.toRealPath());
++
++            Map<String, String> before = snapshot(parent);
++            HomeVerdictsSupport.Verdict install = HomeVerdictsSupport.smWithEnv(ctx, "install-into-child",
++                    child, Map.of("SKILL_MANAGER_GATEWAY_URL", NO_GATEWAY),
++                    "install", unit.toString(), "--yes", "--no-bind-default");
++            Map<String, String> after = snapshot(parent);
++
++            List<String> changed = new ArrayList<>();
++            for (String k : before.keySet()) {
++                if (!before.get(k).equals(after.get(k))) changed.add(k + (after.containsKey(k) ? " (changed)" : " (gone)"));
++            }
++            for (String k : after.keySet()) {
++                if (!before.containsKey(k)) changed.add(k + " (added)");
++            }
++            boolean parentIdentical = changed.isEmpty();
++            boolean parentShimIdentical = PARENT_BYTES.equals(HomeVerdictsSupport.read(parentShim));
++
++            boolean childOwnsShim = Files.isRegularFile(childShim, LinkOption.NOFOLLOW_LINKS);
++            String body = childOwnsShim ? HomeVerdictsSupport.read(childShim) : "";
++            List<String> childSpellings = HomeVerdictsSupport.spellings(child).stream()
++                    .filter(body::contains).toList();
++            boolean tokenForm = childOwnsShim && childSpellings.isEmpty()
++                    && body.contains("${SKILL_MANAGER_SHIM_HOME}");
++            List<String> parentSpellings = HomeVerdictsSupport.spellings(parent).stream()
++                    .filter(body::contains).toList();
++            boolean namesNoParent = childOwnsShim && parentSpellings.isEmpty();
++            String ran = childOwnsShim ? runShim(childShim) : "";
++            boolean runsChildTool = ran.contains("child-built");
++
++            List<String> failures = new ArrayList<>();
++            if (!planted) failures.add("control: the child's bin/cli/" + TOOL + " was not a link to the parent's shim");
++            if (install.exit() != 0) failures.add("install into the child exited " + install.exit() + ": "
++                    + HomeVerdictsSupport.head(install.stderr()));
++            if (!parentIdentical) failures.add("the parent home changed during the child's install: " + changed);
++            if (!childOwnsShim) failures.add("the child's bin/cli/" + TOOL + " is not a real file of its own");
++            if (!tokenForm) failures.add("the child's shim is not token-form (spells " + childSpellings + "): " + body);
++            if (!namesNoParent) failures.add("the child's shim names the parent home " + parentSpellings + ": " + body);
++            if (!runsChildTool) failures.add("running the child's shim printed: " + ran);
++
++            result = (failures.isEmpty() ? NodeResult.pass(id) : NodeResult.fail(id, String.join(" | ", failures)))
++                    .process(install.proc())
++                    .assertion("control_the_child_link_resolves_to_the_parents_shim", planted)
++                    .assertion("install_into_the_child_exits_0", install.exit() == 0)
++                    .assertion("the_parents_shim_is_byte_identical", parentShimIdentical)
++                    .assertion("every_parent_file_is_byte_identical_after_the_child_install", parentIdentical)
++                    .assertion("the_child_holds_its_own_real_shim", childOwnsShim)
++                    .assertion("the_child_shim_is_token_form", tokenForm)
++                    .assertion("the_child_shim_names_no_form_of_the_parent", namesNoParent)
++                    .assertion("the_child_shim_runs_the_childs_tool", runsChildTool)
++                    .metric("parent.files.changed", changed.size())
++                    .metric("install.exit", install.exit())
++                    .log("child shim after install:\n" + body);
++        } catch (IOException | RuntimeException e) {
++            result = NodeResult.error(id, e);
++        } finally {
++            try {
++                HomeVerdictsSupport.deleteRecursively(work);
++            } catch (IOException ignored) {
++                // reported below
++            }
++        }
++        return result.assertion("the_scratch_homes_are_deleted", !Files.exists(work, LinkOption.NOFOLLOW_LINKS));
++    }
++
++    /** The parent claims the child, so the child's link is a sanctioned mirror. */
++    private static void claim(Path parent, Path child) throws IOException {
++        Path dir = Files.createDirectories(parent.resolve("child-homes/hv-write-through"));
++        Files.writeString(dir.resolve("child-home.json"), """
++                {
++                  "id" : "hv-write-through",
++                  "parentHome" : %s,
++                  "childHome" : %s,
++                  "units" : [ ],
++                  "createdAt" : "2026-09-14T00:00:00Z"
++                }
++                """.formatted(HomeVerdictsSupport.jsonString(parent.toString()),
++                HomeVerdictsSupport.jsonString(child.toString())), StandardCharsets.UTF_8);
++    }
++
++    /** The scratch home is not under EnvPrepared's policy root; relax the install gates here. */
++    private static void relaxPolicy(Path store) throws IOException {
++        Files.writeString(store.resolve("policy.toml"), """
++                require_confirmation = false
++                [install]
++                require_confirmation_for_hooks = false
++                require_confirmation_for_mcp = false
++                require_confirmation_for_cli_deps = false
++                require_confirmation_for_executable_commands = false
++                """, StandardCharsets.UTF_8);
++    }
++
++    /** A skill whose installer writes its launcher the way deploy-helm's helper does. */
++    private static Path scaffoldUnit(Path dir) throws IOException {
++        Files.createDirectories(dir.resolve("skill-scripts"));
++        Files.writeString(dir.resolve("SKILL.md"), "---\nname: " + UNIT
++                + "\ndescription: home-verdicts write-through fixture\n---\n", StandardCharsets.UTF_8);
++        Files.writeString(dir.resolve("skill-manager.toml"), """
++                [skill]
++                name = "%1$s"
++                version = "0.1.0"
++                description = "home-verdicts write-through fixture"
++
++                [[cli_dependencies]]
++                spec = "skill-script:%2$s"
++                on_path = "%2$s"
++
++                [cli_dependencies.install.any]
++                script = "install-%2$s.sh"
++                binary = "%2$s"
++                """.formatted(UNIT, TOOL), StandardCharsets.UTF_8);
++        Path installer = dir.resolve("skill-scripts").resolve("install-" + TOOL + ".sh");
++        // Unquoted heredoc: $venv expands at write time (the freeze deploy-helm
++        // ships), \$@ stays literal. `cat >` is the redirection that follows a link.
++        Files.writeString(installer, """
++                #!/usr/bin/env bash
++                set -euo pipefail
++                launcher="${SKILL_MANAGER_HOME:?}/bin/cli/%1$s"
++                venv="$SKILL_MANAGER_CACHE_DIR/skill-script-%2$s-%1$s/venv"
++                mkdir -p "$venv/bin"
++                printf '#!/bin/sh\\necho child-built\\n' > "$venv/bin/%1$s"
++                chmod +x "$venv/bin/%1$s"
++                cat >"$launcher" <<EOF
++                #!/usr/bin/env bash
++                exec "$venv/bin/%1$s" "\\$@"
++                EOF
++                chmod 0755 "$launcher"
++                """.formatted(TOOL, UNIT), StandardCharsets.UTF_8);
++        installer.toFile().setExecutable(true);
++        return dir;
++    }
++
++    /** Every entry under {@code home}, never following links: file -> bytes, link -> target. */
++    private static Map<String, String> snapshot(Path home) throws IOException {
++        Map<String, String> out = new TreeMap<>();
++        try (var walk = Files.walk(home)) {
++            for (Path p : walk.toList()) {
++                String rel = home.relativize(p).toString();
++                if (Files.isSymbolicLink(p)) {
++                    out.put(rel, "link:" + Files.readSymbolicLink(p));
++                } else if (Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) {
++                    out.put(rel, "file:" + java.util.HexFormat.of().formatHex(
++                            java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(p))));
++                } else {
++                    out.put(rel, "dir");
++                }
++            }
++        } catch (java.security.NoSuchAlgorithmException e) {
++            throw new IllegalStateException(e);
++        }
++        return out;
++    }
++
++    private static String runShim(Path shim) {
++        try {
++            Process p = new ProcessBuilder("bash", shim.toString()).redirectErrorStream(true).start();
++            String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
++            if (!p.waitFor(60, TimeUnit.SECONDS)) {
++                p.destroyForcibly();
++                return "timed out";
++            }
++            return "exit " + p.exitValue() + ": " + out;
++        } catch (IOException e) {
++            return "could not run: " + e.getMessage();
++        } catch (InterruptedException e) {
++            Thread.currentThread().interrupt();
++            return "interrupted";
++        }
++    }
++}
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+index c29cbb45..ac2d79bd 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+@@ -53,6 +53,10 @@ import java.nio.file.Path;
+  *   <tr><td>#352 shape 4: Codex marketplace and Claude enablement of another home's (OHV-6, DEF-OHV-005)</td>
+  *       <td>home.verdicts.foreign.marketplace.registration</td>
+  *       <td>1 FOREIGN_MARKETPLACE_REGISTRATION</td><td>1, names it; --fix removes only those entries</td></tr>
++ *   <tr><td>a skill-script install in a child writes through a bin/cli link into its parent (DEF-OHV-011, OHV-9)</td>
++ *       <td>home.verdicts.child.install.writes.only.itself</td>
++ *       <td colspan="2">not a verdict shape: install into the child, parent byte-identical,
++ *       child holds its own token-form shim</td></tr>
+  * </table>
+  *
+  * <p>The three "0 until OHV-2" cells were GOAL-one-verdict clause (1) failing,
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+index 02b80388..7477762d 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+@@ -242,11 +242,23 @@ final class HomeVerdictsSupport {
+      * two node logs ({@code <label>.stdout.log}, {@code <label>.stderr.log}).
+      */
+     static Verdict sm(NodeContext ctx, String label, Path home, String... args) {
++        return smWithEnv(ctx, label, home, java.util.Map.of(), args);
++    }
++
++    /**
++     * {@link #sm} with extra environment on top of {@link SmEnv}'s. For
++     * variables SmEnv does not manage — OHV-9's install node points
++     * {@code SKILL_MANAGER_GATEWAY_URL} at an unreachable host so the install
++     * does not build a gateway venv.
++     */
++    static Verdict smWithEnv(NodeContext ctx, String label, Path home,
++                             java.util.Map<String, String> extraEnv, String... args) {
+         List<String> argv = new ArrayList<>();
+         argv.add(SmEnv.cli().toString());
+         argv.addAll(List.of(args));
+         ProcessBuilder pb = new ProcessBuilder(argv);
+         SmEnv.apply(ctx, pb, home);
++        pb.environment().putAll(extraEnv);
+         Instant started = Instant.now();
+         Path out;
+         Path err;

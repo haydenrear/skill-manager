@@ -1,0 +1,3 @@
+NAME                         KIND     VERSION    BINDINGS  SHA       SOURCE
+skill-manager                skill    0.1.1      3         0efb7f5   local_file
+skt                          plugin   0.3.0      0         3aa0979   local_file

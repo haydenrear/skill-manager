@@ -1,0 +1,10 @@
+
+--json
+--json
+git-issue-workflow
+git-issue-workflow --git-latest
+
+
+git-issue-workflow --git-latest -v --dry-run
+git-issue-workflow --git-latest
+

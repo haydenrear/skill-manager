@@ -184,6 +184,22 @@ public final class HomeRepair {
          * {@link ShimHomeContract#selfDerivingRewrite} the installer applies,
          * it costs the shim nothing where it stands, and it refuses any shim
          * whose shape it cannot rewrite rather than guessing.
+         *
+         * <p><b>Detected on CONTENT since OHV-4 (#341, DEF-OHV-001)</b>, by
+         * {@link ShimHomeContract#frozenHomeLines}: any literal spelling of
+         * this home on a line that runs, whether or not a rewrite is on offer.
+         * It used to be reported only when the rewrite still had something to
+         * offer, which exempted the HALF-rewritten shim (token in the export
+         * line, home literal in the exec line) the root home carried. A shape
+         * the rewrite refuses is now reported with {@code repairable=false}.
+         * A venv-internal shebang ({@code #!<home>/venvs/.../python}) is
+         * deliberately NOT reported; {@code frozenHomeLines} says why.
+         *
+         * <p><b>Also an sh/dash shim anchored with {@code ${BASH_SOURCE[0]}}</b>
+         * (DEF-OHV-190, {@link ShimHomeContract#bashOnlyAnchorLines}): it spells
+         * no home, but where {@code /bin/sh} is dash it resolves {@code /}, which
+         * is the same failure. The same anchor under bash, zsh or ksh works and is
+         * not reported.
          */
         FROZEN_HOME_PATH_IN_SHIM,
 
@@ -281,8 +297,127 @@ public final class HomeRepair {
          * ({@code danglingPinIn}, HIS-12), so this consults it rather than
          * growing a second one.
          */
-        DANGLING_CLI_PIN
+        DANGLING_CLI_PIN,
+
+        /**
+         * A link in an agent directory OUTSIDE the store that points INTO this
+         * home and resolves to nothing.
+         *
+         * <p>OHV-2 / DEF-OHV-002, and the #339 comment. After a unit is retired
+         * its store directory goes and its agent links stay: this repo's own
+         * checkout held {@code .claude/.codex/.gemini/skills/skill-manager}, all
+         * three dangling into the project home, and after the Sep 8
+         * {@code skill-dev-skill} retirement 75 such entries sat across 25
+         * checkouts. {@code home verify} walks the STORE and {@code home
+         * repair}'s agent-link arm asks only "does it resolve into ANOTHER
+         * home", so both called every one of those homes clean.
+         *
+         * <h3>Where it looks, and why there</h3>
+         *
+         * <p>The home's own structural agent directories ({@link #agentDirsOf})
+         * and every directory this home's projection records NAME — each
+         * binding's {@code targetRoot} and each projection's
+         * {@code destPath} parent. Both are facts the home already holds; a
+         * scan of the filesystem for "anything pointing here" would be a guess.
+         *
+         * <p><b>Not covered</b>, stated so nobody reads the silence as a clean
+         * machine: a directory no record names any longer (a checkout whose
+         * unit's record was already deleted — the orphan-record fix makes that
+         * set grow, which is why the link is judged first and separately); an
+         * agent directory redirected by {@code CLAUDE_CONFIG_DIR} and friends,
+         * which this class never reads by design; agent subdirectories other
+         * than the recorded ones and {@code skills}/{@code plugins}; and a
+         * dangling link into ANOTHER home, which is not this home's to report.
+         *
+         * <p>Repairable only by REMOVAL, only in the home's own agent
+         * directories, and only when no {@code installed/<unit>.json} still
+         * claims the unit: a link that resolves to nothing loses nothing by
+         * going. A link in a record-named directory is reported and left — the
+         * write confinement is the home's two axes, and a record must not be
+         * able to widen what a repair may touch. A link whose unit is still
+         * recorded is a missing store copy, which is a re-install, not a prune.
+         */
+        DANGLING_AGENT_LINK,
+
+        /**
+         * {@code installed/<unit>.projections.json} with no
+         * {@code installed/<unit>.json} beside it and no unit directory for that
+         * name in the store.
+         *
+         * <p>OHV-2 / DEF-OHV-002: measured in 6 homes at kickoff, surviving the
+         * unit they describe. Nothing pruned them and nothing reported them, and
+         * {@code artifacts list} still derives projection rows from them.
+         *
+         * <p>The unit-directory clause is a deliberate narrowing: a record with
+         * bytes on disk and no install record is membership's question (the
+         * membership law's GAINED finding), and deleting a projection ledger for
+         * a unit that is still here would be destructive. Repair deletes the
+         * record file and nothing else; the links it names are judged by
+         * {@link #DANGLING_AGENT_LINK}.
+         */
+        ORPHANED_PROJECTION_RECORD,
+
+        /**
+         * #352 shape 1. An agent config of this home registers the home's own
+         * marketplace directory under a name that is not its identity
+         * ({@link dev.skillmanager.project.PluginMarketplace#name()}), or enables a
+         * plugin from that name. Measured in tla-spec-dev's and meta-orchestrator's
+         * checkouts: Claude registers the path as {@code skill-manager} (the
+         * pre-61e9553b name) and every sync fails with
+         * {@code Marketplace 'skill-manager-<hash>' not found}. {@code claude plugin
+         * marketplace add <path>} cannot heal it: it answers "already on disk" and
+         * keeps the old name.
+         *
+         * <p>Repaired by RENAMING — the registration and its enablements are
+         * re-pointed at the identity together
+         * ({@link dev.skillmanager.project.MarketplaceRegistrations#migrateToIdentity}),
+         * because a {@code sync <plugin>} reinstalls only what it names and a removed
+         * enablement is a plugin silently dropped.
+         */
+        MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME,
+
+        /**
+         * #352 shape 2's trace. A plugin enabled under this home's identity that the
+         * same agent config does not register at this home's marketplace directory.
+         * {@code ensureMarketplaceAdded} used to ask {@code list.contains(name)}: the
+         * root's {@code skill-manager} is a substring of every
+         * {@code skill-manager-<hash>}, so the root skipped its own {@code add}
+         * whenever a per-home marketplace was listed, and its enabled plugins named
+         * a marketplace that was not there. Repairable when this home has a
+         * manifest to register: {@code --fix} writes the registration the agent's
+         * own {@code marketplace add} writes.
+         */
+        MARKETPLACE_IDENTITY_UNREGISTERED,
+
+        /**
+         * #352 shape 3. {@code plugin-marketplace/.claude-plugin/marketplace.json}
+         * names an identity that is not this home's derived one — it was copied
+         * from another home (13 homes carried commit-diff-context-parent's or
+         * deploy-cdc's). Harness CLIs read the name from that file, so every agent
+         * then registers this home under the other home's name, the collision the
+         * per-home fingerprint exists to prevent. Repaired by regenerating the
+         * marketplace, which is the one writer of the file.
+         */
+        MARKETPLACE_IDENTITY_COPIED,
+
+        /**
+         * #352 shape 4, both sides (DEF-OHV-005 is Claude's). An agent config of this
+         * home registers or enables ANOTHER home's marketplace: a Codex
+         * {@code [marketplaces.*]} whose source is not this home's, a Claude
+         * {@code extraKnownMarketplaces} entry likewise, an enabled
+         * {@code <plugin>@<other skill-manager marketplace>}, or a Claude
+         * {@code known_marketplaces.json} entry for another home that something in
+         * the same config enables. Plugins then load twice, from two homes.
+         * Repaired by removing that one entry.
+         */
+        FOREIGN_MARKETPLACE_REGISTRATION
     }
+
+    /** The suffix every projection ledger in {@code installed/} carries. */
+    static final String PROJECTIONS_SUFFIX = ".projections.json";
+
+    /** Store directories a unit of any kind lives in, for the orphan narrowing. */
+    private static final List<String> UNIT_DIRS = List.of("skills", "plugins", "docs", "harnesses");
 
     /**
      * One damaged thing, named with the repair for it.
@@ -400,7 +535,305 @@ public final class HomeRepair {
         // rather than a clean home — the same reason `examined` exists at all.
         examined += scanFrozenShims(root, findings);
         examined += scanUnstampedPmTrees(root, findings);
+        // OHV-2 / DEF-OHV-002: what the home PROJECTED, read from the records
+        // that say so.
+        examined += danglingAgentLinks(root, findings);
+        examined += orphanedProjectionRecords(root, findings);
+        // OHV-6 (#352): the marketplace identity, on disk and in the agent
+        // configs that register it. Manifest first, so a --fix pass renames or
+        // registers against the identity the manifest will then carry.
+        examined += marketplaceIdentity(root, findings);
         return new Report(root, examined, findings);
+    }
+
+    /**
+     * OHV-6 (#352) — the four marketplace-identity shapes. What is read, and what
+     * is deliberately not, is {@link dev.skillmanager.project.MarketplaceRegistrations}'s
+     * class comment; the agent directories are this home's structural ones
+     * ({@link #agentDirsOf}), never the environment's.
+     */
+    private static int marketplaceIdentity(Path store, List<Finding> findings) {
+        var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
+        String identity = mp.name();
+        Path manifest = mp.manifestPath();
+        boolean manifestHere = Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS);
+        int examined = 0;
+        if (manifestHere) {
+            examined++;
+            String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(manifest).orElse(null);
+            if (!identity.equals(claimed)) {
+                findings.add(new Finding(Kind.MARKETPLACE_IDENTITY_COPIED,
+                        relative(store, manifest),
+                        "names the marketplace " + claimed + ", but this home's identity is "
+                                + identity + " (derived from its store path " + store + ") — expected "
+                                + identity + ", found " + claimed + ": a copied manifest carries its "
+                                + "source's identity, and every agent registers this home under it",
+                        "skill-manager home repair --fix regenerates the marketplace, which writes "
+                                + identity + " (so does the next plugin `sync`)",
+                        true, manifest));
+            }
+        }
+        Path homeRoot = AgentHomes.homeRootFor(store);
+        List<Path> agentDirs = agentDirsOf(store);
+        var entries = dev.skillmanager.project.MarketplaceRegistrations.read(agentDirs.get(0), agentDirs.get(1));
+        examined += entries.size();
+        for (var judged : dev.skillmanager.project.MarketplaceRegistrations.judge(entries, identity, mp.root())) {
+            var entry = judged.entry();
+            String subject = entry.subject(homeRoot);
+            switch (judged.kind()) {
+                case UNDER_ANOTHER_NAME -> findings.add(new Finding(
+                        Kind.MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME, subject, judged.detail(),
+                        "skill-manager home repair --fix re-points it at " + identity + ", with every "
+                                + (entry.registration() ? entry.key() : entry.marketplace())
+                                + " registration of this directory and every plugin enabled from it in "
+                                + "the same agent's config; the next `sync` then updates and installs "
+                                + "from " + identity,
+                        true, entry.file()));
+                case IDENTITY_UNREGISTERED -> findings.add(new Finding(
+                        Kind.MARKETPLACE_IDENTITY_UNREGISTERED, subject, judged.detail(),
+                        manifestHere
+                                ? "skill-manager home repair --fix registers " + identity + " at "
+                                        + mp.root() + " in this agent's config, as its own `marketplace "
+                                        + "add` would"
+                                : "this home has no marketplace manifest to register — run "
+                                        + "`skill-manager sync`, which generates and registers it",
+                        manifestHere, entry.file()));
+                case FOREIGN -> findings.add(new Finding(
+                        Kind.FOREIGN_MARKETPLACE_REGISTRATION, subject, judged.detail(),
+                        carriedHere(entry, manifest)
+                                ? "skill-manager home repair --fix re-points it at " + pluginOf(entry) + "@"
+                                        + identity + ": this home's own marketplace carries "
+                                        + pluginOf(entry) + ", so removing the entry would drop the plugin"
+                                : "skill-manager home repair --fix removes this entry and nothing else",
+                        true, entry.file()));
+            }
+        }
+        return examined;
+    }
+
+    /**
+     * Carry out one agent-config marketplace finding against the config AS IT IS
+     * NOW: the entry is re-read and re-judged, so a finding a previous action
+     * already consumed is refused rather than acted on from stale prose.
+     */
+    private static void applyMarketplaceEntry(Path store, Finding finding) throws IOException {
+        var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
+        String identity = mp.name();
+        Path homeRoot = AgentHomes.homeRootFor(store);
+        List<Path> agentDirs = agentDirsOf(store);
+        var entries = dev.skillmanager.project.MarketplaceRegistrations.read(agentDirs.get(0), agentDirs.get(1));
+        var judged = dev.skillmanager.project.MarketplaceRegistrations.judge(entries, identity, mp.root())
+                .stream().filter(j -> j.entry().subject(homeRoot).equals(finding.subject()))
+                .findFirst()
+                .orElseThrow(() -> new IOException(finding.subject() + " no longer disagrees with " + identity));
+        var entry = judged.entry();
+        // Every file this agent's config spans, gated before any is written.
+        if (entry.agent() == dev.skillmanager.project.MarketplaceRegistrations.Agent.CLAUDE) {
+            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.knownMarketplaces(agentDirs.get(0)), WHAT);
+            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.claudeSettings(agentDirs.get(0)), WHAT);
+        } else {
+            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.codexConfig(agentDirs.get(1)), WHAT);
+        }
+        switch (judged.kind()) {
+            case UNDER_ANOTHER_NAME -> {
+                if (dev.skillmanager.project.MarketplaceRegistrations
+                        .migrateToIdentity(entry, entries, identity, mp.root()).isEmpty()) {
+                    throw new IOException("nothing re-pointed for " + finding.subject());
+                }
+            }
+            case IDENTITY_UNREGISTERED -> {
+                String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(mp.manifestPath()).orElse(null);
+                if (!identity.equals(claimed)) {
+                    throw new IOException("the manifest names " + claimed + ", not " + identity
+                            + "; registering it now would register the wrong identity");
+                }
+                dev.skillmanager.project.MarketplaceRegistrations.registerIdentity(entry, identity, mp.root());
+            }
+            case FOREIGN -> {
+                // An enablement of a plugin this home's own marketplace carries is
+                // RE-POINTED, not removed: `sync <plugin>` reinstalls only what it
+                // names, so removal would silently drop a plugin this home has.
+                boolean done = carriedHere(entry, mp.manifestPath())
+                        ? dev.skillmanager.project.MarketplaceRegistrations.rename(entry,
+                                pluginOf(entry) + "@" + identity)
+                        : dev.skillmanager.project.MarketplaceRegistrations.remove(entry);
+                if (!done) throw new IOException(finding.subject() + " is no longer in " + entry.file());
+            }
+        }
+    }
+
+    /** The plugin half of an enablement's {@code <plugin>@<marketplace>} key; null for a registration. */
+    private static String pluginOf(dev.skillmanager.project.MarketplaceRegistrations.Entry entry) {
+        if (entry.registration()) return null;
+        return entry.key().substring(0, entry.key().lastIndexOf('@'));
+    }
+
+    /** An enablement whose plugin this home's own manifest lists. */
+    private static boolean carriedHere(dev.skillmanager.project.MarketplaceRegistrations.Entry entry,
+                                       Path manifest) {
+        String plugin = pluginOf(entry);
+        return plugin != null
+                && dev.skillmanager.project.PluginMarketplace.manifestPluginNames(manifest).contains(plugin);
+    }
+
+    /**
+     * OHV-2 (b) — links outside the store, pointing into it, resolving to
+     * nothing. See {@link Kind#DANGLING_AGENT_LINK} for the scope and its limits.
+     */
+    private static int danglingAgentLinks(Path store, List<Finding> findings) {
+        Path homeRoot = AgentHomes.homeRootFor(store);
+        Path realStore = Fs.realOrNormalized(store);
+        Set<Path> own = new LinkedHashSet<>();
+        for (Path agentDir : agentDirsOf(store)) {
+            for (String kind : PROJECTED_DIRS) own.add(agentDir.resolve(kind).toAbsolutePath().normalize());
+        }
+        Set<Path> dirs = new LinkedHashSet<>(own);
+        dirs.addAll(recordedProjectionDirs(store));
+        Set<Path> seen = new java.util.HashSet<>();
+        int examined = 0;
+        for (Path dir : dirs) {
+            if (!Files.isDirectory(dir)) continue;
+            // One directory in two spellings (/var vs /private/var, or a record
+            // naming the structural dir) is listed once, under the first
+            // spelling — the structural one, since those were added first.
+            if (!seen.add(Fs.realOrNormalized(dir))) continue;
+            List<Path> entries;
+            try (var list = Files.list(dir)) {
+                entries = list.sorted().toList();
+            } catch (IOException cannotList) {
+                Log.detail("home repair: could not list %s (%s)", dir, cannotList.getMessage());
+                continue;
+            }
+            for (Path entry : entries) {
+                if (!Files.isSymbolicLink(entry)) continue;
+                examined++;
+                if (Files.exists(entry)) continue;
+                Path target;
+                try {
+                    Path raw = Files.readSymbolicLink(entry);
+                    target = (raw.isAbsolute() ? raw : entry.getParent().resolve(raw)).normalize();
+                } catch (IOException | RuntimeException unreadable) {
+                    continue;
+                }
+                if (!target.startsWith(store) && !Fs.realOrNormalized(target).startsWith(realStore)) {
+                    continue;
+                }
+                String name = entry.getFileName().toString();
+                boolean ownDir = own.contains(dir);
+                boolean recorded = Files.exists(store.resolve("installed").resolve(name + ".json"),
+                        LinkOption.NOFOLLOW_LINKS);
+                Path abs = entry.toAbsolutePath().normalize();
+                String subject = abs.startsWith(homeRoot)
+                        ? homeRoot.relativize(abs).toString().replace('\\', '/')
+                        : abs.toString();
+                findings.add(new Finding(Kind.DANGLING_AGENT_LINK, subject,
+                        "points at " + target + ", inside this home, and nothing is there"
+                                + (recorded
+                                        ? " — installed/" + name + ".json still records the unit, "
+                                                + "so its store copy is what is missing"
+                                        : " — this home no longer holds the unit it projected"),
+                        recorded
+                                ? "re-install it here (`skill-manager sync " + name + "`), or "
+                                        + "uninstall it so its links go with it"
+                                : ownDir
+                                        ? "skill-manager home repair --fix removes the link — it "
+                                                + "resolves to nothing, so removing it loses nothing"
+                                        : "remove it by hand (rm " + abs + "): it sits in a "
+                                                + "directory a projection record names, outside this "
+                                                + "home's own agent directories, and `home repair "
+                                                + "--fix` writes only to the home's own two axes",
+                        ownDir && !recorded, null));
+            }
+        }
+        return examined;
+    }
+
+    /**
+     * Every directory this home's projection records name: each binding's
+     * {@code targetRoot} and each projection's {@code destPath} parent. Orphaned
+     * records included — a retired unit's record is exactly where its
+     * surviving links are written down.
+     */
+    static Set<Path> recordedProjectionDirs(Path store) {
+        Set<Path> out = new LinkedHashSet<>();
+        try {
+            for (dev.skillmanager.bindings.Binding b
+                    : new dev.skillmanager.bindings.BindingStore(new SkillStore(store)).listAll()) {
+                if (b.targetRoot() != null) out.add(b.targetRoot().toAbsolutePath().normalize());
+                if (b.projections() == null) continue;
+                for (dev.skillmanager.bindings.Projection p : b.projections()) {
+                    Path dest = p.destPath();
+                    if (dest != null && dest.getParent() != null) {
+                        out.add(dest.getParent().toAbsolutePath().normalize());
+                    }
+                }
+            }
+        } catch (RuntimeException unreadable) {
+            Log.detail("home repair: could not read projection records in %s (%s)",
+                    store, unreadable.getMessage());
+        }
+        return out;
+    }
+
+    /**
+     * OHV-2 (c) — a projection ledger that outlived its unit. See
+     * {@link Kind#ORPHANED_PROJECTION_RECORD}.
+     */
+    private static int orphanedProjectionRecords(Path store, List<Finding> findings) {
+        Path installed = store.resolve("installed");
+        if (!Files.isDirectory(installed, LinkOption.NOFOLLOW_LINKS)) return 0;
+        List<Path> records;
+        try (var list = Files.list(installed)) {
+            records = list.filter(p -> p.getFileName().toString().endsWith(PROJECTIONS_SUFFIX))
+                    .sorted().toList();
+        } catch (IOException cannotList) {
+            return 0;
+        }
+        int examined = 0;
+        for (Path record : records) {
+            if (!Files.isRegularFile(record, LinkOption.NOFOLLOW_LINKS)) continue;
+            examined++;
+            String unit = unitOfRecord(record);
+            if (unit == null || unitStillHere(store, unit)) continue;
+            int projections = 0;
+            try {
+                for (dev.skillmanager.bindings.Binding b
+                        : new dev.skillmanager.bindings.BindingStore(new SkillStore(store))
+                                .read(unit).bindings()) {
+                    projections += b.projections() == null ? 0 : b.projections().size();
+                }
+            } catch (RuntimeException unreadable) {
+                // The count is description; the finding does not depend on it.
+            }
+            findings.add(new Finding(Kind.ORPHANED_PROJECTION_RECORD,
+                    "installed/" + record.getFileName(),
+                    "records " + projections + " projection(s) of " + unit + ", and this home "
+                            + "holds no installed/" + unit + ".json and no " + unit + " unit "
+                            + "directory — the unit is gone and its record outlived it",
+                    "skill-manager home repair --fix deletes this record and nothing else; a "
+                            + "link it names that is left dangling is reported separately as "
+                            + Kind.DANGLING_AGENT_LINK,
+                    true, null));
+        }
+        return examined;
+    }
+
+    private static String unitOfRecord(Path record) {
+        String file = record.getFileName().toString();
+        if (!file.endsWith(PROJECTIONS_SUFFIX)) return null;
+        String unit = file.substring(0, file.length() - PROJECTIONS_SUFFIX.length());
+        return unit.isEmpty() ? null : unit;
+    }
+
+    /** An install record, or a unit directory of any kind, for {@code unit}. */
+    private static boolean unitStillHere(Path store, String unit) {
+        if (Files.exists(store.resolve("installed").resolve(unit + ".json"), LinkOption.NOFOLLOW_LINKS)) {
+            return true;
+        }
+        for (String dir : UNIT_DIRS) {
+            if (Files.exists(store.resolve(dir).resolve(unit), LinkOption.NOFOLLOW_LINKS)) return true;
+        }
+        return false;
     }
 
     /**
@@ -949,11 +1382,15 @@ public final class HomeRepair {
     /**
      * DEF-OUN-018, half one: shims that name THIS home absolutely.
      *
-     * <p>Read with the same {@link ShimHomeContract} the installer uses, so a
-     * shape it declines to rewrite is a shape this declines to report — a
-     * finding nothing can act on is noise, and this class already carries one
-     * of those on purpose ({@code bin/cli} as a directory link) with the
-     * reason written down.
+     * <p>OHV-4 (#341, DEF-OHV-001): reported on what the shim SAYS
+     * ({@link ShimHomeContract#frozenHomeLines}), not on whether
+     * {@link ShimHomeContract#selfDerivingRewrite} has a rewrite to offer. The
+     * old gate ("only report what can be rewritten") is exactly what exempted
+     * the half-rewritten shim: the rewriter declined it because it already held
+     * the token, so the detector declined to report it, and verify and repair
+     * both called the root home clean over three shims a copied home would run
+     * from the source host's path. Whether the finding is repairable is now a
+     * separate question, answered on the finding.
      */
     private static int scanFrozenShims(Path store, List<Finding> findings) {
         int examined = 0;
@@ -964,19 +1401,28 @@ public final class HomeRepair {
                 for (Path shim : entries.sorted().toList()) {
                     if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) continue;
                     examined++;
-                    if (ShimHomeContract.frozenHomePaths(store, shim).isEmpty()) continue;
-                    // Only report what can actually be rewritten. The contract
-                    // refuses a shape it does not understand rather than
-                    // half-rewriting it, and so does this.
-                    if (ShimHomeContract.selfDerivingRewrite(store, shim) == null) continue;
+                    boolean frozen = !ShimHomeContract.frozenHomeLines(store, shim).isEmpty();
+                    // DEF-OHV-190: an sh/dash shim anchored with the bash-only
+                    // line does not know its home either -- it resolves `/`.
+                    boolean bashOnlyAnchor = !ShimHomeContract.bashOnlyAnchorLines(shim).isEmpty();
+                    if (!frozen && !bashOnlyAnchor) continue;
+                    boolean rewritable = ShimHomeContract.selfDerivingRewrite(store, shim) != null;
                     String rel = store.relativize(shim).toString();
                     findings.add(new Finding(Kind.FROZEN_HOME_PATH_IN_SHIM, rel,
-                            "names this home by absolute path, so it runs the home it was "
-                                    + "WRITTEN in rather than the one it is standing in — "
-                                    + "correct here, wrong the moment this home is copied",
-                            "skill-manager home repair --fix (or `sync <unit> "
-                                    + "--force-scripts`, which rewrites it on the way past)",
-                            true, shim));
+                            frozen
+                                    ? "names this home by absolute path, so it runs the home it was "
+                                            + "WRITTEN in rather than the one it is standing in — "
+                                            + "correct here, wrong the moment this home is copied"
+                                    : "derives its home with ${BASH_SOURCE[0]}, which its sh/dash "
+                                            + "interpreter cannot parse where /bin/sh is dash: the "
+                                            + "home resolves to / and every exec through it fails",
+                            rewritable
+                                    ? "skill-manager home repair --fix (or `sync <unit> "
+                                            + "--force-scripts`, which rewrites it on the way past)"
+                                    : "not a shell script `home repair --fix` can rewrite: derive "
+                                            + "the home from the shim's own location on that line, "
+                                            + "or reinstall the unit that wrote it",
+                            rewritable, shim));
                 }
             } catch (IOException ignored) {
                 // A directory that cannot be listed is another kind's subject.
@@ -1086,6 +1532,32 @@ public final class HomeRepair {
                 WriteConfinement.checkWrite(store.resolve(finding.subject()), WHAT);
                 LauncherShims.write(new SkillStore(store), finding.target());
             }
+            // OHV-2. Removal, re-checked at the moment of writing: the finding
+            // is a snapshot and the link may have come back to life since.
+            case DANGLING_AGENT_LINK -> {
+                Path link = AgentHomes.homeRootFor(store).resolve(finding.subject());
+                WriteConfinement.requireInside(link, homeOf(link), "home repair (remove)");
+                if (!Files.isSymbolicLink(link)) throw new IOException(link + " is no longer a link");
+                if (Files.exists(link)) throw new IOException(link + " resolves again; left in place");
+                Files.delete(link);
+            }
+            case ORPHANED_PROJECTION_RECORD -> {
+                Path record = store.resolve(finding.subject());
+                WriteConfinement.checkWrite(record, WHAT);
+                String unit = unitOfRecord(record);
+                if (unit == null || unitStillHere(store, unit)) {
+                    throw new IOException("the unit " + unit + " is back; its record is left in place");
+                }
+                Files.deleteIfExists(record);
+            }
+            // OHV-6 (#352). The manifest's one writer, not a name patch.
+            case MARKETPLACE_IDENTITY_COPIED -> {
+                var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
+                WriteConfinement.checkWrite(mp.manifestPath(), WHAT);
+                mp.regenerate();
+            }
+            case MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME, MARKETPLACE_IDENTITY_UNREGISTERED,
+                    FOREIGN_MARKETPLACE_REGISTRATION -> applyMarketplaceEntry(store, finding);
         }
     }
 

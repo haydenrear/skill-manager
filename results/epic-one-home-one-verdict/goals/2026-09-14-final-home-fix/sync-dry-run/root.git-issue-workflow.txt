@@ -1,0 +1,29 @@
+
+DRY RUN — no changes will be made
+operation: sync-4727ac02-4511-4b9f-b734-e58ebbee1e68
+effects (2):
+→ [1] snapshot pre-mutation MCP deps
+→ [2] git-sync git-issue-workflow (kind=SKILL, installSource=GIT, gitLatest=false, merge=false)
+effects (17):
+→ [3] retire the units this upgrade supersedes
+→ [4] resolve graph from unmet references in 18 live skill(s)
+→ [5] commit resolved unit(s) to store
+→ [6] validate markdown skill-imports for 1 unit(s)
+→ [7] validate markdown skill-imports for resolved unit(s)
+→ [8] build install plan over resolved skill(s)
+→ [9] append audit entry (verb=sync, targets=1)
+→ [10] write installed/<name>.json for resolved unit(s)
+→ [11] expand + run install plan (gateway=http://127.0.0.1:51717)
+→ [12] install runtime tools (uv/npm/docker/brew) for 27 unit(s)
+→ [13] install CLI deps for 27 unit(s)
+→ [14] register MCP deps with http://127.0.0.1:51717
+       - hyper-experiments → runpod (global-sticky)
+→ [15] sync agents over 27 unit(s)
+→ [16] refresh harness plugin marketplace (reinstall=3, uninstall=0)
+→ [17] diff snapshot vs live and unregister orphans
+→ [18] write units.lock.toml (29 unit(s)) → /Users/hayde/.skill-manager/units.lock.toml
+→ [19] sync 1 unit(s)' claiming project(s)
+alwaysAfter (1):
+→ [20] cleanup staged graph (resolved skill(s))
+
+! Telemetry export unavailable; continuing without telemetry.

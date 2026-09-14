@@ -1,0 +1,4 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home
+✗ this home is attached to the shared gateway at http://127.0.0.1:51799 — it does not own it, so `gateway down` would stop a gateway other homes are using.
+! Telemetry export unavailable; continuing without telemetry.

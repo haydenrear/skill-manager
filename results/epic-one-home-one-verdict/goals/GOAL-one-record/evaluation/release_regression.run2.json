@@ -1,0 +1,61 @@
+{
+  "checks": 6,
+  "disagreements": 0,
+  "could_not_measure": 2,
+  "results": [
+    {
+      "check": "census matches disk",
+      "home": "/Users/hayde/.skill-manager",
+      "measured": false,
+      "why": "unreadable json: Extra data: line 6328 column 1 (char 241762)"
+    },
+    {
+      "check": "record matches checkout",
+      "home": "/Users/hayde/.skill-manager",
+      "measured": true,
+      "agrees": true,
+      "disagreements": [],
+      "unreadable": []
+    },
+    {
+      "check": "repair agrees with copy-readiness",
+      "home": "/Users/hayde/.skill-manager",
+      "measured": true,
+      "agrees": true,
+      "home_repair_says_clean": false,
+      "copy_probe_says_ready": false,
+      "properties": {
+        "a_no_credential_travels": true,
+        "b_no_shim_names_the_source_home": false,
+        "c_usable_on_another_platform": true
+      }
+    },
+    {
+      "check": "census matches disk",
+      "home": "/Users/hayde/IdeaProjects/wt-ohv-8/.skill-manager",
+      "measured": false,
+      "why": "unreadable json: Extra data: line 1476 column 1 (char 50500)"
+    },
+    {
+      "check": "record matches checkout",
+      "home": "/Users/hayde/IdeaProjects/wt-ohv-8/.skill-manager",
+      "measured": true,
+      "agrees": true,
+      "disagreements": [],
+      "unreadable": []
+    },
+    {
+      "check": "repair agrees with copy-readiness",
+      "home": "/Users/hayde/IdeaProjects/wt-ohv-8/.skill-manager",
+      "measured": true,
+      "agrees": true,
+      "home_repair_says_clean": false,
+      "copy_probe_says_ready": true,
+      "properties": {
+        "a_no_credential_travels": true,
+        "b_no_shim_names_the_source_home": true,
+        "c_usable_on_another_platform": true
+      }
+    }
+  ]
+}

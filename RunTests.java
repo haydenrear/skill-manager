@@ -64,6 +64,8 @@ import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
 import dev.skillmanager.cli.installer.CliPresenceTest;
 import dev.skillmanager.cli.installer.InstallerFingerprintTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
+import dev.skillmanager.cli.installer.SkillScriptWriteThroughTest;
+import dev.skillmanager.cli.installer.BinCliWritersDoNotFollowLinksTest;
 import dev.skillmanager.artifacts.ArtifactBackfillTest;
 import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
 import dev.skillmanager.artifacts.ArtifactGraphTest;
@@ -184,6 +186,8 @@ public class RunTests {
         failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
+        failures += SkillScriptWriteThroughTest.run();
+        failures += BinCliWritersDoNotFollowLinksTest.run();
         failures += InstallerFingerprintTest.run();
         failures += CliPresenceTest.run();
         failures += CliArtifactMatrixTest.run();
@@ -232,6 +236,7 @@ public class RunTests {
         failures += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
+        failures += dev.skillmanager.project.MarketplaceRegistrationsTest.run();
         failures += HomeRefreshPluginsTest.run();
         failures += RefreshHarnessPluginsTest.run();
         failures += PublishDetectsPluginTest.run();
@@ -296,6 +301,8 @@ public class RunTests {
         failures += dev.skillmanager.cli.installer.ProducerStaysInsideItsHomeTest.run();
         failures += dev.skillmanager.sandbox.ConfinementTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
+        // OHV-1 (#338): one home judged by two builds; each verdict names its own.
+        failures += dev.skillmanager.commands.VerdictsNameTheirBuildTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
         failures += dev.skillmanager.store.HomeDescriptorCliRemedyTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();
@@ -307,6 +314,8 @@ public class RunTests {
         failures += dev.skillmanager.store.ShimHomeContractTest.run();
         // OUN-10: the same rule read on the OTHER side of a copy.
         failures += dev.skillmanager.store.ShimSurvivesACopyTest.run();
+        // DEF-OHV-190: the anchor RUNS under every shell the shebang check accepts.
+        failures += dev.skillmanager.store.ShimAnchorRunsUnderEveryShellTest.run();
         failures += dev.skillmanager.store.CopyCrossesAPlatformTest.run();
         failures += dev.skillmanager.launch.DurableCliPinTest.run();
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
@@ -329,6 +338,7 @@ public class RunTests {
         failures += ArtifactBuildTest.run();
         failures += LazyArtifactHomeTest.run();
         failures += ArtifactPruneTest.run();
+        failures += dev.skillmanager.source.RecordVersionRefreshTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();

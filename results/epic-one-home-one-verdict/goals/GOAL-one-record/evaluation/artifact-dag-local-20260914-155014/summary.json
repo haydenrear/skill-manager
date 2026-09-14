@@ -1,0 +1,669 @@
+{"runId":"20260914-155014","status":"passed","traceId":"10b416e19a3d7000820f0ef959ea29b5","execution":{"mode":"full","graphName":"artifact-dag","complete":true,"expectedNodeIds":["env.prepared","artifacts.enumerated","every.lock.row.fingerprinted","edited.input.marks.dependents.stale","build.repairs.one.artifact","lazy.clone.declares.without.building","cold.artifact.refusal.names.build","uninstall.prunes.the.subgraph","home.fixpoint.law","home.membership.law"],"observedNodeIds":["artifacts.enumerated","build.repairs.one.artifact","cold.artifact.refusal.names.build","edited.input.marks.dependents.stale","env.prepared","every.lock.row.fingerprinted","home.fixpoint.law","home.membership.law","lazy.clone.declares.without.building","uninstall.prunes.the.subgraph"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","artifacts.enumerated","every.lock.row.fingerprinted","edited.input.marks.dependents.stale","build.repairs.one.artifact","lazy.clone.declares.without.building","cold.artifact.refusal.names.build","uninstall.prunes.the.subgraph","home.fixpoint.law","home.membership.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+  "nodeId" : "artifacts.enumerated",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:16.047603Z",
+  "endedAt" : "2026-09-14T15:50:23.880214Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_can_be_read",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_both_unit_stores",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_both_cli_shims",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_both_provisioned_cache_trees",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_every_agent_projection",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_answers_without_a_recorded_ledger",
+    "status" : "passed"
+  }, {
+    "name" : "naming_the_census_rebuilt_no_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "naming_the_census_ran_no_installer",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:16.059185Z",
+    "endedAt" : "2026-09-14T15:50:19.299836Z",
+    "exitCode" : 0,
+    "pid" : 35044,
+    "log" : "node-logs/artifacts.enumerated.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:19.300442Z",
+    "endedAt" : "2026-09-14T15:50:21.990261Z",
+    "exitCode" : 0,
+    "pid" : 35208,
+    "log" : "node-logs/artifacts.enumerated.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:50:22.004865Z",
+    "endedAt" : "2026-09-14T15:50:23.876127Z",
+    "exitCode" : 0,
+    "pid" : 35316,
+    "log" : "node-logs/artifacts.enumerated.artifacts-list.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "artifactsNamed" : 12,
+    "projectionsNamed" : 6,
+    "skillScriptRuns" : 2,
+    "durationMs" : 7833
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:15.306066Z","executorEndedAt":"2026-09-14T15:50:23.990224Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/artifacts.enumerated.stdout.log","inputContextFile":"context/artifacts.enumerated.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "build.repairs.one.artifact",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:42.885170Z",
+  "endedAt" : "2026-09-14T15:50:54.652032Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_units_skill_script_was_edited",
+    "status" : "passed"
+  }, {
+    "name" : "build_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "build_reports_the_named_artifact_built",
+    "status" : "passed"
+  }, {
+    "name" : "build_leaves_nothing_it_selected_stale",
+    "status" : "passed"
+  }, {
+    "name" : "the_rebuilt_tool_runs_the_edited_installers_output",
+    "status" : "passed"
+  }, {
+    "name" : "the_repaired_artifact_is_current_again",
+    "status" : "passed"
+  }, {
+    "name" : "a_sibling_artifacts_bytes_are_not_touched",
+    "status" : "passed"
+  }, {
+    "name" : "a_sibling_artifacts_mtime_is_not_touched",
+    "status" : "passed"
+  }, {
+    "name" : "a_sibling_artifacts_recorded_fingerprint_is_not_touched",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:42.896088Z",
+    "endedAt" : "2026-09-14T15:50:45.957426Z",
+    "exitCode" : 0,
+    "pid" : 35751,
+    "log" : "node-logs/build.repairs.one.artifact.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:45.957677Z",
+    "endedAt" : "2026-09-14T15:50:48.524248Z",
+    "exitCode" : 0,
+    "pid" : 35897,
+    "log" : "node-logs/build.repairs.one.artifact.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "build-one",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "build", "cli-shim:skill-script/ad-alpha-tool", "--yes", "--json" ],
+    "startedAt" : "2026-09-14T15:50:48.526246Z",
+    "endedAt" : "2026-09-14T15:50:50.500348Z",
+    "exitCode" : 0,
+    "pid" : 35993,
+    "log" : "node-logs/build.repairs.one.artifact.build-one.log",
+    "error" : null
+  }, {
+    "label" : "invoke-rebuilt",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager/bin/cli/ad-alpha-tool" ],
+    "startedAt" : "2026-09-14T15:50:50.501261Z",
+    "endedAt" : "2026-09-14T15:50:50.841023Z",
+    "exitCode" : 0,
+    "pid" : 36205,
+    "log" : "node-logs/build.repairs.one.artifact.invoke-rebuilt.log",
+    "error" : null
+  }, {
+    "label" : "stale-after-build",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-09-14T15:50:50.841454Z",
+    "endedAt" : "2026-09-14T15:50:54.649349Z",
+    "exitCode" : 0,
+    "pid" : 36222,
+    "log" : "node-logs/build.repairs.one.artifact.stale-after-build.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "skillScriptRuns" : 3,
+    "durationMs" : 11767
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:42.212538Z","executorEndedAt":"2026-09-14T15:50:54.762339Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/build.repairs.one.artifact.stdout.log","inputContextFile":"context/build.repairs.one.artifact.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "cold.artifact.refusal.names.build",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:51:11.705968Z",
+  "endedAt" : "2026-09-14T15:51:16.757112Z",
+  "assertions" : [ {
+    "name" : "the_fixture_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "the_shim_travelled_and_its_tree_did_not",
+    "status" : "passed"
+  }, {
+    "name" : "an_unbuilt_shim_refuses_rather_than_running",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_the_cold_artifact",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_the_build_command_that_warms_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:11.718705Z",
+    "endedAt" : "2026-09-14T15:51:14.659994Z",
+    "exitCode" : 0,
+    "pid" : 37012,
+    "log" : "node-logs/cold.artifact.refusal.names.build.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "home-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "clone", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:14.660256Z",
+    "endedAt" : "2026-09-14T15:51:16.576574Z",
+    "exitCode" : 0,
+    "pid" : 37133,
+    "log" : "node-logs/cold.artifact.refusal.names.build.home-clone.log",
+    "error" : null
+  }, {
+    "label" : "invoke-cold-shim",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager/bin/cli/ad-alpha-tool" ],
+    "startedAt" : "2026-09-14T15:51:16.577228Z",
+    "endedAt" : "2026-09-14T15:51:16.755979Z",
+    "exitCode" : 86,
+    "pid" : 37267,
+    "log" : "node-logs/cold.artifact.refusal.names.build.invoke-cold-shim.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "coldShimExit" : 86,
+    "durationMs" : 5052
+  },
+  "logs" : [ "what invoking the cold shim actually printed:\nskill-manager: 'ad-alpha-tool' is declared in this home and has not been built.\n  reason:  it runs out of $SKILL_MANAGER_HOME/cache/skill-script-ad-alpha-unit-ad-alpha-tool/bin/ad-alpha-tool, which this home does not have\n  home:    /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager\n  build it:  skill-manager build 'cli-shim:skill-script/ad-alpha-tool'\n        or:  skt build 'cli-shim:skill-script/ad-alpha-tool'\n  note:    that command exits 1 even when it built what you asked for (ARTI-06); re-run this entry point rather than trusting its status.\n" ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager",
+    "cloneHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:51:11.005043Z","executorEndedAt":"2026-09-14T15:51:16.864916Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cold.artifact.refusal.names.build.stdout.log","inputContextFile":"context/cold.artifact.refusal.names.build.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "edited.input.marks.dependents.stale",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:33.206853Z",
+  "endedAt" : "2026-09-14T15:50:42.086515Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "nothing_is_stale_before_the_edit",
+    "status" : "passed"
+  }, {
+    "name" : "the_units_skill_script_was_edited",
+    "status" : "passed"
+  }, {
+    "name" : "stale_can_be_asked",
+    "status" : "passed"
+  }, {
+    "name" : "stale_names_the_edited_units_shim",
+    "status" : "passed"
+  }, {
+    "name" : "stale_names_the_cache_tree_that_shim_runs_out_of",
+    "status" : "passed"
+  }, {
+    "name" : "stale_leaves_the_untouched_sibling_alone",
+    "status" : "passed"
+  }, {
+    "name" : "stale_says_which_inputs_moved",
+    "status" : "passed"
+  }, {
+    "name" : "asking_what_is_stale_rebuilt_no_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "asking_what_is_stale_ran_no_installer",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:33.216738Z",
+    "endedAt" : "2026-09-14T15:50:36.120154Z",
+    "exitCode" : 0,
+    "pid" : 35576,
+    "log" : "node-logs/edited.input.marks.dependents.stale.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:36.120826Z",
+    "endedAt" : "2026-09-14T15:50:38.555665Z",
+    "exitCode" : 0,
+    "pid" : 35656,
+    "log" : "node-logs/edited.input.marks.dependents.stale.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "stale-before",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-09-14T15:50:38.556336Z",
+    "endedAt" : "2026-09-14T15:50:40.243331Z",
+    "exitCode" : 0,
+    "pid" : 35686,
+    "log" : "node-logs/edited.input.marks.dependents.stale.stale-before.log",
+    "error" : null
+  }, {
+    "label" : "stale-after",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-09-14T15:50:40.252752Z",
+    "endedAt" : "2026-09-14T15:50:42.082344Z",
+    "exitCode" : 0,
+    "pid" : 35706,
+    "log" : "node-logs/edited.input.marks.dependents.stale.stale-after.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "staleAfterEdit" : 2,
+    "durationMs" : 8880
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:32.581711Z","executorEndedAt":"2026-09-14T15:50:42.197209Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/edited.input.marks.dependents.stale.stdout.log","inputContextFile":"context/edited.input.marks.dependents.stale.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:15.085115Z",
+  "endedAt" : "2026-09-14T15:50:15.110058Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 57569,
+    "gatewayPort" : 57570,
+    "durationMs" : 25
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/agent-home/.gemini",
+    "registryPort" : "57569",
+    "gatewayPort" : "57570"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:14.443752Z","executorEndedAt":"2026-09-14T15:50:15.286167Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "every.lock.row.fingerprinted",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:24.740646Z",
+  "endedAt" : "2026-09-14T15:50:32.440178Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_lock_holds_a_row_for_every_declared_dep",
+    "status" : "passed"
+  }, {
+    "name" : "every_lock_row_carries_an_install_fingerprint",
+    "status" : "passed"
+  }, {
+    "name" : "every_install_fingerprint_is_graded",
+    "status" : "passed"
+  }, {
+    "name" : "every_install_fingerprint_names_its_basis",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_reports_the_fingerprint_the_lock_holds",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:24.751999Z",
+    "endedAt" : "2026-09-14T15:50:28.035718Z",
+    "exitCode" : 0,
+    "pid" : 35402,
+    "log" : "node-logs/every.lock.row.fingerprinted.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:28.036018Z",
+    "endedAt" : "2026-09-14T15:50:30.629286Z",
+    "exitCode" : 0,
+    "pid" : 35472,
+    "log" : "node-logs/every.lock.row.fingerprinted.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:50:30.630414Z",
+    "endedAt" : "2026-09-14T15:50:32.438987Z",
+    "exitCode" : 0,
+    "pid" : 35518,
+    "log" : "node-logs/every.lock.row.fingerprinted.artifacts-list.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "lockRows" : 2,
+    "durationMs" : 7700
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:24.034934Z","executorEndedAt":"2026-09-14T15:50:32.545832Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/every.lock.row.fingerprinted.stdout.log","inputContextFile":"context/every.lock.row.fingerprinted.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:51:30.020119Z",
+  "endedAt" : "2026-09-14T15:51:45.892570Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 9,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 0,
+    "homesDamagedOnPurpose" : 0,
+    "durationMs" : 15872
+  },
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:51:29.213564Z","executorEndedAt":"2026-09-14T15:51:45.988100Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "home.membership.law",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:51:46.668529Z",
+  "endedAt" : "2026-09-14T15:52:04.436540Z",
+  "assertions" : [ {
+    "name" : "every_home_holds_exactly_what_was_installed_into_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_detector_flags_a_planted_gain_and_a_planted_loss",
+    "status" : "passed"
+  }, {
+    "name" : "an_unmarked_intruder_beside_a_marked_staged_unit_is_still_flagged",
+    "status" : "passed"
+  }, {
+    "name" : "at_least_one_home_was_actually_checked",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 9,
+    "unitsObserved" : 15,
+    "homesOutsideSandbox" : 0,
+    "descriptorDrift" : 0,
+    "homesWithMembership" : 9,
+    "stagedUnitsExcused" : 0,
+    "durationMs" : 17768
+  },
+  "logs" : [ "SELF-TEST (runs before any real home):\n  consistent home -> 0 violation(s)\n  gained a unit   -> 1 violation(s)\n  lost  a unit    -> 2 violation(s)\n  staged + intruder -> 1 violation(s), staged=[hand-planted], violations=[/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/membership-selftest-8108845514452936871/staged-and-intruder GAINED [intruder] — present in the home, and no installed/ record names them. A unit nobody installed. (1 other unit(s) here carry .test-graph-staged and were excused.)]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager\n    disk    [ad-alpha-unit, ad-beta-unit]\n    records [ad-alpha-unit, ad-beta-unit]\n    lock    [ad-alpha-unit, ad-beta-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager\n    disk    [ad-alpha-unit, ad-beta-unit]\n    records [ad-alpha-unit, ad-beta-unit]\n    lock    [ad-alpha-unit, ad-beta-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager\n    disk    [ad-alpha-unit, ad-beta-unit]\n    records [ad-alpha-unit, ad-beta-unit]\n    lock    [ad-alpha-unit, ad-beta-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager\n    disk    [ad-alpha-unit, ad-beta-unit]\n    records [ad-alpha-unit, ad-beta-unit]\n    lock    [ad-alpha-unit, ad-beta-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager\n    disk    [ad-alpha-unit, ad-beta-unit]\n    records [ad-alpha-unit, ad-beta-unit]\n    lock    [ad-alpha-unit, ad-beta-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager\n    disk    [ad-alpha-unit, ad-beta-unit]\n    records [ad-alpha-unit, ad-beta-unit]\n    lock    [ad-alpha-unit, ad-beta-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager\n    disk    [ad-alpha-unit]\n    records [ad-alpha-unit]\n    lock    [ad-alpha-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager\n    disk    [ad-alpha-unit]\n    records [ad-alpha-unit]\n    lock    [ad-alpha-unit]\n    staged  []  (.test-graph-staged)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager\n    disk    [ad-alpha-unit]\n    records [ad-alpha-unit]\n    lock    [ad-alpha-unit]\n    staged  []  (.test-graph-staged)" ],
+  "published" : {
+    "homesWithMembership" : "9",
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/fingerprinted/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager",
+    "unitsObserved" : "15"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:51:46.009293Z","executorEndedAt":"2026-09-14T15:52:04.533349Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.membership.law.stdout.log","inputContextFile":"context/home.membership.law.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "lazy.clone.declares.without.building",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:55.469909Z",
+  "endedAt" : "2026-09-14T15:51:10.859587Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_source_home_holds_built_cache_trees",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_declares_every_cli_shim_the_source_had",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_declares_every_unit_store_the_source_had",
+    "status" : "passed"
+  }, {
+    "name" : "every_declared_shim_reports_itself_unbuilt",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_carries_no_built_cache_tree",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_accepts_a_declared_but_unbuilt_home_as_normal",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_records_the_descent_that_makes_it_a_clone",
+    "status" : "passed"
+  }, {
+    "name" : "production_agrees_no_path_in_the_clone_names_the_source",
+    "status" : "passed"
+  }, {
+    "name" : "production_still_refuses_a_planted_path_into_the_source",
+    "status" : "passed"
+  }, {
+    "name" : "the_planted_decoy_is_removed_from_the_clone",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:55.483258Z",
+    "endedAt" : "2026-09-14T15:50:58.496939Z",
+    "exitCode" : 0,
+    "pid" : 36421,
+    "log" : "node-logs/lazy.clone.declares.without.building.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:58.497228Z",
+    "endedAt" : "2026-09-14T15:51:01.069486Z",
+    "exitCode" : 0,
+    "pid" : 36544,
+    "log" : "node-logs/lazy.clone.declares.without.building.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "home-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "clone", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:01.070481Z",
+    "endedAt" : "2026-09-14T15:51:03.040338Z",
+    "exitCode" : 0,
+    "pid" : 36637,
+    "log" : "node-logs/lazy.clone.declares.without.building.home-clone.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:51:03.040596Z",
+    "endedAt" : "2026-09-14T15:51:04.897163Z",
+    "exitCode" : 0,
+    "pid" : 36701,
+    "log" : "node-logs/lazy.clone.declares.without.building.artifacts-list-clone.log",
+    "error" : null
+  }, {
+    "label" : "home-verify-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:04.900016Z",
+    "endedAt" : "2026-09-14T15:51:08.227401Z",
+    "exitCode" : 0,
+    "pid" : 36759,
+    "log" : "node-logs/lazy.clone.declares.without.building.home-verify-clone.log",
+    "error" : null
+  }, {
+    "label" : "home-verify-isolation",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager", "--against", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:08.227654Z",
+    "endedAt" : "2026-09-14T15:51:09.529154Z",
+    "exitCode" : 0,
+    "pid" : 36899,
+    "log" : "node-logs/lazy.clone.declares.without.building.home-verify-isolation.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "declaredArtifacts" : 14,
+    "cloneCacheTrees" : 0,
+    "verifyBareExitCode" : 0,
+    "verifyAgainstExitCode" : 0,
+    "durationMs" : 15390
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager",
+    "cloneHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:54.790631Z","executorEndedAt":"2026-09-14T15:51:10.979988Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/lazy.clone.declares.without.building.stdout.log","inputContextFile":"context/lazy.clone.declares.without.building.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"},{
+  "nodeId" : "uninstall.prunes.the.subgraph",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:51:17.568866Z",
+  "endedAt" : "2026-09-14T15:51:29.059839Z",
+  "assertions" : [ {
+    "name" : "the_resident_unit_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_transient_unit_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_grew_the_removed_units_artifacts",
+    "status" : "passed"
+  }, {
+    "name" : "the_uninstall_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "the_removed_units_store_entry_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_removed_units_cli_shim_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_removed_units_lock_row_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_resident_units_artifacts_survive",
+    "status" : "passed"
+  }, {
+    "name" : "the_provisioned_tree_the_removed_unit_produced_is_gone",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_nothing_the_removed_unit_owned",
+    "status" : "passed"
+  }, {
+    "name" : "the_home_is_byte_comparable_to_before_the_install",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-resident",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:17.581935Z",
+    "endedAt" : "2026-09-14T15:51:20.650463Z",
+    "exitCode" : 0,
+    "pid" : 37305,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.install-resident.log",
+    "error" : null
+  }, {
+    "label" : "install-transient",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/units/ad-transient-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:20.665874Z",
+    "endedAt" : "2026-09-14T15:51:23.387134Z",
+    "exitCode" : 0,
+    "pid" : 37426,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.install-transient.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list-with",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:51:23.387395Z",
+    "endedAt" : "2026-09-14T15:51:25.204742Z",
+    "exitCode" : 0,
+    "pid" : 37546,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.artifacts-list-with.log",
+    "error" : null
+  }, {
+    "label" : "uninstall-transient",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "uninstall", "ad-transient-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:25.205589Z",
+    "endedAt" : "2026-09-14T15:51:27.221834Z",
+    "exitCode" : 0,
+    "pid" : 37619,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.uninstall-transient.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list-after",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:51:27.222096Z",
+    "endedAt" : "2026-09-14T15:51:29.052386Z",
+    "exitCode" : 0,
+    "pid" : 37700,
+    "log" : "node-logs/uninstall.prunes.the.subgraph.artifacts-list-after.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "artifactsWithTransient" : 12,
+    "artifactsAfterUninstall" : 6,
+    "durationMs" : 11491
+  },
+  "logs" : [ "entries only in the AFTER inventory:\n  \nentries only in the BEFORE inventory:\n  " ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/teardown/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:51:16.884911Z","executorEndedAt":"2026-09-14T15:51:29.167549Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/uninstall.prunes.the.subgraph.stdout.log","inputContextFile":"context/uninstall.prunes.the.subgraph.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}]}

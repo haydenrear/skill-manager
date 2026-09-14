@@ -148,6 +148,61 @@ public final class SkillScriptBackendTest {
             assertFalse(message.contains("line-01"), "failure tail omits oldest output");
         });
 
+        // OHV-4 (#341) (c): whatever an installer writes, the shim that is left
+        // in bin/cli after the install spells no form of this home, the exec
+        // line included. Two installers: deploy-helm's real shape (both lines
+        // literal), and one that half-adopted the recipe (token on the export,
+        // this home literal on the exec) -- the second is the one the old
+        // "already holds the token" early return let through unchanged.
+        for (boolean halfAdopted : new boolean[]{false, true}) {
+            String label = halfAdopted ? "half-adopted" : "deploy-helm";
+            suite.test("OHV-4 (c): a " + label + " installer's shim leaves the install with a token exec line", () -> {
+                SkillStore store = new SkillStore(Files.createTempDirectory("skill-script-shim-" + label + "-"));
+                store.init();
+                String unitName = "shim-token-skill";
+                String tool = "shim-token-bin";
+                CliDependency dep = skillScriptDep(tool);
+                // An UNQUOTED heredoc, as deploy-helm's install-console-script.sh
+                // writes its launcher: $SKILL_DIR and $venv expand at write
+                // time (the freeze), \$ stays literal (the recipe's token).
+                String exportLine = halfAdopted
+                        ? "SKILL_MANAGER_SHIM_HOME=\"\\$(cd \"\\$(dirname \"\\$0\")/../..\" && pwd)\"\n"
+                                + "export UNIT_ROOT=\"\\${SKILL_MANAGER_SHIM_HOME}/skills/" + unitName + "\""
+                        : "export UNIT_ROOT=\"$SKILL_DIR\"";
+                scaffoldSkillScript(store, unitName, tool, """
+                        #!/usr/bin/env bash
+                        set -euo pipefail
+                        venv="$SKILL_MANAGER_CACHE_DIR/skill-script-%1$s-%2$s/venv"
+                        mkdir -p "$venv/bin"
+                        printf '#!/bin/sh\\necho %2$s-ran\\n' > "$venv/bin/%2$s"
+                        chmod +x "$venv/bin/%2$s"
+                        cat > "$SKILL_MANAGER_BIN_DIR/%2$s" <<EOF
+                        #!/usr/bin/env bash
+                        %3$s
+                        exec "$venv/bin/%2$s" "\\$@"
+                        EOF
+                        chmod 0755 "$SKILL_MANAGER_BIN_DIR/%2$s"
+                        """.formatted(unitName, tool, exportLine));
+
+                new InstallerRegistry().installOne(dep, store, unitName, true);
+
+                Path shim = store.cliBinDir().resolve(tool);
+                String body = Files.readString(shim);
+                assertTrue(dev.skillmanager.store.ShimHomeContract.frozenHomeLines(store.root(), shim).isEmpty(),
+                        "no line of the installed shim spells this home: " + body);
+                assertFalse(body.contains(store.root().toString()), "given spelling gone: " + body);
+                assertFalse(body.contains(store.root().toRealPath().toString()), "real spelling gone: " + body);
+                assertContains(body, "exec \"${SKILL_MANAGER_SHIM_HOME}/cache/skill-script-" + unitName
+                        + "-" + tool + "/venv/bin/" + tool + "\"", "the exec line derives the home: " + body);
+                assertEquals(1, (int) body.lines().filter(l -> l.startsWith("SKILL_MANAGER_SHIM_HOME=")).count(),
+                        "one assignment of the token: " + body);
+                Process p = new ProcessBuilder("bash", shim.toString()).redirectErrorStream(true).start();
+                String out = new String(p.getInputStream().readAllBytes());
+                assertEquals(0, p.waitFor(), "the installed shim still runs: " + out);
+                assertContains(out, tool + "-ran", "and runs its tool");
+            });
+        }
+
         return suite.runAll();
     }
 

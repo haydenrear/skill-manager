@@ -1,0 +1,73 @@
+{
+  "nodeId" : "artifacts.enumerated",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:16.047603Z",
+  "endedAt" : "2026-09-14T15:50:23.880214Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_can_be_read",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_both_unit_stores",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_both_cli_shims",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_both_provisioned_cache_trees",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_names_every_agent_projection",
+    "status" : "passed"
+  }, {
+    "name" : "the_census_answers_without_a_recorded_ledger",
+    "status" : "passed"
+  }, {
+    "name" : "naming_the_census_rebuilt_no_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "naming_the_census_ran_no_installer",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:16.059185Z",
+    "endedAt" : "2026-09-14T15:50:19.299836Z",
+    "exitCode" : 0,
+    "pid" : 35044,
+    "log" : "node-logs/artifacts.enumerated.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:19.300442Z",
+    "endedAt" : "2026-09-14T15:50:21.990261Z",
+    "exitCode" : 0,
+    "pid" : 35208,
+    "log" : "node-logs/artifacts.enumerated.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:50:22.004865Z",
+    "endedAt" : "2026-09-14T15:50:23.876127Z",
+    "exitCode" : 0,
+    "pid" : 35316,
+    "log" : "node-logs/artifacts.enumerated.artifacts-list.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "artifactsNamed" : 12,
+    "projectionsNamed" : 6,
+    "skillScriptRuns" : 2,
+    "durationMs" : 7833
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/enumerated/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:15.306066Z","executorEndedAt":"2026-09-14T15:50:23.990224Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/artifacts.enumerated.stdout.log","inputContextFile":"context/artifacts.enumerated.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

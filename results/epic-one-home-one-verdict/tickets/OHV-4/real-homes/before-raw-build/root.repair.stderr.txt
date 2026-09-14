@@ -1,0 +1,2 @@
+! Telemetry export unavailable; continuing without telemetry.
+rc=0

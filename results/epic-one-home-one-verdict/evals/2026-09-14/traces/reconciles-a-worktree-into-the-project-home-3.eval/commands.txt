@@ -1,0 +1,13 @@
+ls -a /private/tmp/e-gugDOd/home/cwd/ ; echo "--- wt ---"; ls -a /private/tmp/e-gugDOd/home/cwd/../wt-TICKET-9/ 2>&1
+---
+.eval-bin/git worktree list 2>&1; echo "--- parent ---"; ls -a /private/tmp/e-gugDOd/home/ 2>&1
+---
+ls -a /private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/ 2>&1; echo "--- wt home ---"; ls /private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/.skill-manager/ 2>&1; echo "--- proj home ---"; ls /private/tmp/e-gugDOd/home/cwd/.skill-manager/ 2>&1; echo "--- bin ---"; ls /private/tmp/e-gugDOd/home/cwd/.skill-manager/bin/cli/ 2>&1
+---
+.skill-manager/bin/cli/skill-manager home --help 2>&1 | head -60
+---
+.skill-manager/bin/cli/skill-manager home sync --help 2>&1 | head -60
+---
+.skill-manager/bin/cli/skill-manager home sync \
+  --from=/private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/.skill-manager \
+  --to=/private/tmp/e-gugDOd/home/cwd/.skill-manager 2>&1 | tail -30

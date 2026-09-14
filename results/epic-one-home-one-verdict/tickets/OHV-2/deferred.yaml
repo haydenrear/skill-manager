@@ -1,0 +1,104 @@
+# Deferred findings — OHV-2 (#339). IDs DEF-OHV-120..129 only.
+# Searched before adding: results/*/deferred/backlog.yaml (skill-homes.md,
+# "home verify ... answers", projections.json) and `gh issue list --search`.
+
+findings:
+  - id: DEF-OHV-120
+    found_by: OHV-2 blast-radius sweep
+    found_at_commit: 3d6d4cd4
+    severity: minor
+    maps_to: "adjacent: git-epic-workflow and git-issue-workflow skill repos (unit content), not this epic's code"
+    summary: >
+      Two installed skills describe `home verify` as answering only "does
+      everything in it resolve". After OHV-2 it also fails on every
+      `home repair` finding. git-epic-workflow/SKILL.md:212 says
+      "`home verify` answers 'does everything in it *resolve*'", and
+      git-issue-workflow/references/skill-homes.md:371-377 says "Do not chase
+      `home verify`". Neither gates on the exit code, so nothing refuses work.
+      An agent reading them will under-read a non-zero verify as a resolution
+      failure.
+    disk_observation: >
+      rg -n "home verify" .skill-manager/skills/git-epic-workflow/SKILL.md
+      .skill-manager/skills/git-issue-workflow/references/skill-homes.md
+      (worktree home /Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager, unit
+      content as installed at 3d6d4cd4).
+    why_not_a_duplicate: >
+      HIS backlog l.3575 records the verify/repair disagreement itself (fixed
+      here). l.4214/4356/4964/4997 record other skill-homes.md drift (project
+      sync, clone), not verify's scope.
+    suggested_fix: one sentence in each doc after OHV-2 merges; land it through the skill repos, not a home edit
+    disposition: pending
+
+  - id: DEF-OHV-121
+    found_by: >
+      OHV-2 — home-clone and checkout-home in CI run 34802282392, plus local run
+      20260914-035302 (reproduced at the epic agent's request)
+    found_at_commit: 48d18070
+    severity: minor
+    maps_to: "adjacent: test_graph home-clone fixture hygiene, not a HomeRepair detector defect"
+    summary: >
+      UNSTAMPED_PM_TREE appeared to answer differently for one planted shape by
+      home or platform. It does not. What changes is the fixture home's disk
+      state, and that depends on which GRAPH runs.
+      home.copy.carries.no.foreign.binary (CopyCarriesNoForeignBinary.java:120)
+      cleans up with deleteRecursive(source.resolve("pm")) on the SHARED
+      fixture home. That deletes the whole pm/, including
+      home.clone.fixture.built's step-5 pm/uv/0.0.0, not just the
+      pm/node/22.9.0 the node itself planted.
+      - The home-clone graph runs that node (10/16) before home.fixpoint.law
+        (15/16), so the fixture home there has no pm/ at law time.
+      - checkout-home reuses the fixture without node 10, so the tree survives.
+      - The copies made before node 10 (home.cloned.into.project and the
+        credential copy) carry it in both graphs.
+      The behaviour is the same on macOS and Linux. No /var vs /private/var
+      spelling is involved, so OHV-5's PathSpellings needs no wiring into
+      HomeRepair's pm scan.
+    disk_observation: >
+      Local (macOS), run 20260914-035302, under
+      /private/var/folders/b7/.../T/sm-testgraph-18332811825236613049/home-clone/:
+      fixture-home/pm does not exist (`ls` says "No such file or directory");
+      project/.skill-manager/pm/uv/0.0.0 exists with no .platform; and
+      T/home-clone-credential-9601167589825407330/copy/pm/uv/0.0.0 exists with no
+      .platform.
+      CI (Linux), home-clone report 20260914-033550: the fixture-home verify
+      header reads "1 finding(s) `home repair` reports ... of 26 entries
+      examined", the frozen shim only.
+      CI (Linux), checkout-home report 20260914-033657: fixture-home reports
+      FROZEN_HOME_PATH_IN_SHIM bin/cli/hc-venv-tool and UNSTAMPED_PM_TREE
+      pm/uv/0.0.0, "of 27 entries examined"; the extra entry is the surviving
+      pm version directory.
+      Both graphs ran their nodes in declared order.
+      Linux reproduction of the macOS result: CI run 34804201355 (feature/OHV-2
+      at 9d2fd94a, which declared pm/uv/0.0.0), home-clone job 103852736511.
+      The fixture-home verdict reads "declared intentionally damaged at
+      [pm/uv/0.0.0] but home verify (exit 1) does not report it". Both copies
+      read "DAMAGED ON PURPOSE ... exactly the declared [bin/cli/hc-venv-tool,
+      pm/uv/0.0.0]". This matches the local macOS run line for line, so the
+      split is between graphs, not between platforms.
+    impact: >
+      Every home-clone node after 10/16 sees a fixture with no pm/. A
+      declaration naming pm/ content passes in one graph and fails in the other.
+      OHV-2 hit exactly this: declaring pm/uv/0.0.0 went red locally in
+      home-clone ("declared ... but home verify does not report it"), and it
+      would have been green in checkout-home.
+    why_not_a_duplicate: >
+      Searched results/*/deferred/backlog.yaml for CopyCarriesNoForeignBinary,
+      deleteRecursive, "shared fixture" and pm/uv: no entry. OUN-12's README
+      describes the node's controls, not the scope of its cleanup.
+    ohv2_disposition: >
+      Not fixed here. The node is outside this ticket's conflict keys, and the
+      defect is not in HomeRepair code. Instead, OHV-2 stamps the fixture's
+      pm/uv/0.0.0 at creation, which is what PmPlatform writes for every
+      provisioned tree, so no home in either graph carries an unstamped tree
+      and no declaration names pm/.
+      No coverage is lost:
+      `git grep -n -i -E 'stamp|\.platform|unstamped' HEAD --
+      test_graph/sources/home-clone/ test_graph/sources/checkout-home/` matches
+      only CopyCarriesNoForeignBinary's own stamped and foreign-stamp homes, plus
+      OHV-2's declarations. Unstamped judgement stays covered by
+      CopyCrossesAPlatformTest ("an UNSTAMPED toolchain is judged by the
+      binary's magic number") and by home.verdicts.unstamped.pm.tree.
+    suggested_fix: >
+      Make CopyCarriesNoForeignBinary delete only pm/node/22.9.0 (what it
+      planted), or plant into its own copy of the fixture.
+    disposition: pending

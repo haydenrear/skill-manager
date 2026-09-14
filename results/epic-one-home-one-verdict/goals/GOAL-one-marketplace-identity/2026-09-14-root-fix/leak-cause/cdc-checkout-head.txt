@@ -1,0 +1,2 @@
+ff6c689b close(#240, LIB-006): close the spec ticket, promote specs/current, record history
+feature/240-packed-publication

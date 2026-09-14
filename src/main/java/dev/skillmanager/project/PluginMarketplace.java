@@ -142,6 +142,36 @@ public final class PluginMarketplace {
         return root().resolve(".claude-plugin").resolve("marketplace.json");
     }
 
+    /**
+     * The {@code name} the manifest at {@code manifest} CLAIMS, or empty when there
+     * is no readable one. Evidence only (OHV-6, #352): nothing registers or
+     * generates from it — {@link #name()} is derived from the store path, and a
+     * manifest that disagrees was copied from another home.
+     */
+    public static java.util.Optional<String> manifestName(Path manifest) {
+        if (!Files.isRegularFile(manifest)) return java.util.Optional.empty();
+        try {
+            var node = new ObjectMapper().readTree(Files.readString(manifest)).path("name");
+            return node.isTextual() ? java.util.Optional.of(node.asText()) : java.util.Optional.empty();
+        } catch (IOException | RuntimeException unreadable) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    /** The plugin names the manifest at {@code manifest} lists; empty when there is no readable one. */
+    public static List<String> manifestPluginNames(Path manifest) {
+        List<String> out = new ArrayList<>();
+        if (!Files.isRegularFile(manifest)) return out;
+        try {
+            for (var p : new ObjectMapper().readTree(Files.readString(manifest)).path("plugins")) {
+                if (p.path("name").isTextual()) out.add(p.path("name").asText());
+            }
+        } catch (IOException | RuntimeException unreadable) {
+            return List.of();
+        }
+        return out;
+    }
+
     /** Per-plugin symlink directory inside the marketplace root. */
     public Path pluginsLinkDir() {
         return root().resolve("plugins");

@@ -1,0 +1,4 @@
+skill-manager 0.27.2+g42486f86f2e0
+build:  42486f86f2e0 (refs/heads/feature/OHV-6)
+cli:    /Users/hayde/IdeaProjects/wt-ohv-6/skill-manager
+! Telemetry export unavailable; continuing without telemetry.

@@ -1,0 +1,26 @@
+{
+  "nodeId" : "home.verdicts.fixture",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:34:37.660197Z",
+  "endedAt" : "2026-09-14T15:34:37.666785Z",
+  "assertions" : [ {
+    "name" : "the_home_did_not_exist_before_this_node",
+    "status" : "passed"
+  }, {
+    "name" : "a_clean_home_was_laid_out_from_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "the_published_home_holds_no_unit_so_membership_is_empty",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 6
+  },
+  "logs" : [ ],
+  "published" : {
+    "cleanHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/clean/.skill-manager",
+    "scratchRoot" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:34:36.954787Z","executorEndedAt":"2026-09-14T15:34:37.869604Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.fixture.stdout.log","inputContextFile":"context/home.verdicts.fixture.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

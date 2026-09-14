@@ -1,0 +1,92 @@
+{
+  "nodeId" : "build.repairs.one.artifact",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:42.885170Z",
+  "endedAt" : "2026-09-14T15:50:54.652032Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_units_skill_script_was_edited",
+    "status" : "passed"
+  }, {
+    "name" : "build_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "build_reports_the_named_artifact_built",
+    "status" : "passed"
+  }, {
+    "name" : "build_leaves_nothing_it_selected_stale",
+    "status" : "passed"
+  }, {
+    "name" : "the_rebuilt_tool_runs_the_edited_installers_output",
+    "status" : "passed"
+  }, {
+    "name" : "the_repaired_artifact_is_current_again",
+    "status" : "passed"
+  }, {
+    "name" : "a_sibling_artifacts_bytes_are_not_touched",
+    "status" : "passed"
+  }, {
+    "name" : "a_sibling_artifacts_mtime_is_not_touched",
+    "status" : "passed"
+  }, {
+    "name" : "a_sibling_artifacts_recorded_fingerprint_is_not_touched",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:42.896088Z",
+    "endedAt" : "2026-09-14T15:50:45.957426Z",
+    "exitCode" : 0,
+    "pid" : 35751,
+    "log" : "node-logs/build.repairs.one.artifact.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:45.957677Z",
+    "endedAt" : "2026-09-14T15:50:48.524248Z",
+    "exitCode" : 0,
+    "pid" : 35897,
+    "log" : "node-logs/build.repairs.one.artifact.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "build-one",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "build", "cli-shim:skill-script/ad-alpha-tool", "--yes", "--json" ],
+    "startedAt" : "2026-09-14T15:50:48.526246Z",
+    "endedAt" : "2026-09-14T15:50:50.500348Z",
+    "exitCode" : 0,
+    "pid" : 35993,
+    "log" : "node-logs/build.repairs.one.artifact.build-one.log",
+    "error" : null
+  }, {
+    "label" : "invoke-rebuilt",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager/bin/cli/ad-alpha-tool" ],
+    "startedAt" : "2026-09-14T15:50:50.501261Z",
+    "endedAt" : "2026-09-14T15:50:50.841023Z",
+    "exitCode" : 0,
+    "pid" : 36205,
+    "log" : "node-logs/build.repairs.one.artifact.invoke-rebuilt.log",
+    "error" : null
+  }, {
+    "label" : "stale-after-build",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-09-14T15:50:50.841454Z",
+    "endedAt" : "2026-09-14T15:50:54.649349Z",
+    "exitCode" : 0,
+    "pid" : 36222,
+    "log" : "node-logs/build.repairs.one.artifact.stale-after-build.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "skillScriptRuns" : 3,
+    "durationMs" : 11767
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/build/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:42.212538Z","executorEndedAt":"2026-09-14T15:50:54.762339Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/build.repairs.one.artifact.stdout.log","inputContextFile":"context/build.repairs.one.artifact.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

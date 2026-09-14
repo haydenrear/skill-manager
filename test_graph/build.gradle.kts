@@ -1734,6 +1734,106 @@ validationGraph {
     }
 
     /**
+     * home-verdicts (OHV-0, #356) — the one-home-one-verdict epic's regression
+     * guard for home DEFECT SHAPES. Every shape measured on a real home gets a
+     * node that plants it in a home laid out from nothing and pins what
+     * `home repair --json` (exit + finding kind) and `home verify` say about it.
+     * Every fix in the epic adds or tightens the node that pins its shape.
+     *
+     * PINNED: clean home (0/0); fully frozen own-home shim, foreign path in a
+     * shim, misanchored agent link, unstamped pm tree (repair 1, verify 1 and
+     * names the kind + subject — three of those were verify 0 until OHV-2).
+     *
+     * OHV-2 (#339) adds:
+     *   - verify names every repair finding, five kinds in one home ....... (a)
+     *   - dangling agent-dir link into the home (DEF-OHV-002) ............. (b)
+     *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ........ (c)
+     *
+     * OHV-4 (#341) adds:
+     *   - half-rewritten shim, header re-anchored, exec line literal
+     *     (DEF-OHV-001): repair and verify name it, --fix clears it,
+     *     a second --fix is a no-op ................ home.verdicts.half.rewritten.shim
+     *
+     * OHV-6 (#352) adds the four marketplace-identity shapes, each planted in
+     * the scratch SUBJECT's own .claude/.codex (never the operator's, never the
+     * sandbox's): repair and verify name it, --fix clears it, and the entries
+     * the repair must not touch survive:
+     *   - 1 Claude registers this home's path under another name
+     *     (re-pointed with its enablements) ... home.verdicts.marketplace.under.another.name
+     *   - 2 enabled under the identity, only a name CONTAINING it
+     *     registered (the substring trap) ...... home.verdicts.marketplace.identity.unregistered
+     *   - 3 marketplace.json copied from another home ..... home.verdicts.copied.marketplace.identity
+     *   - 4 Codex marketplace + Claude enablement of another
+     *     home's marketplace (DEF-OHV-005) ...... home.verdicts.foreign.marketplace.registration
+     *
+     * OHV-9 (#367) adds the write-through shape (DEF-OHV-011), in scratch
+     * parent/child homes: the child's bin/cli/wt-tool links to the parent's
+     * real shim (a sanctioned mirror), and a skill-script in the child writes
+     * `cat >"$SKILL_MANAGER_HOME/bin/cli/wt-tool"`. The parent must be
+     * byte-identical and the child must hold its own token-form shim. No
+     * repair/verify here: the subject is what an INSTALL writes, and the
+     * homes are deleted, never published ...... home.verdicts.child.install.writes.only.itself
+     *
+     * PENDING, with the ticket that adds each node:
+     *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
+     *
+     * THE DAMAGED HOMES NEVER REACH THE LAWS. Both laws discover homes from
+     * published context values, so shape nodes publish nothing and delete their
+     * scratch homes; the fixture publishes exactly one home, clean and empty.
+     * The friction with the laws themselves (#344) is OHV-5's.
+     *
+     * Docker-free, network-free, no install: nothing here runs EnsureGateway.
+     */
+    testGraph("home-verdicts") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-verdicts/HomeVerdictsFixture.java")
+        node("sources/home-verdicts/CleanHomeHasNoVerdict.java")
+        node("sources/home-verdicts/FrozenShimIsReported.java")
+        node("sources/home-verdicts/ForeignPathInShimIsReported.java")
+        node("sources/home-verdicts/MisanchoredAgentLinkIsReported.java")
+        node("sources/home-verdicts/UnstampedPmTreeIsReported.java")
+        node("sources/home-verdicts/VerifyNamesEveryRepairFinding.java")
+        node("sources/home-verdicts/DanglingAgentLinkIsReported.java")
+        node("sources/home-verdicts/OrphanedProjectionRecordIsReported.java")
+        node("sources/home-verdicts/HalfRewrittenShimIsReported.java")
+        node("sources/home-verdicts/MarketplaceUnderAnotherNameIsReported.java")
+        node("sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java")
+        node("sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java")
+        node("sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java")
+        node("sources/home-verdicts/ChildInstallWritesOnlyItself.java")
+        node("sources/common/HomeFixpointLaw.java").dependsOn(
+                "home.verdicts.clean.home",
+                "home.verdicts.frozen.shim",
+                "home.verdicts.foreign.path.in.shim",
+                "home.verdicts.misanchored.agent.link",
+                "home.verdicts.unstamped.pm.tree",
+                "home.verdicts.verify.names.every.repair.finding",
+                "home.verdicts.dangling.agent.link",
+                "home.verdicts.orphaned.projection.record",
+                "home.verdicts.half.rewritten.shim",
+                "home.verdicts.marketplace.under.another.name",
+                "home.verdicts.marketplace.identity.unregistered",
+                "home.verdicts.copied.marketplace.identity",
+                "home.verdicts.foreign.marketplace.registration",
+                "home.verdicts.child.install.writes.only.itself")
+        node("sources/common/HomeMembershipLaw.java").dependsOn(
+                "home.verdicts.clean.home",
+                "home.verdicts.frozen.shim",
+                "home.verdicts.foreign.path.in.shim",
+                "home.verdicts.misanchored.agent.link",
+                "home.verdicts.unstamped.pm.tree",
+                "home.verdicts.verify.names.every.repair.finding",
+                "home.verdicts.dangling.agent.link",
+                "home.verdicts.orphaned.projection.record",
+                "home.verdicts.half.rewritten.shim",
+                "home.verdicts.marketplace.under.another.name",
+                "home.verdicts.marketplace.identity.unregistered",
+                "home.verdicts.copied.marketplace.identity",
+                "home.verdicts.foreign.marketplace.registration",
+                "home.verdicts.child.install.writes.only.itself")
+    }
+
+    /**
      * sync-settles — the change-management drag, asserted end to end.
      *
      * Its own graph and NOT a node inside `home-integrity`, and the reason is

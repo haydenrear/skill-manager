@@ -73,9 +73,11 @@ public final class TarBackend implements InstallerBackend {
             // reverting this line leaves the whole suite green (measured). It
             // stays because unlink-then-write is the order that reads correctly
             // at a glance, not because the previous spelling lost anything.
-            Files.deleteIfExists(link);
-            Files.copy(binary, link, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-            Fs.makeExecutable(link);
+            //
+            // OHV-9 (#367): the delete is also why this backend cannot write
+            // through a bin/cli link into another home — see ForeignBinLinks.placeCopy.
+            ForeignBinLinks.placeCopy(binary, link,
+                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             Log.ok("cli: installed %s -> %s", dep.name(), link);
             return InstallOutcome.INSTALLED;
         } finally {

@@ -1,0 +1,2660 @@
+{
+  "summary": {
+    "build": [
+      "skill-manager 0.27.2+g85d0d4511eb0",
+      "build:  85d0d4511eb0 (refs/heads/feature/OHV-8)"
+    ],
+    "homes": 57,
+    "excluded": [
+      "/Users/hayde/IdeaProjects/wt-epic-one-home-one-verdict/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-0/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-3/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-4/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-5/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-6/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-7/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-8/.skill-manager",
+      "/Users/hayde/IdeaProjects/wt-ohv-9/.skill-manager"
+    ],
+    "verify_rc0": 15,
+    "repair_clean": 15,
+    "repair_unreadable": 0,
+    "GOAL_one_verdict_3_verify0_while_repair_damaged": 0,
+    "verify_nonzero_while_repair_clean": 0,
+    "GOAL_no_own_home_path_3_homes_with_any_own_path_entry": 33,
+    "GOAL_no_own_home_path_3_homes_with_running_line_entry": 33,
+    "GOAL_marketplace_3_repair_kinds": {
+      "shape1": 1,
+      "shape2": 0,
+      "shape3": 15,
+      "shape4": 6,
+      "any_1_3_4": 22
+    },
+    "GOAL_marketplace_3_old_harness": {
+      "shape1": 0,
+      "shape3": 17,
+      "shape4": 7,
+      "any_1_3_4": 22
+    },
+    "repair_kind_homes": {
+      "FOREIGN_PATH_IN_SHIM": 2,
+      "FROZEN_HOME_PATH_IN_SHIM": 33,
+      "UNSTAMPED_PM_TREE": 40,
+      "FOREIGN_MARKETPLACE_REGISTRATION": 6,
+      "DANGLING_AGENT_LINK": 2,
+      "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME": 1,
+      "MARKETPLACE_IDENTITY_COPIED": 15,
+      "ORPHANED_PROJECTION_RECORD": 6
+    }
+  },
+  "homes": [
+    {
+      "home": "/Users/hayde/.skill-manager",
+      "checkout": "/Users/hayde",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 6,
+      "repair_kinds": {
+        "FOREIGN_PATH_IN_SHIM": 6
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager",
+        "shape1": [],
+        "shape2_exposed": true,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/acp-cdc-ai-python",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 13,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 2,
+        "UNSTAMPED_PM_TREE": 2,
+        "FOREIGN_MARKETPLACE_REGISTRATION": 9
+      },
+      "marketplace_findings": [
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:extraKnownMarketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.skt@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.skt@skill-manager"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-082063ca",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 9
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/chess-master/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/chess-master",
+      "verify_rc": 0,
+      "verify_tail": [
+        "descent: /Users/hayde/IdeaProjects/chess-master/.skill-manager records that it was cloned from /Users/hayde/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/chess-master/.skill-manager (164 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/chess-master/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f1f0e156",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/chess-master-2-cm-01/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/chess-master-2-cm-01",
+      "verify_rc": 0,
+      "verify_tail": [
+        "descent: /Users/hayde/IdeaProjects/chess-master-2-cm-01/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/chess-master/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/chess-master-2-cm-01/.skill-manager (164 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/chess-master-2-cm-01/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-7019e00c",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/chess-master-epic-deployable-geometric-teacher/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/chess-master-epic-deployable-geometric-teacher",
+      "verify_rc": 0,
+      "verify_tail": [
+        "descent: /Users/hayde/IdeaProjects/chess-master-epic-deployable-geometric-teacher/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/chess-master/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/chess-master-epic-deployable-geometric-teacher/.skill-manager (164 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/chess-master-epic-deployable-geometric-teacher/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-42615858",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/commit-diff-context-parent",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 23,
+      "repair_kinds": {
+        "UNSTAMPED_PM_TREE": 2,
+        "DANGLING_AGENT_LINK": 19,
+        "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME": 2
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME",
+          "subject": ".codex/config.toml:marketplaces.skill-manager"
+        },
+        {
+          "kind": "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME",
+          "subject": ".codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+        }
+      ],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": [
+          "codex plugin andrej-karpathy-skills@skill-manager"
+        ]
+      },
+      "repair_marketplace_shapes": {
+        "1": 2,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 5,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 3,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "skt",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-b1719bc6",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 17,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 6,
+        "UNSTAMPED_PM_TREE": 2,
+        "FOREIGN_MARKETPLACE_REGISTRATION": 9
+      },
+      "marketplace_findings": [
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:extraKnownMarketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.skt@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.skt@skill-manager"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "computeq",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "helm-deploy",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "monitoring",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "vision-toolbelt",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f6f3becf",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 9
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-38-runner-status-vocabulary/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-38-runner-status-vocabulary",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-38-runner-status-vocabulary/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-38-runner-status-vocabulary/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-071218c8",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-39-project-scoped-config/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-39-project-scoped-config",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-39-project-scoped-config/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-39-project-scoped-config/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-cd671cc0",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-40-testgraph-run-identity/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-40-testgraph-run-identity",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-40-testgraph-run-identity/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-40-testgraph-run-identity/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-b6848f04",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-41-spec-effect-ports/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-41-spec-effect-ports",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-41-spec-effect-ports/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-41-spec-effect-ports/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-11856f5a",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f6f3becf",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f6f3becf",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f6f3becf",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f6f3becf",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f6f3becf",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/embabel-meta-skill",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 13,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 2,
+        "UNSTAMPED_PM_TREE": 2,
+        "FOREIGN_MARKETPLACE_REGISTRATION": 9
+      },
+      "marketplace_findings": [
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:extraKnownMarketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.skt@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.skt@skill-manager"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-d9aa74ff",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 9
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-epic-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-epic-skill",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/git-epic-skill/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 14,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 3,
+        "UNSTAMPED_PM_TREE": 2,
+        "FOREIGN_MARKETPLACE_REGISTRATION": 9
+      },
+      "marketplace_findings": [
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:extraKnownMarketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.skt@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.skt@skill-manager"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "skt",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-ad350713",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 9
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14/.skill-manager (21 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-284d5c59",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-integration-repo-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-integration-repo-ARTI-14",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/git-integration-repo-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/git-integration-repo-ARTI-14/.skill-manager (21 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/git-integration-repo-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-66a66498",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-skill",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/git-issue-skill/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 2,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-46eef5d6",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14/.skill-manager (21 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-127ad399",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-workflow-skill",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 8,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 6,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "computeq",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "helm-deploy",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "monitoring",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "vision-toolbelt",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-21599365",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-b8cee392",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket",
+      "verify_rc": 0,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket/.skill-manager (33 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 3 sanctioned parent-store shim(s) above (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": null,
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-harness/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/meta-harness/.skill-manager (102 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/meta-harness/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f332f28a",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-14-run-meta-harness-as-a-substrate-actor-on/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-14-run-meta-harness-as-a-substrate-actor-on",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-harness-14-run-meta-harness-as-a-substrate-actor-on/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/meta-harness-14-run-meta-harness-as-a-substrate-actor-on/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/meta-harness/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 13,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "ORPHANED_PROJECTION_RECORD": 10
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-3ad56ee5",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-88-research-the-meta-harness-plugin-set-wha/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-88-research-the-meta-harness-plugin-set-wha",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-harness-88-research-the-meta-harness-plugin-set-wha/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/meta-harness-88-research-the-meta-harness-plugin-set-wha/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/meta-harness/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 13,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "ORPHANED_PROJECTION_RECORD": 10
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-9724e10a",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-90-the-coverage-a-green-claims-a-corpus-gat/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-90-the-coverage-a-green-claims-a-corpus-gat",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-harness-90-the-coverage-a-green-claims-a-corpus-gat/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/meta-harness-90-the-coverage-a-green-claims-a-corpus-gat/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/meta-harness/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 13,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "ORPHANED_PROJECTION_RECORD": 10
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-15acefc6",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-92-one-before-state-one-materializer-remove/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-92-one-before-state-one-materializer-remove",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-harness-92-one-before-state-one-materializer-remove/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/meta-harness-92-one-before-state-one-materializer-remove/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/meta-harness/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 13,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "ORPHANED_PROJECTION_RECORD": 10
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-eb16972a",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-orchestrator",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager (146 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-88340088",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-manager",
+      "verify_rc": 1,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store \u2014 a child home shares the parent's provisioned tools by design; the parent must outlive this home",
+        "    bin/cli/tlc2 -> /Users/hayde/.skill-manager"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "DANGLING_AGENT_LINK": 3,
+        "ORPHANED_PROJECTION_RECORD": 1
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-fd6e57d4",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-manager-integration-repository",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 5,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 3,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "skt",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-77af5a71",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-14",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-publisher-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/skill-publisher-ARTI-14/.skill-manager (14 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/skill-publisher-ARTI-14/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-ebff39c3",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-19/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-19",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-publisher-ARTI-19/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/skill-publisher-ARTI-19/.skill-manager (14 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/skill-publisher-ARTI-19/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-0cf23ce9",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-23/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-23",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-publisher-ARTI-23/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/skill-publisher-ARTI-23/.skill-manager (18 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/skill-publisher-ARTI-23/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-96be1182",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/support-agent-rears/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/support-agent-rears",
+      "verify_rc": 0,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/support-agent-rears/.skill-manager (33 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/support-agent-rears/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 3 sanctioned parent-store shim(s) above (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": null,
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/tla-spec-dev",
+      "verify_rc": 0,
+      "verify_tail": [
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager (164 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-0fd46eec",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/tla-spec-dev-2",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager records that it was cloned from /Users/hayde/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-94eb20a9",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 12,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "FOREIGN_MARKETPLACE_REGISTRATION": 9
+      },
+      "marketplace_findings": [
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:extraKnownMarketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.skt@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.skt@skill-manager"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-2604ccf5",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 9
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-229-library-attestation",
+      "verify_rc": 0,
+      "verify_tail": [
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right",
+        "`home repair` finds no damage in /Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager (91 entries examined)",
+        "\u2713 every reference in /Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 3 sanctioned parent-store shim(s) above (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)"
+      ],
+      "repair_rc": 0,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 0,
+      "repair_kinds": {},
+      "marketplace_findings": [],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-3132fc05",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid",
+      "verify_rc": 1,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "descent: /Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home",
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-231-library-reuse",
+      "verify_rc": 1,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "descent: /Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home",
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-233-reclaim-generations",
+      "verify_rc": 1,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "descent: /Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home",
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-239-sharing-harness",
+      "verify_rc": 1,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "descent: /Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home",
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-240-packed-publication/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-240-packed-publication",
+      "verify_rc": 1,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "descent: /Users/hayde/IdeaProjects/wt-240-packed-publication/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home",
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-99402102",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-241-daemon-step",
+      "verify_rc": 1,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "descent: /Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home",
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-dd6b8b43",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-253-packed-activation",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/wt-256-matrix-standalone-java-plan/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-919db26e",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-249-cli-goto-refs/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-250-java-call-edge-targets/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-251-python-fqdn-session-endpoints/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-253-packed-activation/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/deploy-cdc/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2,
+        "MARKETPLACE_IDENTITY_COPIED": 1
+      },
+      "marketplace_findings": [
+        {
+          "kind": "MARKETPLACE_IDENTITY_COPIED",
+          "subject": "plugin-marketplace/.claude-plugin/marketplace.json"
+        }
+      ],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-f6f3becf",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager"
+        ],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-library-sharing",
+      "verify_rc": 1,
+      "verify_tail": [
+        "    bin/cli/monitoring -> /Users/hayde/.skill-manager",
+        "descent: /Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home",
+        "    /Users/hayde/.skill-manager  \u2014 re-derived, so its artifacts are shared by right"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 3,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 1,
+        "UNSTAMPED_PM_TREE": 2
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-ceca3656",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+        "descent: /Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/meta-harness/.skill-manager, and names no parent store \u2014 so no foreign path in it is sanctioned by that record"
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 17,
+      "repair_kinds": {
+        "FROZEN_HOME_PATH_IN_SHIM": 5,
+        "UNSTAMPED_PM_TREE": 2,
+        "ORPHANED_PROJECTION_RECORD": 10
+      },
+      "marketplace_findings": [],
+      "own_path_bin_cli": [
+        {
+          "entry": "computeq",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "helm-deploy",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "monitoring",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tla-spec-dev",
+          "half_rewritten": false,
+          "where": "running-line"
+        },
+        {
+          "entry": "tracing-observability-install",
+          "half_rewritten": false,
+          "where": "running-line"
+        }
+      ],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-03ed986b",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": []
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      }
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-mh-testing",
+      "verify_rc": 1,
+      "verify_tail": [
+        "build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+        "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)."
+      ],
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 16,
+      "repair_kinds": {
+        "FOREIGN_PATH_IN_SHIM": 5,
+        "UNSTAMPED_PM_TREE": 2,
+        "FOREIGN_MARKETPLACE_REGISTRATION": 9
+      },
+      "marketplace_findings": [
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:extraKnownMarketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".claude/settings.json:enabledPlugins.skt@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:marketplaces.skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager"
+        },
+        {
+          "kind": "FOREIGN_MARKETPLACE_REGISTRATION",
+          "subject": ".codex/config.toml:plugins.skt@skill-manager"
+        }
+      ],
+      "own_path_bin_cli": [],
+      "old_harness_shapes": {
+        "generated_name": "skill-manager-bc1954ac",
+        "shape1": [],
+        "shape2_exposed": false,
+        "shape3": [],
+        "shape4": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "repair_marketplace_shapes": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 9
+      }
+    }
+  ]
+}

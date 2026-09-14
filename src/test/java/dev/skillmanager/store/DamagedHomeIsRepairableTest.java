@@ -405,6 +405,142 @@ public final class DamagedHomeIsRepairableTest {
                             "and --fix created no link at a path nothing stands at");
                 })
 
+                .test("OHV-2: dangling links into this home are found where the home RECORDS them, and --fix removes only what it owns", () -> {
+                    Fixture fx = Fixture.build("ohv2-scope");
+                    // (1) In the home's own agent dir, unit unrecorded: repairable.
+                    fx.damageDanglingAgentLink();
+                    // (2) In a directory only a projection record names — a
+                    // project checkout the root home projected into. Reported,
+                    // never written: a record must not widen the repair's scope.
+                    Path checkout = fx.root.getParent().resolve("checkout").resolve(".claude").resolve("skills");
+                    Files.createDirectories(checkout);
+                    Path external = checkout.resolve("gone");
+                    Files.createSymbolicLink(external, fx.store.resolve("skills").resolve("gone"));
+                    fx.writeProjectionRecord("gone", checkout);
+                    // (3) A record whose unit directory is still here: NOT an
+                    // orphan (membership's question), and --fix must not touch it.
+                    fx.writeProjectionRecord(UNIT, fx.claudeSkills());
+                    // (4) A link into ANOTHER home that dangles is not this home's.
+                    Path elsewhere = Files.createDirectories(fx.root.resolve(".gemini").resolve("skills"));
+                    Files.createSymbolicLink(elsewhere.resolve("theirs"),
+                            fx.other.resolve("skills").resolve("nope"));
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    List<HomeRepair.Finding> dangling = report.findings().stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.DANGLING_AGENT_LINK).toList();
+                    assertTrue(dangling.stream().anyMatch(f -> f.subject().equals(".codex/skills/gone")
+                                    && f.repairable()),
+                            "the own-dir link is reported and repairable; got " + dangling);
+                    String externalAbs = external.toAbsolutePath().normalize().toString();
+                    assertTrue(dangling.stream().anyMatch(f -> f.subject().equals(externalAbs)
+                                    && !f.repairable()),
+                            "the record-named link is reported by absolute path and NOT repairable; got "
+                                    + dangling);
+                    assertTrue(dangling.stream().noneMatch(f -> f.subject().contains("theirs")),
+                            "a dangling link into another home is not this home's finding; got " + dangling);
+                    List<HomeRepair.Finding> orphans = report.findings().stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.ORPHANED_PROJECTION_RECORD).toList();
+                    assertEquals(1, orphans.size(), "exactly the gone record; got " + orphans);
+                    assertEquals("installed/gone.projections.json", orphans.get(0).subject(),
+                            "the orphan is named home-relative");
+
+                    // The verify composition: exits 1 and names each finding.
+                    Result verify = verifyCmd(fx.store);
+                    assertTrue(verify.rc != 0, "verify fails when repair reports; rc=" + verify.rc);
+                    assertContains(verify.all(), "DANGLING_AGENT_LINK .codex/skills/gone",
+                            "verify names the own-dir link");
+                    assertContains(verify.all(), "DANGLING_AGENT_LINK " + externalAbs,
+                            "verify names the record-named link");
+                    assertContains(verify.all(), "ORPHANED_PROJECTION_RECORD installed/gone.projections.json",
+                            "verify names the orphaned record");
+
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertFalse(Files.exists(fx.root.resolve(".codex/skills/gone"), LinkOption.NOFOLLOW_LINKS),
+                            "the own-dir dangling link was removed");
+                    assertTrue(Files.isSymbolicLink(external),
+                            "the record-named link was left in place");
+                    assertFalse(Files.exists(fx.store.resolve("installed/gone.projections.json")),
+                            "the orphaned record was deleted");
+                    assertTrue(Files.isRegularFile(fx.store.resolve("installed/" + UNIT + ".projections.json")),
+                            "the record of a unit still on disk was left alone");
+                    assertTrue(Files.isSymbolicLink(elsewhere.resolve("theirs")),
+                            "and another home's dangling link was not touched");
+                })
+
+                .test("OHV-6: the four marketplace-identity shapes, repaired by touching only what they name", () -> {
+                    Fixture fx = Fixture.build("marketplace-identity");
+                    fx.damageMarketplaceIdentity();
+                    String id = fx.identity();
+                    Path claude = fx.root.resolve(".claude");
+                    Path codex = fx.root.resolve(".codex/config.toml");
+
+                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
+                    List<String> seen = before.findings().stream()
+                            .map(f -> f.kind() + " " + f.subject()).sorted().toList();
+                    assertEquals(List.of(
+                            "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:marketplaces.skill-manager",
+                            "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.skt@skill-manager",
+                            "MARKETPLACE_IDENTITY_COPIED plugin-marketplace/.claude-plugin/marketplace.json",
+                            "MARKETPLACE_IDENTITY_UNREGISTERED .claude/settings.json:enabledPlugins.own@" + id,
+                            "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager",
+                            "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/settings.json:enabledPlugins.skt@skill-manager"),
+                            seen, "exactly the planted entries, each with its kind");
+                    assertTrue(before.findings().stream().filter(f -> f.kind().name().contains("MARKETPLACE"))
+                                    .allMatch(f -> f.detail().contains(id)),
+                            "every marketplace finding names the identity it expected");
+
+                    HomeRepair.Outcome out = HomeRepair.repair(fx.store, fx.pin);
+
+                    assertTrue(out.failed().isEmpty(), "no repair refused: " + out.failed());
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                                    .noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
+                            "a separate detection finds none of them");
+                    assertEquals(id, dev.skillmanager.project.PluginMarketplace.manifestName(
+                            fx.store.resolve("plugin-marketplace/.claude-plugin/marketplace.json")).orElse(null),
+                            "shape 3: the manifest names this home");
+                    String known = Files.readString(claude.resolve("plugins/known_marketplaces.json"));
+                    String settings = Files.readString(claude.resolve("settings.json"));
+                    assertFalse(known.contains("\"skill-manager\""), "shape 1: the stale name is gone: " + known);
+                    assertContains(known, "\"" + id + "\"", "shape 1/2: the identity is registered");
+                    assertContains(settings, "\"skt@" + id + "\": true", "shape 1: the enablement migrated");
+                    assertContains(settings, "\"own@" + id + "\": true", "shape 2: the enablement is kept");
+                    String toml = Files.readString(codex);
+                    assertEquals("model = \"gpt-5\"  # the operator's\n\n[marketplaces." + id
+                                    + "]\nsource_type = \"local\"\nsource = \"" + fx.marketplaceDir() + "\"\n",
+                            toml, "shape 4: exactly the foreign table and its plugin are cut");
+
+                    HomeRepair.Outcome again = HomeRepair.repair(fx.store, fx.pin);
+                    assertTrue(again.repaired().stream().noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
+                            "a second --fix has nothing marketplace-related to do");
+                })
+
+                .test("OHV-6: a foreign enablement of a plugin THIS home carries is re-pointed, not dropped", () -> {
+                    Fixture fx = Fixture.build("foreign-carried");
+                    String id = fx.identity();
+                    Path manifest = fx.store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
+                    Files.createDirectories(manifest.getParent());
+                    Files.writeString(manifest, "{\"name\": \"" + id + "\", \"plugins\": [{\"name\": \"own\"}]}\n");
+                    Path codex = Files.createDirectories(fx.root.resolve(".codex")).resolve("config.toml");
+                    Files.writeString(codex,
+                            "[marketplaces." + id + "]\nsource_type = \"local\"\nsource = \"" + fx.marketplaceDir() + "\"\n\n"
+                                    + "[plugins.\"own@skill-manager\"]\nenabled = true\n\n"
+                                    + "[plugins.\"gone@skill-manager\"]\nenabled = true\n");
+
+                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(before.findings().stream().anyMatch(f ->
+                                    f.subject().equals(".codex/config.toml:plugins.own@skill-manager")
+                                            && f.remedy().contains("re-points it at own@" + id)),
+                            "the remedy says it will re-point: " + before.findings());
+                    HomeRepair.repair(fx.store, fx.pin);
+
+                    String toml = Files.readString(codex);
+                    assertContains(toml, "[plugins.\"own@" + id + "\"]", "the carried plugin stays enabled here");
+                    assertFalse(toml.contains("gone@"), "the plugin this home does not carry is removed: " + toml);
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                                    .noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
+                            "and nothing disagrees afterwards");
+                })
+
                 .test("every damage shape is reported, one line each, naming the repair", () -> {
                     // GENERIC OVER Kind.values() on purpose: a new kind that
                     // nothing plants fails here rather than shipping undetected,
@@ -424,6 +560,62 @@ public final class DamagedHomeIsRepairableTest {
                         assertTrue(finding.remedy() != null && !finding.remedy().isBlank(),
                                 "every finding names its repair; " + finding + " named none");
                     }
+
+                    // OHV-4 (#341, DEF-OHV-001): the kind is planted TWICE —
+                    // fully frozen and half-rewritten — and the guard above
+                    // passes on either alone. So the half-rewritten variant's
+                    // own subject is asserted, and so is what --fix does to it.
+                    Path half = fx.store.resolve("bin/cli").resolve(Fixture.HALF_TOOL);
+                    assertTrue(report.findings().stream().anyMatch(f ->
+                                    f.kind() == HomeRepair.Kind.FROZEN_HOME_PATH_IN_SHIM
+                                            && f.subject().equals("bin/cli/" + Fixture.HALF_TOOL)
+                                            && f.repairable()),
+                            "the HALF-rewritten shim (token export, literal exec) is reported "
+                                    + "and repairable; got " + report.findings());
+                    HomeRepair.repair(fx.store, fx.pin);
+                    String healed = Files.readString(half, StandardCharsets.UTF_8);
+                    assertTrue(ShimHomeContract.frozenHomeLines(fx.store, half).isEmpty(),
+                            "--fix re-anchored every line, the exec line included: " + healed);
+                    assertContains(healed, "exec \"${" + ShimHomeContract.SHIM_HOME_VAR + "}/cache/",
+                            "the exec line now derives the home");
+                    assertEquals(1, (int) healed.lines()
+                                    .filter(l -> l.startsWith(ShimHomeContract.SHIM_HOME_VAR + "=")).count(),
+                            "one assignment of the token: no second preamble");
+                    HomeRepair.Report after = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(after.findings().stream()
+                                    .noneMatch(f -> f.subject().equals("bin/cli/" + Fixture.HALF_TOOL)),
+                            "a separate detection no longer names it; got " + after.findings());
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertEquals(healed, Files.readString(half, StandardCharsets.UTF_8),
+                            "a second --fix changes no byte of it");
+                })
+
+                .test("OHV-4: a home spelled only in a # comment is not a finding, and --fix leaves the shim byte-identical", () -> {
+                    // #341 "Watch for": prose about a path is not a reference to
+                    // one. verify fails on every repair finding (OHV-2), so a
+                    // comment-only match would make verify red on a shim that
+                    // runs correctly.
+                    Fixture fx = Fixture.build("comment-only");
+                    Path shim = fx.store.resolve("bin/cli").resolve("commented");
+                    String body = "#!/usr/bin/env bash\n"
+                            + "# generated for " + fx.store + "/skills/" + UNIT + " by its installer\n"
+                            + "exec true \"$@\"\n";
+                    Files.writeString(shim, body, StandardCharsets.UTF_8);
+                    shim.toFile().setExecutable(true);
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(report.findings().stream()
+                                    .noneMatch(f -> f.subject().equals("bin/cli/commented")),
+                            "a comment-only spelling is not FROZEN_HOME_PATH_IN_SHIM; got " + report.findings());
+                    assertTrue(report.clean(), "and the otherwise healthy fixture stays clean; got "
+                            + report.findings());
+                    // THE CONTRACT, stated: --fix acts only on findings, so it is
+                    // a no-op here and the file is byte-identical. (The installer's
+                    // rewrite would still re-anchor the comment on a fresh install,
+                    // as it did before OHV-4; ShimSurvivesACopyTest pins that.)
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertEquals(body, Files.readString(shim, StandardCharsets.UTF_8),
+                            "--fix leaves a comment-only shim byte-identical");
                 })
 
                 .test("BLOCKER 2: a rewrite replaces a PATH, not a substring, and keeps the shim running", () -> {
@@ -1435,6 +1627,36 @@ public final class DamagedHomeIsRepairableTest {
             damageCliPin();
         }
 
+        static final String HALF_TOOL = "half-tool";
+
+        /**
+         * OHV-4 (#341), DEF-OHV-001. The root home's {@code bin/cli/computeq}
+         * shape: the rewrite preamble and a token-derived {@code export}, and an
+         * {@code exec} line that still spells this home. Exempt from
+         * {@code home repair} until OHV-4, because the rewrite declined any shim
+         * already holding the token and the detector only reported what the
+         * rewrite would take. The anchor is the pre-DEF-OHV-190
+         * {@code ${BASH_SOURCE[0]:-$0}} line on purpose: correct under this bash
+         * shebang, so it is not a finding of its own and the fix leaves it.
+         */
+        void damageHalfRewrittenShim() throws IOException {
+            Path tool = store.resolve("cache/skill-script-" + UNIT + "-" + HALF_TOOL + "/venv/bin")
+                    .resolve(HALF_TOOL);
+            Files.createDirectories(tool.getParent());
+            Files.writeString(tool, "#!/bin/sh\nexit 0\n");
+            tool.toFile().setExecutable(true);
+            Path shim = store.resolve("bin/cli").resolve(HALF_TOOL);
+            Files.writeString(shim, "#!/usr/bin/env bash\n"
+                    + "# Rewritten by skill-manager: resolve the home this shim is standing in\n"
+                    + "# rather than the one it was written into, so a copy of the home works.\n"
+                    + ShimHomeContract.SHIM_HOME_VAR
+                    + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n"
+                    + "export MONITORING_DEPLOY_CDC_ROOT=\"${" + ShimHomeContract.SHIM_HOME_VAR
+                    + "}/skills/" + UNIT + "\"\n"
+                    + "exec \"" + tool + "\" \"$@\"\n", StandardCharsets.UTF_8);
+            shim.toFile().setExecutable(true);
+        }
+
         /**
          * Every shape the detector knows, repairable or not — the fixture for
          * the DETECTION-coverage guard.
@@ -1449,7 +1671,96 @@ public final class DamagedHomeIsRepairableTest {
             damageAll();
             damageShadowedMirror();
             damageFrozenShim();
+            damageHalfRewrittenShim();
             damageUnstampedPmTree();
+            damageDanglingAgentLink();
+            damageOrphanedProjectionRecord();
+            damageMarketplaceIdentity();
+        }
+
+        /** This home's derived marketplace identity and directory. */
+        String identity() {
+            return new dev.skillmanager.project.PluginMarketplace(new SkillStore(store)).name();
+        }
+
+        String marketplaceDir() {
+            return store.resolve("plugin-marketplace").toString();
+        }
+
+        /**
+         * OHV-6 (#352), all four shapes, in THIS fixture's own {@code .claude} and
+         * {@code .codex} (under the temp root, never the operator's):
+         * <ol>
+         *   <li>Claude registers this home's directory as {@code skill-manager} and
+         *       enables {@code skt@skill-manager};</li>
+         *   <li>Claude enables {@code own@<identity>}, which nothing registers here;</li>
+         *   <li>the manifest names the OTHER home's identity;</li>
+         *   <li>Codex registers the other home's marketplace and enables a plugin from it.</li>
+         * </ol>
+         */
+        void damageMarketplaceIdentity() throws IOException {
+            String id = identity();
+            String theirs = new dev.skillmanager.project.PluginMarketplace(new SkillStore(other)).name();
+            Path manifest = store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
+            Files.createDirectories(manifest.getParent());
+            Files.writeString(manifest, "{\"name\": \"" + theirs + "\", \"plugins\": []}\n");
+            Path claude = root.resolve(".claude");
+            Files.createDirectories(claude.resolve("plugins"));
+            Files.writeString(claude.resolve("plugins/known_marketplaces.json"),
+                    "{\"skill-manager\": {\"source\": {\"source\": \"directory\", \"path\": \""
+                            + marketplaceDir() + "\"}}}\n");
+            Files.writeString(claude.resolve("settings.json"),
+                    "{\"enabledPlugins\": {\"skt@skill-manager\": true, \"own@" + id + "\": true}}\n");
+            Path codex = Files.createDirectories(root.resolve(".codex"));
+            Files.writeString(codex.resolve("config.toml"),
+                    "model = \"gpt-5\"  # the operator's\n\n"
+                            + "[marketplaces." + id + "]\nsource_type = \"local\"\nsource = \"" + marketplaceDir() + "\"\n\n"
+                            + "[marketplaces.skill-manager]\nsource_type = \"local\"\nsource = \""
+                            + other.resolve("plugin-marketplace") + "\"\n\n"
+                            + "[plugins.\"skt@skill-manager\"]\nenabled = true\n");
+        }
+
+        /**
+         * OHV-2 (b), DEF-OHV-002. A retirement's leftover: this home's own
+         * {@code .codex/skills/gone} points into this store at a unit that is
+         * not there, and nothing records the unit.
+         */
+        void damageDanglingAgentLink() throws IOException {
+            Path skills = Files.createDirectories(root.resolve(".codex").resolve("skills"));
+            Files.createSymbolicLink(skills.resolve("gone"), store.resolve("skills").resolve("gone"));
+        }
+
+        /**
+         * OHV-2 (c), DEF-OHV-002. {@code installed/gone.projections.json} with no
+         * {@code installed/gone.json} and no unit directory.
+         */
+        void damageOrphanedProjectionRecord() throws IOException {
+            writeProjectionRecord("gone", root.resolve(".codex").resolve("skills"));
+        }
+
+        /** A projection ledger for {@code unit}, one SYMLINK projection into {@code targetRoot}. */
+        void writeProjectionRecord(String unit, Path targetRoot) throws IOException {
+            Files.createDirectories(store.resolve("installed"));
+            Files.writeString(store.resolve("installed").resolve(unit + ".projections.json"), """
+                    {
+                      "unitName" : "%1$s",
+                      "bindings" : [ {
+                        "bindingId" : "default:codex:%1$s",
+                        "unitName" : "%1$s",
+                        "unitKind" : "SKILL",
+                        "targetRoot" : "%2$s",
+                        "conflictPolicy" : "ERROR",
+                        "createdAt" : "2026-09-07T13:23:56.717976Z",
+                        "source" : "DEFAULT_AGENT",
+                        "projections" : [ {
+                          "bindingId" : "default:codex:%1$s",
+                          "sourcePath" : "$SKILL_MANAGER_HOME/skills/%1$s",
+                          "destPath" : "%3$s",
+                          "kind" : "SYMLINK"
+                        } ]
+                      } ]
+                    }
+                    """.formatted(unit, targetRoot, targetRoot.resolve(unit)), StandardCharsets.UTF_8);
         }
 
         /**
@@ -1607,7 +1918,26 @@ public final class DamagedHomeIsRepairableTest {
 
     // ------------------------------------------------------------ plumbing
 
-    private record Result(int rc, String out, String err) {}
+    private record Result(int rc, String out, String err) {
+        String all() { return out + "\n" + err; }
+    }
+
+    /** {@code skill-manager home verify --home <store>}, in process, output captured. */
+    private static Result verifyCmd(Path store) {
+        PrintStream realOut = System.out;
+        PrintStream realErr = System.err;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(out, true));
+            System.setErr(new PrintStream(err, true));
+            int rc = new CommandLine(new HomeCommand()).execute("verify", "--home", store.toString());
+            return new Result(rc, out.toString(), err.toString());
+        } finally {
+            System.setOut(realOut);
+            System.setErr(realErr);
+        }
+    }
 
     private static Result cli(Path pin, String... args) {
         PrintStream realOut = System.out;

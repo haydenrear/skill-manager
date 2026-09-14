@@ -1,0 +1,13 @@
+artifacts — /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager
+build: skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)
+ledger: none — backfilled from this home's existing records
+
+unit-store:skill-manager                                              materialized   agrees    skill-manager
+unit-store:skt                                                        materialized   agrees    skt
+cli-shim:skill-script/skt                                             materialized   unverifiable skt
+projection:default:claude:skill-manager#SYMLINK/target/skill-manager  materialized   agrees    skill-manager
+projection:default:codex:skill-manager#SYMLINK/target/skill-manager   materialized   agrees    skill-manager
+projection:default:gemini:skill-manager#SYMLINK/target/skill-manager  materialized   agrees    skill-manager
+marketplace-entry:skt                                                 materialized   agrees    skt
+
+7 artifact(s) across 4 kind(s)

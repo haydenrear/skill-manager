@@ -1,0 +1,106 @@
+! Telemetry export unavailable; continuing without telemetry.
+✗ 51 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/meta-harness/.skill-manager, of 170 entries examined — each is damage, and this check fails on it
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/computeq — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/helm-deploy — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/monitoring — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/tla-spec-dev — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/tracing-observability-install — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
+✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
+✗   UNSTAMPED_PM_TREE pm/node/22.9.0 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
+✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
+✗   UNSTAMPED_PM_TREE pm/uv/0.4.18 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
+✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
+✗   DANGLING_AGENT_LINK .claude/skills/debugging — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/debugging, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .claude/skills/discovery — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/discovery, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .claude/skills/hyper-experiments-finance — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/hyper-experiments-finance, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .claude/skills/llm-wiki — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/llm-wiki, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .claude/skills/plugin-repository — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/plugin-repository, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .claude/skills/slm-agent — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/slm-agent, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .claude/skills/tracer-agent — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/tracer-agent, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .claude/skills/vision-toolbelt-skill — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/vision-toolbelt-skill, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/debugging — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/debugging, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/discovery — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/discovery, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/hyper-experiments-finance — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/hyper-experiments-finance, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/llm-wiki — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/llm-wiki, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/plugin-repository — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/plugin-repository, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/slm-agent — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/slm-agent, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/tracer-agent — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/tracer-agent, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/vision-toolbelt-skill — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/vision-toolbelt-skill, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/debugging — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/debugging, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/discovery — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/discovery, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/hyper-experiments-finance — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/hyper-experiments-finance, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/llm-wiki — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/llm-wiki, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/plugin-repository — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/plugin-repository, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/slm-agent — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/slm-agent, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/tracer-agent — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/tracer-agent, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/vision-toolbelt-skill — points at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/skills/vision-toolbelt-skill, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   ORPHANED_PROJECTION_RECORD installed/debugging.projections.json — records 3 projection(s) of debugging, and this home holds no installed/debugging.json and no debugging unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/discovery.projections.json — records 3 projection(s) of discovery, and this home holds no installed/discovery.json and no discovery unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/doc-repo-devops.projections.json — records 0 projection(s) of doc-repo-devops, and this home holds no installed/doc-repo-devops.json and no doc-repo-devops unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/hyper-experiments-finance.projections.json — records 3 projection(s) of hyper-experiments-finance, and this home holds no installed/hyper-experiments-finance.json and no hyper-experiments-finance unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/llm-wiki.projections.json — records 3 projection(s) of llm-wiki, and this home holds no installed/llm-wiki.json and no llm-wiki unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/plugin-repository.projections.json — records 3 projection(s) of plugin-repository, and this home holds no installed/plugin-repository.json and no plugin-repository unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/skill-dev-skill.projections.json — records 3 projection(s) of skill-dev-skill, and this home holds no installed/skill-dev-skill.json and no skill-dev-skill unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/skill-manager.projections.json — records 6 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/slm-agent.projections.json — records 3 projection(s) of slm-agent, and this home holds no installed/slm-agent.json and no slm-agent unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/tracer-agent.projections.json — records 3 projection(s) of tracer-agent, and this home holds no installed/tracer-agent.json and no tracer-agent unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   ORPHANED_PROJECTION_RECORD installed/vision-toolbelt-skill.projections.json — records 3 projection(s) of vision-toolbelt-skill, and this home holds no installed/vision-toolbelt-skill.json and no vision-toolbelt-skill unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   FOREIGN_MARKETPLACE_REGISTRATION .claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager — registers skill-manager at /Users/hayde/.skill-manager/plugin-marketplace, another home's marketplace — this home's is skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace, and a plugin enabled from both loads twice
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:extraKnownMarketplaces.skill-manager — registers skill-manager at /Users/hayde/.skill-manager/plugin-marketplace, another home's marketplace — this home's is skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace, and a plugin enabled from both loads twice
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager — enables andrej-karpathy-skills@skill-manager from skill-manager, registered at /Users/hayde/.skill-manager/plugin-marketplace — expected only skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace in this home
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager — enables cdc-agent-substrate-plugin@skill-manager from skill-manager, registered at /Users/hayde/.skill-manager/plugin-marketplace — expected only skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace in this home
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:enabledPlugins.skt@skill-manager — enables skt@skill-manager from skill-manager, registered at /Users/hayde/.skill-manager/plugin-marketplace — expected only skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace in this home
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:marketplaces.skill-manager — registers skill-manager at /Users/hayde/.skill-manager/plugin-marketplace, another home's marketplace — this home's is skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace, and a plugin enabled from both loads twice
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.andrej-karpathy-skills@skill-manager — enables andrej-karpathy-skills@skill-manager from skill-manager, registered at /Users/hayde/.skill-manager/plugin-marketplace — expected only skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace in this home
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager — enables cdc-agent-substrate-plugin@skill-manager from skill-manager, registered at /Users/hayde/.skill-manager/plugin-marketplace — expected only skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace in this home
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.skt@skill-manager — enables skt@skill-manager from skill-manager, registered at /Users/hayde/.skill-manager/plugin-marketplace — expected only skill-manager-f332f28a at /Users/hayde/IdeaProjects/meta-harness/.skill-manager/plugin-marketplace in this home
+✗       repair: skill-manager home repair --fix removes this entry and nothing else
+✗   51 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/meta-harness/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/meta-harness/.claude CODEX_HOME=/Users/hayde/IdeaProjects/meta-harness/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/meta-harness/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/meta-harness /Users/hayde/IdeaProjects/meta-harness/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/meta-harness/.skill-manager --fix, then re-run this check
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-084657-5a19.log

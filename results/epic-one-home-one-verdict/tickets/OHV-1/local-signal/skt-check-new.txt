@@ -1,0 +1,10 @@
+<frozen runpy>:128: RuntimeWarning: 'skt.cli' found in sys.modules after import of package 'skt', but prior to execution of 'skt.cli'; this may result in unpredictable behaviour
+skt check: 5 notification(s), tier worktree
+  new version available for git-epic-workflow — pull with: skt sync git-epic-workflow
+  new version available for git-issue-workflow — pull with: skt sync git-issue-workflow
+  new version available for git-issue — pull with: skt sync git-issue
+  new version available for skt — pull with: skt sync skt
+  new version available for spec-double-compiler — pull with: skt sync spec-double-compiler
+  hint: multiple units are stale — sync in skill-imports dependency order (a unit importing files another stale unit adds fails validation if synced first)
+  build: skt 0.8.2; skill-manager 0.27.2+gea638f5560e0 @ ea638f5560e0 (refs/heads/feature/OHV-1)
+exit=10

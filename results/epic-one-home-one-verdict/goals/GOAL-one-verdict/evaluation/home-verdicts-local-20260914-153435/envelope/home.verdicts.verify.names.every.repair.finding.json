@@ -1,0 +1,94 @@
+{
+  "nodeId" : "home.verdicts.verify.names.every.repair.finding",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:35:21.925777Z",
+  "endedAt" : "2026-09-14T15:35:29.573332Z",
+  "assertions" : [ {
+    "name" : "control_home_verify_exits_0_on_the_unplanted_home",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_exits_1",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_reports_every_planted_kind",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_exits_1_when_home_repair_reports",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_names_every_repair_finding_by_kind_and_subject",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_prints_home_repair_fix_as_its_remedy",
+    "status" : "passed"
+  }, {
+    "name" : "after_the_fix_both_readers_are_clean",
+    "status" : "passed"
+  }, {
+    "name" : "the_damaged_homes_are_deleted",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "control-verify",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:21.935410Z",
+    "endedAt" : "2026-09-14T15:35:23.158697Z",
+    "exitCode" : 0,
+    "pid" : 94581,
+    "log" : "node-logs/home.verdicts.verify.names.every.repair.finding.control-verify.stdout.log",
+    "error" : null
+  }, {
+    "label" : "repair",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:23.163278Z",
+    "endedAt" : "2026-09-14T15:35:24.404343Z",
+    "exitCode" : 1,
+    "pid" : 94617,
+    "log" : "node-logs/home.verdicts.verify.names.every.repair.finding.repair.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:24.404843Z",
+    "endedAt" : "2026-09-14T15:35:25.645828Z",
+    "exitCode" : 1,
+    "pid" : 94652,
+    "log" : "node-logs/home.verdicts.verify.names.every.repair.finding.verify.stdout.log",
+    "error" : null
+  }, {
+    "label" : "fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager", "--json", "--fix" ],
+    "startedAt" : "2026-09-14T15:35:25.708544Z",
+    "endedAt" : "2026-09-14T15:35:27.079194Z",
+    "exitCode" : 0,
+    "pid" : 94685,
+    "log" : "node-logs/home.verdicts.verify.names.every.repair.finding.fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "repair-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:27.079605Z",
+    "endedAt" : "2026-09-14T15:35:28.377307Z",
+    "exitCode" : 0,
+    "pid" : 94721,
+    "log" : "node-logs/home.verdicts.verify.names.every.repair.finding.repair-after-fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:28.377668Z",
+    "endedAt" : "2026-09-14T15:35:29.563592Z",
+    "exitCode" : 0,
+    "pid" : 94765,
+    "log" : "node-logs/home.verdicts.verify.names.every.repair.finding.verify-after-fix.stdout.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "repair.findings" : 5,
+    "verify.unnamed" : 0,
+    "durationMs" : 7648
+  },
+  "logs" : [ "remedy as printed: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.claude CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.codex GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.gemini SKILL_MANAGER_CONFINE_ROOT=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject /Users/hayde/IdeaProjects/wt-ohv-8/skill-manager home repair --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager --fix\nrepair --json stdout: {\"home\":\"/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager\",\"build\":\"skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)\",\"examined\":8,\"clean\":false,\"findings\":[{\"kind\":\"MISANCHORED_AGENT_LINK\",\"subject\":\".claude/skills/hv-unit\",\"detail\":\"resolves into the store at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/neighbour/.skill-manager\",\"repair\":\"re-point it at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager/skills/hv-unit\",\"repairable\":true},{\"kind\":\"FROZEN_HOME_PATH_IN_SHIM\",\"subject\":\"bin/cli/frozen-tool\",\"detail\":\"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied\",\"repair\":\"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)\",\"repairable\":true},{\"kind\":\"UNSTAMPED_PM_TREE\",\"subject\":\"pm/node/22.9.0\",\"detail\":\"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it\",\"repair\":\"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it\",\"repairable\":true},{\"kind\":\"DANGLING_AGENT_LINK\",\"subject\":\".gemini/skills/hv-gone\",\"detail\":\"points at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/verify-names-every-finding/subject/.skill-manager/skills/hv-gone, inside this home, and nothing is there — this home no longer holds the unit it projected\",\"repair\":\"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing\",\"repairable\":true},{\"kind\":\"ORPHANED_PROJECTION_RECORD\",\"subject\":\"installed/hv-orphan.projections.json\",\"detail\":\"records 1 projection(s) of hv-orphan, and this home holds no installed/hv-orphan.json and no hv-orphan unit directory — the unit is gone and its record outlived it\",\"repair\":\"skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK\",\"repairable\":true}]}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:35:21.241796Z","executorEndedAt":"2026-09-14T15:35:29.627959Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.verify.names.every.repair.finding.stdout.log","inputContextFile":"context/home.verdicts.verify.names.every.repair.finding.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

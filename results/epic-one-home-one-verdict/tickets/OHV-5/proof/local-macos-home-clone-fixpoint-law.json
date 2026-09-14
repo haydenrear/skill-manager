@@ -1,0 +1,24 @@
+{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-09-13T23:49:43.866108Z",
+  "endedAt" : "2026-09-13T23:49:55.135137Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 3,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 0,
+    "homesDamagedOnPurpose" : 3,
+    "durationMs" : 11269
+  },
+  "logs" : [ "DAMAGED ON PURPOSE /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12785411922301614134/home-clone/project/.skill-manager: verify reports exactly the declared [bin/cli/hc-venv-tool] and nothing else\nDAMAGED ON PURPOSE /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12785411922301614134/home-clone/fixture-home: verify reports exactly the declared [venvs/hc-venv/bin/hc] and nothing else\nDAMAGED ON PURPOSE /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-clone-credential-3426129076812945055/copy: verify reports exactly the declared [bin/cli/hc-venv-tool] and nothing else\nDAMAGED ON PURPOSE (declared by entry via intentionallyDamagedHomes; every other finding judged as usual): /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12785411922301614134/home-clone/project/.skill-manager [bin/cli/hc-venv-tool] — clone of home.clone.fixture.built: inherits its planted hc-venv-tool shim without venvs/; /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12785411922301614134/home-clone/fixture-home [venvs/hc-venv/bin/hc] — home.clone.fixture.built step 6 plants a console script whose interpreter venvs/hc-venv/bin/python is never created; /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-clone-credential-3426129076812945055/copy [bin/cli/hc-venv-tool] — copy of home.clone.fixture.built: inherits its planted hc-venv-tool shim without venvs/" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12785411922301614134/home-clone/project/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12785411922301614134/home-clone/fixture-home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-clone-credential-3426129076812945055/copy",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-13T23:49:43.167745Z","executorEndedAt":"2026-09-13T23:49:55.264127Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"e3ad99903e8a3ae22c2084c7c97d08a4"}

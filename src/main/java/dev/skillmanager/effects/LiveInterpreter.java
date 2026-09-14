@@ -1141,9 +1141,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
             try {
                 dev.skillmanager.project.HarnessPluginCli.Result added =
                         driver.ensureMarketplaceAdded(mp.root(), marketplaceName);
+                // OHV-6 (#352 d): the outcome names the identity it expected and
+                // what the agent had, success included.
                 facts.add(new ContextFact.HarnessPluginCli(
                         driver.agentId(), null, "marketplace-add", added.ok(),
-                        added.ok() ? null : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
+                        added.ok() ? blankToNull(added.stdout())
+                                : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
                 if (!added.ok()) failed++;
 
                 if (added.ok()) {
@@ -1164,7 +1167,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     if (!r.ok()) {
                         reinstallFailures.add(name);
                         tryAddError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
-                                driver.agentId() + " plugin install: " + truncate(r.stderr()));
+                                driver.agentId() + " plugin install " + name + "@" + marketplaceName
+                                        + " (this home's marketplace, at " + mp.root() + "): "
+                                        + truncate(r.stderr()));
                         failed++;
                     }
                 }
@@ -1194,6 +1199,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return failed == 0
                 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, failed + " harness CLI step(s) failed");
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.strip();
     }
 
     private static String truncate(String s) {
@@ -2278,7 +2287,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt pruneOrphanArtifacts(SkillEffect.PruneOrphanArtifacts e,
                                                EffectContext ctx) {
         try {
-            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()));
+            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()),
+                    e.knownOutputs());
             List<String> pruned = ArtifactPrune.apply(ctx.store(), plan);
             for (ArtifactPrune.Step step : plan.refusals()) {
                 Log.warn("kept %s — %s", step.id(), step.reason());
@@ -2287,6 +2297,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 Log.ok("pruned %d orphaned artifact(s) of %s: %s",
                         pruned.size(), e.unitName(), String.join(", ", pruned));
             }
+            // OHV-3 (d): a ledger this removal created goes with it, when it
+            // adds nothing the home cannot derive.
+            if (e.discardLedgerIfCreated()) ArtifactPrune.discardCreatedLedger(ctx.store());
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
             // A removal that succeeded and left an orphan is a smaller failure

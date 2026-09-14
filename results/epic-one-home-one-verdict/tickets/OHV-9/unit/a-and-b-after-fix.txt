@@ -1,0 +1,16 @@
+  [PASS] OHV-9 (a): a cat > installer in a child does not rewrite the parent's shim (backend)
+  [PASS] OHV-9 (a): the same install through the registry over a sanctioned mirror leaves the parent byte-identical
+  [PASS] OHV-9 (a): a detached link the script did not replace is restored exactly
+  [PASS] OHV-9 (a): a failing script still gets the link restored
+  [PASS] OHV-9 (a): a script that writes the other home's file by its own path fails the install, naming that home
+  [PASS] OHV-9 (a): a script that recreates the link back out is a foreign write and fails
+  [PASS] OHV-9 (a): a link resolving inside this home is left in place while the script runs
+   → 7 passed, 0 failed
+  [PASS] OHV-9 (b): npm/brew placement (placeLink) replaces a link into another home, never writes it
+  [PASS] OHV-9 (b): npm/brew copy fallback (placeCopy, no options) replaces the link, never writes it
+  [PASS] OHV-9 (b): tar placement (placeCopy, REPLACE_EXISTING + COPY_ATTRIBUTES) replaces the link, never writes it
+  [PASS] OHV-9 (b): InstallerRegistry's post-install relativizeShims leaves a link into another home alone
+  [PASS] OHV-9 (b): InstallerRegistry take-ownership deletes the link and its restore recreates it; the parent is never written
+  [PASS] OHV-9 (a): a DANGLING link into another home is still detached (resolution does not stop at bin/cli)
+  [PASS] OHV-9 (b): LauncherShims replaces a bin/cli/skill-manager link into another home instead of writing its pin there
+   → 7 passed, 0 failed

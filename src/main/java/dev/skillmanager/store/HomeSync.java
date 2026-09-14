@@ -271,7 +271,12 @@ public final class HomeSync {
                             outcome.detail());
                 }
             }
-            if (!opts.dryRun()) materializer.cleanStaging();
+            if (!opts.dryRun()) {
+                materializer.cleanStaging();
+                // OHV-6 (#352) shape 3: the destination's manifest names the
+                // destination's identity, whatever was reconciled into it.
+                HomeCloner.rederiveMarketplaceIdentity(to, "home sync");
+            }
             return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes,
                     opts.unit());
         }

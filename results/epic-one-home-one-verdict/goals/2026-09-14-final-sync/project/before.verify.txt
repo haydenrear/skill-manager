@@ -1,0 +1,8 @@
+build: skill-manager 0.27.2+g2b5f83ea98d8 @ 2b5f83ea98d8 (refs/heads/epic/one-home-one-verdict)
+! Telemetry export unavailable; continuing without telemetry.
+NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
+1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
+    bin/cli/tlc2 -> /Users/hayde/.skill-manager
+`home repair` finds no damage in /Users/hayde/IdeaProjects/skill-manager/.skill-manager (74 entries examined)
+✓ every reference in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 1 sanctioned parent-store shim(s) above (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-141912-b2c5.log

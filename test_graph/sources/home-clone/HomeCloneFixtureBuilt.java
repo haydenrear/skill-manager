@@ -1,11 +1,16 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES HomeCloneSupport.java
+//SOURCES ../lib/IntentionalDamage.java
+//SOURCES ../../../src/main/java/dev/skillmanager/pm/PmPlatform.java
+//SOURCES ../../../src/main/java/dev/skillmanager/util/Platform.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
+
+import dev.skillmanager.pm.PmPlatform;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -156,6 +161,14 @@ public class HomeCloneFixtureBuilt {
             // 5. pm/ entry — must be carried
             HomeCloneSupport.write(fixture.resolve("pm/uv/0.0.0/bin/uv-marker"),
                     "bundled package manager\n");
+            // STAMPED, the way PmPlatform stamps every directory it provisions.
+            // The claim under test is "pm/ is carried", not "an unstamped tree";
+            // unstamped is UNSTAMPED_PM_TREE, which `home verify` refuses on
+            // since OHV-2 (#339). Declaring it as planted damage instead was
+            // tried and was platform-dependent: CI's fixture home still reported
+            // it when the law ran, a local macOS run's did not, while both
+            // copies did. A fixture must not plant damage it does not mean.
+            PmPlatform.stamp(fixture.resolve("pm/uv/0.0.0"));
 
             // 6. venvs/ entry — must NOT be carried
             HomeCloneSupport.writeExecutable(fixture.resolve("venvs/hc-venv/bin/hc"), """
@@ -259,7 +272,10 @@ public class HomeCloneFixtureBuilt {
                     HomeCloneSupport.names(realHome.resolve(".gemini/skills")));
 
             // --- the digest, taken LAST ------------------------------------
-            String sourceDigest = HomeCloneSupport.treeDigest(fixture);
+            // homeDigest, not treeDigest (#297): journals a live gateway
+            // appends to are not the state "cloning does not write to the
+            // source" is about.
+            String sourceDigest = HomeCloneSupport.homeDigest(fixture);
 
             boolean pass = unitsInstalled && descriptorWritten && inUnitLinkAbsolute
                     && linkShimAbsolute && toolchainRootsPresent && shimWorksInFixture
@@ -292,6 +308,26 @@ public class HomeCloneFixtureBuilt {
                     .metric("contentSelfReferences", (int) contentRefs)
                     .metric("symlinkSelfReferences", (int) symlinkRefs)
                     .publish("fixtureHome", fixtureStr)
+                    // Steps 4-6 planted these on purpose. Declared, by entry, so
+                    // home.fixpoint.law judges every OTHER finding in this home
+                    // as usual and fails if verify stops seeing one (#344).
+                    // Since OHV-2 (#339) verify also names `home repair`
+                    // findings: step 4's shim names this home absolutely
+                    // (FROZEN_HOME_PATH_IN_SHIM) — the legacy shape the clone's
+                    // re-anchoring is asserted against, so it stays planted.
+                    // Since OHV-4 (#341) the frozen-shim detector reads shim
+                    // CONTENT, the home root itself included, so step 3's
+                    // `SM_HOME="<fixture>"` (hc-tool, "home path in the BODY",
+                    // the shape #20 describes) is reported too. Planted on
+                    // purpose, and the clone's re-anchoring is asserted on it.
+                    .publish(IntentionalDamage.KEY, IntentionalDamage.declare(fixture,
+                            List.of("venvs/hc-venv/bin/hc",
+                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
+                                    "bin/cli/" + HomeCloneSupport.GOOD_SHIM),
+                            "home.clone.fixture.built step 6 plants a console script whose "
+                                    + "interpreter venvs/hc-venv/bin/python is never created; "
+                                    + "step 4's shim is frozen on purpose; step 3's shim holds "
+                                    + "the home path in its body on purpose"))
                     .publish("projectDir", projectDir.toString())
                     .publish("cloneStore", HomeCloneSupport.storeOf(projectDir).toString())
                     .publish("sourceDigest", sourceDigest)

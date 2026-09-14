@@ -1,0 +1,8 @@
+skills/deploy-helm 1e5107e92202e39748867c0b50ba2ddfc8f0893e
+skills/git-epic-workflow c9aaf6297b926efabd3623da43180fe30cc7c67f
+skills/git-issue 1d1a3da3d4e2c9cf51d2f7f58b9c94be4cda7a4c
+skills/git-issue-workflow 5c88a80d7cf5bf5444efb6db5046b04fbb779230
+skills/spec-double-compiler b5cfb09a76dcd31d8175f8088fcd853fbed37e66
+skills/test-graph 3b36039854525b0d9bb12a9be903ed8be4bc7666
+skills/tracing-observability 9c302067028d18e9616f23059607a3409de7c67f
+plugins/skt 68ac925a7ccaeaa98388dc1b90b38903b061992c

@@ -1,0 +1,16 @@
+env.prepared passed
+extent.probe.is.sound passed
+home.clone.carries.no.credential passed
+home.clone.costs.far.less.than.a.copy passed
+home.clone.descriptor.resolves passed
+home.clone.edit.stays.in.clone passed
+home.clone.fixture.built passed
+home.clone.no.agent.home.leak passed
+home.clone.toolchains.reprovisionable passed
+home.clone.works.with.source.renamed passed
+home.cloned.into.project passed
+home.copy.carries.no.foreign.binary passed
+home.fixpoint.law passed
+home.membership.law passed
+shared.package.cache.is.not.private.to.the.home passed
+shared.store.materialization.costs.far.less.than.a.copy passed

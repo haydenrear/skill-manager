@@ -1,0 +1,110 @@
+{
+  "nodeId" : "home.verdicts.dangling.agent.link",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:35:30.311728Z",
+  "endedAt" : "2026-09-14T15:35:39.018330Z",
+  "assertions" : [ {
+    "name" : "control_the_unplanted_home_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_exits_1_on_the_planted_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_stdout_alone_is_one_json_object",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_names_DANGLING_AGENT_LINK_on_the_planted_subject",
+    "status" : "passed"
+  }, {
+    "name" : "detection_alone_changes_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_exits_1",
+    "status" : "passed"
+  }, {
+    "name" : "TODAY_home_verify_names_the_shape",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_fix_then_a_separate_detection_is_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_is_clean_after_the_fix",
+    "status" : "passed"
+  }, {
+    "name" : "the_damaged_homes_are_deleted",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "control",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:30.321468Z",
+    "endedAt" : "2026-09-14T15:35:31.464503Z",
+    "exitCode" : 0,
+    "pid" : 94832,
+    "log" : "node-logs/home.verdicts.dangling.agent.link.control.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:31.522586Z",
+    "endedAt" : "2026-09-14T15:35:32.647003Z",
+    "exitCode" : 1,
+    "pid" : 94858,
+    "log" : "node-logs/home.verdicts.dangling.agent.link.detect.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-again",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:32.647474Z",
+    "endedAt" : "2026-09-14T15:35:33.871822Z",
+    "exitCode" : 1,
+    "pid" : 94881,
+    "log" : "node-logs/home.verdicts.dangling.agent.link.detect-again.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:33.872229Z",
+    "endedAt" : "2026-09-14T15:35:35.107921Z",
+    "exitCode" : 1,
+    "pid" : 94956,
+    "log" : "node-logs/home.verdicts.dangling.agent.link.verify.stdout.log",
+    "error" : null
+  }, {
+    "label" : "fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager", "--json", "--fix" ],
+    "startedAt" : "2026-09-14T15:35:35.108389Z",
+    "endedAt" : "2026-09-14T15:35:36.489375Z",
+    "exitCode" : 0,
+    "pid" : 94987,
+    "log" : "node-logs/home.verdicts.dangling.agent.link.fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "detect-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:35:36.489787Z",
+    "endedAt" : "2026-09-14T15:35:37.799885Z",
+    "exitCode" : 0,
+    "pid" : 95066,
+    "log" : "node-logs/home.verdicts.dangling.agent.link.detect-after-fix.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify-after-fix",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:35:37.800220Z",
+    "endedAt" : "2026-09-14T15:35:39.001943Z",
+    "exitCode" : 0,
+    "pid" : 95104,
+    "log" : "node-logs/home.verdicts.dangling.agent.link.verify-after-fix.stdout.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "verify.exit" : 1,
+    "repair.exit" : 1,
+    "repair.findings" : 1,
+    "durationMs" : 8707
+  },
+  "logs" : [ "shape=DANGLING_AGENT_LINK subject=.codex/skills/hv-gone | repair=1 verify=1 (names it: true) fix=0 after=0 verify-after=0\nrepair --json stdout: {\"home\":\"/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager\",\"build\":\"skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)\",\"examined\":4,\"clean\":false,\"findings\":[{\"kind\":\"DANGLING_AGENT_LINK\",\"subject\":\".codex/skills/hv-gone\",\"detail\":\"points at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/dangling-agent-link/subject/.skill-manager/skills/hv-gone, inside this home, and nothing is there — this home no longer holds the unit it projected\",\"repair\":\"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing\",\"repairable\":true}]}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:35:29.657657Z","executorEndedAt":"2026-09-14T15:35:39.071621Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.dangling.agent.link.stdout.log","inputContextFile":"context/home.verdicts.dangling.agent.link.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

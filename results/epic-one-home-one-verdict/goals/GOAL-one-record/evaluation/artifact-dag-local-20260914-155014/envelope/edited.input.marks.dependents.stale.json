@@ -1,0 +1,83 @@
+{
+  "nodeId" : "edited.input.marks.dependents.stale",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:33.206853Z",
+  "endedAt" : "2026-09-14T15:50:42.086515Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "nothing_is_stale_before_the_edit",
+    "status" : "passed"
+  }, {
+    "name" : "the_units_skill_script_was_edited",
+    "status" : "passed"
+  }, {
+    "name" : "stale_can_be_asked",
+    "status" : "passed"
+  }, {
+    "name" : "stale_names_the_edited_units_shim",
+    "status" : "passed"
+  }, {
+    "name" : "stale_names_the_cache_tree_that_shim_runs_out_of",
+    "status" : "passed"
+  }, {
+    "name" : "stale_leaves_the_untouched_sibling_alone",
+    "status" : "passed"
+  }, {
+    "name" : "stale_says_which_inputs_moved",
+    "status" : "passed"
+  }, {
+    "name" : "asking_what_is_stale_rebuilt_no_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "asking_what_is_stale_ran_no_installer",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:33.216738Z",
+    "endedAt" : "2026-09-14T15:50:36.120154Z",
+    "exitCode" : 0,
+    "pid" : 35576,
+    "log" : "node-logs/edited.input.marks.dependents.stale.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:36.120826Z",
+    "endedAt" : "2026-09-14T15:50:38.555665Z",
+    "exitCode" : 0,
+    "pid" : 35656,
+    "log" : "node-logs/edited.input.marks.dependents.stale.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "stale-before",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-09-14T15:50:38.556336Z",
+    "endedAt" : "2026-09-14T15:50:40.243331Z",
+    "exitCode" : 0,
+    "pid" : 35686,
+    "log" : "node-logs/edited.input.marks.dependents.stale.stale-before.log",
+    "error" : null
+  }, {
+    "label" : "stale-after",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-09-14T15:50:40.252752Z",
+    "endedAt" : "2026-09-14T15:50:42.082344Z",
+    "exitCode" : 0,
+    "pid" : 35706,
+    "log" : "node-logs/edited.input.marks.dependents.stale.stale-after.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "staleAfterEdit" : 2,
+    "durationMs" : 8880
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/stale/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:32.581711Z","executorEndedAt":"2026-09-14T15:50:42.197209Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/edited.input.marks.dependents.stale.stdout.log","inputContextFile":"context/edited.input.marks.dependents.stale.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

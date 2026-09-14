@@ -1,0 +1,10 @@
+ef3f5fd7bf72b151636427a663404f03308dd82d1bd0703c867d16ea5cf1f79b  /Users/hayde/.claude/settings.json
+3887ee3249fd662cc7580fe3f87680fa04c78467ea652e9cfcc2fdb13ba3f730  /Users/hayde/.claude/plugins/known_marketplaces.json
+5496039a46254de1adc3752eb85a713cb7cf34db90375a69fbe2e5ca3601289e  /Users/hayde/.claude/plugins/installed_plugins.json
+0e7b49e3c55923054c210b6deca5fe7afbae76656dc65db5256dc69f6fc806da  /Users/hayde/.codex/config.toml
+a2f0ab57a937d697804ad99b46b9e6d119087ef7e06eda343791b6778c817efc  /Users/hayde/.gemini/settings.json
+1443e790f9e0eed5a6f45ff3c1b1f1dfcc491f2e96e77a0fb8a8c1167d47c89c  /Users/hayde/.skill-manager/gateway.properties
+e65697d3696a71d739624d2c3075c4de0c4ebbc324b749445ffa9e6531a7e357  /Users/hayde/.skill-manager/units.lock.toml
+4764beca8dd84d197aad660b0967819f0dcea81b9c7f6d6d752c020a1d5abfff  /Users/hayde/.skill-manager/artifacts.lock.toml
+2a4f35dd0c375b0f0529d99acad5f39588bbe01b8b9f3144d049f60cdd93a101  /Users/hayde/.skill-manager/cli-lock.toml
+4a7779048b35a5e256a6c077a7a66855d711d736f06816253bf2f01408f8871e  ls-bin-cli+installed

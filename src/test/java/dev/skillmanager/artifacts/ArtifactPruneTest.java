@@ -74,8 +74,256 @@ public final class ArtifactPruneTest {
             assertFalse(plan.prunes().isEmpty(), "there is something to catch up on");
             for (ArtifactPrune.Step step : plan.prunes()) {
                 assertTrue(step.owner() != null, "and every one of them names an owner");
-                assertFalse(step.paths().isEmpty(), "and the paths it would remove");
+                // OHV-3 (b): a step may be ROW-ONLY — the row is all that is
+                // left of the artifact — and then it says so rather than
+                // naming a path it would not remove.
+                assertTrue(!step.paths().isEmpty() || step.lockRow() != null
+                                || step.reason().contains("nothing on disk is touched"),
+                        "and the paths it would remove, or that it removes none: " + step);
             }
+        });
+
+        // OHV-3 (a), #292. `apply` re-recorded the ledger from ArtifactIndex,
+        // which merges the disk WITH the ledger — so every row the pass had
+        // just pruned came straight back as Origin.LEDGER. Measured on a real
+        // home: 59 rows before a prune, 59 after. Nothing a prune decides can
+        // be observed to work while that is true.
+        suite.test("a prune stays pruned: the re-record does not restore what it dropped", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            record(store);
+            uninstall(store, "alpha");
+
+            List<String> pruned = ArtifactPrune.apply(store, ArtifactPrune.of(store, List.of()));
+            assertFalse(pruned.isEmpty(), "the fixture has something to prune");
+
+            ArtifactLedger after = ArtifactLedger.load(store);
+            ArtifactIndex index = ArtifactIndex.of(store);
+            // The two rows that exist ONLY because the ledger remembered them.
+            for (String id : List.of(
+                    ArtifactIds.provisionedTree("cache", "skill-script-alpha-alpha-script"),
+                    ArtifactIds.cliShim("pip", "alpha-pkg"))) {
+                assertTrue(pruned.contains(id), "pruned: " + id + " in " + pruned);
+                assertTrue(after.byId(id).isEmpty(),
+                        "the re-recorded ledger no longer names " + id);
+                assertTrue(index.byId(id).isEmpty(), "and neither does the census: " + id);
+            }
+            // No pruned id may come back as a ledger-only row. One that a live
+            // record still derives (this helper leaves alpha's projections.json)
+            // is the census describing a record that exists, not a phantom.
+            for (String id : pruned) {
+                index.byId(id).ifPresent(a -> assertFalse(
+                        a.origin() == Artifact.Origin.LEDGER,
+                        "a pruned id is not restored as a ledger-only row: " + id));
+            }
+            ArtifactPrune.Plan again = ArtifactPrune.of(store, List.of());
+            for (ArtifactPrune.Step step : again.prunes()) {
+                assertFalse(pruned.contains(step.id()),
+                        "a second prune has nothing of the first left to do: " + step.id());
+            }
+        });
+
+        // The other half of (a): the exclusion is "pruned AND the home can no
+        // longer see it". A pruned id whose output is still on disk — here
+        // re-created between plan and re-record — is not gone, and dropping its
+        // row would leave a file no later teardown could reach (#292's
+        // dangling-symlink regression).
+        suite.test("a pruned id the home can still see keeps its row", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            uninstall(store, "alpha");
+            Files.writeString(ArtifactLedger.file(store), """
+                    schema = 1
+                    recorded_at = "2026-01-01T00:00:00Z"
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/still-here"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/still-here"]
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/dangling-link"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/dangling-link"]
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/really-gone"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/really-gone"]
+                    """);
+            Files.createDirectories(store.root().resolve("cache/still-here"));
+            Files.createSymbolicLink(store.root().resolve("cache/dangling-link"),
+                    store.root().resolve("cache/nowhere"));
+
+            ArtifactLedger rebuilt = ArtifactPrune.rerecord(ArtifactIndex.of(store),
+                    java.util.Set.of("provisioned-tree:cache/still-here",
+                            "provisioned-tree:cache/dangling-link",
+                            "provisioned-tree:cache/really-gone"));
+            assertTrue(rebuilt.byId("provisioned-tree:cache/still-here").isPresent(),
+                    "an output still on disk keeps its row");
+            assertTrue(rebuilt.byId("provisioned-tree:cache/dangling-link").isPresent(),
+                    "a dangling symlink is on disk too, and keeps its row");
+            assertTrue(rebuilt.byId("provisioned-tree:cache/really-gone").isEmpty(),
+                    "only an output proven MISSING lets the row go");
+        });
+
+        // ------------------------------------------- OHV-3 (b): rows of the removed
+
+        // #292. The ledger keeps no external path, so a projection's row names
+        // no output. What a removal captured BEFORE it ran is the proof.
+        suite.test("a projection whose captured link is gone is reaped, row only", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path link = externalProjection(store, "alpha");
+            record(store);
+            java.util.Map<String, List<String>> evidence = ArtifactPrune.outputsOf(store, "alpha");
+            String id = projectionIdIn(evidence);
+            assertTrue(evidence.get(id).contains(link.toString()),
+                    "the snapshot names the agent-side link: " + evidence);
+
+            Files.delete(link);
+            removeBindings(store, "alpha");
+            uninstall(store, "alpha");
+
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of("alpha"), evidence);
+            ArtifactPrune.Step step = byId(plan, id);
+            assertEquals(ArtifactPrune.Verdict.PRUNE, step.verdict(), "reaped: " + step.reason());
+            assertTrue(step.paths().isEmpty(), "and it deletes nothing");
+            ArtifactPrune.apply(store, plan);
+            assertTrue(ArtifactLedger.load(store).byId(id).isEmpty(), "the row is gone and stays gone");
+        });
+
+        // The trap #292's reverted attempt fell into: dropping the row of a
+        // link still on disk leaves a file no later teardown can reach.
+        suite.test("a projection whose link is still on disk keeps its row", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path link = externalProjection(store, "alpha");
+            record(store);
+            java.util.Map<String, List<String>> evidence = ArtifactPrune.outputsOf(store, "alpha");
+            String id = projectionIdIn(evidence);
+
+            removeBindings(store, "alpha");
+            uninstall(store, "alpha"); // the link now DANGLES, and is still there
+
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of("alpha"), evidence);
+            ArtifactPrune.Step step = byId(plan, id);
+            assertEquals(ArtifactPrune.Verdict.REFUSED, step.verdict(), "kept: " + step.reason());
+            assertContains(step.reason(), "cannot prove", "and says why");
+            ArtifactPrune.apply(store, plan);
+            assertTrue(ArtifactLedger.load(store).byId(id).isPresent(), "the row survives");
+            assertTrue(Files.exists(link, LinkOption.NOFOLLOW_LINKS), "beside the link it names");
+        });
+
+        suite.test("a projection row with no captured evidence is kept, by name", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path link = externalProjection(store, "alpha");
+            record(store);
+            String id = projectionIdIn(ArtifactPrune.outputsOf(store, "alpha"));
+            Files.delete(link);
+            removeBindings(store, "alpha");
+            uninstall(store, "alpha");
+
+            // A whole-home prune over a PAST removal has nothing captured.
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
+            assertEquals(ArtifactPrune.Verdict.REFUSED, byId(plan, id).verdict(),
+                    "absence cannot be proven from a row with no outputs");
+        });
+
+        suite.test("a unit-store row goes, row only, once its owner and its bytes are gone", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            record(store);
+            uninstall(store, "alpha");
+
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
+            ArtifactPrune.Step step = byId(plan, ArtifactIds.unitStore("alpha"));
+            assertEquals(ArtifactPrune.Verdict.PRUNE, step.verdict(), "reaped: " + step.reason());
+            assertTrue(step.paths().isEmpty(), "the bytes are never this command's");
+            ArtifactPrune.apply(store, plan);
+            assertTrue(ArtifactLedger.load(store).byId(ArtifactIds.unitStore("alpha")).isEmpty(),
+                    "and the row is gone");
+        });
+
+        suite.test("a unit-store whose bytes are still on disk is never reaped", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            record(store);
+            // The DEF-121 shape: no installed/ record, the store still there.
+            Files.deleteIfExists(store.root().resolve("installed/alpha.json"));
+
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
+            for (ArtifactPrune.Step step : plan.prunes()) {
+                assertFalse(step.id().equals(ArtifactIds.unitStore("alpha")),
+                        "not planned: " + step.reason());
+            }
+            ArtifactPrune.apply(store, plan);
+            assertTrue(Files.isDirectory(store.root().resolve("skills/alpha")), "the store survives");
+            assertTrue(ArtifactLedger.load(store).byId(ArtifactIds.unitStore("alpha")).isPresent(),
+                    "and so does its row");
+        });
+
+        suite.test("a unit-digest row stays while home.digest.json still names the unit", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            record(store);
+            uninstall(store, "alpha");
+            String id = ArtifactIds.unitDigest("alpha");
+
+            // The fixture's digest still carries alpha: the backfill derives it.
+            ArtifactPrune.Plan named = ArtifactPrune.of(store, List.of());
+            for (ArtifactPrune.Step step : named.prunes()) {
+                assertFalse(step.id().equals(id), "not while the digest names it");
+            }
+
+            Files.delete(store.root().resolve(dev.skillmanager.store.HomeDigest.FILENAME));
+            ArtifactPrune.Plan gone = ArtifactPrune.of(store, List.of());
+            assertEquals(ArtifactPrune.Verdict.PRUNE, byId(gone, id).verdict(),
+                    "and reaped once no digest holds it: " + byId(gone, id).reason());
+        });
+
+        // ------------------------------- OHV-3 (d): a ledger the removal created
+
+        suite.test("a created ledger that only restates the home is discarded", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            record(store);
+            assertTrue(ArtifactPrune.discardCreatedLedger(store),
+                    "every row is still derivable from the home, so the file adds nothing");
+            assertFalse(Files.exists(ArtifactLedger.file(store), LinkOption.NOFOLLOW_LINKS),
+                    "and it is gone");
+            assertFalse(ArtifactIndex.of(store).artifacts().isEmpty(),
+                    "and the census still answers, from the disk");
+        });
+
+        // The safety half. A row the home can no longer derive is the ONLY
+        // record of something (#292's dangling-link trap); deleting the file
+        // would drop it exactly as a bad prune verdict would.
+        suite.test("a created ledger holding a row the home cannot derive is kept", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Files.writeString(ArtifactLedger.file(store), """
+                    schema = 1
+                    recorded_at = "2026-01-01T00:00:00Z"
+
+                    [[artifact]]
+                    id = "provisioned-tree:cache/remembered-only"
+                    kind = "provisioned-tree"
+                    owner = "alpha"
+                    outputs = ["cache/remembered-only"]
+                    """);
+            assertFalse(ArtifactPrune.discardCreatedLedger(store),
+                    "a ledger-only row is knowledge the disk does not have");
+            assertTrue(Files.isRegularFile(ArtifactLedger.file(store)), "so the file stays");
+        });
+
+        suite.test("a prune in a no-ledger home refuses cleanly, writes no ledger, and the census "
+                + "answers from disk", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            uninstall(store, "alpha");
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
+            assertTrue(plan.prunes().isEmpty(), "nothing planned: " + plan.prunes());
+            ArtifactPrune.apply(store, plan);
+            assertFalse(Files.exists(ArtifactLedger.file(store), LinkOption.NOFOLLOW_LINKS),
+                    "refusing everything is not a reason to write a ledger");
+            ArtifactIndex index = ArtifactIndex.of(store);
+            assertFalse(index.ledgerPresent(), "still no ledger");
+            assertTrue(index.byId(ArtifactIds.unitStore("beta")).isPresent(),
+                    "and the census still names what the disk holds");
         });
 
         // --------------------------------------------------------- the refusals
@@ -637,6 +885,44 @@ public final class ArtifactPruneTest {
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * Replace {@code unit}'s projections with one SYMLINK into an agent root
+     * OUTSIDE the home — the shape every real agent projection has, and the
+     * one whose ledger row records no output.
+     */
+    private static Path externalProjection(SkillStore store, String unit) throws Exception {
+        Path agentRoot = ArtifactsFixture.newDir("prune-agent-root-");
+        Path skillsDir = agentRoot.resolve(".claude/skills");
+        Files.createDirectories(skillsDir);
+        Path source = store.root().resolve("skills/" + unit);
+        Path link = skillsDir.resolve(unit);
+        Files.createSymbolicLink(link, source);
+        new dev.skillmanager.bindings.BindingStore(store).write(
+                new dev.skillmanager.bindings.ProjectionLedger(unit, List.of(
+                        new dev.skillmanager.bindings.Binding("default:claude:" + unit, unit,
+                                dev.skillmanager.model.UnitKind.SKILL, null, skillsDir,
+                                dev.skillmanager.bindings.ConflictPolicy.ERROR,
+                                "2026-01-01T00:00:00Z",
+                                dev.skillmanager.bindings.BindingSource.DEFAULT_AGENT,
+                                List.of(new dev.skillmanager.bindings.Projection(
+                                        "default:claude:" + unit, source, link,
+                                        dev.skillmanager.bindings.ProjectionKind.SYMLINK,
+                                        null))))));
+        return link;
+    }
+
+    private static String projectionIdIn(java.util.Map<String, List<String>> evidence) {
+        for (String id : evidence.keySet()) {
+            if (id.startsWith("projection:")) return id;
+        }
+        throw new AssertionError("no projection captured: " + evidence);
+    }
+
+    /** What `uninstall`'s RemoveBinding leaves: no projection record. */
+    private static void removeBindings(SkillStore store, String unit) throws Exception {
+        Files.deleteIfExists(store.installedDir().resolve(unit + ".projections.json"));
+    }
 
     private static void registerChild(SkillStore store, String id, Path childHome)
             throws Exception {

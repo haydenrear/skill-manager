@@ -1,0 +1,15 @@
+=== measure_goals
+epic/one-unit-one-name — goal ledger
+
+  NOT MET     GOAL-one-name-one-copy                           0 live, 1 latent over 61 homes  (target 0 live AND 0 latent)
+              why: counted under OUN-13: a standalone `x` and a contained `p:x` are TWO NAMES and not a pair. What is counted is two standa
+  MET         GOAL-a-contained-skill-is-addressable            yes  (target yes)
+  MET         GOAL-migration-lands-on-one-skt                  both routes reach (0, 0, 1); for context 50 of 59 existing homes are already there, root (0, 0, 1)  (target (0, 0, 1) by both routes, on a home at the pre-epic shape)
+              why: graded on the mechanism, by both routes a home can take: `install <carrier>` for a home acquiring skt, and `sync` for a 
+  MET         GOAL-who-imports-this                            one command, agreeing with an independent walk in 58 of 58 homes  (target one command, both mechanisms, transitive, terminates on cycles)
+  NOT MET     GOAL-a-home-survives-being-copied-into-an-image  2 of 3 over 2 home(s)  (target 3 of 3)
+  NOT MET     GOAL-the-front-door-is-found                     5 of 6 (bootstraps-a-home-for-a-repo=found; epic-provisions-a-ticket-worktree=found; reconciles-a-worktree-into-the-project-home=found; syncs-a-stale-home-from-root=MISSED; ticket-agent-closes-a-ticket=found; ticket-agent-opens-a-ticket=found)  (target 6 of 6)
+
+  3 of 6 met
+
+[exited with code 0]

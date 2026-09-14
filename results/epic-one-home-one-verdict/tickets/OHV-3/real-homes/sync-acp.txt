@@ -1,0 +1,41 @@
+✗ acp-cdc-ai-python has extra local changes — uncommitted edits in its store — sync would overwrite them.
+✗   re-run with: /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/bin/cli/skill-manager sync acp-cdc-ai-python --merge --home /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager  (merges https://github.com/haydenrear/acp-cdc-ai-python-skill into /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/skills/acp-cdc-ai-python)
+✓ resolve: 0 unit(s)
+→ cli: skill-script slm — running /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/skills/slm-agent/skill-scripts/install-slm.sh
+→ cli: skill-script slm — writing output to /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/logs/skill-scripts/20260914-004729-167-slm-agent-slm.log
+! cli: slm failed: skill-script slm exited 1 (log: /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/logs/skill-scripts/20260914-004729-167-slm-agent-slm.log)
+last 15 line(s) of skill-script output:
+$ /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/skills/slm-agent/skill-scripts/install-slm.sh
+[slm-agent] FAILED to resolve an slm CLI. Candidates tried:
+[slm-agent]   - vendored-workspace: no enclosing integration checkout found
+[slm-agent]   - path: no slm on PATH
+slm-agent: could not resolve the `slm` CLI.
+
+`slm` ships with stream-lite-manager, a PRIVATE uv workspace member of the
+meta-orchestrator integration repository. It cannot be installed from PyPI.
+Do one of:
+
+  * run this install from inside a checkout that vendors
+    constituents/stream-lite-manager (uv sync there first, so .venv/bin/slm
+    exists), or
+  * point SLM_AGENT_WORKSPACE at such a checkout, or
+  * point SLM_CLI at an existing slm executable.
+gateway: runpod init from env: [RUNPOD_API_KEY]
+gateway: runpod spec changed — re-registering
+✓ gateway: registered runpod (NPM, scope=global-sticky)
+✓ units.lock.toml: wrote 28 unit(s) → /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/units.lock.toml
+---MCP-INSTALL-RESULTS-BEGIN---
+[ {
+  "serverId" : "runpod",
+  "status" : "deployed",
+  "scope" : "global-sticky",
+  "message" : "registered and deployed"
+} ]
+---MCP-INSTALL-RESULTS-END---
+✓ agents: 18 unit(s) linked into claude, codex, gemini
+✓ tools: 4 already present
+✓ cli: 26 already present, 1 failed
+✗ sync: 1 unit(s) need attention
+✗   extra local changes — `skill-manager sync <name> --merge`: acp-cdc-ai-python
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260913-204727-e54f.log
+sync rc=7

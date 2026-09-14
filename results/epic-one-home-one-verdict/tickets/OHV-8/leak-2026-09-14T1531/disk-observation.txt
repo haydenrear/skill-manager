@@ -1,0 +1,43 @@
+2026-09-14T15:54:00Z
+== ~/.skill-manager/bin/cli/computeq
+mtime=2026-09-14T11:50:45-0400 birth=2026-06-04T19:37:15-0400 size=426
+#!/usr/bin/env bash
+# Rewritten by skill-manager: resolve the home this shim is standing in
+# rather than the one it was written into, so a copy of the home works.
+SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+export MONITORING_DEPLOY_CDC_ROOT="${SKILL_MANAGER_SHIM_HOME}/skills/deploy-helm"
+exec "/Users/hayde/.skill-manager/cache/skill-script-deploy-helm-computeq/venv/bin/computeq" "$@"
+== ~/.skill-manager/bin/cli/monitoring
+mtime=2026-09-14T11:50:45-0400 birth=2026-07-12T18:23:47-0400 size=430
+#!/usr/bin/env bash
+# Rewritten by skill-manager: resolve the home this shim is standing in
+# rather than the one it was written into, so a copy of the home works.
+SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+export MONITORING_DEPLOY_CDC_ROOT="${SKILL_MANAGER_SHIM_HOME}/skills/deploy-helm"
+exec "/Users/hayde/.skill-manager/cache/skill-script-deploy-helm-monitoring/venv/bin/monitoring" "$@"
+== ~/.skill-manager/bin/cli/helm-deploy
+mtime=2026-09-14T11:50:45-0400 birth=2026-07-13T20:13:22-0400 size=432
+#!/usr/bin/env bash
+# Rewritten by skill-manager: resolve the home this shim is standing in
+# rather than the one it was written into, so a copy of the home works.
+SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+export MONITORING_DEPLOY_CDC_ROOT="${SKILL_MANAGER_SHIM_HOME}/skills/deploy-helm"
+exec "/Users/hayde/.skill-manager/cache/skill-script-deploy-helm-helm-deploy/venv/bin/helm-deploy" "$@"
+== the CDC test project home's bin/cli (the links written through)
+total 56
+drwxr-xr-x@ 12 hayde  staff    384 Sep 14 11:31 .
+drwxr-xr-x@  5 hayde  staff    160 Sep 14 11:30 ..
+drwxr-xr-x@  3 hayde  staff     96 Sep 14 11:30 .spec-double-compiler
+lrwxr-xr-x@  1 hayde  staff     44 Sep 14 11:30 computeq -> /Users/hayde/.skill-manager/bin/cli/computeq
+lrwxr-xr-x@  1 hayde  staff     47 Sep 14 11:30 helm-deploy -> /Users/hayde/.skill-manager/bin/cli/helm-deploy
+lrwxr-xr-x@  1 hayde  staff     33 Sep 14 11:31 jinja2 -> ../../venvs/jinja2-cli/bin/jinja2
+lrwxr-xr-x@  1 hayde  staff     46 Sep 14 11:30 monitoring -> /Users/hayde/.skill-manager/bin/cli/monitoring
+-rwxr-xr-x@  1 hayde  staff  10609 Sep 14 11:30 skill-manager
+-rwxr-xr-x@  1 hayde  staff   2488 Sep 13 11:34 skt
+-rwxr-xr-x@  1 hayde  staff    279 Sep 14 11:30 tla-spec-dev
+-rwxr-xr-x@  1 hayde  staff    349 Aug 12 01:37 tlc2
+-rwxr-xr-x@  1 hayde  staff   1089 Sep 14 11:31 tracing-observability-install
+== worktree
+git@github.com:haydenrear/commit-diff-context-parent.git
+epic/library-sharing
+09b279d1 plan(#228): schedule_revision 7 - remove LIB-011's src/ path rule; DEF-181 moves to LIB-016

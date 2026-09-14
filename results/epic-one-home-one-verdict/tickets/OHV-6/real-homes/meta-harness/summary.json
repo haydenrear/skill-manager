@@ -1,0 +1,30 @@
+{
+  "label": "meta-harness",
+  "backup": "/Users/hayde/IdeaProjects/wt-epic-one-home-one-verdict/results/epic-one-home-one-verdict/tickets/OHV-6-backups/meta-harness-20260914T084442",
+  "marketplace_findings_before": [
+    "FOREIGN_MARKETPLACE_REGISTRATION .claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:extraKnownMarketplaces.skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .claude/settings.json:enabledPlugins.skt@skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:marketplaces.skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.andrej-karpathy-skills@skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager",
+    "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.skt@skill-manager"
+  ],
+  "kinds_before": [
+    "DANGLING_AGENT_LINK",
+    "FOREIGN_MARKETPLACE_REGISTRATION",
+    "FROZEN_HOME_PATH_IN_SHIM",
+    "ORPHANED_PROJECTION_RECORD",
+    "UNSTAMPED_PM_TREE"
+  ],
+  "kinds_after_fix": [],
+  "marketplace_findings_after_fix": [],
+  "sync_agent_sync_failed_lines": [],
+  "sync_marketplace_lines": [],
+  "kinds_after_sync": [],
+  "marketplace_findings_after_sync": [],
+  "recorded_errors_after_sync": {},
+  "globals_changed": false
+}

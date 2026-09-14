@@ -1,0 +1,1507 @@
+{
+  "summary": {
+    "homes": 61,
+    "verify_rc0": 60,
+    "repair_clean": 9,
+    "G3_homes_with_own_absolute_bin_cli": 51,
+    "G4_shape1": 0,
+    "G4_shape2_exposed": 1,
+    "G4_shape3": 15,
+    "G4_shape4": 11,
+    "G4_any_shape_1_3_4": 24,
+    "G1_homes_with_dangling_agent_links": 4,
+    "G1_homes_with_orphan_projection_records": 7,
+    "damaged_but_repair_clean": 2
+  },
+  "homes": [
+    {
+      "home": "/Users/hayde/.skill-manager",
+      "checkout": "/Users/hayde",
+      "generated_name": "skill-manager",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [
+        "computeq",
+        "helm-deploy",
+        "monitoring"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": true,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager-919db26e -> /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager-919db26e",
+          "codex plugin skt@skill-manager-919db26e",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager-919db26e",
+          "claude enabled skt@skill-manager-919db26e"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/acp-cdc-ai-python/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/acp-cdc-ai-python",
+      "generated_name": "skill-manager-082063ca",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 4,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/commit-diff-context-parent",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": null,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": [
+          "codex plugin andrej-karpathy-skills@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [
+        ".claude/skills/hyper-experiments",
+        ".claude/skills/vision-toolbelt-skill",
+        ".claude/skills/debugging",
+        ".claude/skills/discovery",
+        ".claude/skills/llm-wiki",
+        ".claude/skills/hyper-experiments-finance",
+        ".codex/skills/skill-publisher",
+        ".codex/skills/hyper-experiments",
+        ".codex/skills/vision-toolbelt-skill",
+        ".codex/skills/debugging",
+        ".codex/skills/discovery",
+        ".codex/skills/llm-wiki",
+        ".codex/skills/hyper-experiments-finance",
+        ".gemini/skills/hyper-experiments",
+        ".gemini/skills/vision-toolbelt-skill",
+        ".gemini/skills/debugging",
+        ".gemini/skills/discovery",
+        ".gemini/skills/llm-wiki",
+        ".gemini/skills/hyper-experiments-finance"
+      ],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/commit-diff-context-parent-eval-024",
+      "generated_name": "skill-manager-b1719bc6",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 5,
+      "G3_bin_cli_own_absolute": [
+        "skt",
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc",
+      "generated_name": "skill-manager-f6f3becf",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 8,
+      "G3_bin_cli_own_absolute": [
+        "computeq",
+        "helm-deploy",
+        "monitoring",
+        "tla-spec-dev",
+        "tracing-observability-install",
+        "vision-toolbelt"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-38-runner-status-vocabulary/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-38-runner-status-vocabulary",
+      "generated_name": "skill-manager-071218c8",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-39-project-scoped-config/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-39-project-scoped-config",
+      "generated_name": "skill-manager-cd671cc0",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-40-testgraph-run-identity/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-40-testgraph-run-identity",
+      "generated_name": "skill-manager-b6848f04",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-41-spec-effect-ports/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-41-spec-effect-ports",
+      "generated_name": "skill-manager-11856f5a",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation",
+      "generated_name": "skill-manager-f6f3becf",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity",
+      "generated_name": "skill-manager-f6f3becf",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install",
+      "generated_name": "skill-manager-f6f3becf",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes",
+      "generated_name": "skill-manager-f6f3becf",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension",
+      "generated_name": "skill-manager-f6f3becf",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/embabel-meta-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/embabel-meta-skill",
+      "generated_name": "skill-manager-d9aa74ff",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 4,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-epic-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-epic-skill",
+      "generated_name": "skill-manager-ad350713",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 5,
+      "G3_bin_cli_own_absolute": [
+        "skt",
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-epic-workflow-ARTI-14",
+      "generated_name": "skill-manager-284d5c59",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-integration-repo-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-integration-repo-ARTI-14",
+      "generated_name": "skill-manager-66a66498",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-skill",
+      "generated_name": "skill-manager-46eef5d6",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 4,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-workflow-ARTI-14",
+      "generated_name": "skill-manager-127ad399",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-workflow-skill",
+      "generated_name": "skill-manager-21599365",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 8,
+      "G3_bin_cli_own_absolute": [
+        "computeq",
+        "helm-deploy",
+        "monitoring",
+        "tla-spec-dev",
+        "tracing-observability-install",
+        "vision-toolbelt"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/git-issue-workflow-skill-27-close-reason",
+      "generated_name": "skill-manager-b8cee392",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/hyper-experiments-finance-polymarket",
+      "generated_name": null,
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": null,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness",
+      "generated_name": "skill-manager-f332f28a",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 7,
+      "G3_bin_cli_own_absolute": [
+        "computeq",
+        "helm-deploy",
+        "monitoring",
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [
+        ".claude/skills/plugin-repository",
+        ".claude/skills/slm-agent",
+        ".claude/skills/vision-toolbelt-skill",
+        ".claude/skills/debugging",
+        ".claude/skills/discovery",
+        ".claude/skills/llm-wiki",
+        ".claude/skills/hyper-experiments-finance",
+        ".claude/skills/tracer-agent",
+        ".codex/skills/plugin-repository",
+        ".codex/skills/slm-agent",
+        ".codex/skills/vision-toolbelt-skill",
+        ".codex/skills/debugging",
+        ".codex/skills/discovery",
+        ".codex/skills/llm-wiki",
+        ".codex/skills/hyper-experiments-finance",
+        ".codex/skills/tracer-agent",
+        ".gemini/skills/plugin-repository",
+        ".gemini/skills/slm-agent",
+        ".gemini/skills/vision-toolbelt-skill",
+        ".gemini/skills/debugging",
+        ".gemini/skills/discovery",
+        ".gemini/skills/llm-wiki",
+        ".gemini/skills/hyper-experiments-finance",
+        ".gemini/skills/tracer-agent"
+      ],
+      "G1_orphan_projection_records": [
+        "debugging.projections.json",
+        "discovery.projections.json",
+        "doc-repo-devops.projections.json",
+        "hyper-experiments-finance.projections.json",
+        "llm-wiki.projections.json",
+        "plugin-repository.projections.json",
+        "skill-dev-skill.projections.json",
+        "skill-manager.projections.json",
+        "slm-agent.projections.json",
+        "tracer-agent.projections.json",
+        "vision-toolbelt-skill.projections.json"
+      ]
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-14-run-meta-harness-as-a-substrate-actor-on/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-14-run-meta-harness-as-a-substrate-actor-on",
+      "generated_name": "skill-manager-3ad56ee5",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": [
+        "debugging.projections.json",
+        "discovery.projections.json",
+        "doc-repo-devops.projections.json",
+        "hyper-experiments-finance.projections.json",
+        "llm-wiki.projections.json",
+        "plugin-repository.projections.json",
+        "skill-dev-skill.projections.json",
+        "slm-agent.projections.json",
+        "tracer-agent.projections.json",
+        "vision-toolbelt-skill.projections.json"
+      ]
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-88-research-the-meta-harness-plugin-set-wha/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-88-research-the-meta-harness-plugin-set-wha",
+      "generated_name": "skill-manager-9724e10a",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": [
+        "debugging.projections.json",
+        "discovery.projections.json",
+        "doc-repo-devops.projections.json",
+        "hyper-experiments-finance.projections.json",
+        "llm-wiki.projections.json",
+        "plugin-repository.projections.json",
+        "skill-dev-skill.projections.json",
+        "slm-agent.projections.json",
+        "tracer-agent.projections.json",
+        "vision-toolbelt-skill.projections.json"
+      ]
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-90-the-coverage-a-green-claims-a-corpus-gat/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-90-the-coverage-a-green-claims-a-corpus-gat",
+      "generated_name": "skill-manager-15acefc6",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": [
+        "debugging.projections.json",
+        "discovery.projections.json",
+        "doc-repo-devops.projections.json",
+        "hyper-experiments-finance.projections.json",
+        "llm-wiki.projections.json",
+        "plugin-repository.projections.json",
+        "skill-dev-skill.projections.json",
+        "slm-agent.projections.json",
+        "tracer-agent.projections.json",
+        "vision-toolbelt-skill.projections.json"
+      ]
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-harness-92-one-before-state-one-materializer-remove/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-harness-92-one-before-state-one-materializer-remove",
+      "generated_name": "skill-manager-eb16972a",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": [
+        "debugging.projections.json",
+        "discovery.projections.json",
+        "doc-repo-devops.projections.json",
+        "hyper-experiments-finance.projections.json",
+        "llm-wiki.projections.json",
+        "plugin-repository.projections.json",
+        "skill-dev-skill.projections.json",
+        "slm-agent.projections.json",
+        "tracer-agent.projections.json",
+        "vision-toolbelt-skill.projections.json"
+      ]
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/meta-orchestrator",
+      "generated_name": "skill-manager-88340088",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": null,
+      "G3_bin_cli_own_absolute": [
+        "computeq",
+        "helm-deploy",
+        "monitoring",
+        "tla-spec-dev",
+        "tracing-observability-install",
+        "vision-toolbelt"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-manager",
+      "generated_name": "skill-manager-fd6e57d4",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [
+        ".claude/skills/skill-manager",
+        ".codex/skills/skill-manager",
+        ".gemini/skills/skill-manager"
+      ],
+      "G1_orphan_projection_records": [
+        "skill-manager.projections.json"
+      ]
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-manager-integration-repository/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-manager-integration-repository",
+      "generated_name": "skill-manager-77af5a71",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": null,
+      "G3_bin_cli_own_absolute": [
+        "skt",
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-14/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-14",
+      "generated_name": "skill-manager-ebff39c3",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-19/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-19",
+      "generated_name": "skill-manager-0cf23ce9",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-23/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-publisher-ARTI-23",
+      "generated_name": "skill-manager-96be1182",
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/support-agent-rears/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/support-agent-rears",
+      "generated_name": null,
+      "verify_rc": 0,
+      "repair_rc": 0,
+      "repair_findings": 0,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/tla-spec-dev",
+      "generated_name": "skill-manager-0fd46eec",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": null,
+      "G3_bin_cli_own_absolute": [
+        "computeq",
+        "helm-deploy",
+        "monitoring",
+        "tla-spec-dev",
+        "tracing-observability-install",
+        "vision-toolbelt"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [
+        ".claude/skills/skill-publisher",
+        ".codex/skills/skill-publisher",
+        ".gemini/skills/skill-publisher"
+      ],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/tla-spec-dev-2",
+      "generated_name": "skill-manager-94eb20a9",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose",
+      "generated_name": "skill-manager-2604ccf5",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-229-library-attestation",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-231-library-reuse",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-233-reclaim-generations",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-239-sharing-harness",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-241-daemon-step",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-ci-otel/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-ci-otel",
+      "generated_name": "skill-manager-ee7286e9",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-computeq-multiproject-validation",
+      "generated_name": "skill-manager-f6f3becf",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/deploy-cdc-42-daemon-workspace-isolation/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-43-kueue-identity/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-45-host-service-install/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-46-capability-probes/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc-48-spec-multicluster-dimension/.skill-manager",
+          "/Users/hayde/IdeaProjects/deploy-cdc/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-library-sharing/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-library-sharing",
+      "generated_name": "skill-manager-919db26e",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 3,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [
+          "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-230-filtered-checkout-oid/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-231-library-reuse/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-233-reclaim-generations/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-239-sharing-harness/.skill-manager",
+          "/Users/hayde/IdeaProjects/wt-241-daemon-step/.skill-manager"
+        ],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-meta-harness-loop",
+      "generated_name": "skill-manager-03ed986b",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 7,
+      "G3_bin_cli_own_absolute": [
+        "computeq",
+        "helm-deploy",
+        "monitoring",
+        "tla-spec-dev",
+        "tracing-observability-install"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": [
+        "debugging.projections.json",
+        "discovery.projections.json",
+        "doc-repo-devops.projections.json",
+        "hyper-experiments-finance.projections.json",
+        "llm-wiki.projections.json",
+        "plugin-repository.projections.json",
+        "skill-dev-skill.projections.json",
+        "slm-agent.projections.json",
+        "tracer-agent.projections.json",
+        "vision-toolbelt-skill.projections.json"
+      ]
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-epic-mh-testing/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-epic-mh-testing",
+      "generated_name": "skill-manager-bc1954ac",
+      "verify_rc": 1,
+      "repair_rc": 1,
+      "repair_findings": 7,
+      "G3_bin_cli_own_absolute": [],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": [
+          "codex marketplace skill-manager -> /Users/hayde/.skill-manager/plugin-marketplace",
+          "codex plugin andrej-karpathy-skills@skill-manager",
+          "codex plugin cdc-agent-substrate-plugin@skill-manager",
+          "codex plugin skt@skill-manager",
+          "claude enabled andrej-karpathy-skills@skill-manager",
+          "claude enabled cdc-agent-substrate-plugin@skill-manager",
+          "claude enabled skt@skill-manager"
+        ]
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-fix-311/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-fix-311",
+      "generated_name": "skill-manager-e68ca88f",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-0/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-0",
+      "generated_name": "skill-manager-7a9d24fb",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-1/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-1",
+      "generated_name": "skill-manager-35084990",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-10/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-10",
+      "generated_name": "skill-manager-34d4b211",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-12/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-12",
+      "generated_name": "skill-manager-23b3f364",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-2/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-2",
+      "generated_name": "skill-manager-49b25e05",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-2b/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-2b",
+      "generated_name": "skill-manager-2e2dcbd2",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-3/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-3",
+      "generated_name": "skill-manager-821b0f07",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-4/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-4",
+      "generated_name": "skill-manager-0250784c",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-5/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-5",
+      "generated_name": "skill-manager-324de20a",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-6/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-6",
+      "generated_name": "skill-manager-d85d6969",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    },
+    {
+      "home": "/Users/hayde/IdeaProjects/wt-oun-9/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/wt-oun-9",
+      "generated_name": "skill-manager-e2d7717b",
+      "verify_rc": 0,
+      "repair_rc": 1,
+      "repair_findings": 2,
+      "G3_bin_cli_own_absolute": [
+        "tla-spec-dev"
+      ],
+      "G4": {
+        "shape1_claude_other_name_at_path": [],
+        "shape2_substring_exposed": false,
+        "shape3_same_name_as": [],
+        "shape4_other_or_stale_registration": []
+      },
+      "G1_dangling_agent_links": [],
+      "G1_orphan_projection_records": []
+    }
+  ]
+}
