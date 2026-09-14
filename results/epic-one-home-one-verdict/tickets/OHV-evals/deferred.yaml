@@ -1,0 +1,262 @@
+# Deferred findings -- OHV-evals, the plugin eval suite run against the one-home-one-verdict
+# build before epic PR #371 merges.
+#
+# Filed by the eval run, never fixed by it (no product code changes). IDs DEF-OHV-200..209 only.
+# Searched before filing: results/*/deferred/backlog.yaml, results/*/tickets/*/deferred.yaml,
+# specs/evals/results/*.md, and `gh issue list` on haydenrear/skill-manager (#328, #329, #353).
+# Measured on feature/OHV-evals at 2b5f83ea (= epic tip), release-shaped fatjar
+# `skill-manager 0.27.2 / build: artifact fa6ad2b0263b`, Claude Code 2.1.270, 2026-09-14.
+
+findings:
+  - id: DEF-OHV-200
+    found_by: OHV-evals, reading specs/evals/README.md before running the suite
+    found_at_commit: 2b5f83ea
+    severity: minor
+    maps_to: "specs/evals (eval harness docs), not product"
+    related: ["skill-manager#328"]
+    summary: >
+      specs/evals/README.md documents `harness/build-env.sh` and a top-level `harness/run.sh`
+      and gives the run command as `./build-env.sh "$SKILL_MANAGER_HOME"; ./run.sh 'epic-*'`.
+      Neither file exists. The harness is per case: `evals/<case>/setup.sh [<src-home>]` then
+      `evals/<case>/run.sh [--keep]`, with the shared code in lib.sh. The README's layout block
+      is copied from #328's original proposal and was never updated. An operator following it
+      gets "no such file" before a single run.
+    reproduction: >
+      cd specs/evals/harness && ./build-env.sh ~/.skill-manager  -> no such file or directory;
+      git ls-files specs/evals/harness | grep -c build-env  -> 0
+    suggested_fix: rewrite the README's Layout and run command to the setup.sh/run.sh-per-case shape
+    disposition: pending
+
+  - id: DEF-OHV-201
+    found_by: OHV-evals, epic-provisions-a-ticket-worktree run 1 trace (score 1.00)
+    found_at_commit: 2b5f83ea
+    severity: major
+    maps_to: "specs/evals/harness (fixture hook + lib.sh eval_fixture_checkout), not product"
+    related: ["specs/evals/results/2026-09-07-epic-provisions-a-ticket-worktree.md Finding 1"]
+    summary: >
+      Every fixture workspace is DIRTY inside the sandbox, so the agent's own front-door command
+      can never succeed there, whatever it types. place-fixture.sh writes `.eval-bin/git` into the
+      workspace, and verify.sh writes `.eval/` at Stop, but eval_fixture_checkout's .gitignore
+      covers only `.skill-manager/ .claude/ .codex/ .gemini/`. `skt ticket new` refuses with
+      "working tree is not clean — an epic worktree pins its base from a clean slate". This is
+      the 2026-09-07 Finding 1 again: that fix ignored `.skill-manager/`, and `.eval-bin` was
+      added after it. Scores are unaffected today only because the prompt tells the agent the
+      command will fail and the Stop hook replays it in a clean copy (tar of the source workspace,
+      which has no `.eval-bin`). But an agent that follows the refusal's own `fix:` line
+      ("commit or stash, then re-run") spends Bash calls against the cost grader, and the
+      in-sandbox run never exercises the CLI build under test.
+    reproduction: >
+      trace results/epic-one-home-one-verdict/evals/2026-09-14/traces/epic-provisions-a-ticket-worktree-1.trace.jsonl
+      event 29: `skt ticket new DEMO-1 --base 10a6ceab… --path ../wt-DEMO-1` -> "Exit code 1 error:
+      working tree is not clean"; the kept workspace held `.eval-bin` and `.eval` beside a
+      .gitignore that names neither.
+    suggested_fix: add `.eval-bin/` and `.eval/` to the .gitignore eval_fixture_checkout writes
+    evidence_more: >
+      ticket-agent-opens-a-ticket run 1 (0.82): the cost grader's 4th Bash call is the agent
+      obeying the refusal's own fix line -- `git -C <cwd> status --short` -> `?? .eval-bin/`
+      (trace events 37-47). The lost grader is this defect, not the skill.
+    disposition: pending
+
+  - id: DEF-OHV-202
+    found_by: OHV-evals, bootstraps-a-home-for-a-repo run 1 verify.log (score 1.00)
+    found_at_commit: 2b5f83ea
+    severity: major
+    maps_to: "specs/evals/harness/units-template/verify/hooks/verify.sh (EXPECT=home), not product"
+    summary: >
+      The bootstrap case's weight-3 non-vacuity verdict `.eval/home-exists` is written without
+      looking at the replay's exit code. verify.sh's `home)` branch tests only that
+      `bin/cli` and `installed/` exist, while its own header states rule 2 ("write a verdict
+      only after a real program returns success"). Run 1's replay of `bootstrap-home.sh .`
+      exited 6 -- "error: this home holds 18 skill(s) and an agent launched here can reach 0"
+      -- after the clone had already produced bin/cli and installed/, and the case scored 1.00.
+      The `worktree-gone` branch does require RC=0; `home` and `worktree` do not. The case has no
+      `front-door-runs` grader either, so nothing in its score can see a failed bootstrap.
+    reproduction: >
+      results/epic-one-home-one-verdict/evals/2026-09-14/traces/bootstraps-a-home-for-a-repo-1.verify.log:
+      `replay exit=6` followed by `verdicts: ... home-exists ...`; the aggregate result
+      specs/evals/results/runs/bootstraps-a-home-for-a-repo/2026-09-14T18-5*.json scores
+      a-real-home-appears passed.
+    suggested_fix: >
+      require `[ "$RC" = 0 ]` in the `home)` (and `worktree)`) branches, and give the bootstrap
+      case a `front-door-runs` grader like the ticket cases have
+    disposition: pending
+
+  - id: DEF-OHV-203
+    found_by: OHV-evals, diagnosing bootstraps-a-home-for-a-repo run 1's replay exit 6 ($0 repro outside the sandbox)
+    found_at_commit: 2b5f83ea
+    severity: major
+    maps_to: "product: skill-manager sync projection + git-issue-workflow bootstrap-home.sh; NOT an epic regression"
+    related: [DEF-OHV-202, DEF-OHV-206]
+    summary: >
+      A sync in which ANY unit's git fetch fails projects NO skills into the agent homes, so
+      `bootstrap-home.sh` exits 6 with "this home holds 18 skill(s) and an agent launched here can
+      reach 0". Bootstrapping from a home whose units include private repositories therefore fails
+      whenever the caller cannot authenticate to one of them (an eval hook, CI, a machine without
+      the operator's credential helper). The failing units were 7 of 22 (acp-cdc-ai-python, debugging,
+      deploy-helm, git-epic-workflow, hyper-experiments-finance, llm-wiki, plugin-repository); the 15
+      that synced were not projected either. Identical on the released brew 0.27.2
+      (artifact 862d3a4c6017) and on the epic fatjar (artifact fa6ad2b0263b), so it predates this epic.
+    reproduction: >
+      Discriminating pair, same bootstrapped homes, same build, only git credentials differ:
+      (a) HOME=<empty dir> SKILL_MANAGER_HOME=<branched eval home> SKILL_MANAGER_CLI=<build>
+          skills/git-issue-workflow/scripts/bootstrap-home.sh .   in a fresh `git init` checkout
+          -> 7 x "git sync failed — git fetch/merge rc=1", "synced 15 unit(s)", exit 6, .claude/skills absent
+          (epic and brew alike);
+      (b) in the same checkout, with the operator's HOME for git credentials and the agent dirs named:
+          env SKILL_MANAGER_HOME=$ws/.skill-manager CLAUDE_CONFIG_DIR=$ws/.claude CODEX_HOME=$ws/.codex
+          GEMINI_HOME=$ws/.gemini <build> sync --skip-mcp  -> "synced 22 unit(s)", exit 0, 18 skills in
+          $ws/.claude/skills (epic and brew alike).
+      Logs: /private/tmp/ohv-evals/repro-bootstrap/{bootstrap,resync}-{epic,brew}.log (excerpted in
+      results/epic-one-home-one-verdict/evals/2026-09-14/README.md).
+    suggested_fix: >
+      project every unit whose sync succeeded (or that is already materialised) even when others
+      fail, and report the failures; bootstrap-home.sh's refusal should then name the unreachable
+      units as the cause instead of "run it by hand and read what it says"
+    disposition: pending
+
+  - id: DEF-OHV-205
+    found_by: OHV-evals, ticket-agent-opens-a-ticket run 2 and reconciles-a-worktree-into-the-project-home run 2 traces
+    found_at_commit: 2b5f83ea
+    severity: major
+    maps_to: "specs/evals/harness (lib.sh eval_build_case unit wrappers + eval_claude_home permissions), not product"
+    summary: >
+      Inside a run the agent can open a skill (the Skill tool loads SKILL.md) but cannot READ the
+      skill's own references. The skill's base directory is announced as
+      $BUILD/units/<unit>/skills/<unit>/, a symlink into $BUILD/home/skills/<unit>, and a Read or
+      Grep there is refused before any tool runs: "Permission to use Read has been denied because
+      Claude Code is running in don't ask mode". Bash `sed`/`ls` on the same paths return
+      "Operation not permitted". So progressive disclosure -- the thing every case's
+      reaches-a-skill grader is about -- stops at SKILL.md: a skill that says "see
+      references/provision.md" cannot be followed, and the agent either guesses or finds the same
+      file through the workspace's `.skill-manager/skills/` copy (reconciles run 2 did, after a
+      refused Grep, a missing `rg`, and a `grep -rn`). Every such detour is billed to the cost grader.
+    reproduction: >
+      traces/ticket-agent-opens-a-ticket-2.trace.jsonl events 36-38 (Read of
+      .../units/git-issue-workflow/skills/git-issue-workflow/references/provision.md refused) and 48-50
+      (Grep refused); traces/reconciles-a-worktree-into-the-project-home-2.trace.jsonl events 42-47.
+    suggested_fix: >
+      make the skill surface readable from inside the run -- copy (or hard-link) each unit's
+      references into the wrapper plugin directory rather than symlinking out to $BUILD/home, or add
+      the resolved skill directories to the eval home's Read permission rules -- and add a probe to
+      setup that Reads one reference file through the plugin path
+    disposition: pending
+
+  - id: DEF-OHV-207
+    found_by: OHV-evals, reconciles-a-worktree-into-the-project-home run 2 (score 0.14)
+    found_at_commit: 2b5f83ea
+    severity: major
+    maps_to: "specs/evals/harness/units-template/verify/lib/front_door.py, not product"
+    summary: >
+      The front-door extractor splits a Bash command on newlines (`SEP = (?:\|\||&&|[;&|\n])`), so a
+      command written with backslash line-continuations is cut into pieces and the program piece
+      `.skill-manager/bin/cli/skill-manager home sync \` fails the argument allowlist on its
+      trailing backslash. Run 2's agent issued exactly the operation the case grades --
+      `skill-manager home sync --from <wt>/.skill-manager --to ./.skill-manager --merge`, over four
+      lines -- and the hook recorded "candidates=0 rejected=1", wrote no front-door and no
+      source-undamaged verdict, and the case scored 0.14 for a correct answer (a weight-3 and a
+      weight-1 grader lost to the instrument). The extractor's --self-test corpus has no continued command.
+    reproduction: >
+      traces/reconciles-a-worktree-into-the-project-home-2.eval/front-door-rejected.txt holds the one
+      piece `.skill-manager/bin/cli/skill-manager home sync \`; WHY-NO-FRONT-DOOR.txt shows the whole
+      four-line command. Offline: python3 front_door.py's analyze() on
+      "skill-manager home sync \\\n  --from a \\\n  --to b" with verb_re "(?:home\s+sync)" returns no hit.
+    suggested_fix: >
+      join `\\\n` continuations before splitting on SEP, and add that command to the self-test corpus
+    disposition: pending
+
+  - id: DEF-OHV-208
+    found_by: OHV-evals, ticket-agent-opens-a-ticket run 3 trace
+    found_at_commit: 2b5f83ea
+    severity: minor
+    maps_to: "specs/evals/harness/units-template/fixture/hooks/place-fixture.sh, not product"
+    summary: >
+      place-fixture.sh tells every case "workspace: a git checkout on branch epic/demo-epic" as
+      SessionStart context. That is a literal string, and only the epic-provisions fixture is on
+      that branch; the other five are on `main`. Run 3 of the ordinary-ticket case read the note,
+      concluded the checkout "happens to be sitting on epic/demo-epic", and added `--base main` to
+      escape an epic branch it was not on. Harmless this time, but the harness is feeding the agent
+      a false fact about the exact thing the ordinary-vs-epic case discriminates on.
+    reproduction: >
+      traces/ticket-agent-opens-a-ticket-3.trace.jsonl event 3 (the note) and event 51 (the agent's
+      reasoning); every trace's event 3 carries the same string; lib.sh eval_fixture_checkout is
+      called with `main` for five of the six cases.
+    suggested_fix: report the fixture's real branch (`git -C "$SRC" rev-parse --abbrev-ref HEAD`)
+    disposition: pending
+
+  - id: DEF-OHV-209
+    found_by: OHV-evals, syncs-a-stale-home-from-root runs 1-3 traces
+    found_at_commit: 2b5f83ea
+    severity: major
+    maps_to: "specs/evals/harness/evals/syncs-a-stale-home-from-root/setup.sh (fixture) x sandbox network; NOT an epic regression"
+    related: ["skill-manager#353", "results/epic-one-home-one-verdict/attribution/2026-09-13-migration-0.27.md (same symptom on 0.27.1/0.27.2)"]
+    summary: >
+      In every run the agent finds the currency command and the currency command WORKS --
+      `skt check` names exactly "new version available for git-issue-workflow — pull with: skt sync
+      git-issue-workflow", and `skt sync git-issue-workflow` moves the store to the tip fae9e9e --
+      but the sync then exits 1, and the agent spends 13 to 34 further Bash calls on why (run 1 hit the
+      30-turn cap, #353). The exit is manufactured by the fixture: setup.sh rewrites
+      installed/git-issue-workflow.json's `origin` to a local bare mirror so the case needs no
+      network, but git-epic-workflow and git-integration-repo still import the unit by its GitHub
+      coordinate, so the resolver treats the import as unmet, clones it from GitHub inside the
+      sandbox, gets rc=128, and records TRANSITIVE_RESOLVE_FAILED on both importers. The cost
+      grader (max 4) is therefore unreachable by an agent that reads its command's exit code.
+    reproduction: >
+      traces/syncs-a-stale-home-from-root-2.trace.jsonl events 32-35 (`skt sync git-issue-workflow` ->
+      "the underlying sync failed (exit 1)") and 54-55 (git-issue-workflow origin =
+      ".../.skill-manager/sources/git-issue-workflow.git"; git-epic-workflow errors =
+      TRANSITIVE_RESOLVE_FAILED "could not resolve git+https://github.com/haydenrear/git-issue-workflow...");
+      traces/syncs-a-stale-home-from-root-1.trace.jsonl event 221 ("git clone
+      https://github.com/haydenrear/git-issue-workflow-skill failed (rc=128)").
+    suggested_fix: >
+      make the fixture's mirror satisfy the importers too (rewrite their import coordinate, or
+      register the mirror as the unit's source so the coordinate resolves locally), and verify_env
+      the full `skt sync git-issue-workflow` exit code at setup, as plugin_evals.md §3 requires
+    disposition: pending
+
+  - id: DEF-OHV-206
+    found_by: OHV-evals, bootstraps-a-home-for-a-repo run 1 verify.log
+    found_at_commit: 2b5f83ea
+    severity: minor
+    maps_to: "specs/evals/harness/units-template/verify/hooks/verify.sh (bootstrap replay), not product"
+    related: ["skill-manager#353 (third bullet: no way to put an unreleased build under test)", DEF-OHV-202]
+    summary: >
+      The bootstrap case's replay does not run the build under test. bootstrap-home.sh resolves its
+      CLI as SKILL_MANAGER_CLI, else `command -v skill-manager`. verify.sh sets neither and puts
+      /opt/homebrew/bin on the replay PATH, so the replay ran the operator's brew 0.27.2
+      ("cli: /opt/homebrew/bin/skill-manager" in the bootstrap log) while every other case
+      replayed through the eval home's pinned build. Pinning the branched homes (this round's
+      EVAL_CLI_DIST) cannot reach it: the bootstrap case has no home in its fixture to pin.
+    reproduction: >
+      traces/bootstraps-a-home-for-a-repo-1.verify.log, and the replay's own log
+      $BUILD/tmp/bootstrap-home-*.log line 3 `cli: /opt/homebrew/bin/skill-manager`.
+    suggested_fix: >
+      export SKILL_MANAGER_CLI="$BUILD/home/bin/cli/skill-manager" (the eval home's pin) in the
+      replay subshell when REPLAY_HOME_KIND=eval-home
+    disposition: pending
+
+  - id: DEF-OHV-204
+    found_by: OHV-evals, ticket-agent-closes-a-ticket run 1 trace; the 2026-09-13 reconciles commands.txt
+    found_at_commit: 2b5f83ea
+    severity: minor
+    maps_to: "specs/evals/harness/units-template/fixture/hooks/place-fixture.sh, not product"
+    related: [DEF-OHV-201]
+    summary: >
+      The two cases whose prompt names a sibling worktree (`../wt-TICKET-7`, `../wt-TICKET-9`)
+      never get one inside the sandbox. setup.sh builds it beside $BUILD/fixture-workspace, and
+      place-fixture.sh copies only the workspace into the run's cwd, so `../wt-TICKET-*` does not
+      exist there. The agent's front-door command then fails for the fixture's reason -- closes:
+      `skt ticket close TICKET-7` -> "error: no worktree for ticket TICKET-7 ... nothing named
+      '*-TICKET-7' in /private/tmp/e-K88M98/home" -- and an agent that checks the path the prompt
+      gave it (reconciles 2026-09-13: `ls -a /private/tmp/e-PBZtNv/home/wt-TICKET-9`, then a hunt
+      under $BUILD, which the sandbox denies) spends cost-grader Bash calls on it. The Stop hook
+      rebuilds the worktree for the replay (REPLAY_PRE), so front-door verdicts are right; only
+      the in-sandbox behaviour and the cost grader are measured against a missing fixture.
+    reproduction: >
+      traces/ticket-agent-closes-a-ticket-1.trace.jsonl event 26;
+      specs/evals/results/runs/reconciles-a-worktree-into-the-project-home/diagnostics/2026-09-13T00-48-49-108Z-commands.txt
+      commands 1-3.
+    suggested_fix: >
+      have the fixture hook build the sibling worktree inside the run (`skt ticket new` against
+      the copied home, as REPLAY_PRE does), or reword both prompts so they do not assert a path
+      the sandbox cannot hold
+    disposition: pending

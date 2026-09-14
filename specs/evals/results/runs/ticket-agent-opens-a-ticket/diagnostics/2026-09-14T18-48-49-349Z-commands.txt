@@ -1,0 +1,7 @@
+SMH="${SKILL_MANAGER_HOME:-$HOME/.skill-manager}"; echo "SKILL_MANAGER_HOME=${SKILL_MANAGER_HOME:-<unset>}"; echo "resolved SMH=$SMH"; test -x "$SMH/bin/cli/skt" && echo "YES skt plugin CLI: $SMH/bin/cli/skt" || echo "no $SMH/bin/cli/skt"; test -x "$SMH/skills/git-issue-workflow/scripts/wt" && echo "YES wt: $SMH/skills/git-issue-workflow/scripts/wt" || echo "no $SMH/skills/git-issue-workflow/scripts/wt"; command -v skt >/dev/null && echo "skt on PATH: $(command -v skt)" || echo "skt not on PATH"
+---
+B=/private/tmp/ohv-evals/builds/ticket-agent-opens-a-ticket/units/git-issue-workflow/skills/git-issue-workflow; sed -n '1,80p' "$B/scripts/wt"
+---
+skt ticket new TICKET-42
+---
+./.eval-bin/git -C /private/tmp/e-5fDE0U/home/cwd status --short

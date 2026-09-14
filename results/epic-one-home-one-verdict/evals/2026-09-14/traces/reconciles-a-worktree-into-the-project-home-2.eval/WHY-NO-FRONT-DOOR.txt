@@ -1,0 +1,28 @@
+NO FRONT-DOOR COMMAND RECOGNISED.
+VERB_RE=(?:home\s+close-out|home\s+sync|close-out)  PROG_RE=<default>
+
+The graders below this point are red because nothing was replayed,
+NOT because each is a separate finding:
+  front-door, front-door-runs, worktree-has-its-own-home, source-undamaged
+
+--- every Bash command the agent ran, which is what to match against ---
+ls -a . ../ 2>&1 | head -50; echo "---WT---"; ls -a ../wt-TICKET-9 2>&1 | head -30
+---
+./.eval-bin/git worktree list 2>&1; echo "---"; ls -a .skill-manager 2>&1
+---
+WT=/private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9; ls -a $WT 2>&1 | head; echo "---HOME---"; ls -a $WT/.skill-manager 2>&1 | head -30; echo "---SKILLS---"; ls $WT/.skill-manager/skills 2>&1
+---
+command -v skill-manager skt; echo "==="; skill-manager home --help 2>&1 | head -60
+---
+skill-manager home sync --help 2>&1 | head -60
+---
+rg -n --no-heading "home sync" .skill-manager/skills/git-epic-workflow 2>&1 | head -30
+---
+grep -rn "home sync" .skill-manager/skills/git-epic-workflow .skill-manager/skills/git-issue-workflow 2>&1 | head -30
+---
+.skill-manager/bin/cli/skill-manager home sync \
+  --from /private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/.skill-manager \
+  --to /private/tmp/e-n26MAA/home/cwd/.skill-manager \
+  --merge 2>&1
+--- pieces that looked like the front door but failed the arg allowlist ---
+.skill-manager/bin/cli/skill-manager home sync \

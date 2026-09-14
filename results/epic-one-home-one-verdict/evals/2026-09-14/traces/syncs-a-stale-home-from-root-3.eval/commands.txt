@@ -1,0 +1,90 @@
+skt status 2>&1
+---
+skt check 2>&1
+---
+skt check --json 2>&1 | head -60
+---
+cd /private/tmp/e-k73mBx/home/cwd/.skill-manager/skills/git-issue-workflow 2>/dev/null && pwd && git remote -v && git log --oneline -3 2>&1
+---
+skt check --json 2>&1 | tail -25
+---
+./.eval-bin/git -C .skill-manager/skills/git-issue-workflow remote -v && echo "--- local HEAD ---" && ./.eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline -3 2>&1
+---
+cat /private/tmp/e-k73mBx/home/.gitconfig 2>&1; echo "=== ls units ==="; ls /private/tmp/ohv-evals/builds/syncs-a-stale-home-from-root/units/ 2>&1 | head
+---
+./.eval-bin/git -C /private/tmp/ohv-evals/builds/syncs-a-stale-home-from-root/units/git-issue-workflow log --oneline -5 2>&1; echo "=== branch ==="; ./.eval-bin/git -C /private/tmp/ohv-evals/builds/syncs-a-stale-home-from-root/units/git-issue-workflow branch -a 2>&1
+---
+skt sync --help 2>&1 | head -30; echo "=== parent home ==="; ls /private/tmp/ohv-evals/src-home 2>&1 | head
+---
+skt sync git-issue-workflow 2>&1
+---
+/private/tmp/e-k73mBx/home/cwd/.skill-manager/bin/cli/skill-manager sync git-issue-workflow --git-latest 2>&1 | tail -40
+---
+./.eval-bin/git clone --depth 1 https://github.com/haydenrear/git-issue-workflow-skill "$TMPDIR/giw-probe" 2>&1 | tail -20; echo "rc=$?"
+---
+./.eval-bin/git -C "$TMPDIR/giw-probe" log --oneline -3 2>&1
+---
+ls /private/tmp/e-k73mBx/home/cwd/.skill-manager/logs 2>&1; echo "=== skill-manager logs ==="; ls -t /private/tmp/e-k73mBx/home/cwd/.skill-manager/logs/* 2>&1 | head -20
+---
+./.eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline -1 2>&1; echo "=== check ==="; skt check 2>&1
+---
+.skill-manager/bin/cli/skill-manager home describe --json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+def walk(o,p=''):
+    if isinstance(o,dict):
+        for k,v in o.items():
+            if k=='errors' and v: print(p+'/'+k, json.dumps(v)[:600])
+            walk(v,p+'/'+k)
+    elif isinstance(o,list):
+        for i,v in enumerate(o): walk(v,p+f'[{i}]')
+walk(d)
+print('--- top keys:', list(d.keys()))
+"
+---
+.skill-manager/bin/cli/skill-manager home describe --json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+u=d['units']
+print(type(u))
+items = u.items() if isinstance(u,dict) else [(x.get('name'),x) for x in u]
+for n,v in items:
+    if n in ('git-issue-workflow','git-epic-workflow','git-integration-repo'):
+        print(json.dumps({n:v},indent=1)[:1200])
+"
+---
+./.eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline 5c88a80..fae9e9e 2>&1; echo "=== files ==="; ./.eval-bin/git -C .skill-manager/skills/git-issue-workflow diff --stat 5c88a80..fae9e9e 2>&1
+---
+skt check >/dev/null 2>&1; echo "skt check exit=$?"; skt status 2>&1 | grep -E "git-issue-workflow|^units"
+---
+skt status --json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for u in d.get('units',[]):
+    if u.get('errors'): print(json.dumps(u,indent=1)[:1500])
+"
+---
+.skill-manager/bin/cli/skill-manager sync --help 2>&1 | head -40
+---
+.skill-manager/bin/cli/skill-manager --help 2>&1 | head -60
+---
+.skill-manager/bin/cli/skill-manager sync git-issue-workflow --git-latest -v --dry-run 2>&1 | tail -30
+---
+echo "PATH=$PATH"; echo "--- which git from another cwd ---"; (cd "$TMPDIR" && command -v git; git --version 2>&1 | head -3)
+---
+PATH="$PWD/.eval-bin:$PWD/.skill-manager/bin/cli:/opt/homebrew/opt/openjdk/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
+  .skill-manager/bin/cli/skill-manager sync git-issue-workflow --git-latest 2>&1 | tail -20
+---
+ls -a .skill-manager/ 2>&1; echo "=== root home ==="; ls -a /private/tmp/e-k73mBx/home/.skill-manager 2>&1 | head -20
+---
+ls .skill-manager/sources .skill-manager/cache 2>&1 | head -30; echo "=== audit tail ==="; tail -5 .skill-manager/audit.log 2>&1
+---
+file .eval-bin/git; echo "---"; head -40 .eval-bin/git 2>&1
+---
+XCRUN_NO_CACHE=1 .skill-manager/bin/cli/skill-manager sync git-issue-workflow --git-latest 2>&1 | tail -15
+---
+grep -rn "git-issue-workflow" .skill-manager/skills/git-epic-workflow/skill-manager.toml .skill-manager/skills/git-integration-repo/skill-manager.toml 2>&1 | head -20
+---
+.skill-manager/bin/cli/skill-manager deps --who-imports git-issue-workflow 2>&1 | tail -20
+---
+skt check; echo "exit=$?"; echo "=== unit state ==="; ./.eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline -1; skt status 2>&1 | grep -E "git-issue-workflow"

@@ -1,0 +1,3 @@
+sed -n '1,60p' /private/tmp/ohv-evals/builds/bootstraps-a-home-for-a-repo/units/git-issue-workflow/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>/dev/null || ls /private/tmp/ohv-evals/builds/bootstraps-a-home-for-a-repo/units/git-issue-workflow/skills/git-issue-workflow/scripts/
+---
+"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/skills/git-issue-workflow/scripts/bootstrap-home.sh" .
