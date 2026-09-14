@@ -1,0 +1,15 @@
+Read {"file_path": "/private/tmp/e-D84JDP/home/cwd/cases/w-skt-not-installed-is-not-not-synced/ticket-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-D84JDP/home/cwd/cases/w-skt-not-installed-is-not-not-synced/installed-units.txt"}
+---
+Skill {"skill": "skt:skill-manager"}
+---
+Bash {"command": "skill-manager list 2>&1 | head -50; echo ---; skill-manager show git-issue-workflow 2>&1 | head -40", "description": "List installed units and show git-issue-workflow"}
+---
+Bash {"command": "grep -rn \"git-issue-workflow-skill\" /private/tmp/skill-evals/wide/units/skt/ 2>/dev/null | head -20", "description": "Find git-issue-workflow repo coordinate in skt unit"}
+---
+Bash {"command": "grep -n -A6 'git-issue-workflow' /private/tmp/e-D84JDP/home/cwd/.skill-manager/units.lock.toml 2>/dev/null | head -30; echo === ; ls /private/tmp/e-D84JDP/home/cwd/.skill-manager/bin/cli/", "description": "Check lock entry source and home cli entrypoint"}
+---
+Bash {"command": "ls /private/tmp/e-D84JDP/home/cwd/.skill-manager/bin/cli/ 2>&1 | head", "description": "List home cli shim directory"}
+---
+Bash {"command": "/work/proj/.skill-manager/bin/cli/skill-manager install github:haydenrear/git-issue-workflow-skill", "description": "Install git-issue-workflow into the project home"}

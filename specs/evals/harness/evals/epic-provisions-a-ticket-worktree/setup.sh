@@ -97,7 +97,7 @@ GIT="$(PATH="$(eval_path "$BUILD/home")" command -v git)"
 ( cd "$WS" && export TMPDIR="$(eval_tmpdir "$BUILD")" && "$GIT" init -q . \
   && "$GIT" config user.email eval@example.invalid && "$GIT" config user.name eval \
   && printf 'demo project\n' > README.md \
-  && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n' > .gitignore \
+  && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n.eval-bin/\n' > .gitignore \
   && "$GIT" add -A && "$GIT" commit -qm initial && "$GIT" checkout -q -B epic/demo-epic )
 branch_home "$SRC" "$WS/.skill-manager"
 

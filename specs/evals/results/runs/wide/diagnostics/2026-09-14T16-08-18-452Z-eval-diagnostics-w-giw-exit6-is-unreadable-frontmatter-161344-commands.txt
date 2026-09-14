@@ -1,0 +1,9 @@
+Read {"file_path": "/private/tmp/e-gQfaWL/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/bootstrap.txt"}
+---
+Read {"file_path": "/private/tmp/e-gQfaWL/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md"}
+---
+Edit {"file_path": "/private/tmp/e-gQfaWL/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md", "new_string": "description: 'Use when tidying demo docs: the README, the changelog and notes.'", "old_string": "description: Use when tidying demo docs: the README, the changelog and notes.", "replace_all": false}
+---
+Glob {"pattern": ".skill-manager/skills/demo-skill/**"}
+---
+Bash {"command": "python3 -c \"\nimport sys,yaml\np='cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md'\nt=open(p).read().split('---')[1]\nprint(yaml.safe_load(t))\n\"", "description": "Parse the skill frontmatter as YAML to confirm it is valid"}

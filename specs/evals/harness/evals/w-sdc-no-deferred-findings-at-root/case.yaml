@@ -1,0 +1,27 @@
+schema_version: "1.0"
+name: w-sdc-no-deferred-findings-at-root
+description: >-
+  bug_attribution.md §4 once said a CATCH goes in specs/deferred_findings.yaml.
+  That path does not exist where the rows live in sealed epic results, and an
+  agent was one step from creating it -- a file that collides with every sealed
+  row on merge. The doc now says: when the path is absent, write the rows into
+  the ticket's own results/attribution.yaml. Provenance: tla-spec-dev 5205556
+  (E-10), references/bug_attribution.md §4 (97-109).
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    You are closing out ticket T-6. The spec root is cases/w-sdc-no-deferred-findings-at-root/specs.
+    While working it, a spec-unit test caught that `Checkout` accepted an empty
+    cart; the defect had escaped the earlier ticket's review. Record this catch in
+    the findings ledger the project's attribution process uses.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a write will fail
+    with "Operation not permitted". That is expected. Make the write you would
+    make, once, and report which file you wrote. Do not look for a writable location.
+
+    EVAL-CASE: w-sdc-no-deferred-findings-at-root

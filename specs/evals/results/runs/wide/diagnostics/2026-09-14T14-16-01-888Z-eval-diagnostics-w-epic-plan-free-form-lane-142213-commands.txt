@@ -1,0 +1,41 @@
+Bash {"command": "ls -la /private/tmp/e-8rpXdY/home/cwd && echo \"---\" && ls -la /private/tmp/e-8rpXdY/home/cwd/cases 2>/dev/null", "description": "List working directory and cases"}
+---
+Bash {"command": "cat /private/tmp/e-8rpXdY/config/projects/-private-tmp-e-8rpXdY-home/memory/MEMORY.md 2>/dev/null || echo \"NO MEMORY.md\"", "description": "Read memory index"}
+---
+Bash {"command": "find /private/tmp/e-8rpXdY/home/cwd/cases/w-epic-plan-free-form-lane -type f | head -50", "description": "List case files"}
+---
+Read {"file_path": "/private/tmp/e-8rpXdY/config/projects/-private-tmp-e-8rpXdY-home/memory/MEMORY.md"}
+---
+Read {"file_path": "/private/tmp/e-8rpXdY/home/cwd/cases/w-epic-plan-free-form-lane/ticket_plan.yaml"}
+---
+Skill {"args": "validate ticket_plan.yaml before dispatch", "skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "ls -R /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow | head -60", "description": "List skill contents"}
+---
+Bash {"command": "ls /private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/ 2>/dev/null; echo \"---\"; ls /private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/git-epic-workflow/scripts/ 2>/dev/null", "description": "Check installed skill in project home"}
+---
+Bash {"command": "python3 .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py --help 2>&1 | head -40", "description": "Show validator usage"}
+---
+Bash {"command": "ls /private/tmp/e-8rpXdY/home/cwd/.skill-manager/ ; echo \"--- venvs\"; find /private/tmp/e-8rpXdY/home/cwd/.skill-manager -maxdepth 3 -name \"*venv*\" -o -maxdepth 3 -name \"pyvenv.cfg\" 2>/dev/null | head", "description": "Inspect skill manager home layout"}
+---
+Bash {"command": "command -v uv; command -v pip3; python3 -c \"import sys; print(sys.executable, sys.version)\"", "description": "Check python tooling"}
+---
+Bash {"command": "uv run --with pyyaml python .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py --help 2>&1 | head -40", "description": "Run validator help via uv"}
+---
+Bash {"command": "uv run --with pyyaml python .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py cases/w-epic-plan-free-form-lane/ticket_plan.yaml --verbose 2>&1; echo \"EXIT=$?\"", "description": "Validate the epic ticket plan"}
+---
+Read {"file_path": "/private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/git-epic-workflow/references/goals-and-evaluation.md"}
+---
+Bash {"command": "grep -n \"free.form\\|free_form\\|lane\\|WARN\\|warn(\" /private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py | head -60", "description": "Search validator for lane and warning logic"}
+---
+Read {"file_path": "/private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/git-epic-workflow/references/plan-and-schedule.md"}
+---
+Bash {"command": "cd /private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/git-epic-workflow; grep -n \"github_issue\\|validation\\|evidence_root\\|expected_effect\\|local_signal\\|harness\\|measured_at\\|conflict_keys\\|lane name\\|_LANE\\|baseline\" scripts/validate_epic_plan.py | head -40", "description": "Check which fields the validator inspects"}
+---
+Bash {"command": "cd /private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/git-epic-workflow; sed -n '1,80p' references/deferment.md", "description": "Read deferment policy schema"}
+---
+Bash {"command": "cd /private/tmp/e-8rpXdY/home/cwd/.skill-manager/skills/git-epic-workflow; sed -n '225,265p' scripts/validate_epic_plan.py; echo \"=== contribution kinds ===\"; grep -n \"contribution\\|enabling\\|guard\\|direct\" scripts/validate_epic_plan.py | head -20", "description": "Inspect goal-entry validation logic"}
+---
+Bash {"command": "cd /private/tmp/e-8rpXdY/home/cwd; ls specs test_graph results 2>&1 | head; echo \"=== branch ===\"; .eval-bin/git branch --show-current; .eval-bin/git log --oneline -3", "description": "Check repo for specs tree and branch"}
+---
+Bash {"command": "cd /private/tmp/e-8rpXdY/home/cwd; uv run --with pyyaml python .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py cases/w-epic-plan-free-form-lane/ticket_plan.yaml --strict --verbose 2>&1; echo \"EXIT=$?\"", "description": "Run validator in strict mode"}

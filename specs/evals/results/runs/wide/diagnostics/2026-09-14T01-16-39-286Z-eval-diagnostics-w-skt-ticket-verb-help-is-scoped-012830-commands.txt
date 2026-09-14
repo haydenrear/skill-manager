@@ -1,0 +1,1 @@
+Bash {"command": "command -v skt; skt ticket new --help 2>&1 | head -60", "description": "Check skt CLI and ticket new help"}

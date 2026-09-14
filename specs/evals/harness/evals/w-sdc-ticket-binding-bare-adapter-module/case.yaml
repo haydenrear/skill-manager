@@ -1,0 +1,28 @@
+schema_version: "1.0"
+name: w-sdc-ticket-binding-bare-adapter-module
+description: >-
+  A view-qualified adapter binding (`specs.program_model.adapters:X`) resolves
+  from the PROJECT ROOT, so inside a ticket view it runs the baseline's
+  adapters and a ticket that edited its own adapters.py goes green without
+  executing it. The bare form `adapters:X` resolves against the selected spec
+  directory. The fixture's existing lines carry the old qualified form, as the
+  scaffold used to write them. Provenance: tla-spec-dev c80e67e (DEF-001),
+  references/testgraph_adapters.md:13-14.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    Ticket T-4 adds a `Refund` action. Its adapter class `RefundInternalAdapter` is
+    already written in the ticket's desired view:
+    cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/adapters.py
+    Add the binding for it to that view's case_adapters.toml, next to the others.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the edit will fail
+    with "Operation not permitted". That is expected. Make the edit you would
+    make, once, and report it.
+
+    EVAL-CASE: w-sdc-ticket-binding-bare-adapter-module

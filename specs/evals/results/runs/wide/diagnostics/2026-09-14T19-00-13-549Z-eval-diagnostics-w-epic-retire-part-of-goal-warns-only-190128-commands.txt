@@ -1,0 +1,7 @@
+Bash {"command": "ls -la && ls cases/w-epic-retire-part-of-goal-warns-only/ 2>/dev/null", "description": "List working directory and case directory"}
+---
+Read {"file_path": "/private/tmp/e-rtDyjP/home/cwd/cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml"}
+---
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml --verbose; echo \"EXIT=$?\"", "description": "Validate the epic ticket plan"}

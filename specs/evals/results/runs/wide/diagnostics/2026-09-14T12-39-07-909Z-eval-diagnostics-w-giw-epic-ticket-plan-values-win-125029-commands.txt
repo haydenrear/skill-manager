@@ -1,0 +1,13 @@
+Read {"file_path": "/private/tmp/e-Tz6dx0/home/cwd/cases/w-giw-epic-ticket-plan-values-win/issue-141.md"}
+---
+Read {"file_path": "/private/tmp/e-Tz6dx0/home/cwd/cases/w-giw-epic-ticket-plan-values-win/ticket_plan-CA-03.yaml"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
+---
+Bash {"command": "SMH=\"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}\"; echo \"SMH=$SMH\"; test -x \"$SMH/bin/cli/skt\" && echo \"skt: YES\" || echo \"skt: no\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"wt: YES\" || echo \"wt: no\"; command -v skt || echo \"skt not on PATH\"; ls -d ./.skill-manager 2>/dev/null || echo \"no ./.skill-manager\"", "description": "Check for skill-manager front door"}
+---
+Bash {"command": "git rev-parse --abbrev-ref HEAD; echo \"--- refs ---\"; git show-ref | head -30; echo \"--- epic ref ---\"; git show-ref --verify refs/remotes/origin/epic/cut-the-apparatus 2>&1; echo \"--- worktrees ---\"; git worktree list 2>&1", "description": "Inspect branch and refs read-only"}
+---
+Bash {"command": "git fetch origin && commit_oid=$(git rev-parse origin/epic/cut-the-apparatus) && skt ticket new 141-trim-adapter --base \"$commit_oid\" --path ../wt-141-trim-adapter", "description": "Provision the declared epic ticket worktree"}

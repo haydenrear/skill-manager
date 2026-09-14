@@ -71,6 +71,41 @@ a defect in this harness, not in a skill**:
 them apart, and the run that proves a skill expensive should be the run whose
 trace you have read.
 
+## The wide lane: many tiny cases, one build
+
+The cases above are DEEP: one workflow, up to 30 turns, its own ~5 GB branched
+home. They find how an agent gets through a flow. They are too expensive to
+cover the long tail of small, specific breakages — a status spelling, a flag a
+remedy forgets, a skill named by the wrong address — which is where most of the
+bugs an agent hits have actually been.
+
+`harness/wide/` covers that tail. Every `w-*` case is one question with a
+4–6-turn budget, and all of them share ONE build: one branched home with every
+unit wrapped, one fixture workspace with `cases/<case>/` per case.
+
+```bash
+cd specs/evals/harness/wide
+./setup.sh "$SKILL_MANAGER_HOME"        # $0: builds the shared home + fixtures
+./run.sh 'w-harness-smoke'              # prove the lane first (one command)
+./run.sh                                # every w-* case, capped at $25, -j 3
+EVAL_RUNS=3 ./run.sh 'w-epic-*'         # repeat the ones worth quoting
+```
+
+**A wide case is graded on what the agent ISSUED, not on what it said.** The
+`wide-verify` Stop hook reads the transcript's tool_use inputs and writes one
+verdict file per rule in the case's `expect.json` (`require`, `forbid`,
+`max_calls`); graders are `file_exists` on those files. It matches text and
+executes nothing — see `wide/units/wide-verify/lib/expect.py`, whose
+`--self-test` setup runs under every python a hook might use. Each prompt ends
+with `EVAL-CASE: <case>`, because hooks never see the case name and the build is
+shared.
+
+**Branch code, on purpose.** A case about a change that is not installed yet
+ships `units-override.txt` (`unit=/path/to/checkout`). Setup copies the checkout
+into the build and points the unit's wrapper at it. The build is shared, so the
+override holds for every wide case in that round; setup prints each one and
+writes `overrides.txt` beside the build — record it with the result.
+
 ## Adding a case
 
 1. `evals/<name>/case.yaml` — `schema_version`, `name`, `plugins:` (regenerated),

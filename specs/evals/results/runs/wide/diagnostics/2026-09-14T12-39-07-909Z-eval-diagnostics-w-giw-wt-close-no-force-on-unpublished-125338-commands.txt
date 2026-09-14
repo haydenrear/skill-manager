@@ -1,0 +1,17 @@
+Bash {"command": "pwd && ls -a && ls -a .. 2>/dev/null | head -30", "description": "List working directory contents"}
+---
+Bash {"command": "ls cases/w-giw-wt-close-no-force-on-unpublished/ 2>/dev/null && cat cases/w-giw-wt-close-no-force-on-unpublished/close.txt 2>/dev/null", "description": "Check for referenced case file"}
+---
+Bash {"command": ".eval-bin/git worktree list; echo \"---\"; .eval-bin/git status --short; echo \"--- branch:\"; .eval-bin/git branch --show-current; echo \"--- skill-manager home:\"; ls -a .skill-manager 2>/dev/null; echo \"--- .wt:\"; ls -a .wt 2>/dev/null", "description": "Inspect worktrees and repo state"}
+---
+Bash {"command": "cat README.md 2>/dev/null | head -60", "description": "Read repo README"}
+---
+Skill {"args": "wt close TICKET-7 refused: held-back unpublished skill:demo-skill", "skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "test -x .skill-manager/bin/cli/skt && echo \"skt: yes\" || echo \"skt: no\"; test -x .skill-manager/skills/git-issue-workflow/scripts/wt && echo \"wt: yes\" || echo \"wt: no\"", "description": "Check for front-door CLIs"}
+---
+Bash {"command": "sed -n '/step 6/,/step 7/p' /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/complete.md | head -120", "description": "Read close-out step 6 reference"}
+---
+Grep {"-C": 14, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/complete.md", "pattern": "force"}
+---
+Bash {"command": "/work/demo/wt-TICKET-7/.skill-manager/bin/cli/skill-manager unit publish demo-skill --home /work/demo/wt-TICKET-7/.skill-manager \\\n  && .skill-manager/bin/cli/skt ticket close TICKET-7", "description": "Publish held-back skill, then close TICKET-7 worktree"}

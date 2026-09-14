@@ -1,0 +1,13 @@
+Skill {"skill": "plugin-repository:plugin-repository"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/plugin-repository/skills/plugin-repository/scripts/finalize.sh"}
+---
+Bash {"command": "export PATH=\"/private/tmp/e-ba9jF7/home/cwd/.eval-bin:$PATH\"; cd /private/tmp/e-ba9jF7/home/cwd/cases/w-misc-plugin-repo-finalize-sh && /private/tmp/skill-evals/wide/units/plugin-repository/skills/plugin-repository/scripts/finalize.sh", "description": "Restore each bundled skill's own .git in the plugin repo"}
+---
+Glob {"pattern": "/private/tmp/skill-evals/wide/units/git-integration-repo/**/integration-lib.sh"}
+---
+Bash {"command": "export PATH=\"/private/tmp/e-ba9jF7/home/cwd/.eval-bin:$PATH\"; cd /private/tmp/e-ba9jF7/home/cwd/cases/w-misc-plugin-repo-finalize-sh && GIT_INTEGRATION_REPO_SCRIPTS=/private/tmp/skill-evals/wide/units/git-integration-repo/skills/git-integration-repo/scripts /private/tmp/skill-evals/wide/units/plugin-repository/skills/plugin-repository/scripts/finalize.sh", "description": "Run plugin-repository finalize with dependency path set"}
+---
+Bash {"command": "export PATH=\"/private/tmp/e-ba9jF7/home/cwd/.eval-bin:$PATH\"; cd /private/tmp/e-ba9jF7/home/cwd/cases/w-misc-plugin-repo-finalize-sh && GIT_INTEGRATION_REPO_SCRIPTS=/private/tmp/skill-evals/wide/units/git-integration-repo/skills/git-integration-repo/scripts GIT_ISSUE_WORKFLOW_SCRIPTS=/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/scripts /private/tmp/skill-evals/wide/units/plugin-repository/skills/plugin-repository/scripts/finalize.sh", "description": "Run plugin-repository finalize with both dependency paths set"}
+---
+Bash {"command": "ls -a /private/tmp/e-ba9jF7/home/cwd/cases/w-misc-plugin-repo-finalize-sh/", "description": "List the case plugin repo directory"}

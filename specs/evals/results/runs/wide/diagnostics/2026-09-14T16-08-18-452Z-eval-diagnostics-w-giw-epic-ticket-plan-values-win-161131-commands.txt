@@ -1,0 +1,17 @@
+Read {"file_path": "/private/tmp/e-sLyNIz/home/cwd/cases/w-giw-epic-ticket-plan-values-win/issue-141.md"}
+---
+Read {"file_path": "/private/tmp/e-sLyNIz/home/cwd/cases/w-giw-epic-ticket-plan-values-win/ticket_plan-CA-03.yaml"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
+---
+Bash {"command": "command -v skt; echo \"---exit:$?\"", "description": "Check whether skt is on PATH"}
+---
+Bash {"command": "git rev-parse --abbrev-ref HEAD; echo \"--- remote refs:\"; git show-ref | head -50; echo \"--- worktrees:\"; git worktree list", "description": "Inspect branch, refs, and worktrees"}
+---
+Bash {"command": "git remote -v; echo \"--- fetch:\"; git fetch origin 2>&1 | head -20; echo \"exit=$?\"", "description": "List remotes and attempt fetch"}
+---
+Bash {"command": "commit_oid=$(git rev-parse origin/epic/cut-the-apparatus 2>&1); echo \"base resolve -> $commit_oid\"; skt ticket new 141-trim-adapter --base \"$commit_oid\" --path ../wt-141-trim-adapter 2>&1 | head -30; echo \"exit=${PIPESTATUS[0]}\"", "description": "Provision the declared epic ticket worktree"}
+---
+Bash {"command": "ls -a /private/tmp/e-sLyNIz/home/cwd; echo \"--- adapter:\"; ls -l /private/tmp/e-sLyNIz/home/cwd/src 2>&1 | head", "description": "List repo contents"}

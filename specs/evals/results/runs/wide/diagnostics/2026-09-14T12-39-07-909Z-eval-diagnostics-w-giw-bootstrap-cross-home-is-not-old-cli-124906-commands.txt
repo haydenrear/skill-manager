@@ -1,0 +1,41 @@
+Bash {"command": "ls -a /private/tmp/e-AP9wxC/home/cwd/ && echo \"---\" && ls -a /private/tmp/e-AP9wxC/home/cwd/cases/w-giw-bootstrap-cross-home-is-not-old-cli/", "description": "List workspace and case directory"}
+---
+Read {"file_path": "/private/tmp/e-AP9wxC/home/cwd/cases/w-giw-bootstrap-cross-home-is-not-old-cli/bootstrap.txt"}
+---
+Bash {"command": "ls .skill-manager && echo \"--- skills:\" && ls .skill-manager/skills 2>/dev/null | head -50 && echo \"--- bin:\" && ls .skill-manager/bin .skill-manager/bin/cli 2>/dev/null", "description": "Inspect project skill-manager home"}
+---
+Bash {"command": "find . -name 'bootstrap-home.sh' -not -path '*/.git/*' 2>/dev/null", "description": "Find bootstrap-home.sh"}
+---
+Bash {"command": "wc -l ./.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Check script length"}
+---
+Grep {"output_mode": "files_with_matches", "path": "./.skill-manager/skills", "pattern": "no skill-manager CLI that can bootstrap|refusing to run against a home|candidates|NOTHING IS OUT OF DATE"}
+---
+Grep {"-C": 4, "-n": true, "head_limit": 120, "output_mode": "content", "path": "./.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "pattern": "refused|candidates|entrypoint of the home|SKILL_MANAGER_CLI|NOTHING IS OUT OF DATE"}
+---
+Read {"file_path": "/private/tmp/e-AP9wxC/home/cwd/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "limit": 140, "offset": 800}
+---
+Bash {"command": "grep -rn \"SKILL_MANAGER_CLI\" .skill-manager/skills/git-issue-workflow/ .skill-manager/skills/git-epic-workflow/ --include=*.md | head -40", "description": "Search skill docs for CLI pin guidance"}
+---
+Bash {"command": "sed -n '1,80p' .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Read bootstrap script header"}
+---
+Read {"file_path": "/private/tmp/e-AP9wxC/home/cwd/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "limit": 180, "offset": 623}
+---
+Bash {"command": "command -v skill-manager; echo \"SMH=${SKILL_MANAGER_HOME:-<unset>}\"; echo \"SMC=${SKILL_MANAGER_CLI:-<unset>}\"; command -v skt; ls ~/.skill-manager 2>/dev/null | head", "description": "Show CLI resolution and env"}
+---
+Bash {"command": "cat cases/w-giw-bootstrap-cross-home-is-not-old-cli/../../README.md 2>/dev/null | head -40", "description": "Read workspace README"}
+---
+Bash {"command": "grep -n '^CLI=\\|CLI=\"\\|SKILL_MANAGER_HOME=' .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh | head -40", "description": "Find CLI and home assignments"}
+---
+Bash {"command": "grep -rn \"cross-home\\|other home's entrypoint\\|home entrypoint\\|SKILL_MANAGER_CLI\" .skill-manager/skills/git-issue-workflow/*.md .skill-manager/skills/git-issue-workflow/references/*.md .skill-manager/skills/skt 2>/dev/null | head -30", "description": "Search docs for cross-home guidance"}
+---
+Read {"file_path": "/private/tmp/e-AP9wxC/home/cwd/.skill-manager/skills/git-issue-workflow/references/skill-homes.md", "limit": 130, "offset": 205}
+---
+Bash {"command": "grep -rn \"refusing to run against\\|HOME_MISMATCH\\|exit 79\\|cross-home\\|another home's entrypoint\\|NOTHING IS OUT OF DATE\" .skill-manager/skills/git-issue-workflow/references/ .skill-manager/skills/git-issue-workflow/SKILL.md .skill-manager/skills/skt/ .skill-manager/skills/git-epic-workflow/ 2>/dev/null | grep -v Binary | head -30", "description": "Search for the refusal remedy in docs"}
+---
+Bash {"command": "grep -rn \"SKILL_MANAGER_HOME\" .skill-manager/skills/skt/SKILL.md .skill-manager/skills/skt/references/*.md 2>/dev/null | head -25; echo ===; grep -rn \"bootstrap-home.sh\" .skill-manager/skills/skt/*.md .skill-manager/skills/skt/references/*.md 2>/dev/null | head -20", "description": "Check skt docs for home env guidance"}
+---
+Bash {"command": "cat .skill-manager/bin/cli/skill-manager", "description": "Show home entrypoint shim contents"}
+---
+Bash {"command": "ls -l /opt/homebrew/bin/skill-manager 2>&1 | head -3; head -12 /opt/homebrew/bin/skill-manager 2>&1", "description": "Check the pinned build target"}
+---
+Bash {"command": "env -u SKILL_MANAGER_HOME SKILL_MANAGER_CLI=/opt/homebrew/bin/skill-manager \\\n  .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Re-run bootstrap pinned to a real build"}

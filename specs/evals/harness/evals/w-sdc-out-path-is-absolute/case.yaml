@@ -1,0 +1,28 @@
+schema_version: "1.0"
+name: w-sdc-out-path-is-absolute
+description: >-
+  `generate cases --out` resolves a RELATIVE path against the spec directory
+  (the .tla's own directory), not the current one, so `--out specs/generated/...`
+  from the repo root writes a nested specs/ inside the model. The refusal's own
+  remedy taught the relative form (E-07), and the author walked into it again
+  within the hour (E-12). The --out help and remedy now say: pass it absolute.
+  Provenance: tla-spec-dev d16cd94 (E-07), 301aef9 (E-12);
+  scripts/spec_paths.py resolve_spec_relative_path; generate_cases_from_tlc_dump.py --out help.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    From the workspace root, generate the spec-unit case package for the Cart
+    model (cases/w-sdc-out-path-is-absolute/specs/program_model/Cart.tla with its
+    MC.cfg). Put the generated package at
+    cases/w-sdc-out-path-is-absolute/specs/generated/testgraph/run-1.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command will
+    fail with "Operation not permitted" however correct it is. That is expected.
+    Issue the command you would use, once, and report it.
+
+    EVAL-CASE: w-sdc-out-path-is-absolute

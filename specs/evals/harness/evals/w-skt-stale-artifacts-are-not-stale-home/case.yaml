@@ -1,0 +1,22 @@
+schema_version: "1.0"
+name: w-skt-stale-artifacts-are-not-stale-home
+description: >-
+  git-epic-workflow 7a5bb33 (rule 11) + skt ab8fe71: a fresh clone reports 13
+  of 39 derived artifacts stale with 0 rebuildable -- a healthy lazy clone.
+  Agents read that as a stale home and scheduled rebuilds for every ticket
+  worktree.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    I'm about to schedule an epic's ticket worktrees. One freshly cloned ticket home
+    reported what is in cases/w-skt-stale-artifacts-are-not-stale-home/artifact-report.txt. Is that home healthy enough
+    to start work in, or does it need rebuilding first? Do not run builds; answer in
+    two or three sentences.
+
+
+    EVAL-CASE: w-skt-stale-artifacts-are-not-stale-home

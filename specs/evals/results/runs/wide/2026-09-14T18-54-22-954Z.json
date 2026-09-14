@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.270",
+  "startedAt": "2026-09-14T18:54:22.954Z",
+  "durationSeconds": 150,
+  "costUsd": 1.4869569999999999,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-giw-bootstrap-cross-home-is-not-old-cli",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/vision-toolbelt-skill"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-giw-bootstrap-cross-home-is-not-old-cli",
+      "dir": "evals/w-giw-bootstrap-cross-home-is-not-old-cli",
+      "source": "mixed",
+      "promptMarkdown": "\nBootstrapping the Skill Manager home for my ticket worktree failed. The\noutput is in cases/w-giw-bootstrap-cross-home-is-not-old-cli/bootstrap.txt.\nWhat is wrong, and what would you run to fix it?\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe for a writable location or try a different route.\n\nEVAL-CASE: w-giw-bootstrap-cross-home-is-not-old-cli\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "does-not-upgrade-a-current-cli",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/forbid-no-upgrade-or-reinstall",
+            "exists": true
+          }
+        },
+        {
+          "name": "names-the-home-mismatch",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response identifies the cause as the CLI belonging to a\nDIFFERENT home (/work/other-repo) than the one being bootstrapped (/work/demo),\nand proposes using the right home's CLI or naming the home explicitly (e.g. via\nPATH, SKILL_MANAGER_CLI or SKILL_MANAGER_HOME). Score 0 if it says the CLI is\noutdated or missing, or recommends upgrading or reinstalling skill-manager.",
+          "config": {
+            "criteria": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response identifies the cause as the CLI belonging to a\nDIFFERENT home (/work/other-repo) than the one being bootstrapped (/work/demo),\nand proposes using the right home's CLI or naming the home explicitly (e.g. via\nPATH, SKILL_MANAGER_CLI or SKILL_MANAGER_HOME). Score 0 if it says the CLI is\noutdated or missing, or recommends upgrading or reinstalling skill-manager.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 16,
+            "costUsd": 0.7207639999999998,
+            "judgeCostUsd": 0.0030240000000000006,
+            "durationSeconds": 147,
+            "startedAt": "2026-09-14T18:54:26.419Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-m8gPeD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-upgrade-a-current-cli",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-upgrade-or-reinstall exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "names-the-home-mismatch",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## What's wrong\n\nNot a version problem — the report says so outright (`NOTHING IS OUT OF DATE`).\n\n`bootstrap-home.sh` looks for a skill-manager CLI to do the work, and the only candidate it found was the one on PATH: `/work/other-repo/.skill-manager/bin/cli/skill-manager`. That path is not a skill-manager *build* — it's another home's **entrypoint shim**. A generated entrypoint binds the home it lives in (`../..`), so when `SKILL_MANAGER_HOME` named a *third* home (`/work/demo/.skill-manager`), the shim refused rather than silently editing `/work/other-repo/.skill-manager`, and exited 79 (`LauncherShims.HOME_MISMATCH_EXIT_CODE`). That refusal is correct behaviour on both sides — the shim protecting the wrong home, and bootstrap declining to bootstrap through it.\n\nSo upgrading, syncing, or re-installing skill-manager changes nothing. The only thing wrong is *which CLI was aimed at which home*. On a machine that bootstraps worktree homes, whatever `skill-manager` lands on PATH is very often some other home's shim; `pick_cli` tries PATH last precisely because of this, and here there was nothing else to try (this checkout ships no `skill-manager`, and there's no integration parent that does).\n\n## The fix\n\nPin `SKILL_MANAGER_CLI` to a real build and drop the ambient home, then re-run bootstrap from the ticket worktree. The build is the one the shims already pin — `/opt/homebrew/bin/skill-manager` (Homebrew 0.27.2, a `java -jar` launcher, not a home entrypoint):\n\n```\nenv -u SKILL_MANAGER_HOME SKILL_MANAGER_CLI=/opt/homebrew/bin/skill-manager \\\n  scripts/bootstrap-home.sh\n```\n\nUnsetting `SKILL_MANAGER_HOME` is safe for a ticket worktree: for a linked worktree the clone source is derived from the *project* home of the main checkout, not from the environment, so the worktree still clones from `/work/demo/.skill-manager` and stays closable. (Pinning `SKILL_MANAGER_CLI` alone would also clear the refusal, since a build isn't `*/bin/cli/skill-manager` and so never binds a home — but the script's own remedy asks for both, and both matter if you ever run this from a main working tree.)\n\n## What I observed running it\n\nI ran that command once, here in the demo checkout. The CLI-selection failure is gone — no refusal, no \"no usable CLI\"; it got past `pick_cli` on the pinned build and proceeded. It then stopped for a different and expected reason: this checkout is a **main** working tree, not the ticket worktree, so with `SKILL_MANAGER_HOME` unset the source defaulted to the global home `/private/tmp/e-m8gPeD/home/.skill-manager`, which doesn't exist in this sandbox. It wrote nothing and printed its own remedy (`skill-manager onboard --skip-gateway` first, or name an existing `--source`). Run from the actual ticket worktree, that branch isn't taken — the project home supplies the source."
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 9,
+            "costUsd": 0.766193,
+            "judgeCostUsd": 0.0031650000000000003,
+            "durationSeconds": 127,
+            "startedAt": "2026-09-14T18:54:26.419Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-yYmEKl/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-upgrade-a-current-cli",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-upgrade-or-reinstall exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "names-the-home-mismatch",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## What's wrong\n\nNot a version problem. The bootstrap never got as far as touching a home — it failed while picking *which* `skill-manager` binary to run.\n\n`pick_cli` in `bootstrap-home.sh` found exactly one candidate, the `skill-manager` on `PATH`, and that one is `/work/other-repo/.skill-manager/bin/cli/skill-manager` — the **generated entrypoint of another checkout's home**. Since skill-manager #61 those entrypoints are bound to the home they live under and refuse to act on any other (exit 79, `LauncherShims.HOME_MISMATCH_EXIT_CODE`). `SKILL_MANAGER_HOME` named `/work/demo/.skill-manager`, so the shim refused:\n\n```\nskill-manager: refusing to run against a home you did not name.\n  you named:  /work/demo/.skill-manager\n  this shim would have edited: /work/other-repo/.skill-manager\n```\n\nThe report says it in as many words — `refused:` (not `too old:`), and `NOTHING IS OUT OF DATE`. That distinction is load-bearing: this script has three separate verdicts (`refused` / `old` / `broken`) precisely because a home mismatch used to be misreported as a stale build. So **do not upgrade, reinstall, or sync skill-manager** — the version is fine, and none of that changes which home the shim binds. `git-issue-workflow`'s SKILL.md §\"A bootstrap refusal saying the CLI is the entrypoint of the home X\" states the same rule.\n\nThe cause is simply that the worktree agent's `PATH` was inherited from a shell that had `/work/other-repo`'s home on it, and `pick_cli` reaches `PATH` last, after the checkout's own build — and this checkout ships none.\n\n## The fix\n\nPin `SKILL_MANAGER_CLI` to the entrypoint of the home you actually named (`/work/demo`), which binds that home and so will not refuse, and re-run the same bootstrap from the ticket worktree:\n\n```bash\nSKILL_MANAGER_CLI=/work/demo/.skill-manager/bin/cli/skill-manager scripts/bootstrap-home.sh\n```\n\nI ran that once, as asked. It exited 127 with `no such file or directory: scripts/bootstrap-home.sh` — this sandbox is the eval workspace at `/private/tmp/e-yYmEKl/home/cwd`, not the `/work/demo` worktree the transcript came from, so the script isn't present here to re-run. That's an artifact of where the command was issued, not of the command.\n\nTwo notes on the remedy:\n\n- The `die` message also suggests `unset SKILL_MANAGER_HOME` as an alternative. Don't use it here. It only silences the *probe* — `bootstrap-home.sh` re-exports `SKILL_MANAGER_HOME` to the new home before every mutating step (`require_local_home`), so `/work/other-repo`'s shim would refuse again a few steps later, after directories had been created. The pin is the fix that holds.\n- If `skt` is on `PATH` in that worktree, the front door `skt ticket new <ticket>` (or `wt new`) is preferred over calling `bootstrap-home.sh` by hand — it runs the same bootstrap and handles teardown. The pin is still what it needs in this environment."
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333334,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.8333333333333334,
+    "overallPassRate": 0
+  }
+}

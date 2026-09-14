@@ -1,0 +1,23 @@
+Read {"file_path": "/private/tmp/e-jMKbJc/home/cwd/cases/w-giw-wt-stale-branch-point/refusal.txt"}
+---
+Bash {"command": "git status --short --branch && git branch -a && git worktree list", "description": "Show branch, branches, worktrees"}
+---
+Bash {"command": "ls -a /private/tmp/e-jMKbJc/home/cwd; echo ---; ls -a /private/tmp/e-jMKbJc/home/cwd/.skill-manager 2>&1 | head -30; echo ---; which wt skt 2>&1", "description": "Inspect checkout layout and tooling"}
+---
+Bash {"command": "git log --oneline -3 epic/demo-epic 2>&1; echo ---; git log --oneline -3 origin/epic/demo-epic 2>&1; echo ---; git rev-list --left-right --count epic/demo-epic...origin/epic/demo-epic 2>&1", "description": "Compare local and remote epic branch"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "SKD=/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow; sed -n '/## The branch point/,/^## /p' $SKD/references/worktrees.md 2>/dev/null | head -120", "description": "Read branch point reference section"}
+---
+Bash {"command": "command -v skt; echo \"---PATH---\"; echo $PATH | tr ':' '\\n' | head -20", "description": "Resolve skt location and PATH"}
+---
+Grep {"-C": 3, "-n": true, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/worktrees.md", "pattern": "branch point"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/worktrees.md", "limit": 70, "offset": 89}
+---
+Bash {"command": "echo \"SKILL_MANAGER_HOME=${SKILL_MANAGER_HOME:-<unset>}\"; SMH=\"${SKILL_MANAGER_HOME:-$PWD/.skill-manager}\"; test -x \"$SMH/bin/cli/skt\" && echo \"skt: yes\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"wt: yes\"", "description": "Check front-door script presence"}
+---
+Bash {"command": ".skill-manager/bin/cli/skt ticket new --help 2>&1 | head -30", "description": "Check ticket creation command usage"}
+---
+Bash {"command": ".skill-manager/bin/cli/skt ticket new TICKET-12 origin/epic/demo-epic 2>&1; echo \"exit $?\"", "description": "Create ticket worktree from published epic tip"}

@@ -1,0 +1,22 @@
+schema_version: "1.0"
+name: w-skt-is-a-plugin-not-a-skill
+description: >-
+  git-epic-workflow 5dad483 + git-issue-workflow 10aff2e: four eval runs
+  looked for skt under skills/, found nothing because skt is a PLUGIN,
+  concluded it was absent and replayed wt/bootstrap-home.sh by hand. Does the
+  agent test the path that answers it?
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    Before I start a ticket: is the one-command front door that creates a ticket
+    worktree together with its own Skill Manager home available from this
+    checkout's home at ./.skill-manager? Answer yes or no and show the evidence you
+    checked. Do not create anything.
+
+
+    EVAL-CASE: w-skt-is-a-plugin-not-a-skill

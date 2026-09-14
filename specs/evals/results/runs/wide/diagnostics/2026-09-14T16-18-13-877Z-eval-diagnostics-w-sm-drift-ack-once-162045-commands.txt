@@ -1,0 +1,19 @@
+Bash {"command": "ls cases/w-sm-drift-ack-once/ 2>/dev/null; echo \"---\"; cat cases/w-sm-drift-ack-once/sync-output.txt", "description": "Read sync output warning file"}
+---
+Bash {"command": "pwd; ls -d .skill-manager 2>&1; skill-manager home drift --help 2>&1 | head -40", "description": "Check home path and drift command help"}
+---
+Bash {"command": "skill-manager home drift --home \"$(pwd)/.skill-manager\" 2>&1 | head -60", "description": "Show pending drift for project home"}
+---
+Bash {"command": "skill-manager home drift --json --home \"$(pwd)/.skill-manager\" 2>&1 | head -40", "description": "Show drift status as JSON"}
+---
+Bash {"command": "ls -a .skill-manager/ 2>&1; echo \"--- state:\"; ls -aR .skill-manager/state 2>/dev/null | head -40", "description": "Inspect skill-manager home layout"}
+---
+Bash {"command": "python3 -c \"\nimport json;d=json.load(open('.skill-manager/home.digest.json'))\nprint(json.dumps({k:(v if not isinstance(v,(dict,list)) else type(v).__name__+' len=%d'%len(v)) for k,v in d.items()},indent=2))\nprint('pending-ish keys:',[k for k in d if 'pend' in k.lower() or 'ack' in k.lower() or 'drift' in k.lower()])\n\" 2>&1 | head -40; echo \"--- audit tail:\"; tail -5 .skill-manager/audit.log", "description": "Inspect home digest and audit log tail"}
+---
+Bash {"command": "skill-manager home drift --detail --home \"$(pwd)/.skill-manager\" 2>&1 | head -30", "description": "Show detailed drift listing"}
+---
+Bash {"command": "skill-manager home drift --ack --home \"$(pwd)/.skill-manager\" 2>&1 | head -20", "description": "Acknowledge pending home drift once"}
+---
+Bash {"command": "skill-manager home drift --record --detail --home \"$(pwd)/.skill-manager\" 2>&1 | head -40", "description": "Record and show any change since last digest"}
+---
+Bash {"command": "skill-manager home drift --ack --home \"$(pwd)/.skill-manager\" 2>&1 | head -20; echo \"--- verify:\"; skill-manager home drift --json --home \"$(pwd)/.skill-manager\" 2>&1 | grep -v Telemetry | grep -v JAVA", "description": "Acknowledge drift and verify gate cleared"}

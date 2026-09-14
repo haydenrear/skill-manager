@@ -1,0 +1,11 @@
+$ wt new TICKET-3
+  ! could not read installed skill demo-skill at /work/demo/wt-TICKET-3/.skill-manager/skills/demo-skill — SKILL.md frontmatter is not valid YAML: mapping values are not allowed here (line 3, column 38)
+error: a unit in this home CANNOT BE READ, so no sync can ever project it:
+    ! could not read installed skill demo-skill at /work/demo/wt-TICKET-3/.skill-manager/skills/demo-skill — SKILL.md frontmatter is not valid YAML: mapping values are not allowed here (line 3, column 38)
+  Fix that unit (its own repo, then sync), or remove it. The missing links
+  below are the SYMPTOM of the line(s) above.
+error: this home holds 12 skill(s) and an agent launched here can reach 11.
+  A skill is served through <root>/.<agent>/skills/<unit>, not out of the
+  store. These are missing or resolve outside /work/demo/wt-TICKET-3:
+    .claude/demo-skill
+exit 6

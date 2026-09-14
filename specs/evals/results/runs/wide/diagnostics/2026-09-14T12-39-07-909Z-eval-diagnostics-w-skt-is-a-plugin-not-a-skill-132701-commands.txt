@@ -1,0 +1,15 @@
+Bash {"command": "ls -la && echo \"--- .skill-manager? ---\" && ls -la ./.skill-manager 2>&1 | head -50", "description": "List checkout root and skill-manager home"}
+---
+Bash {"command": "./.eval-bin/git status -sb 2>&1 | head -20; echo \"--- branch ---\"; ./.eval-bin/git branch --show-current 2>&1", "description": "Check git branch and status"}
+---
+Bash {"command": "echo \"=== bin ===\"; ls -la ./.skill-manager/bin; echo; echo \"=== plugins ===\"; ls -la ./.skill-manager/plugins; echo; echo \"=== skills ===\"; ls ./.skill-manager/skills; echo; echo \"=== installed ===\"; ls ./.skill-manager/installed", "description": "Inspect home bin, plugins, skills, installed"}
+---
+Bash {"command": "echo \"=== which skt ===\"; command -v skt; echo \"exit=$?\"; echo; echo \"=== units.lock.toml ===\"; cat ./.skill-manager/units.lock.toml", "description": "Check skt on PATH and read units lock"}
+---
+Bash {"command": "echo \"=== skt ticket --help ===\"; skt ticket --help 2>&1 | head -40; echo; echo \"=== exit=$? ===\"", "description": "Run skt ticket help"}
+---
+Bash {"command": "ls -la ./.skill-manager/skills/git-issue-workflow/scripts/ 2>&1 | head -20", "description": "Check git-issue-workflow scripts dir"}
+---
+Bash {"command": "echo \"=== SKILL_MANAGER_HOME=${SKILL_MANAGER_HOME:-<unset>} ===\"; echo \"=== bin/cli/skt ===\"; ls -la ./.skill-manager/bin/cli/ | head; echo; echo \"=== readlink ===\"; readlink ./.skill-manager/bin/cli/skt 2>&1; echo; echo \"=== plugins/skt ===\"; ls ./.skill-manager/plugins/skt", "description": "Resolve skt CLI origin and plugin layout"}
+---
+Bash {"command": "skt status 2>&1 | head -30", "description": "Run skt status"}

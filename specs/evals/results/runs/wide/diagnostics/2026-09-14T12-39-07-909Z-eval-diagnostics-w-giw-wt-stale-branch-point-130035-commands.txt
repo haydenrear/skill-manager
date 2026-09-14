@@ -1,0 +1,11 @@
+Read {"file_path": "/private/tmp/e-06wpZj/home/cwd/cases/w-giw-wt-stale-branch-point/refusal.txt"}
+---
+Bash {"command": "./.eval-bin/git status && ./.eval-bin/git branch -a && ./.eval-bin/git worktree list", "description": "Show git status, branches, and worktrees"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "SMH=\"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}\"; echo \"SMH=$SMH\"; test -x \"$SMH/bin/cli/skt\" && echo \"skt: YES\" || echo \"skt: no\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"wt: YES\" || echo \"wt: no\"; echo \"--- PATH skt:\"; command -v skt || echo \"skt not on PATH\"; echo \"--- project home:\"; test -d ./.skill-manager && echo \"./.skill-manager exists\" || echo \"./.skill-manager ABSENT\""}
+---
+Bash {"command": "test -x ./.skill-manager/skills/git-issue-workflow/scripts/wt && echo \"project wt: YES\" || echo \"project wt: no\"; echo \"---\"; skt ticket new --help 2>&1 | head -40"}
+---
+Bash {"command": "skt ticket new TICKET-12 origin/epic/demo-epic", "description": "Create TICKET-12 worktree from published epic tip"}

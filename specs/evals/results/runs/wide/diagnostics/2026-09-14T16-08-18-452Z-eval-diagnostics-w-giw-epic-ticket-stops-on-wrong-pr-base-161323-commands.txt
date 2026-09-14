@@ -1,0 +1,9 @@
+Read {"file_path": "/private/tmp/e-K2KpZx/home/cwd/cases/w-giw-epic-ticket-stops-on-wrong-pr-base/issue-141.md"}
+---
+Bash {"command": "git status && git branch -a && git log --oneline -5", "description": "Show repo state and branches"}
+---
+Skill {"args": "Implement issue #141 (epic assignment marker present); do the first step", "skill": "git-issue-workflow:git-issue-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
+---
+Bash {"command": "git fetch origin; echo \"--- fetch exit: $?\"; git show-ref --verify refs/remotes/origin/epic/cut-the-apparatus; echo \"--- showref exit: $?\"; git remote -v", "description": "Fetch origin and check for the epic branch ref"}

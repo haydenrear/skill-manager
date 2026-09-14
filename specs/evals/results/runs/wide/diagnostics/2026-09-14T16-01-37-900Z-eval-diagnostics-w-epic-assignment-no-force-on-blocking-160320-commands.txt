@@ -1,0 +1,9 @@
+Read {"file_path": "/private/tmp/e-jhDskN/home/cwd/cases/w-epic-assignment-no-force-on-blocking/issue-142.md"}
+---
+Bash {"command": "ls -a /private/tmp/e-jhDskN/home/cwd && git -C /private/tmp/e-jhDskN/home/cwd status --short --branch", "description": "List workspace and git status"}
+---
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_assignment.py\" --assignment cases/w-epic-assignment-no-force-on-blocking/issue-142.md --expect-ticket CA-03 --expect-epic-branch epic/cut-the-apparatus; echo \"EXIT=$?\"", "description": "Validate rendered epic assignment"}
+---
+Bash {"command": "sed 's|^  pr_base: main$|  pr_base: epic/cut-the-apparatus|' cases/w-epic-assignment-no-force-on-blocking/issue-142.md > \"$TMPDIR/issue-142-probe.md\" && uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_assignment.py\" --assignment \"$TMPDIR/issue-142-probe.md\" --expect-ticket CA-03 --expect-epic-branch epic/cut-the-apparatus; echo \"EXIT=$?\"", "description": "Re-validate a scratch copy with pr_base corrected"}

@@ -1,0 +1,12 @@
+{
+  "require": [
+    {
+      "id": "installs-skt",
+      "tool": "Bash",
+      "match": "\\bskill-manager\\s+install\\s+['\\\"]?github:haydenrear/skt\\b"
+    }
+  ],
+  "max_calls": {
+    "Bash": 4
+  }
+}

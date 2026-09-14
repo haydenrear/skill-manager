@@ -1,0 +1,11 @@
+Read {"file_path": "/private/tmp/e-xbxzwS/home/cwd/cases/w-skt-migration-no-import-edits/status-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-xbxzwS/home/cwd/cases/w-skt-migration-no-import-edits/my-skill/SKILL.md"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "ls -a /private/tmp/e-xbxzwS/home/cwd; echo \"--- SKILL_MANAGER_HOME=$SKILL_MANAGER_HOME\"; command -v skill-manager skt", "description": "Check checkout layout and CLI availability"}
+---
+Bash {"command": "skill-manager sync skt", "description": "Run the migration sync for the skt unit"}
+---
+Bash {"command": "skt status", "description": "Re-read the startup report to confirm migration state"}

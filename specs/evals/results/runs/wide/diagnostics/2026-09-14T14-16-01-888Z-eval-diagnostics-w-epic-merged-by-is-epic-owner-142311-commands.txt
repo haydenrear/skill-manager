@@ -1,0 +1,41 @@
+Bash {"command": "ls -a /private/tmp/e-EMXJrh/home/cwd && echo \"---\" && ./.eval-bin/git branch -a && echo \"---\" && ./.eval-bin/git log --oneline -5", "description": "List workspace and git branches"}
+---
+Bash {"command": "ls -a /private/tmp/e-EMXJrh/home/cwd/.skill-manager 2>/dev/null", "description": "List project skill manager home"}
+---
+Bash {"command": "grep -ril \"cut-the-apparatus\" . --exclude-dir=.git 2>/dev/null | head -50", "description": "Find epic fixture files"}
+---
+Bash {"command": "ls cases && echo \"---\" && ls .skill-manager/skills", "description": "List cases and installed skills"}
+---
+Bash {"command": "ls -R .skill-manager/skills/git-epic-workflow | head -60", "description": "List git-epic-workflow skill files"}
+---
+Bash {"command": "grep -rn \"review_policy\" .skill-manager/skills/ | head -40", "description": "Search review_policy references"}
+---
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/human-review.md"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow && grep -rn \"REVIEW_MERGES\\|merged_by\\|merges\" scripts/validate_epic_plan.py scripts/validate_assignment.py | head -40", "description": "Inspect validators for merges field"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow && grep -rn \"merged_by\\|review:\" references/epic-ticket.md | head -40", "description": "Find assignment review block"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/epic-ticket.md", "limit": 110, "offset": 30}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_assignment.py", "limit": 80, "offset": 440}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow && grep -n \"REVIEW_MERGED_BY\\s*=\\|REVIEW_CADENCES\\s*=\\|REVIEW_MODE\\s*=\\|REVIEW_STOPS_AFTER\\s*=\" scripts/validate_assignment.py scripts/validate_epic_plan.py", "description": "Show review constants"}
+---
+Bash {"command": "sed -n '315,350p' /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/plan-and-schedule.md; echo \"=== 595-615 ===\"; sed -n '595,615p' /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/plan-and-schedule.md", "description": "Show plan review_policy example"}
+---
+Bash {"command": "wc -l /private/tmp/e-EMXJrh/tmp/claude-501/-private-tmp-e-EMXJrh-home-cwd/f994b29a-cd1e-4213-8799-ac068351a0d1/tasks/bzcrvzk1p.output; head -20 /private/tmp/e-EMXJrh/tmp/claude-501/-private-tmp-e-EMXJrh-home-cwd/f994b29a-cd1e-4213-8799-ac068351a0d1/tasks/bzcrvzk1p.output", "description": "Check background search results"}
+---
+Bash {"command": "cd /private/tmp/e-EMXJrh/home/cwd/.skill-manager/skills/spec-double-compiler && ls specs/ && find . -name \"ticket_plan*\" -o -name \"*assignment*\" | head -20", "description": "Look for ticket plan in sdc specs"}
+---
+Bash {"command": "tail -32 /private/tmp/e-EMXJrh/tmp/claude-501/-private-tmp-e-EMXJrh-home-cwd/f994b29a-cd1e-4213-8799-ac068351a0d1/tasks/bzcrvzk1p.output", "description": "Rest of search results"}
+---
+Bash {"command": "cd /private/tmp/e-EMXJrh/home/cwd && ls .skill-manager/skills/spec-double-compiler/specs/tickets | head -20; echo \"=== CA-03 ===\"; ls -d .skill-manager/skills/spec-double-compiler/specs/results/scorecards/cut-the-apparatus/CA-03* 2>/dev/null; echo \"=== plans ===\"; find .skill-manager/skills -name \"ticket_plan.yaml\" 2>/dev/null | head", "description": "Check tickets and plan files"}
+---
+Bash {"command": "cd /private/tmp/e-EMXJrh/home/cwd/.skill-manager/skills/git-issue && grep -rn \"merged_by\" references/ | head -20", "description": "Check git-issue renderer for merged_by"}
+---
+Bash {"command": "cd /private/tmp/e-EMXJrh/home/cwd/.skill-manager/skills/git-issue-workflow && grep -rn \"merged_by\\|epic-owner\" references/epic-ticket.md | head -20", "description": "Check git-issue-workflow parser for merged_by"}
+---
+Bash {"command": "sed -n '225,240p' /private/tmp/e-EMXJrh/home/cwd/.skill-manager/skills/git-issue/references/epic-assignment.md", "description": "Read renderer note on merged_by"}

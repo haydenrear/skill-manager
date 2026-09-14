@@ -1,0 +1,22 @@
+schema_version: "1.0"
+name: w-misc-otlp-endpoint-native-runner
+description: >-
+  The tracing library default was an in-cluster .svc name that resolves nowhere
+  from a native runner, and every doc hardcoded a different dead .svc name. The
+  documented pair is host.k3d.internal:4318 from a pod and localhost:4318 from
+  the host. For a process on the host, does the agent give localhost:4318?
+  Provenance: tracing-skill 68fdd1e.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    A Python service's integration tests run directly on my laptop, not in a
+    pod, and should export traces to our shared monitoring cluster using our
+    standard tracing setup. What OTLP endpoint should that process export to?
+    Give the exact URL.
+
+    EVAL-CASE: w-misc-otlp-endpoint-native-runner

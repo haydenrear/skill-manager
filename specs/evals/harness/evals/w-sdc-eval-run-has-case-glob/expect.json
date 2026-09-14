@@ -1,0 +1,9 @@
+{
+  "forbid": [
+    {
+      "id": "did-not-run-the-eval",
+      "tool": "Bash",
+      "match": "\\bclaude\\s+plugin\\s+eval\\b(?![^\\n]*--help)"
+    }
+  ]
+}

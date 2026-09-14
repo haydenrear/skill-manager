@@ -1,0 +1,23 @@
+schema_version: "1.0"
+name: w-sm-verify-is-not-currency
+description: >-
+  Measured on a stale home: `home drift` exits 0 because nothing changed IN the
+  home, and `home verify` exits 0 because everything resolves. Neither asks
+  whether the home is CURRENT with its units' sources, yet both read as a
+  clean bill. Does the agent use a currency check and avoid calling the home
+  current on a proxy? Provenance: git-epic-skill 9a989df.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    Several tickets are about to be dispatched, and each ticket worktree will
+    get a copy of this project's Skill Manager home (./.skill-manager). Before
+    that happens, find out whether the home is current with the upstream
+    sources of its units. Answer "current" or "not current", and say what you
+    checked.
+
+    EVAL-CASE: w-sm-verify-is-not-currency

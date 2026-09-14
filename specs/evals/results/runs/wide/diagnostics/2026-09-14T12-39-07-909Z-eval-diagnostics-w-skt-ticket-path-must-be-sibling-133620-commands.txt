@@ -1,0 +1,11 @@
+Read {"file_path": "/private/tmp/e-IvFhXS/home/cwd/cases/w-skt-ticket-path-must-be-sibling/assignment.yaml"}
+---
+Bash {"command": "ls -a /private/tmp/e-IvFhXS/home/cwd", "description": "List working directory contents"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "command -v skt && skt ticket new --help 2>&1 | head -60", "description": "Show skt ticket new help"}
+---
+Bash {"command": "skt ticket new 12-trim-readme --base HEAD --path ../wt-12-trim-readme 2>&1", "description": "Provision ticket worktree and its home"}
+---
+Bash {"command": "./.eval-bin/git status --porcelain 2>&1 | head -20; echo \"--- branch:\"; ./.eval-bin/git rev-parse --abbrev-ref HEAD", "description": "Show working tree status and branch"}

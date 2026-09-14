@@ -1,0 +1,26 @@
+schema_version: "1.0"
+name: w-skt-ticket-path-must-be-sibling
+description: >-
+  skt 0499bd4 / EV-P-05: `ticket new --path ./wt-X` created a worktree inside
+  the repo that `ticket close` can never find. Given an epic assignment whose
+  worktree is a bare name, does the agent place it beside the repository?
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    This checkout is the primary checkout of an epic. The epic owner's assignment for
+    issue 12 is in cases/w-skt-ticket-path-must-be-sibling/assignment.yaml. Provision the ticket's worktree (with
+    its own Skill Manager home) exactly as the assignment declares, using the
+    one-command front door.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a command that
+    writes will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once, and
+    report it. Do not probe for a writable location or try a different route.
+
+
+    EVAL-CASE: w-skt-ticket-path-must-be-sibling

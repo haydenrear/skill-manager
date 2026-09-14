@@ -1,0 +1,27 @@
+schema_version: "1.0"
+name: w-sm-drift-ack-once
+description: >-
+  One sync used to print the home's drift gate four times, ~70 lines asking for
+  the same acknowledgement, which read as a loop waiting for an ack that no
+  waiting produces. It now prints one line naming the clearing command. Does the
+  agent run that command rather than sync again? Provenance: skill-manager
+  5c90a51e (EV-P-09).
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    A sync in this project (home at ./.skill-manager) ended with the warning
+    saved in cases/w-sm-drift-ack-once/sync-output.txt. The next agent launched
+    here must not be refused. Deal with it.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command
+    will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once,
+    and report it. Do not probe the filesystem for a writable location and do
+    not attempt a different route — the command you choose is what is recorded.
+
+    EVAL-CASE: w-sm-drift-ack-once

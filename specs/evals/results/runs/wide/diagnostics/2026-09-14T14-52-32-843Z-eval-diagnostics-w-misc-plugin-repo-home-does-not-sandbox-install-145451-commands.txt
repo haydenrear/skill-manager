@@ -1,0 +1,21 @@
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/ 2>/dev/null | head -40; echo ---; ls /private/tmp/e-37VJFN/home/cwd; echo ---; ls /private/tmp/e-37VJFN/home/.skill-manager 2>/dev/null", "description": "List units and workspace"}
+---
+Bash {"command": "command -v skill-manager skt; skill-manager --help 2>&1 | head -60", "description": "Check skill-manager CLI help"}
+---
+Bash {"command": "ls -a && ls .skill-manager 2>/dev/null | head; echo ---; skill-manager install --help 2>&1 | tail -60", "description": "Inspect home and install help"}
+---
+Bash {"command": "ls /private/tmp/e-37VJFN/home/.skill-manager/skills 2>/dev/null; find / -maxdepth 6 -name \"SKILL.md\" -path \"*plugin-repository*\" 2>/dev/null | head", "description": "Locate plugin-repository skill"}
+---
+Bash {"command": "grep -rn \"CLAUDE_CONFIG_DIR\\|agentHome\\|agent home\\|CODEX_HOME\" /Users/hayde/.skill-manager/skills/*/  --include=*.md -l 2>/dev/null | head -20", "description": "Find docs mentioning agent config dirs"}
+---
+Bash {"command": "skill-manager exec --help 2>&1 | head -50", "description": "Show exec help"}
+---
+Bash {"command": "ls /private/tmp/e-37VJFN/home/cwd/.skill-manager/skills 2>/dev/null; ls /private/tmp/e-37VJFN/home/cwd/.skill-manager/plugins 2>/dev/null", "description": "List units in project home"}
+---
+Bash {"command": "grep -rln \"home-root\\|home_root\\|homeRoot\" /Users/hayde/.skill-manager/skills /Users/hayde/.skill-manager/plugins 2>/dev/null | head -20", "description": "Search docs for home-root"}
+---
+Bash {"command": "sed -n '1,120p' /private/tmp/e-37VJFN/home/cwd/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Read bootstrap-home script"}
+---
+Bash {"command": "grep -rn \"mktemp\\|sandbox\\|throwaway\\|scratch home\\|rehears\" /private/tmp/e-37VJFN/home/cwd/.skill-manager/skills/plugin-repository/ | head -30; echo ===; ls /private/tmp/e-37VJFN/home/cwd/.skill-manager/skills/plugin-repository/", "description": "Search plugin-repository skill for sandbox guidance"}
+---
+Bash {"command": "sed -n '110,175p' /private/tmp/e-37VJFN/home/cwd/.skill-manager/skills/plugin-repository/references/lifecycle.md", "description": "Read lifecycle sandboxing section"}

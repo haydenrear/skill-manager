@@ -1,0 +1,4 @@
+{"hooks": {
+  "Stop": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/verify.sh", "timeout": 120}]}],
+  "SessionEnd": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/verify.sh SessionEnd", "timeout": 120}]}]
+}}

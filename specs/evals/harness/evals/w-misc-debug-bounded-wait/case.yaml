@@ -1,0 +1,23 @@
+schema_version: "1.0"
+name: w-misc-debug-bounded-wait
+description: >-
+  The debugging skill now says: compute the expected time-to-outcome, compare
+  it with the timeout that will actually kill the run, and monitor failure and
+  progress signals rather than only the success line. Given a run whose failure
+  path outlasts the job limit and a plan to watch for PASSED, does the agent
+  catch both? Provenance: debugging-skill 31cf945.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
+  prompt: |
+    I instrumented an integration test to reproduce a hang. When the bug
+    triggers, the test takes about 12 minutes to time out on its own; when it
+    does not, it passes in about 2 minutes. The CI job is killed at 10
+    minutes. I'm about to start it in the background and watch the log for
+    `PASSED`. Before I do: what should I change about how I run and wait on it?
+
+    EVAL-CASE: w-misc-debug-bounded-wait

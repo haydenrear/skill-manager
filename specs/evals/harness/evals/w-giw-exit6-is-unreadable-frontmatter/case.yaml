@@ -1,0 +1,32 @@
+schema_version: "1.0"
+name: w-giw-exit6-is-unreadable-frontmatter
+description: >-
+  A worktree home bootstrap stopped at exit 6 ("an agent launched here can reach
+  fewer skills than the home holds") because one unit's SKILL.md frontmatter is
+  invalid YAML, so no sync can ever project it. git-issue-workflow 0c5ddd1: the
+  refusal used to blame the missing links while the parse failure sat one unread
+  `!` line up the log, and the SKT-8 frontmatter deadlocked every descendant
+  worktree. It now leads with the could-not-read line. The question is whether
+  the agent fixes the frontmatter or chases the links.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+
+    Creating the worktree for TICKET-3 failed while bootstrapping its Skill
+    Manager home. The output is in
+    cases/w-giw-exit6-is-unreadable-frontmatter/bootstrap.txt, and the source of
+    the unit it names is cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md.
+    Fix the cause.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a write or
+    command will fail with "Operation not permitted" however correct it is.
+    That is expected and is not yours to solve. Issue the edit or command you
+    would use, once, and report it. Do not probe for a writable location or
+    try a different route.
+
+    EVAL-CASE: w-giw-exit6-is-unreadable-frontmatter

@@ -1,0 +1,21 @@
+Read {"file_path": "/private/tmp/e-4eMS2D/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/bootstrap.txt"}
+---
+Read {"file_path": "/private/tmp/e-4eMS2D/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md"}
+---
+Bash {"command": "ls -la /private/tmp/e-4eMS2D/home/cwd/ /private/tmp/e-4eMS2D/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/ /private/tmp/e-4eMS2D/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/", "description": "List workspace and case directories"}
+---
+Skill {"skill": "skt:unit-authoring"}
+---
+Bash {"command": "grep -n -i -A4 -B2 \"yaml\\|colon\\|quote\" /private/tmp/skill-evals/wide/units/skt/references/skills.md | head -80", "description": "Check frontmatter rules in skills reference"}
+---
+Bash {"command": "find /private/tmp/skill-evals/wide/units/skt -name \"skills.md\" -path \"*reference*\" 2>/dev/null", "description": "Locate the skills reference page"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/ /private/tmp/skill-evals/wide/units/skt/skills/unit-authoring/ 2>&1 | head -40", "description": "List skt plugin layout"}
+---
+Bash {"command": "cd /private/tmp/e-4eMS2D/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill && python3 - <<'PY'\nimport yaml, re\nraw = open('SKILL.md').read()\nfm = raw.split('---')[1]\ntry:\n    yaml.safe_load(fm)\n    print(\"parsed ok\")\nexcept yaml.YAMLError as e:\n    print(\"FAIL:\", e)\n# candidate fix\nfixed = fm.replace(\n  'description: Use when tidying demo docs: the README, the changelog and notes.',\n  'description: \"Use when tidying demo docs: the README, the changelog and notes.\"')\nprint(\"fixed ->\", yaml.safe_load(fixed))\nPY", "description": "Reproduce the YAML parse error and test the fix"}
+---
+Bash {"command": "ls .skill-manager/ && ls .skill-manager/skills/ 2>/dev/null | head -40", "description": "Inspect the project Skill Manager home"}
+---
+Edit {"file_path": "/private/tmp/e-4eMS2D/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md", "new_string": "description: \"Use when tidying demo docs: the README, the changelog and notes.\"", "old_string": "description: Use when tidying demo docs: the README, the changelog and notes.", "replace_all": false}
+---
+Bash {"command": "command -v skill-manager skt wt 2>&1", "description": "Check which skill tooling is on PATH"}

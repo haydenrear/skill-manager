@@ -1,0 +1,19 @@
+{
+  "require": [
+    {
+      "id": "installs",
+      "tool": "Bash",
+      "match": "skill-manager\\s+install\\b.*git-issue-workflow"
+    }
+  ],
+  "forbid": [
+    {
+      "id": "not-sync",
+      "tool": "Bash",
+      "match": "sync\\s+git-issue-workflow"
+    }
+  ],
+  "max_calls": {
+    "Bash": 5
+  }
+}

@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: w-epic-retire-part-of-goal-warns-only
+description: >-
+  A plan retiring one of a goal's two contributors while the other and the
+  evaluation ticket stay active. git-epic-workflow fix/drop-bs-gates 4d6a335
+  (references/goals-and-evaluation.md): the goal-wide retirement boundary is a
+  warning now; OHV-7 had to be falsely re-scoped because the validator refused
+  it. The drop-gates validate_epic_plan.py exits 0 on the fixture with two
+  warnings about goal GOAL-1. Runs against the drop-gates checkout.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+
+    I retired EPIC-2 in cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml.
+    EPIC-1 and the evaluation ticket EPIC-3 carry on. Validate the plan and tell
+    me what, if anything, I need to change before re-dispatching.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command
+    will fail with "Operation not permitted" however correct it is. That is
+    expected and is not yours to solve. Issue the command you would use, once,
+    and report it. Do not probe for a writable location or try a different route.
+
+    Report what the validator printed; do not explain its output from the validator's source.
+
+    EVAL-CASE: w-epic-retire-part-of-goal-warns-only

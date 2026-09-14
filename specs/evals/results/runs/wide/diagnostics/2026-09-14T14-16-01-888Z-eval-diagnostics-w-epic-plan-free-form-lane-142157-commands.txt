@@ -1,0 +1,37 @@
+Bash {"command": "ls -la /private/tmp/e-bN9Mow/home/cwd && echo \"---\" && ls -la /private/tmp/e-bN9Mow/home/cwd/cases/w-epic-plan-free-form-lane/", "description": "List workspace and case directory"}
+---
+Bash {"command": "./.eval-bin/git status --short && echo \"--- branch:\" && ./.eval-bin/git branch --show-current", "description": "Check git status and branch"}
+---
+Read {"file_path": "/private/tmp/e-bN9Mow/home/cwd/cases/w-epic-plan-free-form-lane/ticket_plan.yaml"}
+---
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "ls -la /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/ /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/ 2>&1", "description": "List skill scripts"}
+---
+Bash {"command": "ls -la /private/tmp/e-bN9Mow/home/cwd/.skill-manager/ && echo \"=== skills ===\" && ls /private/tmp/e-bN9Mow/home/cwd/.skill-manager/skills/ 2>&1", "description": "Inspect project skill manager home"}
+---
+Bash {"command": "python3 .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py --help 2>&1 | head -60", "description": "Show plan validator usage"}
+---
+Bash {"command": "ls .skill-manager/venvs/ 2>&1; echo \"=== bin ===\"; ls .skill-manager/bin/ .skill-manager/bin/cli 2>&1 | head -40", "description": "Look for venvs and CLI shims in home"}
+---
+Bash {"command": "python3 -c \"import yaml\" 2>&1; echo \"---uv:\"; command -v uv; echo \"---pip yaml:\"; python3 -m pip list 2>/dev/null | grep -i yaml", "description": "Check python yaml availability"}
+---
+Bash {"command": "uv run --quiet --with pyyaml python .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py --help 2>&1 | head -60", "description": "Run plan validator help via uv"}
+---
+Bash {"command": "uv run --quiet --with pyyaml python .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py cases/w-epic-plan-free-form-lane/ticket_plan.yaml --verbose 2>&1; echo \"EXIT=$?\"", "description": "Validate the epic ticket plan"}
+---
+Bash {"command": "uv run --quiet --with pyyaml python .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py cases/w-epic-plan-free-form-lane/ticket_plan.yaml --strict --verbose 2>&1; echo \"EXIT=$?\"", "description": "Validate plan in strict mode"}
+---
+Bash {"command": "ls /private/tmp/e-bN9Mow/home/cwd/.skill-manager/skills/git-epic-workflow/references/", "description": "List skill references"}
+---
+Read {"file_path": "/private/tmp/e-bN9Mow/home/cwd/.skill-manager/skills/git-epic-workflow/references/goals-and-evaluation.md"}
+---
+Read {"file_path": "/private/tmp/e-bN9Mow/home/cwd/.skill-manager/skills/git-epic-workflow/references/plan-and-schedule.md"}
+---
+Bash {"command": "./.eval-bin/git cat-file -t abc123 2>&1; echo \"---log:\"; ./.eval-bin/git log --oneline -5 2>&1; echo \"--- specs tree:\"; ls -d specs test_graph 2>&1", "description": "Check baseline commit ref and repo preconditions"}
+---
+Bash {"command": "ls results 2>&1; echo \"--- branches:\"; ./.eval-bin/git branch -a 2>&1; echo \"--- bench on PATH:\"; command -v bench || echo \"no bench\"", "description": "Check evidence paths, branches, harness binary"}
+---
+Bash {"command": "cd /private/tmp/e-bN9Mow/home/cwd/.skill-manager/skills/git-epic-workflow/scripts && grep -n \"validation_matrix\\|validation\\b\\|expected_effect\\|enabling\\|measured_at\\|github_issue\\|plan_commit\" validate_epic_plan.py | head -40", "description": "Check validator rule coverage"}
+---
+Bash {"command": "cd /private/tmp/e-bN9Mow/home/cwd && sed -n '225,265p' .skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py", "description": "Read expected_effect validation logic"}

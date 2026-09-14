@@ -1,0 +1,31 @@
+Bash {"command": "ls -la /private/tmp/e-FeCfh4/home/cwd && echo \"---\" && find /private/tmp/e-FeCfh4/home/cwd -name \"sync-output.txt\" -maxdepth 4 2>/dev/null", "description": "List working directory and locate sync output"}
+---
+Read {"file_path": "/private/tmp/e-FeCfh4/home/cwd/cases/w-sm-drift-ack-once/sync-output.txt"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "grep -rn \"drift\" --include=*.md .skill-manager/skills/skill-manager/ 2>/dev/null | head -40", "description": "Search skill-manager docs for drift guidance"}
+---
+Grep {"-n": true, "head_limit": 60, "output_mode": "content", "path": "/private/tmp/e-FeCfh4/home/cwd/.skill-manager/skills", "pattern": "home drift|--ack|drift"}
+---
+Read {"file_path": "/private/tmp/e-FeCfh4/home/cwd/.skill-manager/skills/git-epic-workflow/SKILL.md", "limit": 55, "offset": 180}
+---
+Bash {"command": "ls .skill-manager/skills/ && echo \"--- plugins:\" && ls .skill-manager/plugins/ 2>/dev/null", "description": "List installed skills and plugins"}
+---
+Bash {"command": "grep -rln \"home drift\" .skill-manager/plugins/skt/ 2>/dev/null | head -20", "description": "Find drift docs in skt plugin"}
+---
+Bash {"command": "grep -rn \"drift\" .skill-manager/plugins/skt/src/skt/status.py | head -40", "description": "Inspect drift references in skt status source"}
+---
+Bash {"command": "ls .skill-manager/bin/cli/ 2>/dev/null; echo \"---\"; grep -rn \"drift_pending\\|def drift\\|--ack\" .skill-manager/plugins/skt/src/skt/homes.py 2>/dev/null | head -30", "description": "Inspect CLI dir and drift helpers"}
+---
+Read {"file_path": "/private/tmp/e-FeCfh4/home/cwd/.skill-manager/plugins/skt/src/skt/homes.py", "limit": 50, "offset": 120}
+---
+Bash {"command": "ls .skill-manager/*.json 2>/dev/null; echo \"---\"; for f in .skill-manager/home.drift.json .skill-manager/drift.json; do [ -f \"$f\" ] && echo \"== $f\" && head -c 2000 \"$f\"; done", "description": "Check for drift record in project home"}
+---
+Bash {"command": "skill-manager home drift --help 2>&1 | head -40", "description": "Show help for the home drift subcommand"}
+---
+Bash {"command": "skill-manager home drift --home ./.skill-manager 2>&1 | head -60", "description": "Read the pending home drift report"}
+---
+Bash {"command": "ls -a cases/w-sm-drift-ack-once/ 2>/dev/null", "description": "List the eval case directory"}
+---
+Bash {"command": "skill-manager home drift --ack --home ./.skill-manager 2>&1 | head -40; echo \"[exit ${PIPESTATUS[0]}]\"", "description": "Acknowledge the home drift gate once"}

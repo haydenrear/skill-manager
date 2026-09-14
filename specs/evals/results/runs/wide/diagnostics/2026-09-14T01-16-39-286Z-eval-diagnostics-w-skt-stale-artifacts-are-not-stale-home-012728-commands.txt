@@ -1,0 +1,7 @@
+Bash {"command": "ls /private/tmp/e-fLSSv1/home/cwd && echo \"---\" && ls /private/tmp/e-fLSSv1/home/cwd/cases 2>/dev/null", "description": "List working directory and cases"}
+---
+Bash {"command": "cat /private/tmp/e-fLSSv1/home/cwd/cases/w-skt-stale-artifacts-are-not-stale-home/artifact-report.txt", "description": "Read the artifact report"}
+---
+Skill {"skill": "skt:skt"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/skt/skills/skt/references/derived-artifacts.md"}

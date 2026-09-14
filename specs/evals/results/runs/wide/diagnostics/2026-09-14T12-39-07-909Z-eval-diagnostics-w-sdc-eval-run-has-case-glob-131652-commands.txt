@@ -1,0 +1,19 @@
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/spec-double-compiler", "description": "List spec-double-compiler checkout"}
+---
+Bash {"command": "ls /private/tmp/e-wzXZP0/home/cwd", "description": "List working directory"}
+---
+Bash {"command": "ls -R /private/tmp/skill-evals/wide/units/spec-double-compiler | head -50", "description": "Explore spec-double-compiler tree"}
+---
+Bash {"command": "ls -la /private/tmp/e-wzXZP0/home/cwd /private/tmp/e-wzXZP0/home/cwd/cases; cat /private/tmp/e-wzXZP0/home/cwd/README.md", "description": "Inspect cwd contents"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/ && wc -l /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/plugin_evals.md", "description": "List references dir"}
+---
+Bash {"command": "ls -R /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin 2>&1 | head -60", "description": "List eval-plugin tree"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/plugin_evals.md"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin && cat README.md", "description": "Read eval-plugin README"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin && cat hooks/hooks.json && head -40 lib/place.sh", "description": "Read plugin hooks and place script"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin/evals 2>/dev/null && ls; echo \"---\"; head -30 /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin/evals/catch-the-drift/case.yaml 2>&1", "description": "Check case directory and case.yaml"}

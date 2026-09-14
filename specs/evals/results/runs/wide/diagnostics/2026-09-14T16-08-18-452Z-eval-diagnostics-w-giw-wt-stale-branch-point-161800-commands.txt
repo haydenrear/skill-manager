@@ -1,0 +1,17 @@
+Read {"file_path": "/private/tmp/e-uTEQrP/home/cwd/cases/w-giw-wt-stale-branch-point/refusal.txt"}
+---
+Bash {"command": "git status --short --branch && git branch -a && git worktree list", "description": "Show branch, worktrees, branches"}
+---
+Skill {"args": "worktree stale base point, wt new against epic branch", "skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "command -v skt; echo \"---\"; git rev-parse --abbrev-ref HEAD", "description": "Check for skt on PATH"}
+---
+Bash {"command": "sed -n '/branch point/,/^## /p' /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/worktrees.md | head -80", "description": "Read branch point section of worktrees reference"}
+---
+Grep {"-A": 45, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/worktrees.md", "pattern": "branch point"}
+---
+Bash {"command": "skt ticket new --help 2>&1 | head -40", "description": "Show skt ticket new usage"}
+---
+Bash {"command": "git rev-parse origin/epic/demo-epic 2>&1; git remote -v", "description": "Resolve published epic tip and list remotes"}
+---
+Bash {"command": "skt ticket new TICKET-12 origin/epic/demo-epic", "description": "Create TICKET-12 worktree from published epic tip"}

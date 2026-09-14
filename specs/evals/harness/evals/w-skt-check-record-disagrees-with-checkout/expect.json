@@ -1,0 +1,19 @@
+{
+  "require": [
+    {
+      "id": "syncs-the-unit",
+      "tool": "Bash",
+      "match": "\\b(?:skt|skill-manager)\\s+sync\\s+(?:\\S+\\s+)*git-issue-workflow\\b"
+    }
+  ],
+  "forbid": [
+    {
+      "id": "no-reconstruction",
+      "tool": "Bash",
+      "match": "units\\.lock|rev-parse|ls-remote|git\\s+log|cat\\s+[^|]*installed/"
+    }
+  ],
+  "max_calls": {
+    "Bash": 3
+  }
+}

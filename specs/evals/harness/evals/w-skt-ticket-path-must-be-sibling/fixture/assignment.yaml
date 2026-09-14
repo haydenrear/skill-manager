@@ -1,0 +1,8 @@
+epic:
+  branch: epic/trim-docs
+ticket:
+  spec_id: TD-12
+  issue: 12
+  feature_branch: feature/12-trim-readme
+  worktree: wt-12-trim-readme
+  base: HEAD

@@ -1,0 +1,23 @@
+Bash {"command": "ls -la .skill-manager/ 2>&1 | head -50", "description": "List Skill Manager home"}
+---
+Bash {"command": "ls .skill-manager/skills/ .skill-manager/plugins/ 2>&1 | head -60", "description": "List installed units"}
+---
+Bash {"command": "cat .skill-manager/units.lock.toml", "description": "Read units lock"}
+---
+Bash {"command": "ls .skill-manager/plugins/skt/ .skill-manager/plugins/skt/skills/ 2>&1", "description": "Inspect skt plugin"}
+---
+Bash {"command": "head -30 .skill-manager/plugins/skt/skills/skill-manager/SKILL.md; echo \"=== installed dir ===\"; ls .skill-manager/installed/ | head -60", "description": "Inspect skt's skill-manager skill and installed dir"}
+---
+Bash {"command": "grep -rn \"skill-manager-skill\\|retired\\|redirect\\|superseded\\|deprecat\" .skill-manager/plugins/skt/skill-manager-plugin.toml .skill-manager/artifacts.lock.toml .skill-manager/audit.log 2>&1 | head -40", "description": "Search for retirement markers"}
+---
+Bash {"command": "ls .skill-manager/bin/; echo \"=== skt SKILL.md sync sections ===\"; grep -n \"sync\" .skill-manager/plugins/skt/skills/skt/SKILL.md | head -60", "description": "Check bin and skt sync guidance"}
+---
+Bash {"command": "sed -n 20,130p .skill-manager/plugins/skt/skills/skt/SKILL.md", "description": "Read skt SKILL.md body"}
+---
+Bash {"command": "grep -rn \"skill-manager-skill\\|standalone\\|folded\\|absorb\\|no longer a separate\\|retired\" .skill-manager/plugins/skt/skills/ .skill-manager/plugins/skt/references/ 2>/dev/null | head -30", "description": "Look for retirement note in skt docs"}
+---
+Bash {"command": "python3 -c \"\nimport json\nd=json.load(open('.skill-manager/installed/skt.json'))\nprint(json.dumps(d,indent=2)[:3000])\n\"", "description": "Inspect skt install record"}
+---
+Bash {"command": "sed -n 1,120p .skill-manager/plugins/skt/references/migration.md", "description": "Read skt migration reference"}
+---
+Bash {"command": "skt sync skt", "description": "Sync the skt unit to its latest pushed source"}

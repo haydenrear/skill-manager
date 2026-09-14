@@ -1,0 +1,13 @@
+{
+  "require": [
+    {
+      "id": "provisions",
+      "tool": "Bash",
+      "match": "(skt[\"']?\\s+ticket|\\bwt[\"']?)\\s+new\\b"
+    }
+  ],
+  "forbid": [],
+  "max_calls": {
+    "Bash": 5
+  }
+}

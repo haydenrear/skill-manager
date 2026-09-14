@@ -321,8 +321,47 @@ eval_pin_cli() {
 branch_home() {
   local src="$1" dst="$2" need="${3:-no}"
   rm -rf "$dst"; mkdir -p "$(dirname "$dst")"
-  "$src/bin/cli/skill-manager" home clone --from "$src" --to "$dst" >/dev/null 2>&1 \
-    || { echo "setup: could not branch the home from $src" >&2; return 1; }
+  local clone_log; clone_log="$(mktemp -t branch-home)"
+  if ! "$src/bin/cli/skill-manager" home clone --from "$src" --to "$dst" >"$clone_log" 2>&1; then
+    # A SOURCE HOME WITH SHIMS INTO A THIRD HOME. Measured 2026-09-14: the root
+    # home's bin/cli/{computeq,helm-deploy,monitoring} pointed into another
+    # worktree's test_graph validation artifacts, so every clone failed
+    # verification. The CLI's own remedy is to repair the SOURCE -- which is the
+    # operator's home and not this harness's to write. The copy is ours, so it
+    # is repaired where it stands; shims that repair cannot re-anchor (they
+    # name venvs that exist only in that third home) are moved aside INSIDE the
+    # copy, and the copy must then pass `home verify`. Anything else refuses.
+    local sm="$dst/bin/cli/skill-manager" verify_log shim moved=""
+    if [ ! -x "$sm" ]; then
+      echo "setup: could not branch the home from $src -- home clone said:" >&2
+      tail -20 "$clone_log" | sed 's/^/         /' >&2; rm -f "$clone_log"; return 1
+    fi
+    homeenv() { env SKILL_MANAGER_HOME="$dst" CLAUDE_CONFIG_DIR="$dst/.claude" CODEX_HOME="$dst/.codex" \
+                  GEMINI_HOME="$dst/.gemini" SKILL_MANAGER_CONFINE_ROOT="$dst" "$@"; }
+    homeenv "$sm" home repair --home "$dst" --fix >/dev/null 2>&1 || true
+    # `|| verified=$?`, not `$?` on the next line: setup runs under set -e, and a
+    # failing command substitution in a plain assignment ENDS the script there,
+    # silently -- which is exactly how the first version of this block died.
+    local verified=0
+    verify_log="$(homeenv "$sm" home verify --home "$dst" 2>&1)" || verified=$?
+    if [ "$verified" -ne 0 ]; then
+      if printf '%s\n' "$verify_log" | grep '✗   ' | grep -qv 'FOREIGN_PATH_IN_SHIM bin/cli/\|complete it with'; then
+        echo "setup: the branched home fails verification for reasons other than foreign shims:" >&2
+        printf '%s\n' "$verify_log" | tail -12 | sed 's/^/         /' >&2; rm -f "$clone_log"; return 1
+      fi
+      mkdir -p "$dst/.eval-quarantined-shims"
+      for shim in $(printf '%s\n' "$verify_log" | sed -n 's/.*FOREIGN_PATH_IN_SHIM bin\/cli\/\([^ ]*\).*/\1/p' | sort -u); do
+        mv "$dst/bin/cli/$shim" "$dst/.eval-quarantined-shims/" && moved="$moved $shim"
+      done
+      homeenv "$sm" home verify --home "$dst" >/dev/null 2>&1 || {
+        echo "setup: the branched home still fails verification after quarantining:$moved" >&2
+        rm -f "$clone_log"; return 1; }
+    fi
+    echo "  note: $src fails clone verification (shims into a third home); the COPY was" >&2
+    echo "        repaired and verifies${moved:+; quarantined in the copy only:$moved}." >&2
+    echo "        The source is untouched -- repairing it is the operator's call." >&2
+  fi
+  rm -f "$clone_log"
   eval_pin_cli "$dst" || return 1
   # REPAIR THE BRANCH, because it will be cloned AGAIN.
   #
@@ -369,6 +408,39 @@ branch_home() {
     echo "setup: sync did not derive $dst/.claude/skills -- the eval HOME is" >&2
     echo "       built from that directory, so the run would start with no" >&2
     echo "       skills projected, which measures nothing" >&2
+    return 1
+  fi
+}
+
+# PLACE A SKILL'S CONTENT INSIDE ITS WRAPPER, NEVER AS A SYMLINK OUT OF IT.
+# eval_place_skill <src-dir> <dst-dir>
+#
+# A symlinked skill LOADS -- plugin containment stops at the entry -- but a run
+# cannot READ it: the sandbox's allowRead is the plugin dirs, and the symlink
+# target is not one. Measured in wide round 1, from inside a run:
+#
+#   ls .../units/git-epic-workflow/skills/git-epic-workflow/: Operation not permitted
+#
+# The Skill tool still delivered SKILL.md, so nothing looked wrong until an
+# agent needed references/ or scripts/ -- every validator, every "run the
+# skill's script" -- and spent its turns searching for files it could not see.
+#
+# So the content is CLONED in (APFS clonefile: ~0 bytes, ~0 s) and pruned of
+# what a skill never needs at run time. The prune is not optional:
+# spec-double-compiler is 30,297 entries with .git and specs/.history and
+# `plugin eval` refuses a plugin directory over 20,000; pruned it is ~5,300.
+eval_place_skill() {
+  local src="${1%/}" dst="$2" n
+  rm -rf "$dst"; mkdir -p "$(dirname "$dst")"
+  cp -Rc "$src" "$dst" 2>/dev/null || cp -R "$src" "$dst" \
+    || { echo "setup: could not place $src into $dst" >&2; return 1; }
+  find "$dst" \( -name .git -o -name __pycache__ -o -name node_modules -o -name .venv \
+                 -o -name .skill-manager -o -name .claude -o -path '*/specs/.history' \) \
+       -prune -exec rm -rf {} + 2>/dev/null
+  n="$(find "$dst" | wc -l | tr -d ' ')"
+  if [ "$n" -gt "${EVAL_MAX_PLUGIN_ENTRIES:-19000}" ]; then
+    echo "setup: $dst holds $n entries after pruning; plugin eval refuses a" >&2
+    echo "       plugin directory over 20,000 -- extend the prune in eval_place_skill" >&2
     return 1
   fi
 }
@@ -437,7 +509,7 @@ verify_env() {
 # setup stamps what it copied; run refuses if the sources have moved since.
 eval_sources_digest() {
   local root; root="$(eval_root)"
-  { find "$root/units-template" "$root/evals" -type f -exec shasum {} + 2>/dev/null | sort; \
+  { find "$root/units-template" "$root/evals" "$root/wide" -type f -exec shasum {} + 2>/dev/null | sort; \
     shasum "$root/lib.sh" 2>/dev/null; } | shasum | cut -d' ' -f1
 }
 
@@ -501,6 +573,10 @@ eval_build_case() {
   # rather than `du`, because copy-on-write clones lie to `du`. That is what
   # this does.
   local free_gb
+  # The parent must exist before df asks about it: on a fresh EVAL_BUILD_ROOT
+  # df fails, pipefail hands that to the assignment, and set -e ended setup
+  # there with no output at all.
+  mkdir -p "$(dirname "$build")"
   free_gb="$(df -g "$(dirname "$build")" 2>/dev/null | awk 'NR==2{print $4}')"
   if [ -n "$free_gb" ] && [ "$free_gb" -lt "${EVAL_MIN_FREE_GB:-25}" ]; then
     echo "setup: ${free_gb}G free, need ${EVAL_MIN_FREE_GB:-25}G — a case is a ~5G home clone" >&2
@@ -522,14 +598,22 @@ eval_build_case() {
     mkdir -p "$build/units/$u/.claude-plugin" "$build/units/$u/skills"
     printf '{"name":"%s","version":"0.1.0","description":"live unit from the branched home"}\n' \
       "$u" > "$build/units/$u/.claude-plugin/plugin.json"
-    ln -sfn "$d" "$build/units/$u/skills/$u"
+    eval_place_skill "$d" "$build/units/$u/skills/$u" || return 1
   done
   for p in "$build"/home/plugins/*/; do
     [ -d "$p" ] || continue; pn="$(basename "$p")"
     mkdir -p "$build/units/$pn/.claude-plugin" "$build/units/$pn/skills"
     printf '{"name":"%s","version":"0.1.0","description":"live plugin from the branched home"}\n' \
       "$pn" > "$build/units/$pn/.claude-plugin/plugin.json"
-    for c in "$p"skills/*/; do [ -d "$c" ] && ln -sfn "$c" "$build/units/$pn/skills/$(basename "$c")"; done
+    for c in "$p"skills/*/; do
+      [ -d "$c" ] && { eval_place_skill "$c" "$build/units/$pn/skills/$(basename "$c")" || return 1; }
+    done
+    # A PLUGIN'S OWN references/ SITS BESIDE ITS skills/, and its skills link to
+    # it relatively (skt: `../../references/harness-capabilities.md`). Placing
+    # only skills/ left every such link dangling inside a run, where a real
+    # session resolves it -- wide round 3b's migration case hunted 13+ calls for
+    # a manifest example that lives in skt's references/.
+    [ -d "${p}references" ] && { eval_place_skill "${p}references" "$build/units/$pn/references" || return 1; }
   done
   cp -R "$root/units-template/." "$build/units/"
 
@@ -582,7 +666,7 @@ eval_fixture_checkout() {
   ( cd "$ws" && export TMPDIR="$(eval_tmpdir "$build")" && "$git" init -q . \
     && "$git" config user.email eval@example.invalid && "$git" config user.name eval \
     && printf 'demo project\n' > README.md \
-    && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n' > .gitignore \
+    && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n.eval-bin/\n' > .gitignore \
     && "$git" add -A && "$git" commit -qm initial && "$git" checkout -q -B "$branch" )
 }
 
@@ -683,26 +767,51 @@ eval_run_case() {
     local diag
     for diag in "$b"/eval-diagnostics-*; do
       [ -d "$diag" ] || continue
+      # ONCE PER DIAGNOSTICS DIR. With EVAL_KEEP_BUILD the build outlives an
+      # invocation, and archiving every dir each time copied round 3b's
+      # diagnostics under all eight invocations: 452 transcripts, 125 MB, most
+      # of them the same file. A dir is recorded when archived and skipped
+      # after; the dirs themselves stay, since a reader may still be using them.
+      grep -qxF "$(basename "$diag")" "$b/.archived-diagnostics" 2>/dev/null && continue
+      basename "$diag" >> "$b/.archived-diagnostics"
       mkdir -p "$dest/diagnostics"
       # BOTH artifacts. commands.txt is written on every run and answers the
       # COST grader -- `Bash called 32x (expected 1..4)` is unreadable without
       # the 32 commands, and the sandbox that used to hold them is now torn
       # down by default. WHY-NO-FRONT-DOOR.txt is written only on a red.
-      local stem="$dest/diagnostics/$(basename "${newest%/}")"
+      # The diagnostics dir name joins the stem: wide runs share one build and
+      # one result, so the run name alone would let each case overwrite the last.
+      local stem="$dest/diagnostics/$(basename "${newest%/}")-$(basename "$diag")"
       cp "$diag"/WHY-NO-FRONT-DOOR.txt "$stem-why-no-front-door.txt" 2>/dev/null \
         && echo "  diagnostics: why the front door was not recognised"
       cp "$diag"/commands.txt "$stem-commands.txt" 2>/dev/null \
         && echo "  diagnostics: $(grep -c '^---$' "$diag/commands.txt" 2>/dev/null | awk '{print $1+1}') commands the agent ran"
+      # The wide lane also keeps the transcript: a regex or llm red is only
+      # readable against the final response it scored.
+      cp "$diag"/transcript.jsonl "$stem-transcript.jsonl" 2>/dev/null || true
     done
   }
-  trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
+  # EVAL_KEEP_BUILD=1 keeps the BUILD (not the sandboxes) so the wide lane can
+  # run several globs from one $0 setup instead of rebuilding a ~10 GB home
+  # between them.
+  local keep_build="$keep"
+  [ "${EVAL_KEEP_BUILD:-0}" = 1 ] && keep_build=1
+  trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep_build"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
 
+  # EVAL_CASE_GLOB / EVAL_MAX_COST_USD / EVAL_CONCURRENCY exist for the wide
+  # lane (wide/run.sh), which runs many tiny cases from ONE build. A deep case
+  # leaves them unset and runs exactly as before.
   ( cd "$build" && HOME="$root/.evalhome-$case_name" CLAUDE_CODE_WALNUT_SPIRE=1 \
-      "$claude" plugin eval . --case "$case_name" --ablation none \
-        --runs "${EVAL_RUNS:-1}" \
-        $keep_temp --max-cost-usd 2 \
+      "$claude" plugin eval . --case "${EVAL_CASE_GLOB:-$case_name}" --ablation none \
+        --runs "${EVAL_RUNS:-1}" --concurrency "${EVAL_CONCURRENCY:-1}" \
+        $keep_temp --max-cost-usd "${EVAL_MAX_COST_USD:-2}" \
         --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(skill-manager:*)' \
           'Bash(python3:*)' Read Write Edit Skill \
           'WebFetch(domain:github.com)' 'WebFetch(domain:codeload.github.com)' \
-          'WebFetch(domain:objects.githubusercontent.com)' "$@" )
+          'WebFetch(domain:objects.githubusercontent.com)' \
+          'WebFetch(domain:pypi.org)' 'WebFetch(domain:files.pythonhosted.org)' "$@" )
+  # pypi: skills ship `uv run --script` entry points (the epic validators among
+  # them) whose inline deps resolve at first run. Without these two domains
+  # every such run died on "deny network-outbound pypi.org:443" and the agent
+  # derived the validator's answer by hand -- wide round 3.
 }

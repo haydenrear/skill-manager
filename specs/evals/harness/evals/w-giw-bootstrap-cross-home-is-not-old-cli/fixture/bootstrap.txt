@@ -1,0 +1,12 @@
+$ scripts/bootstrap-home.sh
+error: no skill-manager CLI that can bootstrap a home was usable
+  candidates:
+    refused: /work/other-repo/.skill-manager/bin/cli/skill-manager
+             it is the entrypoint of the home /work/other-repo/.skill-manager, which binds that
+             home and will not act on another. SKILL_MANAGER_HOME names
+             /work/demo/.skill-manager. NOTHING IS OUT OF DATE.
+             It said:
+               skill-manager: refusing to run against a home you did not name.
+                 you named:  /work/demo/.skill-manager
+                 this shim would have edited: /work/other-repo/.skill-manager
+exit 1

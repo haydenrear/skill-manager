@@ -1,0 +1,27 @@
+schema_version: "1.0"
+name: w-sdc-complexity-ledger-is-advisory
+description: >-
+  The complexity ledger used to refuse closes with "There is no override flag".
+  On fix/drop-bs-gates it is advisory: a rejected verdict is appended to the
+  ledger, one WARNING line prints, and the close proceeds. The failure shape is
+  an agent that reads the warning as a refusal and fabricates ledger input or
+  re-runs the close. Provenance: tla-spec-dev-drop-gates
+  scripts/spec_evolution.py record_complexity_ledger, references/spec_evolution.md
+  (uncommitted); measures that checkout via units-override.txt.
+runs: 1
+plugins:
+  - ../../units/toolchain
+execution:
+  max_turns: 16
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
+  prompt: |
+    I closed ticket T-5 a minute ago and saved the output to
+    cases/w-sdc-complexity-ledger-is-advisory/close.log
+    (spec root cases/w-sdc-complexity-ledger-is-advisory/specs). Is T-5 closed?
+    Tell me what, if anything, is still left to do, and do it.
+
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so any write will fail
+    with "Operation not permitted". That is expected; issue what you would, once.
+
+    EVAL-CASE: w-sdc-complexity-ledger-is-advisory

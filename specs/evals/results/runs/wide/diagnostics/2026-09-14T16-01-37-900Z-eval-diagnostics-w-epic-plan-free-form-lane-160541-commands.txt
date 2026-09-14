@@ -1,0 +1,13 @@
+Bash {"command": "ls -la /private/tmp/e-rwyTRV/home/cwd/ && echo \"---CASES---\" && ls -la /private/tmp/e-rwyTRV/home/cwd/cases/w-epic-plan-free-form-lane/", "description": "List working directory and case directory"}
+---
+Bash {"command": "cat /private/tmp/e-rwyTRV/home/cwd/cases/w-epic-plan-free-form-lane/ticket_plan.yaml", "description": "Read the ticket plan"}
+---
+Bash {"command": "ls /private/tmp/e-rwyTRV/home/cwd/.skill-manager/ 2>/dev/null; echo \"---\"; find /private/tmp/e-rwyTRV/home/cwd/.skill-manager -iname \"*valid*plan*\" -o -iname \"*plan*valid*\" 2>/dev/null | head -50", "description": "Find plan validator scripts"}
+---
+Skill {"args": "validate epic plan at cases/w-epic-plan-free-form-lane/ticket_plan.yaml", "skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" --help 2>&1 | head -40", "description": "Show plan validator usage"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" --verbose cases/w-epic-plan-free-form-lane/ticket_plan.yaml; echo \"EXIT=$?\"", "description": "Run plan validator on the ticket plan"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" --strict --verbose cases/w-epic-plan-free-form-lane/ticket_plan.yaml; echo \"EXIT=$?\"", "description": "Run plan validator in strict mode"}

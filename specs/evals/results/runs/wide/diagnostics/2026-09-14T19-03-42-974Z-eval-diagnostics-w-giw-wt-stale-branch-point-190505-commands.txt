@@ -1,0 +1,9 @@
+Read {"file_path": "/private/tmp/e-v8hNUk/home/cwd/cases/w-giw-wt-stale-branch-point/refusal.txt"}
+---
+Bash {"command": "git -C /private/tmp/e-v8hNUk/home/cwd status --short --branch && echo \"--- branches ---\" && git -C /private/tmp/e-v8hNUk/home/cwd branch -a && echo \"--- worktrees ---\" && git -C /private/tmp/e-v8hNUk/home/cwd worktree list", "description": "Inspect repo branches and worktrees"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "command -v skt; echo \"exit=$?\"", "description": "Check whether skt is on PATH"}
+---
+Bash {"command": "skt ticket new TICKET-12 origin/epic/demo-epic; echo \"exit=$?\"", "description": "Create TICKET-12 worktree from published epic tip"}

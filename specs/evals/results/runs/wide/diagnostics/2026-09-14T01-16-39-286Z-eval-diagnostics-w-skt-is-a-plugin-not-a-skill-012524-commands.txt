@@ -1,0 +1,21 @@
+Bash {"command": "ls -la /private/tmp/e-mIiPhx/home/cwd", "description": "List working directory contents"}
+---
+Bash {"command": "./.eval-bin/git -C /private/tmp/e-mIiPhx/home/cwd status --short --branch 2>&1 | head -20", "description": "Check git branch and status"}
+---
+Bash {"command": "ls -la /private/tmp/e-mIiPhx/home/cwd/.skill-manager", "description": "List skill manager home contents"}
+---
+Bash {"command": "command -v skt skill-manager 2>&1; echo \"---exit:$?\"", "description": "Check for skt and skill-manager CLIs on PATH"}
+---
+Bash {"command": "skt --help 2>&1 | head -60", "description": "Show skt CLI help"}
+---
+Bash {"command": "ls /private/tmp/e-mIiPhx/home/cwd/.skill-manager/plugins /private/tmp/e-mIiPhx/home/cwd/.skill-manager/installed 2>&1", "description": "List installed plugins and units"}
+---
+Bash {"command": "skt ticket --help 2>&1 | head -40; echo \"=== NEW ===\"; skt ticket new --help 2>&1 | head -40", "description": "Show skt ticket subcommand help"}
+---
+Bash {"command": "python3 -c \"\nimport json\nd=json.load(open('/private/tmp/e-mIiPhx/home/cwd/.skill-manager/installed/skt.json'))\nfor k in ('kind','name','version','source','coordinate'): print(k,'=',d.get(k))\n\" 2>&1; echo \"=== which resolves to ===\"; ls -l \"$(command -v skt)\"", "description": "Inspect skt install record and CLI shim target"}
+---
+Bash {"command": "cat /private/tmp/e-mIiPhx/home/cwd/.skill-manager/bin/cli/skt", "description": "Read the skt CLI shim"}
+---
+Bash {"command": "ls -d /private/tmp/e-mIiPhx/home/cwd/.skill-manager/plugins/skt/* 2>&1; echo \"=== wt script (git-issue-workflow) ===\"; ls -l /private/tmp/e-mIiPhx/home/cwd/.skill-manager/skills/git-issue-workflow/scripts/ 2>&1 | head -20", "description": "Inspect skt plugin layout and wt script"}
+---
+Bash {"command": "skt status 2>&1 | head -40", "description": "Run skt status for home tier orientation"}

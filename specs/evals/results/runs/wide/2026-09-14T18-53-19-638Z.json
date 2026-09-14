@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.270",
+  "startedAt": "2026-09-14T18:53:19.638Z",
+  "durationSeconds": 62,
+  "costUsd": 0.353504,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-harness-smoke",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/vision-toolbelt-skill"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-harness-smoke",
+      "dir": "evals/w-harness-smoke",
+      "source": "mixed",
+      "promptMarkdown": "Run exactly this one command and report its output verbatim:\n\n```\ncat cases/w-harness-smoke/marker.txt\n```\n\nDo not run anything else.\n\nEVAL-CASE: w-harness-smoke\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 120,
+      "maxTurns": 3,
+      "graders": [
+        {
+          "name": "no-writes-attempted",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/forbid-no-writes",
+            "exists": true
+          }
+        },
+        {
+          "name": "the-command-was-recorded",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/require-read-the-marker",
+            "exists": true
+          }
+        },
+        {
+          "name": "the-fixture-was-placed",
+          "type": "regex",
+          "weight": 2,
+          "config": {
+            "target": "last_message",
+            "pattern": "wide-fixture-placed-7f3a",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "the-hook-found-the-case",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/case",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.1767625,
+            "judgeCostUsd": 0,
+            "durationSeconds": 59,
+            "startedAt": "2026-09-14T18:53:22.974Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-dNGc2s/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "no-writes-attempted",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/forbid-no-writes exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-command-was-recorded",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/require-read-the-marker exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-fixture-was-placed",
+                "passed": true,
+                "weight": 2,
+                "explanation": "matched wide-fixture-placed-7f3a",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-hook-found-the-case",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/case exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.1767415,
+            "judgeCostUsd": 0,
+            "durationSeconds": 59,
+            "startedAt": "2026-09-14T18:53:22.974Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-GMzwhY/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "no-writes-attempted",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/forbid-no-writes exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-command-was-recorded",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/require-read-the-marker exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-fixture-was-placed",
+                "passed": true,
+                "weight": 2,
+                "explanation": "matched wide-fixture-placed-7f3a",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "the-hook-found-the-case",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/case exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

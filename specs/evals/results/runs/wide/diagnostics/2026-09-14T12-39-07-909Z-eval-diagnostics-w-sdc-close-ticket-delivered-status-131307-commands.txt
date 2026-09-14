@@ -1,0 +1,33 @@
+Bash {"command": "ls -a; echo ---; ls cases/w-sdc-close-ticket-delivered-status/specs 2>/dev/null | head -50", "description": "List working directory and spec root"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "find cases/w-sdc-close-ticket-delivered-status -maxdepth 4 | head -60", "description": "List spec case tree"}
+---
+Bash {"command": "cat cases/w-sdc-close-ticket-delivered-status/specs/desired_program_model/ticket_plan.yaml 2>/dev/null", "description": "Read ticket plan"}
+---
+Bash {"command": "grep -rn \"delivered\" /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/ | head -40", "description": "Search references for delivered status"}
+---
+Bash {"command": "grep -rn \"allow-open\\|status:\" /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/workflows.md | head -40", "description": "Search workflows reference for statuses"}
+---
+Bash {"command": "grep -rn \"status\" /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/spec_evolution.md | head -40", "description": "Grep statuses in spec_evolution"}
+---
+Bash {"command": "which tla-spec-dev; tla-spec-dev --help 2>&1 | head -40", "description": "Check CLI availability and help"}
+---
+Bash {"command": "tla-spec-dev close ticket --help 2>&1 | head -40; echo ---; sed -n '240,300p' /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/spec_evolution.md", "description": "Show close ticket help and evolution notes"}
+---
+Bash {"command": "ls .skill-manager/bin/cli/; grep -rn \"allow_open\\|closed\\\", \\\"done\\|CLOSED_STATUS\\|delivered\" $(readlink -f .skill-manager/bin/cli/tla-spec-dev) 2>/dev/null | head", "description": "Inspect CLI entrypoint"}
+---
+Bash {"command": "head -20 .skill-manager/bin/cli/tla-spec-dev; echo ---; grep -rn \"allow_open\" --include=*.py /private/tmp/skill-evals/wide/units/spec-double-compiler 2>/dev/null | head -20", "description": "Find close-ticket status logic"}
+---
+Bash {"command": "grep -rn \"allow_open\" .skill-manager/skills/spec-double-compiler/scripts/*.py | head -20", "description": "Grep allow_open handling in scripts"}
+---
+Bash {"command": "grep -rn \"TICKET_CLOSED_STATUSES\\s*=\" -A3 .skill-manager/skills/spec-double-compiler/scripts/spec_evolution.py", "description": "Show closed status set"}
+---
+Bash {"command": "tla-spec-dev --spec-root cases/w-sdc-close-ticket-delivered-status/specs close ticket T-1 --summary \"Delivered; PR merged\" 2>&1 | tail -20", "description": "Run the spec workflow ticket close"}
+---
+Read {"file_path": "/private/tmp/e-f3IGRW/home/cwd/cases/w-sdc-close-ticket-delivered-status/specs/desired_program_model/ticket_plan.yaml"}
+---
+Edit {"file_path": "/private/tmp/e-f3IGRW/home/cwd/cases/w-sdc-close-ticket-delivered-status/specs/desired_program_model/ticket_plan.yaml", "new_string": "    status: done", "old_string": "    status: delivered", "replace_all": false}
+---
+Bash {"command": "tla-spec-dev --spec-root cases/w-sdc-close-ticket-delivered-status/specs close ticket T-1 --summary \"Delivered; PR merged\" 2>&1 | tail -20", "description": "Rerun ticket close after marking plan status done"}

@@ -1,0 +1,743 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.270",
+  "startedAt": "2026-09-14T16:18:13.877Z",
+  "durationSeconds": 434,
+  "costUsd": 4.5591945,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-sm-*",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/vision-toolbelt-skill"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-sm-cold-shim-means-build",
+      "dir": "evals/w-sm-cold-shim-means-build",
+      "source": "mixed",
+      "promptMarkdown": "In this project, `./.skill-manager/bin/cli/jinja2 --version` exited 86 and\nprinted what is saved in cases/w-sm-cold-shim-means-build/jinja2-output.txt.\nMake jinja2 usable.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe the filesystem for a writable location and do\nnot attempt a different route — the command you choose is what is recorded.\n\nEVAL-CASE: w-sm-cold-shim-means-build\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "builds-the-artifact",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-builds-the-artifact",
+            "exists": true
+          }
+        },
+        {
+          "name": "no-reinstall",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/forbid-no-reinstall",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 15,
+            "costUsd": 0.8363085,
+            "judgeCostUsd": 0,
+            "durationSeconds": 208,
+            "startedAt": "2026-09-14T16:18:17.276Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-UHXq3g/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "builds-the-artifact",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-builds-the-artifact exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-reinstall",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-reinstall exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 8,
+            "costUsd": 0.37279199999999996,
+            "judgeCostUsd": 0,
+            "durationSeconds": 137,
+            "startedAt": "2026-09-14T16:18:17.276Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-MGr0zc/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "builds-the-artifact",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-builds-the-artifact exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-reinstall",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-reinstall exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333334,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "w-sm-drift-ack-once",
+      "dir": "evals/w-sm-drift-ack-once",
+      "source": "mixed",
+      "promptMarkdown": "A sync in this project (home at ./.skill-manager) ended with the warning\nsaved in cases/w-sm-drift-ack-once/sync-output.txt. The next agent launched\nhere must not be refused. Deal with it.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe the filesystem for a writable location and do\nnot attempt a different route — the command you choose is what is recorded.\n\nEVAL-CASE: w-sm-drift-ack-once\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "acks-drift",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-acks-drift",
+            "exists": true
+          }
+        },
+        {
+          "name": "no-resync",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/forbid-no-resync",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 11,
+            "costUsd": 0.4810614999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 170,
+            "startedAt": "2026-09-14T16:18:17.276Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-Avy7eP/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "acks-drift",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-acks-drift exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-resync",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-resync exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 10,
+            "costUsd": 0.4860695,
+            "judgeCostUsd": 0,
+            "durationSeconds": 170,
+            "startedAt": "2026-09-14T16:18:17.276Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-XQiMBe/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "acks-drift",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-acks-drift exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-resync",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-resync exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333334,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "w-sm-sync-retired-name-redirects",
+      "dir": "evals/w-sm-sync-retired-name-redirects",
+      "source": "mixed",
+      "promptMarkdown": "This project's Skill Manager home is ./.skill-manager. Bring the\nskill-manager skill in this home up to date with its source.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe the filesystem for a writable location and do\nnot attempt a different route — the command you choose is what is recorded.\n\nEVAL-CASE: w-sm-sync-retired-name-redirects\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "no-reinstall-retired",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/forbid-no-reinstall-retired",
+            "exists": true
+          }
+        },
+        {
+          "name": "syncs",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/require-syncs",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 10,
+            "costUsd": 0.41347600000000007,
+            "judgeCostUsd": 0,
+            "durationSeconds": 123,
+            "startedAt": "2026-09-14T16:20:34.261Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-CeAyPC/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "no-reinstall-retired",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-reinstall-retired exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "syncs",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/require-syncs exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 9,
+            "costUsd": 0.3917425,
+            "judgeCostUsd": 0,
+            "durationSeconds": 126,
+            "startedAt": "2026-09-14T16:21:06.909Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-Ru69N7/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "no-reinstall-retired",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-reinstall-retired exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "syncs",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/require-syncs exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333334,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "w-sm-sync-skt-when-absent",
+      "dir": "evals/w-sm-sync-skt-when-absent",
+      "source": "mixed",
+      "promptMarkdown": "In an older project home you were told to run `skill-manager sync skt`.\nIt printed what is saved in cases/w-sm-sync-skt-when-absent/sync-output.txt.\nFinish getting skt into that home.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe the filesystem for a writable location and do\nnot attempt a different route — the command you choose is what is recorded.\n\nEVAL-CASE: w-sm-sync-skt-when-absent\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "installs-skt",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-installs-skt",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.75,
+            "passed": false,
+            "turns": 7,
+            "costUsd": 0.39103249999999995,
+            "judgeCostUsd": 0,
+            "durationSeconds": 112,
+            "startedAt": "2026-09-14T16:21:06.909Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-zrYqbN/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "installs-skt",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-installs-skt exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.252646,
+            "judgeCostUsd": 0,
+            "durationSeconds": 85,
+            "startedAt": "2026-09-14T16:21:44.825Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-bXiVFF/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "installs-skt",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-installs-skt exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.875,
+        "passRate": 0.5
+      }
+    },
+    {
+      "name": "w-sm-verify-is-not-currency",
+      "dir": "evals/w-sm-verify-is-not-currency",
+      "source": "mixed",
+      "promptMarkdown": "Several tickets are about to be dispatched, and each ticket worktree will\nget a copy of this project's Skill Manager home (./.skill-manager). Before\nthat happens, find out whether the home is current with the upstream\nsources of its units. Answer \"current\" or \"not current\", and say what you\nchecked.\n\nEVAL-CASE: w-sm-verify-is-not-currency\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 20,
+      "graders": [
+        {
+          "name": "runs-a-currency-check",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-runs-a-currency-check",
+            "exists": true
+          }
+        },
+        {
+          "name": "verdict-not-from-a-proxy",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "This grader reads the agent's FINAL RESPONSE ONLY. It cannot see commands,\ntheir output, or the workspace.\n\nScore 1 if the response's current / not-current verdict rests on a currency\nresult (for example, what a check reported about newer upstream versions), or\nif it says currency could not be established. Score 0 if it calls the home\ncurrent because `home verify`, `home drift`, or a similar integrity check\npassed or exited 0, or gives no verdict at all.",
+          "config": {
+            "criteria": "This grader reads the agent's FINAL RESPONSE ONLY. It cannot see commands,\ntheir output, or the workspace.\n\nScore 1 if the response's current / not-current verdict rests on a currency\nresult (for example, what a check reported about newer upstream versions), or\nif it says currency could not be established. Score 0 if it calls the home\ncurrent because `home verify`, `home drift`, or a similar integrity check\npassed or exited 0, or gives no verdict at all.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 16,
+            "costUsd": 0.5589330000000001,
+            "judgeCostUsd": 0.0034140000000000004,
+            "durationSeconds": 171,
+            "startedAt": "2026-09-14T16:22:37.555Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-Zrqifq/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "runs-a-currency-check",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-runs-a-currency-check exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "verdict-not-from-a-proxy",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Not current\n\n`./.skill-manager` is **not current** with the upstream sources of its units. Don't dispatch the tickets until it's settled — every ticket worktree would inherit the drift.\n\n### What's wrong\n\n**1. Four change-managed units: the home's record disagrees with the bytes on disk** (`skt check`)\n\n| Unit | Record says | Checkout holds |\n|---|---|---|\n| git-epic-workflow | `b6d269d8` | `8d041594` |\n| git-issue-workflow | `fae9e9ef` | `8d041594` |\n| skt | `9f983984` | `8d041594` |\n| spec-double-compiler | `dd2d5176` | `8d041594` |\n\nAll four checkouts sit on commit `8d04159` \"wide case fixtures\" (today). The record is what every other command reads, so it's authoritative even though the bytes have moved. Confirmed concretely: `skt status` lists git-epic-workflow at **0.1.0**, while `skill-manager show git-epic-workflow` reads **0.4.1** off the actual checkout.\n\n**2. Seven units could not be verified against upstream at all** — `acp-cdc-ai-python, debugging, deploy-helm, git-epic-workflow, hyper-experiments-finance, llm-wiki, plugin-repository`. I probed one directly: `git ls-remote https://github.com/haydenrear/debugging-skill.git` → `Repository not found` / `Authentication failed`. So their currency is genuinely **unknown**, not confirmed good. Only 12 of the 19 change-managed units were actually checked against upstream (`upstream_stale` is empty, but that finding covers just those 12).\n\n**3. Eight of the 27 installed units aren't change-managed** (the four harnesses, cdc-agent-substrate-plugin, slm-agent, tracer-agent) — no upstream currency signal by design.\n\n### What I checked\n\n- `skt status` — home tier (project, policy live, cloned from `/Users/hayde/.skill-manager`), 27 units, 19 change-managed\n- `skt check` / `skt check --json` — the actual currency check; produced findings 1 and 2\n- `git ls-remote` against a unit's origin — to confirm \"unverifiable\" is a real unreachable-remote condition\n- `git remote -v` / `git log -1` inside the four drifted unit checkouts\n- `skill-manager lock status` — separate lock drift: `skill-dev-skill` and `skill-manager` are in `units.lock.toml` but not installed\n- `skill-manager home drift` — clean, no unacknowledged change\n- `skill-manager home verify --home ./.skill-manager` — **passes**, but note this is *not* a currency check: it verifies the home holds no absolute reference back to another home. Green here means the home is safe to copy; it says nothing about whether units match upstream. Worth flagging since it's the command that looks like it answers your question.\n\n### Suggested order before dispatch\n\n1. `skt sync git-epic-workflow git-issue-workflow skt spec-double-compiler` (or one at a time) to re-record what the checkouts hold — this doesn't discard the checkouts.\n2. Decide what to do about the 7 unreachable upstreams: either restore network/credentials for those GitHub repos and re-run `skt check`, or accept dispatching with their currency unknown.\n3. Optionally `skill-manager sync --refresh` for the lock drift, and `skt build` for the 85 stale artifacts (2 stale stores: `skill-dev-skill`, `skill-manager`).\n\nI haven't run any of these — they mutate the home you're about to copy, so that's your call."
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.6666666666666666,
+            "passed": false,
+            "turns": 7,
+            "costUsd": 0.375133,
+            "judgeCostUsd": 0.003027,
+            "durationSeconds": 96,
+            "startedAt": "2026-09-14T16:22:58.771Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-Y7wRTT/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "runs-a-currency-check",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-runs-a-currency-check exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "verdict-not-from-a-proxy",
+                "passed": false,
+                "weight": 2,
+                "explanation": "judge votes: PASS FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  false,
+                  false
+                ],
+                "evidence": "**Not current.**\n\n## What I checked\n\n`skt status` and `skt check` (plus `--json` for the detail) against this project home, `/private/tmp/e-Y7wRTT/home/cwd/.skill-manager` — tier: project, cloned from `/Users/hayde/.skill-manager`, 27 units installed.\n\n## Why \"not current\"\n\n**1. Four units' records disagree with what's actually in their checkouts.** These are the ones that will be copied verbatim into each ticket worktree, and the record is what every other command reads:\n\n| unit | record | checkout |\n| --- | --- | --- |\n| `git-epic-workflow` | `b6d269d8` | `8d041594` |\n| `git-issue-workflow` | `fae9e9ef` | `8d041594` |\n| `skt` | `9f983984` | `8d041594` |\n| `spec-double-compiler` | `dd2d5176` | `8d041594` |\n\nSettle each with `skt sync <unit>` before dispatch. Nothing is lost — sync re-records what's on disk. Note these four are exactly the skills the ticket agents will lean on hardest (worktree provisioning, epic assignment, spec workflow, orientation).\n\n**2. For 7 of the 19 change-managed units, currency could not be established at all.** `skt check` reported `unverifiable (remote unreachable)`: `acp-cdc-ai-python`, `debugging`, `deploy-helm`, `git-epic-workflow`, `hyper-experiments-finance`, `llm-wiki`, `plugin-repository`. That is not a clean result — it's an absent one. `upstream_stale` came back empty, but that empty list only speaks for the 12 units the check could actually reach; it is not a statement about these 7. I did not try to reconstruct the answer from `git ls-remote` or the lockfile.\n\n**3. Eight of the 27 installed units are outside currency checking entirely** — not change-managed, so `skt check` never looked at them: `cdc-agent-substrate-plugin`, `slm-agent`, `tracer-agent`, and the `code-reviewer` / `live-swarm-agent` / `repo-coder` / `repo-tester` / `run-tracer` harnesses. Whatever version of these the home holds is what every ticket gets, verified or not.\n\n## Also worth knowing before you fan out\n\n- Derived artifacts: 172 total — 85 stale, 50 unverifiable, 37 current, 84 not built, **0 rebuildable from here**. Stale stores: `skill-dev-skill`, `skill-manager`. A worktree home inherits or merely declares these rather than rebuilding them, so expect `exit 86` refusals on some `PATH` commands in the ticket worktrees.\n- CLI self-check is `unknown-latest` (installed 0.27.2; brew unavailable), so I can't tell you whether `skill-manager` itself is behind.\n\nThe honest summary: three of the four sync-needed units are settleable with one command each right now; the unverifiable 7 and the unmanaged 8 will stay unknown until the remotes are reachable from this sandbox."
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.75,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 5,
+    "casesPassed": 0,
+    "overallScore": 0.825,
+    "overallPassRate": 0.1
+  }
+}

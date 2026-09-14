@@ -1,0 +1,27 @@
+Bash {"command": "ls -la && ls cases/w-sdc-close-workflow-is-close-tickets/specs", "description": "List working dir and spec root"}
+---
+Bash {"command": "ls -la .skill-manager 2>&1 | head -30; echo \"---\"; ./.eval-bin/git status --short | head; echo \"---branch\"; ./.eval-bin/git branch --show-current", "description": "Check skill-manager home and git branch"}
+---
+Bash {"command": "cd cases/w-sdc-close-workflow-is-close-tickets && find . -maxdepth 4 | head -60", "description": "Explore case spec tree"}
+---
+Bash {"command": "ls .skill-manager/skills; echo ---; ls .skill-manager/installed | head -60", "description": "List installed skills"}
+---
+Read {"file_path": "/private/tmp/e-sbpF6c/home/cwd/cases/w-sdc-close-workflow-is-close-tickets/specs/desired_program_model/ticket_plan.yaml"}
+---
+Bash {"command": "cd /private/tmp/e-sbpF6c/home/cwd && ls .skill-manager/skills && ls .skill-manager/installed | head -60", "description": "List skills from repo root"}
+---
+Bash {"command": "ls .skill-manager/skills/spec-double-compiler && ls .skill-manager/skills/spec-double-compiler/references 2>/dev/null && ls .skill-manager/skills/spec-double-compiler/scripts 2>/dev/null", "description": "List spec-double-compiler skill contents"}
+---
+Bash {"command": "grep -rn \"close-workflow\\|close_workflow\\|workflow close\" .skill-manager/skills/spec-double-compiler | head -40", "description": "Search for workflow close references"}
+---
+Bash {"command": "cd /private/tmp/e-sbpF6c/home/cwd/.skill-manager/skills/spec-double-compiler && head -40 scripts/close_spec_workflow.py && echo \"=== close-spec-workflow.py ===\" && head -40 scripts/close-spec-workflow.py && echo \"=== close_tickets.py ===\" && head -60 scripts/close_tickets.py && echo \"=== close_ticket.py ===\" && head -30 scripts/close_ticket.py && echo \"=== close-ticket.py ===\" && head -30 scripts/close-ticket.py", "description": "Read heads of close scripts"}
+---
+Bash {"command": "grep -rn \"close_tickets.py\\|close_spec_workflow.py\\|close-spec-workflow\" SKILL.md references/*.md | head -50", "description": "Find documented close commands"}
+---
+Bash {"command": "sed -n 630,700p SKILL.md; echo \"=== 975-1000 ===\"; sed -n 975,1000p SKILL.md", "description": "Read SKILL.md close sections"}
+---
+Bash {"command": "sed -n 100,150p references/typical_workflow.md; echo \"=== workflows.md 200-245 ===\"; sed -n 200,245p references/workflows.md", "description": "Read reference close sections"}
+---
+Bash {"command": "grep -n \"add_parser\\|close\" scripts/tla_spec_dev.py | head -40; echo \"=== which ===\"; command -v tla-spec-dev || echo \"no tla-spec-dev on PATH\"", "description": "Check tla-spec-dev CLI subcommands"}
+---
+Bash {"command": "cd /private/tmp/e-sbpF6c/home/cwd && python3 .skill-manager/skills/spec-double-compiler/scripts/close_tickets.py --repo-root . --spec-root cases/w-sdc-close-workflow-is-close-tickets/specs --summary \"Closed cart-workflow: T-1 and T-2 done, desired/current promoted into program_model\" 2>&1 | tail -30", "description": "Run workflow close command"}

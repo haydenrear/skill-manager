@@ -1,0 +1,21 @@
+Bash {"command": "ls -la /private/tmp/e-arvh6A/home/cwd/ && echo \"---\" && cat /private/tmp/e-arvh6A/home/cwd/cases/w-sm-drift-ack-once/sync-output.txt", "description": "List workspace and read sync output"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units && grep -rl \"home drift\" --include=*.md . | head -20", "description": "Find docs mentioning home drift"}
+---
+Grep {"head_limit": 30, "output_mode": "files_with_matches", "path": "/private/tmp/skill-evals/wide/units", "pattern": "home drift"}
+---
+Bash {"command": "cd /private/tmp/e-arvh6A/home/cwd/.skill-manager && grep -rn \"home drift\" --include=\"*.md\" . 2>/dev/null | head -30", "description": "Search project home docs for drift guidance"}
+---
+Bash {"command": "sed -n '500,545p' /private/tmp/e-arvh6A/home/cwd/.skill-manager/skills/git-issue-workflow/references/skill-homes.md; echo \"=== 920-950\"; sed -n '920,950p' /private/tmp/e-arvh6A/home/cwd/.skill-manager/skills/git-issue-workflow/references/skill-homes.md", "description": "Read drift guidance sections"}
+---
+Bash {"command": "ls /private/tmp/e-arvh6A/home/cwd/.skill-manager/bin/cli/ 2>&1 | head", "description": "List home CLI shims"}
+---
+Bash {"command": "cd /private/tmp/e-arvh6A/home/cwd && ./.skill-manager/bin/cli/skill-manager home drift ./.skill-manager 2>&1 | head -60; echo \"[exit ${PIPESTATUS[0]:-$?}]\"", "description": "Read the pending drift report"}
+---
+Bash {"command": "./.skill-manager/bin/cli/skill-manager home drift --home ./.skill-manager 2>&1 | head -60; echo \"[exit ${PIPESTATUS[0]}]\"", "description": "Read the pending drift report with correct flag"}
+---
+Bash {"command": "./.skill-manager/bin/cli/skill-manager home drift --home ./.skill-manager --json 2>/dev/null | head -40", "description": "Read drift state as JSON"}
+---
+Bash {"command": "./.skill-manager/bin/cli/skill-manager home drift --ack --home ./.skill-manager 2>&1 | head -20; echo \"[exit ${PIPESTATUS[0]}]\"", "description": "Acknowledge the drift record once"}

@@ -1,0 +1,9 @@
+{
+  "require": [
+    {"id": "edits-the-frontmatter", "tool": "Edit|Write", "match": "demo-skill/SKILL\\.md"}
+  ],
+  "forbid": [
+    {"id": "does-not-chase-links", "tool": "Bash", "match": "\\bln\\s+-s|--allow-unprojected"}
+  ],
+  "max_calls": {"Bash": 3}
+}

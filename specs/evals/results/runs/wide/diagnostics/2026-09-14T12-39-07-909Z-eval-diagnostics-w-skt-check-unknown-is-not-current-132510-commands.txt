@@ -1,0 +1,5 @@
+Read {"file_path": "/private/tmp/e-ND9MJk/home/cwd/cases/w-skt-check-unknown-is-not-current/check-output.txt"}
+---
+Bash {"command": "ls /private/tmp/e-ND9MJk/home/cwd/cases/w-skt-check-unknown-is-not-current/", "description": "List case directory contents"}
+---
+Grep {"-C": 3, "head_limit": 60, "output_mode": "content", "path": "/private/tmp/e-ND9MJk/home/cwd/.skill-manager", "pattern": "unverifiable"}

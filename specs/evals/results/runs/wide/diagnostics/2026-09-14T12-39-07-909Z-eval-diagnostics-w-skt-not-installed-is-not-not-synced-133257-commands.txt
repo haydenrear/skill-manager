@@ -1,0 +1,29 @@
+Bash {"command": "ls -la /private/tmp/e-wU1YTW/home/cwd/cases/w-skt-not-installed-is-not-not-synced/", "description": "List case directory"}
+---
+Read {"file_path": "/private/tmp/e-wU1YTW/home/cwd/cases/w-skt-not-installed-is-not-not-synced/ticket-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-wU1YTW/home/cwd/cases/w-skt-not-installed-is-not-not-synced/installed-units.txt"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/ 2>/dev/null; echo ---; which skill-manager; skill-manager --help 2>&1 | head -60", "description": "List skill-manager references and CLI help"}
+---
+Bash {"command": "ls -a && cat .skill-manager/../skill-project.toml 2>/dev/null; echo \"--- home:\"; ls .skill-manager 2>/dev/null", "description": "Inspect workspace and project home"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && cat plugin.json 2>/dev/null; echo \"=== skill-manager.toml\"; cat skill-manager.toml 2>/dev/null", "description": "Read skt plugin manifest for dependencies"}
+---
+Bash {"command": "sed -n '1,200p' /private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/projects.md", "description": "Read projects reference"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && ls -a && echo \"=== find manifests\" && find . -maxdepth 3 -name \"*.toml\" -o -maxdepth 3 -name \"plugin.json\" | head -30", "description": "Find skt manifests"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && cat .claude-plugin/plugin.json && echo \"=== skt skill toml\" && cat skills/skt/skill-manager.toml", "description": "Read skt plugin.json and skt skill manifest"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && grep -rn \"git-issue-workflow\" --include=*.toml --include=*.json . | head -30", "description": "Search skt manifests for git-issue-workflow"}
+---
+Bash {"command": ".skill-manager/bin/cli/skill-manager install --help 2>&1 | head -60", "description": "Read install command help"}
+---
+Bash {"command": "grep -n -A8 \"git-issue-workflow\" .skill-manager/units.lock.toml | head -40", "description": "Look up git-issue-workflow coordinate in lock"}
+---
+Bash {"command": "SKILL_MANAGER_HOME=/work/proj/.skill-manager skill-manager install github:haydenrear/git-issue-workflow-skill", "description": "Install git-issue-workflow into the colleague's project home"}
+---
+Bash {"command": "skill-manager install --home /work/proj/.skill-manager github:haydenrear/git-issue-workflow-skill", "description": "Install git-issue-workflow addressed at their home"}

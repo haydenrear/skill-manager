@@ -1,0 +1,3 @@
+Skill {"args": "ticket close TICKET-9", "skill": "skt:skt"}
+---
+Bash {"command": "skt ticket close TICKET-9; echo \"EXIT=$?\"", "description": "Close ticket worktree via skt"}

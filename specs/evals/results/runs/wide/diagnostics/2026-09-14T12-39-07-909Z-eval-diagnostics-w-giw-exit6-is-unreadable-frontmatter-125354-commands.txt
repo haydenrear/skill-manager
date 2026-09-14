@@ -1,0 +1,21 @@
+Read {"file_path": "/private/tmp/e-UcqrlC/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/bootstrap.txt"}
+---
+Read {"file_path": "/private/tmp/e-UcqrlC/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md"}
+---
+Skill {"skill": "skt:unit-authoring"}
+---
+Bash {"command": "grep -n -i -A4 \"description\" /private/tmp/skill-evals/wide/units/skt/references/skills.md | head -80", "description": "Show description rules from skills reference"}
+---
+Bash {"command": "ls -la /private/tmp/e-UcqrlC/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/", "description": "List the demo skill directory"}
+---
+Bash {"command": "find /private/tmp/skill-evals/wide/units/skt -name \"skills.md\" -o -name \"*frontmatter*\" | head", "description": "Locate the skills reference page"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/ /private/tmp/skill-evals/wide/units/skt/skills/unit-authoring/ 2>&1 | head -40", "description": "List skt plugin layout"}
+---
+Bash {"command": "cd /private/tmp/e-UcqrlC/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill && od -c SKILL.md | head -20 && echo \"---\" && awk 'NR==3{print length($0)}' SKILL.md", "description": "Dump bytes of the skill file"}
+---
+Edit {"file_path": "/private/tmp/e-UcqrlC/home/cwd/cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md", "new_string": "description: \"Use when tidying demo docs: the README, the changelog and notes.\"", "old_string": "description: Use when tidying demo docs: the README, the changelog and notes.", "replace_all": false}
+---
+Bash {"command": "python3 -c \"\nimport sys,yaml\nt=open('SKILL.md').read().split('---')[1]\nd=yaml.safe_load(t)\nprint('parsed OK:',d)\n\"", "description": "Validate the frontmatter parses as YAML"}
+---
+Bash {"command": "cd /private/tmp/e-UcqrlC/home/cwd && .eval-bin/git status --short cases/w-giw-exit6-is-unreadable-frontmatter/ 2>&1 | head", "description": "Show git status for the case fixture"}

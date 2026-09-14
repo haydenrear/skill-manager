@@ -1,0 +1,9 @@
+{
+  "forbid": [
+    {
+      "id": "no-real-install",
+      "tool": "Bash",
+      "match": "\\bskill-manager\\s+install\\b(?![^\\n]*(?:--help|--dry-run))"
+    }
+  ]
+}

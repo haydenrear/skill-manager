@@ -1,0 +1,29 @@
+Bash {"command": "cat cases/w-giw-bootstrap-cross-home-is-not-old-cli/bootstrap.txt", "description": "Read bootstrap output"}
+---
+Bash {"command": "pwd; ls -a", "description": "List working directory"}
+---
+Bash {"command": "ls cases/w-giw-bootstrap-cross-home-is-not-old-cli/; echo ---; cat README.md", "description": "List case dir and read README"}
+---
+Bash {"command": "find . -name 'bootstrap-home.sh' -not -path '*/.git/*' 2>/dev/null | head", "description": "Locate bootstrap-home.sh"}
+---
+Bash {"command": "cat ./.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Read bootstrap-home.sh"}
+---
+Bash {"command": "grep -n \"no skill-manager CLI that can bootstrap\\|refused:\\|candidates:\\|NOTHING IS OUT OF DATE\\|refusing to run against a home\" ./.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh | head -40", "description": "Find error message source in script"}
+---
+Bash {"command": "sed -n '640,880p' ./.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Read candidate selection logic"}
+---
+Bash {"command": "command -v skill-manager; echo ---; head -60 \"$(command -v skill-manager)\"", "description": "Inspect skill-manager on PATH"}
+---
+Bash {"command": "grep -rn \"SKILL_MANAGER_CLI\" ./.skill-manager/skills/git-issue-workflow/ --include=*.md --include=*.sh | head -30", "description": "Search docs for SKILL_MANAGER_CLI guidance"}
+---
+Bash {"command": "sed -n '60,140p' .skill-manager/bin/cli/skill-manager", "description": "Read rest of shim to find pinned build"}
+---
+Bash {"command": "sed -n '140,230p' .skill-manager/bin/cli/skill-manager", "description": "Read shim remedy text and pin"}
+---
+Bash {"command": "grep -n \"SOURCE_HOME\\|--source\\|SKILL_MANAGER_HOME\" ./.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh | sed -n '1,80p'", "description": "Check source home selection"}
+---
+Bash {"command": "sed -n '486,545p' ./.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Read source default logic"}
+---
+Bash {"command": "ls -l /opt/homebrew/bin/skill-manager 2>&1 | head -3; head -12 /opt/homebrew/bin/skill-manager 2>&1", "description": "Check pinned build exists"}
+---
+Bash {"command": "env -u SKILL_MANAGER_HOME SKILL_MANAGER_CLI=/opt/homebrew/bin/skill-manager .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>&1 | tail -30", "description": "Re-run bootstrap with a build pinned and ambient home unset"}

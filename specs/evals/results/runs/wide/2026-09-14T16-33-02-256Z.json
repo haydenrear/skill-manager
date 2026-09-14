@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.270",
+  "startedAt": "2026-09-14T16:33:02.256Z",
+  "durationSeconds": 235,
+  "costUsd": 2.8906695,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-sdc-attribution-before-close",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/vision-toolbelt-skill"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-sdc-attribution-before-close",
+      "dir": "evals/w-sdc-attribution-before-close",
+      "source": "mixed",
+      "promptMarkdown": "Ticket T-7 is finished: its spec-unit tests are green and the plan entry is\nmarked done. While working it, a spec-unit test caught that checkout accepted\na negative quantity. Follow this project's close-out process for T-7.\nThe spec root is cases/w-sdc-attribution-before-close/specs.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so writes and commands\nthat write will fail with \"Operation not permitted\". That is expected. Issue\nwhat you would, once each, and report what you did in order.\n\nEVAL-CASE: w-sdc-attribution-before-close\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 30,
+      "graders": [
+        {
+          "name": "attribution-reported-before-close",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "This grader reads the agent's FINAL RESPONSE ONLY. It cannot see the\nworkspace, the transcript, or which commands actually ran.\n\nScore 1 if the response reports recording a bug attribution (a catch/finding\nfor the negative-quantity defect, in an attribution record) as a step that\ncame BEFORE closing, or attempting to close, ticket T-7. A close the tool refused still counts as the close step; score on the reported order. Score 0 if attribution is not mentioned, is\nmentioned only as optional or future work, or is reported after the close.",
+          "config": {
+            "criteria": "This grader reads the agent's FINAL RESPONSE ONLY. It cannot see the\nworkspace, the transcript, or which commands actually ran.\n\nScore 1 if the response reports recording a bug attribution (a catch/finding\nfor the negative-quantity defect, in an attribution record) as a step that\ncame BEFORE closing, or attempting to close, ticket T-7. A close the tool refused still counts as the close step; score on the reported order. Score 0 if attribution is not mentioned, is\nmentioned only as optional or future work, or is reported after the close.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "closed-ticket",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/require-closed-ticket",
+            "exists": true
+          }
+        },
+        {
+          "name": "consulted-attribution",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/require-consulted-attribution",
+            "exists": true
+          }
+        },
+        {
+          "name": "wrote-attribution",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-wrote-attribution",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 23,
+            "costUsd": 1.433803,
+            "judgeCostUsd": 0.0037289999999999997,
+            "durationSeconds": 192,
+            "startedAt": "2026-09-14T16:33:05.183Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-MqCmAj/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "attribution-reported-before-close",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Done. Here's what I did, in order.\n\n## What the close-out process is (spec-double-compiler, \"Work A Ticket\" 7a/7b → 8 → 9 → 10)\n\nThe step that's easy to miss and the reason ordering matters: **attribution is written while you're still in the ticket, before the close.** `close ticket` moves `specs/tickets/T-7/` into `specs/.history/`, so anything not written first has nowhere to land.\n\n## Actions, in order\n\n**1. Oriented** — `skt status` (project-tier home, standalone repo on `main`), then loaded `spec-double-compiler` and read `references/bug_attribution.md` §4/§6/§7a/§7c and `references/workflows.md` 7a–7c.\n\n**2. Located the ledger.** There is no `specs/deferred_findings.yaml` here. Per §4 that is exactly the case where rows go in the ticket's own `results/` — creating the project-level path from a branch would collide on merge. I did not create it.\n\n**3. Wrote `specs/tickets/T-7/results/attribution.yaml`** (before the close), with a header saying where the rows belong and when they move:\n\n- **CATCH** — negative quantity accepted at checkout. `channel: the-suite` (the spec-unit run), class **automated** — it stands and would refuse again tomorrow, which per §4.2 means it is its own pin and I added **no** second assertion.\n- **BLIND** — `could_not_have_caught: UNDECIDED` for the 14 passing cases. I did not work it out, and §3 says an absent input is UNDECIDED, not a clean empty field.\n- **Bin disposition** — `MODELABLE`, named on its first finding so it isn't pooled.\n\n**4. Wrote `specs/tickets/T-7/results/complexity_ledger.yaml`** (step 8). It wasn't scaffolded, since `open ticket` never ran here. Filled honestly: no refinement, no increase to justify, no refactor claimed, descriptor not run.\n\n**5. Plan status** — `ticket_plan.yaml` already has `status: done`, a terminal spelling. No edit made; I did not reword it.\n\n**6. Ran the close, once:**\n```\ntla-spec-dev --spec-root specs close ticket T-7 --summary \"…\" --result …\n```\n→ **exit 127, `command not found`.** `tla-spec-dev` is not on PATH in this checkout. This is a missing CLI, not a sandbox refusal — the two file writes above went through fine. **The ticket is therefore not closed**: nothing moved to `.history`, `specs/current` was not promoted. That's the one piece of the close-out I could not finish.\n\n## The line to report upward (7b)\n\n> **`UNMODELED/checkout-quantity-validation`** — checkout accepted a negative quantity; caught by the T-7 spec-unit corpus (`the-suite`, automated); area: checkout quantity validation on the cart line-item path.\n\nAnchored `UNMODELED` rather than to an action, deliberately. There is no `specs/program_model/` on this branch, and `Cart.tla` is `Next == items' = items` — no checkout action, no quantity, no named action at all. Stretching `Cart.Next` to cover it would destroy the number the UNMODELED bucket exists to produce.\n\nI did **not** touch `SELF-IMPROVEMENT-MATRIX.md` — the epic agent is its only writer.\n\nTwo things worth your attention:\n\n- **7c doesn't apply** (the catch was automated, not hand/reading), but the underlying gap is sharper than a missing binding: there is no action here to bind *to*. The corpus is generated from a model whose only transition is `items' = items`, so no generated case can exercise a quantity value. The 14 greens and the bug that got through are consistent with that.\n- The ticket is marked `done` with `current` and `desired` byte-identical and unchanged from the trivial baseline. The behavior shipped; the model never recorded it. That's what the `MODELABLE` bin is flagging for a decision."
+              },
+              {
+                "name": "closed-ticket",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-closed-ticket exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "consulted-attribution",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-consulted-attribution exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "wrote-attribution",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-wrote-attribution exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 18,
+            "costUsd": 1.4568665,
+            "judgeCostUsd": 0.003588,
+            "durationSeconds": 232,
+            "startedAt": "2026-09-14T16:33:05.183Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-KCM9hy/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "attribution-reported-before-close",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Done. What I did, in order:\n\n**1. Loaded the process** — `spec-double-compiler`, then `references/bug_attribution.md` and `references/workflows.md` 7a–7c. Step 13 of the ticket loop is explicit: attribute *before* you close, because nothing gates on it.\n\n**2. Wrote the attribution record** → `specs/tickets/T-7/results/attribution.yaml`, before touching the close. `specs/deferred_findings.yaml` doesn't exist under this spec root, so per §4's header note the rows live in the ticket with a header saying where they belong and when they move (creating that path from ticket work collides with sealed epic results on merge).\n\n- **CATCH** — negative quantity at checkout. `channel: the-suite`, class **automated**, so no separate pin: the spec-unit assertion that went red *is* the pin (§4.2).\n- **Anchor: `UNMODELED/checkout-quantity-validation`**, disposition `MODELABLE`. `Cart.tla` is `VARIABLE items` / `Init == items = 0` / `Next == items' = items` — no `Checkout` action, no quantity, no guard. Nothing declared means this, and stretching `Next` to cover it would destroy the number the `UNMODELED` bucket exists to measure.\n- **REACH** — `unenforced_on: UNDECIDED`. I only checked the path T-7 changed; the other quantity-accepting surfaces were never enumerated. That's the DEF-124 shape, so a confident empty list would have been the wrong answer.\n- **BLIND** — one determinable row (the corpus can't reach state the model doesn't carry) and one `UNDECIDED`, since §6 says a BLIND reconstructed by someone who didn't write the case is the weaker artifact.\n- **PRICE** — empty, stated as a fact about this ticket rather than coverage.\n- 7c doesn't bind (the catch is automated), but I recorded the answer anyway: no External view, no `testgraph_bindings.yml`, nothing TLC-derived can drive checkout. That's the line to report upward.\n\n**3. Wrote `results/complexity_ledger.yaml`** (step 8) — model unchanged, no increase, no decrease claimed.\n\n**4. Ran the close** — `tla-spec-dev --spec-root … close ticket T-7` with all three results as evidence. Promoted to `specs/current`, sealed `.history/cart-workflow/ticket-000-T-7`; the attribution and ledger travel with it. Plan entry was already `status: done`, a terminal spelling, so no plan edit.\n\n**5. Filled the skill-feedback close-out** it emitted as `unreviewed` — `items-recorded`, with SF-001: the close resolves the ledger model from a `.cfg` beside the `.tla` and never reads the ticket's `complexity_ledger.yaml`. \"Author declined to account for complexity\" and \"tool could not look\" print the same single warning line — the §3 confusion inside the close path itself.\n\n**I did not edit `SELF-IMPROVEMENT-MATRIX.md`** — the epic agent is its only writer.\n\nTwo things are yours to call:\n- **SF-001 is `status: open`.** Filing it means `gh issue create` against `haydenrear/tla-spec-dev` — outward-facing, so I stopped. Say the word and I'll file it and set the URL.\n- **The commit.** The close recommends `git add`/`git commit` for the history entry, `current/`, and `skill_feedback.md`. I left it; tell me and I'll run it (worth deciding the branch first — `skt` reports this checkout on `main`).\n\nOne correction to your environment note: writes were **not** refused here. The Write tool and `tla-spec-dev` both succeeded, so everything above is real on disk, not attempted-and-failed. `which tla-spec-dev` came back empty on my first probe but the command resolved when invoked — a shim, not an absence."
+              },
+              {
+                "name": "closed-ticket",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-closed-ticket exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "consulted-attribution",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-consulted-attribution exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "wrote-attribution",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-wrote-attribution exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

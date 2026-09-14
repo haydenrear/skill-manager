@@ -1,0 +1,11 @@
+Read {"file_path": "/private/tmp/e-tKguBl/home/cwd/cases/w-giw-epic-ticket-stops-on-wrong-pr-base/issue-141.md"}
+---
+Bash {"command": "./.eval-bin/git status --short --branch && echo \"---BRANCHES---\" && ./.eval-bin/git branch -a && echo \"---REMOTES---\" && ./.eval-bin/git remote -v", "description": "Check branch and remotes"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
+---
+Bash {"command": "SMH=\"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}\"; echo \"SKILL_MANAGER_HOME=$SKILL_MANAGER_HOME\"; echo \"resolved SMH=$SMH\"; test -x \"$SMH/bin/cli/skt\" && echo \"SKT: yes\" || echo \"SKT: no\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"WT: yes\" || echo \"WT: no\"; command -v skt || echo \"skt not on PATH\"; ls -d ./.skill-manager 2>/dev/null || echo \"no ./.skill-manager\"", "description": "Probe for skt and wt front door"}
+---
+Bash {"command": "cd /private/tmp/e-tKguBl/home/cwd\necho \"--- pwd/toplevel ---\"; ./.eval-bin/git rev-parse --show-toplevel\necho \"--- current branch ---\"; ./.eval-bin/git rev-parse --abbrev-ref HEAD\necho \"--- default/epic refs ---\"; ./.eval-bin/git show-ref | head -30\necho \"--- worktrees ---\"; ./.eval-bin/git worktree list\necho \"--- project home front door ---\"\ntest -x ./.skill-manager/bin/cli/skt && echo \"skt: PRESENT at ./.skill-manager/bin/cli/skt\" || echo \"skt: absent\"\ntest -x ./.skill-manager/skills/git-issue-workflow/scripts/wt && echo \"wt: PRESENT at ./.skill-manager/skills/git-issue-workflow/scripts/wt\" || echo \"wt: absent\"\ntest -d \"$HOME/.skill-manager\" && echo \"root home: exists\" || echo \"root home: MISSING ($HOME/.skill-manager)\"", "description": "Inspect repo refs, worktrees, and skill home"}

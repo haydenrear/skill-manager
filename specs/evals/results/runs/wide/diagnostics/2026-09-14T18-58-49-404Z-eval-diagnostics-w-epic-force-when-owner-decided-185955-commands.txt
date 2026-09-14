@@ -1,0 +1,9 @@
+Bash {"command": "ls -la /private/tmp/e-ezcL7X/home/cwd && echo \"---\" && ls -la /private/tmp/e-ezcL7X/home/cwd/cases/w-epic-force-when-owner-decided/", "description": "List working directory and case directory"}
+---
+Read {"file_path": "/private/tmp/e-ezcL7X/home/cwd/cases/w-epic-force-when-owner-decided/ticket_plan.yaml"}
+---
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" cases/w-epic-force-when-owner-decided/ticket_plan.yaml; echo \"EXIT=$?\"", "description": "Validate the epic ticket plan"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" cases/w-epic-force-when-owner-decided/ticket_plan.yaml --force; echo \"EXIT=$?\"", "description": "Re-validate plan with force flag"}

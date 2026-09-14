@@ -1,0 +1,5 @@
+Read {"file_path": "/private/tmp/e-lDHDJR/home/cwd/cases/w-skt-check-unknown-is-not-current/check-output.txt"}
+---
+Grep {"-C": 3, "head_limit": 60, "output_mode": "content", "path": "/private/tmp/e-lDHDJR/home/cwd/.skill-manager", "pattern": "unverifiable"}
+---
+Grep {"-C": 6, "head_limit": 80, "output_mode": "content", "path": "/private/tmp/e-lDHDJR/home/cwd/.skill-manager/plugins/skt/src/skt/check.py", "pattern": "all current|unverifiable"}

@@ -1,0 +1,11 @@
+Read {"file_path": "/private/tmp/e-FXFgjh/home/cwd/cases/w-skt-migration-no-import-edits/status-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-FXFgjh/home/cwd/cases/w-skt-migration-no-import-edits/my-skill/SKILL.md"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skill-manager sync skt", "description": "Run the migration sync of skill-manager into skt"}
+---
+Bash {"command": "grep -n 'skill-manager\\|^\\[\\|retired' /private/tmp/e-FXFgjh/home/cwd/.skill-manager/units.lock.toml | head -60", "description": "Check lock file for skill-manager unit state"}
+---
+Read {"file_path": "/private/tmp/e-FXFgjh/home/cwd/.skill-manager/units.lock.toml", "limit": 10, "offset": 179}

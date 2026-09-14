@@ -1,0 +1,11 @@
+Bash {"command": "ls /private/tmp/e-zrYqbN/home/cwd && echo \"---\" && find /private/tmp/e-zrYqbN -name \"sync-output.txt\" -path \"*w-sm-sync-skt-when-absent*\" 2>/dev/null", "description": "Locate the case sync output file"}
+---
+Bash {"command": "ls -la cases/ && cat README.md", "description": "List cases directory and read README"}
+---
+Bash {"command": "ls -la cases/w-sm-sync-skt-when-absent/ && cat cases/w-sm-sync-skt-when-absent/sync-output.txt", "description": "Read the saved sync output"}
+---
+Bash {"command": "skill-manager --help 2>&1 | head -60", "description": "Show skill-manager CLI help"}
+---
+Bash {"command": "skill-manager install --help 2>&1 | head -60", "description": "Show install subcommand help"}
+---
+Bash {"command": "skill-manager install github:haydenrear/skt 2>&1", "description": "Install skt into the project home", "timeout": 180000}

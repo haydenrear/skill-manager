@@ -1,0 +1,37 @@
+Bash {"command": "ls -la /private/tmp/e-1oSjzH/home/cwd && echo \"---\" && ls -R /private/tmp/e-1oSjzH/home/cwd/cases 2>/dev/null | head -100", "description": "List working directory and cases"}
+---
+Bash {"command": "ls -R /private/tmp/e-1oSjzH/home/cwd/cases/w-sdc-forced-close-names-guard-weakening", "description": "List the case directory"}
+---
+Bash {"command": "cd /private/tmp/e-1oSjzH/home/cwd/cases/w-sdc-forced-close-names-guard-weakening && echo \"=== refusal.log ===\" && cat refusal.log && echo \"=== ticket_plan.yaml ===\" && cat specs/desired_program_model/ticket_plan.yaml && echo \"=== current/Cart.tla ===\" && cat specs/tickets/T-3/current/Cart.tla && echo \"=== desired/Cart.tla ===\" && cat specs/tickets/T-3/desired/Cart.tla", "description": "Read case files"}
+---
+Bash {"command": "ls /private/tmp/e-1oSjzH/home/cwd/.skill-manager/ && echo \"---\" && ls /private/tmp/e-1oSjzH/home/cwd/.skill-manager/skills 2>/dev/null", "description": "Inspect skill-manager home"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"guard_weakening\" . | head -40", "description": "Search skill for guard_weakening references"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '120,150p;300,320p' references/spec_evolution.md", "description": "Read spec_evolution reference sections"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -n \"def weakening_flags_record\" -A 40 scripts/spec_evolution.py && echo \"=== call site ===\" && sed -n '2035,2060p' scripts/spec_evolution.py", "description": "Read weakening_flags_record implementation"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -n \"CLOSE_GUARD_WEAKENING_FLAGS\" -A 14 scripts/spec_evolution.py | head -25", "description": "Read guard weakening flag descriptions"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '1995,2040p' scripts/spec_evolution.py", "description": "Read close ticket flow before weakening record"}
+---
+Bash {"command": "tla-spec-dev --spec-root cases/w-sdc-forced-close-names-guard-weakening/specs close ticket T-3 --force --summary \"Owner reviewed the current/desired divergence and accepted desired/Cart.tla (MaxQty guard) as the outcome\"; echo \"exit=$?\"", "description": "Force-close ticket T-3"}
+---
+Bash {"command": "tla-spec-dev close ticket --help 2>&1 | head -40", "description": "Show close ticket help"}
+---
+Bash {"command": "command -v tla-spec-dev; readlink -f \"$(command -v tla-spec-dev)\"", "description": "Locate the tla-spec-dev CLI"}
+---
+Bash {"command": "cat .skill-manager/bin/cli/tla-spec-dev | head -30", "description": "Inspect CLI shim"}
+---
+Bash {"command": "grep -n \"guard_weakening\\|CLOSE_GUARD_WEAKENING_FLAGS\\|def weakening_flags_record\" .skill-manager/skills/spec-double-compiler/scripts/spec_evolution.py | head", "description": "Check installed spec_evolution for guard_weakening"}
+---
+Bash {"command": "sed -n '1226,1275p;1930,1950p' .skill-manager/skills/spec-double-compiler/scripts/spec_evolution.py", "description": "Read installed guard weakening record"}
+---
+Bash {"command": "tla-spec-dev --spec-root cases/w-sdc-forced-close-names-guard-weakening/specs close ticket T-3 --accept-new --summary \"Owner reviewed the current/desired divergence and accepted desired/Cart.tla (MaxQty guard) as the outcome\"; echo \"exit=$?\"", "description": "Close ticket T-3 accepting desired"}
+---
+Bash {"command": "grep -n \"def ticket_entry_name\" -A 6 .skill-manager/skills/spec-double-compiler/scripts/spec_evolution.py && echo \"=== accept_new_ticket_current ===\" && grep -n \"def accept_new_ticket_current\" -A 25 .skill-manager/skills/spec-double-compiler/scripts/spec_evolution.py && echo \"=== manifest keys ===\" && sed -n '2070,2100p' .skill-manager/skills/spec-double-compiler/scripts/spec_evolution.py && echo \"=== git status ===\" && ./.eval-bin/git status --short", "description": "Check entry naming, accept-new record, manifest keys, and worktree state"}
+---
+Bash {"command": "cd cases/w-sdc-forced-close-names-guard-weakening && diff specs/tickets/T-3/current/Cart.tla specs/tickets/T-3/desired/Cart.tla && echo \"current == desired now\"; echo \"--- history ---\"; ls -R specs/.history 2>&1 | head", "description": "Check ticket current vs desired and history"}

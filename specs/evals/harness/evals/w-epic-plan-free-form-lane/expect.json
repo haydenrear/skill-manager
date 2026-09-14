@@ -1,0 +1,19 @@
+{
+  "require": [
+    {
+      "id": "runs-the-validator",
+      "tool": "Bash",
+      "match": "validate_epic_plan\\.py"
+    }
+  ],
+  "forbid": [
+    {
+      "id": "no-plan-edit",
+      "tool": "Edit|Write",
+      "match": "ticket_plan\\.yaml"
+    }
+  ],
+  "max_calls": {
+    "Bash": 6
+  }
+}

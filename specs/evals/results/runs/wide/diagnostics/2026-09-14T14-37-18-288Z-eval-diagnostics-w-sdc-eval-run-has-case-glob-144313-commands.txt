@@ -1,0 +1,17 @@
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/spec-double-compiler", "description": "List spec-double-compiler unit"}
+---
+Bash {"command": "ls -R /private/tmp/skill-evals/wide/units/spec-double-compiler/examples/agent_integration/eval-plugin 2>/dev/null | head -60", "description": "List example eval plugin tree"}
+---
+Bash {"command": "find /private/tmp/skill-evals/wide/units/spec-double-compiler -maxdepth 4 | head -60", "description": "Explore unit structure"}
+---
+Bash {"command": "S=/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler; find $S/examples -maxdepth 4 | head -60; echo ---; ls $S/references", "description": "List examples and references"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/plugin_evals.md"}
+---
+Bash {"command": "S=/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler; ls -la $S/examples/agent_integration/ ; echo ---; ls -la $S/examples/agent_integration/eval-plugin/ 2>&1; echo ---; ls -la $S/examples/agent_integration/eval-plugin/evals/ 2>&1", "description": "Inspect eval plugin directory"}
+---
+Glob {"path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler", "pattern": "examples/agent_integration/eval-plugin/**/*"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin/README.md"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/examples/agent_integration/eval-plugin/.gitignore"}

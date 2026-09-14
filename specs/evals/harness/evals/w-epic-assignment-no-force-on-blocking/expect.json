@@ -1,0 +1,9 @@
+{
+  "require": [
+    {"id": "runs-the-validator", "tool": "Bash", "match": "validate_assignment\\.py"}
+  ],
+  "forbid": [
+    {"id": "no-force", "tool": "Bash", "match": "--force|SKILL_GATES=(off|0|false)"}
+  ],
+  "max_calls": {"Bash": 3}
+}

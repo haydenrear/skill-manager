@@ -1,0 +1,9 @@
+{
+  "require": [
+    {"id": "read-the-assignment", "tool": "Read|Bash", "match": "issue-141\\.md"}
+  ],
+  "forbid": [
+    {"id": "does-not-provision", "tool": "Bash", "match": "(skt\\s+ticket|\\bwt)\\s+new\\b|git\\s+(-C\\s+\\S+\\s+)?worktree\\s+add"}
+  ],
+  "max_calls": {"Bash": 3}
+}

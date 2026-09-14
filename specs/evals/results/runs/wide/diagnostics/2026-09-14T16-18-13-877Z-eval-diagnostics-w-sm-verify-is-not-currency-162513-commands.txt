@@ -1,0 +1,29 @@
+Bash {"command": "pwd && ls -a && echo \"--- skt ---\" && which skt skill-manager", "description": "Inspect working directory and toolchain"}
+---
+Bash {"command": "skt --help 2>&1 | head -60", "description": "Show skt CLI help"}
+---
+Bash {"command": "skt status 2>&1 | head -80", "description": "Run skt status"}
+---
+Bash {"command": "skt check 2>&1 | head -100", "description": "Run skt check for new-version notifications"}
+---
+Bash {"command": "skill-manager --help 2>&1 | head -80", "description": "Show skill-manager CLI help"}
+---
+Bash {"command": "skt check --json 2>&1 | head -200", "description": "Run skt check with JSON output"}
+---
+Bash {"command": "skill-manager lock --help 2>&1 | grep -v JAVA_TOOL | head -40; echo \"=== home ===\"; skill-manager home --help 2>&1 | grep -v JAVA_TOOL | head -40", "description": "Look for verify-style subcommands"}
+---
+Bash {"command": "skill-manager show git-epic-workflow 2>&1 | grep -v JAVA_TOOL | head -40", "description": "Show details for one drifted unit"}
+---
+Bash {"command": "echo \"=== home verify ===\"; skill-manager home verify 2>&1 | grep -v JAVA_TOOL | head -20; echo; echo \"=== lock status ===\"; skill-manager lock status 2>&1 | grep -v JAVA_TOOL | head -40", "description": "Run home verify and lock status"}
+---
+Bash {"command": "skill-manager home drift 2>&1 | grep -v JAVA_TOOL | head -40", "description": "Show home unit drift"}
+---
+Bash {"command": "skill-manager home verify --home /private/tmp/e-Zrqifq/home/cwd/.skill-manager 2>&1 | grep -v JAVA_TOOL | head -20", "description": "Run home verify against the project home"}
+---
+Bash {"command": "cd /private/tmp/e-Zrqifq/home/cwd/.skill-manager && ls && echo \"=== skills/debugging origin ===\" && /private/tmp/e-Zrqifq/home/cwd/.eval-bin/git -C skills/debugging remote -v 2>&1 | head", "description": "Inspect home layout and a unit's git remote"}
+---
+Bash {"command": "cd /private/tmp/e-Zrqifq/home/cwd && .eval-bin/git ls-remote --heads https://github.com/haydenrear/debugging-skill.git 2>&1 | head -10; echo \"exit=$?\"", "description": "Probe whether upstream remote is reachable"}
+---
+Bash {"command": "cd /private/tmp/e-Zrqifq/home/cwd/.skill-manager\nfor u in git-epic-workflow git-issue-workflow spec-double-compiler; do\n  echo \"=== $u ===\"\n  /private/tmp/e-Zrqifq/home/cwd/.eval-bin/git -C skills/$u remote -v 2>&1 | head -2\n  /private/tmp/e-Zrqifq/home/cwd/.eval-bin/git -C skills/$u log -1 --format='%H %ci %s' 2>&1 | head -2\ndone\necho \"=== skt (plugin) ===\"\n/private/tmp/e-Zrqifq/home/cwd/.eval-bin/git -C plugins/skt remote -v 2>&1 | head -2\n/private/tmp/e-Zrqifq/home/cwd/.eval-bin/git -C plugins/skt log -1 --format='%H %ci %s' 2>&1 | head -2", "description": "Inspect remotes and HEAD of the four drifted units"}
+---
+Bash {"command": "cd /private/tmp/e-Zrqifq/home/cwd && skt status --json 2>/dev/null | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nus=d.get('units') or d.get('installed') or []\nprint('total',len(us))\nfor u in us:\n    if isinstance(u,dict):\n        print(u.get('name'), u.get('version'), u.get('kind'), 'cm=' + str(u.get('change_managed')), u.get('source_hash') or u.get('record') or '')\n\" 2>&1 | head -40", "description": "List all installed units with change-management status"}

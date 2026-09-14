@@ -1,0 +1,13 @@
+Bash {"command": "ls && echo \"---\" && ls cases/w-sdc-complexity-ledger-is-advisory/", "description": "List working dir and case dir"}
+---
+Bash {"command": "cat cases/w-sdc-complexity-ledger-is-advisory/close.log", "description": "Read close log"}
+---
+Bash {"command": "find cases -maxdepth 4 | head -50; echo \"---\"; cat README.md; echo \"---PWD\"; pwd; ls -a", "description": "Explore case tree and README"}
+---
+Bash {"command": "grep -ril \"complexity_ledger\\|complexity ledger\" .skill-manager --include=\"*.md\" --include=\"*.py\" --include=\"*.toml\" 2>/dev/null | head -30", "description": "Find complexity ledger docs"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "ls -la cases/w-sdc-complexity-ledger-is-advisory/ 2>&1; echo \"--- specs?\"; ls cases/w-sdc-complexity-ledger-is-advisory/specs 2>&1; echo \"--- branch\"; ./.eval-bin/git rev-parse --abbrev-ref HEAD; ./.eval-bin/git status --short | head", "description": "Inspect case dir and git state"}
+---
+Bash {"command": "./.eval-bin/git add cases/w-sdc-complexity-ledger-is-advisory/specs/.history/cart-workflow/ticket-004-T-5 cases/w-sdc-complexity-ledger-is-advisory/specs/current cases/w-sdc-complexity-ledger-is-advisory/specs/results/complexity_ledger.json 2>&1; echo \"exit=$?\"", "description": "Stage the spec close artifacts"}

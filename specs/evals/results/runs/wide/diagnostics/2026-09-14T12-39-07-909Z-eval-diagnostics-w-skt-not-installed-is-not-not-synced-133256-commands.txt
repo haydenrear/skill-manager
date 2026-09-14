@@ -1,0 +1,29 @@
+Bash {"command": "cat cases/w-skt-not-installed-is-not-not-synced/ticket-output.txt", "description": "Read ticket output"}
+---
+Bash {"command": "cat cases/w-skt-not-installed-is-not-not-synced/installed-units.txt", "description": "Read installed units inventory"}
+---
+Bash {"command": "ls -la .skill-manager 2>/dev/null | head -50; echo ---; ls .skill-manager/skills 2>/dev/null; echo ---; ls .skill-manager/plugins 2>/dev/null", "description": "Inspect project skill-manager home"}
+---
+Skill {"skill": "skt:skill-manager"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt/skills/skill-manager && wc -l references/*.md && sed -n '1,120p' references/projects.md", "description": "Read projects reference"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt/skills/skill-manager && sed -n '1,160p' references/workflows.md", "description": "Read workflows reference"}
+---
+Bash {"command": "grep -n -A12 'git-issue-workflow' .skill-manager/units.lock.toml | head -40", "description": "Find source coord for git-issue-workflow"}
+---
+Bash {"command": "ls .skill-manager/installed | head -60 && echo --- && cat .skill-manager/installed/git-issue-workflow*.json 2>/dev/null | head -60", "description": "Inspect installed records"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && ls skills/skt/references/ && grep -rn -i \"not installed\" skills/skt/skills 2>/dev/null | head; grep -rn -i \"no-op\\|not installed\\|silently\" skills/skt/SKILL.md skills/skt/references/*.md | head -40", "description": "Search skt references for sync no-op trap"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt/skills/skt && wc -l SKILL.md && sed -n '1,200p' SKILL.md", "description": "Read skt SKILL.md"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt/skills/skill-manager && sed -n '120,330p' references/projects.md", "description": "Read more of projects reference"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && ls && cat skill-manager-plugin.toml 2>/dev/null | head -80; echo ===; cat plugin.json 2>/dev/null | head -40", "description": "Read skt plugin manifest"}
+---
+Bash {"command": "ls -a .skill-manager/plugins/skt/ && echo ---- && cat .skill-manager/plugins/skt/skill-manager-plugin.toml 2>/dev/null", "description": "Read installed skt plugin manifest"}
+---
+Bash {"command": ".skill-manager/bin/cli/skill-manager install --help 2>&1 | head -60", "description": "Check install command help"}
+---
+Bash {"command": "SKILL_MANAGER_HOME=/work/proj/.skill-manager skill-manager install github:haydenrear/git-issue-workflow-skill", "description": "Install git-issue-workflow into the colleague's project home"}

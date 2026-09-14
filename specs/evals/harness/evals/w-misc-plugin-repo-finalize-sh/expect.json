@@ -1,0 +1,9 @@
+{
+  "require": [
+    {"id": "runs-finalize-sh", "tool": "Bash", "match": "\\bfinalize\\.sh\\b"}
+  ],
+  "forbid": [
+    {"id": "no-finalize-constituents", "tool": "Bash", "match": "finalize-constituents\\.sh"}
+  ],
+  "max_calls": {"Bash": 4}
+}

@@ -12,7 +12,12 @@ CWD="${CLAUDE_PROJECT_DIR:-$PWD}"
 SRC="${CLAUDE_PLUGIN_ROOT}/../../fixture-workspace"
 note=""
 if [ -d "$SRC/.git" ]; then
-  cp -R "$SRC/." "$CWD/" 2>/dev/null
+  # CLONE, DO NOT COPY. The workspace holds a ~5 GB branched home, and a byte
+  # copy per run is what filled the disk in the first wide round: 27 of 46
+  # runs could not start (ENOSPC) and the ones that did spent their first
+  # ~100 s copying. APFS clonefile (`cp -c`) is measured at 0 s and 0 MB for a
+  # 2 GB tree on this volume; plain `cp -R` stays as the fallback elsewhere.
+  cp -Rc "$SRC/." "$CWD/" 2>/dev/null || cp -R "$SRC/." "$CWD/" 2>/dev/null
   # RE-ANCHOR LOCAL ORIGINS, because the copy lands somewhere else entirely.
   #
   # A fixture that gives a unit a LOCAL source writes that source's absolute
@@ -85,6 +90,12 @@ fi
 # thing that reliably reaches a run.
 if [ -d "$CWD" ]; then
   mkdir -p "$CWD/.eval-bin"
+  # KEEP IT OUT OF `git status`. An untracked .eval-bin/ made every workspace
+  # dirty, so `wt new` / `skt ticket new` refused on a clean-tree gate in runs
+  # that were not about a dirty tree at all. .git/info/exclude holds even when a
+  # fixture's committed .gitignore predates the entry.
+  [ -d "$CWD/.git/info" ] && ! grep -qx '.eval-bin/' "$CWD/.git/info/exclude" 2>/dev/null \
+    && printf '.eval-bin/\n' >> "$CWD/.git/info/exclude"
   for real in /Library/Developer/CommandLineTools/usr/bin/git \
               /opt/homebrew/bin/git /usr/local/bin/git; do
     [ -x "$real" ] || continue

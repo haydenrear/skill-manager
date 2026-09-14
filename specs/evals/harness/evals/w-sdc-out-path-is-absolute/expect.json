@@ -1,0 +1,14 @@
+{
+  "require": [
+    {
+      "id": "generate-cases",
+      "tool": "Bash",
+      "match": "generate\\s+cases\\b[^\\n]*--out"
+    },
+    {
+      "id": "absolute-out",
+      "tool": "Bash",
+      "match": "generate\\s+cases\\b[^\\n]*--out(?:=|\\s+)(?:\\\\?[\"'])?(?:\\$PWD|\\$\\{PWD\\}|\\$\\(pwd\\)|/)"
+    }
+  ]
+}

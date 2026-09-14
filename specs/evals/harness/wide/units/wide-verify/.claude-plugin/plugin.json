@@ -1,0 +1,1 @@
+{"name": "wide-verify", "version": "0.1.0", "description": "Stop-hook verdicts for the wide lane: matches the commands an agent issued against expect.json; executes nothing."}

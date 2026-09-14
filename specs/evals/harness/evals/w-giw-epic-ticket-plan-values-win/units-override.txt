@@ -1,0 +1,2 @@
+git-issue-workflow=/Users/hayde/IdeaProjects/git-issue-workflow-skill-drop-gates
+git-epic-workflow=/Users/hayde/IdeaProjects/git-epic-skill-drop-gates

@@ -1,0 +1,17 @@
+Glob {"pattern": "**/w-sm-sync-skt-when-absent/**"}
+---
+Bash {"command": "pwd; ls -a", "description": "List working directory contents"}
+---
+Read {"file_path": "/private/tmp/e-t496Aa/home/cwd/cases/w-sm-sync-skt-when-absent/sync-output.txt"}
+---
+Skill {"skill": "skt:skill-manager"}
+---
+Bash {"command": "ls -a .skill-manager; echo ---; cat README.md", "description": "Inspect skill-manager home and README"}
+---
+Bash {"command": "sed -n 1,160p /private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/projects.md", "description": "Read projects reference"}
+---
+Bash {"command": "echo \"SKILL_MANAGER_HOME=${SKILL_MANAGER_HOME:-<unset>}\"; command -v skill-manager skt; ls .skill-manager/plugins .skill-manager/skills", "description": "Check home env var and installed units"}
+---
+Bash {"command": "ls cases/w-sm-sync-skt-when-absent/; echo ---; ls .skill-manager/projects .skill-manager/child-homes 2>&1 | head -30", "description": "Inspect case directory and project records"}
+---
+Bash {"command": "SKILL_MANAGER_HOME=/private/tmp/e-t496Aa/home/cwd/.skill-manager skill-manager install github:haydenrear/skt", "description": "Install skt into the project skill-manager home"}

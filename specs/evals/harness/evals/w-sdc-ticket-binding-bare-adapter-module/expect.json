@@ -1,0 +1,9 @@
+{
+  "require": [
+    {"id": "binds-refund", "tool": "Write|Edit|Bash", "match": "adapters:RefundInternalAdapter"},
+    {"id": "bare-module", "tool": "Write|Edit|Bash", "match": "(?<![\\w.])adapters:RefundInternalAdapter"}
+  ],
+  "forbid": [
+    {"id": "no-qualified-module", "tool": "Write|Edit|Bash", "match": "specs\\.[A-Za-z_]+\\.adapters:RefundInternalAdapter"}
+  ]
+}
