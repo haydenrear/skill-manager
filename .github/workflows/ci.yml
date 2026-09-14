@@ -592,18 +592,26 @@ jobs:
 
       # plugin-smoke needs the Claude + Codex harness CLIs on PATH so
       # the RefreshHarnessPlugins effect can drive `claude plugin
-      # install` / `codex plugin marketplace add` end-to-end. Other
-      # graphs don't touch these commands. The CLIs are installed via
-      # npm to keep the matrix host-agnostic; if either install fails,
-      # plugin-smoke's HelloPluginRegisteredWithHarness node falls
+      # install` / `codex plugin marketplace add` end-to-end. The CLIs are
+      # installed via npm to keep the matrix host-agnostic; if either install
+      # fails, plugin-smoke's HelloPluginRegisteredWithHarness node falls
       # back to its "missing-CLI recorded as error" assertion path,
       # which still exercises the contract.
-      - name: Install Claude + Codex CLIs (plugin-smoke only)
-        if: matrix.graph == 'plugin-smoke'
+      #
+      # onboarding needs them too (#345), measured on run 34791698649 -- the
+      # first run in which onboarding got far enough to reach
+      # onboarding.claude.mcp.config.readable. Its bootstrap logged "CLI claude
+      # not on PATH", so `claude plugin marketplace add` never ran and
+      # <proj>/.claude/settings.json never gained extraKnownMarketplaces, which
+      # the_claude_marketplace_entry_is_in_the_file_claude_reads asserts. On a
+      # laptop that passes because claude is installed; this is the same
+      # "the runner is not a developer's machine" gap, provisioned the same way.
+      - name: Install Claude + Codex CLIs (plugin-smoke, onboarding)
+        if: matrix.graph == 'plugin-smoke' || matrix.graph == 'onboarding'
         run: |
           set -e
-          npm install -g @anthropic-ai/claude-code || echo "::warning::claude install failed — plugin-smoke will hit the missing-CLI branch"
-          npm install -g @openai/codex || echo "::warning::codex install failed — plugin-smoke will hit the missing-CLI branch"
+          npm install -g @anthropic-ai/claude-code || echo "::warning::claude install failed — ${{ matrix.graph }} will hit the missing-CLI branch"
+          npm install -g @openai/codex || echo "::warning::codex install failed — ${{ matrix.graph }} will hit the missing-CLI branch"
           echo "claude → $(command -v claude || echo 'not on PATH')"
           echo "codex  → $(command -v codex || echo 'not on PATH')"
 
