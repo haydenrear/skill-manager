@@ -127,10 +127,55 @@ both in `home.fixpoint.law`,** for one reason, and it is this change's:
   4 subjects parsed; all declared → nothing unexplained; one subject undeclared
   → its finding, `repair:`, header and remedy lines; none declared → 10 lines.
 
-### CI run 2: _pending_
+### CI run 2: 34804201355 (`graph_set=full`, `9d2fd94a`): superseded
 
-Local `home-clone` on the fixed tree: _pending_. `checkout-home` reuses
-home-clone's fixture nodes, so the same declarations cover it; CI decides.
+Dispatched on `9d2fd94a`, whose declarations named `pm/uv/0.0.0`. Before it
+finished, local `home-clone` on `48d18070` (run `20260914-035302`) showed that
+declaration fails in home-clone: "declared intentionally damaged at
+[pm/uv/0.0.0] but home verify (exit 1) does not report it", on the fixture home
+only. Its results count for the graphs this change does not touch. home-clone
+and checkout-home are decided by run 3.
+
+### The home-clone fixture's `pm/uv/0.0.0`: stamped, not declared
+
+- **Why the tree was unstamped at all.** Step 5 dates from `5ca3cb07`
+  (2026-07-26, home-level isolation). `PmPlatform`'s stamp arrived later, in
+  `cad0b830` (2026-09-06). The fixture predates stamps, and the step's claim is
+  "`pm/` is carried".
+- **Coverage (epic-agent review).**
+  `git grep -n -i -E 'stamp|\.platform|unstamped' HEAD -- test_graph/sources/home-clone/ test_graph/sources/checkout-home/`
+  matches only `CopyCarriesNoForeignBinary`'s own stamped and foreign-stamp
+  homes, plus OHV-2's declarations. **No node asserts on the fixture's
+  unstamped tree, surviving or refused.**
+  - Copied-home property (c)
+    (`results/epic-one-unit-one-name/tickets/OUN-12/README.md`) rests on
+    `CopyCrossesAPlatformTest` ("an UNSTAMPED toolchain is judged by the
+    binary's magic number") and on `home.copy.carries.no.foreign.binary`'s
+    controls. Neither reads the fixture's `pm/uv`.
+  - Unstamped detection is pinned by `home.verdicts.unstamped.pm.tree`.
+  - Stamping therefore deletes no coverage. The fixture now writes the stamp
+    `PmPlatform` writes, and no declaration names `pm/`.
+- **The apparent inconsistency is DEF-OHV-121, not a detector split.** It is
+  also not a platform difference or a `/var` spelling issue.
+  - `home.copy.carries.no.foreign.binary` (home-clone node 10) cleans up with
+    `deleteRecursive(source.resolve("pm"))` on the SHARED fixture. That removes
+    the whole `pm/`, including step 5's `uv`.
+  - In `home-clone`, the fixture home has no `pm/` when the law runs. CI prints
+    "1 finding(s) … of 26 entries"; locally `ls pm` says no such file.
+  - `checkout-home` has no node 10, so the tree survives there. CI reports
+    `UNSTAMPED_PM_TREE pm/uv/0.0.0` "of 27 entries".
+  - Copies made before node 10 carry the tree in both graphs.
+  - `PathSpellings` needs no wiring into `HomeRepair`. I chose not to fix the
+    node here: it is outside this ticket's conflict keys and not `HomeRepair`
+    code.
+
+`48d18070` and the stamp change touch only `test_graph/sources`. No `src/` file
+changed after `afaabc8d`, so the full `jbang RunTests.java` run on that tree
+(1555 passed, 0 failed) still covers production and unit-test code.
+
+### CI run 3: _pending_
+
+Local `home-clone` on the stamped fixture: _pending_.
 
 ## Blast radius
 
@@ -172,8 +217,17 @@ verify-0-while-repair-damaged to agreeing. 3 new planted shapes are pinned.
 
 ## Deferred
 
-DEF-OHV-120 in [deferred.yaml](deferred.yaml): git-epic-workflow and
-git-issue-workflow docs still describe verify as resolution-only.
+In [deferred.yaml](deferred.yaml):
+
+- **DEF-OHV-120** (minor): git-epic-workflow and git-issue-workflow docs still
+  describe verify as resolution-only.
+- **DEF-OHV-121** (minor): `CopyCarriesNoForeignBinary`'s cleanup deletes the
+  shared home-clone fixture's whole `pm/`, so the fixture's state depends on
+  which graph ran (home-clone vs checkout-home). Reproduced from disk on macOS
+  and from both CI graphs on Linux. CI run 34804201355's home-clone job
+  (103852736511) failed with the local macOS run's exact verdicts: the fixture
+  home was "declared … but not reported", and both copies were "DAMAGED ON
+  PURPOSE". Not a `HomeRepair` or path-spelling defect.
 
 ## Close-out
 

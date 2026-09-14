@@ -2,11 +2,15 @@
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES HomeCloneSupport.java
 //SOURCES ../lib/IntentionalDamage.java
+//SOURCES ../../../src/main/java/dev/skillmanager/pm/PmPlatform.java
+//SOURCES ../../../src/main/java/dev/skillmanager/util/Platform.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
+
+import dev.skillmanager.pm.PmPlatform;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -157,6 +161,14 @@ public class HomeCloneFixtureBuilt {
             // 5. pm/ entry — must be carried
             HomeCloneSupport.write(fixture.resolve("pm/uv/0.0.0/bin/uv-marker"),
                     "bundled package manager\n");
+            // STAMPED, the way PmPlatform stamps every directory it provisions.
+            // The claim under test is "pm/ is carried", not "an unstamped tree";
+            // unstamped is UNSTAMPED_PM_TREE, which `home verify` refuses on
+            // since OHV-2 (#339). Declaring it as planted damage instead was
+            // tried and was platform-dependent: CI's fixture home still reported
+            // it when the law ran, a local macOS run's did not, while both
+            // copies did. A fixture must not plant damage it does not mean.
+            PmPlatform.stamp(fixture.resolve("pm/uv/0.0.0"));
 
             // 6. venvs/ entry — must NOT be carried
             HomeCloneSupport.writeExecutable(fixture.resolve("venvs/hc-venv/bin/hc"), """
@@ -301,17 +313,14 @@ public class HomeCloneFixtureBuilt {
                     // as usual and fails if verify stops seeing one (#344).
                     // Since OHV-2 (#339) verify also names `home repair`
                     // findings: step 4's shim names this home absolutely
-                    // (FROZEN_HOME_PATH_IN_SHIM) and step 5's pm tree has no
-                    // platform stamp (UNSTAMPED_PM_TREE) — the legacy shapes
-                    // the clone's re-anchoring is asserted against.
+                    // (FROZEN_HOME_PATH_IN_SHIM) — the legacy shape the clone's
+                    // re-anchoring is asserted against, so it stays planted.
                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(fixture,
                             List.of("venvs/hc-venv/bin/hc",
-                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
-                                    "pm/uv/0.0.0"),
+                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
                             "home.clone.fixture.built step 6 plants a console script whose "
                                     + "interpreter venvs/hc-venv/bin/python is never created; "
-                                    + "step 4's shim is frozen and step 5's pm tree unstamped, "
-                                    + "both on purpose"))
+                                    + "step 4's shim is frozen on purpose"))
                     .publish("projectDir", projectDir.toString())
                     .publish("cloneStore", HomeCloneSupport.storeOf(projectDir).toString())
                     .publish("sourceDigest", sourceDigest)

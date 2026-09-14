@@ -403,13 +403,10 @@ public class HomeClonedIntoProject {
                     // The clone inherits the fixture's planted shim and, by
                     // design, not venvs/ (toolchain roots are never carried), so
                     // bin/cli/hc-venv-tool dangles here. Declared by entry (#344).
-                    // It also carries the fixture's unstamped pm tree, which
-                    // verify names since OHV-2 (#339).
                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(cloneStore,
-                            List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM, "pm/uv/0.0.0"),
+                            List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
                             "clone of home.clone.fixture.built: inherits its planted "
-                                    + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/, "
-                                    + "and its unstamped pm/uv/0.0.0"));
+                                    + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/"));
         });
     }
 
