@@ -1,0 +1,813 @@
+# Bug attribution -- epic one-home-one-verdict (#337), machine-readable rows.
+#
+# The prose, the TLC table and the root-cause chain are in
+# 2026-09-14-epic-attribution.md beside this file. The schema follows
+# spec-double-compiler references/bug_attribution.md (CATCH section 4, REACH 5, BLIND 6,
+# semantic bins 7c, conservation 7b).
+#
+# WHERE THESE ROWS BELONG. `specs/deferred_findings.yaml` does not exist on
+# main, and creating it from a branch would collide with the sealed epic
+# ledgers (bug_attribution.md section 4). So the rows live here, in the epic's own
+# results, and move only if a cumulative ledger is created on main. The 25
+# backlog rows keep their ids and full text in ../deferred/backlog.yaml; the
+# rows below ADD channel, area, anchor, origin, escape, fix and pin. Nothing
+# in backlog.yaml was edited.
+#
+# `anchor` is a TLA+ action in specs/program_model/HomeVerdictsInternal.tla
+# (HVI.<Action>), or UNMODELED/<bin>. An action is never stretched to cover a
+# row (bug_attribution.md section 7a).
+#
+# `class` is the lookup in bug_attribution.md section 4.1, not a judgement:
+# automated | hand | reading. The tie-break used throughout: did the instrument
+# REPORT the defect (automated), or did the operator notice something it was
+# silent about (hand)?
+#
+# `origin` was traced read-only with `git log -S`, `git log -G`, `git blame` on
+# origin/main (71c51464) and `gh api repos/haydenrear/skill-manager/commits/<sha>/pulls`
+# for PR numbers. `confidence` is the tracer's. `origin: UNTRACED` always says
+# what was tried.
+
+meta:
+  epic: one-home-one-verdict
+  epic_issue: 337
+  epic_pr: 371
+  epic_tip: 833ae0d7
+  base: 71c51464
+  written: "2026-09-14"
+  window: "2026-09-13 kickoff .. 2026-09-14 close"
+  totals:
+    rows: 59
+    backlog_findings: 25
+    goal_defects_not_in_backlog: 8
+    in_epic_defects: 12
+    epic_agent_process_errors: 11
+    this_record_own_errors: 3
+  by_kind:
+    product: 23
+    instrument: 19
+    process: 17
+  by_class:
+    automated: 20
+    hand: 35
+    reading: 4
+  conservation: >
+    findings before: 59 (unanchored; this is the epic's first anchoring pass)
+    findings after: 59 (17 anchored to HomeVerdictsInternal actions, 42 in 11
+    UNMODELED bins). No row was dropped or merged.
+
+findings:
+
+  # ============================================================ BACKLOG (25)
+  - id: DEF-OHV-001
+    title: "half-rewritten skill-script shim exempt from both verdicts"
+    kind: product
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "scripts/measure_goal_a_home_survives_being_copied.py at kickoff reported property (b) not met, naming computeq/helm-deploy/monitoring; home repair said 0 of 78"
+    area: "ShimHomeContract.selfDerivingRewrite + HomeRepair.scanFrozenShims (the detector asked the rewriter)"
+    anchor: HVI.ObserveShim
+    secondary_anchors: [HVI.InstallShim, HVI.RepairFixShim]
+    origin:
+      - {commit: 43e5fb99, date: "2026-09-06", pr: 323, what: "selfDerivingRewrite returns null for any body containing the token"}
+      - {commit: ffa2108b, date: "2026-09-12", pr: 335, what: "scanFrozenShims reports only when the rewrite is non-null"}
+    confidence: high
+    why_escaped: "ShimSurvivesACopyTest and DamagedHomeIsRepairableTest planted only fully frozen shims; with detection chained to the rewrite, no fixture could make them disagree"
+    fixed_by: {ticket: OHV-4, pr: 365, merge: 42486f86}
+    pinned_by:
+      - "test_graph home-verdicts :: home.verdicts.half.rewritten.shim"
+      - "ShimSurvivesACopyTest (8 OHV-4 cases); DamagedHomeIsRepairableTest damageHalfRewrittenShim"
+      - "specs/program_model/HomeVerdictsInternal_regression_rewritegateddetector.cfg"
+      - "specs/program_model/HomeVerdictsInternal_regression_tokenmeansdone.cfg"
+
+  - id: DEF-OHV-002
+    title: "home verify 0 while home repair / artifacts list report damage; no agent-link or projection-record detector"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "kickoff measure_baseline.py / measure_fleet.py (written for the occasion) compared verify, repair and artifacts list; 50 of 61 homes"
+    area: "home verify (HomeCloner.verify) and home repair (HomeRepair) as two walks never composed"
+    anchor: HVI.ObserveWithVerifyAndRepair
+    origin:
+      - {commit: 9a547b20, date: "2026-07-26", pr: 130, what: "home verify = HomeCloner.verify, isolation walk only"}
+      - {commit: f95a0f98, date: "2026-08-23", pr: 244, what: "HomeRepair added as a second walk; HomeRepair.detect called only from home repair"}
+      - {commit: none, what: "DANGLING_AGENT_LINK and ORPHANED_PROJECTION_RECORD never existed (git log -S empty on main): a gap, not a regression"}
+    confidence: high
+    why_escaped: "each command tested alone; no test compared the two verdicts on one home, and no fixture had links outside the store"
+    fixed_by: {ticket: OHV-2, pr: 364, merge: 48d23c51}
+    pinned_by:
+      - "home-verdicts :: home.verdicts.verify.names.every.repair.finding, .dangling.agent.link, .orphaned.projection.record"
+      - "DamagedHomeIsRepairableTest 'OHV-2: dangling links ...'"
+      - "HomeVerdictsInternal_regression_verifyownwalk.cfg; HomeVerdictsInternal_regression_blinddetectors.cfg"
+
+  - id: DEF-OHV-003
+    title: "retirement and uninstall leave ledger rows (census phantoms)"
+    kind: product
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "scripts/release_regression.py R1 reported 14 ledger-only rows and 15 phantom outputs on root"
+    area: "ArtifactPrune teardown decisions for rows with no or absent outputs"
+    anchor: HVI.Uninstall
+    origin:
+      - {commit: 468daf8f, date: "2026-08-16", pr: 207, what: "ArtifactPrune: no-output row REFUSED, absent-output row CLAIMED, unit-store rows filtered out"}
+    confidence: high
+    why_escaped: "no uninstall test read the census afterwards"
+    fixed_by: {ticket: OHV-3, pr: 361, merge: 3d6d4cd4, note: "going forward; pre-OHV-3 rows are DEF-OHV-131"}
+    pinned_by:
+      - "artifact-dag :: uninstall.prunes.the.subgraph"
+      - "ArtifactPruneTest (b) cases; UninstallCliCleanupTest"
+      - "HomeVerdictsInternal_regression_leaverows.cfg; HomeVerdictsInternal_regression_reapunconditionally.cfg"
+
+  - id: DEF-OHV-004
+    title: "installed record version stale while gitHash current"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "kickoff baseline.json read installed/*.json against plugin.json at HEAD"
+    area: "InstalledUnit.withGitMoved and SyncGitHandler's up-to-date early return"
+    anchor: HVI.SyncAlreadyUpToDate
+    origin:
+      - {commit: 39e42838, date: "2026-05-05", pr: 45, what: "withGitMoved updates hash and time, never version"}
+      - {commit: 14e05bb2, date: "2026-05-04", what: "already-up-to-date early return writes nothing to the record"}
+    confidence: high
+    why_escaped: "sync tests asserted gitHash moved; none bumped a manifest version upstream and read version back"
+    fixed_by: {ticket: OHV-3, pr: 361, merge: 3d6d4cd4, step: c}
+    pinned_by:
+      - "RecordVersionRefreshTest (3 cases)"
+      - "HomeVerdictsInternal_regression_hashonly.cfg"
+    pin_note: "no graph node: OHV-3 (c) has unit coverage only"
+
+  - id: DEF-OHV-005
+    title: "another home's marketplace registered and enabled in root's Claude and Codex configs"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "kickoff read ~/.claude/settings.json enabledPlugins directly"
+    area: "agent registration: no verdict read agent configs for marketplace identity"
+    anchor: HVI.RepairFixMarketplace
+    origin: UNTRACED
+    origin_tried: "the writing event (which command put skill-manager-919db26e into root's Claude/Codex config) is not on disk and not in any audit log read; git log -S cannot reach a user-level file. The missing detector has no introducing commit"
+    why_escaped: "HomeRepair had no marketplace kinds; HarnessPluginCliTest used a single-marketplace fake driver"
+    fixed_by: {ticket: OHV-6, pr: 366, merge: 7357b8ab}
+    pinned_by:
+      - "home-verdicts :: home.verdicts.foreign.marketplace.registration"
+      - "MarketplaceRegistrationsTest; DamagedHomeIsRepairableTest damageMarketplaceIdentity"
+      - "HomeVerdictsInternal_regression_nomarketplacerepair.cfg"
+
+  - id: DEF-OHV-006
+    title: "skt ticket sweep cannot prove squash-merged work"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    area: "skt plugin (skill-publisher-skill) ticket sweep containment gate"
+    anchor: UNMODELED/skt-ticket-sweep
+    origin: UNTRACED
+    origin_tried: "not attempted: code lives in haydenrear/skt, outside this repository"
+    why_escaped: "UNDECIDED (not read)"
+    fixed_by: null
+    disposition: "carried: haydenrear/skt#47"
+    pin_note: "not pinned: adjacent repository, carried as skt#47"
+
+  - id: DEF-OHV-007
+    title: "measure_goals.py ignores --help and runs the full ledger"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    area: "the goal-ledger CLI scripts/measure_goals.py (instrument)"
+    anchor: UNMODELED/goal-harnesses
+    origin: [{commit: 6291de75, date: "2026-09-02", what: "measure_goals.py created with no argument parser for --help"}]
+    confidence: medium
+    why_escaped: "no test for the script's CLI"
+    fixed_by: null
+    disposition: "carried: #375"
+    pin_note: "not pinned: instrument, carried as #375"
+
+  - id: DEF-OHV-008
+    title: "test-fixture gateway outlived its test by 6h46m"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    area: "unit-suite fixture teardown (supersession-sync gateway)"
+    anchor: UNMODELED/test-hygiene
+    origin: UNTRACED
+    origin_tried: "not attempted beyond the kickoff reproduction; the fixture that started pid 92590 was not identified"
+    why_escaped: "no teardown assertion on child processes"
+    disposition: "carried: #372"
+    pin_note: "not pinned; carried as #372"
+
+  - id: DEF-OHV-009
+    title: "plan validator cannot retire one contributor to a shared goal"
+    kind: process
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "validate_epic_plan.py refused, naming the conflicting active tickets"
+    area: "git-epic-workflow scripts/validate_epic_plan.py retirement rule"
+    anchor: UNMODELED/epic-workflow-skills
+    origin: UNTRACED
+    origin_tried: "not attempted: lives in haydenrear/git-epic-workflow"
+    disposition: "carried: git-epic-workflow#19"
+    pin_note: "not pinned; carried"
+
+  - id: DEF-OHV-010
+    title: "unit suite leaks temp homes (41 GiB in a day)"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "disk exhaustion stopped OHV-3's verification mid-run"
+    area: "unit-suite temp-home creation (RunTests.java and store/artifacts tests)"
+    anchor: UNMODELED/test-hygiene
+    origin: [{commit: 42d00f81, date: "2026-05-05", what: "TestHarness substrate (earliest skill-handler-test prefix); per-test leak not bisected"}]
+    confidence: low
+    why_escaped: "no suite-level assertion on entries left in the temp dir"
+    disposition: "carried: #372"
+    pin_note: "not pinned; carried as #372"
+
+  - id: DEF-OHV-130
+    title: "census counts PATH-served declared shims as missing home outputs"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    area: "ArtifactIndex derivation of cli-shim outputs for tools satisfied from PATH"
+    anchor: UNMODELED/census-path-served-shims
+    origin: UNTRACED
+    origin_tried: "not attempted (carried as a census semantics question, #374)"
+    disposition: "carried: #374"
+    pin_note: "not pinned; the goal clause was rescoped to exclude these rows (schedule_revision 3)"
+
+  - id: DEF-OHV-131
+    title: "pre-OHV-3 projection rows cannot be proven absent and are kept"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    area: "whole-home prune over past removals with no captured evidence"
+    anchor: HVI.LegacyRemoval
+    origin: [{commit: 468daf8f, pr: 207, what: "removals that left rows (see DEF-OHV-003)"}]
+    confidence: high
+    disposition: "carried: #374"
+    pinned_by: ["HomeVerdictsInternal.cfg (admitted state: ALinkStillOnDiskKeepsItsRow holds, no invariant forbids the residue)"]
+    note: "HomeVerdictsInternal_finding_prunedresidue.cfg shows the same shape is still PRODUCIBLE after OHV-3 through a dangling link later removed by home repair --fix"
+
+  - id: DEF-OHV-120
+    title: "workflow skill docs describe home verify as resolution-only"
+    kind: product
+    channel: census
+    class: reading
+    channel_note: "OHV-2 blast-radius sweep"
+    area: "git-epic-workflow SKILL.md:212 and git-issue-workflow references/skill-homes.md"
+    anchor: UNMODELED/epic-workflow-skills
+    origin: UNTRACED
+    origin_tried: "not attempted: other repositories"
+    disposition: "carried: git-epic-workflow#19, git-issue-workflow#31"
+    pin_note: "not pinned: prose in other repositories"
+
+  - id: DEF-OHV-121
+    title: "CopyCarriesNoForeignBinary deletes the shared home-clone fixture's whole pm/"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    channel_note: "CI runs 34802282392 / 34804201355: one declaration green in checkout-home, red in home-clone"
+    area: "test_graph home-clone node 10 cleanup on a SHARED fixture (instrument)"
+    anchor: UNMODELED/test-hygiene
+    origin: [{commit: cad0b830, date: "2026-09-06", what: "CopyCarriesNoForeignBinary with deleteRecursive(source.resolve(\"pm\"))"}]
+    confidence: high
+    why_escaped: "no node asserted on the fixture's pm/ after node 10"
+    disposition: "carried: #372"
+
+  - id: DEF-OHV-140
+    title: "every CLI process waited ~14 s on a hung OTLP endpoint"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "OHV-4 timed 50 CLI processes in home-verdicts envelopes"
+    area: "CliObservability default endpoint http://localhost:4318 with a blocking flush"
+    anchor: UNMODELED/cli-telemetry-export
+    origin: [{commit: 9cd229af, date: "2026-07-20", what: "default-on telemetry with the localhost:4318 default"}]
+    confidence: medium
+    why_escaped: "CI sets OTEL_SDK_DISABLED; a listening-but-silent endpoint was never tested"
+    disposition: "carried: #373"
+    pin_note: "not pinned; carried as #373"
+
+  - id: DEF-OHV-160
+    title: "marketplace goal harness reads shape 1 from the global file only"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    area: "scripts/measure_goal_one_marketplace_identity.py (instrument)"
+    anchor: UNMODELED/goal-harnesses
+    origin: [{commit: 7d2eef26, date: "2026-09-13", what: "OHV-0's harness, written inside this epic"}]
+    confidence: high
+    why_escaped: "the harness was checked against the kickoff numbers, which carried the same blind spot"
+    disposition: "carried: #375"
+    pin_note: "not pinned: instrument, carried as #375; OHV-8 measured the clause from home repair kinds instead"
+
+  - id: DEF-OHV-011
+    title: "a skill-script install wrote through a bin/cli link into the operator's root home"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "the epic agent's pre-fix check of the root before OHV-6 saw the shims rewritten; home repair would have reported FOREIGN_PATH_IN_SHIM on the result, never the write"
+    area: "SkillScriptBackend running a forked script with foreign bin/cli links in place"
+    anchor: HVI.SkillScriptInstall
+    origin:
+      - {commit: 9c8480fb, date: "2026-06-28", pr: 97, what: "unguarded Shell.runToLog"}
+      - {commit: 3cbcba85, date: "2026-08-29", pr: 287, what: "binStamps with NOFOLLOW_LINKS and reportFrozenShims skipping links: nothing could see it"}
+      - {repo: commit-diff-context-parent, issue: 262, what: "test fixture parents a project home on the operator's real root"}
+      - {repo: deploy-helm, what: "install-console-script.sh cat >\"$launcher\" (fixed in deploy-helm#63, open)"}
+    confidence: high
+    why_escaped: "no test put a symlink at bin/cli/<tool> pointing into another home; External.WritesThroughOneHomeReachNoOtherHome has no link-following writer (BLIND)"
+    fixed_by: {ticket: OHV-9, pr: 368, merge: 5ab5770b}
+    pinned_by:
+      - "home-verdicts :: home.verdicts.child.install.writes.only.itself (red on pre-fix SkillScriptBackend, run 20260914-144857)"
+      - "SkillScriptWriteThroughTest (7); BinCliWritersDoNotFollowLinksTest (7)"
+      - "HomeVerdictsInternal_regression_writethrough.cfg"
+
+  - id: DEF-OHV-180
+    title: "root shims overwritten again (11:31) by a pre-OHV-9 build, then half-rewritten by a released 0.27.2 --fix (11:50)"
+    kind: product
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "OHV-8's read-only epic-build home repair reported 6 FOREIGN_PATH_IN_SHIM, then 3 FROZEN_HOME_PATH_IN_SHIM; released 0.27.2 reported 0 on the second state"
+    area: "release gap: OHV-9 and OHV-4 unreleased while other sessions run 0.27.2 against the root"
+    anchor: HVI.SkillScriptInstall
+    secondary_anchors: [HVI.RepairFixShim]
+    origin:
+      - {same_as: DEF-OHV-011, write: "11:31 EDT"}
+      - {same_as: DEF-OHV-001, write: "11:50:45 EDT, rewrite origin 43e5fb99"}
+    confidence: high
+    why_escaped: "the fix exists only on the epic branch; nothing prevents an older build or another repo's graph from writing the root"
+    fixed_by: {real_home: "owner-approved epic-build home repair --fix, 12:26 EDT"}
+    disposition: "carried: #378, commit-diff-context-parent#262"
+    pinned_by:
+      - "HomeVerdictsInternal_regression_writethrough.cfg (first write)"
+      - "HomeVerdictsInternal_regression_foreignfixhalfrewrite.cfg (second write)"
+    pin_note: "the recurrence itself (a released-build / other-repo writer) has no pin; it ends when OHV-9 releases and CDC#262 lands"
+
+  - id: DEF-OHV-181
+    title: "project home never repaired: 3 dangling links + 1 orphaned record remained"
+    kind: process
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    area: "real-home operations: no ticket was scoped to write the project home"
+    anchor: UNMODELED/real-home-operations
+    origin: {what: "plan scope (OHV-2 fixed detectors, not homes)"}
+    fixed_by: {real_home: "owner-approved epic-build --fix 2026-09-14 12:26 EDT"}
+    disposition: fixed-inline
+    pin_note: "not pinned: an operations gap, not code"
+
+  - id: DEF-OHV-182
+    title: "record versions still stale on real homes until an epic-build sync"
+    kind: product
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "scripts/measure_goal_one_record.py records.stale_version_hash_agrees"
+    area: "the DEF-OHV-004 residue on homes no epic-build sync had touched"
+    anchor: HVI.SyncAlreadyUpToDate
+    origin: {same_as: DEF-OHV-004}
+    fixed_by: {real_home: "owner-approved full syncs 2026-09-14 14:18-14:24 EDT"}
+    disposition: fixed-inline
+    pinned_by: ["RecordVersionRefreshTest", "HomeVerdictsInternal_regression_hashonly.cfg"]
+    note: "a single-unit sync also reinstalls CLI deps for every unit (27 on root) and re-registers MCP: broader than the refresh; not filed separately"
+
+  - id: DEF-OHV-183
+    title: "onboard from a checkout installs vendored skt 0.3.0"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    area: "OnboardCommand bundled units / vendored skill-publisher-skill tree"
+    anchor: UNMODELED/onboarding
+    origin: [{commit: 9f7784ef, date: "2026-08-11", what: "last vendored refresh of skill-publisher-skill (skt); nothing refreshes it on release"}]
+    confidence: medium
+    disposition: "carried: #376"
+    pin_note: "not pinned; carried as #376"
+
+  - id: DEF-OHV-184
+    title: "onboard writes no bin/cli/skill-manager pin"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    area: "OnboardCommand does not call LauncherShims' pin writer"
+    anchor: UNMODELED/onboarding
+    origin: [{commit: 860ca0da, date: "2026-04-28", what: "OnboardCommand introduced; the pin writer (e65962ef, 2026-07-30) was never wired into it"}]
+    confidence: low
+    disposition: "carried: #376"
+    pin_note: "not pinned; carried as #376"
+
+  - id: DEF-OHV-185
+    title: "/var vs /private/var shape not planted by any graph node"
+    kind: instrument
+    channel: census
+    class: reading
+    channel_note: "OHV-8 read home-verdicts' PENDING header"
+    area: "home-verdicts graph coverage (instrument); Linux runners have no top-level aliases"
+    anchor: HVI.ObserveWithVerifyAndRepair
+    origin: {what: "OHV-0 listed it PENDING naming OHV-5; OHV-5 pinned it by unit test only"}
+    disposition: "carried: #377"
+    pinned_by: ["HomeVerifyPathSpellingTest (macOS only)", "HomeVerdictsInternal_regression_aliasspelling.cfg"]
+    pin_note: "no graph node; a Linux CI node cannot plant the shape"
+
+  - id: DEF-OHV-186
+    title: "project resolve with an unreachable gateway fails naming no error ('exit=0, errors=1', exits 1)"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    area: "ProjectDependencyResolver failure message"
+    anchor: UNMODELED/project-resolve-errors
+    origin: [{commit: 93ed6e84, date: "2026-08-12", what: "'failed publishing declared units ... exit=, errors=' message (4c7d6bab first had exit=/errors=)"}]
+    confidence: medium
+    disposition: "carried: #376"
+    pin_note: "not pinned; carried as #376"
+
+  - id: DEF-OHV-187
+    title: "release_regression.py R1 unreadable (merged streams) and wrong project home from a worktree"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    area: "scripts/release_regression.py (instrument)"
+    anchor: UNMODELED/goal-harnesses
+    origin: [{commit: 038167de, date: "2026-09-12", what: "release_regression.py created with merged stdout/stderr"}]
+    confidence: medium
+    why_escaped: "worked until a telemetry line started ending stderr (DEF-OHV-140 era)"
+    disposition: "carried: #375"
+    pin_note: "not pinned: instrument, carried as #375; OHV-8 measured R1's quantity with measure_goal_one_record.py"
+
+  # =========================================== GOAL DEFECTS NOT IN BACKLOG (8)
+  - id: GD-292
+    title: "prune re-record restores every pruned row (59 -> 59)"
+    kind: product
+    channel: test-graph
+    class: automated
+    channel_note: "artifact-dag uninstall.prunes.the.subgraph, red since 2026-08-29"
+    area: "ArtifactPrune.apply re-record from ArtifactIndex (disk merged with ledger)"
+    anchor: HVI.PruneHome
+    origin:
+      - {commit: 468daf8f, date: "2026-08-16", pr: 207, what: "ArtifactLedger.of(ArtifactIndex.of(store).artifacts()).save(store)"}
+      - {commit: 252c6c48, date: "2026-09-12", what: "first fix: row-only PRUNE without proof; reverted by c4f7dff8 the same day (stranded agent symlinks)"}
+    confidence: high
+    why_escaped: "ArtifactPruneTest checked one pass; nothing ran prune, re-record, prune"
+    fixed_by: {ticket: OHV-3, pr: 361, merge: 3d6d4cd4, step: a}
+    pinned_by:
+      - "artifact-dag :: uninstall.prunes.the.subgraph"
+      - "ArtifactPruneTest 'a prune stays pruned'"
+      - "HomeVerdictsInternal_regression_rebuildfromindex.cfg; HomeVerdictsInternal_regression_reapunconditionally.cfg (the reverted attempt)"
+
+  - id: GD-338
+    title: "verdict commands name no build"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "kickoff raw/: released 0.27.2 and repo build printed identical verdicts"
+    area: "verdict rendering in home verify/repair/drift, artifacts list, skt check"
+    anchor: HVI.ObserveWithVerifyAndRepair
+    origin: {commit: none, what: "BuildIdentity existed for --version since 7ae6eccc (2026-08-01); no verdict used it"}
+    confidence: medium
+    fixed_by: {ticket: OHV-1, pr: 360, merge: 8bd883f3, sibling: "haydenrear/skt#46 (unmerged at 833ae0d7)"}
+    pinned_by: ["VerdictsNameTheirBuildTest (8)", "HomeVerdictsInternal_regression_unstamped.cfg"]
+
+  - id: GD-343
+    title: "home verify misses a /var reference when given /private/var"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "measured while investigating home-clone's fixpoint failure (#344)"
+    area: "HomeCloner.rootSpellings / ShimHomeContract.rootSpellings = {given, real}"
+    anchor: HVI.ObserveWithVerifyAndRepair
+    origin:
+      - {commit: c0aae68e, date: "2026-08-21", pr: 228, what: "rootSpellings {given, real}; javadoc said not to reach for /var"}
+      - {commit: 43e5fb99, pr: 323, what: "same shape in ShimHomeContract"}
+    confidence: high
+    why_escaped: "the reverse spelling was never tested; macOS passed by accident, Linux cannot express it"
+    fixed_by: {ticket: OHV-5, pr: 362, merge: f38a9298}
+    pinned_by: ["HomeVerifyPathSpellingTest", "HomeVerdictsInternal_regression_aliasspelling.cfg"]
+    pin_note: "no graph node (DEF-OHV-185)"
+
+  - id: GD-344
+    title: "home.fixpoint.law fails on damage the fixture plants on purpose"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    area: "test_graph HomeFixpointLaw binding to verify's exit code (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    origin: [{commit: 25906875, date: "2026-08-03", pr: 162, what: "fixpoint law as a shared post-condition, no intentional-damage declaration"}]
+    confidence: medium
+    fixed_by: {ticket: OHV-5, pr: 362, merge: f38a9298}
+    pinned_by: ["home-clone and checkout-home :: home.fixpoint.law with IntentionalDamage declarations"]
+
+  - id: GD-345
+    title: "home-tripwire, ticket-lifecycle, onboarding cannot pass on a fresh runner"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    area: "graphs depending on the operator's laptop state (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    origin:
+      - {commit: 231b9221, date: "2026-07-27", what: "home-tripwire"}
+      - {commit: a8f17c03, date: "2026-08-01", pr: 141, what: "ticket-lifecycle"}
+      - {commit: 1dbfcc64, date: "2026-08-01", pr: 151, what: "onboarding"}
+    confidence: medium
+    why_escaped: "the graph matrix sat behind vars.ENABLE_TEST_GRAPH, never set: never executed on CI"
+    fixed_by: {ticket: OHV-5, pr: 362, merge: f38a9298}
+    pinned_by: ["CI graph_set=full run 34862952922 (26/26/0)"]
+
+  - id: GD-297
+    title: "source-home digest hashes a live gateway's log"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    channel_note: "nightly red three days on home.cloned.into.project"
+    area: "HomeCloneSupport.treeDigest over journals (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    origin: [{commit: 5ca3cb07, date: "2026-07-26", pr: 130, what: "treeDigest over the whole fixture home"}]
+    confidence: high
+    fixed_by: {ticket: OHV-5, pr: 362, merge: f38a9298}
+    pinned_by: ["home-clone :: home.cloned.into.project, home.clone.edit.stays.in.clone, home.clone.works.with.source.renamed (no OTEL_* set)"]
+
+  - id: GD-357
+    title: "run.py --all stops at the first red and counts stale reports (DEF-OUN-023)"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    channel_note: "CI per-graph jobs disagreed with every local '24 of 25' sweep (run 34759605784)"
+    area: "skills/test_graph/scripts/run.py sweep (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    origin: [{commit: a4f9f262, date: "2026-04-28", pr: 8, what: "--all runs validationRunAll without --continue"}]
+    confidence: high
+    why_escaped: "the wrapper had no tests and CI graphs were gated off"
+    fixed_by: {ticket: OHV-7, pr: 363, merge: b218322c}
+    pinned_by: ["skills/test_graph/scripts/tests/test_run.py::test_multi_graph_continues_and_stale_reports_are_not_counted"]
+
+  - id: GD-352
+    title: "marketplace shapes 1-3: substring match, add keeps old name, copied manifest identity"
+    kind: product
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "sync printed AGENT_SYNC_FAILED 'Marketplace <identity> not found' in project homes; the cause was read by hand"
+    area: "HarnessPluginCli.ensureMarketplaceAdded; HomeCloner copying the manifest"
+    anchor: HVI.SyncMarketplace
+    secondary_anchors: [HVI.CloneAnotherHomesMarketplace]
+    origin:
+      - {commit: 61e9553b, date: "2026-08-07", pr: 165, what: "per-home skill-manager-<hash> identity; list.stdout().contains(name) left in place"}
+      - {commit: f14c2117, date: "2026-05-06", what: "ensureMarketplaceAdded against the single constant name"}
+      - {what: "manifest name trusted from disk by readers: UNTRACED to one commit (tried git blame on PluginMarketplace and HomeCloner)"}
+    confidence: "high (substring); medium (trusted manifest)"
+    why_escaped: "HarnessPluginCliTest's fake driver held one marketplace; no test copied a manifest into another home; Claude's keep-old-name add behaviour was never measured"
+    fixed_by: {ticket: OHV-6, pr: 366, merge: 7357b8ab, follow_up: dc4f6356}
+    pinned_by:
+      - "home-verdicts :: .marketplace.under.another.name, .marketplace.identity.unregistered, .copied.marketplace.identity"
+      - "HarnessPluginCliTest; HomeCloneTest; HomeSyncTest"
+      - "HomeVerdictsInternal_regression_substring.cfg; HomeVerdictsInternal_regression_trustedmanifest.cfg"
+
+  # ====================================================== IN-EPIC DEFECTS (12)
+  - id: IE-01
+    title: "verify composing repair without the parent-store exemption fails every ticket-worktree clone"
+    kind: product
+    channel: the-suite
+    class: automated
+    area: "HomeCommand.VerifyCmd composition (caught before merge)"
+    anchor: HVI.ObserveWithVerifyAndRepair
+    origin: {ticket: OHV-2, what: "first composition"}
+    fixed_by: {ticket: OHV-2, pr: 364, merge: 48d23c51}
+    pinned_by: ["ChildHomeShimIsolationTest 'a COPY of a sanctioned child inherits the sanction'", "HomeVerdictsInternal_regression_noexemption.cfg"]
+
+  - id: IE-02
+    title: "HomeUnresolvedGateTest's fixture wrote frozen literal shims"
+    kind: instrument
+    channel: the-suite
+    class: automated
+    area: "unit-test fixture writing the shape the product now reports (instrument)"
+    anchor: UNMODELED/test-hygiene
+    fixed_by: {ticket: OHV-2, pr: 364}
+    pinned_by: ["HomeUnresolvedGateTest"]
+
+  - id: IE-03
+    title: "IntentionalDamage understood only verify's 'do not resolve' section"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    channel_note: "CI run 34802282392 home-clone and checkout-home red in home.fixpoint.law"
+    area: "test_graph lib IntentionalDamage parser (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    fixed_by: {ticket: OHV-2, pr: 364}
+    pinned_by: ["home-clone :: home.fixpoint.law"]
+
+  - id: IE-04
+    title: "pm/uv/0.0.0 declared intentionally damaged: green in checkout-home, red in home-clone"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    area: "home-clone fixture declaration (48d18070), superseded by stamping (6eb77ce4) (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    fixed_by: {ticket: OHV-2, commit: 6eb77ce4}
+    pinned_by: ["home-clone :: home.fixpoint.law"]
+
+  - id: IE-05
+    title: "home-clone hc-tool undeclared once the detector read content"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    channel_note: "local home-clone 20260914-053211, predicted before the run"
+    area: "home-clone fixture declarations (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    fixed_by: {ticket: OHV-4, pr: 365}
+    pinned_by: ["home-clone :: home.fixpoint.law"]
+
+  - id: IE-06
+    title: "a repaired agent config lost its trailing newline"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "OHV-6's root-home simulation in a scratch $HOME"
+    area: "MarketplaceRegistrations edit-in-place writer"
+    anchor: HVI.RepairFixMarketplace
+    origin: {commit: 83651bfc, ticket: OHV-6}
+    fixed_by: {commit: dc4f6356, pr: 366}
+    pinned_by: ["MarketplaceRegistrationsTest trailing-newline case"]
+
+  - id: IE-07
+    title: "LauncherShims wrote bin/cli/skill-manager through a link into the parent"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "OHV-9's writer audit wrote a unit case, red on the original code"
+    area: "LauncherShims Files.writeString on a symlink"
+    anchor: HVI.LauncherShimsWrite
+    origin:
+      - {commit: c94e791b, date: "2026-07-26", pr: 130}
+      - {commit: e65962ef, date: "2026-07-30", pr: 130}
+    confidence: high
+    fixed_by: {ticket: OHV-9, pr: 368, merge: 5ab5770b}
+    pinned_by: ["BinCliWritersDoNotFollowLinksTest LauncherShims case", "HomeVerdictsInternal_regression_launcherfollow.cfg"]
+
+  - id: IE-08
+    title: "home-verdicts RepairReport matched findings by exact JSON key order"
+    kind: instrument
+    channel: independent-review
+    class: reading
+    channel_note: "epic agent's review of OHV-0's first local run"
+    area: "test_graph HomeVerdictsSupport.RepairReport (instrument)"
+    anchor: UNMODELED/test-graph-apparatus
+    fixed_by: {ticket: OHV-0, pr: 359}
+    pinned_by: ["home-verdicts :: home.verdicts.clean.home parser self-check"]
+
+  - id: IE-09
+    title: "OHV-7's planned local signal would have run smoke BEFORE the red graph"
+    kind: process
+    channel: operator-doing-the-work
+    class: hand
+    area: "ticket plan local_signal (Gradle runs graphs in declaration order)"
+    anchor: UNMODELED/epic-workflow-skills
+    fixed_by: {ticket: OHV-7, what: "signal run with sync-settles"}
+    pin_note: "not pinned: plan text"
+
+  - id: IE-10
+    title: "a symlink on PATH cannot start ./skill-manager (OHV-8 onboard run 1)"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    area: "OHV-8's fresh-machine onboarding runner (instrument)"
+    anchor: UNMODELED/goal-harnesses
+    fixed_by: {ticket: OHV-8, what: "run 2"}
+    pin_note: "not pinned: evaluation scaffolding"
+
+  - id: IE-11
+    title: "release_regression.py passed no SKILL_MANAGER_HOME"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    area: "scripts/release_regression.py (instrument)"
+    anchor: UNMODELED/goal-harnesses
+    fixed_by: {ticket: OHV-8, pr: 369}
+    pin_note: "not pinned"
+
+  - id: IE-12
+    title: "goal harnesses judged each home with its own pinned CLI, not one named build"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "OHV-4 noticed its after-reading could not move; OHV-8 added SKILL_MANAGER_MEASURE_CLI"
+    area: "scripts/home_observations.cli_for (instrument)"
+    anchor: UNMODELED/goal-harnesses
+    fixed_by: {ticket: OHV-8, pr: 369}
+    pin_note: "not pinned"
+
+  # ========================================= EPIC AGENT PROCESS ERRORS (11)
+  - {id: PE-01, title: "zsh did not word-split a verb loop: root help read as a CLI defect", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent shell use", anchor: UNMODELED/agent-process, pin_note: "memory note zsh-no-word-split"}
+  - {id: PE-02, title: "zsh `set -- $mc` left one argument: 13 merged PRs read in-main=NO", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent shell use", anchor: UNMODELED/agent-process, pin_note: "memory note zsh-no-word-split"}
+  - {id: PE-03, title: "zsh NOMATCH aborted unquoted --include=*.java greps", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent shell use", anchor: UNMODELED/agent-process, pin_note: "not pinned"}
+  - {id: PE-04, title: "macOS /bin/bash 3.2 has no associative arrays: blocked-by edits ran with no issue", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent shell use", anchor: UNMODELED/agent-process, pin_note: "redone in Python, verified 9 of 9"}
+  - {id: PE-05, title: "gh --json blockedBy read as a list ({nodes,totalCount})", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent gh use", anchor: UNMODELED/agent-process, pin_note: "not pinned"}
+  - {id: PE-06, title: "a goal harness written with a <placeholder>", kind: process, channel: operator-running-a-shipped-instrument, class: automated, channel_note: "validate_assignment.py rejected 4 rendered bodies", area: "epic plan authoring", anchor: UNMODELED/agent-process}
+  - {id: PE-07, title: "home close-out run on 14 worktrees but not used as a gate (13 refusals ignored)", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent worktree removal", anchor: UNMODELED/agent-process, pin_note: "not pinned; nothing lost, by luck"}
+  - {id: PE-08, title: "wave-1 prompts titled PRs without a Conventional Commits prefix", kind: process, channel: operator-running-a-shipped-instrument, class: automated, channel_note: "Lint PR title check", area: "epic agent prompts", anchor: UNMODELED/agent-process}
+  - {id: PE-09, title: "five parallel worktrees budgeted without the suite's temp leak: disk to 1.5 GiB", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent scheduling (product half is DEF-OHV-010)", anchor: UNMODELED/agent-process, pin_note: "not pinned"}
+  - {id: PE-10, title: "measure_fleet.py parsed stdout+stderr as one: 4 homes' counts null", kind: process, channel: operator-doing-the-work, class: hand, area: "epic agent kickoff instrument", anchor: UNMODELED/agent-process, pin_note: "not pinned; same class as DEF-OHV-187"}
+  - {id: PE-11, title: "OHV-4 root backups kept in the scratchpad, wiped by a macOS reboot", kind: process, channel: operator-doing-the-work, class: hand, channel_note: "wave-3 review", area: "epic agent backup location", anchor: UNMODELED/agent-process, pin_note: "practice changed: owner-home backups in committed evidence"}
+
+  # ================================== THIS RECORD'S OWN ERRORS (3, section 6a)
+  - {id: AT-OHV-01, title: "a ==== separator mid-module would have ended HomeVerdictsInternal before its actions", kind: process, channel: operator-doing-the-work, class: hand, area: "this attribution's TLA authoring", anchor: UNMODELED/agent-process, pin_note: "caught before TLC ran; every cfg now reaches its target, which a truncated module could not"}
+  - {id: AT-OHV-02, title: "two regression cfg headers claimed the counterexample path TLC did not print", kind: process, channel: reading, class: reading, channel_note: "found by reading the traces (foreignfixhalfrewrite printed the FROZEN --fix path, rebuildfromindex the removal's reap)", area: "this attribution's cfg headers", anchor: UNMODELED/agent-process, pin_note: "headers corrected; the transcripts are committed beside them"}
+  - {id: AT-OHV-03, title: "zsh `=word` expansion aborted a README read (`echo =====1`)", kind: process, channel: operator-doing-the-work, class: hand, area: "this attribution's shell use", anchor: UNMODELED/agent-process, pin_note: "not pinned"}
+
+reach:
+  - invariant: "home verify fails iff home repair counts a finding (HVI.VerifyFailsOnEveryCountedRepairFinding / VerifyPassesWhenRepairCountsNothing)"
+    enforced_on: ["home verify (HomeCommand.VerifyCmd)"]
+    unenforced_on:
+      - "artifacts list's projection `agreement` column -- DEF-OHV-002 was first read as verify vs artifacts list, and artifacts list is not composed with HomeRepair"
+      - "home drift and skt check (name their build; do not compose repair)"
+      - "HomeFixpointLaw's reported set, which parses verify's human-readable text (wave-1 review hot spot)"
+    enumerated_by: "the five verdict commands GOAL-verdict-names-its-build lists; read which call HomeRepair.detect (only verify and repair)"
+
+  - invariant: "no install writes through a bin/cli link into another home (HVI.AnOwnEntryWriteStaysInItsHome, AWriteThroughADetachedLinkIsRefused)"
+    enforced_on: ["SkillScriptBackend (detach/restore/stat)", "PipBackend (same guard)", "NpmBackend, BrewBackend, TarBackend (delete-then-place)", "LauncherShims (unlink then write)"]
+    unenforced_on:
+      - "a script that writes another home's file by path when no link was detached (HomeVerdictsInternal_finding_outrightpath.cfg)"
+      - "a script that creates a NEW bin/cli name linking out of the home (only detached names are checked; wave-5 review)"
+      - "writes outside bin/cli: skills/, plugins/, cache/, venvs/, agent dirs"
+      - "a same-size, same-mtime, same-file-key rewrite of a detached target (wave-5 suspicion, untested)"
+      - "two concurrent installs in one home (detach/restore not locked)"
+    enumerated_by: "OHV-9's bin/cli writer table (every writer of bin/cli); directories other than bin/cli were NOT enumerated -> UNDECIDED beyond the list above"
+
+  - invariant: "a shim spells no own-home path, and one that does is reported (HVI.AShimSpellingItsOwnHomeIsReported, ARepairedShimNamesNoHome)"
+    enforced_on: ["bin/cli and bin/mcp (HomeCloner.SHIM_DIR_NAMES)", "skill-script writer (reportFrozenShims)"]
+    unenforced_on:
+      - "venv-internal shebangs (declared out of scope)"
+      - "non-shell text files: reported, not rewritable"
+      - "a spelling only in a # comment (declared contract), including a heredoc body line starting with # (wave-3 suspicion)"
+      - "a #!/bin/sh or #!/bin/dash shim: the rewrite's preamble uses ${BASH_SOURCE[0]:-$0}, which dash rejects ('Bad substitution', measured here)"
+    enumerated_by: "SHIM_DIR_NAMES read; other generated surfaces (bin/launch, harness instances) not enumerated -> UNDECIDED"
+
+  - invariant: "a prune stays pruned; removals reap only rows they prove gone (HVI.PruneStaysPruned, RowsProvenAbsentAtRemovalAreReaped, ALinkStillOnDiskKeepsItsRow)"
+    enforced_on: ["ArtifactPrune.apply (whole-home prune)", "RemoveUseCase (uninstall and retirement)"]
+    unenforced_on:
+      - "projection rows whose link dangled at removal and was later removed by home repair --fix (HomeVerdictsInternal_finding_prunedresidue.cfg)"
+      - "pre-OHV-3 rows (DEF-OHV-131)"
+      - "PATH-served declared shims (DEF-OHV-130)"
+    enumerated_by: "the removal paths that call PruneOrphanArtifacts (uninstall, retirement) plus artifacts prune; sync-time supersession not read -> UNDECIDED"
+
+  - invariant: "one marketplace identity per home (HVI.ASyncRegistersUnderItsOwnIdentity, AfterRepairAndSyncNothingForeignIsEnabled)"
+    enforced_on: [".claude/plugins/known_marketplaces.json", ".claude/settings.json", ".codex/config.toml (home root's structural agent dirs)"]
+    unenforced_on: ["settings.local.json", "installed_plugins.json and plugins/cache", "CLAUDE_CONFIG_DIR / CODEX_HOME redirects", "harness-instance agent dirs", "Gemini", "other checkouts' configs"]
+    enumerated_by: "OHV-6 README 'Deliberately not read' list"
+
+blind:
+  - case: "External.WritesThroughOneHomeReachNoOtherHome (External_home.cfg green)"
+    passes: true
+    could_not_have_caught: "DEF-OHV-011 -- no External action has a writer that follows a bin/cli symlink, and no forked writer"
+    why: "model construction: writes are modelled at the home level over copies"
+  - case: "HomeIntegrityInternal.ADamagedHomeIsNeverReportedClean"
+    passes: true
+    could_not_have_caught: "DEF-OHV-002 -- it models one observer; two observers disagreeing is not a state it has"
+    why: "model construction"
+  - case: "ShimSurvivesACopyTest / DamagedHomeIsRepairableTest before OHV-4"
+    passes: true
+    could_not_have_caught: "DEF-OHV-001 -- every fixture planted a fully frozen shim; the half-rewritten shape was never on disk in a test"
+    why: "fixture construction"
+  - case: "ArtifactPruneTest before OHV-3"
+    passes: true
+    could_not_have_caught: "#292's fixpoint -- one pass, no prune/re-record/prune"
+    why: "fixture construction"
+  - case: "HarnessPluginCliTest before OHV-6"
+    passes: true
+    could_not_have_caught: "#352 shape 1/2 -- a fake driver with one marketplace, and no model of Claude keeping the old name on re-add"
+    why: "fixture construction"
+  - case: "home-verdicts (18/18 on CI)"
+    passes: true
+    could_not_have_caught: "the /var alias shape (no node; Linux has no aliases) and the dash preamble failure (fixtures are bash shims); a pre-OHV-9 build writing through links (the node runs the epic build)"
+    why: "runner platform and fixture interpreter"
+  - case: "local run.py --all '24 of 25' sweeps (before OHV-7)"
+    passes: true
+    could_not_have_caught: "any graph declared after the first red; the count came from stale reports"
+    why: "instrument: Gradle stop-at-first-failure plus report-dir counting"
+  - case: "HomeVerdictsInternal.cfg (578 distinct states, no error)"
+    passes: true
+    could_not_have_caught: "concurrency (two installs, a crash between detach and restore), shell dialects, venv shebangs, pip/uv, Gemini, the Claude user/project config split, unit-store rows, discardCreatedLedger, and any defect needing two groups to interact"
+    why: "abstraction: six disjoint groups, one per behaviour, each a handful of booleans"
+
+bins:
+  - {bin: UNMODELED/agent-process, disposition: RECORD-ONLY, count: 14}
+  - {bin: UNMODELED/test-graph-apparatus, disposition: RECORD-ONLY, count: 8}
+  - {bin: UNMODELED/goal-harnesses, disposition: RECORD-ONLY, count: 6}
+  - {bin: UNMODELED/test-hygiene, disposition: RECORD-ONLY, count: 4}
+  - {bin: UNMODELED/epic-workflow-skills, disposition: RECORD-ONLY, count: 3}
+  - {bin: UNMODELED/onboarding, disposition: UNDECIDED, count: 2, note: "SkillManager.tla models onboard docs, not its install set or pin; not checked whether an action could hold this"}
+  - {bin: UNMODELED/census-path-served-shims, disposition: MODELABLE, count: 1, note: "a PATH-satisfied declared output could be a third prune row kind; not done"}
+  - {bin: UNMODELED/cli-telemetry-export, disposition: UNDECIDED, count: 1}
+  - {bin: UNMODELED/project-resolve-errors, disposition: UNDECIDED, count: 1}
+  - {bin: UNMODELED/real-home-operations, disposition: RECORD-ONLY, count: 1}
+  - {bin: UNMODELED/skt-ticket-sweep, disposition: DEFERRED, count: 1, blocker: "the code is in haydenrear/skt; this repository's model cannot run it"}
+
+anchored:
+  - {anchor: HVI.ObserveWithVerifyAndRepair, count: 5, rows: [DEF-OHV-002, DEF-OHV-185, GD-338, GD-343, IE-01]}
+  - {anchor: HVI.SkillScriptInstall, count: 2, rows: [DEF-OHV-011, DEF-OHV-180]}
+  - {anchor: HVI.SyncAlreadyUpToDate, count: 2, rows: [DEF-OHV-004, DEF-OHV-182]}
+  - {anchor: HVI.RepairFixMarketplace, count: 2, rows: [DEF-OHV-005, IE-06]}
+  - {anchor: HVI.ObserveShim, count: 1, rows: [DEF-OHV-001]}
+  - {anchor: HVI.LauncherShimsWrite, count: 1, rows: [IE-07]}
+  - {anchor: HVI.Uninstall, count: 1, rows: [DEF-OHV-003]}
+  - {anchor: HVI.PruneHome, count: 1, rows: [GD-292]}
+  - {anchor: HVI.LegacyRemoval, count: 1, rows: [DEF-OHV-131]}
+  - {anchor: HVI.SyncMarketplace, count: 1, rows: [GD-352]}
+
+price: []
+price_note: >
+  No PRICE records. The schedule_revision-2 refusal of the one-reader and
+  one-writer refactors kept no declared_before (bug_attribution.md section 7 says a refused
+  proposal should); it is recorded here as missing, not reconstructed.
