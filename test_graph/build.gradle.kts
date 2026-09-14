@@ -1734,6 +1734,57 @@ validationGraph {
     }
 
     /**
+     * home-verdicts (OHV-0, #356) — the one-home-one-verdict epic's regression
+     * guard for home DEFECT SHAPES. Every shape measured on a real home gets a
+     * node that plants it in a home laid out from nothing and pins what
+     * `home repair --json` (exit + finding kind) and `home verify` say about it.
+     * Every fix in the epic adds or tightens the node that pins its shape.
+     *
+     * PINNED (green on today's tree): clean home (0/0); fully frozen own-home
+     * shim, misanchored agent link, unstamped pm tree (repair 1, verify 0 —
+     * GOAL-one-verdict clause 1 failing, asserted as TODAY's behaviour); foreign
+     * path in a shim (repair 1, verify 1).
+     *
+     * PENDING, with the ticket that adds each node:
+     *   - half-rewritten shim, header re-anchored, exec line literal
+     *     (DEF-OHV-001) ............................................ OHV-4 (#341)
+     *   - dangling agent-dir link outside the home (DEF-OHV-002) ..... OHV-2 (#339)
+     *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ... OHV-2 (#339)
+     *   - verify fails whenever repair reports: flip the three
+     *     TODAY_home_verify_exits_0 assertions .......................... OHV-2 (#339)
+     *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
+     *   - #352's four marketplace-identity shapes (incl. DEF-OHV-005)  OHV-6 (#352)
+     *
+     * THE DAMAGED HOMES NEVER REACH THE LAWS. Both laws discover homes from
+     * published context values, so shape nodes publish nothing and delete their
+     * scratch homes; the fixture publishes exactly one home, clean and empty.
+     * The friction with the laws themselves (#344) is OHV-5's.
+     *
+     * Docker-free, network-free, no install: nothing here runs EnsureGateway.
+     */
+    testGraph("home-verdicts") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-verdicts/HomeVerdictsFixture.java")
+        node("sources/home-verdicts/CleanHomeHasNoVerdict.java")
+        node("sources/home-verdicts/FrozenShimIsReported.java")
+        node("sources/home-verdicts/ForeignPathInShimIsReported.java")
+        node("sources/home-verdicts/MisanchoredAgentLinkIsReported.java")
+        node("sources/home-verdicts/UnstampedPmTreeIsReported.java")
+        node("sources/common/HomeFixpointLaw.java").dependsOn(
+                "home.verdicts.clean.home",
+                "home.verdicts.frozen.shim",
+                "home.verdicts.foreign.path.in.shim",
+                "home.verdicts.misanchored.agent.link",
+                "home.verdicts.unstamped.pm.tree")
+        node("sources/common/HomeMembershipLaw.java").dependsOn(
+                "home.verdicts.clean.home",
+                "home.verdicts.frozen.shim",
+                "home.verdicts.foreign.path.in.shim",
+                "home.verdicts.misanchored.agent.link",
+                "home.verdicts.unstamped.pm.tree")
+    }
+
+    /**
      * sync-settles — the change-management drag, asserted end to end.
      *
      * Its own graph and NOT a node inside `home-integrity`, and the reason is

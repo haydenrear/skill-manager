@@ -92,6 +92,27 @@ EPICS = {
              "target": "succeeds"},
         ],
     },
+    # OHV-0 (#356). Read-only against real homes; stdout and stderr parsed
+    # separately (scripts/home_observations.py). Python 3.9 compatible, so
+    # sys.executable. GOAL-one-verdict's instrument is the graph; clause (2)
+    # of GOAL-no-own-home-path is the copied-home probe registered above.
+    "one-home-one-verdict": {
+        "harnesses": [
+            {"goal": "GOAL-one-record",
+             "cmd": [sys.executable, "scripts/measure_goal_one_record.py"]},
+            {"goal": "GOAL-no-own-home-path",
+             "cmd": [sys.executable, "scripts/measure_goal_no_own_home_path.py"]},
+            {"goal": "GOAL-one-marketplace-identity",
+             "cmd": [sys.executable, "scripts/measure_goal_one_marketplace_identity.py"]},
+        ],
+        "graphs": [
+            {"goal": "GOAL-one-verdict",
+             "cmd": [sys.executable, "skills/test_graph/scripts/run.py", "home-verdicts"],
+             "metric": "home-verdicts: every planted shape's verdicts are as pinned "
+                       "(clause 1 is met when every shape node asserts verify exits 1)",
+             "target": "succeeds"},
+        ],
+    },
 }
 
 DEFAULT_EPIC = "one-unit-one-name"

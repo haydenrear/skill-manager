@@ -296,6 +296,8 @@ public class RunTests {
         failures += dev.skillmanager.cli.installer.ProducerStaysInsideItsHomeTest.run();
         failures += dev.skillmanager.sandbox.ConfinementTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
+        // OHV-1 (#338): one home judged by two builds; each verdict names its own.
+        failures += dev.skillmanager.commands.VerdictsNameTheirBuildTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
         failures += dev.skillmanager.store.HomeDescriptorCliRemedyTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();

@@ -38,10 +38,16 @@ import java.util.Map;
  * prescribed a rebuild would be the presence-proxy mistake in a new place.
  */
 @JsonInclude(JsonInclude.Include.ALWAYS)
-@JsonPropertyOrder({"schema", "home", "ledger", "artifacts", "summary"})
+@JsonPropertyOrder({"schema", "home", "build", "ledger", "artifacts", "summary"})
 public record ArtifactReport(
         int schema,
         String home,
+        /*
+         * The build that produced this report -- BuildIdentity.stamp(), the
+         * same identity `--version` prints (skill-manager#338). Additive: the
+         * schema stays 1, because no consumer has to change to keep reading.
+         */
+        String build,
         LedgerView ledger,
         List<ArtifactView> artifacts,
         Summary summary
@@ -145,7 +151,8 @@ public record ArtifactReport(
             byOrigin.merge(token(artifact.origin()), 1, Integer::sum);
         }
 
-        return new ArtifactReport(SCHEMA, index.home().toString(), ledgerView, List.copyOf(views),
+        return new ArtifactReport(SCHEMA, index.home().toString(),
+                dev.skillmanager.cli.BuildIdentity.stamp(), ledgerView, List.copyOf(views),
                 new Summary(views.size(), byKind, byMaterialization, byAgreement, byOrigin));
     }
 

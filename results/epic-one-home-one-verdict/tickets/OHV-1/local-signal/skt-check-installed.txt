@@ -1,0 +1,8 @@
+skt check: 5 notification(s), tier worktree
+  new version available for git-epic-workflow — pull with: skt sync git-epic-workflow
+  new version available for git-issue-workflow — pull with: skt sync git-issue-workflow
+  new version available for git-issue — pull with: skt sync git-issue
+  new version available for skt — pull with: skt sync skt
+  new version available for spec-double-compiler — pull with: skt sync spec-double-compiler
+  hint: multiple units are stale — sync in skill-imports dependency order (a unit importing files another stale unit adds fails validation if synced first)
+exit=10

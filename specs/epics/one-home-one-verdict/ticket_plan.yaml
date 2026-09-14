@@ -215,7 +215,7 @@ tickets:
   - id: OHV-1
     github_issue: https://github.com/haydenrear/skill-manager/issues/338
     title: "Every verdict names the build that produced it"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 1
@@ -255,7 +255,7 @@ tickets:
   - id: OHV-7
     github_issue: https://github.com/haydenrear/skill-manager/issues/357
     title: "A local graph sweep keeps going past a red and reports only what it executed"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     amended_at_revision_2: >
@@ -296,7 +296,7 @@ tickets:
   - id: OHV-0
     github_issue: https://github.com/haydenrear/skill-manager/issues/356
     title: "home-verdicts: a regression graph that plants every known home defect shape"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     amended_at_revision_2: >
