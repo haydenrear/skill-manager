@@ -1,0 +1,1 @@
+6 0.8.2 skill-manager 0.27.2+gea638f5560e0 @ ea638f5560e0 (refs/heads/feature/OHV-1)

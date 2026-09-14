@@ -1,0 +1,20 @@
+--- home drift --home /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager
+✓ no unread change in /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager
+exit=0
+--- home drift --home /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager --json
+{"pending":false,"units":[]}
+exit=0
+--- home verify --home /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager
+NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
+1 shim(s) in /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
+    bin/cli/tlc2 -> /Users/hayde/.skill-manager
+descent: /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/skill-manager/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home
+    /Users/hayde/.skill-manager  — re-derived, so its artifacts are shared by right
+✓ every reference in /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 1 sanctioned parent-store shim(s) above (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
+exit=0
+--- artifacts list --json: build field
+False None
+--- artifacts list (head)
+artifacts — /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager
+ledger: artifacts.lock.toml (56 row(s), recorded 2026-09-13T23:22:38.810387Z)
+
