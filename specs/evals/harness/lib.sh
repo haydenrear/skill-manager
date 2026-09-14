@@ -298,8 +298,12 @@ branch_home() {
     homeenv() { env SKILL_MANAGER_HOME="$dst" CLAUDE_CONFIG_DIR="$dst/.claude" CODEX_HOME="$dst/.codex" \
                   GEMINI_HOME="$dst/.gemini" SKILL_MANAGER_CONFINE_ROOT="$dst" "$@"; }
     homeenv "$sm" home repair --home "$dst" --fix >/dev/null 2>&1 || true
-    verify_log="$(homeenv "$sm" home verify --home "$dst" 2>&1)"
-    if [ $? -ne 0 ]; then
+    # `|| verified=$?`, not `$?` on the next line: setup runs under set -e, and a
+    # failing command substitution in a plain assignment ENDS the script there,
+    # silently -- which is exactly how the first version of this block died.
+    local verified=0
+    verify_log="$(homeenv "$sm" home verify --home "$dst" 2>&1)" || verified=$?
+    if [ "$verified" -ne 0 ]; then
       if printf '%s\n' "$verify_log" | grep '✗   ' | grep -qv 'FOREIGN_PATH_IN_SHIM bin/cli/\|complete it with'; then
         echo "setup: the branched home fails verification for reasons other than foreign shims:" >&2
         printf '%s\n' "$verify_log" | tail -12 | sed 's/^/         /' >&2; rm -f "$clone_log"; return 1
