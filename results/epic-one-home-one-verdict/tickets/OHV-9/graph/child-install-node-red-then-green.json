@@ -1,0 +1,32 @@
+{
+ "fixed": {
+  "run": "20260914-144523",
+  "status": "passed",
+  "assertions": {
+   "control_the_child_link_resolves_to_the_parents_shim": "passed",
+   "install_into_the_child_exits_0": "passed",
+   "the_parents_shim_is_byte_identical": "passed",
+   "every_parent_file_is_byte_identical_after_the_child_install": "passed",
+   "the_child_holds_its_own_real_shim": "passed",
+   "the_child_shim_is_token_form": "passed",
+   "the_child_shim_names_no_form_of_the_parent": "passed",
+   "the_child_shim_runs_the_childs_tool": "passed",
+   "the_scratch_homes_are_deleted": "passed"
+  }
+ },
+ "unfixed_SkillScriptBackend_from_9fc819ca": {
+  "run": "20260914-144857",
+  "status": "failed",
+  "assertions": {
+   "control_the_child_link_resolves_to_the_parents_shim": "passed",
+   "install_into_the_child_exits_0": "passed",
+   "the_parents_shim_is_byte_identical": "failed",
+   "every_parent_file_is_byte_identical_after_the_child_install": "failed",
+   "the_child_holds_its_own_real_shim": "failed",
+   "the_child_shim_is_token_form": "failed",
+   "the_child_shim_names_no_form_of_the_parent": "failed",
+   "the_child_shim_runs_the_childs_tool": "failed",
+   "the_scratch_homes_are_deleted": "passed"
+  }
+ }
+}
