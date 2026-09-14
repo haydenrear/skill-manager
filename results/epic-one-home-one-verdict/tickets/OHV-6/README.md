@@ -95,7 +95,20 @@ Local run: `python skills/test_graph/scripts/run.py home-verdicts` gave 17/17 no
 
 ## CI
 
-PENDING: run 34846521245, `graph_set=full` on `dc4f6356`.
+**Run 34846521245**, `graph_set=full` on `dc4f6356`: `graphs-executed.json` reads **26 selected / 26 executed / 26 passed / 0 failed**, all 31 jobs green. The ticket's graphs:
+
+| graph | nodes |
+| --- | --- |
+| home-verdicts | 17/17, the four new nodes included |
+| plugin-smoke | 28/28 |
+| home-clone | 16/16, no IntentionalDamage declaration edits needed |
+| home-integrity | 19/19 |
+
+Deferred as on every run: browser-auth, refresh-flow, password-reset, hyper-experiments.
+
+The branch tip adds only a `results/`-only merge of the epic (`10df4440`) and this evidence commit, so its code is what the run tested.
+
+An earlier run, 34846096713 on `83651bfc`, was cancelled after about 1 minute: the root simulation found the trailing-newline defect fixed in `dc4f6356`.
 
 ## Real homes
 
