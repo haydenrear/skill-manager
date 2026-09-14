@@ -31,29 +31,48 @@ for root in .skill-manager .claude .codex .gemini; do
 done
 
 store="$home/.skill-manager"
-mkdir -p "$store/skills/$unit" "$store/installed"
-cat > "$store/skills/$unit/SKILL.md" <<'EOF'
+mkdir -p "$store/installed"
+for agent in .claude .codex .gemini; do
+  mkdir -p "$home/$agent/skills"
+done
+
+# SIXTEEN units, not one, and the number is measured rather than decorative.
+# ticket.lifecycle.global.home.untouched and onboarding.global.home.untouched
+# both assert the_leak_baseline_watched_a_non_trivial_tree: the METADATA
+# baseline must hold MORE THAN 100 entries, because a tiny baseline diffs clean
+# forever. Counted with TripwireSupport.collectAll itself: one unit gives 15
+# (matching run 34791698649 exactly), ten give 109 -- over the floor by 9, too
+# thin -- and sixteen clear it with margin. Each unit is a SKILL.md, a
+# references/ page and a scripts/ file, plus an installed record and three
+# agent links: the size of a small real root home (the operator's has 18).
+for i in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16; do
+  u="$unit-$i"
+  d="$store/skills/$u"
+  mkdir -p "$d/references" "$d/scripts"
+  cat > "$d/SKILL.md" <<EOF
 ---
-name: tripwire-seed
-description: Seeded by .github/scripts/seed-agent-home.sh so home-tripwire has a real home to watch on a CI runner.
+name: $u
+description: Seeded by .github/scripts/seed-agent-home.sh so the real-home leak oracles have a home to watch on a CI runner.
 ---
 Nothing here is used. Any change to this file during a graph run is a leak.
 EOF
-cat > "$store/installed/$unit.json" <<EOF
+  printf '# %s reference\n\nSeeded; never read by a graph.\n' "$u" > "$d/references/overview.md"
+  printf '#!/usr/bin/env bash\necho %s\n' "$u" > "$d/scripts/run.sh"
+  chmod +x "$d/scripts/run.sh"
+  cat > "$store/installed/$u.json" <<EOF
 {
-  "name" : "$unit",
+  "name" : "$u",
   "version" : "0.0.0",
   "kind" : "LOCAL",
   "installSource" : "LOCAL",
-  "origin" : "$store/skills/$unit",
+  "origin" : "$d",
   "errors" : [ ],
   "unitKind" : "SKILL"
 }
 EOF
-
-for agent in .claude .codex .gemini; do
-  mkdir -p "$home/$agent/skills"
-  ln -s "$store/skills/$unit" "$home/$agent/skills/$unit"
+  for agent in .claude .codex .gemini; do
+    ln -s "$d" "$home/$agent/skills/$u"
+  done
 done
 
 # The sibling Claude config the leak oracles fingerprint (TripwireSupport
