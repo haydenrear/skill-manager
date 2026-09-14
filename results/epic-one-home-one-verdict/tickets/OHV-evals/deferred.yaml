@@ -25,7 +25,9 @@ findings:
       cd specs/evals/harness && ./build-env.sh ~/.skill-manager  -> no such file or directory;
       git ls-files specs/evals/harness | grep -c build-env  -> 0
     suggested_fix: rewrite the README's Layout and run command to the setup.sh/run.sh-per-case shape
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-201
     found_by: OHV-evals, epic-provisions-a-ticket-worktree run 1 trace (score 1.00)
@@ -55,7 +57,9 @@ findings:
       ticket-agent-opens-a-ticket run 1 (0.82): the cost grader's 4th Bash call is the agent
       obeying the refusal's own fix line -- `git -C <cwd> status --short` -> `?? .eval-bin/`
       (trace events 37-47). The lost grader is this defect, not the skill.
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-202
     found_by: OHV-evals, bootstraps-a-home-for-a-repo run 1 verify.log (score 1.00)
@@ -79,7 +83,9 @@ findings:
     suggested_fix: >
       require `[ "$RC" = 0 ]` in the `home)` (and `worktree)`) branches, and give the bootstrap
       case a `front-door-runs` grader like the ticket cases have
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-203
     found_by: OHV-evals, diagnosing bootstraps-a-home-for-a-repo run 1's replay exit 6 ($0 repro outside the sandbox)
@@ -112,7 +118,9 @@ findings:
       project every unit whose sync succeeded (or that is already materialised) even when others
       fail, and report the failures; bootstrap-home.sh's refusal should then name the unreachable
       units as the cause instead of "run it by hand and read what it says"
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/383"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-205
     found_by: OHV-evals, ticket-agent-opens-a-ticket run 2 and reconciles-a-worktree-into-the-project-home run 2 traces
@@ -139,7 +147,9 @@ findings:
       references into the wrapper plugin directory rather than symlinking out to $BUILD/home, or add
       the resolved skill directories to the eval home's Read permission rules -- and add a probe to
       setup that Reads one reference file through the plugin path
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-207
     found_by: OHV-evals, reconciles-a-worktree-into-the-project-home run 2 (score 0.14)
@@ -162,7 +172,9 @@ findings:
       "skill-manager home sync \\\n  --from a \\\n  --to b" with verb_re "(?:home\s+sync)" returns no hit.
     suggested_fix: >
       join `\\\n` continuations before splitting on SEP, and add that command to the self-test corpus
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-208
     found_by: OHV-evals, ticket-agent-opens-a-ticket run 3 trace
@@ -181,7 +193,9 @@ findings:
       reasoning); every trace's event 3 carries the same string; lib.sh eval_fixture_checkout is
       called with `main` for five of the six cases.
     suggested_fix: report the fixture's real branch (`git -C "$SRC" rev-parse --abbrev-ref HEAD`)
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-209
     found_by: OHV-evals, syncs-a-stale-home-from-root runs 1-3 traces
@@ -211,7 +225,9 @@ findings:
       make the fixture's mirror satisfy the importers too (rewrite their import coordinate, or
       register the mirror as the unit's source so the coordinate resolves locally), and verify_env
       the full `skt sync git-issue-workflow` exit code at setup, as plugin_evals.md §3 requires
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-206
     found_by: OHV-evals, bootstraps-a-home-for-a-repo run 1 verify.log
@@ -232,7 +248,9 @@ findings:
     suggested_fix: >
       export SKILL_MANAGER_CLI="$BUILD/home/bin/cli/skill-manager" (the eval home's pin) in the
       replay subshell when REPLAY_HOME_KIND=eval-home
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
 
   - id: DEF-OHV-204
     found_by: OHV-evals, ticket-agent-closes-a-ticket run 1 trace; the 2026-09-13 reconciles commands.txt
@@ -259,4 +277,6 @@ findings:
       have the fixture hook build the sibling worktree inside the run (`skt ticket new` against
       the copied home, as REPLAY_PRE does), or reword both prompts so they do not assert a path
       the sandbox cannot hold
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/384"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"

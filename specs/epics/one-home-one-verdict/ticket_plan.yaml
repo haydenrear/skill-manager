@@ -101,12 +101,12 @@ closure:
   goals: "every clause met at final readings (two fleet rows are context); skt check met on skt#46's branch, merged with the epic by owner decision"
   spec_workflow: "none; no specs/current or specs/desired_program_model was ever scaffolded (dropped at schedule_revision 2)"
   deferred: "25 findings: 6 ticketed, 2 fixed at finalization, 17 carried as issues; none pending"
-  before_merge: >
-    eval suite against the epic build; TLA+ models in specs/program_model updated to the
-    epic's changes with the epic's bug attribution (owner request 2026-09-14); a final
-    graph_set=full CI run on the tip. Then merge #371, haydenrear/skt#46 and
-    haydenrear/deploy-helm#63 (owner authorized, given sufficient evidence), sweep the
-    worktrees, and delete the backups.
+  merge_evidence:
+    evals: "#382 merged 677259d3: 6 cases, 12 runs, no regression attributable to the epic; DEF-OHV-200..209 carried (#383 product, #384 harness)"
+    program_model: "#379 merged f1e228a5: HomeVerdictsInternal.tla, 23 cfgs match; attribution/2026-09-14-epic-attribution.md"
+    fixes_after_close: "#381 merged bbc00af8 (DEF-OHV-190, dash-portable shim anchor)"
+    ci: "run 34886318464 graph_set=full + selenium on bbc00af8: 26/26/26/0, 32/32 jobs"
+    merge: "owner authorized 2026-09-14, conditional on sufficient evidence; DCO sign-off absent on all epic commits (not required by protection; no history rewrite)"
 
 adjacent:
   - {issue: 351, why: "Gemini consumes no plugins -- agent projection, not home verdicts"}

@@ -1,6 +1,6 @@
 # Epic close review: `one-home-one-verdict` (#337)
 
-Written 2026-09-14 against `epic/one-home-one-verdict` at `2b5f83ea`, plus the close-out commit. **Epic PR: #371 (draft).** `review_policy` was: an artifact per wave, gate waived by the owner at schedule revision 2, stop at finalization. The implementation is complete. Merging to main waits on three things: the eval suite, the TLA+ model and attribution update the owner asked for, and a final CI run on the tip.
+Written 2026-09-14 against `epic/one-home-one-verdict` at `2b5f83ea`, plus the close-out commit. **Epic PR: #371 (draft).** `review_policy` was: an artifact per wave, gate waived by the owner at schedule revision 2, stop at finalization. The implementation is complete. Before merging to main, the eval suite, the TLA+ model and attribution update, the DEF-OHV-190 fix, and a final CI run all completed. See section 8.
 
 ## 1. What the epic was for
 
@@ -64,15 +64,15 @@ Promotion order held. Every wave produced a review artifact (`reviews/wave-1` �
 - **Backups**, kept outside the repository: `/Users/hayde/IdeaProjects/.oh*-backup-2026-09-14*`.
 - **Standing risk:** the root was overwritten twice on 2026-09-14 by commit-diff-context-parent test graphs running builds without OHV-9. It stays exposed until OHV-9 is released and commit-diff-context-parent#262 is fixed. Tracked as #378.
 
-## 6. Deferred findings: 32, none pending
+## 6. Deferred findings: 42, none pending
 
 | Disposition | Count |
 | --- | ---: |
 | ticketed | 6 |
 | fixed at finalization (DEF-OHV-181, DEF-OHV-182, DEF-OHV-190) | 3 |
-| carried as grouped issues | 23 |
+| carried as grouped issues | 33 (10 of them from the eval run, in `tickets/OHV-evals/deferred.yaml`) |
 
-- **Carried issues:** skill-manager #372–#378, #380 and #269, skt#47, git-epic-workflow#19, git-issue-workflow#31.
+- **Carried issues:** skill-manager #372–#378, #380, #383, #384 and #269, skt#47, git-epic-workflow#19, git-issue-workflow#31.
 - **From the TLA+ modelling after close (#379):** DEF-OHV-190 to DEF-OHV-194.
   - **DEF-OHV-190 was blocking and is now fixed.** The shim anchor `${BASH_SOURCE[0]:-$0}` is a syntax error under dash, and OHV-4 widened the rewrite to sh and dash shims, so a rewritten `#!/bin/sh` shim broke on Debian and Ubuntu. Reproduced in `debian:stable-slim`.
     - Fixed by #381 (merged `bbc00af8`), which writes `${BASH_SOURCE:-$0}`. Existing sh and dash shims that carry the old line are reported and re-anchored; bash, zsh and ksh shims are left alone.
@@ -93,12 +93,34 @@ These are carried to the owner in epic PR #371.
 
 The owner granted "mildly destructive" latitude at close to reach a consistent state. The syncs, the prune and the drift acknowledgement above were done under it.
 
-## 8. Before merge
+## 8. Merge evidence (all complete before merging #371)
 
-1. **The eval suite against the epic build.** Running on branch `feature/OHV-evals`; results land as a PR into the epic branch.
-2. **TLA+ models and attribution.** Done in #379, merged at `f1e228a5`.
-   - `HomeVerdictsInternal.tla` has 23 configurations, and TLC matches the expected result on all 23. The epic agent re-ran 6 of them independently and got the same results.
-   - Attribution: `attribution/2026-09-14-epic-attribution.md`, 59 rows.
-3. **The DEF-OHV-190 fix**: done, #381 merged at `bbc00af8`.
-4. **A final `graph_set=full` CI run on the epic tip**, after (1) and (3) merge.
-5. **Merge #371, skt#46 and deploy-helm#63** (owner authorized, given sufficient evidence). Then sweep the 12+ epic worktrees and delete the backup directories.
+1. **Evals** (#382, merged `677259d3`):
+   - All 6 cases ran against a fatjar of the epic build, assembled the way `release.yml` does it: 12 runs, $7.74, every trace read. No regression is attributable to the epic.
+   - The evals ran on `2b5f83ea`, before the DEF-OHV-190 fix. That fix only changes sh and dash shim anchors, and no case reaches one.
+
+   | case | prior | score(s) | cause of a lower score |
+   | --- | ---: | --- | --- |
+   | epic-provisions-a-ticket-worktree | 1.00 | 1.00 | — |
+   | ticket-agent-opens-a-ticket | 0.94 | 0.82 ×3 | harness: dirty fixture workspace (DEF-OHV-201) |
+   | bootstraps-a-home-for-a-repo | 0.93 | 1.00 | the score is unsound: the replay exited 6, ran the brew CLI, and still passed (DEF-OHV-202, DEF-OHV-206) |
+   | ticket-agent-closes-a-ticket | 0.90 | 1.00 | — |
+   | syncs-a-stale-home-from-root | 0.71 | 0.14 (max_turns) / 0.71 / 0.71 | the fixture makes the sync exit 1 (DEF-OHV-209); #353 |
+   | reconciles-a-worktree-into-the-project-home | 0.62 | 0.71 / 0.14 / 0.14 | the grader rejects a correct multi-line command (DEF-OHV-207) |
+
+   - **Findings:** 10, DEF-OHV-200 to DEF-OHV-209, all carried.
+     - DEF-OHV-203 is a product defect that predates the epic: one unit failing to fetch means no skills are projected. Filed as #383.
+     - The other nine are harness defects, grouped in #384.
+2. **TLA+ models and attribution** (#379, merged `f1e228a5`):
+   - `HomeVerdictsInternal.tla` has 23 configurations. TLC matches the expected result on all 23, and the epic agent re-ran 6 of them independently.
+   - Attribution is in `attribution/2026-09-14-epic-attribution.md` (59 rows).
+3. **DEF-OHV-190 fix** (#381, merged `bbc00af8`).
+4. **Final CI**, run 34886318464, `graph_set=full` plus the browser graphs, on `bbc00af8`:
+   - 26 graphs selected, 26 executed, 26 passed, 0 failed.
+   - `test-graph (selenium)` passed `browser-auth` and `password-reset`.
+   - Unit tests and the gateway pytest passed; all 32 jobs succeeded.
+   - Later commits (`677259d3` and after) touch only `results/`, `specs/evals/harness/lib.sh` and the eval runs. On the tip, the PR's unit and pytest jobs pass.
+5. **DCO:** the epic's 84 commits carry no `Signed-off-by`, so the DCO app reports `action_required` on #371, skt#46 and deploy-helm#63.
+   - No branch protection requires the check. Every ticket PR merged into the epic branch with the same status.
+   - Adding sign-offs would mean rewriting published history, and this epic forbids rebasing or force-pushing. They merge without it; this is recorded here as a guardrail override.
+6. **Merge:** #371, skt#46 and deploy-helm#63, on the owner's authorization ("ok to merge as long as we have sufficient evidence"). Afterwards, sweep the epic worktrees and delete the backup directories.
