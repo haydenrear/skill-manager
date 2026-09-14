@@ -88,8 +88,15 @@ Local run (validation-reports `20260914-031226`, started before the last two
 source edits, so the final-tree rerun below is the one that counts): nodes 1–8
 passed. That includes the three flipped shapes (`TODAY_home_verify_exits_1`,
 `verify.exit` = 1) and `verify.names.every.repair.finding`
-(`repair.findings` = 5, `verify.unnamed` = 0). Nodes 9–12: _pending_.
-Final-tree rerun: _pending_.
+(`repair.findings` = 5, `verify.unnamed` = 0).
+
+Nodes 9–12 then passed too:
+- `dangling.agent.link` and `orphaned.projection.record` each reported
+  `verify.exit` = 1, `repair.exit` = 1, 1 finding;
+- `home.fixpoint.law` and `home.membership.law` passed, each with 1 home checked.
+
+That run ended 12/12, `BUILD SUCCESSFUL in 18m 34s`. The final-tree rerun is
+below.
 
 CI run 34802282392 (`graph_set=full`, `af7e4b52`): `skill-manager unit tests
 (RunTests.java + spec models)` **success** on Linux, `virtual-mcp-gateway
@@ -120,21 +127,44 @@ both in `home.fixpoint.law`,** for one reason, and it is this change's:
   is declared.
 - `HomeFixpointLaw` counts repair subjects as "reported", so a declared entry
   that stops being reported still fails the law.
-- The three declarations add `pm/uv/0.0.0`, and the fixture home adds
-  `bin/cli/hc-venv-tool` (it resolves there, so it appears only as a repair
-  finding).
+- The fixture home's declaration adds `bin/cli/hc-venv-tool`. It resolves
+  there, so it appears only as a repair finding. (The clone and the credential
+  copy already declared it.)
+- `pm/uv/0.0.0` is **not** declared in the final tree. `48d18070` declared it
+  on all three homes; `6eb77ce4` replaced that with a stamped fixture. See
+  "stamped, not declared" below and DEF-OHV-121.
 - Parser checked against real output (`real-homes/after/project.verify.err`):
   4 subjects parsed; all declared → nothing unexplained; one subject undeclared
   → its finding, `repair:`, header and remedy lines; none declared → 10 lines.
 
-### CI run 2: 34804201355 (`graph_set=full`, `9d2fd94a`): superseded
+### CI run 2: 34804201355 (`graph_set=full`, `9d2fd94a`): superseded, then cancelled
+
+**Cancelled by run 3's dispatch.** `ci.yml` declares
+`concurrency: ci-${{ github.workflow }}-${{ github.ref }}` with
+`cancel-in-progress` on every ref except main. So there is no
+`graphs-executed` artifact for this run.
+
+Its jobs had settled at 27 success, 1 failure, 2 cancelled and 1 skipped
+(selenium). Of the 26 graphs, that is **24 passed, 1 failed (`home-clone`) and
+1 cancelled (`onboarding`)**. The other two cancelled/skipped jobs were the
+`graphs executed` counter and selenium. Every result quoted below completed
+before the cancel.
 
 Dispatched on `9d2fd94a`, whose declarations named `pm/uv/0.0.0`. Before it
 finished, local `home-clone` on `48d18070` (run `20260914-035302`) showed that
 declaration fails in home-clone: "declared intentionally damaged at
 [pm/uv/0.0.0] but home verify (exit 1) does not report it", on the fixture home
-only. Its results count for the graphs this change does not touch. home-clone
-and checkout-home are decided by run 3.
+only. Run 2 then measured the same split on Linux, and it is DEF-OHV-121's
+cleanest evidence. With `pm/uv/0.0.0` declared:
+
+- **`home-clone` failed** with the local verdicts line for line: the fixture
+  home was "declared … but not reported", and both copies were "DAMAGED ON
+  PURPOSE".
+- **`checkout-home` passed.**
+
+One declaration, green in one graph and red in the other.
+`home-integrity`, `home-verdicts`, `plugin-smoke` and unit tests passed on
+Linux. home-clone and checkout-home are decided by run 3.
 
 ### The home-clone fixture's `pm/uv/0.0.0`: stamped, not declared
 
@@ -173,9 +203,28 @@ and checkout-home are decided by run 3.
 changed after `afaabc8d`, so the full `jbang RunTests.java` run on that tree
 (1555 passed, 0 failed) still covers production and unit-test code.
 
-### CI run 3: _pending_
+### CI run 3: 34805817917 (`graph_set=full`, `6eb77ce4`): 26 selected / 26 executed / 26 passed / 0 failed
 
-Local `home-clone` on the stamped fixture: _pending_.
+This meets the epic tip's 26/26/0 (run 34798708463).
+
+- Jobs: 30 success, 1 skipped (the selenium matrix).
+- Graphs, all green on Linux:
+  - `home-verdicts`, including the three new OHV-2 nodes and the flipped
+    assertions;
+  - `home-clone` and `checkout-home` on the stamped fixture;
+  - `home-integrity` and `plugin-smoke`.
+- Unit tests (`RunTests.java` + spec models) passed.
+- Artifact: `ci/run3-34805817917.graphs-executed.json`.
+
+Local `home-clone` on the stamped fixture (validation-reports
+`20260914-040735`): **16 of 16 passed**, `BUILD SUCCESSFUL in 14m 35s`.
+`home.fixpoint.law` checked 3 homes, and all 3 were DAMAGED ON PURPOSE,
+reporting exactly what was declared:
+
+- fixture home: `[venvs/hc-venv/bin/hc, bin/cli/hc-venv-tool]`;
+- clone and credential copy: `[bin/cli/hc-venv-tool]`.
+
+No `pm/` finding appeared anywhere. `home.membership.law` passed.
 
 ## Blast radius
 
@@ -185,8 +234,10 @@ inside the repo that changed:
 - the home-verdicts TODAY assertions;
 - `HomeUnresolvedGateTest`'s fixture;
 - the `--against` parent-shim exemption;
-- `IntentionalDamage`, the fixpoint law's reported set, and the three
-  home-clone declarations (found by CI run 1).
+- `IntentionalDamage`, the fixpoint law's reported set, the home-clone
+  fixture's declaration (adds `bin/cli/hc-venv-tool`), and its step 5, which now
+  stamps `pm/uv/0.0.0`. All were found by CI run 1 and refined after local
+  `home-clone` and CI run 2.
 
 ## Real homes (read-only; no `--fix`)
 
