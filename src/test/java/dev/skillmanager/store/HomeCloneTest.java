@@ -889,6 +889,30 @@ public final class HomeCloneTest {
                             + "not a new rule about root files");
         });
 
+        suite.test("OHV-6 (#352 shape 3): a clone's marketplace manifest names the CLONE, not its source", () -> {
+            Home source = Home.conventional("mp-source-");
+            var sourceMp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(source.store()));
+            sourceMp.regenerate();
+            String sourceName = sourceMp.name();
+            Home dest = Home.destination("mp-dest-");
+
+            HomeCloner.cloneHome(source.store(), dest.store());
+
+            var destMp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(dest.store()));
+            String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(destMp.manifestPath())
+                    .orElse(null);
+            assertFalse(sourceName.equals(destMp.name()), "precondition: two stores, two identities");
+            assertEquals(destMp.name(), claimed,
+                    "the copied manifest was regenerated under the clone's derived identity");
+            assertEquals(sourceName, dev.skillmanager.project.PluginMarketplace.manifestName(
+                    sourceMp.manifestPath()).orElse(null), "and the source is untouched");
+            assertFalse(HomeCloner.rederiveMarketplaceIdentity(new SkillStore(dest.store()), "test"),
+                    "a second pass has nothing to re-derive");
+            assertTrue(HomeRepair.detect(dest.store()).findings().stream()
+                            .noneMatch(f -> f.kind() == HomeRepair.Kind.MARKETPLACE_IDENTITY_COPIED),
+                    "and home repair agrees");
+        });
+
         return suite.runAll();
     }
 

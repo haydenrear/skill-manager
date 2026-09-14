@@ -1,0 +1,12 @@
+! Telemetry export unavailable; continuing without telemetry.
+! skills with outstanding errors (3) — 3 distinct cause(s) — re-run after fixing:
+✗   andrej-karpathy-skills:
+✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "andrej-karpathy-skills@skill-manager-0fd46eec": Plugin "andrej-karpathy-skills" not found in marketplace "skill-manager-0fd46eec". Your local copy may be out of date — try `claude plugin marketplace update skill-...
+✗       → retry: skill-manager sync andrej-karpathy-skills (will re-attempt the agent symlink)
+✗   cdc-agent-substrate-plugin:
+✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "cdc-agent-substrate-plugin@skill-manager-0fd46eec": Plugin "cdc-agent-substrate-plugin" not found in marketplace "skill-manager-0fd46eec". Your local copy may be out of date — try `claude plugin marketplace updat...
+✗       → retry: skill-manager sync cdc-agent-substrate-plugin (will re-attempt the agent symlink)
+✗   skt:
+✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "skt@skill-manager-0fd46eec": Plugin "skt" not found in marketplace "skill-manager-0fd46eec". Your local copy may be out of date — try `claude plugin marketplace update skill-manager-0fd46eec`.
+✗       → retry: skill-manager sync skt (will re-attempt the agent symlink)
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-085009-70f9.log

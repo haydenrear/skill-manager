@@ -1,0 +1,13 @@
+total 56
+drwxr-xr-x@ 12 hayde  staff    384 Sep 14 08:42 .
+drwxr-xr-x@  5 hayde  staff    160 Sep 14 08:40 ..
+drwxr-xr-x@  3 hayde  staff     96 Sep 14 08:40 .spec-double-compiler
+lrwxr-xr-x@  1 hayde  staff     44 Sep 14 08:40 computeq -> /Users/hayde/.skill-manager/bin/cli/computeq
+lrwxr-xr-x@  1 hayde  staff     47 Sep 14 08:40 helm-deploy -> /Users/hayde/.skill-manager/bin/cli/helm-deploy
+lrwxr-xr-x@  1 hayde  staff     33 Sep 14 08:42 jinja2 -> ../../venvs/jinja2-cli/bin/jinja2
+lrwxr-xr-x@  1 hayde  staff     46 Sep 14 08:40 monitoring -> /Users/hayde/.skill-manager/bin/cli/monitoring
+-rwxr-xr-x@  1 hayde  staff  10609 Sep 14 08:40 skill-manager
+-rwxr-xr-x@  1 hayde  staff   2488 Sep 13 11:34 skt
+-rwxr-xr-x@  1 hayde  staff    281 Sep 14 08:40 tla-spec-dev
+-rwxr-xr-x@  1 hayde  staff    349 Aug 12 01:37 tlc2
+-rwxr-xr-x@  1 hayde  staff   1089 Sep 14 08:42 tracing-observability-install

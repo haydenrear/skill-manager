@@ -1,0 +1,7 @@
+SMH="${SKILL_MANAGER_HOME:-$HOME/.skill-manager}"; echo "SMH=$SMH"; test -x "$SMH/bin/cli/skt" && echo "SKT: yes" || echo "SKT: no"; test -x "$SMH/skills/git-issue-workflow/scripts/wt" && echo "WT: yes" || echo "WT: no"; command -v skt || echo "skt not on PATH"
+---
+./.eval-bin/git rev-parse --abbrev-ref HEAD; ./.eval-bin/git branch -a; ./.eval-bin/git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo "(no origin/HEAD)"
+---
+skt ticket new TICKET-42
+---
+./.eval-bin/git -C /private/tmp/e-fTHBhV/home/cwd status --short; echo "--- toplevel:"; ./.eval-bin/git rev-parse --show-toplevel

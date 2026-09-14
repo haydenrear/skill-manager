@@ -1,0 +1,4 @@
+known_marketplaces: removed only skill-manager-919db26e
+installed_plugins.json: unchanged
+settings.json: removed enabledPlugins ['cdc-agent-substrate-plugin@skill-manager-919db26e', 'skt@skill-manager-919db26e'], extraKnownMarketplaces ['skill-manager-919db26e']
+codex config.toml: removed 5 lines, all in skill-manager-919db26e tables

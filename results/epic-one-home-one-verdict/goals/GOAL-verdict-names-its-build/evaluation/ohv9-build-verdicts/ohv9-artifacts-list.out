@@ -1,0 +1,211 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home
+{
+  "schema" : 1,
+  "home" : "/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager",
+  "build" : "skill-manager 0.27.2+g71aad2fdb576 @ 71aad2fdb576 (refs/heads/feature/OHV-9)",
+  "ledger" : {
+    "path" : "artifacts.lock.toml",
+    "present" : false,
+    "schema" : null,
+    "recorded_at" : null,
+    "artifacts" : 0
+  },
+  "artifacts" : [ {
+    "id" : "unit-store:skill-manager",
+    "kind" : "unit-store",
+    "owner" : "skill-manager",
+    "materialization" : "materialized",
+    "agreement" : "agrees",
+    "origin" : "home",
+    "inputs" : [ "git:https://github.com/haydenrear/skill-manager-skill.git@main" ],
+    "observed_inputs" : [ ],
+    "outputs" : [ {
+      "path" : "skills/skill-manager",
+      "scope" : "home",
+      "presence" : "present"
+    } ],
+    "source" : "installed/skill-manager.json",
+    "recorded" : {
+      "git_ref" : "main",
+      "git_hash" : "0efb7f5ef7ecc2dacf0efdf4d6fc7b4dd0e67a66",
+      "version" : "0.1.1"
+    },
+    "actual" : {
+      "git_hash" : "0efb7f5ef7ecc2dacf0efdf4d6fc7b4dd0e67a66"
+    }
+  }, {
+    "id" : "unit-store:skt",
+    "kind" : "unit-store",
+    "owner" : "skt",
+    "materialization" : "materialized",
+    "agreement" : "agrees",
+    "origin" : "home",
+    "inputs" : [ "git:https://github.com/haydenrear/skill-publisher-skill.git@main" ],
+    "observed_inputs" : [ ],
+    "outputs" : [ {
+      "path" : "plugins/skt",
+      "scope" : "home",
+      "presence" : "present"
+    } ],
+    "source" : "installed/skt.json",
+    "recorded" : {
+      "git_ref" : "main",
+      "git_hash" : "3aa09795a128375f04ff1b73631a8a578917283d",
+      "version" : "0.3.0"
+    },
+    "actual" : {
+      "git_hash" : "3aa09795a128375f04ff1b73631a8a578917283d"
+    }
+  }, {
+    "id" : "cli-shim:skill-script/skt",
+    "kind" : "cli-shim",
+    "owner" : "skt",
+    "materialization" : "materialized",
+    "agreement" : "unverifiable",
+    "origin" : "home",
+    "inputs" : [ "spec:skill-script:skt", "unit:skt" ],
+    "observed_inputs" : [ ],
+    "outputs" : [ {
+      "path" : "bin/cli/skt",
+      "scope" : "home",
+      "presence" : "present"
+    } ],
+    "source" : "cli-lock.toml",
+    "recorded" : {
+      "binary" : "skt",
+      "install_fingerprint" : "c54326865035e02e42222e4fb04a814033efabdcc7d8da5397ff13d5234083ad",
+      "install_fingerprint_basis" : "skill-scripts/ tree bytes + script path + declared args",
+      "install_fingerprint_kind" : "resolved",
+      "backend" : "skill-script",
+      "spec" : "skill-script:skt",
+      "tool" : "skt"
+    },
+    "actual" : { }
+  }, {
+    "id" : "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "materialization" : "materialized",
+    "agreement" : "agrees",
+    "origin" : "home",
+    "inputs" : [ "unit:skill-manager", "binding:default:claude:skill-manager", "store:skills/skill-manager" ],
+    "observed_inputs" : [ ],
+    "outputs" : [ {
+      "path" : "/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.claude/skills/skill-manager",
+      "scope" : "external",
+      "presence" : "present"
+    } ],
+    "source" : "installed/skill-manager.projections.json",
+    "recorded" : {
+      "projection_kind" : "SYMLINK",
+      "source_path" : "skills/skill-manager"
+    },
+    "actual" : {
+      "link_state" : "resolves",
+      "link_target" : "skills/skill-manager"
+    }
+  }, {
+    "id" : "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "materialization" : "materialized",
+    "agreement" : "agrees",
+    "origin" : "home",
+    "inputs" : [ "unit:skill-manager", "binding:default:codex:skill-manager", "store:skills/skill-manager" ],
+    "observed_inputs" : [ ],
+    "outputs" : [ {
+      "path" : "/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.codex/skills/skill-manager",
+      "scope" : "external",
+      "presence" : "present"
+    } ],
+    "source" : "installed/skill-manager.projections.json",
+    "recorded" : {
+      "projection_kind" : "SYMLINK",
+      "source_path" : "skills/skill-manager"
+    },
+    "actual" : {
+      "link_state" : "resolves",
+      "link_target" : "skills/skill-manager"
+    }
+  }, {
+    "id" : "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "materialization" : "materialized",
+    "agreement" : "agrees",
+    "origin" : "home",
+    "inputs" : [ "unit:skill-manager", "binding:default:gemini:skill-manager", "store:skills/skill-manager" ],
+    "observed_inputs" : [ ],
+    "outputs" : [ {
+      "path" : "/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.gemini/skills/skill-manager",
+      "scope" : "external",
+      "presence" : "present"
+    } ],
+    "source" : "installed/skill-manager.projections.json",
+    "recorded" : {
+      "projection_kind" : "SYMLINK",
+      "source_path" : "skills/skill-manager"
+    },
+    "actual" : {
+      "link_state" : "resolves",
+      "link_target" : "skills/skill-manager"
+    }
+  }, {
+    "id" : "marketplace-entry:skt",
+    "kind" : "marketplace-entry",
+    "owner" : "skt",
+    "materialization" : "materialized",
+    "agreement" : "agrees",
+    "origin" : "home",
+    "inputs" : [ "unit:skt", "store:plugins/skt" ],
+    "observed_inputs" : [ ],
+    "outputs" : [ {
+      "path" : "plugin-marketplace/plugins/skt",
+      "scope" : "home",
+      "presence" : "present"
+    } ],
+    "source" : "plugin-marketplace/.claude-plugin/marketplace.json",
+    "recorded" : {
+      "marketplace_state" : "listed",
+      "input_fingerprint_kind" : "resolved",
+      "input_fingerprint" : "6f1ea98c5ebcf83ed848a3fe5ec5fe82e34dafc73fc59a548ce7fbdcf95b3357"
+    },
+    "actual" : {
+      "marketplace_state" : "listed",
+      "input_fingerprint" : "6f1ea98c5ebcf83ed848a3fe5ec5fe82e34dafc73fc59a548ce7fbdcf95b3357"
+    }
+  } ],
+  "summary" : {
+    "artifacts" : 7,
+    "by_kind" : {
+      "unit-store" : 2,
+      "cli-shim" : 1,
+      "provisioned-tree" : 0,
+      "projection" : 3,
+      "marketplace-entry" : 1,
+      "harness-instance" : 0,
+      "mcp-registration" : 0,
+      "doc-import" : 0,
+      "unit-digest" : 0
+    },
+    "by_materialization" : {
+      "materialized" : 7,
+      "partial" : 0,
+      "declared-only" : 0,
+      "unknown" : 0
+    },
+    "by_agreement" : {
+      "agrees" : 6,
+      "disagrees" : 0,
+      "unrecorded" : 0,
+      "unverifiable" : 1
+    },
+    "by_origin" : {
+      "home" : 7,
+      "ledger" : 0,
+      "ledger-and-home" : 0
+    }
+  }
+}
+! Telemetry export unavailable; continuing without telemetry.

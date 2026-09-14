@@ -1,0 +1,35 @@
+{
+  "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+  "label": "project-after",
+  "census": {
+    "measured": true,
+    "declared": 54,
+    "by_origin": {
+      "ledger-and-home": 51,
+      "home": 3
+    },
+    "phantom_outputs": [
+      "cli-shim:brew/docker",
+      "cli-shim:brew/gh",
+      "cli-shim:brew/helm",
+      "cli-shim:brew/k3d",
+      "cli-shim:brew/kubernetes-cli",
+      "cli-shim:brew/opentofu",
+      "cli-shim:pip/pytest"
+    ],
+    "phantom_count": 7,
+    "reported_missing_count": 7,
+    "ledger_only_rows": [],
+    "ledger_only_count": 0
+  },
+  "versions": {
+    "version_disagreements": [
+      {
+        "unit": "skt",
+        "record": "0.8.1",
+        "manifest": "0.8.2"
+      }
+    ],
+    "count": 1
+  }
+}

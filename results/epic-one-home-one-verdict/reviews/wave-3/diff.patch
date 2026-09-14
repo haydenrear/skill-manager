@@ -1,0 +1,2114 @@
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/README.md b/results/epic-one-home-one-verdict/tickets/OHV-4/README.md
+new file mode 100644
+index 00000000..3188de5b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/README.md
+@@ -0,0 +1,126 @@
++# OHV-4 (#341): a shim never spells its own home, and a half-rewritten one is reported
++
++Branch `feature/OHV-4`, from `origin/epic/one-home-one-verdict` at `48d23c51`, merged forward to `c65a99d2` (wave-2 review, docs only) as `25b095ca`. The slice is schedule revision 2's: shims only.
++
++## Root cause (DEF-OHV-001)
++
++Two rules combined into a trap.
++
++- `ShimHomeContract.selfDerivingRewrite` returned `null` ("already rewritten") for any shim whose body contained `SKILL_MANAGER_SHIM_HOME`.
++- `HomeRepair.scanFrozenShims` reported FROZEN_HOME_PATH_IN_SHIM only when that rewrite was non-null.
++
++Anything that put the token on one line first left the other lines frozen, and the shim was then exempt from both verdicts. Two paths do that:
++
++- an installer that half-adopts the recipe;
++- `HomeRepair`'s FOREIGN_PATH_IN_SHIM fix, which maps another home's path into this one and then calls the rewrite.
++
++deploy-helm's `install-console-script.sh` writes both lines literal (`export MONITORING_DEPLOY_CDC_ROOT="$SKILL_DIR"`, `exec "$venv_dir/bin/$tool"`). A single rewrite of that would clear both, so the root shims' identical mtime (`Sep 13 11:41:50`, later than the Sep 9 install logs) points to a later bulk writer. The FOREIGN fix path fits, but this is **not proven**: nothing on disk records which command wrote them.
++
++## (a) Detect on content
++
++- **Change:** `ShimHomeContract.frozenHomeLines(home, shim)` is the detector. It reports a literal spelling of this home on:
++  - any non-comment line after the shebang of a **shell** script;
++  - an `exec`, `export` or shell-assignment line of **any other** text file.
++
++  "Spelling" means every `PathSpellings.of` alias, matched as a whole path prefix, the home root included. `HomeRepair.scanFrozenShims` reports on that alone. `repairable` is a separate question: whether the rewrite has a result. A shape the rewrite refuses is reported with `repairable=false` and a remedy that says so.
++- **Deliberately not reported** (in the detector's javadoc and in `HomeRepair.Kind.FROZEN_HOME_PATH_IN_SHIM`):
++  - **Venv-internal shebang** (`#!<home>/venvs/.../python`). The kernel reads a shebang literally and it cannot hold a token, so no `--fix` could ever clear the finding. `venvs/` is a toolchain root that a clone never carries and re-provisioning regenerates. `absolutePathTokens` never tokenized a shebang, so this is not a narrowing. A copied home carrying one is the re-provisioning question (`home verify`'s unresolved references and `build`), not this one.
++  - **A spelling only in a `#` comment** (coordinator instruction, #341 "Watch for"). Prose about a path is not a reference to one. Since OHV-2, `verify` fails on every repair finding, so a comment-only match would turn verify red on a shim that runs correctly. Contract: no finding, so `home repair --fix` is a no-op and the shim stays **byte-identical**. The installer's rewrite still re-anchors such a comment on a fresh install, as before OHV-4.
++- **Tests:**
++  - `ShimSurvivesACopyTest`, 8 OHV-4 cases: the half-rewritten shim reports exactly its exec line; the home root on an assignment line; a sibling home sharing the prefix is not this home; venv shebang not reported; comment-only not reported; a non-shell exec line is reported but not rewritten; another spelling (`/var` vs `/private/var`) of the same home.
++  - `DamagedHomeIsRepairableTest`: `damageEveryKind` plants the half-rewritten variant (`damageHalfRewrittenShim`), and the every-kind guard asserts its own subject. There is also a comment-only case (not a finding, `--fix` byte-identical).
++- **Node:** `home.verdicts.half.rewritten.shim`: repair names it, and verify exits 1 and names it.
++
++## (b) The rewrite re-anchors exec lines
++
++- **Change:** `selfDerivingRewrite` no longer treats the token's presence as "done":
++  - It replaces every remaining whole-prefix spelling, longest first, on every line after the shebang, comments included (the pre-OHV-4 trigger, which BLOCKER 2 pins).
++  - It adds the preamble only when no assignment of the token precedes the first rewritten line.
++  - It refuses a result that still spells the home, and it refuses to rewrite the token's own assignment.
++- **Idempotent:** the second pass finds no spelling and returns `null`.
++- **Tests:** `ShimSurvivesACopyTest` (one assignment and no second preamble; clean after; a second pass is a no-op; the rewritten shim runs its tool from a `cp -R` copy with the source's tool deleted). `DamagedHomeIsRepairableTest` (`--fix` re-anchors the exec line, then a separate detect is clean, then a second `--fix` leaves the bytes unchanged). `BLOCKER 2` still passes.
++- **Node:** `home.verdicts.half.rewritten.shim` after `--fix`: a separate detection is clean; verify is clean; no spelling of the home survives; `exec "${SKILL_MANAGER_SHIM_HOME}/cache/…"`; exactly one assignment; the shim runs; a second `--fix` exits 0, is clean and changes no byte.
++
++## (c) The skill-script writer
++
++- **Change:** `SkillScriptBackend.reportFrozenShims` gates on the rewrite having something to re-anchor, not on the old token scan, and warns only on detector lines. A skill-script install therefore never leaves the half-rewritten shape.
++- **Tests:** `SkillScriptBackendTest`, two cases through `InstallerRegistry.installOne`. One installer uses deploy-helm's unquoted-heredoc shape (both lines literal); the other half-adopted the recipe (token export, literal exec). After install, no line spells the home, the exec line derives the token, there is one assignment, and the shim runs its tool.
++
++## Real homes (read-only; no `--fix`)
++
++`home verify --home <h>` rc, then `home repair --home <h> --json` findings. Files are under `real-homes/<label>/`.
++
++| home | released 0.27.2 | raw build before (`25b095ca`) | raw build after (this change) |
++| --- | --- | --- | --- |
++| root `~/.skill-manager` | verify 0; repair 0 findings (78 examined) | verify 0; repair 0 (310 examined) | **verify 1; repair 3: FROZEN_HOME_PATH_IN_SHIM `bin/cli/computeq`, `helm-deploy`, `monitoring`, all repairable** |
++| project `skill-manager/.skill-manager` | verify 0; repair 0 | verify 1; repair 4 (3 DANGLING_AGENT_LINK, 1 ORPHANED_PROJECTION_RECORD; OHV-2's) | unchanged: the same 4 |
++| meta-orchestrator | verify 0; repair 8 (6 FROZEN, 2 UNSTAMPED_PM_TREE) | verify 1; the same 8 | unchanged: the same 8 |
++
++The root's 3 half-rewritten shims went from unreported to reported by both verdicts. That is GOAL-one-verdict's expected effect: root 4 → 3 unreported facts.
++
++**The root `--fix` is not run. It is the owner's decision.** Backups of the three shims (sha256 verified) are in `/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv-4-backups/root-bin-cli/`. Command, with this branch's build:
++
++```
++/Users/hayde/IdeaProjects/wt-ohv-4/skill-manager home repair --home /Users/hayde/.skill-manager --fix --json
++```
++
++Proof that this does what it should on the exact shape, on a scratch home and not the root: `harness/synthetic/summary.txt`. The repair reported `computeq` as repairable; `--fix` put `exec "${SKILL_MANAGER_SHIM_HOME}/cache/skill-script-deploy-helm-computeq/venv/bin/computeq" "$@"` in place and the shim still runs. A second `--fix` is clean, repair and verify both exit 0 afterwards, and the comment-only shim is byte-identical.
++
++## Goal harnesses (read-only)
++
++| harness | before (`25b095ca`) | after (this branch, real homes) |
++| --- | --- | --- |
++| `measure_goal_no_own_home_path.py` | root 3 (computeq, helm-deploy, monitoring; 3 half-rewritten, 3 unreported); project 0; met false | root 3, 3 unreported; project 0; met false |
++| `measure_goal_a_home_survives_being_copied.py` | 2 of 3; (b) offenders computeq, helm-deploy, monitoring | 2 of 3; the same offenders |
++
++**No movement on the real homes is expected before the root `--fix`**, for two reasons. Both harnesses read the bytes, and `measure_goal_no_own_home_path.py` judges "reported" with **each home's own pinned CLI** (`home_observations.cli_for`), which on root is released 0.27.2, not this branch. Clause (1)'s 3 → 0 and the probe's 2 → 3 of 3 happen when the owner runs the command above with the epic build.
++
++**The harness still separates reported from unreported correctly.** It gained two categories the detector deliberately does not report, `shebang_only_out_of_scope` and `comment_only_not_a_reference`, and neither counts as "unreported". Proof on the synthetic home, pinned to this build:
++
++- before `--fix`: 3 entries: `computeq` reported, 0 unreported, `console-script` shebang-only, `commented` comment-only;
++- after: 2 entries, 0 unreported, the same two out-of-scope entries, `computeq` gone.
++
++Fleet context, clause (3), no threshold: **38 of 61** homes have a `bin/cli` entry that spells their own path (`harness/after.no_own_home_path.fleet.json`). The kickoff measured 51 of 61 at `71c51464`. The fleet itself changed in between (homes synced and rebuilt), and this count is the harness's substring read, so it includes shebang-only and comment-only entries. It is context, not movement attributable to this ticket, and no fleet home was repaired.
++
++## Timing (the wave-2 review's question)
++
++| measurement | value |
++| --- | --- |
++| `run.py home-verdicts`, untouched worktree `25b095ca`, local | **BUILD SUCCESSFUL in 18m 14s** (wall 1095 s) |
++| its 50 CLI processes (envelopes, run `20260914-050417`) | every one 14.1–14.3 s, any command; sum 711 s |
++| `home repair --json`, clean scratch home, this build | **14.24 s, 14.20 s** |
++| the same with `OTEL_SDK_DISABLED=true` | **0.95 s, 0.96 s** |
++| `--version`, this build | 14.15 s |
++| released 0.27.2 `home repair --json` / with OTEL disabled | 13.74 s / 0.43 s |
++
++**Cause found, not fixed (outside the slice): DEF-OHV-140** (`deferred.yaml`). Every CLI process waits about 14 s on its OTLP export. `CliObservability` defaults the endpoint to `http://localhost:4318`, which Docker Desktop's backend holds open (LISTEN, pid 3528) while the engine is unresponsive: connections neither refuse nor answer (`curl` rc=28 after about 8 s). home-verdicts' 7 CLI calls per shape node account for its growth faster than its node count. Whether the ~1 min at OHV-0 was the refused-port state before Docker hung is plausible but unproven: Docker was not restarted.
++
++home-verdicts after this change: see Graphs.
++
++## Graphs
++
++Local runs, macOS, Docker down, `GRADLE_OPTS=-Dorg.gradle.daemon=false COMPOSE_PROJECT_NAME=skill-manager`, one graph per lock acquisition. CI is the graph evidence (below); these are the pre-dispatch checks the assignment asked for.
++
++| graph | run | result | notes |
++| --- | --- | --- | --- |
++| home-verdicts, untouched (`25b095ca`) | `20260914-050417` | BUILD SUCCESSFUL, 18m 14s | the timing baseline |
++| home-clone, detector widened, declarations NOT yet updated | `20260914-053211` | **FAILED**: 14 passed, 1 failed (`home.fixpoint.law`), 1 skipped | exactly the predicted break: `FROZEN_HOME_PATH_IN_SHIM bin/cli/hc-tool` undeclared in the fixture home, its project clone and the credential copy. hc-tool's `SM_HOME="<home>"` is step 3's planted shape, and nothing else was unexplained |
++| home-clone, `hc-tool` declared in all three homes | `20260914-054820` | **BUILD SUCCESSFUL, 16/16 passed**, 14m 42s | `home.fixpoint.law`: homesChecked 3, homesDamagedOnPurpose 3, homesRepaired 0. Header reads `25b095ca`; the commits were made during the run and the files under test are byte-identical to `0b97bd71` |
++| home-verdicts, this change (`0b97bd71`) | `20260914-060315` | **BUILD SUCCESSFUL, 13/13 passed**, 20m 27s | `home.verdicts.half.rewritten.shim` passed all 15 assertions: repair exits 1 and names FROZEN_HOME_PATH_IN_SHIM on `bin/cli/half-tool`; verify exits 1 and names it; `--fix` then a separate detection is clean; verify is clean after; the fixed shim spells no form of its home; the exec line derives the token; one assignment of it; the shim runs; a second `--fix` is a no-op. The +2m 13s over the baseline is one more shape node, which makes 8 CLI processes at about 14 s each (DEF-OHV-140) |
++| checkout-home (`0b97bd71`) | `20260914-062332` | **BUILD SUCCESSFUL, 8/8 passed**, 9m 25s | the assignment's watch-for; no declaration change was needed |
++
++plugin-smoke and home-integrity need Docker or the gateway, so they are CI-only here.
++
++## Unit tests
++
++- The touched suites (ShimSurvivesACopyTest 14, ShimHomeContractTest 2, SkillScriptBackendTest 7, DamagedHomeIsRepairableTest 29, HomeUnresolvedGateTest 4): 56 passed, 0 failed.
++- `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
++- `jbang RunTests.java` (full repository suite, at `0b97bd71`, `OTEL_SDK_DISABLED=true` for speed): **ALL PASSED**, 1566 `[PASS]`, 0 `[FAIL]`, rc 0. 88 GiB free before and after.
++
++## Close-out
++
++`skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-ohv-4/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager` (released CLI on PATH): **exit 0**, "holds nothing that removing it would destroy" (`close-out.txt`). No unit was edited in the ticket home; no `home sync` was run.
++
++## Deferred
++
++DEF-OHV-140: the per-process OTLP export wait (above). No other findings.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/close-out.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/close-out.txt
+new file mode 100644
+index 00000000..38275b3c
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/close-out.txt
+@@ -0,0 +1,3 @@
++! Telemetry export unavailable; continuing without telemetry.
++✓ /Users/hayde/IdeaProjects/wt-ohv-4/.skill-manager holds nothing that removing it would destroy
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml b/results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml
+new file mode 100644
+index 00000000..b832379d
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml
+@@ -0,0 +1,67 @@
++version: 1
++ticket: OHV-4
++github_issue: https://github.com/haydenrear/skill-manager/issues/341
++findings:
++  - id: DEF-OHV-140
++    found_by: OHV-4 (#341), the home-verdicts timing the wave-2 review asked for
++    found_at_commit: 25b095ca
++    severity: major
++    maps_to: none in this epic (not OHV-4's slice); candidate owner the terminal sweep / OHV-8 runtime reading
++    related: [DEF-065]
++    summary: >
++      Every skill-manager CLI process on this machine costs ~14 s of fixed wall
++      time waiting on its OTLP telemetry export, because the default endpoint
++      http://localhost:4318 is held open by Docker Desktop's backend while the
++      Docker engine is unresponsive: connections neither refuse nor answer.
++      home-verdicts runs ~50 CLI processes, so ~11-12 of its 18 minutes are this.
++    reproduction: >
++      On a clean scratch home laid out with SkillStore.init()'s directories
++      (results/epic-one-home-one-verdict/tickets/OHV-4/timing/timings.txt):
++        ./skill-manager home repair --home <scratch> --json                      -> 14.24 s, 14.20 s
++        OTEL_SDK_DISABLED=true ./skill-manager home repair --home <scratch> --json -> 0.95 s, 0.96 s
++        ./skill-manager --version                                                -> 14.15 s
++        /opt/homebrew/bin/skill-manager (0.27.2) home repair ... --json          -> 13.74 s; with OTEL_SDK_DISABLED=true 0.43 s
++      Graph: python skills/test_graph/scripts/run.py home-verdicts at 25b095ca,
++      untouched -> BUILD SUCCESSFUL in 18m 14s (wall 1095 s); the run's envelopes
++      (validation-reports/20260914-050417/envelope/*.json) record 50 CLI
++      processes, every one 14.1-14.3 s regardless of command, summing to 711 s.
++    disk_observation: >
++      curl -X POST -m 20 http://localhost:4318/v1/metrics (also 127.0.0.1 and
++      [::1]) -> no HTTP response, rc=28 after ~8 s. lsof -nP -iTCP:4318 ->
++      com.docker (pid 3528) LISTEN on *:4318, earlier [::1]:4318 connections
++      CLOSED. Node stderr: "! Telemetry export unavailable; continuing without
++      telemetry." and okhttp "InterruptedIOException: timeout" (exporter), not
++      "Connection refused".
++    mechanism: >
++      CliObservability (unchanged since 1519cbba, 2026-07-23) defaults
++      otel.exporter.otlp.endpoint to http://localhost:4318 when no
++      OTEL_EXPORTER_OTLP_*ENDPOINT is set, and flushAndClose force-flushes and
++      shuts down three providers under DEFAULT_FLUSH_TIMEOUT_MILLIS = 5000. A
++      REFUSED port fails fast; a port that accepts and never answers spends the
++      deadline. DEF-065 (2026-08-23) recorded the refused case. The code did not
++      change between OHV-0 (~1 min) and OHV-1 (12.5 min); what plausibly changed
++      is the machine: the disk filled, Docker became unresponsive (wave-1
++      review), and its backend kept the port. Plausible, not proven: Docker was
++      not restarted (instructed not to), so the ~1 min number cannot be
++      reproduced in the other state.
++    why_not_a_duplicate: >
++      DEF-065 is the per-NODE floor (jbang startup 5.68 s + the node SDK's
++      exporter, refused). This is the per-CLI-PROCESS cost inside a node, with a
++      hanging rather than a refusing endpoint, and it multiplies by the number of
++      CLI invocations a node makes (7 per home-verdicts shape node), which is why
++      home-verdicts grew faster than its node count. No GitHub issue matches
++      "telemetry" or "OTLP export timeout".
++    impact: >
++      Local graph iteration: home-verdicts 18 min instead of ~2-3; every graph
++      that spawns the CLI pays ~14 s per invocation locally. CI runners have no
++      listener on 4318, so they get the fast refused path (CI's graph runtimes do
++      not show this).
++    suggested_fix: >
++      Out of OHV-4's slice. Either the graph sandbox (SmEnv.apply) sets
++      OTEL_SDK_DISABLED=true (or a refused endpoint) for CLI processes unless a
++      graph opts in, or CliObservability bounds the whole export to a short
++      connect timeout. Settling experiment: restart Docker (owner decision) and
++      re-time one home repair --json; or run home-verdicts with
++      OTEL_SDK_DISABLED=true exported and compare wall time.
++    blocking: false
++    disposition: pending
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.fleet.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.fleet.json
+new file mode 100644
+index 00000000..02251d05
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.fleet.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-no-own-home-path", "metric": "(1) bin/cli entries spelling the home's own absolute path, on root and this project home, split by whether `home repair` reports them", "target": "(1) 0 on both homes", "clause_2": "measured by scripts/measure_goal_a_home_survives_being_copied.py", "value": "root 3 (computeq, helm-deploy, monitoring; 3 half-rewritten, 3 unreported by home repair); project 0", "met": false, "homes": {"root": {"home": "/Users/hayde/.skill-manager", "entries": [{"entry": "computeq", "half_rewritten": true, "shebang_only": false, "comment_only": false, "reported_by_home_repair": false}, {"entry": "helm-deploy", "half_rewritten": true, "shebang_only": false, "comment_only": false, "reported_by_home_repair": false}, {"entry": "monitoring", "half_rewritten": true, "shebang_only": false, "comment_only": false, "reported_by_home_repair": false}], "unreported": ["computeq", "helm-deploy", "monitoring"], "shebang_only_out_of_scope": [], "comment_only_not_a_reference": [], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}, "project": {"home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager", "entries": [], "unreported": [], "shebang_only_out_of_scope": [], "comment_only_not_a_reference": [], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}}, "fleet": {"homes": 61, "homes_with_own_path_bin_cli": 38, "note": "context, no threshold"}}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.fleet.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.fleet.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.json
+new file mode 100644
+index 00000000..d85f4846
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-no-own-home-path", "metric": "(1) bin/cli entries spelling the home's own absolute path, on root and this project home, split by whether `home repair` reports them", "target": "(1) 0 on both homes", "clause_2": "measured by scripts/measure_goal_a_home_survives_being_copied.py", "value": "root 3 (computeq, helm-deploy, monitoring; 3 half-rewritten, 3 unreported by home repair); project 0", "met": false, "homes": {"root": {"home": "/Users/hayde/.skill-manager", "entries": [{"entry": "computeq", "half_rewritten": true, "shebang_only": false, "comment_only": false, "reported_by_home_repair": false}, {"entry": "helm-deploy", "half_rewritten": true, "shebang_only": false, "comment_only": false, "reported_by_home_repair": false}, {"entry": "monitoring", "half_rewritten": true, "shebang_only": false, "comment_only": false, "reported_by_home_repair": false}], "unreported": ["computeq", "helm-deploy", "monitoring"], "shebang_only_out_of_scope": [], "comment_only_not_a_reference": [], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}, "project": {"home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager", "entries": [], "unreported": [], "shebang_only_out_of_scope": [], "comment_only_not_a_reference": [], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}}}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.no_own_home_path.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.survives_copied.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.survives_copied.json
+new file mode 100644
+index 00000000..48402816
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.survives_copied.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-a-home-survives-being-copied-into-an-image", "metric": "three independently checkable properties of a copied home: (a) no credential travels, (b) no bin/cli entry names the source home, (c) the copy is usable on another platform", "value": "2 of 3 over 2 home(s)", "target": "3 of 3", "met": false, "properties": {"a_no_credential_travels": {"met": true, "why": "HomeCloner.CREDENTIAL_ROOT_FILES covers the auth token", "sources_holding_a_credential": 1, "note": "a raw copy applies no product logic, so this is a property of `home clone` -- the copier an image build is told to use"}, "b_no_shim_names_the_source_home": {"met": false, "offenders": [".skill-manager:computeq", ".skill-manager:helm-deploy", ".skill-manager:monitoring"], "note": "read off the RAW copy: a frozen absolute path is what a raw copy carries, and it is not a dangling reference so nothing else reports it"}, "c_usable_on_another_platform": {"met": true, "unstamped": [], "note": "pm/ is deliberately not skipped, so the bytes travel; each version directory must be stamped with the platform that provisioned it"}}, "homes": [{"home": "/Users/hayde/.skill-manager", "source_holds_a_credential": true, "shims_naming_the_source_home": ["computeq", "helm-deploy", "monitoring"], "pm_versions": 4, "pm_versions_unstamped": []}, {"home": "/Users/hayde/IdeaProjects/wt-ohv-4/.skill-manager", "source_holds_a_credential": false, "shims_naming_the_source_home": [], "pm_versions": 2, "pm_versions_unstamped": []}], "method": "shutil.copytree(symlinks=True) -- cp -R, the way a Dockerfile COPY works, never `home clone`, whose exclusions and re-anchoring are exactly what an image build does NOT get"}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.survives_copied.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/after.survives_copied.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.no_own_home_path.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.no_own_home_path.json
+new file mode 100644
+index 00000000..a2fe99ed
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.no_own_home_path.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-no-own-home-path", "metric": "(1) bin/cli entries spelling the home's own absolute path, on root and this project home, split by whether `home repair` reports them", "target": "(1) 0 on both homes", "clause_2": "measured by scripts/measure_goal_a_home_survives_being_copied.py", "value": "root 3 (computeq, helm-deploy, monitoring; 3 half-rewritten, 3 unreported by home repair); project 0", "met": false, "homes": {"root": {"home": "/Users/hayde/.skill-manager", "entries": [{"entry": "computeq", "half_rewritten": true, "reported_by_home_repair": false}, {"entry": "helm-deploy", "half_rewritten": true, "reported_by_home_repair": false}, {"entry": "monitoring", "half_rewritten": true, "reported_by_home_repair": false}], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}, "project": {"home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager", "entries": [], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": ["! Telemetry export unavailable; continuing without telemetry."]}}}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.no_own_home_path.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.no_own_home_path.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.survives_copied.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.survives_copied.json
+new file mode 100644
+index 00000000..48402816
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.survives_copied.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-a-home-survives-being-copied-into-an-image", "metric": "three independently checkable properties of a copied home: (a) no credential travels, (b) no bin/cli entry names the source home, (c) the copy is usable on another platform", "value": "2 of 3 over 2 home(s)", "target": "3 of 3", "met": false, "properties": {"a_no_credential_travels": {"met": true, "why": "HomeCloner.CREDENTIAL_ROOT_FILES covers the auth token", "sources_holding_a_credential": 1, "note": "a raw copy applies no product logic, so this is a property of `home clone` -- the copier an image build is told to use"}, "b_no_shim_names_the_source_home": {"met": false, "offenders": [".skill-manager:computeq", ".skill-manager:helm-deploy", ".skill-manager:monitoring"], "note": "read off the RAW copy: a frozen absolute path is what a raw copy carries, and it is not a dangling reference so nothing else reports it"}, "c_usable_on_another_platform": {"met": true, "unstamped": [], "note": "pm/ is deliberately not skipped, so the bytes travel; each version directory must be stamped with the platform that provisioned it"}}, "homes": [{"home": "/Users/hayde/.skill-manager", "source_holds_a_credential": true, "shims_naming_the_source_home": ["computeq", "helm-deploy", "monitoring"], "pm_versions": 4, "pm_versions_unstamped": []}, {"home": "/Users/hayde/IdeaProjects/wt-ohv-4/.skill-manager", "source_holds_a_credential": false, "shims_naming_the_source_home": [], "pm_versions": 2, "pm_versions_unstamped": []}], "method": "shutil.copytree(symlinks=True) -- cp -R, the way a Dockerfile COPY works, never `home clone`, whose exclusions and re-anchoring are exactly what an image build does NOT get"}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.survives_copied.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/before.survives_copied.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/after-fix.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/after-fix.json
+new file mode 100644
+index 00000000..287f2e21
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/after-fix.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-no-own-home-path", "metric": "(1) bin/cli entries spelling the home's own absolute path, on root and this project home, split by whether `home repair` reports them", "target": "(1) 0 on both homes", "clause_2": "measured by scripts/measure_goal_a_home_survives_being_copied.py", "value": ".skill-manager 2 (commented, console-script; 0 half-rewritten, 0 unreported by home repair, 1 shebang-only (out of scope), 1 comment-only (not a reference))", "met": false, "homes": {".skill-manager": {"home": "<scratch>/ohv4-synth/.skill-manager", "entries": [{"entry": "commented", "half_rewritten": false, "shebang_only": false, "comment_only": true, "reported_by_home_repair": false}, {"entry": "console-script", "half_rewritten": false, "shebang_only": true, "comment_only": false, "reported_by_home_repair": false}], "unreported": [], "shebang_only_out_of_scope": ["console-script"], "comment_only_not_a_reference": ["commented"], "home_repair_rc": 0, "home_repair_findings": 0, "home_repair_stderr_tail": []}}}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/after-fix.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/after-fix.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/before-fix.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/before-fix.json
+new file mode 100644
+index 00000000..b1ea09af
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/before-fix.json
+@@ -0,0 +1 @@
++{"goal": "GOAL-no-own-home-path", "metric": "(1) bin/cli entries spelling the home's own absolute path, on root and this project home, split by whether `home repair` reports them", "target": "(1) 0 on both homes", "clause_2": "measured by scripts/measure_goal_a_home_survives_being_copied.py", "value": ".skill-manager 3 (commented, computeq, console-script; 1 half-rewritten, 0 unreported by home repair, 1 shebang-only (out of scope), 1 comment-only (not a reference))", "met": false, "homes": {".skill-manager": {"home": "<scratch>/ohv4-synth/.skill-manager", "entries": [{"entry": "commented", "half_rewritten": false, "shebang_only": false, "comment_only": true, "reported_by_home_repair": false}, {"entry": "computeq", "half_rewritten": true, "shebang_only": false, "comment_only": false, "reported_by_home_repair": true}, {"entry": "console-script", "half_rewritten": false, "shebang_only": true, "comment_only": false, "reported_by_home_repair": false}], "unreported": [], "shebang_only_out_of_scope": ["console-script"], "comment_only_not_a_reference": ["commented"], "home_repair_rc": 1, "home_repair_findings": 1, "home_repair_stderr_tail": []}}}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/before-fix.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/before-fix.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/commented.before b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/commented.before
+new file mode 100755
+index 00000000..3395cf39
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/commented.before
+@@ -0,0 +1,3 @@
++#!/usr/bin/env bash
++# generated for <scratch>/ohv4-synth/.skill-manager/skills/acme
++exec true "$@"
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/computeq.after-fix b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/computeq.after-fix
+new file mode 100755
+index 00000000..86878ff9
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/computeq.after-fix
+@@ -0,0 +1,6 @@
++#!/usr/bin/env bash
++# Rewritten by skill-manager: resolve the home this shim is standing in
++# rather than the one it was written into, so a copy of the home works.
++SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
++export MONITORING_DEPLOY_CDC_ROOT="${SKILL_MANAGER_SHIM_HOME}/skills/deploy-helm"
++exec "${SKILL_MANAGER_SHIM_HOME}/cache/skill-script-deploy-helm-computeq/venv/bin/computeq" "$@"
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix-again.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix-again.json
+new file mode 100644
+index 00000000..ed92390d
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix-again.json
+@@ -0,0 +1 @@
++{"home":"<scratch>/ohv4-synth/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":9,"clean":true,"findings":[],"repaired":0,"failed":0,"wasDamaged":false}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix-again.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix-again.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix.json
+new file mode 100644
+index 00000000..1bd30ed8
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix.json
+@@ -0,0 +1 @@
++{"home":"<scratch>/ohv4-synth/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":9,"clean":true,"findings":[],"repaired":1,"failed":0,"wasDamaged":true}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/fix.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-after-fix.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-after-fix.json
+new file mode 100644
+index 00000000..a92ff7e2
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-after-fix.json
+@@ -0,0 +1 @@
++{"home":"<scratch>/ohv4-synth/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":9,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-after-fix.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-after-fix.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-before-fix.json b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-before-fix.json
+new file mode 100644
+index 00000000..f4fdde5c
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-before-fix.json
+@@ -0,0 +1 @@
++{"home":"<scratch>/ohv4-synth/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":9,"clean":false,"findings":[{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/computeq","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-before-fix.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/repair-before-fix.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/summary.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/summary.txt
+new file mode 100644
+index 00000000..4f78e3cc
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/summary.txt
+@@ -0,0 +1,11 @@
++harness-before rc=1
++verify-before rc=1
++repair-before rc=1
++fix rc=0
++fix-again rc=0
++repair-after rc=0
++verify-after rc=0
++commented byte-identical after --fix: yes
++computeq-ran
++computeq runs rc=0
++harness-after rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/verify-after-fix.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/verify-after-fix.txt
+new file mode 100644
+index 00000000..ee6a44d8
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/verify-after-fix.txt
+@@ -0,0 +1,5 @@
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in <scratch>/ohv4-synth/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++`home repair` finds no damage in <scratch>/ohv4-synth/.skill-manager (9 entries examined)
++✓ every reference in <scratch>/ohv4-synth/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-015020-3c36.log
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/verify-before-fix.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/verify-before-fix.txt
+new file mode 100644
+index 00000000..90a0159f
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/harness/synthetic/verify-before-fix.txt
+@@ -0,0 +1,7 @@
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in <scratch>/ohv4-synth/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++✗ 1 finding(s) `home repair` reports in <scratch>/ohv4-synth/.skill-manager, of 9 entries examined — each is damage, and this check fails on it
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/computeq — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   1 of these: complete it with: env SKILL_MANAGER_HOME=<scratch>/ohv4-synth/.skill-manager CLAUDE_CONFIG_DIR=<scratch>/ohv4-synth/.claude CODEX_HOME=<scratch>/ohv4-synth/.codex GEMINI_HOME=<scratch>/ohv4-synth/.gemini SKILL_MANAGER_CONFINE_ROOT=<scratch>/ohv4-synth <scratch>/ohv4-synth/.skill-manager/bin/cli/skill-manager home repair --home <scratch>/ohv4-synth/.skill-manager --fix, then re-run this check
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-015015-f33b.log
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.repair.json
+new file mode 100644
+index 00000000..c83716b7
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":138,"clean":false,"findings":[{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/computeq","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/helm-deploy","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/monitoring","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tla-spec-dev","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tracing-observability-install","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/vision-toolbelt","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/node/22.9.0","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/uv/0.4.18","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.repair.stderr.txt
+new file mode 100644
+index 00000000..950e1a05
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.repair.stderr.txt
+@@ -0,0 +1,9 @@
++! skills with outstanding errors (2) — 2 distinct cause(s) — re-run after fixing:
++✗   andrej-karpathy-skills:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "andrej-karpathy-skills@skill-manager-88340088": Plugin "andrej-karpathy-skills" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-...
++✗       → retry: skill-manager sync andrej-karpathy-skills (will re-attempt the agent symlink)
++✗   skt:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "skt@skill-manager-88340088": Plugin "skt" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-manager-88340088`.
++✗       → retry: skill-manager sync skt (will re-attempt the agent symlink)
++! Telemetry export unavailable; continuing without telemetry.
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.verify.txt
+new file mode 100644
+index 00000000..97fc72fc
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/meta-orchestrator.verify.txt
+@@ -0,0 +1,30 @@
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++✗ 8 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager, of 138 entries examined — each is damage, and this check fails on it
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/computeq — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/helm-deploy — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/monitoring — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/tla-spec-dev — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/tracing-observability-install — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/vision-toolbelt — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   UNSTAMPED_PM_TREE pm/node/22.9.0 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
++✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
++✗   UNSTAMPED_PM_TREE pm/uv/0.4.18 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
++✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
++✗   8 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/meta-orchestrator/.claude CODEX_HOME=/Users/hayde/IdeaProjects/meta-orchestrator/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/meta-orchestrator/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/meta-orchestrator /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager --fix, then re-run this check
++! skills with outstanding errors (2) — 2 distinct cause(s) — re-run after fixing:
++✗   andrej-karpathy-skills:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "andrej-karpathy-skills@skill-manager-88340088": Plugin "andrej-karpathy-skills" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-...
++✗       → retry: skill-manager sync andrej-karpathy-skills (will re-attempt the agent symlink)
++✗   skt:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "skt@skill-manager-88340088": Plugin "skt" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-manager-88340088`.
++✗       → retry: skill-manager sync skt (will re-attempt the agent symlink)
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-015010-8e99.log
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.repair.json
+new file mode 100644
+index 00000000..d111d8f8
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/skill-manager/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":75,"clean":false,"findings":[{"kind":"DANGLING_AGENT_LINK","subject":".claude/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"DANGLING_AGENT_LINK","subject":".codex/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"DANGLING_AGENT_LINK","subject":".gemini/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"ORPHANED_PROJECTION_RECORD","subject":"installed/skill-manager.projections.json","detail":"records 3 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it","repair":"skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.repair.stderr.txt
+new file mode 100644
+index 00000000..7562e653
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.repair.stderr.txt
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.verify.txt
+new file mode 100644
+index 00000000..8e078404
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/project.verify.txt
+@@ -0,0 +1,17 @@
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
++    bin/cli/tlc2 -> /Users/hayde/.skill-manager
++✗ 4 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/skill-manager/.skill-manager, of 75 entries examined — each is damage, and this check fails on it
++✗   DANGLING_AGENT_LINK .claude/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   DANGLING_AGENT_LINK .codex/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   DANGLING_AGENT_LINK .gemini/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   ORPHANED_PROJECTION_RECORD installed/skill-manager.projections.json — records 3 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it
++✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
++✗   4 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/skill-manager/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/skill-manager/.claude CODEX_HOME=/Users/hayde/IdeaProjects/skill-manager/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/skill-manager/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/skill-manager /Users/hayde/IdeaProjects/skill-manager/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager --fix, then re-run this check
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-014931-f9e4.log
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.repair.json
+new file mode 100644
+index 00000000..15047789
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":310,"clean":false,"findings":[{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/computeq","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/helm-deploy","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/monitoring","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.repair.stderr.txt
+new file mode 100644
+index 00000000..7562e653
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.repair.stderr.txt
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.verify.txt
+new file mode 100644
+index 00000000..f573e732
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/root.verify.txt
+@@ -0,0 +1,16 @@
++[jbang] Building jar for SkillManager.java...
++Note: /Users/hayde/IdeaProjects/wt-ohv-4/src/main/java/dev/skillmanager/mcp/GatewayClient.java uses or overrides a deprecated API.
++Note: Recompile with -Xlint:deprecation for details.
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++✗ 3 finding(s) `home repair` reports in /Users/hayde/.skill-manager, of 310 entries examined — each is damage, and this check fails on it
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/computeq — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/helm-deploy — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/monitoring — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   3 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/.claude CODEX_HOME=/Users/hayde/.codex GEMINI_HOME=/Users/hayde/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde /Users/hayde/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/.skill-manager --fix, then re-run this check
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-014845-b88a.log
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/version.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/version.txt
+new file mode 100644
+index 00000000..e8e08c32
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/after-raw-build/version.txt
+@@ -0,0 +1,4 @@
++skill-manager 0.27.2+g25b095ca8f7b
++build:  25b095ca8f7b (refs/heads/feature/OHV-4)
++cli:    /Users/hayde/IdeaProjects/wt-ohv-4/skill-manager
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.repair.json
+new file mode 100644
+index 00000000..c83716b7
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":138,"clean":false,"findings":[{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/computeq","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/helm-deploy","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/monitoring","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tla-spec-dev","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tracing-observability-install","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/vision-toolbelt","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/node/22.9.0","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/uv/0.4.18","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.repair.stderr.txt
+new file mode 100644
+index 00000000..950e1a05
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.repair.stderr.txt
+@@ -0,0 +1,9 @@
++! skills with outstanding errors (2) — 2 distinct cause(s) — re-run after fixing:
++✗   andrej-karpathy-skills:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "andrej-karpathy-skills@skill-manager-88340088": Plugin "andrej-karpathy-skills" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-...
++✗       → retry: skill-manager sync andrej-karpathy-skills (will re-attempt the agent symlink)
++✗   skt:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "skt@skill-manager-88340088": Plugin "skt" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-manager-88340088`.
++✗       → retry: skill-manager sync skt (will re-attempt the agent symlink)
++! Telemetry export unavailable; continuing without telemetry.
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.verify.txt
+new file mode 100644
+index 00000000..ffdb5fcb
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/meta-orchestrator.verify.txt
+@@ -0,0 +1,30 @@
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++✗ 8 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager, of 138 entries examined — each is damage, and this check fails on it
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/computeq — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/helm-deploy — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/monitoring — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/tla-spec-dev — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/tracing-observability-install — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/vision-toolbelt — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   UNSTAMPED_PM_TREE pm/node/22.9.0 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
++✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
++✗   UNSTAMPED_PM_TREE pm/uv/0.4.18 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
++✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
++✗   8 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/meta-orchestrator/.claude CODEX_HOME=/Users/hayde/IdeaProjects/meta-orchestrator/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/meta-orchestrator/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/meta-orchestrator /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager --fix, then re-run this check
++! skills with outstanding errors (2) — 2 distinct cause(s) — re-run after fixing:
++✗   andrej-karpathy-skills:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "andrej-karpathy-skills@skill-manager-88340088": Plugin "andrej-karpathy-skills" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-...
++✗       → retry: skill-manager sync andrej-karpathy-skills (will re-attempt the agent symlink)
++✗   skt:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "skt@skill-manager-88340088": Plugin "skt" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-manager-88340088`.
++✗       → retry: skill-manager sync skt (will re-attempt the agent symlink)
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-012526-f5f5.log
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.repair.json
+new file mode 100644
+index 00000000..d111d8f8
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/skill-manager/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":75,"clean":false,"findings":[{"kind":"DANGLING_AGENT_LINK","subject":".claude/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"DANGLING_AGENT_LINK","subject":".codex/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"DANGLING_AGENT_LINK","subject":".gemini/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"ORPHANED_PROJECTION_RECORD","subject":"installed/skill-manager.projections.json","detail":"records 3 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it","repair":"skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.repair.stderr.txt
+new file mode 100644
+index 00000000..7562e653
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.repair.stderr.txt
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.verify.txt
+new file mode 100644
+index 00000000..99c01062
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/project.verify.txt
+@@ -0,0 +1,17 @@
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
++    bin/cli/tlc2 -> /Users/hayde/.skill-manager
++✗ 4 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/skill-manager/.skill-manager, of 75 entries examined — each is damage, and this check fails on it
++✗   DANGLING_AGENT_LINK .claude/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   DANGLING_AGENT_LINK .codex/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   DANGLING_AGENT_LINK .gemini/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   ORPHANED_PROJECTION_RECORD installed/skill-manager.projections.json — records 3 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it
++✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
++✗   4 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/skill-manager/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/skill-manager/.claude CODEX_HOME=/Users/hayde/IdeaProjects/skill-manager/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/skill-manager/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/skill-manager /Users/hayde/IdeaProjects/skill-manager/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager --fix, then re-run this check
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-012448-ecd6.log
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.repair.json
+new file mode 100644
+index 00000000..48a34119
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":310,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.repair.stderr.txt
+new file mode 100644
+index 00000000..e08e6cef
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.repair.stderr.txt
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.verify.txt
+new file mode 100644
+index 00000000..b0c1a64c
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/root.verify.txt
+@@ -0,0 +1,7 @@
++build: skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++`home repair` finds no damage in /Users/hayde/.skill-manager (310 entries examined)
++✓ every reference in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-012403-78b2.log
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/version.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/version.txt
+new file mode 100644
+index 00000000..e8e08c32
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-raw-build/version.txt
+@@ -0,0 +1,4 @@
++skill-manager 0.27.2+g25b095ca8f7b
++build:  25b095ca8f7b (refs/heads/feature/OHV-4)
++cli:    /Users/hayde/IdeaProjects/wt-ohv-4/skill-manager
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.repair.json
+new file mode 100644
+index 00000000..8b886e8e
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager","examined":73,"clean":false,"findings":[{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/computeq","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/helm-deploy","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/monitoring","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tla-spec-dev","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tracing-observability-install","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/vision-toolbelt","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/node/22.9.0","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/uv/0.4.18","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.repair.stderr.txt
+new file mode 100644
+index 00000000..950e1a05
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.repair.stderr.txt
+@@ -0,0 +1,9 @@
++! skills with outstanding errors (2) — 2 distinct cause(s) — re-run after fixing:
++✗   andrej-karpathy-skills:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "andrej-karpathy-skills@skill-manager-88340088": Plugin "andrej-karpathy-skills" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-...
++✗       → retry: skill-manager sync andrej-karpathy-skills (will re-attempt the agent symlink)
++✗   skt:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "skt@skill-manager-88340088": Plugin "skt" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-manager-88340088`.
++✗       → retry: skill-manager sync skt (will re-attempt the agent symlink)
++! Telemetry export unavailable; continuing without telemetry.
++rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.verify.txt
+new file mode 100644
+index 00000000..bdfee7fe
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/meta-orchestrator.verify.txt
+@@ -0,0 +1,12 @@
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++✓ every reference in /Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
++! skills with outstanding errors (2) — 2 distinct cause(s) — re-run after fixing:
++✗   andrej-karpathy-skills:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "andrej-karpathy-skills@skill-manager-88340088": Plugin "andrej-karpathy-skills" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-...
++✗       → retry: skill-manager sync andrej-karpathy-skills (will re-attempt the agent symlink)
++✗   skt:
++✗     - AGENT_SYNC_FAILED: claude plugin install: ✘ Failed to install plugin "skt@skill-manager-88340088": Plugin "skt" not found in marketplace "skill-manager-88340088". Your local copy may be out of date — try `claude plugin marketplace update skill-manager-88340088`.
++✗       → retry: skill-manager sync skt (will re-attempt the agent symlink)
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-010722-6e55.log
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.repair.json
+new file mode 100644
+index 00000000..7b2f788b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/skill-manager/.skill-manager","examined":43,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.repair.stderr.txt
+new file mode 100644
+index 00000000..e08e6cef
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.repair.stderr.txt
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.verify.txt
+new file mode 100644
+index 00000000..907420df
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/project.verify.txt
+@@ -0,0 +1,7 @@
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
++    bin/cli/tlc2 -> /Users/hayde/.skill-manager
++✓ every reference in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 1 sanctioned parent-store shim(s) above (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-010645-fa37.log
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.repair.json
+new file mode 100644
+index 00000000..bab6ed08
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/.skill-manager","examined":78,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.repair.stderr.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.repair.stderr.txt
+new file mode 100644
+index 00000000..e08e6cef
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.repair.stderr.txt
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.verify.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.verify.txt
+new file mode 100644
+index 00000000..b273fb88
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/root.verify.txt
+@@ -0,0 +1,5 @@
++! Telemetry export unavailable; continuing without telemetry.
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++✓ every reference in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-010600-9ffc.log
++rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/version.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/version.txt
+new file mode 100644
+index 00000000..cd69305c
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/real-homes/before-released/version.txt
+@@ -0,0 +1,4 @@
++skill-manager 0.27.2
++build:  artifact 862d3a4c6017 built 2026-09-13T17:38:37Z (skill-manager.jar)
++cli:    /opt/homebrew/Cellar/skill-manager/0.27.2/libexec/bin/skill-manager
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/raw-version.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/raw-version.txt
+new file mode 100644
+index 00000000..e8e08c32
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/raw-version.txt
+@@ -0,0 +1,4 @@
++skill-manager 0.27.2+g25b095ca8f7b
++build:  25b095ca8f7b (refs/heads/feature/OHV-4)
++cli:    /Users/hayde/IdeaProjects/wt-ohv-4/skill-manager
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-default.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-default.stderr
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-default.stderr
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-default.stdout b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-default.stdout
+new file mode 100644
+index 00000000..937f6208
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-default.stdout
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv4-timing-home/.skill-manager","examined":0,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-otel-disabled.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-otel-disabled.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-otel-disabled.stdout b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-otel-disabled.stdout
+new file mode 100644
+index 00000000..937f6208
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/released-repair-otel-disabled.stdout
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv4-timing-home/.skill-manager","examined":0,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-1.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-1.stderr
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-1.stderr
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-1.stdout b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-1.stdout
+new file mode 100644
+index 00000000..b751a4f3
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-1.stdout
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv4-timing-home/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":0,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-2.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-2.stderr
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-2.stderr
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-2.stdout b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-2.stdout
+new file mode 100644
+index 00000000..b751a4f3
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-default-2.stdout
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv4-timing-home/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":0,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-1.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-1.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-1.stdout b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-1.stdout
+new file mode 100644
+index 00000000..b751a4f3
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-1.stdout
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv4-timing-home/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":0,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-2.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-2.stderr
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-2.stdout b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-2.stdout
+new file mode 100644
+index 00000000..b751a4f3
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/repair-otel-disabled-2.stdout
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv4-timing-home/.skill-manager","build":"skill-manager 0.27.2+g25b095ca8f7b @ 25b095ca8f7b (refs/heads/feature/OHV-4)","examined":0,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/timings.txt b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/timings.txt
+new file mode 100644
+index 00000000..39c7e5d9
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/timings.txt
+@@ -0,0 +1,9 @@
++repair-default-1 rc=0 seconds=14.24
++repair-default-2 rc=0 seconds=14.20
++repair-otel-disabled-1 rc=0 seconds=0.95
++repair-otel-disabled-2 rc=0 seconds=0.96
++version-default rc=0 seconds=14.15
++released-repair-default rc=0 seconds=13.74
++released-repair-otel-disabled rc=0 seconds=0.43
++TIMING-DONE
++BEFORE-RAW-DONE
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/version-default.stderr b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/version-default.stderr
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/version-default.stderr
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-4/timing/version-default.stdout b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/version-default.stdout
+new file mode 100644
+index 00000000..7462e640
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-4/timing/version-default.stdout
+@@ -0,0 +1,3 @@
++skill-manager 0.27.2+g25b095ca8f7b
++build:  25b095ca8f7b (refs/heads/feature/OHV-4)
++cli:    /Users/hayde/IdeaProjects/wt-ohv-4/skill-manager
+diff --git a/scripts/measure_goal_no_own_home_path.py b/scripts/measure_goal_no_own_home_path.py
+index eb025235..fd261225 100644
+--- a/scripts/measure_goal_no_own_home_path.py
++++ b/scripts/measure_goal_no_own_home_path.py
+@@ -53,6 +53,21 @@ def main() -> int:
+     per_home, parts, total = {}, [], 0
+     for label, home in homes:
+         entries = obs.bin_cli_own_path_entries(home)
++        # OHV-4 (#341): an entry that names the home ONLY in its first-line
++        # shebang (a venv-internal `#!<home>/venvs/.../python` entrypoint) is a
++        # deliberately-unreported shape -- `home repair` does not report it and
++        # --fix cannot rewrite it, because the kernel reads a shebang literally
++        # and it cannot hold a token. Counted, and kept OUT of "unreported", so
++        # that population never reads as a detector gap.
++        # Likewise an entry that spells the home only in `#` comment lines
++        # (possibly plus the shebang): prose about a path is not a reference to
++        # one, so the detector does not read comments (#341 "Watch for") and
++        # --fix leaves such a shim byte-identical.
++        sp = obs.spellings(home)
++        for e in entries:
++            where = _where_spelled(home / "bin" / "cli" / e["entry"], sp)
++            e["shebang_only"] = where == "shebang"
++            e["comment_only"] = where == "comment"
+         rep = obs.repair_report(home)
+         doc = rep["doc"]
+         reported = None
+@@ -64,8 +79,15 @@ def main() -> int:
+                                             else f"bin/cli/{e['entry']}" in reported)
+         total += len(entries)
+         half = [e["entry"] for e in entries if e["half_rewritten"]]
+-        unreported = [e["entry"] for e in entries if e["reported_by_home_repair"] is False]
++        shebang_only = [e["entry"] for e in entries if e["shebang_only"]]
++        comment_only = [e["entry"] for e in entries if e["comment_only"]]
++        unreported = [e["entry"] for e in entries
++                      if e["reported_by_home_repair"] is False
++                      and not e["shebang_only"] and not e["comment_only"]]
+         per_home[label] = {"home": str(home), "entries": entries,
++                           "unreported": unreported,
++                           "shebang_only_out_of_scope": shebang_only,
++                           "comment_only_not_a_reference": comment_only,
+                            "home_repair_rc": rep["rc"],
+                            "home_repair_findings": (len(doc.get("findings", []))
+                                                     if isinstance(doc, dict) else None),
+@@ -74,7 +96,10 @@ def main() -> int:
+         if entries:
+             detail = (f" ({', '.join(e['entry'] for e in entries)}; {len(half)} half-rewritten, "
+                       + (f"{len(unreported)} unreported by home repair" if reported is not None
+-                         else "home repair unreadable") + ")")
++                         else "home repair unreadable")
++                      + (f", {len(shebang_only)} shebang-only (out of scope)" if shebang_only else "")
++                      + (f", {len(comment_only)} comment-only (not a reference)" if comment_only else "")
++                      + ")")
+         parts.append(f"{label} {len(entries)}{detail}")
+ 
+     payload["value"] = "; ".join(parts)
+@@ -88,5 +113,28 @@ def main() -> int:
+     return obs.emit(payload, unmeasured=False)
+ 
+ 
++def _where_spelled(path: Path, spellings):
++    """Where the home is spelled, when not on a line that runs.
++
++    "shebang" -- only on the first-line shebang; "comment" -- only on `#`
++    comment lines (with or without the shebang); None -- on at least one line
++    that is neither, i.e. a line `home repair` is expected to report.
++    """
++    text = obs.is_text(path)
++    if text is None:
++        return None
++    lines = text.split("\n")
++    shebang = lines[0] if lines and lines[0].startswith("#!") else None
++    body = lines[1:] if shebang is not None else lines
++    in_shebang = shebang is not None and any(s in shebang for s in spellings)
++    in_comment = any(l.lstrip().startswith("#") and any(s in l for s in spellings) for l in body)
++    in_running = any(not l.lstrip().startswith("#") and any(s in l for s in spellings) for l in body)
++    if in_running:
++        return None
++    if in_comment:
++        return "comment"
++    return "shebang" if in_shebang else None
++
++
+ if __name__ == "__main__":
+     sys.exit(main())
+diff --git a/specs/epics/one-home-one-verdict/ticket_plan.yaml b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+index 4066f0b8..a0a6ba2f 100644
+--- a/specs/epics/one-home-one-verdict/ticket_plan.yaml
++++ b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+@@ -26,15 +26,34 @@
+ #     and test-graph work the owner asked for. Recorded as DEF-OHV-009.
+ #   - review_policy: artifact per wave, no stop until finalization (owner,
+ #     2026-09-13). Graphs stay suspended on push/PR (owner, 2026-09-13).
++#
++# AMENDMENT, schedule_revision 3, 2026-09-14, owner decisions after wave 2,
++# answering the four questions the wave-1 and wave-2 reviews carried forward:
++#   - GOAL-one-record clause (1) is RESCOPED. The kickoff's "0 missing outputs,
++#     0 ledger-only rows" counted two kinds of row no prune can or should reap:
++#     CLI shims an installed unit declares but PATH satisfies (DEF-OHV-130), and
++#     projection rows left by removals before OHV-3, whose agent-side links
++#     nothing can prove gone (DEF-OHV-131). Clause (1) now counts only rows whose
++#     owner is gone AND whose outputs are gone -- what OHV-3 made provable -- plus
++#     ledger-only rows produced by a removal after OHV-3. The kickoff reading is
++#     kept verbatim in the baseline; both findings become issues at finalization.
++#   - skt#46 (the `skt check` build stamp) merges and releases at finalization,
++#     together with the epic PR; GOAL-verdict-names-its-build is measured on the
++#     released pair.
++#   - the owner approved `home repair --fix` on the root home with the OHV-4
++#     build (run by the epic agent, backups taken) and restarted the machine,
++#     which cleared the hung Docker backend behind DEF-OHV-140.
++# Only OHV-8's assignment carries the changed goal text and is undelivered;
++# it moves to schedule_revision 3. Delivered tickets keep revision 2.
+ version: 1
+-schedule_revision: 2
++schedule_revision: 3
+ name: one-home-one-verdict
+ slug: one-home-one-verdict
+ branch: epic/one-home-one-verdict
+ base: "71c5146489fea3283e9df81dba311f53f4169c9e"
+ repository: haydenrear/skill-manager
+ ticket_prefix: OHV
+-updated: "2026-09-13"
++updated: "2026-09-14"
+ spec_workflow:
+   state: none
+   decided: "2026-09-13, owner, schedule_revision 2: dropped with the refactors"
+@@ -137,16 +156,19 @@ epic_goals:
+     evaluation_ticket: OHV-8
+     statement: "The census names nothing the disk does not hold, a prune stays pruned, and an installed record agrees with its checkout."
+     metric: >
+-      (1) census outputs missing on disk (independent stat) plus ledger-only
+-      rows, on root and this project home after a prune; (2) rows a prune drops
+-      that the re-record restores; (3) installed records whose version disagrees
+-      with the checkout's manifest while the hash agrees.
++      (1) AMENDED at schedule_revision 3: census rows whose owner is gone and
++      whose outputs are gone (independent stat), plus ledger-only rows produced
++      by a removal after OHV-3, on root and this project home after a prune --
++      excluding PATH-served declared shims (DEF-OHV-130) and pre-OHV-3
++      projection rows (DEF-OHV-131), which are counted and reported separately;
++      (2) rows a prune drops that the re-record restores; (3) installed records
++      whose version disagrees with the checkout's manifest while the hash agrees.
+     harness: "python3 scripts/release_regression.py; python skills/test_graph/scripts/run.py artifact-dag; python3 scripts/measure_goal_one_record.py (OHV-0)"
+     baseline:
+-      value: "(1) root 15 missing + 14 ledger-only; project 7 + 0. (2) fixpoint: 59 before, 59 after (#292). (3) root 5, project 1"
++      value: "(1) as measured at kickoff under the original definition: root 15 missing + 14 ledger-only; project 7 + 0. Under the schedule_revision-3 definition: unmeasured at kickoff -- OHV-3 found all 7 project rows are PATH-served shims (DEF-OHV-130) and the 14 root ledger-only rows pre-date OHV-3 (DEF-OHV-131). (2) fixpoint: 59 before, 59 after (#292). (3) root 5, project 1"
+       measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
+       evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/release_regression.json
+-    target: "(1) 0 and 0 on both homes; (2) 0; (3) 0"
++    target: "(1) 0 on both homes under the schedule_revision-3 definition, with the DEF-OHV-130/131 rows reported as separate counts; (2) 0; (3) 0"
+ 
+   - id: GOAL-no-own-home-path
+     kind: quality
+@@ -486,7 +508,7 @@ tickets:
+   - id: OHV-4
+     github_issue: https://github.com/haydenrear/skill-manager/issues/341
+     title: "A shim never spells its own home, and a half-rewritten one is reported"
+-    status: planned
++    status: closed
+     role: implementation
+     schedule_revision: 2
+     amended_at_revision_2: >
+@@ -576,7 +598,7 @@ tickets:
+     status: planned
+     role: evaluation
+     owns_goals: ["GOAL-one-verdict", "GOAL-one-record", "GOAL-no-own-home-path", "GOAL-one-marketplace-identity", "GOAL-ci-green-fresh-runner", "GOAL-verdict-names-its-build"]
+-    schedule_revision: 2
++    schedule_revision: 3
+     wave: 5
+     depends_on: ["OHV-0", "OHV-1", "OHV-2", "OHV-3", "OHV-4", "OHV-5", "OHV-6", "OHV-7"]
+     blocks: []
+diff --git a/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java b/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
+index c0314796..e7f57a22 100644
+--- a/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
++++ b/src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
+@@ -311,9 +311,15 @@ public final class SkillScriptBackend implements InstallerBackend {
+             if (was != null && was.equals(now.getValue())) continue;
+             Path shim = bin.resolve(now.getKey());
+             if (Files.isSymbolicLink(shim) || !Files.isRegularFile(shim)) continue;
++            // OHV-4 (#341): gated on what the REWRITE can re-anchor (every line
++            // after the shebang, comments included), so a shim the installer
++            // wrote with the token on one line and this home spelled literally
++            // on its exec line is re-anchored HERE, at write time, instead of
++            // surviving as the half-rewritten shape DEF-OHV-001 measured on the
++            // root home. `frozen` is the DETECTOR's answer (what home repair
++            // would report: comment lines excluded) and only it is warned on.
+             List<String> frozen = dev.skillmanager.store.ShimHomeContract
+-                    .frozenHomePaths(store.root(), shim);
+-            if (frozen.isEmpty()) continue;
++                    .frozenHomeLines(store.root(), shim);
+ 
+             // FIX IT, don't only name it. The installer that wrote this shim
+             // is the unit's own and is not ours to change; the FILE is, and
+@@ -322,6 +328,7 @@ public final class SkillScriptBackend implements InstallerBackend {
+             // See ShimHomeContract.selfDerivingRewrite for what it refuses.
+             String rewritten = dev.skillmanager.store.ShimHomeContract
+                     .selfDerivingRewrite(store.root(), shim);
++            if (rewritten == null && frozen.isEmpty()) continue;
+             if (rewritten != null) {
+                 try {
+                     // Preserve the stamp: binStamps() uses mtime to decide
+@@ -341,6 +348,9 @@ public final class SkillScriptBackend implements InstallerBackend {
+                             + "instead", now.getKey(), io.getMessage());
+                 }
+             }
++            // Only what `home repair` would report: a comment-only spelling
++            // the rewrite could not write is prose, not a freeze.
++            if (frozen.isEmpty()) continue;
+             Log.warn("cli: skill-script %s wrote bin/cli/%s with this home's absolute path "
+                             + "baked in (%s). %s — copy that shim into another home and it "
+                             + "will still run THIS one's copy. Derive the home from the shim's "
+diff --git a/src/main/java/dev/skillmanager/store/HomeRepair.java b/src/main/java/dev/skillmanager/store/HomeRepair.java
+index 26b25fea..ffa45442 100644
+--- a/src/main/java/dev/skillmanager/store/HomeRepair.java
++++ b/src/main/java/dev/skillmanager/store/HomeRepair.java
+@@ -184,6 +184,16 @@ public final class HomeRepair {
+          * {@link ShimHomeContract#selfDerivingRewrite} the installer applies,
+          * it costs the shim nothing where it stands, and it refuses any shim
+          * whose shape it cannot rewrite rather than guessing.
++         *
++         * <p><b>Detected on CONTENT since OHV-4 (#341, DEF-OHV-001)</b>, by
++         * {@link ShimHomeContract#frozenHomeLines}: any literal spelling of
++         * this home on a line that runs, whether or not a rewrite is on offer.
++         * It used to be reported only when the rewrite still had something to
++         * offer, which exempted the HALF-rewritten shim (token in the export
++         * line, home literal in the exec line) the root home carried. A shape
++         * the rewrite refuses is now reported with {@code repairable=false}.
++         * A venv-internal shebang ({@code #!<home>/venvs/.../python}) is
++         * deliberately NOT reported; {@code frozenHomeLines} says why.
+          */
+         FROZEN_HOME_PATH_IN_SHIM,
+ 
+@@ -1177,11 +1187,15 @@ public final class HomeRepair {
+     /**
+      * DEF-OUN-018, half one: shims that name THIS home absolutely.
+      *
+-     * <p>Read with the same {@link ShimHomeContract} the installer uses, so a
+-     * shape it declines to rewrite is a shape this declines to report — a
+-     * finding nothing can act on is noise, and this class already carries one
+-     * of those on purpose ({@code bin/cli} as a directory link) with the
+-     * reason written down.
++     * <p>OHV-4 (#341, DEF-OHV-001): reported on what the shim SAYS
++     * ({@link ShimHomeContract#frozenHomeLines}), not on whether
++     * {@link ShimHomeContract#selfDerivingRewrite} has a rewrite to offer. The
++     * old gate ("only report what can be rewritten") is exactly what exempted
++     * the half-rewritten shim: the rewriter declined it because it already held
++     * the token, so the detector declined to report it, and verify and repair
++     * both called the root home clean over three shims a copied home would run
++     * from the source host's path. Whether the finding is repairable is now a
++     * separate question, answered on the finding.
+      */
+     private static int scanFrozenShims(Path store, List<Finding> findings) {
+         int examined = 0;
+@@ -1192,19 +1206,20 @@ public final class HomeRepair {
+                 for (Path shim : entries.sorted().toList()) {
+                     if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) continue;
+                     examined++;
+-                    if (ShimHomeContract.frozenHomePaths(store, shim).isEmpty()) continue;
+-                    // Only report what can actually be rewritten. The contract
+-                    // refuses a shape it does not understand rather than
+-                    // half-rewriting it, and so does this.
+-                    if (ShimHomeContract.selfDerivingRewrite(store, shim) == null) continue;
++                    if (ShimHomeContract.frozenHomeLines(store, shim).isEmpty()) continue;
++                    boolean rewritable = ShimHomeContract.selfDerivingRewrite(store, shim) != null;
+                     String rel = store.relativize(shim).toString();
+                     findings.add(new Finding(Kind.FROZEN_HOME_PATH_IN_SHIM, rel,
+                             "names this home by absolute path, so it runs the home it was "
+                                     + "WRITTEN in rather than the one it is standing in — "
+                                     + "correct here, wrong the moment this home is copied",
+-                            "skill-manager home repair --fix (or `sync <unit> "
+-                                    + "--force-scripts`, which rewrites it on the way past)",
+-                            true, shim));
++                            rewritable
++                                    ? "skill-manager home repair --fix (or `sync <unit> "
++                                            + "--force-scripts`, which rewrites it on the way past)"
++                                    : "not a shell script `home repair --fix` can rewrite: derive "
++                                            + "the home from the shim's own location on that line, "
++                                            + "or reinstall the unit that wrote it",
++                            rewritable, shim));
+                 }
+             } catch (IOException ignored) {
+                 // A directory that cannot be listed is another kind's subject.
+diff --git a/src/main/java/dev/skillmanager/store/ShimHomeContract.java b/src/main/java/dev/skillmanager/store/ShimHomeContract.java
+index 02b864b9..cd30420f 100644
+--- a/src/main/java/dev/skillmanager/store/ShimHomeContract.java
++++ b/src/main/java/dev/skillmanager/store/ShimHomeContract.java
+@@ -247,26 +247,63 @@ public final class ShimHomeContract {
+      * <p>Returns null unless the file is a text shell script with a shebang.
+      * A compiled launcher, a Python console script with a frozen interpreter
+      * shebang, anything not obviously a shell body — those are reported by
+-     * {@link #frozenHomePaths} and left alone. Half-rewriting a file whose
+-     * shape is not understood is worse than the freeze.
++     * {@link #frozenHomeLines} where they spell the home on a line that runs,
++     * and left alone. Half-rewriting a file whose shape is not understood is
++     * worse than the freeze.
++     *
++     * <h2>A shim that already holds the token is NOT "already rewritten" (OHV-4)</h2>
++     *
++     * <p>This used to return null for any body containing
++     * {@link #SHIM_HOME_VAR}. That produced DEF-OHV-001, measured on the root
++     * home: {@code bin/cli/computeq}, {@code helm-deploy} and {@code monitoring}
++     * carried this preamble and a token-derived {@code export} line, and an
++     * {@code exec "/Users/.../.skill-manager/cache/skill-script-.../venv/bin/<tool>"}
++     * that was still literal. Any path that put the token into one line first —
++     * an installer that half-adopted the recipe, or
++     * {@code HomeRepair}'s {@code FOREIGN_PATH_IN_SHIM} fix, which maps another
++     * home's path to this one's and then calls this — left every other line
++     * frozen for good, and {@code home repair} (which asked this method whether
++     * to report) exempted the result.
++     *
++     * <p>So every remaining literal spelling is re-anchored, whether or not the
++     * token is already there. The preamble is added only when no assignment of
++     * the token precedes the first rewritten line; a second pass finds no
++     * literal and returns null, which is the idempotence the installer and
++     * {@code --fix} rely on.
++     *
++     * <p>Replacement is of a WHOLE path prefix: a spelling followed by a path
++     * character ({@code /home-other}) or preceded by one
++     * ({@code /private/var/...} while replacing {@code /var/...}) is not this
++     * home and is left alone. And the result is checked before it is returned:
++     * a rewrite that leaves any spelling behind returns null rather than a
++     * second half-rewritten shim.
++     *
++     * <h2>Comment lines: rewritten, and deliberately not DETECTED</h2>
++     *
++     * <p>The rewrite's trigger is its own, and wider than the detector's: a
++     * literal spelling on ANY line after the shebang, {@code #} comments
++     * included — the trigger it had before OHV-4, when every token in the file
++     * counted. So once asked, it leaves no spelling of the home in the bytes
++     * (BLOCKER 2's repaired wrapper carries its base path in a comment, and a
++     * copied home carrying the source's path in prose is still the source's
++     * path). {@link #frozenHomeLines} does NOT read comments, because a finding
++     * there would make {@code home verify} red on a shim that runs correctly
++     * (#341 "Watch for": prose about a path is not a reference to one). The
++     * consequence, stated: a shim whose ONLY spelling is a comment is not a
++     * finding, so {@code home repair --fix} leaves it byte-identical; the
++     * skill-script installer, which asks this method directly, still
++     * re-anchors it on a fresh install.
+      */
+     public static String selfDerivingRewrite(Path home, Path shim) {
+         if (home == null || shim == null) return null;
+-        List<String> frozen = frozenHomePaths(home, shim);
+-        if (frozen.isEmpty()) return null;
+-        String body;
+-        try {
+-            if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) return null;
+-            body = Files.readString(shim);
+-        } catch (IOException | RuntimeException notText) {
+-            return null;
+-        }
+-        if (!body.startsWith("#!")) return null;
++        String body = readShim(shim);
++        if (body == null || !body.startsWith("#!")) return null;
+         int firstNl = body.indexOf('\n');
+         if (firstNl < 0) return null;
+         String shebang = body.substring(0, firstNl);
+         if (!isShellShebang(shebang)) return null;
+-        if (body.contains(SHIM_HOME_VAR)) return null;      // already rewritten
++        List<String> spellings = spellingsLongestFirst(home);
++        if (!spelledAfterShebang(body, spellings)) return null;
+ 
+         // Depth is fixed by the store: bin/cli/<name>, so the home is two up.
+         // Derived from the shim's OWN location, which is the whole point --
+@@ -275,16 +312,182 @@ public final class ShimHomeContract {
+                 + "# rather than the one it was written into, so a copy of the home works.\n"
+                 + SHIM_HOME_VAR + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n";
+ 
+-        String rewritten = body.substring(firstNl + 1);
++        String[] lines = body.substring(firstNl + 1).split("\n", -1);
++        boolean assigned = false;
++        boolean needsPreamble = false;
+         boolean changed = false;
+-        for (Path root : rootSpellings(home)) {
+-            String prefix = root.toString();
+-            if (!rewritten.contains(prefix)) continue;
+-            rewritten = rewritten.replace(prefix, "${" + SHIM_HOME_VAR + "}");
+-            changed = true;
++        for (int i = 0; i < lines.length; i++) {
++            String line = lines[i];
++            boolean assignment = SHIM_HOME_ASSIGNMENT.matcher(line).find();
++            String replaced = replaceSpellings(line, spellings);
++            if (assignment && !replaced.equals(line)) {
++                // `SKILL_MANAGER_SHIM_HOME="/abs/home"`: rewriting it would make
++                // the variable name itself. A shape nobody generates; refused.
++                return null;
++            }
++            if (assignment) assigned = true;
++            if (!replaced.equals(line)) {
++                if (!assigned) needsPreamble = true;
++                lines[i] = replaced;
++                changed = true;
++            }
+         }
+         if (!changed) return null;
+-        return shebang + preamble + rewritten;
++        String rewritten = shebang + (needsPreamble ? preamble : "\n") + String.join("\n", lines);
++        // POSTCONDITION: never hand back a shim that still spells the home on any
++        // line the rewrite reads -- stricter than the detector, so a rewrite can
++        // never leave a finding behind either.
++        if (spelledAfterShebang(rewritten, spellings)) return null;
++        return rewritten;
++    }
++
++    /**
++     * The lines of {@code shim} that spell {@code home} literally, in a place
++     * that RUNS — the content rule {@code HomeRepair}'s
++     * {@code FROZEN_HOME_PATH_IN_SHIM} reports on (OHV-4, #341). Trimmed, in
++     * file order; empty is conformant.
++     *
++     * <h2>The rule</h2>
++     *
++     * <p>A literal spelling of this home — any of {@link PathSpellings#of}'s
++     * given, real and alias forms, as a whole path prefix, the home root itself
++     * included — on:
++     *
++     * <ul>
++     *   <li>any non-comment line after the shebang of a SHELL script (the shape
++     *       {@link #selfDerivingRewrite} can re-anchor); or</li>
++     *   <li>an {@code exec}, {@code export} or shell-assignment line of any
++     *       other text file, which is then reported but not rewritable.</li>
++     * </ul>
++     *
++     * <p>This is deliberately independent of whether a rewrite is on offer.
++     * The detector used to ask {@code selfDerivingRewrite(...) != null}, so a
++     * shim the rewriter had half-done — token in the {@code export} line, home
++     * literal in the {@code exec} line — was exempt precisely because it was
++     * broken in the way the rewriter produced (DEF-OHV-001). "Can I rewrite
++     * this" is not "does this name the home".
++     *
++     * <h2>Deliberately NOT reported: a venv-internal shebang</h2>
++     *
++     * <p>The FIRST line is never read. A console-script entrypoint pip wrote
++     * opens {@code #!<home>/venvs/<venv>/bin/python}; that is a literal own-home
++     * path too, and it is out of scope on purpose, for three reasons:
++     *
++     * <ul>
++     *   <li>The kernel reads a shebang literally. It cannot hold
++     *       {@code ${SKILL_MANAGER_SHIM_HOME}}, so no rewrite exists and a
++     *       finding would be one {@code --fix} can never clear.</li>
++     *   <li>It belongs to the toolchain tree, not to a shim skill-manager
++     *       generates: {@code venvs/} is a toolchain root a clone never carries
++     *       and re-provisioning regenerates, interpreter path included.</li>
++     *   <li>A shebang is not a line that names a path at runtime from the
++     *       shim's own bytes — {@link HomeRepair#absolutePathTokens} has never
++     *       tokenized one, so {@link #frozenHomePaths} did not see it
++     *       either.</li>
++     * </ul>
++     *
++     * <p>A copied home carrying such an entrypoint is the re-provisioning
++     * question ({@code home verify}'s unresolved references, {@code build}),
++     * not this one. {@code scripts/measure_goal_no_own_home_path.py} counts the
++     * shape separately as {@code shebang_only_out_of_scope} so it never reads as
++     * a detector gap.
++     *
++     * <h2>Deliberately NOT reported: a spelling only in a {@code #} comment</h2>
++     *
++     * <p>Comment lines are not read. Prose about a path is not a reference to
++     * one — #341's "Watch for" records the cold-artifact scanner reporting its
++     * own refusal text as a dangling path — and since OHV-2 {@code home verify}
++     * fails on every {@code home repair} finding, so a comment-only match would
++     * turn verify red on a shim that runs correctly. This classifier is
++     * therefore NOT the rewrite's trigger: {@link #selfDerivingRewrite} reads
++     * comments too and says what that means for {@code --fix}.
++     */
++    public static List<String> frozenHomeLines(Path home, Path shim) {
++        if (home == null || shim == null) return List.of();
++        String body = readShim(shim);
++        if (body == null) return List.of();
++        return frozenLinesIn(body, spellingsLongestFirst(home));
++    }
++
++    /** exec / export / {@code NAME=} (optionally local, readonly or declare). */
++    private static final java.util.regex.Pattern RUNNING_LINE = java.util.regex.Pattern.compile(
++            "^\\s*(?:exec\\b|export\\b|(?:local\\s+|readonly\\s+|declare(?:\\s+-\\w+)*\\s+)?"
++                    + "[A-Za-z_][A-Za-z0-9_]*=)");
++
++    private static final java.util.regex.Pattern SHIM_HOME_ASSIGNMENT = java.util.regex.Pattern.compile(
++            "^\\s*(?:export\\s+)?" + SHIM_HOME_VAR + "=");
++
++    private static List<String> frozenLinesIn(String body, List<String> spellings) {
++        String[] lines = body.split("\n", -1);
++        int from = 0;
++        boolean shell = false;
++        if (lines.length > 0 && lines[0].startsWith("#!")) {
++            shell = isShellShebang(lines[0]);
++            from = 1;     // the shebang: see frozenHomeLines, deliberately not read
++        }
++        List<String> out = new ArrayList<>();
++        for (int i = from; i < lines.length; i++) {
++            String trimmed = lines[i].strip();
++            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
++            if (!spellsAny(lines[i], spellings)) continue;
++            if (shell || RUNNING_LINE.matcher(lines[i]).find()) out.add(trimmed);
++        }
++        return List.copyOf(out);
++    }
++
++    /**
++     * The REWRITE's classifier, kept separate from the detector's
++     * ({@link #frozenLinesIn}) on purpose: any line after the shebang, comments
++     * included. See {@link #selfDerivingRewrite}.
++     */
++    private static boolean spelledAfterShebang(String body, List<String> spellings) {
++        int firstNl = body.indexOf('\n');
++        String rest = body.startsWith("#!") ? (firstNl < 0 ? "" : body.substring(firstNl + 1)) : body;
++        for (String line : rest.split("\n", -1)) {
++            if (spellsAny(line, spellings)) return true;
++        }
++        return false;
++    }
++
++    /** The home's spellings as whole-prefix patterns, longest spelling first. */
++    private static List<String> spellingsLongestFirst(Path home) {
++        List<String> spellings = new ArrayList<>(PathSpellings.of(home));
++        spellings.removeIf(s -> s.isEmpty() || "/".equals(s));
++        spellings.sort(java.util.Comparator.comparingInt(String::length).reversed());
++        return List.copyOf(spellings);
++    }
++
++    private static java.util.regex.Pattern wholePrefix(String spelling) {
++        return java.util.regex.Pattern.compile("(?<![A-Za-z0-9_.\\-/])"
++                + java.util.regex.Pattern.quote(spelling) + "(?=[/\"'\\s:;,)}]|$)");
++    }
++
++    private static boolean spellsAny(String line, List<String> spellings) {
++        for (String s : spellings) {
++            if (line.contains(s) && wholePrefix(s).matcher(line).find()) return true;
++        }
++        return false;
++    }
++
++    private static String replaceSpellings(String line, List<String> spellings) {
++        String out = line;
++        for (String s : spellings) {
++            if (!out.contains(s)) continue;
++            out = wholePrefix(s).matcher(out)
++                    .replaceAll(java.util.regex.Matcher.quoteReplacement("${" + SHIM_HOME_VAR + "}"));
++        }
++        return out;
++    }
++
++    /** The shim's text, or null when it is not a regular, readable, shim-sized text file. */
++    private static String readShim(Path shim) {
++        try {
++            if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) return null;
++            if (Files.size(shim) > 1024L * 1024L) return null;
++            return Files.readString(shim);
++        } catch (IOException | RuntimeException notText) {
++            return null;
++        }
+     }
+ 
+     /**
+diff --git a/src/test/java/dev/skillmanager/cli/installer/SkillScriptBackendTest.java b/src/test/java/dev/skillmanager/cli/installer/SkillScriptBackendTest.java
+index b4881489..9d3ed41a 100644
+--- a/src/test/java/dev/skillmanager/cli/installer/SkillScriptBackendTest.java
++++ b/src/test/java/dev/skillmanager/cli/installer/SkillScriptBackendTest.java
+@@ -148,6 +148,61 @@ public final class SkillScriptBackendTest {
+             assertFalse(message.contains("line-01"), "failure tail omits oldest output");
+         });
+ 
++        // OHV-4 (#341) (c): whatever an installer writes, the shim that is left
++        // in bin/cli after the install spells no form of this home, the exec
++        // line included. Two installers: deploy-helm's real shape (both lines
++        // literal), and one that half-adopted the recipe (token on the export,
++        // this home literal on the exec) -- the second is the one the old
++        // "already holds the token" early return let through unchanged.
++        for (boolean halfAdopted : new boolean[]{false, true}) {
++            String label = halfAdopted ? "half-adopted" : "deploy-helm";
++            suite.test("OHV-4 (c): a " + label + " installer's shim leaves the install with a token exec line", () -> {
++                SkillStore store = new SkillStore(Files.createTempDirectory("skill-script-shim-" + label + "-"));
++                store.init();
++                String unitName = "shim-token-skill";
++                String tool = "shim-token-bin";
++                CliDependency dep = skillScriptDep(tool);
++                // An UNQUOTED heredoc, as deploy-helm's install-console-script.sh
++                // writes its launcher: $SKILL_DIR and $venv expand at write
++                // time (the freeze), \$ stays literal (the recipe's token).
++                String exportLine = halfAdopted
++                        ? "SKILL_MANAGER_SHIM_HOME=\"\\$(cd \"\\$(dirname \"\\$0\")/../..\" && pwd)\"\n"
++                                + "export UNIT_ROOT=\"\\${SKILL_MANAGER_SHIM_HOME}/skills/" + unitName + "\""
++                        : "export UNIT_ROOT=\"$SKILL_DIR\"";
++                scaffoldSkillScript(store, unitName, tool, """
++                        #!/usr/bin/env bash
++                        set -euo pipefail
++                        venv="$SKILL_MANAGER_CACHE_DIR/skill-script-%1$s-%2$s/venv"
++                        mkdir -p "$venv/bin"
++                        printf '#!/bin/sh\\necho %2$s-ran\\n' > "$venv/bin/%2$s"
++                        chmod +x "$venv/bin/%2$s"
++                        cat > "$SKILL_MANAGER_BIN_DIR/%2$s" <<EOF
++                        #!/usr/bin/env bash
++                        %3$s
++                        exec "$venv/bin/%2$s" "\\$@"
++                        EOF
++                        chmod 0755 "$SKILL_MANAGER_BIN_DIR/%2$s"
++                        """.formatted(unitName, tool, exportLine));
++
++                new InstallerRegistry().installOne(dep, store, unitName, true);
++
++                Path shim = store.cliBinDir().resolve(tool);
++                String body = Files.readString(shim);
++                assertTrue(dev.skillmanager.store.ShimHomeContract.frozenHomeLines(store.root(), shim).isEmpty(),
++                        "no line of the installed shim spells this home: " + body);
++                assertFalse(body.contains(store.root().toString()), "given spelling gone: " + body);
++                assertFalse(body.contains(store.root().toRealPath().toString()), "real spelling gone: " + body);
++                assertContains(body, "exec \"${SKILL_MANAGER_SHIM_HOME}/cache/skill-script-" + unitName
++                        + "-" + tool + "/venv/bin/" + tool + "\"", "the exec line derives the home: " + body);
++                assertEquals(1, (int) body.lines().filter(l -> l.startsWith("SKILL_MANAGER_SHIM_HOME=")).count(),
++                        "one assignment of the token: " + body);
++                Process p = new ProcessBuilder("bash", shim.toString()).redirectErrorStream(true).start();
++                String out = new String(p.getInputStream().readAllBytes());
++                assertEquals(0, p.waitFor(), "the installed shim still runs: " + out);
++                assertContains(out, tool + "-ran", "and runs its tool");
++            });
++        }
++
+         return suite.runAll();
+     }
+ 
+diff --git a/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java b/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
+index c125be7d..6859f6ba 100644
+--- a/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
++++ b/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
+@@ -486,6 +486,62 @@ public final class DamagedHomeIsRepairableTest {
+                         assertTrue(finding.remedy() != null && !finding.remedy().isBlank(),
+                                 "every finding names its repair; " + finding + " named none");
+                     }
++
++                    // OHV-4 (#341, DEF-OHV-001): the kind is planted TWICE —
++                    // fully frozen and half-rewritten — and the guard above
++                    // passes on either alone. So the half-rewritten variant's
++                    // own subject is asserted, and so is what --fix does to it.
++                    Path half = fx.store.resolve("bin/cli").resolve(Fixture.HALF_TOOL);
++                    assertTrue(report.findings().stream().anyMatch(f ->
++                                    f.kind() == HomeRepair.Kind.FROZEN_HOME_PATH_IN_SHIM
++                                            && f.subject().equals("bin/cli/" + Fixture.HALF_TOOL)
++                                            && f.repairable()),
++                            "the HALF-rewritten shim (token export, literal exec) is reported "
++                                    + "and repairable; got " + report.findings());
++                    HomeRepair.repair(fx.store, fx.pin);
++                    String healed = Files.readString(half, StandardCharsets.UTF_8);
++                    assertTrue(ShimHomeContract.frozenHomeLines(fx.store, half).isEmpty(),
++                            "--fix re-anchored every line, the exec line included: " + healed);
++                    assertContains(healed, "exec \"${" + ShimHomeContract.SHIM_HOME_VAR + "}/cache/",
++                            "the exec line now derives the home");
++                    assertEquals(1, (int) healed.lines()
++                                    .filter(l -> l.startsWith(ShimHomeContract.SHIM_HOME_VAR + "=")).count(),
++                            "one assignment of the token: no second preamble");
++                    HomeRepair.Report after = HomeRepair.detect(fx.store, fx.pin);
++                    assertTrue(after.findings().stream()
++                                    .noneMatch(f -> f.subject().equals("bin/cli/" + Fixture.HALF_TOOL)),
++                            "a separate detection no longer names it; got " + after.findings());
++                    HomeRepair.repair(fx.store, fx.pin);
++                    assertEquals(healed, Files.readString(half, StandardCharsets.UTF_8),
++                            "a second --fix changes no byte of it");
++                })
++
++                .test("OHV-4: a home spelled only in a # comment is not a finding, and --fix leaves the shim byte-identical", () -> {
++                    // #341 "Watch for": prose about a path is not a reference to
++                    // one. verify fails on every repair finding (OHV-2), so a
++                    // comment-only match would make verify red on a shim that
++                    // runs correctly.
++                    Fixture fx = Fixture.build("comment-only");
++                    Path shim = fx.store.resolve("bin/cli").resolve("commented");
++                    String body = "#!/usr/bin/env bash\n"
++                            + "# generated for " + fx.store + "/skills/" + UNIT + " by its installer\n"
++                            + "exec true \"$@\"\n";
++                    Files.writeString(shim, body, StandardCharsets.UTF_8);
++                    shim.toFile().setExecutable(true);
++
++                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
++                    assertTrue(report.findings().stream()
++                                    .noneMatch(f -> f.subject().equals("bin/cli/commented")),
++                            "a comment-only spelling is not FROZEN_HOME_PATH_IN_SHIM; got " + report.findings());
++                    assertTrue(report.clean(), "and the otherwise healthy fixture stays clean; got "
++                            + report.findings());
++                    // THE CONTRACT, stated: --fix acts only on findings, so it is
++                    // a no-op here and the file is byte-identical. (The installer's
++                    // rewrite would still re-anchor the comment on a fresh install,
++                    // as it did before OHV-4; ShimSurvivesACopyTest pins that.)
++                    HomeRepair.repair(fx.store, fx.pin);
++                    assertEquals(body, Files.readString(shim, StandardCharsets.UTF_8),
++                            "--fix leaves a comment-only shim byte-identical");
+                 })
+ 
+                 .test("BLOCKER 2: a rewrite replaces a PATH, not a substring, and keeps the shim running", () -> {
+@@ -1497,6 +1553,34 @@ public final class DamagedHomeIsRepairableTest {
+             damageCliPin();
+         }
+ 
++        static final String HALF_TOOL = "half-tool";
++
++        /**
++         * OHV-4 (#341), DEF-OHV-001. The root home's {@code bin/cli/computeq}
++         * shape: the rewrite preamble and a token-derived {@code export}, and an
++         * {@code exec} line that still spells this home. Exempt from
++         * {@code home repair} until OHV-4, because the rewrite declined any shim
++         * already holding the token and the detector only reported what the
++         * rewrite would take.
++         */
++        void damageHalfRewrittenShim() throws IOException {
++            Path tool = store.resolve("cache/skill-script-" + UNIT + "-" + HALF_TOOL + "/venv/bin")
++                    .resolve(HALF_TOOL);
++            Files.createDirectories(tool.getParent());
++            Files.writeString(tool, "#!/bin/sh\nexit 0\n");
++            tool.toFile().setExecutable(true);
++            Path shim = store.resolve("bin/cli").resolve(HALF_TOOL);
++            Files.writeString(shim, "#!/usr/bin/env bash\n"
++                    + "# Rewritten by skill-manager: resolve the home this shim is standing in\n"
++                    + "# rather than the one it was written into, so a copy of the home works.\n"
++                    + ShimHomeContract.SHIM_HOME_VAR
++                    + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n"
++                    + "export MONITORING_DEPLOY_CDC_ROOT=\"${" + ShimHomeContract.SHIM_HOME_VAR
++                    + "}/skills/" + UNIT + "\"\n"
++                    + "exec \"" + tool + "\" \"$@\"\n", StandardCharsets.UTF_8);
++            shim.toFile().setExecutable(true);
++        }
++
+         /**
+          * Every shape the detector knows, repairable or not — the fixture for
+          * the DETECTION-coverage guard.
+@@ -1511,6 +1595,7 @@ public final class DamagedHomeIsRepairableTest {
+             damageAll();
+             damageShadowedMirror();
+             damageFrozenShim();
++            damageHalfRewrittenShim();
+             damageUnstampedPmTree();
+             damageDanglingAgentLink();
+             damageOrphanedProjectionRecord();
+diff --git a/src/test/java/dev/skillmanager/store/ShimSurvivesACopyTest.java b/src/test/java/dev/skillmanager/store/ShimSurvivesACopyTest.java
+index 0f15af8b..bb0c2e82 100644
+--- a/src/test/java/dev/skillmanager/store/ShimSurvivesACopyTest.java
++++ b/src/test/java/dev/skillmanager/store/ShimSurvivesACopyTest.java
+@@ -117,6 +117,122 @@ public final class ShimSurvivesACopyTest {
+                     "a second pass finds nothing to do — sync runs this on every install");
+         });
+ 
++        // ---------------------------------------------------------------- OHV-4
++
++        suite.test("OHV-4: a HALF-rewritten shim is reported on content and re-anchored completely", () -> {
++            Path home = newHome();
++            Path shim = halfRewrittenShim(home, "computeq");
++
++            java.util.List<String> frozen = ShimHomeContract.frozenHomeLines(home, shim);
++            assertEquals(1, frozen.size(), "exactly the exec line is frozen; got " + frozen);
++            assertTrue(frozen.get(0).startsWith("exec "), "and it is the exec line: " + frozen);
++
++            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
++            assertTrue(rewritten != null,
++                    "the token already being in the shim is no longer 'already rewritten'");
++            assertFalse(rewritten.contains(home.toString()), "no given spelling survives: " + rewritten);
++            assertFalse(rewritten.contains(home.toRealPath().toString()), "no real spelling survives");
++            assertContains(rewritten, "exec \"${SKILL_MANAGER_SHIM_HOME}/cache/skill-script-deploy-helm-computeq/venv/bin/computeq\" \"$@\"",
++                    "the exec line derives the home");
++            assertEquals(1, (int) rewritten.lines().filter(l -> l.startsWith("SKILL_MANAGER_SHIM_HOME=")).count(),
++                    "no second preamble: the existing assignment precedes the rewritten line");
++            assertEquals(1, (int) rewritten.lines().filter(l -> l.startsWith("#!")).count(), "one shebang");
++
++            Files.writeString(shim, rewritten);
++            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(), "clean after the rewrite");
++            assertTrue(ShimHomeContract.selfDerivingRewrite(home, shim) == null, "and a second pass is a no-op");
++        });
++
++        suite.test("OHV-4: the rewritten half shim runs its tool from a COPY of the home", () -> {
++            Path home = newHome();
++            Path shim = halfRewrittenShim(home, "computeq");
++            Files.writeString(shim, ShimHomeContract.selfDerivingRewrite(home, shim));
++            Path copy = Files.createTempDirectory("shim-half-copy-").resolve("home");
++            copyTree(home, copy);
++            // The source's tool is removed: only the copy's can answer.
++            Files.delete(home.resolve("cache/skill-script-deploy-helm-computeq/venv/bin/computeq"));
++            Process p = new ProcessBuilder("bash", copy.resolve("bin/cli/computeq").toString())
++                    .redirectErrorStream(true).start();
++            String out = new String(p.getInputStream().readAllBytes());
++            assertEquals(0, p.waitFor(), "the copied shim runs the COPY's tool: " + out);
++            assertContains(out, "computeq-ran", "and it is the tool, not a dangling path");
++        });
++
++        suite.test("OHV-4: the home root itself on an assignment line is frozen too", () -> {
++            Path home = newHome();
++            Path shim = home.resolve("bin/cli/root-assign");
++            Files.writeString(shim, "#!/usr/bin/env bash\nSM_HOME=\"" + home + "\"\n"
++                    + "exec cat \"$SM_HOME/skills/x/SKILL.md\"\n");
++            assertEquals(1, ShimHomeContract.frozenHomeLines(home, shim).size(),
++                    "SM_HOME=\"<home>\" spells the home as surely as a longer path does");
++            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
++            assertContains(rewritten, "SM_HOME=\"${SKILL_MANAGER_SHIM_HOME}\"", "re-anchored whole");
++        });
++
++        suite.test("OHV-4: a sibling home that shares the prefix is not this home", () -> {
++            Path home = newHome();
++            Path sibling = home.resolveSibling(home.getFileName() + "-other");
++            Path shim = home.resolve("bin/cli/sibling");
++            Files.writeString(shim, "#!/usr/bin/env bash\nexec \"" + sibling + "/venvs/x/bin/t\" \"$@\"\n");
++            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(),
++                    "<home>-other is a different directory, not a longer path under <home>");
++            assertTrue(ShimHomeContract.selfDerivingRewrite(home, shim) == null, "and nothing is rewritten");
++        });
++
++        // #341 "Watch for": prose about a path is not a reference to one. Since
++        // OHV-2 verify fails on every repair finding, so a comment-only match
++        // would turn verify red on a shim that runs correctly.
++        suite.test("OHV-4: a home spelled ONLY in a # comment is not a frozen line", () -> {
++            Path home = newHome();
++            Path shim = home.resolve("bin/cli/commented");
++            Files.writeString(shim, "#!/usr/bin/env bash\n"
++                    + "# generated for " + home + "/skills/acme by its installer\n"
++                    + "exec true \"$@\"\n");
++            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(),
++                    "the detector does not read comment lines");
++            // The REWRITE contract is unchanged from before OHV-4: it re-anchors
++            // every line, comments included, when it is asked to. The installer
++            // asks; `home repair --fix` does not (no finding), which
++            // DamagedHomeIsRepairableTest pins as byte-identical.
++            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
++            assertTrue(rewritten != null, "the rewrite still offers to re-anchor the comment");
++            assertFalse(rewritten.contains(home.toString()), "and would leave no spelling: " + rewritten);
++        });
++
++        suite.test("OHV-4: a venv-internal shebang is deliberately NOT reported", () -> {
++            Path home = newHome();
++            Path shim = home.resolve("bin/cli/console-script");
++            Files.writeString(shim, "#!" + home + "/venvs/x/bin/python\n"
++                    + "import sys\nfrom x.cli import main\nsys.exit(main())\n");
++            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(),
++                    "the kernel reads a shebang literally, no token can live there, and venvs/ "
++                            + "is re-provisioned: out of scope by design");
++        });
++
++        suite.test("OHV-4: a non-shell file spelling the home on an exec line is reported, not rewritten", () -> {
++            Path home = newHome();
++            Path shim = home.resolve("bin/cli/no-shebang");
++            Files.writeString(shim, "exec \"" + home + "/venvs/x/bin/t\" \"$@\"\n");
++            assertEquals(1, ShimHomeContract.frozenHomeLines(home, shim).size(),
++                    "reported on content, with or without a rewrite on offer");
++            assertTrue(ShimHomeContract.selfDerivingRewrite(home, shim) == null,
++                    "no shebang: not a shape the rewrite understands");
++        });
++
++        suite.test("OHV-4: a home named by another spelling of itself is still this home", () -> {
++            Path home = newHome();
++            Path real = home.toRealPath();
++            Path shim = home.resolve("bin/cli/other-spelling");
++            // On macOS the temp home is given as /var/... and is really
++            // /private/var/...; write the spelling the caller did NOT pass.
++            Files.writeString(shim, "#!/usr/bin/env bash\nexec \"" + real + "/venvs/x/bin/t\" \"$@\"\n");
++            assertEquals(1, ShimHomeContract.frozenHomeLines(home, shim).size(),
++                    "the real spelling of a home given through a symlink is this home");
++            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
++            assertFalse(rewritten.contains(real.toString()), "and it is re-anchored: " + rewritten);
++            assertFalse(rewritten.contains("/private${"), "longest spelling first, no /private${...} residue");
++        });
++
+         return suite.runAll();
+     }
+ 
+@@ -126,6 +242,26 @@ public final class ShimSurvivesACopyTest {
+         return home;
+     }
+ 
++    /**
++     * DEF-OHV-001: the root home's bin/cli/computeq, as measured 2026-09-13 — the
++     * token in the preamble and the export line, this home literal on the exec
++     * line — plus the tool it execs, which prints a marker.
++     */
++    private static Path halfRewrittenShim(Path home, String name) throws Exception {
++        Path tool = home.resolve("cache/skill-script-deploy-helm-" + name + "/venv/bin/" + name);
++        Files.createDirectories(tool.getParent());
++        Files.writeString(tool, "#!/bin/sh\necho " + name + "-ran\n");
++        tool.toFile().setExecutable(true);
++        Path shim = home.resolve("bin/cli").resolve(name);
++        Files.writeString(shim, "#!/usr/bin/env bash\n"
++                + "# Rewritten by skill-manager: resolve the home this shim is standing in\n"
++                + "# rather than the one it was written into, so a copy of the home works.\n"
++                + "SKILL_MANAGER_SHIM_HOME=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n"
++                + "export MONITORING_DEPLOY_CDC_ROOT=\"${SKILL_MANAGER_SHIM_HOME}/skills/deploy-helm\"\n"
++                + "exec \"" + tool + "\" \"$@\"\n");
++        return shim;
++    }
++
+     /** The exact shape measured on this repository's own tla-spec-dev shim. */
+     private static Path frozenShim(Path home, String name) throws Exception {
+         Path shim = home.resolve("bin/cli").resolve(name);
+diff --git a/test_graph/build.gradle.kts b/test_graph/build.gradle.kts
+index d3ddcc4e..6e746a88 100644
+--- a/test_graph/build.gradle.kts
++++ b/test_graph/build.gradle.kts
+@@ -1749,9 +1749,12 @@ validationGraph {
+      *   - dangling agent-dir link into the home (DEF-OHV-002) ............. (b)
+      *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ........ (c)
+      *
+-     * PENDING, with the ticket that adds each node:
++     * OHV-4 (#341) adds:
+      *   - half-rewritten shim, header re-anchored, exec line literal
+-     *     (DEF-OHV-001) ............................................ OHV-4 (#341)
++     *     (DEF-OHV-001): repair and verify name it, --fix clears it,
++     *     a second --fix is a no-op ................ home.verdicts.half.rewritten.shim
++     *
++     * PENDING, with the ticket that adds each node:
+      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
+      *   - #352's four marketplace-identity shapes (incl. DEF-OHV-005)  OHV-6 (#352)
+      *
+@@ -1773,6 +1776,7 @@ validationGraph {
+         node("sources/home-verdicts/VerifyNamesEveryRepairFinding.java")
+         node("sources/home-verdicts/DanglingAgentLinkIsReported.java")
+         node("sources/home-verdicts/OrphanedProjectionRecordIsReported.java")
++        node("sources/home-verdicts/HalfRewrittenShimIsReported.java")
+         node("sources/common/HomeFixpointLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+@@ -1781,7 +1785,8 @@ validationGraph {
+                 "home.verdicts.unstamped.pm.tree",
+                 "home.verdicts.verify.names.every.repair.finding",
+                 "home.verdicts.dangling.agent.link",
+-                "home.verdicts.orphaned.projection.record")
++                "home.verdicts.orphaned.projection.record",
++                "home.verdicts.half.rewritten.shim")
+         node("sources/common/HomeMembershipLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+@@ -1790,7 +1795,8 @@ validationGraph {
+                 "home.verdicts.unstamped.pm.tree",
+                 "home.verdicts.verify.names.every.repair.finding",
+                 "home.verdicts.dangling.agent.link",
+-                "home.verdicts.orphaned.projection.record")
++                "home.verdicts.orphaned.projection.record",
++                "home.verdicts.half.rewritten.shim")
+     }
+ 
+     /**
+diff --git a/test_graph/sources/home-clone/HomeCloneCarriesNoCredential.java b/test_graph/sources/home-clone/HomeCloneCarriesNoCredential.java
+index 042a8e42..74008ce6 100644
+--- a/test_graph/sources/home-clone/HomeCloneCarriesNoCredential.java
++++ b/test_graph/sources/home-clone/HomeCloneCarriesNoCredential.java
+@@ -138,9 +138,13 @@ public class HomeCloneCarriesNoCredential {
+                 .publish("credentialCloneHome", dest.toString())
+                 // A copy of the fixture, so it inherits the planted shim without
+                 // venvs/. Declared by entry for home.fixpoint.law (#344).
++                // OHV-4 (#341): and hc-tool, whose `SM_HOME="<home>"` the copy
++                // re-anchors to its own literal path (FROZEN_HOME_PATH_IN_SHIM).
+                 .publish(IntentionalDamage.KEY, IntentionalDamage.declare(dest,
+-                        java.util.List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
+-                        "copy of home.clone.fixture.built: inherits its planted "
++                        java.util.List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
++                                "bin/cli/" + HomeCloneSupport.GOOD_SHIM),
++                        "copy of home.clone.fixture.built: inherits its planted hc-tool (home path in "
++                                + "its body, re-anchored to this copy) and its planted "
+                                 + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/"))
+                 .log("#281 sat open as an 'unverified inference' because it was reasoned "
+                         + "from the absence of an exclusion. Measured 2026-09-05, before "
+diff --git a/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java b/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java
+index e68e0ff2..8b0c4ab4 100644
+--- a/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java
++++ b/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java
+@@ -315,12 +315,19 @@ public class HomeCloneFixtureBuilt {
+                     // findings: step 4's shim names this home absolutely
+                     // (FROZEN_HOME_PATH_IN_SHIM) — the legacy shape the clone's
+                     // re-anchoring is asserted against, so it stays planted.
++                    // Since OHV-4 (#341) the frozen-shim detector reads shim
++                    // CONTENT, the home root itself included, so step 3's
++                    // `SM_HOME="<fixture>"` (hc-tool, "home path in the BODY",
++                    // the shape #20 describes) is reported too. Planted on
++                    // purpose, and the clone's re-anchoring is asserted on it.
+                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(fixture,
+                             List.of("venvs/hc-venv/bin/hc",
+-                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
++                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
++                                    "bin/cli/" + HomeCloneSupport.GOOD_SHIM),
+                             "home.clone.fixture.built step 6 plants a console script whose "
+                                     + "interpreter venvs/hc-venv/bin/python is never created; "
+-                                    + "step 4's shim is frozen on purpose"))
++                                    + "step 4's shim is frozen on purpose; step 3's shim holds "
++                                    + "the home path in its body on purpose"))
+                     .publish("projectDir", projectDir.toString())
+                     .publish("cloneStore", HomeCloneSupport.storeOf(projectDir).toString())
+                     .publish("sourceDigest", sourceDigest)
+diff --git a/test_graph/sources/home-clone/HomeClonedIntoProject.java b/test_graph/sources/home-clone/HomeClonedIntoProject.java
+index 2f985c58..50cbb961 100644
+--- a/test_graph/sources/home-clone/HomeClonedIntoProject.java
++++ b/test_graph/sources/home-clone/HomeClonedIntoProject.java
+@@ -403,10 +403,15 @@ public class HomeClonedIntoProject {
+                     // The clone inherits the fixture's planted shim and, by
+                     // design, not venvs/ (toolchain roots are never carried), so
+                     // bin/cli/hc-venv-tool dangles here. Declared by entry (#344).
++                    // OHV-4 (#341): the clone re-anchors hc-tool's
++                    // `SM_HOME="<fixture>"` to its OWN path, which is still an
++                    // own-home literal, so FROZEN_HOME_PATH_IN_SHIM names it here.
+                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(cloneStore,
+-                            List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
++                            List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
++                                    "bin/cli/" + HomeCloneSupport.GOOD_SHIM),
+                             "clone of home.clone.fixture.built: inherits its planted "
+-                                    + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/"));
++                                    + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/, and "
++                                    + HomeCloneSupport.GOOD_SHIM + " re-anchored to this home's literal path"));
+         });
+     }
+ 
+diff --git a/test_graph/sources/home-verdicts/HalfRewrittenShimIsReported.java b/test_graph/sources/home-verdicts/HalfRewrittenShimIsReported.java
+new file mode 100644
+index 00000000..db1ac528
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/HalfRewrittenShimIsReported.java
+@@ -0,0 +1,129 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++
++/**
++ * A HALF-rewritten own-home shim (DEF-OHV-001, OHV-4 #341): the root home's
++ * {@code bin/cli/computeq}, {@code helm-deploy} and {@code monitoring}, byte for
++ * byte in shape. The rewrite header and the {@code SKILL_MANAGER_SHIM_HOME}
++ * assignment are there, the {@code export} line derives the home, and the
++ * {@code exec} line still spells this home absolutely:
++ *
++ * <pre>
++ * #!/usr/bin/env bash
++ * # Rewritten by skill-manager: resolve the home this shim is standing in
++ * # rather than the one it was written into, so a copy of the home works.
++ * SKILL_MANAGER_SHIM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." &amp;&amp; pwd)"
++ * export MONITORING_DEPLOY_CDC_ROOT="${SKILL_MANAGER_SHIM_HOME}/skills/hv-unit"
++ * exec "&lt;home&gt;/cache/skill-script-hv-unit-half-tool/venv/bin/half-tool" "$@"
++ * </pre>
++ *
++ * <p>Until OHV-4 {@code home repair} exempted it: its detector asked "can the
++ * rewrite still offer something", and the rewrite declined any shim already
++ * holding the token. Both verdicts called the root home clean over a shim that a
++ * copied home would run from the source host's path.
++ *
++ * <p>Beyond {@code runShape}'s common assertions (repair and verify both name
++ * it, {@code --fix} then a separate detection is clean), this node checks the
++ * repaired BYTES: no spelling of the home survives, the exec line names the
++ * token, there is still exactly one assignment of it, the shim still runs, and a
++ * second {@code --fix} changes nothing.
++ */
++public class HalfRewrittenShimIsReported {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.half.rewritten.shim")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "shim", "ohv-4")
++            .timeout("600s");
++
++    static final String TOOL = "half-tool";
++    static final String CACHE_REL = "cache/skill-script-" + HomeVerdictsSupport.UNIT + "-" + TOOL
++            + "/venv/bin/" + TOOL;
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
++                new HomeVerdictsSupport.Shape("half-rewritten-shim", "FROZEN_HOME_PATH_IN_SHIM", 1, true),
++                (Path subject, Path neighbour) -> {
++                    Path tool = subject.resolve(CACHE_REL);
++                    Files.createDirectories(tool.getParent());
++                    Files.writeString(tool, "#!/bin/sh\nexit 0\n");
++                    tool.toFile().setExecutable(true);
++                    Path shim = subject.resolve("bin/cli").resolve(TOOL);
++                    Files.writeString(shim, "#!/usr/bin/env bash\n"
++                            + "# Rewritten by skill-manager: resolve the home this shim is standing in\n"
++                            + "# rather than the one it was written into, so a copy of the home works.\n"
++                            + "SKILL_MANAGER_SHIM_HOME=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n"
++                            + "export MONITORING_DEPLOY_CDC_ROOT=\"${SKILL_MANAGER_SHIM_HOME}/skills/"
++                            + HomeVerdictsSupport.UNIT + "\"\n"
++                            + "exec \"" + tool + "\" \"$@\"\n", StandardCharsets.UTF_8);
++                    shim.toFile().setExecutable(true);
++                    return "bin/cli/" + TOOL;
++                },
++                HalfRewrittenShimIsReported::afterFix));
++    }
++
++    /** The repaired bytes, checked while the subject still exists. */
++    static List<HomeVerdictsSupport.Check> afterFix(com.hayden.testgraphsdk.sdk.NodeContext ctx,
++                                                    Path subject, String rel) throws IOException {
++        Path shim = subject.resolve(rel);
++        String body = Files.readString(shim, StandardCharsets.UTF_8);
++        List<HomeVerdictsSupport.Check> checks = new ArrayList<>();
++
++        List<String> spellings = HomeVerdictsSupport.spellings(subject);
++        List<String> survivors = spellings.stream().filter(body::contains).toList();
++        checks.add(new HomeVerdictsSupport.Check("the_fixed_shim_spells_no_form_of_its_own_home",
++                survivors.isEmpty(), "the fixed shim still spells " + survivors + ": " + body));
++
++        String tokenExec = "exec \"${SKILL_MANAGER_SHIM_HOME}/" + CACHE_REL + "\" \"$@\"";
++        checks.add(new HomeVerdictsSupport.Check("the_exec_line_derives_the_home_from_the_token",
++                body.contains(tokenExec), "no `" + tokenExec + "` line: " + body));
++
++        long assignments = body.lines().filter(l -> l.startsWith("SKILL_MANAGER_SHIM_HOME=")).count();
++        checks.add(new HomeVerdictsSupport.Check("exactly_one_assignment_of_the_token_no_second_preamble",
++                assignments == 1, assignments + " assignment line(s): " + body));
++
++        int ran = runShim(shim);
++        checks.add(new HomeVerdictsSupport.Check("the_fixed_shim_still_runs_its_tool",
++                ran == 0, "running the fixed shim exited " + ran));
++
++        HomeVerdictsSupport.Verdict again = HomeVerdictsSupport.repairJson(ctx, "fix-again", subject, "--fix");
++        String bodyAgain = Files.readString(shim, StandardCharsets.UTF_8);
++        boolean noop = again.exit() == 0 && HomeVerdictsSupport.report(again).parsedClean()
++                && bodyAgain.equals(body);
++        checks.add(new HomeVerdictsSupport.Check("a_second_fix_is_a_no_op",
++                noop, "second --fix exited " + again.exit() + ", bytes "
++                        + (bodyAgain.equals(body) ? "unchanged" : "CHANGED") + ": "
++                        + HomeVerdictsSupport.head(again.stdout())));
++        return checks;
++    }
++
++    private static int runShim(Path shim) {
++        try {
++            Process p = new ProcessBuilder("bash", shim.toString()).redirectErrorStream(true).start();
++            p.getInputStream().readAllBytes();
++            if (!p.waitFor(60, TimeUnit.SECONDS)) {
++                p.destroyForcibly();
++                return -2;
++            }
++            return p.exitValue();
++        } catch (IOException e) {
++            return -1;
++        } catch (InterruptedException e) {
++            Thread.currentThread().interrupt();
++            return -1;
++        }
++    }
++}
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+index d868b8cf..09d6c891 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+@@ -37,6 +37,9 @@ import java.nio.file.Path;
+  *   <tr><td>orphaned installed/&lt;unit&gt;.projections.json (DEF-OHV-002, OHV-2 c)</td>
+  *       <td>home.verdicts.orphaned.projection.record</td><td>1 ORPHANED_PROJECTION_RECORD</td>
+  *       <td>1, names it</td></tr>
++ *   <tr><td>half-rewritten own-home shim: token header, literal exec line (DEF-OHV-001, OHV-4)</td>
++ *       <td>home.verdicts.half.rewritten.shim</td><td>1 FROZEN_HOME_PATH_IN_SHIM</td>
++ *       <td>1, names it; --fix re-anchors the exec line, a second --fix is a no-op</td></tr>
+  * </table>
+  *
+  * <p>The three "0 until OHV-2" cells were GOAL-one-verdict clause (1) failing,
+@@ -46,8 +49,6 @@ import java.nio.file.Path;
+  * <h2>PENDING — each named shape gets its node from the ticket that fixes it</h2>
+  *
+  * <ul>
+- *   <li>half-rewritten shim: header re-anchored, {@code exec} line literal
+- *       (DEF-OHV-001) — <b>OHV-4 (#341)</b></li>
+  *   <li>{@code /var} vs {@code /private/var} reference (#343) — <b>OHV-5 (#346)</b></li>
+  *   <li>#352's four marketplace-identity shapes (1 Claude registers this path under
+  *       another name; 2 generated name a substring of another; 3 generated name equal
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+index 3580b112..ba521924 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+@@ -286,11 +286,56 @@ final class HomeVerdictsSupport {
+      */
+     record Shape(String dir, String kind, int verifyExitToday, boolean verifyNamesToday) {}
+ 
++    /** One extra assertion a shape node makes about the repaired home. */
++    record Check(String name, boolean ok, String failure) {}
++
++    /**
++     * Runs after {@code --fix} and the separate detections, while the subject
++     * still exists, for a shape whose repaired BYTES matter (OHV-4's
++     * half-rewritten shim: the fix must re-anchor the exec line, not only
++     * silence the finding).
++     */
++    interface AfterFix {
++        List<Check> check(NodeContext ctx, Path subject, String rel) throws IOException;
++    }
++
++    /**
++     * Every spelling of {@code path} a generated file could hold: given, real,
++     * and the macOS top-level aliases of both ({@code /var} vs
++     * {@code /private/var}, {@code /tmp}, {@code /etc}). Longest first.
++     */
++    static List<String> spellings(Path path) {
++        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
++        Path given = path.toAbsolutePath().normalize();
++        out.add(given.toString());
++        try {
++            out.add(given.toRealPath().toString());
++        } catch (IOException notThere) {
++            // given only
++        }
++        for (String s : List.copyOf(out)) {
++            for (String alias : List.of("/var", "/tmp", "/etc")) {
++                String target = "/private" + alias;
++                if (s.startsWith(target + "/")) out.add(alias + s.substring(target.length()));
++                if (s.startsWith(alias + "/")) out.add(target + s.substring(alias.length()));
++            }
++        }
++        List<String> sorted = new ArrayList<>(out);
++        sorted.sort(Comparator.comparingInt(String::length).reversed());
++        return List.copyOf(sorted);
++    }
++
+     /**
+      * Plant, detect, ask verify, repair, detect again, delete. Seven separate CLI
+      * processes, because a detector that repairs is no longer a detector (DEF-067).
+      */
+     static NodeResult runShape(NodeContext ctx, NodeSpec spec, Shape shape, Plant plant) {
++        return runShape(ctx, spec, shape, plant, null);
++    }
++
++    /** {@link #runShape(NodeContext, NodeSpec, Shape, Plant)} plus {@code afterFix}'s checks. */
++    static NodeResult runShape(NodeContext ctx, NodeSpec spec, Shape shape, Plant plant,
++                               AfterFix afterFix) {
+         String id = spec.id();
+         String scratchStr = ctx.get(FIXTURE, "scratchRoot").orElse(null);
+         if (scratchStr == null) {
+@@ -335,6 +380,10 @@ final class HomeVerdictsSupport {
+             boolean verifyNamesAsToday = verifyNames == shape.verifyNamesToday();
+             boolean fixCleared = after.exit() == 0 && report(after).parsedClean();
+             boolean verifyCleanAfterFix = verifyAfter.exit() == 0;
++            List<Check> extra = afterFix == null ? List.of() : afterFix.check(ctx, subject, rel);
++            for (Check c : extra) {
++                if (!c.ok()) failures.add(c.name() + ": " + c.failure());
++            }
+ 
+             if (!controlClean) failures.add("control: the unplanted subject was not clean: exit "
+                     + control.exit() + " " + control.stdout().strip());
+@@ -376,6 +425,7 @@ final class HomeVerdictsSupport {
+                             + " (names it: " + verifyNames + ") fix=" + fix.exit()
+                             + " after=" + after.exit() + " verify-after=" + verifyAfter.exit()
+                             + "\nrepair --json stdout: " + detect.stdout().strip());
++            for (Check c : extra) result = result.assertion(c.name(), c.ok());
+         } catch (IOException | RuntimeException e) {
+             result = NodeResult.error(id, e);
+         } finally {

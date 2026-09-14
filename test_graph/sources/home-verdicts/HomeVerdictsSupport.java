@@ -1,0 +1,561 @@
+// Declared here as well as on every node that includes this file, because
+// `sandbox.env.contract` walks each file's OWN //SOURCES closure: this class
+// resolves the CLI (SmEnv.cli()), so it has to reach the helper on its own terms.
+//SOURCES ../lib/SmEnv.java
+
+import com.hayden.testgraphsdk.sdk.NodeContext;
+import com.hayden.testgraphsdk.sdk.NodeResult;
+import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
+import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.JsonMapper;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * Shared machinery for the {@code home-verdicts} graph (OHV-0, #356): lay out a
+ * home FROM NOTHING, plant one defect shape in it, and ask both verdict
+ * commands about it.
+ *
+ * <h2>Why a hand-laid home and not a real install</h2>
+ *
+ * <p>{@code home-integrity} installs real units, because its invariants relate
+ * two things the product wrote. This graph's subject is different: it is what
+ * {@code home verify} and {@code home repair} SAY about a known damaged shape.
+ * The shapes were all measured on real homes (see the graph's header), and each
+ * one is a few bytes on disk. Planting them in a home laid out with
+ * {@code SkillStore.init()}'s directories keeps every node independent of the
+ * gateway venv, the network and the other nodes' state, and it keeps the
+ * fixture's own damage out of any home a law could find (below).
+ *
+ * <h2>How the damaged homes stay out of the laws' way (#344 is OHV-5's)</h2>
+ *
+ * <p>{@code HomeFixpointLaw} and {@code HomeMembershipLaw} discover homes from
+ * UPSTREAM CONTEXT VALUES, not from the filesystem. So a shape node never
+ * publishes a path: it builds its subject and neighbour under the fixture's
+ * {@code scratchRoot/<shape>/}, and deletes that directory in a {@code finally}.
+ * The only home this graph publishes is the fixture's clean one, which holds no
+ * unit (a unit on disk with no {@code installed/} record would be the membership
+ * law's GAINED finding, correctly).
+ *
+ * <h2>stdout and stderr are read SEPARATELY</h2>
+ *
+ * <p>{@code home repair --json} prints its JSON on stdout and may print a
+ * recorded-errors banner on stderr. The kickoff fleet script read the two as
+ * one stream and lost four homes' finding counts. {@link #sm} writes each
+ * stream to its own node log.
+ */
+final class HomeVerdictsSupport {
+
+    private HomeVerdictsSupport() {}
+
+    /** The unit every subject and neighbour holds, so a mis-anchored link RESOLVES. */
+    static final String UNIT = "hv-unit";
+
+    static final String FIXTURE = "home.verdicts.fixture";
+
+    /** {@code SkillStore.init()}'s directories, in its order. */
+    static final List<String> STORE_DIRS = List.of(
+            "skills", "plugins", "docs", "harnesses", "projects",
+            "bin", "bin/cli", "bin/mcp", "venvs", "npm", "cache", "installed");
+
+    // ------------------------------------------------------------- layout
+
+    /**
+     * {@code <root>/.skill-manager} beside {@code <root>/.claude|.codex|.gemini}.
+     * ROOT-SHAPED, so the agent directories are derived from the store
+     * structurally, the way {@code HomeRepair.agentDirsOf} derives them.
+     */
+    static Path layOutHome(Path root) throws IOException {
+        Path store = root.resolve(".skill-manager");
+        for (String dir : STORE_DIRS) Files.createDirectories(store.resolve(dir));
+        for (String agent : List.of(".claude", ".codex", ".gemini")) {
+            Files.createDirectories(root.resolve(agent).resolve("skills"));
+        }
+        return store;
+    }
+
+    /** Put {@link #UNIT} in the store and project it into the home's own {@code .claude}. */
+    static void holdUnit(Path store) throws IOException {
+        Path unit = Files.createDirectories(store.resolve("skills").resolve(UNIT));
+        Files.writeString(unit.resolve("SKILL.md"), "---\nname: " + UNIT
+                + "\ndescription: home-verdicts fixture\n---\n");
+        Path link = store.getParent().resolve(".claude/skills").resolve(UNIT);
+        Files.deleteIfExists(link);
+        Files.createSymbolicLink(link, unit);
+    }
+
+    /** An executable {@code venvs/<venv>/bin/<tool>}; returns its absolute path. */
+    static Path venvTool(Path store, String venv, String tool) throws IOException {
+        Path bin = Files.createDirectories(store.resolve("venvs").resolve(venv).resolve("bin"));
+        Path exe = bin.resolve(tool);
+        Files.writeString(exe, "#!/bin/sh\nexit 0\n");
+        exe.toFile().setExecutable(true);
+        return exe;
+    }
+
+    /** A regular-file wrapper in {@code bin/cli} that execs {@code target} LITERALLY. */
+    static void literalShim(Path store, String name, Path target) throws IOException {
+        Path shim = store.resolve("bin/cli").resolve(name);
+        Files.writeString(shim, "#!/usr/bin/env bash\nexec \"" + target + "\" \"$@\"\n",
+                StandardCharsets.UTF_8);
+        shim.toFile().setExecutable(true);
+    }
+
+    /**
+     * {@code installed/<unit>.projections.json} in the shape a real sync writes
+     * (one default Codex binding, one SYMLINK projection), with no
+     * {@code installed/<unit>.json} and no unit directory. Returns the
+     * home-relative subject.
+     */
+    static String orphanRecord(Path store, String unit) throws IOException {
+        Path dest = store.getParent().resolve(".codex/skills").resolve(unit);
+        String json = """
+                {
+                  "unitName" : "%1$s",
+                  "bindings" : [ {
+                    "bindingId" : "default:codex:%1$s",
+                    "unitName" : "%1$s",
+                    "unitKind" : "SKILL",
+                    "targetRoot" : "%2$s",
+                    "conflictPolicy" : "ERROR",
+                    "createdAt" : "2026-09-07T13:23:56.717976Z",
+                    "source" : "DEFAULT_AGENT",
+                    "projections" : [ {
+                      "bindingId" : "default:codex:%1$s",
+                      "sourcePath" : "$SKILL_MANAGER_HOME/skills/%1$s",
+                      "destPath" : "%3$s",
+                      "kind" : "SYMLINK"
+                    } ]
+                  } ]
+                }
+                """.formatted(unit, dest.getParent(), dest);
+        Files.writeString(store.resolve("installed").resolve(unit + ".projections.json"), json,
+                StandardCharsets.UTF_8);
+        return "installed/" + unit + ".projections.json";
+    }
+
+    // ------------------------------------------- marketplace identity (OHV-6)
+
+    /**
+     * The identity {@code PluginMarketplace.name()} derives for a non-root store:
+     * {@code skill-manager-} + the first four bytes of SHA-256 over the store's
+     * real path, in hex. Spelled out here rather than read from the product, so
+     * the node's expectation is an independent oracle, not the code under test.
+     */
+    static String identityOf(Path store) {
+        String canonical;
+        try {
+            canonical = store.toRealPath().toString();
+        } catch (IOException notThere) {
+            canonical = store.toAbsolutePath().normalize().toString();
+        }
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder("skill-manager-");
+            for (int i = 0; i < 4; i++) hex.append(String.format("%02x", digest[i]));
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** {@code <store>/plugin-marketplace}, in the spelling the product registers. */
+    static String marketplaceRoot(Path store) {
+        return store.toAbsolutePath().normalize().resolve("plugin-marketplace").toString();
+    }
+
+    static String jsonString(String s) {
+        try {
+            return JsonMapper.MAPPER.writeValueAsString(s);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Write {@code rel} under the SUBJECT's home root ({@code <store>/..}) — its
+     * structural agent directories, which is what {@code home repair} reads.
+     * Never the operator's {@code ~/.claude}/{@code ~/.codex}, and not the graph
+     * sandbox's either: nothing here consults the environment.
+     */
+    static void writeAgentFile(Path store, String rel, String content) throws IOException {
+        Path file = store.getParent().resolve(rel);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, content, StandardCharsets.UTF_8);
+    }
+
+    /** A marketplace manifest naming {@code name}, with no plugins — the shape a copy carries. */
+    static void writeManifest(Path store, String name) throws IOException {
+        Path manifest = store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
+        Files.createDirectories(manifest.getParent());
+        Files.createDirectories(store.resolve("plugin-marketplace/plugins"));
+        Files.writeString(manifest, "{\n  \"name\" : " + jsonString(name)
+                + ",\n  \"owner\" : { \"name\" : \"skill-manager\" },\n  \"plugins\" : [ ]\n}\n",
+                StandardCharsets.UTF_8);
+    }
+
+    static String readAgentText(Path store, String rel) {
+        return read(store.getParent().resolve(rel));
+    }
+
+    /** Parsed JSON of an agent file, or an empty object when it is absent or unreadable. */
+    static JsonNode readJson(Path store, String rel) {
+        return parseOrEmpty(readAgentText(store, rel));
+    }
+
+    static JsonNode readStoreJson(Path store, String rel) {
+        return parseOrEmpty(read(store.resolve(rel)));
+    }
+
+    private static JsonNode parseOrEmpty(String text) {
+        try {
+            JsonNode node = JsonMapper.MAPPER.readTree(text);
+            return node == null ? JsonMapper.MAPPER.createObjectNode() : node;
+        } catch (IOException | RuntimeException e) {
+            return JsonMapper.MAPPER.createObjectNode();
+        }
+    }
+
+    // ------------------------------------------------------------- the CLI
+
+    /** One CLI invocation, both streams kept apart. */
+    record Verdict(ProcessRecord proc, int exit, String stdout, String stderr) {
+        String both() { return stdout + "\n" + stderr; }
+    }
+
+    /**
+     * Run this repository's skill-manager against {@code home}, sandboxed through
+     * {@link SmEnv} like every other node, with stdout and stderr captured to
+     * two node logs ({@code <label>.stdout.log}, {@code <label>.stderr.log}).
+     */
+    static Verdict sm(NodeContext ctx, String label, Path home, String... args) {
+        return smWithEnv(ctx, label, home, java.util.Map.of(), args);
+    }
+
+    /**
+     * {@link #sm} with extra environment on top of {@link SmEnv}'s. For
+     * variables SmEnv does not manage — OHV-9's install node points
+     * {@code SKILL_MANAGER_GATEWAY_URL} at an unreachable host so the install
+     * does not build a gateway venv.
+     */
+    static Verdict smWithEnv(NodeContext ctx, String label, Path home,
+                             java.util.Map<String, String> extraEnv, String... args) {
+        List<String> argv = new ArrayList<>();
+        argv.add(SmEnv.cli().toString());
+        argv.addAll(List.of(args));
+        ProcessBuilder pb = new ProcessBuilder(argv);
+        SmEnv.apply(ctx, pb, home);
+        pb.environment().putAll(extraEnv);
+        Instant started = Instant.now();
+        Path out;
+        Path err;
+        try {
+            out = Procs.logFile(ctx, label + ".stdout");
+            err = Procs.logFile(ctx, label + ".stderr");
+        } catch (IOException e) {
+            return new Verdict(new ProcessRecord(label, argv, started, Instant.now(), -1, null,
+                    null, "could not allocate log files: " + e.getMessage()), -1, "", "");
+        }
+        pb.redirectOutput(out.toFile());
+        pb.redirectError(err.toFile());
+        try {
+            Process p = pb.start();
+            int exit = p.waitFor();
+            return new Verdict(new ProcessRecord(label, argv, started, Instant.now(), exit,
+                    p.pid(), Procs.relativeToReport(ctx, out), null),
+                    exit, read(out), read(err));
+        } catch (IOException e) {
+            return new Verdict(new ProcessRecord(label, argv, started, Instant.now(), -1, null,
+                    Procs.relativeToReport(ctx, err), "spawn failed: " + e.getMessage()),
+                    -1, "", "");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new Verdict(new ProcessRecord(label, argv, started, Instant.now(), -1, null,
+                    Procs.relativeToReport(ctx, err), "interrupted"), -1, "", "");
+        }
+    }
+
+    static Verdict repairJson(NodeContext ctx, String label, Path store, String... extra) {
+        List<String> args = new ArrayList<>(List.of("home", "repair", "--home", store.toString(),
+                "--json"));
+        args.addAll(List.of(extra));
+        return sm(ctx, label, store, args.toArray(String[]::new));
+    }
+
+    static Verdict verify(NodeContext ctx, String label, Path store) {
+        return sm(ctx, label, store, "home", "verify", "--home", store.toString());
+    }
+
+    // ------------------------------------------------------------- reading
+
+    /** One finding as {@code home repair --json} reports it: the two fields a node matches on. */
+    record Finding(String kind, String subject) {}
+
+    /**
+     * {@code home repair --json}'s stdout, PARSED with the SDK's Jackson mapper —
+     * never matched as text.
+     *
+     * <p>Nodes match findings by their {@code kind} and {@code subject} FIELDS, so
+     * key order, whitespace or an added field in the command's JSON does not
+     * redden this graph; only a change to what the report SAYS does. Later waves
+     * add nodes on top of this, so every node goes through here.
+     *
+     * @param object   stdout alone parsed as exactly one JSON object, with no
+     *                 trailing content (a banner on stdout fails this)
+     * @param clean    the report's boolean {@code clean} field; false when absent
+     * @param tree     the parsed object, or null
+     * @param findings every entry of {@code findings}, in order
+     */
+    record RepairReport(boolean object, boolean clean, JsonNode tree, List<Finding> findings) {
+
+        static RepairReport parse(String stdout) {
+            JsonNode tree;
+            try {
+                tree = JsonMapper.MAPPER.reader()
+                        .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                        .readTree(stdout == null ? "" : stdout);
+            } catch (IOException | RuntimeException notJson) {
+                return new RepairReport(false, false, null, List.of());
+            }
+            if (tree == null || !tree.isObject()) {
+                return new RepairReport(false, false, tree, List.of());
+            }
+            List<Finding> findings = new ArrayList<>();
+            JsonNode array = tree.path("findings");
+            if (array.isArray()) {
+                for (JsonNode f : array) {
+                    findings.add(new Finding(f.path("kind").asText(null),
+                            f.path("subject").asText(null)));
+                }
+            }
+            JsonNode clean = tree.path("clean");
+            return new RepairReport(true, clean.isBoolean() && clean.booleanValue(), tree,
+                    List.copyOf(findings));
+        }
+
+        /** A finding of {@code kind} about {@code subject}, matched by field. */
+        boolean reports(String kind, String subject) {
+            return findings.stream()
+                    .anyMatch(f -> kind.equals(f.kind()) && subject.equals(f.subject()));
+        }
+
+        /** Parsed, {@code clean:true}, and no findings: an unreadable report is never clean. */
+        boolean parsedClean() {
+            return object && clean && findings.isEmpty();
+        }
+    }
+
+    static RepairReport report(Verdict v) {
+        return RepairReport.parse(v.stdout());
+    }
+
+    // ------------------------------------------------------------- one shape
+
+    /** Plants a shape in {@code subject}; returns the home-relative subject a finding names. */
+    interface Plant {
+        String plant(Path subject, Path neighbour) throws IOException;
+    }
+
+    /**
+     * What today's tree does with one shape.
+     *
+     * @param kind              the {@code HomeRepair.Kind} {@code home repair} must name
+     * @param verifyExitToday   {@code home verify}'s exit on the planted home TODAY.
+     *                          Since OHV-2 (#339) verify fails whenever repair reports,
+     *                          so every repairable shape here is 1.
+     * @param verifyNamesToday  whether {@code home verify}'s output names the kind and
+     *                          subject today — true for every shape since OHV-2
+     */
+    record Shape(String dir, String kind, int verifyExitToday, boolean verifyNamesToday) {}
+
+    /** One extra assertion a shape node makes about the repaired home. */
+    record Check(String name, boolean ok, String failure) {}
+
+    /**
+     * Runs after {@code --fix} and the separate detections, while the subject
+     * still exists, for a shape whose repaired BYTES matter (OHV-4's
+     * half-rewritten shim: the fix must re-anchor the exec line, not only
+     * silence the finding).
+     */
+    interface AfterFix {
+        List<Check> check(NodeContext ctx, Path subject, String rel) throws IOException;
+    }
+
+    /**
+     * Every spelling of {@code path} a generated file could hold: given, real,
+     * and the macOS top-level aliases of both ({@code /var} vs
+     * {@code /private/var}, {@code /tmp}, {@code /etc}). Longest first.
+     */
+    static List<String> spellings(Path path) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        Path given = path.toAbsolutePath().normalize();
+        out.add(given.toString());
+        try {
+            out.add(given.toRealPath().toString());
+        } catch (IOException notThere) {
+            // given only
+        }
+        for (String s : List.copyOf(out)) {
+            for (String alias : List.of("/var", "/tmp", "/etc")) {
+                String target = "/private" + alias;
+                if (s.startsWith(target + "/")) out.add(alias + s.substring(target.length()));
+                if (s.startsWith(alias + "/")) out.add(target + s.substring(alias.length()));
+            }
+        }
+        List<String> sorted = new ArrayList<>(out);
+        sorted.sort(Comparator.comparingInt(String::length).reversed());
+        return List.copyOf(sorted);
+    }
+
+    /**
+     * Plant, detect, ask verify, repair, detect again, delete. Seven separate CLI
+     * processes, because a detector that repairs is no longer a detector (DEF-067).
+     */
+    static NodeResult runShape(NodeContext ctx, NodeSpec spec, Shape shape, Plant plant) {
+        return runShape(ctx, spec, shape, plant, null);
+    }
+
+    /** {@link #runShape(NodeContext, NodeSpec, Shape, Plant)} plus {@code afterFix}'s checks. */
+    static NodeResult runShape(NodeContext ctx, NodeSpec spec, Shape shape, Plant plant,
+                               AfterFix afterFix) {
+        String id = spec.id();
+        String scratchStr = ctx.get(FIXTURE, "scratchRoot").orElse(null);
+        if (scratchStr == null) {
+            return NodeResult.fail(id, "missing " + FIXTURE + " context (scratchRoot)");
+        }
+        Path work = Path.of(scratchStr).resolve(shape.dir());
+        List<String> failures = new ArrayList<>();
+        NodeResult result;
+        try {
+            deleteRecursively(work);
+            Path subject = layOutHome(work.resolve("subject"));
+            Path neighbour = layOutHome(work.resolve("neighbour"));
+            holdUnit(subject);
+            holdUnit(neighbour);
+
+            // CONTROL: the same home before the plant. Without it a node that
+            // "finds" the kind would also find it in a layout that is itself
+            // damaged, and the assertion would be about the fixture.
+            Verdict control = repairJson(ctx, "control", subject);
+            boolean controlClean = control.exit() == 0 && report(control).parsedClean();
+
+            String rel = plant.plant(subject, neighbour);
+
+            Verdict detect = repairJson(ctx, "detect", subject);
+            Verdict detectAgain = repairJson(ctx, "detect-again", subject);
+            Verdict verify = verify(ctx, "verify", subject);
+            Verdict fix = repairJson(ctx, "fix", subject, "--fix");
+            Verdict after = repairJson(ctx, "detect-after-fix", subject);
+            Verdict verifyAfter = verify(ctx, "verify-after-fix", subject);
+
+            RepairReport detected = report(detect);
+            RepairReport detectedAgain = report(detectAgain);
+            boolean repairRed = detect.exit() == 1 && detectAgain.exit() == 1;
+            boolean stdoutIsJson = detected.object();
+            boolean namesShape = detected.reports(shape.kind(), rel);
+            // Compared as parsed trees: the stability claim is about what the
+            // report says, not how it happened to be spaced.
+            boolean detectionIsStable = detected.object()
+                    && detected.tree().equals(detectedAgain.tree());
+            boolean verifyExitAsToday = verify.exit() == shape.verifyExitToday();
+            boolean verifyNames = verify.both().contains(shape.kind() + " " + rel);
+            boolean verifyNamesAsToday = verifyNames == shape.verifyNamesToday();
+            boolean fixCleared = after.exit() == 0 && report(after).parsedClean();
+            boolean verifyCleanAfterFix = verifyAfter.exit() == 0;
+            List<Check> extra = afterFix == null ? List.of() : afterFix.check(ctx, subject, rel);
+            for (Check c : extra) {
+                if (!c.ok()) failures.add(c.name() + ": " + c.failure());
+            }
+
+            if (!controlClean) failures.add("control: the unplanted subject was not clean: exit "
+                    + control.exit() + " " + control.stdout().strip());
+            if (!repairRed) failures.add("`home repair --json` exited " + detect.exit() + "/"
+                    + detectAgain.exit() + " on a planted " + shape.kind() + ", expected 1");
+            if (!stdoutIsJson) failures.add("stdout of `home repair --json` is not one JSON object: "
+                    + head(detect.stdout()));
+            if (!namesShape) failures.add("`home repair --json` does not name " + shape.kind()
+                    + " on " + rel + ": " + head(detect.stdout()));
+            if (!detectionIsStable) failures.add("two bare detections disagree — detection changed the home");
+            if (!verifyExitAsToday) failures.add("`home verify` exited " + verify.exit() + ", today's tree "
+                    + "exits " + shape.verifyExitToday() + " on this shape. If OHV-2 landed, update "
+                    + "this node's Shape: that change is the point");
+            if (!verifyNamesAsToday) failures.add("`home verify` " + (verifyNames ? "names" : "does not name")
+                    + " " + shape.kind() + " " + rel + ", unlike today's tree");
+            if (!fixCleared) failures.add("after `home repair --fix` a separate detection still exits "
+                    + after.exit() + ": " + head(after.stdout()));
+            if (!verifyCleanAfterFix) failures.add("after the fix `home verify` exits " + verifyAfter.exit());
+
+            result = (failures.isEmpty() ? NodeResult.pass(id) : NodeResult.fail(id, String.join(" | ", failures)))
+                    .process(control.proc()).process(detect.proc()).process(detectAgain.proc())
+                    .process(verify.proc()).process(fix.proc()).process(after.proc())
+                    .process(verifyAfter.proc())
+                    .assertion("control_the_unplanted_home_is_clean", controlClean)
+                    .assertion("home_repair_json_exits_1_on_the_planted_shape", repairRed)
+                    .assertion("home_repair_json_stdout_alone_is_one_json_object", stdoutIsJson)
+                    .assertion("home_repair_names_" + shape.kind() + "_on_the_planted_subject", namesShape)
+                    .assertion("detection_alone_changes_nothing", detectionIsStable)
+                    .assertion("TODAY_home_verify_exits_" + shape.verifyExitToday(), verifyExitAsToday)
+                    .assertion("TODAY_home_verify_" + (shape.verifyNamesToday() ? "names" : "does_not_name")
+                            + "_the_shape", verifyNamesAsToday)
+                    .assertion("home_repair_fix_then_a_separate_detection_is_clean", fixCleared)
+                    .assertion("home_verify_is_clean_after_the_fix", verifyCleanAfterFix)
+                    .metric("verify.exit", verify.exit())
+                    .metric("repair.exit", detect.exit())
+                    .metric("repair.findings", detected.findings().size())
+                    .log("shape=" + shape.kind() + " subject=" + rel
+                            + " | repair=" + detect.exit() + " verify=" + verify.exit()
+                            + " (names it: " + verifyNames + ") fix=" + fix.exit()
+                            + " after=" + after.exit() + " verify-after=" + verifyAfter.exit()
+                            + "\nrepair --json stdout: " + detect.stdout().strip());
+            for (Check c : extra) result = result.assertion(c.name(), c.ok());
+        } catch (IOException | RuntimeException e) {
+            result = NodeResult.error(id, e);
+        } finally {
+            try {
+                deleteRecursively(work);
+            } catch (IOException ignored) {
+                // reported below
+            }
+        }
+        boolean cleaned = !Files.exists(work, LinkOption.NOFOLLOW_LINKS);
+        return result.assertion("the_damaged_homes_are_deleted", cleaned);
+    }
+
+    // ------------------------------------------------------------------ fs
+
+    static String read(Path p) {
+        try {
+            return Files.isRegularFile(p) ? Files.readString(p, StandardCharsets.UTF_8) : "";
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    static String head(String s) {
+        String t = s.strip();
+        return t.length() > 400 ? t.substring(0, 400) + "…" : t;
+    }
+
+    /** Delete without following links: a planted link points into another home. */
+    static void deleteRecursively(Path root) throws IOException {
+        if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return;
+        try (var walk = Files.walk(root)) {
+            for (Path p : walk.sorted(Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(p);
+            }
+        }
+    }
+}

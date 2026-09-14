@@ -1,0 +1,72 @@
+--- ~/.claude/plugins/known_marketplaces.json (now, sha256 673a5b937c7b)
++++ ~/.claude/plugins/known_marketplaces.json (after --fix)
+@@ -14,14 +14,6 @@
+     },
+     "installLocation": "/Users/hayde/.skill-manager/plugin-marketplace",
+     "lastUpdated": "2026-09-13T17:40:29.115Z"
+-  },
+-  "skill-manager-919db26e": {
+-    "source": {
+-      "source": "directory",
+-      "path": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace"
+-    },
+-    "installLocation": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace",
+-    "lastUpdated": "2026-08-12T22:35:04.258Z"
+   },
+   "skill-manager-0fd46eec": {
+     "source": {
+
+--- ~/.claude/settings.json (now, sha256 9354fc228a69)
++++ ~/.claude/settings.json (after --fix)
+@@ -89,8 +89,6 @@
+   "enabledPlugins": {
+     "jdtls-lsp@claude-plugins-official": true,
+     "rust-analyzer-lsp@claude-plugins-official": true,
+-    "cdc-agent-substrate-plugin@skill-manager-919db26e": true,
+-    "skt@skill-manager-919db26e": true,
+     "andrej-karpathy-skills@skill-manager": true,
+     "cdc-agent-substrate-plugin@skill-manager": true,
+     "skt@skill-manager": true
+@@ -101,12 +99,6 @@
+         "source": "directory",
+         "path": "/Users/hayde/.skill-manager/plugin-marketplace"
+       }
+-    },
+-    "skill-manager-919db26e": {
+-      "source": {
+-        "source": "directory",
+-        "path": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace"
+-      }
+     }
+   },
+   "effortLevel": "high",
+
+~/.claude/plugins/installed_plugins.json: unchanged
+
+--- ~/.codex/config.toml (now, sha256 8676fe55d69d)
++++ ~/.codex/config.toml (after --fix)
+@@ -218,12 +218,6 @@
+ [plugins."cdc-agent-substrate-plugin@skill-manager"]
+ enabled = true
+ 
+-[plugins."cdc-agent-substrate-plugin@skill-manager-919db26e"]
+-enabled = true
+-
+-[plugins."skt@skill-manager-919db26e"]
+-enabled = true
+-
+ [plugins."sites@openai-bundled"]
+ enabled = true
+ 
+@@ -266,11 +260,6 @@
+ last_updated = "2026-08-02T15:03:14Z"
+ source_type = "local"
+ source = "/Users/hayde/.skill-manager/plugin-marketplace"
+-
+-[marketplaces.skill-manager-919db26e]
+-last_updated = "2026-08-12T22:35:05Z"
+-source_type = "local"
+-source = "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace"
+ 
+ [marketplaces.openai-bundled]
+ last_updated = "2026-08-15T16:55:09Z"

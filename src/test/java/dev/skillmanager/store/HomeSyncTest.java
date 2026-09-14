@@ -558,6 +558,20 @@ public final class HomeSyncTest {
                             "a unit the source does not have is never deleted");
                 })
 
+                .test("OHV-6 (#352 shape 3): home sync leaves the destination's manifest naming the destination", () -> {
+                    Homes homes = Homes.create("mp-identity");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    var destMp = new dev.skillmanager.project.PluginMarketplace(homes.dest());
+                    // The manifest a copy carries: another home's identity.
+                    write(destMp.manifestPath(), "{\"name\": \"skill-manager-00000000\", \"plugins\": []}\n");
+
+                    sync(homes, false, false);
+
+                    assertEquals(destMp.name(), dev.skillmanager.project.PluginMarketplace
+                                    .manifestName(destMp.manifestPath()).orElse(null),
+                            "re-derived from the destination's store path");
+                })
+
                 .test("a frozen destination refuses and a frozen source is only read", () -> {
                     Homes homes = Homes.create("frozen");
                     write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");

@@ -1,0 +1,2916 @@
+diff --git a/RunTests.java b/RunTests.java
+index 874fc98d..bc528f66 100755
+--- a/RunTests.java
++++ b/RunTests.java
+@@ -232,6 +232,7 @@ public class RunTests {
+         failures += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
+         failures += PluginMarketplaceTest.run();
+         failures += HarnessPluginCliTest.run();
++        failures += dev.skillmanager.project.MarketplaceRegistrationsTest.run();
+         failures += HomeRefreshPluginsTest.run();
+         failures += RefreshHarnessPluginsTest.run();
+         failures += PublishDetectsPluginTest.run();
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-6/README.md b/results/epic-one-home-one-verdict/tickets/OHV-6/README.md
+new file mode 100644
+index 00000000..d67b902a
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-6/README.md
+@@ -0,0 +1,175 @@
++# OHV-6 (#352) — a home's plugin marketplace has one identity, and every agent registration agrees with it
++
++Branch `feature/OHV-6`, from the epic at `42486f86`, with `10df4440` (the wave-3 review, `results/` only) merged in.
++Code commits: `83651bfc` (the slice) and `dc4f6356` (keep a repaired file's trailing newline; found by the root simulation).
++
++## What was measured before any code
++
++Everything below was run against scratch config dirs only, and the four global agent files had the same sha256 before and after.
++
++| CLI | behaviour | consequence |
++| --- | --- | --- |
++| Claude Code 2.1.270 | `plugin marketplace add <path>` on a path already registered as `skill-manager`, after marketplace.json was renamed, prints "already on disk" and **keeps the old name** | shape 1 cannot heal by re-adding; `update <new>` fails with `Marketplace '<new>' not found` (the #352 error, reproduced) |
++| Claude Code 2.1.270 | `plugin marketplace remove <name>` also drops that name's `enabledPlugins`, `extraKnownMarketplaces` and `installed_plugins.json` rows | a remove-and-re-add must re-enable the plugins itself |
++| codex-cli 0.154.0 | `plugin marketplace add <path>` on a renamed path **adds a second table**; `marketplace remove <old>` leaves `[plugins."p@old"]` enabled | a stale enablement survives the CLI's own removal |
++| skill-manager | `RefreshHarnessPlugins.reinstall` holds only the named plugins for `sync <plugin>` | removing a stale enablement silently drops every other plugin; so shape 1 is repaired by RENAMING |
++
++## (a) Registration reconciled by identity and path
++
++- **Change:** `HarnessPluginCli.Claude.ensureMarketplaceAdded`:
++  1. It parses `list --json`, with a text fallback, and matches on exact name and path.
++  2. It removes this path's registration under another name, and this identity if registered at another path.
++  3. It runs `add`, then re-lists. The outcome is judged by what is registered, not by add's exit code.
++  4. It installs, under the identity, the plugins that were enabled under the removed name.
++
++  `Codex.ensureRegisteredAt` handles a same-path table under another name the same way: `plugin remove p@old`, `marketplace remove old`, `add` if needed, then re-read `config.toml`, then `plugin add p@identity`.
++- **Tests:** `HarnessPluginCliTest` covers:
++  - shape 2's substring trap (`skill-manager` inside `skill-manager-919db26e`): the add runs, and nothing foreign is removed;
++  - Claude shape 1: remove, add, re-list, install `skt@identity`, and nothing else touched;
++  - an add that keeps the old name, which is a failure naming both identities;
++  - Codex shape 1;
++  - the text-listing parser;
++  - the existing Codex stale-path tests, whose fake runner now writes the config the way `add` does.
++- **Real homes:** see the per-home table below. Every `sync skt` reported 0 AGENT_SYNC_FAILED.
++
++## (b) The generated name is derived, never trusted from disk
++
++- **Change:** `HomeCloner.rederiveMarketplaceIdentity` runs in `home clone`, after the state re-anchor and before the drift baseline, and at the end of `home sync`. When a manifest exists and names another identity, it regenerates the marketplace through `PluginMarketplace.regenerate()`, which is the manifest's one writer. A home with no manifest is left without one.
++- **Tests:** `HomeCloneTest` "a clone's marketplace manifest names the CLONE, not its source"; `HomeSyncTest` "home sync leaves the destination's manifest naming the destination".
++- **Node:** `home.verdicts.copied.marketplace.identity`.
++
++## (c) Another home's marketplace, and the other three shapes, are `home repair` findings with a `--fix`
++
++- **Change:** `MarketplaceRegistrations` is a new class that reads, judges and edits one entry. `HomeRepair` gains four kinds:
++
++  | kind | #352 shape | --fix |
++  | --- | --- | --- |
++  | `MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME` | 1 | re-points the registration and every enablement from that name in the same agent's config at the identity (removes instead where the identity entry already exists) |
++  | `MARKETPLACE_IDENTITY_UNREGISTERED` | 2 (its disk trace: enabled under the identity, not registered at this path) | registers the identity the way that agent's `marketplace add` does; unrepairable when there is no manifest |
++  | `MARKETPLACE_IDENTITY_COPIED` | 3 | regenerates the marketplace |
++  | `FOREIGN_MARKETPLACE_REGISTRATION` | 4, both Codex and Claude (DEF-OHV-005) | removes that one entry; an enablement of a plugin this home's own manifest carries is re-pointed instead, so the plugin is not dropped |
++
++  Each finding's detail names the identity and path it expected and what it found. `apply` re-reads and re-judges the config before writing, so a finding an earlier action consumed is refused. It never acts on stale prose.
++
++- **Which files each home's detector reads** (the agent dirs are structural, `AgentHomes.homeRootFor(store)`, never the environment):
++  - `<homeRoot>/.claude/plugins/known_marketplaces.json`: registrations;
++  - `<homeRoot>/.claude/settings.json`: `extraKnownMarketplaces` (registrations) and `enabledPlugins`;
++  - `<homeRoot>/.codex/config.toml`: `[marketplaces.*]` and `[plugins."p@m"]`.
++
++  For a project home `<homeRoot>` is the checkout. These are the files `CLAUDE_CONFIG_DIR`/`CODEX_HOME` name when skill-manager drives the CLIs for that home, and Claude's project scope. For the root home they are the user-level `~/.claude/...` and `~/.codex/config.toml`.
++
++- **Deliberately not read:**
++  - `settings.local.json`;
++  - `installed_plugins.json` and `plugins/cache/`, the CLIs' install cache and not registrations. After a shape-1 migration the old `p@old` rows stay there; the next sync writes `p@identity` rows beside them;
++  - directories that `CLAUDE_CONFIG_DIR`/`CODEX_HOME` redirect to;
++  - harness-instance agent dirs;
++  - Gemini;
++  - every other checkout's config.
++
++- **One exemption:** a Claude `known_marketplaces.json` entry for another home that nothing in the same config enables. It loads nothing, and in a user-level config it is how Claude records a marketplace a checkout declared. The root's `~/.claude/plugins/known_marketplaces.json` holds about 8 such project-home entries, and they are not reported.
++
++- **Tests:**
++  - `MarketplaceRegistrationsTest`, 8 cases: the root DEF-OHV-005 config yields exactly the 4 foreign entries; shape 1 judge and migration in place; shape 2 judge and register; TOML cut and rename keep every other byte; path aliases; trailing newline.
++  - `DamagedHomeIsRepairableTest`: the `Kind.values()` guard now plants all four (`damageMarketplaceIdentity`); "the four marketplace-identity shapes, repaired by touching only what they name" (exact subjects, exact surviving TOML, second `--fix` a no-op); "a foreign enablement of a plugin THIS home carries is re-pointed, not dropped".
++
++## (d) Every verdict and sync names the identity it expected and the one it found
++
++- Findings: `expected <identity> at <marketplace>, found <name> …`.
++- Driver results: `already registered: <identity> at <path>`, `expected <identity> at <path>, found <name> at <path>: removed`, and `migrated p@old -> p@identity`.
++- Sync facts now carry the success message (`✓ claude: marketplace-add — …`).
++- `AGENT_SYNC_FAILED` reads `claude plugin install <p>@<identity> (this home's marketplace, at <path>): …`.
++- `home refresh-plugins` notes carry the same text.
++
++## The four home-verdicts nodes
++
++Each is planted in the scratch subject's own `.claude`/`.codex` (never the operator's, never the sandbox's). Each asserts that repair exits 1 naming the kind and subject, that verify exits 1 naming it, that `--fix` then a separate detection is clean, and that verify is clean afterwards. Each also checks what the fix must not touch.
++
++| node | plant | extra checks |
++| --- | --- | --- |
++| `home.verdicts.marketplace.under.another.name` | known + extraKnown `skill-manager` at the subject's path; `hv-plugin@skill-manager`, `other@claude-plugins-official` enabled | registration re-pointed, enablement migrated, unrelated marketplace/plugin untouched |
++| `home.verdicts.marketplace.identity.unregistered` | `hv-plugin@<identity>` enabled; only `<identity>-old` (at the neighbour) registered | identity registered at this home; enablement kept; `-old` untouched |
++| `home.verdicts.copied.marketplace.identity` | manifest names the neighbour's identity | manifest names the subject's derived identity (independent oracle in `HomeVerdictsSupport.identityOf`) |
++| `home.verdicts.foreign.marketplace.registration` | Codex `[marketplaces.skill-manager]` at the neighbour plus its plugin; Claude enablement plus registration of the neighbour's identity | foreign table and plugin gone; operator setting, own marketplace, own plugin, `github@openai-curated` survive byte for byte; Claude enablement gone |
++
++Local run: `python skills/test_graph/scripts/run.py home-verdicts` gave 17/17 nodes passed in 208 s (report `20260914-124153`), laws included.
++
++## CI
++
++**Run 34846521245**, `graph_set=full` on `dc4f6356`: `graphs-executed.json` reads **26 selected / 26 executed / 26 passed / 0 failed**, all 31 jobs green. The ticket's graphs:
++
++| graph | nodes |
++| --- | --- |
++| home-verdicts | 17/17, the four new nodes included |
++| plugin-smoke | 28/28 |
++| home-clone | 16/16, no IntentionalDamage declaration edits needed |
++| home-integrity | 19/19 |
++
++Deferred as on every run: browser-auth, refresh-flow, password-reset, hyper-experiments.
++
++The branch tip adds only a `results/`-only merge of the epic (`10df4440`) and this evidence commit, so its code is what the run tested.
++
++An earlier run, 34846096713 on `83651bfc`, was cancelled after about 1 minute: the root simulation found the trailing-newline defect fixed in `dc4f6356`.
++
++## Real homes
++
++**Builds:**
++- baseline: released `skill-manager 0.27.2` (`baseline/released/`) and raw `0.27.2+g42486f86f2e0` (`baseline/raw-42486f86/`);
++- the OHV-6 build's read-only verdicts before any write: `baseline/ohv6-build-prefix/`;
++- writes: this worktree's raw build.
++
++**Backups** were taken before any write, with sha256 manifests. Each holds `installed/`, `bin/` and `plugin-marketplace/`, the checkout's `.claude/settings.json`, `known_marketplaces.json`, `installed_plugins.json` and `.codex/config.toml`, and the four global files. Location: `/Users/hayde/IdeaProjects/wt-epic-one-home-one-verdict/results/epic-one-home-one-verdict/tickets/OHV-6-backups/<label>-20260914T084442/`. Not committed.
++
++**Driver:** `realhome.py`, recorded under `real-homes/<label>/`. It runs verify, repair, `--fix`, repair, verify, then `sync skt --yes` with `SKILL_MANAGER_HOME`, `CLAUDE_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `GEMINI_HOME` all set to that checkout, then repair and verify again. A Python guard compares the four global files against the backup sha256 after the fix and after the sync, restoring everything and stopping on any change.
++
++| home | verify / repair, released 0.27.2 | marketplace findings, OHV-6 build | `--fix` repaired (all kinds) | after fix | `sync skt`: AGENT_SYNC_FAILED | recorded errors after | global files |
++| --- | --- | --- | --- | --- | --- | --- | --- |
++| tla-spec-dev | 0 / 1 | shape 1 ×5 (Claude), shape 4 ×4 (Codex: the root's marketplace) | 16 (+6 frozen shims, 2 pm stamps, 3 dangling links) | 0 / 0 clean | **0** (3 recorded before) | none | unchanged |
++| meta-orchestrator | 0 / 1 | shape 1 ×5 (Claude and Codex) | 10 | 0 / 0 clean | **0** (2 recorded before) | none | unchanged |
++| meta-harness | 0 / 1 | shape 4 ×9 (Claude and Codex: the root's marketplace) | 51 (incl. 24 dangling agent links, 11 orphaned records from OHV-2's kinds) | 0 / 0 clean | **0** | none | unchanged |
++| wt-229-library-attestation | 0 / 1 | shape 3 (manifest `skill-manager-919db26e`) | 4 | 0 / 0 clean | **0** | none | unchanged |
++| root `~/.skill-manager` | 0 / 0 | shape 4 ×7 (Claude and Codex: commit-diff-context-parent's) | **not written** (owner) | n/a | n/a | n/a | n/a |
++| project `skill-manager/.skill-manager` | 0 / 0 | none | not written | n/a | n/a | n/a | n/a |
++
++What changed on disk (`real-homes/<label>/agent-files.diff`):
++- **tla-spec-dev:** `.claude` `skill-manager` → `skill-manager-0fd46eec` in known and extraKnown, plus 3 enablements. The sync then wrote the three `@skill-manager-0fd46eec` rows into `installed_plugins.json`. `.codex` lost the root's `[marketplaces.skill-manager]` and 3 `@skill-manager` plugin tables; its own `@0fd46eec` tables were already there.
++- **meta-orchestrator:** the same, and the sync enabled `skt@skill-manager-88340088` in Claude for the first time.
++- **meta-harness:** the root's registration and 3 enablements were removed from `.claude` and `.codex`. `andrej-karpathy-skills` is not in its own manifest, so nothing of its own was dropped.
++- **wt-229:** the manifest is now `skill-manager-3132fc05`, and the sync created its `.claude`/`.codex` registrations under that name.
++
++Other things the sync did:
++- tla-spec-dev: `cli: 1 failed` (slm-agent's private `slm` CLI, unrelated to plugins);
++- tla-spec-dev: the gateway registered `runpod` at `global-sticky` scope, a sync side effect outside the four files checked.
++
++**Goal harness** (`baseline/measure_before.json` → `real-homes/measure_after.json`, `--fleet`): root shape 4 (unchanged, pending the owner), project none; fleet shape 1/3/4 = 0/16/11 (any 25 of 62) → **0/13/8 (any 19 of 62)**. Shape 1 reads 0 on both sides only because the harness looks in the wrong file (DEF-OHV-160).
++
++## Root home: commands awaiting the owner
++
++Not run. The exact expected effect was produced by `root-home/`: copies of the four files in a scratch `$HOME`, the root's paths re-spelled onto it, the real `--fix` run there, and the result mapped back. It gave 7 findings, 7 repaired, 0 failed, and a clean detection afterwards (`sim-detect.json`, `sim-fix.json`, `sim-after.json`).
++
++```bash
++# 1. back up (durable path)
++B=/Users/hayde/IdeaProjects/wt-epic-one-home-one-verdict/results/epic-one-home-one-verdict/tickets/OHV-6-backups/root-$(date +%Y%m%dT%H%M%S)
++mkdir -p "$B" && cp -p ~/.claude/plugins/known_marketplaces.json ~/.claude/plugins/installed_plugins.json ~/.claude/settings.json ~/.codex/config.toml "$B"/ && shasum -a 256 "$B"/* > "$B"/SHA256SUMS
++# 2. confirm the findings are exactly the seven
++/Users/hayde/IdeaProjects/wt-ohv-6/skill-manager home repair --home ~/.skill-manager --json
++# 3. fix
++/Users/hayde/IdeaProjects/wt-ohv-6/skill-manager home repair --home ~/.skill-manager --fix --json
++# 4. next plugin sync of the root (expected: 0 AGENT_SYNC_FAILED)
++/Users/hayde/IdeaProjects/wt-ohv-6/skill-manager sync skt --yes
++```
++
++Expected diff of each global file (`root-home/expected-global-diffs.patch`):
++- `~/.claude/plugins/known_marketplaces.json`: the `skill-manager-919db26e` entry is removed. The ~8 unenabled project-home entries stay (the exemption above).
++- `~/.claude/settings.json`: `enabledPlugins` loses `cdc-agent-substrate-plugin@skill-manager-919db26e` and `skt@skill-manager-919db26e`, and `extraKnownMarketplaces` loses `skill-manager-919db26e`. Nothing else changes, including the trailing newline.
++- `~/.codex/config.toml`: `[plugins."cdc-agent-substrate-plugin@skill-manager-919db26e"]`, `[plugins."skt@skill-manager-919db26e"]` and `[marketplaces.skill-manager-919db26e]` are removed. Every other byte stays.
++- `~/.claude/plugins/installed_plugins.json`: unchanged. Any `@skill-manager-919db26e` rows are cache and stay.
++
++## Validation
++
++- `jbang RunTests.java`: ALL PASSED, three runs: after the slice, after the carried-plugin re-point, and after the newline fix.
++- `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
++- Close-out: `skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-ohv-6/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager` exited 0 with "holds nothing that removing it would destroy" (`close-out.txt`). No unit in the ticket home was changed.
++
++## Deferred
++
++DEF-OHV-160 (`deferred.yaml`): the goal harness reads shape 1 from the global `known_marketplaces.json` only.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-6/close-out.txt b/results/epic-one-home-one-verdict/tickets/OHV-6/close-out.txt
+new file mode 100644
+index 00000000..b66c8e0b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-6/close-out.txt
+@@ -0,0 +1,3 @@
++! Telemetry export unavailable; continuing without telemetry.
++✓ /Users/hayde/IdeaProjects/wt-ohv-6/.skill-manager holds nothing that removing it would destroy
++close-out rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-6/deferred.yaml b/results/epic-one-home-one-verdict/tickets/OHV-6/deferred.yaml
+new file mode 100644
+index 00000000..378ea92d
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-6/deferred.yaml
+@@ -0,0 +1,37 @@
++# OHV-6 (#352) deferred findings. IDs DEF-OHV-160..169 reserved for this ticket.
++version: 1
++findings:
++  - id: DEF-OHV-160
++    found_by: OHV-6 real-home validation
++    found_at_commit: dc4f6356
++    severity: minor
++    maps_to: "adjacent: scripts/goal-harnesses (OHV-0's conflict key), GOAL-one-marketplace-identity clause (2)/(3)"
++    summary: >
++      scripts/measure_goal_one_marketplace_identity.py looks for shape 1 only in the
++      GLOBAL ~/.claude/plugins/known_marketplaces.json for every home. A project home
++      registers its marketplace in its CHECKOUT's .claude/plugins/known_marketplaces.json
++      (skill-manager drives `claude` with CLAUDE_CONFIG_DIR=<checkout>/.claude), so the
++      harness read shape 1 = 0 across the fleet while tla-spec-dev and meta-orchestrator
++      both carried it there (the #352 comment's "shape 1 reading 0 doesn't mean the
++      failure is gone"). It also counts a project's `<plugin>@skill-manager` enablement of
++      its OWN path under the old name as shape 4, and its clause_1 text still says
++      "pending OHV-6". The home repair detector (OHV-6) reads the checkout files; the
++      harness should read the same ones.
++    reproduction: |
++      # before OHV-6's --fix, read-only:
++      python3.12 -c "import json;print(json.load(open('/Users/hayde/IdeaProjects/tla-spec-dev/.claude/plugins/known_marketplaces.json')))"
++      #   -> {'skill-manager': {'source': {'path': '/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/plugin-marketplace'}}}
++      python3 scripts/measure_goal_one_marketplace_identity.py --fleet   # fleet shape1: 0
++    disk_observation: >
++      tla-spec-dev and meta-orchestrator checkout .claude/plugins/known_marketplaces.json
++      registered their own plugin-marketplace as `skill-manager` (backups under
++      wt-epic-one-home-one-verdict/results/epic-one-home-one-verdict/tickets/OHV-6-backups/);
++      measure_before.json reports shape1 0 for both.
++    evidence:
++      - results/epic-one-home-one-verdict/tickets/OHV-6/baseline/measure_before.json
++      - results/epic-one-home-one-verdict/tickets/OHV-6/baseline/ohv6-build-prefix/tla-spec-dev.repair.json
++    suggested_fix: >
++      read <checkout>/.claude/plugins/known_marketplaces.json (root: ~/.claude/...) per home,
++      as MarketplaceRegistrations does; or call `home repair --json` and count the four
++      MARKETPLACE_* kinds. OHV-8 should read clause (3) with this in mind.
++    disposition: pending
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/expected-global-diffs.patch b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/expected-global-diffs.patch
+new file mode 100644
+index 00000000..53b8e9e8
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/expected-global-diffs.patch
+@@ -0,0 +1,72 @@
++--- ~/.claude/plugins/known_marketplaces.json (now, sha256 673a5b937c7b)
+++++ ~/.claude/plugins/known_marketplaces.json (after --fix)
++@@ -14,14 +14,6 @@
++     },
++     "installLocation": "/Users/hayde/.skill-manager/plugin-marketplace",
++     "lastUpdated": "2026-09-13T17:40:29.115Z"
++-  },
++-  "skill-manager-919db26e": {
++-    "source": {
++-      "source": "directory",
++-      "path": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace"
++-    },
++-    "installLocation": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace",
++-    "lastUpdated": "2026-08-12T22:35:04.258Z"
++   },
++   "skill-manager-0fd46eec": {
++     "source": {
++
++--- ~/.claude/settings.json (now, sha256 9354fc228a69)
+++++ ~/.claude/settings.json (after --fix)
++@@ -89,8 +89,6 @@
++   "enabledPlugins": {
++     "jdtls-lsp@claude-plugins-official": true,
++     "rust-analyzer-lsp@claude-plugins-official": true,
++-    "cdc-agent-substrate-plugin@skill-manager-919db26e": true,
++-    "skt@skill-manager-919db26e": true,
++     "andrej-karpathy-skills@skill-manager": true,
++     "cdc-agent-substrate-plugin@skill-manager": true,
++     "skt@skill-manager": true
++@@ -101,12 +99,6 @@
++         "source": "directory",
++         "path": "/Users/hayde/.skill-manager/plugin-marketplace"
++       }
++-    },
++-    "skill-manager-919db26e": {
++-      "source": {
++-        "source": "directory",
++-        "path": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace"
++-      }
++     }
++   },
++   "effortLevel": "high",
++
++~/.claude/plugins/installed_plugins.json: unchanged
++
++--- ~/.codex/config.toml (now, sha256 8676fe55d69d)
+++++ ~/.codex/config.toml (after --fix)
++@@ -218,12 +218,6 @@
++ [plugins."cdc-agent-substrate-plugin@skill-manager"]
++ enabled = true
++ 
++-[plugins."cdc-agent-substrate-plugin@skill-manager-919db26e"]
++-enabled = true
++-
++-[plugins."skt@skill-manager-919db26e"]
++-enabled = true
++-
++ [plugins."sites@openai-bundled"]
++ enabled = true
++ 
++@@ -266,11 +260,6 @@
++ last_updated = "2026-08-02T15:03:14Z"
++ source_type = "local"
++ source = "/Users/hayde/.skill-manager/plugin-marketplace"
++-
++-[marketplaces.skill-manager-919db26e]
++-last_updated = "2026-08-12T22:35:05Z"
++-source_type = "local"
++-source = "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace"
++ 
++ [marketplaces.openai-bundled]
++ last_updated = "2026-08-15T16:55:09Z"
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-after.json b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-after.json
+new file mode 100644
+index 00000000..437a9780
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-after.json
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager","build":"skill-manager 0.27.2+g83651bfc2af5 @ 83651bfc2af5 (refs/heads/feature/OHV-6)","examined":38,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-detect.json b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-detect.json
+new file mode 100644
+index 00000000..2d727d76
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-detect.json
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager","build":"skill-manager 0.27.2+g83651bfc2af5 @ 83651bfc2af5 (refs/heads/feature/OHV-6)","examined":45,"clean":false,"findings":[{"kind":"FOREIGN_MARKETPLACE_REGISTRATION","subject":".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager-919db26e","detail":"registers skill-manager-919db26e at /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace, another home's marketplace — this home's is skill-manager at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager/plugin-marketplace, and a plugin enabled from both loads twice","repair":"skill-manager home repair --fix removes this entry and nothing else","repairable":true},{"kind":"FOREIGN_MARKETPLACE_REGISTRATION","subject":".claude/settings.json:extraKnownMarketplaces.skill-manager-919db26e","detail":"registers skill-manager-919db26e at /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace, another home's marketplace — this home's is skill-manager at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager/plugin-marketplace, and a plugin enabled from both loads twice","repair":"skill-manager home repair --fix removes this entry and nothing else","repairable":true},{"kind":"FOREIGN_MARKETPLACE_REGISTRATION","subject":".claude/settings.json:enabledPlugins.cdc-agent-substrate-plugin@skill-manager-919db26e","detail":"enables cdc-agent-substrate-plugin@skill-manager-919db26e from skill-manager-919db26e, registered at /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace — expected only skill-manager at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager/plugin-marketplace in this home","repair":"skill-manager home repair --fix re-points it at cdc-agent-substrate-plugin@skill-manager: this home's own marketplace carries cdc-agent-substrate-plugin, so removing the entry would drop the plugin","repairable":true},{"kind":"FOREIGN_MARKETPLACE_REGISTRATION","subject":".claude/settings.json:enabledPlugins.skt@skill-manager-919db26e","detail":"enables skt@skill-manager-919db26e from skill-manager-919db26e, registered at /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace — expected only skill-manager at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager/plugin-marketplace in this home","repair":"skill-manager home repair --fix re-points it at skt@skill-manager: this home's own marketplace carries skt, so removing the entry would drop the plugin","repairable":true},{"kind":"FOREIGN_MARKETPLACE_REGISTRATION","subject":".codex/config.toml:marketplaces.skill-manager-919db26e","detail":"registers skill-manager-919db26e at /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace, another home's marketplace — this home's is skill-manager at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager/plugin-marketplace, and a plugin enabled from both loads twice","repair":"skill-manager home repair --fix removes this entry and nothing else","repairable":true},{"kind":"FOREIGN_MARKETPLACE_REGISTRATION","subject":".codex/config.toml:plugins.cdc-agent-substrate-plugin@skill-manager-919db26e","detail":"enables cdc-agent-substrate-plugin@skill-manager-919db26e from skill-manager-919db26e, registered at /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace — expected only skill-manager at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager/plugin-marketplace in this home","repair":"skill-manager home repair --fix re-points it at cdc-agent-substrate-plugin@skill-manager: this home's own marketplace carries cdc-agent-substrate-plugin, so removing the entry would drop the plugin","repairable":true},{"kind":"FOREIGN_MARKETPLACE_REGISTRATION","subject":".codex/config.toml:plugins.skt@skill-manager-919db26e","detail":"enables skt@skill-manager-919db26e from skill-manager-919db26e, registered at /Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace — expected only skill-manager at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager/plugin-marketplace in this home","repair":"skill-manager home repair --fix re-points it at skt@skill-manager: this home's own marketplace carries skt, so removing the entry would drop the plugin","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-fix.json b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-fix.json
+new file mode 100644
+index 00000000..ce467f24
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-6/root-home/sim-fix.json
+@@ -0,0 +1 @@
++{"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/rootsim/home/.skill-manager","build":"skill-manager 0.27.2+g83651bfc2af5 @ 83651bfc2af5 (refs/heads/feature/OHV-6)","examined":38,"clean":true,"findings":[],"repaired":7,"failed":0,"wasDamaged":true}
+diff --git a/specs/epics/one-home-one-verdict/ticket_plan.yaml b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+index a0a6ba2f..f6016258 100644
+--- a/specs/epics/one-home-one-verdict/ticket_plan.yaml
++++ b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+@@ -553,7 +553,7 @@ tickets:
+   - id: OHV-6
+     github_issue: https://github.com/haydenrear/skill-manager/issues/352
+     title: "A home's plugin marketplace has one identity, and every agent registration agrees with it"
+-    status: planned
++    status: closed
+     role: implementation
+     schedule_revision: 2
+     wave: 4
+diff --git a/src/main/java/dev/skillmanager/commands/HomeCommand.java b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+index 015290be..a92e30f7 100644
+--- a/src/main/java/dev/skillmanager/commands/HomeCommand.java
++++ b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+@@ -2524,6 +2524,11 @@ public final class HomeCommand {
+                                 + (added.stderr().isBlank() ? added.stdout() : added.stderr()));
+                         continue;
+                     }
++                    // OHV-6 (#352 d): what the agent had, when it was not already
++                    // this identity at this path.
++                    if (!added.stdout().isBlank() && !added.stdout().startsWith("already")) {
++                        notes.add(driver.agentId() + ": " + added.stdout().strip());
++                    }
+                     driver.refreshMarketplace(mp.root(), marketplaceName);
+                     boolean allOk = true;
+                     for (String plugin : plugins) {
+diff --git a/src/main/java/dev/skillmanager/effects/ConsoleProgramRenderer.java b/src/main/java/dev/skillmanager/effects/ConsoleProgramRenderer.java
+index 834b1aff..baa5fb6a 100644
+--- a/src/main/java/dev/skillmanager/effects/ConsoleProgramRenderer.java
++++ b/src/main/java/dev/skillmanager/effects/ConsoleProgramRenderer.java
+@@ -431,8 +431,13 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
+                     "✓ marketplace: wrote %d plugin(s) → %s", x.pluginCount(), x.path());
+             case ContextFact.HarnessPluginCli x -> {
+                 if (x.ok()) {
+-                    if (x.pluginName() == null) Log.detail("✓ %s: %s", x.agentId(), x.op());
+-                    else Log.detail("✓ %s: %s %s", x.agentId(), x.op(), x.pluginName());
++                    if (x.pluginName() == null && x.message() != null) {
++                        Log.detail("✓ %s: %s — %s", x.agentId(), x.op(), x.message());
++                    } else if (x.pluginName() == null) {
++                        Log.detail("✓ %s: %s", x.agentId(), x.op());
++                    } else {
++                        Log.detail("✓ %s: %s %s", x.agentId(), x.op(), x.pluginName());
++                    }
+                 } else {
+                     if (x.pluginName() == null) Log.warn("%s: %s failed — %s",
+                             x.agentId(), x.op(), x.message());
+diff --git a/src/main/java/dev/skillmanager/effects/LiveInterpreter.java b/src/main/java/dev/skillmanager/effects/LiveInterpreter.java
+index 45a67310..812feb83 100644
+--- a/src/main/java/dev/skillmanager/effects/LiveInterpreter.java
++++ b/src/main/java/dev/skillmanager/effects/LiveInterpreter.java
+@@ -1141,9 +1141,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
+             try {
+                 dev.skillmanager.project.HarnessPluginCli.Result added =
+                         driver.ensureMarketplaceAdded(mp.root(), marketplaceName);
++                // OHV-6 (#352 d): the outcome names the identity it expected and
++                // what the agent had, success included.
+                 facts.add(new ContextFact.HarnessPluginCli(
+                         driver.agentId(), null, "marketplace-add", added.ok(),
+-                        added.ok() ? null : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
++                        added.ok() ? blankToNull(added.stdout())
++                                : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
+                 if (!added.ok()) failed++;
+ 
+                 if (added.ok()) {
+@@ -1164,7 +1167,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
+                     if (!r.ok()) {
+                         reinstallFailures.add(name);
+                         tryAddError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
+-                                driver.agentId() + " plugin install: " + truncate(r.stderr()));
++                                driver.agentId() + " plugin install " + name + "@" + marketplaceName
++                                        + " (this home's marketplace, at " + mp.root() + "): "
++                                        + truncate(r.stderr()));
+                         failed++;
+                     }
+                 }
+@@ -1196,6 +1201,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
+                 : EffectReceipt.partial(e, facts, failed + " harness CLI step(s) failed");
+     }
+ 
++    private static String blankToNull(String s) {
++        return s == null || s.isBlank() ? null : s.strip();
++    }
++
+     private static String truncate(String s) {
+         if (s == null) return null;
+         String trimmed = s.strip();
+diff --git a/src/main/java/dev/skillmanager/project/HarnessPluginCli.java b/src/main/java/dev/skillmanager/project/HarnessPluginCli.java
+index 367e3c43..d8092e59 100644
+--- a/src/main/java/dev/skillmanager/project/HarnessPluginCli.java
++++ b/src/main/java/dev/skillmanager/project/HarnessPluginCli.java
+@@ -271,23 +271,113 @@ public final class HarnessPluginCli {
+         @Override public String installHint() { return "brew install claude"; }
+         @Override public boolean available() { return onPath(binary()); }
+ 
++        /**
++         * Is THIS marketplace registered under THIS identity at THIS path — and
++         * if not, make it so. OHV-6 (#352).
++         *
++         * <p>It used to ask {@code list.stdout().contains(name)}. The root's
++         * {@code skill-manager} is a substring of every {@code skill-manager-<hash>}
++         * (and of any listed path containing one), so the root skipped its own
++         * {@code add} whenever a per-home marketplace was listed (shape 2); and a
++         * path registered under a stale name was never noticed (shape 1). Adding
++         * does not heal shape 1 either: measured on Claude Code 2.1,
++         * {@code marketplace add <path>} on a path registered as {@code skill-manager}
++         * answers "already on disk" and keeps the old name. So:
++         *
++         * <ol>
++         *   <li>{@code list --json}, matched by exact name AND path;</li>
++         *   <li>a registration of this path under another name is removed (Claude
++         *       drops that name's enabled plugins with it), as is this identity
++         *       registered at another path;</li>
++         *   <li>{@code add}, then {@code list --json} again: the result is judged
++         *       by what Claude now registers, not by add's exit code;</li>
++         *   <li>plugins that were enabled under the removed name are installed
++         *       under the identity — {@code sync <plugin>} reinstalls only what it
++         *       names, so without this they would silently drop out.</li>
++         * </ol>
++         *
++         * <p>Every outcome names the identity and path it expected and what it found.
++         */
+         @Override
+         public Result ensureMarketplaceAdded(Path marketplaceRoot, String marketplaceName)
+                 throws IOException {
+-            // `claude plugin marketplace add` is idempotent in practice
+-            // — a second add of the same name surfaces a warning the
+-            // caller can ignore. We always try add; a non-zero exit
+-            // bubbles up so the effect handler can record an error.
+             Result list = runner.run(
+-                    List.of(binary(), "plugin", "marketplace", "list"),
++                    List.of(binary(), "plugin", "marketplace", "list", "--json"),
+                     claudeEnv());
+-            if (list.ok() && list.stdout().contains(marketplaceName)) {
+-                return new Result(0, "already-added", "");
++            List<Registered> found = list.ok() ? parseMarketplaceList(list.stdout()) : List.of();
++            if (registeredAt(found, marketplaceName, marketplaceRoot)) {
++                return new Result(0, "already registered: " + marketplaceName + " at "
++                        + marketplaceRoot, "");
+             }
+-            return runner.run(
++            List<String> notes = new ArrayList<>();
++            List<String[]> migrate = new ArrayList<>();
++            for (Registered r : found) {
++                boolean here = MarketplaceRegistrations.samePath(r.path(), marketplaceRoot);
++                if (here == r.name().equals(marketplaceName)) continue;
++                if (here) {
++                    for (String plugin : pluginsFrom(r.name())) migrate.add(new String[]{plugin, r.name()});
++                }
++                Result rm = runner.run(
++                        List.of(binary(), "plugin", "marketplace", "remove", r.name()), claudeEnv());
++                notes.add("expected " + marketplaceName + " at " + marketplaceRoot + ", found "
++                        + r.name() + " at " + r.path() + ": removed"
++                        + (rm.ok() ? "" : " (remove rc=" + rm.exitCode() + ")"));
++            }
++            Result add = runner.run(
+                     List.of(binary(), "plugin", "marketplace", "add",
+                             marketplaceRoot.toString(), "--scope", "user"),
+                     claudeEnv());
++            if (!add.ok()) {
++                return new Result(add.exitCode(), String.join("; ", notes),
++                        (add.stderr().isBlank() ? add.stdout() : add.stderr()).strip()
++                                + " (expected marketplace " + marketplaceName + " at " + marketplaceRoot + ")");
++            }
++            Result again = runner.run(
++                    List.of(binary(), "plugin", "marketplace", "list", "--json"), claudeEnv());
++            if (again.ok()) {
++                List<Registered> after = parseMarketplaceList(again.stdout());
++                if (!registeredAt(after, marketplaceName, marketplaceRoot)) {
++                    return new Result(1, String.join("; ", notes),
++                            "expected marketplace " + marketplaceName + " at " + marketplaceRoot
++                                    + " after `claude plugin marketplace add`, found "
++                                    + describe(after));
++                }
++            } else {
++                notes.add("could not re-list to confirm (rc=" + again.exitCode() + ")");
++            }
++            for (String[] m : migrate) {
++                Result r = runner.run(
++                        List.of(binary(), "plugin", "install", m[0] + "@" + marketplaceName,
++                                "--scope", "user"),
++                        claudeEnv());
++                notes.add("migrated " + m[0] + "@" + m[1] + " -> " + m[0] + "@" + marketplaceName
++                        + (r.ok() ? "" : " FAILED: " + r.stderr().strip()));
++            }
++            return new Result(0, "registered " + marketplaceName + " at " + marketplaceRoot
++                    + (notes.isEmpty() ? "" : " — " + String.join("; ", notes)), "");
++        }
++
++        /** Plugin names Claude has installed or enabled from {@code marketplace}. */
++        private List<String> pluginsFrom(String marketplace) throws IOException {
++            Result r = runner.run(List.of(binary(), "plugin", "list", "--json"), claudeEnv());
++            List<String> out = new ArrayList<>();
++            if (!r.ok()) return out;
++            try {
++                var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(r.stdout());
++                if (tree != null && tree.isArray()) {
++                    for (var p : tree) {
++                        String id = p.path("id").asText("");
++                        int at = id.lastIndexOf('@');
++                        if (at > 0 && id.substring(at + 1).equals(marketplace)) {
++                            String name = id.substring(0, at);
++                            if (!out.contains(name)) out.add(name);
++                        }
++                    }
++                }
++            } catch (IOException | RuntimeException unparseable) {
++                // nothing to migrate that we can name
++            }
++            return out;
+         }
+ 
+         @Override
+@@ -415,37 +505,78 @@ public final class HarnessPluginCli {
+          *   <li>Not registered → run {@code add}.</li>
+          * </ul>
+          */
++        /**
++         * OHV-6 (#352): also reconcile THIS PATH registered under another name.
++         * Measured on codex-cli 0.154: {@code marketplace add <path>} on a path
++         * registered as {@code skill-manager} ADDS a second table under the new
++         * name, and {@code marketplace remove <old>} leaves
++         * {@code [plugins."<p>@<old>"]} enabled — so the old name's plugins are
++         * removed with {@code plugin remove} and re-added under the identity, and
++         * the outcome is judged by re-reading the config, not by add's exit code.
++         */
+         private Result ensureRegisteredAt(Path marketplaceRoot, String marketplaceName)
+                 throws IOException {
+             String desired = marketplaceRoot.toAbsolutePath().toString();
+-            Optional<String> existing = readMarketplaceSource(
+-                    configPathOverride != null ? configPathOverride : codexConfigPath(),
+-                    marketplaceName);
+-            if (existing.isPresent()) {
+-                String existingPath = existing.get();
+-                if (sameSource(existingPath, desired)) {
+-                    return new Result(0,
+-                            "already added at " + existingPath,
+-                            "");
++            Path config = configPathOverride != null ? configPathOverride : codexConfigPath();
++            List<MarketplaceRegistrations.Entry> entries = MarketplaceRegistrations.readCodexFile(config);
++            Optional<String> existing = readMarketplaceSource(config, marketplaceName);
++            boolean identityHere = existing.isPresent() && sameSource(existing.get(), desired);
++            List<String> notes = new ArrayList<>();
++            List<String[]> migrate = new ArrayList<>();
++            for (MarketplaceRegistrations.Entry e : entries) {
++                if (e.section() != MarketplaceRegistrations.Section.CODEX_MARKETPLACES) continue;
++                if (e.key().equals(marketplaceName) || e.source() == null || !sameSource(e.source(), desired)) {
++                    continue;
+                 }
+-                // Stale registration at a different path. With per-home
+-                // names this can only be THIS home's own stale record (a
+-                // moved store), never a sibling home's live registration.
+-                // Remove first; ignore non-zero exits. Then re-add.
+-                Result removed = runner.run(
+-                        List.of(binary(), "plugin", "marketplace", "remove", marketplaceName),
+-                        codexEnv());
+-                Result added = runner.run(
+-                        List.of(binary(), "plugin", "marketplace", "add", desired),
+-                        codexEnv());
+-                String msg = "stale registration at " + existingPath
+-                        + " replaced with " + desired
+-                        + (removed.ok() ? "" : " (remove rc=" + removed.exitCode() + ")");
+-                return new Result(added.exitCode(), msg, added.stderr());
++                for (MarketplaceRegistrations.Entry p : entries) {
++                    if (p.section() != MarketplaceRegistrations.Section.CODEX_PLUGINS
++                            || !p.marketplace().equals(e.key())) continue;
++                    String plugin = p.key().substring(0, p.key().lastIndexOf('@'));
++                    runner.run(List.of(binary(), "plugin", "remove", p.key()), codexEnv());
++                    migrate.add(new String[]{plugin, e.key()});
++                }
++                Result rm = runner.run(
++                        List.of(binary(), "plugin", "marketplace", "remove", e.key()), codexEnv());
++                notes.add("expected " + marketplaceName + " at " + desired + ", found " + e.key()
++                        + " at " + e.source() + ": removed" + (rm.ok() ? "" : " (remove rc=" + rm.exitCode() + ")"));
+             }
+-            return runner.run(
+-                    List.of(binary(), "plugin", "marketplace", "add", desired),
+-                    codexEnv());
++            if (identityHere && migrate.isEmpty() && notes.isEmpty()) {
++                return new Result(0, "already added at " + existing.get(), "");
++            }
++            Result added = new Result(0, "", "");
++            if (!identityHere) {
++                if (existing.isPresent()) {
++                    // This identity at another path. With per-home names that is
++                    // THIS home's own stale record (a moved store), never a
++                    // sibling home's live registration. Remove; then re-add.
++                    Result removed = runner.run(
++                            List.of(binary(), "plugin", "marketplace", "remove", marketplaceName),
++                            codexEnv());
++                    notes.add("stale registration at " + existing.get() + " replaced with " + desired
++                            + (removed.ok() ? "" : " (remove rc=" + removed.exitCode() + ")"));
++                }
++                added = runner.run(
++                        List.of(binary(), "plugin", "marketplace", "add", desired), codexEnv());
++                if (!added.ok()) {
++                    return new Result(added.exitCode(), String.join("; ", notes),
++                            (added.stderr().isBlank() ? added.stdout() : added.stderr()).strip()
++                                    + " (expected marketplace " + marketplaceName + " at " + desired + ")");
++                }
++                Optional<String> now = readMarketplaceSource(config, marketplaceName);
++                if (Files.isRegularFile(config) && (now.isEmpty() || !sameSource(now.get(), desired))) {
++                    return new Result(1, String.join("; ", notes),
++                            "expected marketplace " + marketplaceName + " at " + desired + " in " + config
++                                    + " after `codex plugin marketplace add`, found "
++                                    + now.map(s -> marketplaceName + " at " + s).orElse("no " + marketplaceName));
++                }
++            }
++            for (String[] m : migrate) {
++                Result r = runner.run(
++                        List.of(binary(), "plugin", "add", m[0] + "@" + marketplaceName), codexEnv());
++                notes.add("migrated " + m[0] + "@" + m[1] + " -> " + m[0] + "@" + marketplaceName
++                        + (r.ok() || alreadyAdded(r) ? "" : " FAILED: " + r.stderr().strip()));
++            }
++            return new Result(added.exitCode(), String.join("; ", notes), added.stderr());
+         }
+ 
+         @Override
+@@ -548,6 +679,62 @@ public final class HarnessPluginCli {
+         }
+     }
+ 
++    /** One marketplace an agent CLI lists: its name and the directory it reads. */
++    public record Registered(String name, String path) {}
++
++    /**
++     * {@code claude plugin marketplace list --json} ({@code [{name, source, path}]}),
++     * or its text form when the output is not JSON ({@code ❯ <name>} followed by
++     * {@code Source: Directory (<path>)}). Parsed into records so a check can ask
++     * about a NAME and a PATH, never about a substring of the listing.
++     */
++    static List<Registered> parseMarketplaceList(String stdout) {
++        List<Registered> out = new ArrayList<>();
++        if (stdout == null) return out;
++        try {
++            var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(stdout);
++            if (tree != null && tree.isArray()) {
++                for (var m : tree) {
++                    String name = m.path("name").asText(null);
++                    if (name == null) continue;
++                    String path = m.path("path").isTextual() ? m.path("path").asText()
++                            : m.path("installLocation").asText(null);
++                    out.add(new Registered(name, path));
++                }
++                return out;
++            }
++        } catch (IOException | RuntimeException notJson) {
++            // text form below
++        }
++        String name = null;
++        for (String raw : stdout.split("\n")) {
++            String line = raw.strip();
++            if (line.startsWith("❯ ")) {
++                if (name != null) out.add(new Registered(name, null));
++                name = line.substring(2).strip();
++            } else if (name != null && line.startsWith("Source:")) {
++                int open = line.indexOf('(');
++                int close = line.lastIndexOf(')');
++                out.add(new Registered(name, open >= 0 && close > open ? line.substring(open + 1, close) : null));
++                name = null;
++            }
++        }
++        if (name != null) out.add(new Registered(name, null));
++        return out;
++    }
++
++    static boolean registeredAt(List<Registered> found, String name, Path root) {
++        return found.stream().anyMatch(r -> r.name().equals(name)
++                && MarketplaceRegistrations.samePath(r.path(), root));
++    }
++
++    static String describe(List<Registered> found) {
++        if (found.isEmpty()) return "no marketplace registered";
++        List<String> parts = new ArrayList<>();
++        for (Registered r : found) parts.add(r.name() + " at " + r.path());
++        return String.join(", ", parts);
++    }
++
+     /**
+      * Build the {@code HARNESS_CLI_UNAVAILABLE} message body listing
+      * which harness CLIs the user is missing and how to install each.
+diff --git a/src/main/java/dev/skillmanager/project/MarketplaceRegistrations.java b/src/main/java/dev/skillmanager/project/MarketplaceRegistrations.java
+new file mode 100644
+index 00000000..85611ec5
+--- /dev/null
++++ b/src/main/java/dev/skillmanager/project/MarketplaceRegistrations.java
+@@ -0,0 +1,660 @@
++package dev.skillmanager.project;
++
++import com.fasterxml.jackson.databind.JsonNode;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.fasterxml.jackson.databind.node.ObjectNode;
++import org.tomlj.Toml;
++import org.tomlj.TomlParseResult;
++import org.tomlj.TomlTable;
++
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.LinkOption;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.Iterator;
++import java.util.List;
++import java.util.Map;
++import java.util.Optional;
++
++/**
++ * <b>What a home's agent configs say about plugin marketplaces</b>, read from the
++ * files each agent loads, and the one way an entry in them is removed.
++ *
++ * <p>OHV-6 (#352). A home's marketplace has one identity on disk
++ * ({@link PluginMarketplace#name()}, derived from the store path) and several in
++ * the agents that load it. Nothing read the agent side, so a registration under
++ * a stale name, a copied identity, or an enablement of another home's
++ * marketplace surfaced only as an {@code AGENT_SYNC_FAILED} line in a sync while
++ * {@code home verify} was clean.
++ *
++ * <h2>Which files, and which not</h2>
++ *
++ * <p>For a home whose agent directories are {@code <homeRoot>/.claude} and
++ * {@code <homeRoot>/.codex} (structurally derived from the store, never from the
++ * environment — the {@code HomeRepair} rule):
++ *
++ * <table>
++ *   <caption>read</caption>
++ *   <tr><th>file</th><th>entries</th></tr>
++ *   <tr><td>{@code .claude/plugins/known_marketplaces.json}</td><td>registrations: name → {@code source.path}</td></tr>
++ *   <tr><td>{@code .claude/settings.json}</td><td>registrations: {@code extraKnownMarketplaces} name → {@code source.path};
++ *       enablements: {@code enabledPlugins} keys {@code <plugin>@<marketplace>}</td></tr>
++ *   <tr><td>{@code .codex/config.toml}</td><td>registrations: {@code [marketplaces.<name>] source};
++ *       enablements: {@code [plugins."<plugin>@<marketplace>"]}</td></tr>
++ * </table>
++ *
++ * <p>For a project home {@code <homeRoot>} is the checkout, so these are the
++ * checkout's {@code .claude/settings.json} and {@code .codex/config.toml} — the
++ * files {@code CLAUDE_CONFIG_DIR}/{@code CODEX_HOME} name when skill-manager
++ * drives the CLIs for that home, and Claude's project scope for a session opened
++ * there. For the ROOT home {@code <homeRoot>} is {@code $HOME}, so they are the
++ * user-level {@code ~/.claude/settings.json} and {@code ~/.codex/config.toml}.
++ *
++ * <p><b>Deliberately NOT read:</b> {@code settings.local.json} (per-user local
++ * overrides no skill-manager verb writes); {@code installed_plugins.json} and
++ * {@code plugins/cache/} (the CLIs' install cache, rewritten by
++ * {@code plugin install}/{@code uninstall} — not a registration); any directory
++ * {@code CLAUDE_CONFIG_DIR}/{@code CODEX_HOME} redirect to (the environment is
++ * not the home); harness-instance agent dirs; Gemini (no marketplace concept);
++ * and every other checkout's configs — a home reports only its own.
++ */
++public final class MarketplaceRegistrations {
++
++    private MarketplaceRegistrations() {}
++
++    /** Which agent's file an entry came from. */
++    public enum Agent { CLAUDE, CODEX }
++
++    /** Which record inside the file. */
++    public enum Section {
++        /** {@code known_marketplaces.json} top-level key. */
++        KNOWN_MARKETPLACES,
++        /** {@code settings.json} {@code extraKnownMarketplaces} key. */
++        EXTRA_KNOWN_MARKETPLACES,
++        /** {@code settings.json} {@code enabledPlugins} key. */
++        ENABLED_PLUGINS,
++        /** {@code config.toml} {@code [marketplaces.<name>]} table. */
++        CODEX_MARKETPLACES,
++        /** {@code config.toml} {@code [plugins."<p>@<m>"]} table. */
++        CODEX_PLUGINS
++    }
++
++    /**
++     * One entry.
++     *
++     * @param key         the entry's key in its section: a marketplace name, or
++     *                    {@code <plugin>@<marketplace>}
++     * @param marketplace the marketplace it names
++     * @param source      a registration's source path; null for an enablement
++     */
++    public record Entry(Agent agent, Path file, Section section, String key,
++                        String marketplace, String source) {
++
++        public boolean registration() {
++            return section != Section.ENABLED_PLUGINS && section != Section.CODEX_PLUGINS;
++        }
++
++        /** The spelling a finding uses: {@code <file relative to base>:<section>.<key>}. */
++        public String subject(Path base) {
++            Path abs = file.toAbsolutePath().normalize();
++            String rel;
++            try {
++                rel = base.toAbsolutePath().normalize().relativize(abs).toString().replace('\\', '/');
++                if (rel.startsWith("..")) rel = abs.toString();
++            } catch (IllegalArgumentException notUnder) {
++                rel = abs.toString();
++            }
++            return rel + ":" + sectionName() + "." + key;
++        }
++
++        String sectionName() {
++            return switch (section) {
++                case KNOWN_MARKETPLACES -> "known_marketplaces";
++                case EXTRA_KNOWN_MARKETPLACES -> "extraKnownMarketplaces";
++                case ENABLED_PLUGINS -> "enabledPlugins";
++                case CODEX_MARKETPLACES -> "marketplaces";
++                case CODEX_PLUGINS -> "plugins";
++            };
++        }
++    }
++
++    // --------------------------------------------------------------- files
++
++    public static Path knownMarketplaces(Path claudeDir) {
++        return claudeDir.resolve("plugins").resolve("known_marketplaces.json");
++    }
++
++    public static Path claudeSettings(Path claudeDir) {
++        return claudeDir.resolve("settings.json");
++    }
++
++    public static Path codexConfig(Path codexDir) {
++        return codexDir.resolve("config.toml");
++    }
++
++    // ------------------------------------------------------------- reading
++
++    private static final ObjectMapper JSON = new ObjectMapper();
++
++    /** Every entry in {@code claudeDir}'s two files and {@code codexDir}'s one. Unreadable files contribute nothing. */
++    public static List<Entry> read(Path claudeDir, Path codexDir) {
++        List<Entry> out = new ArrayList<>();
++        if (claudeDir != null) {
++            readClaudeRegistrations(knownMarketplaces(claudeDir), Section.KNOWN_MARKETPLACES, out);
++            readClaudeSettings(claudeSettings(claudeDir), out);
++        }
++        if (codexDir != null) readCodex(codexConfig(codexDir), out);
++        return out;
++    }
++
++    private static Optional<JsonNode> readJson(Path file) {
++        if (!Files.isRegularFile(file)) return Optional.empty();
++        try {
++            JsonNode node = JSON.readTree(Files.readString(file, StandardCharsets.UTF_8));
++            return node != null && node.isObject() ? Optional.of(node) : Optional.empty();
++        } catch (IOException | RuntimeException unreadable) {
++            return Optional.empty();
++        }
++    }
++
++    private static void readClaudeRegistrations(Path file, Section section, List<Entry> out) {
++        readJson(file).ifPresent(root -> addRegistrations(file, section, root, out));
++    }
++
++    private static void addRegistrations(Path file, Section section, JsonNode object, List<Entry> out) {
++        Iterator<Map.Entry<String, JsonNode>> it = object.fields();
++        while (it.hasNext()) {
++            Map.Entry<String, JsonNode> e = it.next();
++            JsonNode src = e.getValue().path("source");
++            String path = src.path("path").isTextual() ? src.path("path").asText() : null;
++            out.add(new Entry(Agent.CLAUDE, file, section, e.getKey(), e.getKey(), path));
++        }
++    }
++
++    private static void readClaudeSettings(Path file, List<Entry> out) {
++        readJson(file).ifPresent(root -> {
++            JsonNode extra = root.path("extraKnownMarketplaces");
++            if (extra.isObject()) addRegistrations(file, Section.EXTRA_KNOWN_MARKETPLACES, extra, out);
++            JsonNode enabled = root.path("enabledPlugins");
++            if (enabled.isObject()) {
++                Iterator<String> names = enabled.fieldNames();
++                while (names.hasNext()) {
++                    String key = names.next();
++                    int at = key.lastIndexOf('@');
++                    if (at <= 0 || at == key.length() - 1) continue;
++                    out.add(new Entry(Agent.CLAUDE, file, Section.ENABLED_PLUGINS, key,
++                            key.substring(at + 1), null));
++                }
++            }
++        });
++    }
++
++    /** The entries of one Codex {@code config.toml}, wherever it lives. */
++    public static List<Entry> readCodexFile(Path file) {
++        List<Entry> out = new ArrayList<>();
++        readCodex(file, out);
++        return out;
++    }
++
++    private static void readCodex(Path file, List<Entry> out) {
++        if (!Files.isRegularFile(file)) return;
++        TomlParseResult parsed;
++        try {
++            parsed = Toml.parse(Files.readString(file, StandardCharsets.UTF_8));
++        } catch (IOException | RuntimeException unreadable) {
++            return;
++        }
++        TomlTable marketplaces = parsed.getTable("marketplaces");
++        if (marketplaces != null) {
++            for (String name : marketplaces.keySet()) {
++                TomlTable t = marketplaces.getTable(List.of(name));
++                String source = t == null ? null : t.getString("source");
++                out.add(new Entry(Agent.CODEX, file, Section.CODEX_MARKETPLACES, name, name, source));
++            }
++        }
++        TomlTable plugins = parsed.getTable("plugins");
++        if (plugins != null) {
++            for (String key : plugins.keySet()) {
++                int at = key.lastIndexOf('@');
++                if (at <= 0 || at == key.length() - 1) continue;
++                out.add(new Entry(Agent.CODEX, file, Section.CODEX_PLUGINS, key, key.substring(at + 1), null));
++            }
++        }
++    }
++
++    // ------------------------------------------------------------ judging
++
++    /** A skill-manager-generated marketplace: by its name, or by the directory it registers. */
++    public static boolean skillManagerMarketplace(String name, String source) {
++        if (name != null && (name.equals(PluginMarketplace.NAME)
++                || name.startsWith(PluginMarketplace.NAME + "-"))) {
++            return true;
++        }
++        if (source == null) return false;
++        Path p;
++        try {
++            p = Path.of(source).normalize();
++        } catch (RuntimeException notAPath) {
++            return false;
++        }
++        return p.getFileName() != null && p.getFileName().toString().equals("plugin-marketplace");
++    }
++
++    /**
++     * Whether two spellings name one directory: equal once normalized, or equal
++     * once resolved when both exist. {@code /var} vs {@code /private/var} resolves
++     * equal; a registration whose directory is gone compares by its spelling.
++     */
++    public static boolean samePath(String a, Path b) {
++        if (a == null || b == null) return false;
++        try {
++            Path pa = Path.of(a).toAbsolutePath().normalize();
++            Path pb = b.toAbsolutePath().normalize();
++            if (pa.equals(pb)) return true;
++            if (Files.exists(pa) && Files.exists(pb)) {
++                return pa.toRealPath().equals(pb.toRealPath());
++            }
++            return realOrSelf(pa).equals(realOrSelf(pb));
++        } catch (IOException | RuntimeException e) {
++            return false;
++        }
++    }
++
++    private static Path realOrSelf(Path p) {
++        // The macOS top-level aliases, for a path that no longer exists.
++        String s = p.toString();
++        for (String alias : List.of("/var/", "/tmp/", "/etc/")) {
++            if (s.startsWith(alias)) return Path.of("/private" + s);
++        }
++        return p;
++    }
++
++    /** How one entry disagrees with the home's identity — #352's shapes 1, 2 and 4. */
++    public enum Disagreement {
++        /** Shape 1: this home's marketplace directory registered, or enabled, under a name that is not its identity. */
++        UNDER_ANOTHER_NAME,
++        /** Shape 2's trace: a plugin enabled under this home's identity, which that config does not register at this home's directory. */
++        IDENTITY_UNREGISTERED,
++        /** Shape 4: a registration or enablement of ANOTHER home's marketplace. */
++        FOREIGN
++    }
++
++    /** One disagreement, with the sentence that names what was expected and what was found. */
++    public record Judged(Disagreement kind, Entry entry, String detail) {}
++
++    /**
++     * Every entry that disagrees with a home whose marketplace is {@code identity}
++     * at {@code marketplaceRoot}. Each agent is judged against its own files only:
++     * a Claude enablement is resolved against Claude's registrations, never Codex's.
++     *
++     * <p><b>One deliberate exemption:</b> a Claude {@code known_marketplaces.json}
++     * entry for another home's marketplace that nothing in the same config ENABLES
++     * is not reported. It loads nothing, and in a user-level config it is how
++     * Claude records a marketplace a checkout declared; removing it would be a
++     * repair of something that is not damage. Declared ({@code extraKnownMarketplaces})
++     * and Codex registrations are always reported: they are this home's statements.
++     */
++    public static List<Judged> judge(List<Entry> entries, String identity, Path marketplaceRoot) {
++        List<Judged> out = new ArrayList<>();
++        for (Agent agent : Agent.values()) {
++            List<Entry> mine = entries.stream().filter(e -> e.agent() == agent).toList();
++            List<Entry> regs = mine.stream().filter(Entry::registration).toList();
++            java.util.Set<String> enabledFrom = new java.util.HashSet<>();
++            for (Entry e : mine) if (!e.registration()) enabledFrom.add(e.marketplace());
++            for (Entry r : regs) {
++                if (!skillManagerMarketplace(r.key(), r.source())) continue;
++                boolean here = samePath(r.source(), marketplaceRoot);
++                if (here && r.key().equals(identity)) continue;
++                if (here) {
++                    out.add(new Judged(Disagreement.UNDER_ANOTHER_NAME, r,
++                            "registers this home's marketplace " + marketplaceRoot + " under "
++                                    + r.key() + ", but its identity is " + identity + " — expected "
++                                    + identity + " at " + marketplaceRoot + ", found " + r.key()
++                                    + " there, so every sync updates and installs from a name "
++                                    + "this agent does not know"));
++                    continue;
++                }
++                if (r.key().equals(identity)) {
++                    out.add(new Judged(Disagreement.FOREIGN, r,
++                            "registers this home's identity " + identity + " at " + r.source()
++                                    + " — expected it at " + marketplaceRoot));
++                    continue;
++                }
++                if (r.section() == Section.KNOWN_MARKETPLACES && !enabledFrom.contains(r.key())) continue;
++                out.add(new Judged(Disagreement.FOREIGN, r,
++                        "registers " + r.key() + " at " + r.source() + ", another home's marketplace "
++                                + "— this home's is " + identity + " at " + marketplaceRoot
++                                + ", and a plugin enabled from both loads twice"));
++            }
++            for (Entry e : mine) {
++                if (e.registration()) continue;
++                String m = e.marketplace();
++                List<Entry> named = regs.stream().filter(r -> r.key().equals(m)).toList();
++                boolean smName = skillManagerMarketplace(m, null)
++                        || named.stream().anyMatch(r -> skillManagerMarketplace(null, r.source()));
++                if (!smName) continue;
++                if (m.equals(identity)) {
++                    if (named.stream().anyMatch(r -> samePath(r.source(), marketplaceRoot))) continue;
++                    List<String> registered = regs.stream()
++                            .filter(r -> skillManagerMarketplace(r.key(), r.source()))
++                            .map(r -> r.key() + " at " + r.source()).distinct().toList();
++                    out.add(new Judged(Disagreement.IDENTITY_UNREGISTERED, e,
++                            "enables " + e.key() + " from this home's own marketplace, but this "
++                                    + "config registers no " + identity + " at " + marketplaceRoot
++                                    + " — found " + (registered.isEmpty() ? "no skill-manager marketplace"
++                                            : String.join(", ", registered))
++                                    + "; a registered name that merely contains " + identity
++                                    + " is not " + identity));
++                    continue;
++                }
++                if (named.stream().anyMatch(r -> samePath(r.source(), marketplaceRoot))) {
++                    out.add(new Judged(Disagreement.UNDER_ANOTHER_NAME, e,
++                            "enables " + e.key() + " from " + m + ", which this config registers at "
++                                    + "this home's marketplace " + marketplaceRoot + " — expected "
++                                    + e.key().substring(0, e.key().lastIndexOf('@')) + "@" + identity));
++                    continue;
++                }
++                String where = named.isEmpty() ? "not registered in this config at all"
++                        : "registered at " + named.get(0).source();
++                out.add(new Judged(Disagreement.FOREIGN, e,
++                        "enables " + e.key() + " from " + m + ", " + where + " — expected only "
++                                + identity + " at " + marketplaceRoot + " in this home"));
++            }
++        }
++        return out;
++    }
++
++    // ------------------------------------------------------------ writing
++
++    /**
++     * Shape 1's repair: every entry of {@code entry}'s agent that registers this
++     * home's directory under the stale name, and every enablement from that name,
++     * re-pointed at {@code identity}. The enablements MIGRATE rather than go: a
++     * {@code sync <plugin>} reinstalls only the plugins it names, so a removed
++     * enablement is a plugin silently dropped from the agent.
++     *
++     * <p>Where an entry under {@code identity} already exists, the stale one is
++     * removed instead of renamed onto it.
++     *
++     * @return the files written
++     */
++    public static List<Path> migrateToIdentity(Entry entry, List<Entry> all, String identity,
++                                               Path marketplaceRoot) throws IOException {
++        String stale = entry.registration() ? entry.key() : entry.marketplace();
++        if (stale.equals(identity)) return List.of();
++        List<Entry> group = all.stream()
++                .filter(e -> e.agent() == entry.agent())
++                .filter(e -> e.registration()
++                        ? e.key().equals(stale) && samePath(e.source(), marketplaceRoot)
++                        : e.marketplace().equals(stale))
++                .toList();
++        java.util.LinkedHashSet<Path> written = new java.util.LinkedHashSet<>();
++        for (Entry e : group) {
++            String renamed = e.registration() ? identity
++                    : e.key().substring(0, e.key().lastIndexOf('@') + 1) + identity;
++            if (rename(e, renamed)) written.add(e.file());
++        }
++        return List.copyOf(written);
++    }
++
++    /** Re-key one entry in place, or drop it when {@code newKey} is already present. */
++    public static boolean rename(Entry entry, String newKey) throws IOException {
++        if (entry.agent() == Agent.CODEX) {
++            Path file = entry.file();
++            if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return false;
++            String text = Files.readString(file, StandardCharsets.UTF_8);
++            String table = entry.section() == Section.CODEX_MARKETPLACES ? "marketplaces" : "plugins";
++            String edited = hasTable(text, table, newKey)
++                    ? cutTable(text, table, entry.key())
++                    : renameTable(text, table, entry.key(), newKey);
++            if (edited.equals(text)) return false;
++            writeAtomically(file, edited);
++            return true;
++        }
++        JsonNode root = readJson(entry.file()).orElse(null);
++        if (!(root instanceof ObjectNode obj)) return false;
++        ObjectNode container = containerOf(obj, entry.section());
++        if (container == null || !container.has(entry.key())) return false;
++        if (container.has(newKey)) {
++            container.remove(entry.key());
++        } else {
++            // In place: rebuild so the key keeps its position.
++            java.util.LinkedHashMap<String, JsonNode> copy = new java.util.LinkedHashMap<>();
++            container.fields().forEachRemaining(f -> copy.put(
++                    f.getKey().equals(entry.key()) ? newKey : f.getKey(), f.getValue()));
++            container.removeAll();
++            copy.forEach(container::set);
++        }
++        writeJsonFile(entry.file(), obj);
++        return true;
++    }
++
++    /**
++     * Shape 2's repair: register {@code identity} at {@code marketplaceRoot} in
++     * {@code entry}'s agent config, in the form that agent's own {@code marketplace
++     * add} writes (measured against Claude Code 2.1 and codex-cli 0.154).
++     *
++     * @return the files written
++     */
++    public static List<Path> registerIdentity(Entry entry, String identity, Path marketplaceRoot)
++            throws IOException {
++        String source = marketplaceRoot.toAbsolutePath().normalize().toString();
++        if (entry.agent() == Agent.CODEX) {
++            Path file = entry.file();
++            String text = Files.isRegularFile(file) ? Files.readString(file, StandardCharsets.UTF_8) : "";
++            if (hasTable(text, "marketplaces", identity)) return List.of();
++            String sep = text.isEmpty() || text.endsWith("\n\n") ? "" : text.endsWith("\n") ? "\n" : "\n\n";
++            writeAtomically(file, text + sep + "[marketplaces." + identity + "]\nsource_type = \"local\"\n"
++                    + "source = " + JSON.writeValueAsString(source) + "\n");
++            return List.of(file);
++        }
++        Path claudeDir = entry.section() == Section.KNOWN_MARKETPLACES
++                ? entry.file().getParent().getParent() : entry.file().getParent();
++        List<Path> written = new ArrayList<>();
++        Path known = knownMarketplaces(claudeDir);
++        ObjectNode knownRoot = readJson(known).orElse(null) instanceof ObjectNode o ? o : JSON.createObjectNode();
++        if (!knownRoot.has(identity)) {
++            ObjectNode reg = knownRoot.putObject(identity);
++            reg.putObject("source").put("source", "directory").put("path", source);
++            reg.put("installLocation", source);
++            reg.put("lastUpdated", java.time.Instant.now().toString());
++            Files.createDirectories(known.getParent());
++            writeJsonFile(known, knownRoot);
++            written.add(known);
++        }
++        Path settings = claudeSettings(claudeDir);
++        if (readJson(settings).orElse(null) instanceof ObjectNode s) {
++            ObjectNode extra = s.path("extraKnownMarketplaces") instanceof ObjectNode x
++                    ? x : s.putObject("extraKnownMarketplaces");
++            if (!extra.has(identity)) {
++                extra.putObject(identity).putObject("source").put("source", "directory").put("path", source);
++                writeJsonFile(settings, s);
++                written.add(settings);
++            }
++        }
++        return written;
++    }
++
++    private static ObjectNode containerOf(ObjectNode root, Section section) {
++        return switch (section) {
++            case KNOWN_MARKETPLACES -> root;
++            case EXTRA_KNOWN_MARKETPLACES -> root.path("extraKnownMarketplaces") instanceof ObjectNode o ? o : null;
++            case ENABLED_PLUGINS -> root.path("enabledPlugins") instanceof ObjectNode o ? o : null;
++            default -> null;
++        };
++    }
++
++    static boolean hasTable(String text, String table, String key) {
++        for (String line : text.split("\n", -1)) {
++            String t = line.strip();
++            if (t.startsWith("[") && namesTable(t, table, key)) return true;
++        }
++        return false;
++    }
++
++    /** {@code text} with the {@code [<table>.<old>]} header (and its sub-table headers) re-keyed. */
++    static String renameTable(String text, String table, String oldKey, String newKey) {
++        String spelledNew = newKey.matches("[A-Za-z0-9_-]+") ? newKey : "\"" + newKey + "\"";
++        String[] lines = text.split("\n", -1);
++        StringBuilder out = new StringBuilder(text.length());
++        for (int i = 0; i < lines.length; i++) {
++            String line = lines[i];
++            String t = line.strip();
++            if (t.startsWith("[") && !t.startsWith("[[") && namesTable(t, table, oldKey)) {
++                String inner = t.replaceFirst("^\\[", "").replaceFirst("\\]\\s*(#.*)?$", "").strip();
++                String rest = "";
++                for (String spelled : List.of("\"" + oldKey + "\"", oldKey)) {
++                    String exact = table + "." + spelled;
++                    if (inner.equals(exact) || inner.startsWith(exact + ".")) {
++                        rest = inner.substring(exact.length());
++                        break;
++                    }
++                }
++                line = "[" + table + "." + spelledNew + rest + "]";
++            }
++            out.append(line);
++            if (i < lines.length - 1) out.append('\n');
++        }
++        return out.toString();
++    }
++
++    // ------------------------------------------------------------ removing
++
++    /**
++     * Remove exactly {@code entry} from its file, and nothing else.
++     *
++     * <p>JSON files are re-serialized in the layout the Claude CLI writes (two
++     * spaces, {@code "key": value}); TOML is edited as TEXT — the one table and
++     * its sub-tables are cut, every other byte is kept, because Codex's config
++     * carries the operator's own settings and comments no parser round-trips.
++     *
++     * @return true when the entry was there and is gone
++     */
++    public static boolean remove(Entry entry) throws IOException {
++        return switch (entry.agent()) {
++            case CLAUDE -> removeJson(entry);
++            case CODEX -> removeToml(entry);
++        };
++    }
++
++    private static boolean removeJson(Entry entry) throws IOException {
++        Path file = entry.file();
++        JsonNode root = readJson(file).orElse(null);
++        if (!(root instanceof ObjectNode obj)) return false;
++        ObjectNode container = containerOf(obj, entry.section());
++        if (container == null || !container.has(entry.key())) return false;
++        container.remove(entry.key());
++        writeJsonFile(file, obj);
++        return true;
++    }
++
++    /**
++     * Re-serialize {@code root} into {@code file}, ending the way the file ended:
++     * the Claude CLI writes no trailing newline, a hand-edited settings file
++     * usually has one, and a repair must not add or remove it.
++     */
++    private static void writeJsonFile(Path file, JsonNode root) throws IOException {
++        boolean newline = Files.isRegularFile(file)
++                && Files.readString(file, StandardCharsets.UTF_8).endsWith("\n");
++        StringBuilder sb = new StringBuilder();
++        writeJson(root, 0, sb);
++        if (newline) sb.append('\n');
++        writeAtomically(file, sb.toString());
++    }
++
++    /** {@code JSON.stringify(value, null, 2)}'s layout. */
++    static void writeJson(JsonNode node, int indent, StringBuilder sb) throws IOException {
++        String pad = "  ".repeat(indent + 1);
++        String close = "  ".repeat(indent);
++        if (node.isObject()) {
++            if (node.size() == 0) { sb.append("{}"); return; }
++            sb.append("{\n");
++            Iterator<Map.Entry<String, JsonNode>> it = node.fields();
++            while (it.hasNext()) {
++                Map.Entry<String, JsonNode> e = it.next();
++                sb.append(pad).append(JSON.writeValueAsString(e.getKey())).append(": ");
++                writeJson(e.getValue(), indent + 1, sb);
++                sb.append(it.hasNext() ? ",\n" : "\n");
++            }
++            sb.append(close).append('}');
++        } else if (node.isArray()) {
++            if (node.size() == 0) { sb.append("[]"); return; }
++            sb.append("[\n");
++            for (int i = 0; i < node.size(); i++) {
++                sb.append(pad);
++                writeJson(node.get(i), indent + 1, sb);
++                sb.append(i < node.size() - 1 ? ",\n" : "\n");
++            }
++            sb.append(close).append(']');
++        } else {
++            sb.append(JSON.writeValueAsString(node));
++        }
++    }
++
++    private static boolean removeToml(Entry entry) throws IOException {
++        Path file = entry.file();
++        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return false;
++        String text = Files.readString(file, StandardCharsets.UTF_8);
++        String table = entry.section() == Section.CODEX_MARKETPLACES ? "marketplaces" : "plugins";
++        String edited = cutTable(text, table, entry.key());
++        if (edited.equals(text)) return false;
++        writeAtomically(file, edited);
++        return true;
++    }
++
++    /**
++     * {@code text} without the {@code [<table>.<key>]} table (bare or quoted key)
++     * and its {@code [<table>.<key>.*]} sub-tables, each through the line before
++     * the next table header. The blank lines separating the cut table from the
++     * next one go with it, so the file keeps one blank line between tables.
++     */
++    static String cutTable(String text, String table, String key) {
++        String[] lines = text.split("\n", -1);
++        StringBuilder out = new StringBuilder(text.length());
++        boolean cutting = false;
++        boolean cutAny = false;
++        for (int i = 0; i < lines.length; i++) {
++            String line = lines[i];
++            String trimmed = line.strip();
++            if (trimmed.startsWith("[")) {
++                cutting = namesTable(trimmed, table, key);
++                if (cutting) cutAny = true;
++            }
++            if (cutting) continue;
++            out.append(line);
++            if (i < lines.length - 1) out.append('\n');
++        }
++        if (!cutAny) return text;
++        // A cut at the end of the file can leave the previous table's blank
++        // separator dangling; collapse runs of blank lines the cut created.
++        String result = out.toString().replaceAll("\n{3,}", "\n\n");
++        // A cut that took the file's last tables leaves their separator behind
++        // as a trailing blank line; the file ends the way it did before.
++        if (text.endsWith("\n")) {
++            result = result.replaceAll("\n+$", "") + "\n";
++        }
++        return result;
++    }
++
++    private static boolean namesTable(String header, String table, String key) {
++        String inner = header.replaceFirst("^\\[+", "").replaceFirst("\\]+\\s*(#.*)?$", "").strip();
++        for (String spelled : List.of(key, "\"" + key + "\"")) {
++            String exact = table + "." + spelled;
++            if (inner.equals(exact) || inner.startsWith(exact + ".")) return true;
++        }
++        return false;
++    }
++
++    private static void writeAtomically(Path file, String content) throws IOException {
++        Path tmp = file.resolveSibling(file.getFileName() + ".skill-manager-tmp");
++        Files.writeString(tmp, content, StandardCharsets.UTF_8);
++        try {
++            Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
++                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
++        } catch (IOException atomicUnsupported) {
++            Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
++        }
++    }
++}
+diff --git a/src/main/java/dev/skillmanager/project/PluginMarketplace.java b/src/main/java/dev/skillmanager/project/PluginMarketplace.java
+index 3e29340c..2f19dab2 100644
+--- a/src/main/java/dev/skillmanager/project/PluginMarketplace.java
++++ b/src/main/java/dev/skillmanager/project/PluginMarketplace.java
+@@ -142,6 +142,36 @@ public final class PluginMarketplace {
+         return root().resolve(".claude-plugin").resolve("marketplace.json");
+     }
+ 
++    /**
++     * The {@code name} the manifest at {@code manifest} CLAIMS, or empty when there
++     * is no readable one. Evidence only (OHV-6, #352): nothing registers or
++     * generates from it — {@link #name()} is derived from the store path, and a
++     * manifest that disagrees was copied from another home.
++     */
++    public static java.util.Optional<String> manifestName(Path manifest) {
++        if (!Files.isRegularFile(manifest)) return java.util.Optional.empty();
++        try {
++            var node = new ObjectMapper().readTree(Files.readString(manifest)).path("name");
++            return node.isTextual() ? java.util.Optional.of(node.asText()) : java.util.Optional.empty();
++        } catch (IOException | RuntimeException unreadable) {
++            return java.util.Optional.empty();
++        }
++    }
++
++    /** The plugin names the manifest at {@code manifest} lists; empty when there is no readable one. */
++    public static List<String> manifestPluginNames(Path manifest) {
++        List<String> out = new ArrayList<>();
++        if (!Files.isRegularFile(manifest)) return out;
++        try {
++            for (var p : new ObjectMapper().readTree(Files.readString(manifest)).path("plugins")) {
++                if (p.path("name").isTextual()) out.add(p.path("name").asText());
++            }
++        } catch (IOException | RuntimeException unreadable) {
++            return List.of();
++        }
++        return out;
++    }
++
+     /** Per-plugin symlink directory inside the marketplace root. */
+     public Path pluginsLinkDir() {
+         return root().resolve("plugins");
+diff --git a/src/main/java/dev/skillmanager/store/HomeCloner.java b/src/main/java/dev/skillmanager/store/HomeCloner.java
+index 121f9487..6c8b13bf 100644
+--- a/src/main/java/dev/skillmanager/store/HomeCloner.java
++++ b/src/main/java/dev/skillmanager/store/HomeCloner.java
+@@ -703,6 +703,13 @@ public final class HomeCloner {
+         List<String> droppedBindings = new ArrayList<>();
+         List<String> droppedChildHomes = new ArrayList<>();
+         int stateReanchored = reanchorState(src, dst, droppedBindings, droppedChildHomes);
++        // OHV-6 (#352) shape 3. The copied manifest names the SOURCE's marketplace
++        // identity, and harness CLIs read the name from it — so every agent would
++        // register this copy under the other home's name. Regenerated by its one
++        // writer, which derives the name from THIS store's path. After the state
++        // re-anchor (it lists installed/), before the drift baseline (so the
++        // baseline describes the manifest the copy actually holds).
++        rederiveMarketplaceIdentity(new SkillStore(dst), "clone");
+         List<Leak> overflows = new ArrayList<>();
+         List<String> danglingReferences = new ArrayList<>();
+         int provisionedRewritten = reanchorProvisioned(src, dst, overflows, danglingReferences);
+@@ -762,6 +769,26 @@ public final class HomeCloner {
+                 sorted(deferredTrees), sorted(coldShims), lazyArtifacts);
+     }
+ 
++    /**
++     * Regenerate {@code home}'s plugin marketplace when it has one whose manifest
++     * names an identity other than the derived one. A home with no manifest is
++     * left without one: generating a marketplace is a plugin sync's decision, not
++     * a copy's. Shared with {@code home sync} (OHV-6, #352 shape 3).
++     *
++     * @return true when the manifest was regenerated
++     */
++    public static boolean rederiveMarketplaceIdentity(SkillStore home, String what) throws IOException {
++        var mp = new dev.skillmanager.project.PluginMarketplace(home);
++        if (!Files.isRegularFile(mp.manifestPath(), LinkOption.NOFOLLOW_LINKS)) return false;
++        String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(mp.manifestPath()).orElse(null);
++        String identity = mp.name();
++        if (identity.equals(claimed)) return false;
++        mp.regenerate();
++        Log.info("%s: plugin marketplace re-derived — expected identity %s, found %s in the manifest",
++                what, identity, claimed);
++        return true;
++    }
++
+     /** Directory iteration order is not a contract; the report's order is. */
+     private static List<String> sorted(List<String> values) {
+         List<String> out = new ArrayList<>(values);
+diff --git a/src/main/java/dev/skillmanager/store/HomeRepair.java b/src/main/java/dev/skillmanager/store/HomeRepair.java
+index ffa45442..621e04ff 100644
+--- a/src/main/java/dev/skillmanager/store/HomeRepair.java
++++ b/src/main/java/dev/skillmanager/store/HomeRepair.java
+@@ -349,7 +349,62 @@ public final class HomeRepair {
+          * record file and nothing else; the links it names are judged by
+          * {@link #DANGLING_AGENT_LINK}.
+          */
+-        ORPHANED_PROJECTION_RECORD
++        ORPHANED_PROJECTION_RECORD,
++
++        /**
++         * #352 shape 1. An agent config of this home registers the home's own
++         * marketplace directory under a name that is not its identity
++         * ({@link dev.skillmanager.project.PluginMarketplace#name()}), or enables a
++         * plugin from that name. Measured in tla-spec-dev's and meta-orchestrator's
++         * checkouts: Claude registers the path as {@code skill-manager} (the
++         * pre-61e9553b name) and every sync fails with
++         * {@code Marketplace 'skill-manager-<hash>' not found}. {@code claude plugin
++         * marketplace add <path>} cannot heal it: it answers "already on disk" and
++         * keeps the old name.
++         *
++         * <p>Repaired by RENAMING — the registration and its enablements are
++         * re-pointed at the identity together
++         * ({@link dev.skillmanager.project.MarketplaceRegistrations#migrateToIdentity}),
++         * because a {@code sync <plugin>} reinstalls only what it names and a removed
++         * enablement is a plugin silently dropped.
++         */
++        MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME,
++
++        /**
++         * #352 shape 2's trace. A plugin enabled under this home's identity that the
++         * same agent config does not register at this home's marketplace directory.
++         * {@code ensureMarketplaceAdded} used to ask {@code list.contains(name)}: the
++         * root's {@code skill-manager} is a substring of every
++         * {@code skill-manager-<hash>}, so the root skipped its own {@code add}
++         * whenever a per-home marketplace was listed, and its enabled plugins named
++         * a marketplace that was not there. Repairable when this home has a
++         * manifest to register: {@code --fix} writes the registration the agent's
++         * own {@code marketplace add} writes.
++         */
++        MARKETPLACE_IDENTITY_UNREGISTERED,
++
++        /**
++         * #352 shape 3. {@code plugin-marketplace/.claude-plugin/marketplace.json}
++         * names an identity that is not this home's derived one — it was copied
++         * from another home (13 homes carried commit-diff-context-parent's or
++         * deploy-cdc's). Harness CLIs read the name from that file, so every agent
++         * then registers this home under the other home's name, the collision the
++         * per-home fingerprint exists to prevent. Repaired by regenerating the
++         * marketplace, which is the one writer of the file.
++         */
++        MARKETPLACE_IDENTITY_COPIED,
++
++        /**
++         * #352 shape 4, both sides (DEF-OHV-005 is Claude's). An agent config of this
++         * home registers or enables ANOTHER home's marketplace: a Codex
++         * {@code [marketplaces.*]} whose source is not this home's, a Claude
++         * {@code extraKnownMarketplaces} entry likewise, an enabled
++         * {@code <plugin>@<other skill-manager marketplace>}, or a Claude
++         * {@code known_marketplaces.json} entry for another home that something in
++         * the same config enables. Plugins then load twice, from two homes.
++         * Repaired by removing that one entry.
++         */
++        FOREIGN_MARKETPLACE_REGISTRATION
+     }
+ 
+     /** The suffix every projection ledger in {@code installed/} carries. */
+@@ -478,9 +533,143 @@ public final class HomeRepair {
+         // that say so.
+         examined += danglingAgentLinks(root, findings);
+         examined += orphanedProjectionRecords(root, findings);
++        // OHV-6 (#352): the marketplace identity, on disk and in the agent
++        // configs that register it. Manifest first, so a --fix pass renames or
++        // registers against the identity the manifest will then carry.
++        examined += marketplaceIdentity(root, findings);
+         return new Report(root, examined, findings);
+     }
+ 
++    /**
++     * OHV-6 (#352) — the four marketplace-identity shapes. What is read, and what
++     * is deliberately not, is {@link dev.skillmanager.project.MarketplaceRegistrations}'s
++     * class comment; the agent directories are this home's structural ones
++     * ({@link #agentDirsOf}), never the environment's.
++     */
++    private static int marketplaceIdentity(Path store, List<Finding> findings) {
++        var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
++        String identity = mp.name();
++        Path manifest = mp.manifestPath();
++        boolean manifestHere = Files.isRegularFile(manifest, LinkOption.NOFOLLOW_LINKS);
++        int examined = 0;
++        if (manifestHere) {
++            examined++;
++            String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(manifest).orElse(null);
++            if (!identity.equals(claimed)) {
++                findings.add(new Finding(Kind.MARKETPLACE_IDENTITY_COPIED,
++                        relative(store, manifest),
++                        "names the marketplace " + claimed + ", but this home's identity is "
++                                + identity + " (derived from its store path " + store + ") — expected "
++                                + identity + ", found " + claimed + ": a copied manifest carries its "
++                                + "source's identity, and every agent registers this home under it",
++                        "skill-manager home repair --fix regenerates the marketplace, which writes "
++                                + identity + " (so does the next plugin `sync`)",
++                        true, manifest));
++            }
++        }
++        Path homeRoot = AgentHomes.homeRootFor(store);
++        List<Path> agentDirs = agentDirsOf(store);
++        var entries = dev.skillmanager.project.MarketplaceRegistrations.read(agentDirs.get(0), agentDirs.get(1));
++        examined += entries.size();
++        for (var judged : dev.skillmanager.project.MarketplaceRegistrations.judge(entries, identity, mp.root())) {
++            var entry = judged.entry();
++            String subject = entry.subject(homeRoot);
++            switch (judged.kind()) {
++                case UNDER_ANOTHER_NAME -> findings.add(new Finding(
++                        Kind.MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME, subject, judged.detail(),
++                        "skill-manager home repair --fix re-points it at " + identity + ", with every "
++                                + (entry.registration() ? entry.key() : entry.marketplace())
++                                + " registration of this directory and every plugin enabled from it in "
++                                + "the same agent's config; the next `sync` then updates and installs "
++                                + "from " + identity,
++                        true, entry.file()));
++                case IDENTITY_UNREGISTERED -> findings.add(new Finding(
++                        Kind.MARKETPLACE_IDENTITY_UNREGISTERED, subject, judged.detail(),
++                        manifestHere
++                                ? "skill-manager home repair --fix registers " + identity + " at "
++                                        + mp.root() + " in this agent's config, as its own `marketplace "
++                                        + "add` would"
++                                : "this home has no marketplace manifest to register — run "
++                                        + "`skill-manager sync`, which generates and registers it",
++                        manifestHere, entry.file()));
++                case FOREIGN -> findings.add(new Finding(
++                        Kind.FOREIGN_MARKETPLACE_REGISTRATION, subject, judged.detail(),
++                        carriedHere(entry, manifest)
++                                ? "skill-manager home repair --fix re-points it at " + pluginOf(entry) + "@"
++                                        + identity + ": this home's own marketplace carries "
++                                        + pluginOf(entry) + ", so removing the entry would drop the plugin"
++                                : "skill-manager home repair --fix removes this entry and nothing else",
++                        true, entry.file()));
++            }
++        }
++        return examined;
++    }
++
++    /**
++     * Carry out one agent-config marketplace finding against the config AS IT IS
++     * NOW: the entry is re-read and re-judged, so a finding a previous action
++     * already consumed is refused rather than acted on from stale prose.
++     */
++    private static void applyMarketplaceEntry(Path store, Finding finding) throws IOException {
++        var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
++        String identity = mp.name();
++        Path homeRoot = AgentHomes.homeRootFor(store);
++        List<Path> agentDirs = agentDirsOf(store);
++        var entries = dev.skillmanager.project.MarketplaceRegistrations.read(agentDirs.get(0), agentDirs.get(1));
++        var judged = dev.skillmanager.project.MarketplaceRegistrations.judge(entries, identity, mp.root())
++                .stream().filter(j -> j.entry().subject(homeRoot).equals(finding.subject()))
++                .findFirst()
++                .orElseThrow(() -> new IOException(finding.subject() + " no longer disagrees with " + identity));
++        var entry = judged.entry();
++        // Every file this agent's config spans, gated before any is written.
++        if (entry.agent() == dev.skillmanager.project.MarketplaceRegistrations.Agent.CLAUDE) {
++            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.knownMarketplaces(agentDirs.get(0)), WHAT);
++            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.claudeSettings(agentDirs.get(0)), WHAT);
++        } else {
++            WriteConfinement.checkWrite(dev.skillmanager.project.MarketplaceRegistrations.codexConfig(agentDirs.get(1)), WHAT);
++        }
++        switch (judged.kind()) {
++            case UNDER_ANOTHER_NAME -> {
++                if (dev.skillmanager.project.MarketplaceRegistrations
++                        .migrateToIdentity(entry, entries, identity, mp.root()).isEmpty()) {
++                    throw new IOException("nothing re-pointed for " + finding.subject());
++                }
++            }
++            case IDENTITY_UNREGISTERED -> {
++                String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(mp.manifestPath()).orElse(null);
++                if (!identity.equals(claimed)) {
++                    throw new IOException("the manifest names " + claimed + ", not " + identity
++                            + "; registering it now would register the wrong identity");
++                }
++                dev.skillmanager.project.MarketplaceRegistrations.registerIdentity(entry, identity, mp.root());
++            }
++            case FOREIGN -> {
++                // An enablement of a plugin this home's own marketplace carries is
++                // RE-POINTED, not removed: `sync <plugin>` reinstalls only what it
++                // names, so removal would silently drop a plugin this home has.
++                boolean done = carriedHere(entry, mp.manifestPath())
++                        ? dev.skillmanager.project.MarketplaceRegistrations.rename(entry,
++                                pluginOf(entry) + "@" + identity)
++                        : dev.skillmanager.project.MarketplaceRegistrations.remove(entry);
++                if (!done) throw new IOException(finding.subject() + " is no longer in " + entry.file());
++            }
++        }
++    }
++
++    /** The plugin half of an enablement's {@code <plugin>@<marketplace>} key; null for a registration. */
++    private static String pluginOf(dev.skillmanager.project.MarketplaceRegistrations.Entry entry) {
++        if (entry.registration()) return null;
++        return entry.key().substring(0, entry.key().lastIndexOf('@'));
++    }
++
++    /** An enablement whose plugin this home's own manifest lists. */
++    private static boolean carriedHere(dev.skillmanager.project.MarketplaceRegistrations.Entry entry,
++                                       Path manifest) {
++        String plugin = pluginOf(entry);
++        return plugin != null
++                && dev.skillmanager.project.PluginMarketplace.manifestPluginNames(manifest).contains(plugin);
++    }
++
+     /**
+      * OHV-2 (b) — links outside the store, pointing into it, resolving to
+      * nothing. See {@link Kind#DANGLING_AGENT_LINK} for the scope and its limits.
+@@ -1347,6 +1536,14 @@ public final class HomeRepair {
+                 }
+                 Files.deleteIfExists(record);
+             }
++            // OHV-6 (#352). The manifest's one writer, not a name patch.
++            case MARKETPLACE_IDENTITY_COPIED -> {
++                var mp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(store));
++                WriteConfinement.checkWrite(mp.manifestPath(), WHAT);
++                mp.regenerate();
++            }
++            case MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME, MARKETPLACE_IDENTITY_UNREGISTERED,
++                    FOREIGN_MARKETPLACE_REGISTRATION -> applyMarketplaceEntry(store, finding);
+         }
+     }
+ 
+diff --git a/src/main/java/dev/skillmanager/store/HomeSync.java b/src/main/java/dev/skillmanager/store/HomeSync.java
+index 4d7b81e6..89769fca 100644
+--- a/src/main/java/dev/skillmanager/store/HomeSync.java
++++ b/src/main/java/dev/skillmanager/store/HomeSync.java
+@@ -271,7 +271,12 @@ public final class HomeSync {
+                             outcome.detail());
+                 }
+             }
+-            if (!opts.dryRun()) materializer.cleanStaging();
++            if (!opts.dryRun()) {
++                materializer.cleanStaging();
++                // OHV-6 (#352) shape 3: the destination's manifest names the
++                // destination's identity, whatever was reconciled into it.
++                HomeCloner.rederiveMarketplaceIdentity(to, "home sync");
++            }
+             return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes,
+                     opts.unit());
+         }
+diff --git a/src/test/java/dev/skillmanager/project/HarnessPluginCliTest.java b/src/test/java/dev/skillmanager/project/HarnessPluginCliTest.java
+index f37603f4..d85a4a46 100644
+--- a/src/test/java/dev/skillmanager/project/HarnessPluginCliTest.java
++++ b/src/test/java/dev/skillmanager/project/HarnessPluginCliTest.java
+@@ -28,41 +28,104 @@ public final class HarnessPluginCliTest {
+     public static int run() throws Exception {
+         Tests.Suite suite = Tests.suite("HarnessPluginCliTest");
+ 
+-        suite.test("Claude: ensureMarketplaceAdded skips when list already shows it", () -> {
++        suite.test("Claude: ensureMarketplaceAdded skips when THIS identity is listed at THIS path", () -> {
+             CapturingRunner runner = new CapturingRunner();
+-            runner.script.add(new HarnessPluginCli.Result(0,
+-                    "Configured marketplaces:\n  ❯ skill-manager\n", ""));
++            runner.script.add(ok(listed("skill-manager", "/tmp/mp")));
+             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
+ 
+             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
+ 
+             assertTrue(r.ok(), "treated as success");
+-            assertEquals("already-added", r.stdout(), "marker stdout");
++            assertEquals("already registered: skill-manager at /tmp/mp", r.stdout(), "names identity and path");
+             assertEquals(1, runner.calls.size(), "only the list call ran");
+             List<String> firstCmd = runner.calls.get(0).cmd();
+-            assertEquals("claude", firstCmd.get(0), "claude binary");
+-            assertEquals("plugin", firstCmd.get(1), "plugin subcommand");
+-            assertEquals("marketplace", firstCmd.get(2), "marketplace subcommand");
+-            assertEquals("list", firstCmd.get(3), "list verb");
++            assertEquals(List.of("claude", "plugin", "marketplace", "list", "--json"), firstCmd, "list --json");
+         });
+ 
+-        suite.test("Claude: ensureMarketplaceAdded runs add when list is empty", () -> {
++        suite.test("Claude: ensureMarketplaceAdded runs add when list is empty, and confirms it", () -> {
+             CapturingRunner runner = new CapturingRunner();
+-            runner.script.add(new HarnessPluginCli.Result(0,
+-                    "Configured marketplaces:\n  (none)\n", ""));
+-            runner.script.add(new HarnessPluginCli.Result(0, "marketplace added", ""));
++            runner.script.add(ok("[]"));
++            runner.script.add(ok("marketplace added"));
++            runner.script.add(ok(listed("skill-manager", "/tmp/mp")));
+             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
+ 
+             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
+ 
+-            assertTrue(r.ok(), "ok");
+-            assertEquals(2, runner.calls.size(), "list + add");
++            assertTrue(r.ok(), "ok: " + r);
++            assertEquals(3, runner.calls.size(), "list + add + list");
+             List<String> add = runner.calls.get(1).cmd();
+             assertEquals("add", add.get(3), "add verb");
+             assertEquals("/tmp/mp", add.get(4), "passed marketplace root");
+             assertTrue(add.contains("--scope") && add.contains("user"), "user scope");
+         });
+ 
++        suite.test("#352 shape 2: a listed name that CONTAINS the identity does not skip the add", () -> {
++            CapturingRunner runner = new CapturingRunner();
++            // The root's bare `skill-manager` is a substring of this name, and of
++            // its path. The old `stdout.contains(name)` returned "already-added".
++            runner.script.add(ok(listed("skill-manager-919db26e", "/cdc/.skill-manager/plugin-marketplace")));
++            runner.script.add(ok("added"));
++            runner.script.add(ok("[" + entry("skill-manager-919db26e", "/cdc/.skill-manager/plugin-marketplace")
++                    + "," + entry("skill-manager", "/root/.skill-manager/plugin-marketplace") + "]"));
++            HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
++
++            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(
++                    Path.of("/root/.skill-manager/plugin-marketplace"), PluginMarketplace.NAME);
++
++            assertTrue(r.ok(), "ok: " + r);
++            assertEquals("add", runner.calls.get(1).cmd().get(3), "the add ran");
++            assertTrue(runner.calls.stream().noneMatch(c -> c.cmd().contains("remove")),
++                    "and another home's registration was not removed");
++        });
++
++        suite.test("#352 shape 1: this path under another name is removed, re-added, and its plugins migrate", () -> {
++            CapturingRunner runner = new CapturingRunner();
++            String mp = "/p/.skill-manager/plugin-marketplace";
++            runner.script.add(ok(listed("skill-manager", mp)));                      // list
++            runner.script.add(ok("[{\"id\":\"skt@skill-manager\",\"enabled\":true},"
++                    + "{\"id\":\"x@claude-plugins-official\",\"enabled\":true}]"));   // plugin list
++            runner.script.add(ok("removed"));                                         // remove
++            runner.script.add(ok("added"));                                           // add
++            runner.script.add(ok(listed("skill-manager-0fd46eec", mp)));             // list again
++            runner.script.add(ok("installed"));                                       // install
++            HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
++
++            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of(mp), "skill-manager-0fd46eec");
++
++            assertTrue(r.ok(), "ok: " + r);
++            assertEquals(List.of("claude", "plugin", "marketplace", "remove", "skill-manager"),
++                    runner.calls.get(2).cmd(), "the stale name is removed");
++            assertEquals(List.of("claude", "plugin", "install", "skt@skill-manager-0fd46eec", "--scope", "user"),
++                    runner.calls.get(5).cmd(), "its plugin is installed under the identity");
++            assertEquals(6, runner.calls.size(), "and no other plugin is touched");
++            assertTrue(r.stdout().contains("expected skill-manager-0fd46eec at " + mp + ", found skill-manager"),
++                    "the outcome names expected and found: " + r.stdout());
++        });
++
++        suite.test("#352 shape 1: add that keeps the old name is a FAILURE naming expected and found", () -> {
++            CapturingRunner runner = new CapturingRunner();
++            String mp = "/p/.skill-manager/plugin-marketplace";
++            runner.script.add(ok("[]"));
++            runner.script.add(ok("Marketplace 'skill-manager' already on disk"));
++            runner.script.add(ok(listed("skill-manager", mp)));
++            HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
++
++            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of(mp), "skill-manager-0fd46eec");
++
++            assertFalse(r.ok(), "not ok: " + r);
++            assertTrue(r.stderr().contains("expected marketplace skill-manager-0fd46eec at " + mp)
++                            && r.stderr().contains("found skill-manager at " + mp),
++                    "names both: " + r.stderr());
++        });
++
++        suite.test("Claude: the text listing parses by name and path when --json is not understood", () -> {
++            List<HarnessPluginCli.Registered> found = HarnessPluginCli.parseMarketplaceList(
++                    "Configured marketplaces:\n\n  ❯ skill-manager\n    Source: Directory (/a/b)\n\n"
++                            + "  ❯ official\n    Source: GitHub (anthropics/x)\n");
++            assertEquals(List.of(new HarnessPluginCli.Registered("skill-manager", "/a/b"),
++                    new HarnessPluginCli.Registered("official", "anthropics/x")), found, "parsed");
++        });
++
+         suite.test("Claude: refreshMarketplace runs `marketplace update <name>`", () -> {
+             CapturingRunner runner = new CapturingRunner();
+             runner.script.add(new HarnessPluginCli.Result(0, "updated", ""));
+@@ -186,6 +249,7 @@ public final class HarnessPluginCliTest {
+             runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
+             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
+             java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
++            runner.onAdd = () -> writeCodex(cfg, "skill-manager", desired);
+ 
+             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, PluginMarketplace.NAME);
+ 
+@@ -219,6 +283,7 @@ public final class HarnessPluginCliTest {
+             runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
+             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
+             java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
++            runner.onAdd = () -> writeCodex(cfg, "skill-manager", desired);
+ 
+             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, PluginMarketplace.NAME);
+ 
+@@ -228,6 +293,36 @@ public final class HarnessPluginCliTest {
+                     "diagnostic captures the non-zero remove rc (was: " + r.stdout() + ")");
+         });
+ 
++        suite.test("#352 shape 1, Codex: this path under another name is removed and its plugins migrate", () -> {
++            java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("codex-cfg-");
++            java.nio.file.Path cfg = tmp.resolve("config.toml");
++            java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("mp-");
++            java.nio.file.Files.writeString(cfg, """
++                    [marketplaces.skill-manager]
++                    source_type = "local"
++                    source = "%s"
++
++                    [plugins."skt@skill-manager"]
++                    enabled = true
++                    """.formatted(desired.toAbsolutePath()));
++            CapturingRunner runner = new CapturingRunner();
++            runner.onAdd = () -> writeCodex(cfg, "skill-manager-0fd46eec", desired);
++            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
++
++            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, "skill-manager-0fd46eec");
++
++            assertTrue(r.ok(), "ok: " + r);
++            List<List<String>> cmds = runner.calls.stream().map(CapturingRunner.Call::cmd).toList();
++            assertEquals(List.of(
++                    List.of("codex", "plugin", "remove", "skt@skill-manager"),
++                    List.of("codex", "plugin", "marketplace", "remove", "skill-manager"),
++                    List.of("codex", "plugin", "marketplace", "add", desired.toAbsolutePath().toString()),
++                    List.of("codex", "plugin", "add", "skt@skill-manager-0fd46eec")), cmds,
++                    "remove the stale plugin and name, add the identity, re-add the plugin under it");
++            assertTrue(r.stdout().contains("expected skill-manager-0fd46eec at " + desired.toAbsolutePath()
++                    + ", found skill-manager"), "names expected and found: " + r.stdout());
++        });
++
+         suite.test("Codex: readMarketplaceSource returns empty for missing/unparseable config", () -> {
+             java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("codex-cfg-");
+             java.util.Optional<String> missing =
+@@ -306,15 +401,44 @@ public final class HarnessPluginCliTest {
+         return suite.runAll();
+     }
+ 
++    private static HarnessPluginCli.Result ok(String stdout) {
++        return new HarnessPluginCli.Result(0, stdout, "");
++    }
++
++    private static String entry(String name, String path) {
++        return "{\"name\":\"" + name + "\",\"source\":\"directory\",\"path\":\"" + path + "\"}";
++    }
++
++    /** {@code claude plugin marketplace list --json} with one entry. */
++    private static String listed(String name, String path) {
++        return "[" + entry(name, path) + "]";
++    }
++
++    /** What {@code codex plugin marketplace add} leaves: the table under {@code name}, and nothing stale. */
++    private static void writeCodex(Path cfg, String name, Path source) {
++        try {
++            java.nio.file.Files.writeString(cfg, "[marketplaces." + name + "]\nsource_type = \"local\"\n"
++                    + "source = \"" + source.toAbsolutePath() + "\"\n");
++        } catch (IOException e) {
++            throw new IllegalStateException(e);
++        }
++    }
++
+     /** Records every invocation; returns scripted Results in order. */
+     private static final class CapturingRunner implements HarnessPluginCli.Runner {
+         record Call(List<String> cmd, Map<String, String> env) {}
+         final List<Call> calls = new ArrayList<>();
+         final List<HarnessPluginCli.Result> script = new ArrayList<>();
++        /** The side effect a real {@code marketplace add} has on the config, when a test needs it. */
++        Runnable onAdd;
+         @Override
+         public HarnessPluginCli.Result run(List<String> command, Map<String, String> envOverrides) {
+             calls.add(new Call(List.copyOf(command),
+                     envOverrides == null ? Map.of() : Map.copyOf(envOverrides)));
++            if (onAdd != null && command.size() > 3 && command.get(2).equals("marketplace")
++                    && command.get(3).equals("add")) {
++                onAdd.run();
++            }
+             if (script.isEmpty()) return new HarnessPluginCli.Result(0, "", "");
+             return script.remove(0);
+         }
+diff --git a/src/test/java/dev/skillmanager/project/MarketplaceRegistrationsTest.java b/src/test/java/dev/skillmanager/project/MarketplaceRegistrationsTest.java
+new file mode 100644
+index 00000000..264012d1
+--- /dev/null
++++ b/src/test/java/dev/skillmanager/project/MarketplaceRegistrationsTest.java
+@@ -0,0 +1,225 @@
++package dev.skillmanager.project;
++
++import dev.skillmanager._lib.test.Tests;
++
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.List;
++
++import static dev.skillmanager._lib.test.Tests.assertContains;
++import static dev.skillmanager._lib.test.Tests.assertEquals;
++import static dev.skillmanager._lib.test.Tests.assertFalse;
++import static dev.skillmanager._lib.test.Tests.assertTrue;
++
++/**
++ * OHV-6 (#352): reading a home's agent marketplace registrations, judging them
++ * against the home's identity, and editing exactly one entry.
++ *
++ * <p>Every fixture is a temp directory; nothing here reads or writes the
++ * operator's {@code ~/.claude} or {@code ~/.codex}.
++ */
++public final class MarketplaceRegistrationsTest {
++
++    public static int run() throws Exception {
++        Tests.Suite suite = Tests.suite("MarketplaceRegistrationsTest");
++
++        suite.test("the root's DEF-OHV-005 config: exactly the other home's entries are FOREIGN", () -> {
++            Path tmp = Files.createTempDirectory("mr-root-");
++            Path rootMp = tmp.resolve("home/.skill-manager/plugin-marketplace");
++            Path cdc = tmp.resolve("cdc/.skill-manager/plugin-marketplace");
++            Path tla = tmp.resolve("tla/.skill-manager/plugin-marketplace");
++            Path claude = tmp.resolve("home/.claude");
++            Path codex = tmp.resolve("home/.codex");
++            write(claude.resolve("plugins/known_marketplaces.json"), """
++                    {
++                      "skill-manager": {"source": {"source": "directory", "path": "%1$s"}},
++                      "skill-manager-919db26e": {"source": {"source": "directory", "path": "%2$s"}},
++                      "skill-manager-0fd46eec": {"source": {"source": "directory", "path": "%3$s"}}
++                    }""".formatted(rootMp, cdc, tla));
++            write(claude.resolve("settings.json"), """
++                    {
++                      "enabledPlugins": {
++                        "skt@skill-manager-919db26e": true,
++                        "skt@skill-manager": true,
++                        "jdtls-lsp@claude-plugins-official": true
++                      }
++                    }""");
++            write(codex.resolve("config.toml"), """
++                    [plugins."skt@skill-manager"]
++                    enabled = true
++
++                    [plugins."skt@skill-manager-919db26e"]
++                    enabled = true
++
++                    [marketplaces.skill-manager]
++                    source_type = "local"
++                    source = "%1$s"
++
++                    [marketplaces.skill-manager-919db26e]
++                    source_type = "local"
++                    source = "%2$s"
++                    """.formatted(rootMp, cdc));
++
++            var judged = MarketplaceRegistrations.judge(
++                    MarketplaceRegistrations.read(claude, codex), "skill-manager", rootMp);
++
++            List<String> subjects = judged.stream()
++                    .map(j -> j.kind() + " " + j.entry().subject(tmp.resolve("home"))).sorted().toList();
++            assertEquals(List.of(
++                    "FOREIGN .claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager-919db26e",
++                    "FOREIGN .claude/settings.json:enabledPlugins.skt@skill-manager-919db26e",
++                    "FOREIGN .codex/config.toml:marketplaces.skill-manager-919db26e",
++                    "FOREIGN .codex/config.toml:plugins.skt@skill-manager-919db26e"), subjects,
++                    "the root's own entries and the UNENABLED tla-spec-dev registration are not findings");
++        });
++
++        suite.test("shape 1: this path under another name, registration and enablement both", () -> {
++            Path tmp = Files.createTempDirectory("mr-s1-");
++            Path mp = tmp.resolve(".skill-manager/plugin-marketplace");
++            Path claude = tmp.resolve(".claude");
++            write(claude.resolve("plugins/known_marketplaces.json"),
++                    "{\"skill-manager\": {\"source\": {\"source\": \"directory\", \"path\": \"" + mp + "\"}}}");
++            write(claude.resolve("settings.json"), "{\"enabledPlugins\": {\"skt@skill-manager\": true}}");
++
++            var judged = MarketplaceRegistrations.judge(
++                    MarketplaceRegistrations.read(claude, null), "skill-manager-0fd46eec", mp);
++
++            assertEquals(2, judged.size(), "both entries: " + judged);
++            assertTrue(judged.stream().allMatch(j -> j.kind() == MarketplaceRegistrations.Disagreement.UNDER_ANOTHER_NAME),
++                    "both UNDER_ANOTHER_NAME: " + judged);
++            assertContains(judged.get(0).detail(), "expected skill-manager-0fd46eec at " + mp,
++                    "the detail names the identity it expected");
++            assertContains(judged.get(0).detail(), "found skill-manager", "and what it found");
++        });
++
++        suite.test("shape 1 repair re-points the registration and migrates the enablement in place", () -> {
++            Path tmp = Files.createTempDirectory("mr-migrate-");
++            Path mp = tmp.resolve(".skill-manager/plugin-marketplace");
++            Path claude = tmp.resolve(".claude");
++            write(claude.resolve("plugins/known_marketplaces.json"),
++                    "{\"a\": {\"x\": 1}, \"skill-manager\": {\"source\": {\"source\": \"directory\", \"path\": \""
++                            + mp + "\"}}, \"z\": {}}");
++            write(claude.resolve("settings.json"),
++                    "{\"enabledPlugins\": {\"skt@skill-manager\": true, \"k@official\": true}}");
++            var entries = MarketplaceRegistrations.read(claude, null);
++            var reg = entries.stream().filter(e -> e.key().equals("skill-manager")).findFirst().orElseThrow();
++
++            MarketplaceRegistrations.migrateToIdentity(reg, entries, "skill-manager-abcd1234", mp);
++
++            String known = Files.readString(claude.resolve("plugins/known_marketplaces.json"));
++            assertTrue(known.indexOf("\"a\"") < known.indexOf("\"skill-manager-abcd1234\"")
++                            && known.indexOf("\"skill-manager-abcd1234\"") < known.indexOf("\"z\""),
++                    "renamed in place, order kept: " + known);
++            assertContains(known, "\"z\": {}", "Claude's layout: `\"k\": v`, empty object {}");
++            String settings = Files.readString(claude.resolve("settings.json"));
++            assertContains(settings, "\"skt@skill-manager-abcd1234\": true", "the enablement migrates with it");
++            assertContains(settings, "\"k@official\": true", "an unrelated enablement stays");
++            assertTrue(MarketplaceRegistrations.judge(MarketplaceRegistrations.read(claude, null),
++                    "skill-manager-abcd1234", mp).isEmpty(), "and nothing disagrees afterwards");
++            assertFalse(known.endsWith("\n"), "a file Claude wrote without a trailing newline keeps none");
++        });
++
++        suite.test("a hand-edited settings file keeps its trailing newline through a removal", () -> {
++            Path tmp = Files.createTempDirectory("mr-newline-");
++            Path claude = tmp.resolve(".claude");
++            write(claude.resolve("settings.json"),
++                    "{\n  \"enabledPlugins\": {\n    \"skt@skill-manager-919db26e\": true\n  },\n  \"verbose\": true\n}\n");
++            var entry = MarketplaceRegistrations.read(claude, null).stream()
++                    .filter(e -> e.key().equals("skt@skill-manager-919db26e")).findFirst().orElseThrow();
++
++            assertTrue(MarketplaceRegistrations.remove(entry), "removed");
++
++            assertEquals("{\n  \"enabledPlugins\": {},\n  \"verbose\": true\n}\n",
++                    Files.readString(claude.resolve("settings.json")), "only the entry changed, the ending did not");
++        });
++
++        suite.test("shape 2: a registered name that CONTAINS the identity is not the identity", () -> {
++            Path tmp = Files.createTempDirectory("mr-s2-");
++            Path mp = tmp.resolve("home/.skill-manager/plugin-marketplace");
++            Path other = tmp.resolve("other/.skill-manager/plugin-marketplace");
++            Path claude = tmp.resolve("home/.claude");
++            write(claude.resolve("plugins/known_marketplaces.json"),
++                    "{\"skill-manager-919db26e\": {\"source\": {\"source\": \"directory\", \"path\": \"" + other + "\"}}}");
++            write(claude.resolve("settings.json"), "{\"enabledPlugins\": {\"skt@skill-manager\": true}}");
++
++            var judged = MarketplaceRegistrations.judge(
++                    MarketplaceRegistrations.read(claude, null), "skill-manager", mp);
++
++            assertEquals(1, judged.size(), "only the enablement: " + judged);
++            assertEquals(MarketplaceRegistrations.Disagreement.IDENTITY_UNREGISTERED, judged.get(0).kind(), "kind");
++            assertContains(judged.get(0).detail(), "merely contains skill-manager", "names the trap");
++        });
++
++        suite.test("shape 2 repair registers the identity the way `marketplace add` does", () -> {
++            Path tmp = Files.createTempDirectory("mr-register-");
++            Path mp = tmp.resolve(".skill-manager/plugin-marketplace");
++            Path claude = tmp.resolve(".claude");
++            write(claude.resolve("settings.json"), "{\"enabledPlugins\": {\"skt@skill-manager-abcd1234\": true}}");
++            Path codex = tmp.resolve(".codex");
++            write(codex.resolve("config.toml"), "[plugins.\"skt@skill-manager-abcd1234\"]\nenabled = true\n");
++            var judged = MarketplaceRegistrations.judge(
++                    MarketplaceRegistrations.read(claude, codex), "skill-manager-abcd1234", mp);
++            assertEquals(2, judged.size(), "Claude and Codex each: " + judged);
++
++            for (var j : judged) MarketplaceRegistrations.registerIdentity(j.entry(), "skill-manager-abcd1234", mp);
++
++            assertTrue(MarketplaceRegistrations.judge(MarketplaceRegistrations.read(claude, codex),
++                    "skill-manager-abcd1234", mp).isEmpty(), "registered in both");
++            assertContains(Files.readString(codex.resolve("config.toml")),
++                    "[marketplaces.skill-manager-abcd1234]\nsource_type = \"local\"\nsource = \"" + mp + "\"",
++                    "codex's own table shape");
++            assertContains(Files.readString(claude.resolve("settings.json")), "\"extraKnownMarketplaces\"",
++                    "declared in settings as well as known_marketplaces.json");
++        });
++
++        suite.test("TOML: cutting one table keeps every other byte, comments and sub-tables included", () -> {
++            String text = """
++                    model = "gpt-5"  # mine
++
++                    [marketplaces.skill-manager]
++                    source = "/x"
++
++                    [marketplaces.skill-manager.extra]
++                    k = 1
++
++                    [marketplaces.skill-manager-2]
++                    source = "/y"
++                    # trailing comment
++                    """;
++            String cut = MarketplaceRegistrations.cutTable(text, "marketplaces", "skill-manager");
++            assertEquals("""
++                    model = "gpt-5"  # mine
++
++                    [marketplaces.skill-manager-2]
++                    source = "/y"
++                    # trailing comment
++                    """, cut, "a prefix-sharing name is a different table");
++            assertEquals(text, MarketplaceRegistrations.cutTable(text, "marketplaces", "absent"),
++                    "an absent table changes nothing");
++            assertEquals("[plugins.\"skt@new\"]\nenabled = true\n",
++                    MarketplaceRegistrations.renameTable("[plugins.\"skt@old\"]\nenabled = true\n",
++                            "plugins", "skt@old", "skt@new"), "a quoted key is renamed quoted");
++        });
++
++        suite.test("paths compare as directories, macOS aliases included; a skill-manager marketplace by name or dir", () -> {
++            Path tmp = Files.createTempDirectory("mr-path-").toRealPath();
++            if (tmp.toString().startsWith("/private/var/")) {
++                assertTrue(MarketplaceRegistrations.samePath(tmp.toString().substring("/private".length()), tmp),
++                        "/var and /private/var are one directory");
++            }
++            assertFalse(MarketplaceRegistrations.samePath("/a/b-2", Path.of("/a/b")), "a prefix is not a path");
++            assertTrue(MarketplaceRegistrations.skillManagerMarketplace("skill-manager-1", null), "by name");
++            assertTrue(MarketplaceRegistrations.skillManagerMarketplace("custom", "/h/.skill-manager/plugin-marketplace"),
++                    "by directory");
++            assertFalse(MarketplaceRegistrations.skillManagerMarketplace("skill-managerx", "/elsewhere"),
++                    "a name that only starts with the letters is not one");
++        });
++
++        return suite.runAll();
++    }
++
++    private static void write(Path file, String content) throws java.io.IOException {
++        Files.createDirectories(file.getParent());
++        Files.writeString(file, content);
++    }
++}
+diff --git a/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java b/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
+index 6859f6ba..bf456871 100644
+--- a/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
++++ b/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
+@@ -467,6 +467,80 @@ public final class DamagedHomeIsRepairableTest {
+                             "and another home's dangling link was not touched");
+                 })
+ 
++                .test("OHV-6: the four marketplace-identity shapes, repaired by touching only what they name", () -> {
++                    Fixture fx = Fixture.build("marketplace-identity");
++                    fx.damageMarketplaceIdentity();
++                    String id = fx.identity();
++                    Path claude = fx.root.resolve(".claude");
++                    Path codex = fx.root.resolve(".codex/config.toml");
++
++                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
++                    List<String> seen = before.findings().stream()
++                            .map(f -> f.kind() + " " + f.subject()).sorted().toList();
++                    assertEquals(List.of(
++                            "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:marketplaces.skill-manager",
++                            "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.skt@skill-manager",
++                            "MARKETPLACE_IDENTITY_COPIED plugin-marketplace/.claude-plugin/marketplace.json",
++                            "MARKETPLACE_IDENTITY_UNREGISTERED .claude/settings.json:enabledPlugins.own@" + id,
++                            "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager",
++                            "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/settings.json:enabledPlugins.skt@skill-manager"),
++                            seen, "exactly the planted entries, each with its kind");
++                    assertTrue(before.findings().stream().filter(f -> f.kind().name().contains("MARKETPLACE"))
++                                    .allMatch(f -> f.detail().contains(id)),
++                            "every marketplace finding names the identity it expected");
++
++                    HomeRepair.Outcome out = HomeRepair.repair(fx.store, fx.pin);
++
++                    assertTrue(out.failed().isEmpty(), "no repair refused: " + out.failed());
++                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
++                                    .noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
++                            "a separate detection finds none of them");
++                    assertEquals(id, dev.skillmanager.project.PluginMarketplace.manifestName(
++                            fx.store.resolve("plugin-marketplace/.claude-plugin/marketplace.json")).orElse(null),
++                            "shape 3: the manifest names this home");
++                    String known = Files.readString(claude.resolve("plugins/known_marketplaces.json"));
++                    String settings = Files.readString(claude.resolve("settings.json"));
++                    assertFalse(known.contains("\"skill-manager\""), "shape 1: the stale name is gone: " + known);
++                    assertContains(known, "\"" + id + "\"", "shape 1/2: the identity is registered");
++                    assertContains(settings, "\"skt@" + id + "\": true", "shape 1: the enablement migrated");
++                    assertContains(settings, "\"own@" + id + "\": true", "shape 2: the enablement is kept");
++                    String toml = Files.readString(codex);
++                    assertEquals("model = \"gpt-5\"  # the operator's\n\n[marketplaces." + id
++                                    + "]\nsource_type = \"local\"\nsource = \"" + fx.marketplaceDir() + "\"\n",
++                            toml, "shape 4: exactly the foreign table and its plugin are cut");
++
++                    HomeRepair.Outcome again = HomeRepair.repair(fx.store, fx.pin);
++                    assertTrue(again.repaired().stream().noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
++                            "a second --fix has nothing marketplace-related to do");
++                })
++
++                .test("OHV-6: a foreign enablement of a plugin THIS home carries is re-pointed, not dropped", () -> {
++                    Fixture fx = Fixture.build("foreign-carried");
++                    String id = fx.identity();
++                    Path manifest = fx.store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
++                    Files.createDirectories(manifest.getParent());
++                    Files.writeString(manifest, "{\"name\": \"" + id + "\", \"plugins\": [{\"name\": \"own\"}]}\n");
++                    Path codex = Files.createDirectories(fx.root.resolve(".codex")).resolve("config.toml");
++                    Files.writeString(codex,
++                            "[marketplaces." + id + "]\nsource_type = \"local\"\nsource = \"" + fx.marketplaceDir() + "\"\n\n"
++                                    + "[plugins.\"own@skill-manager\"]\nenabled = true\n\n"
++                                    + "[plugins.\"gone@skill-manager\"]\nenabled = true\n");
++
++                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
++                    assertTrue(before.findings().stream().anyMatch(f ->
++                                    f.subject().equals(".codex/config.toml:plugins.own@skill-manager")
++                                            && f.remedy().contains("re-points it at own@" + id)),
++                            "the remedy says it will re-point: " + before.findings());
++                    HomeRepair.repair(fx.store, fx.pin);
++
++                    String toml = Files.readString(codex);
++                    assertContains(toml, "[plugins.\"own@" + id + "\"]", "the carried plugin stays enabled here");
++                    assertFalse(toml.contains("gone@"), "the plugin this home does not carry is removed: " + toml);
++                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
++                                    .noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
++                            "and nothing disagrees afterwards");
++                })
++
+                 .test("every damage shape is reported, one line each, naming the repair", () -> {
+                     // GENERIC OVER Kind.values() on purpose: a new kind that
+                     // nothing plants fails here rather than shipping undetected,
+@@ -1599,6 +1673,49 @@ public final class DamagedHomeIsRepairableTest {
+             damageUnstampedPmTree();
+             damageDanglingAgentLink();
+             damageOrphanedProjectionRecord();
++            damageMarketplaceIdentity();
++        }
++
++        /** This home's derived marketplace identity and directory. */
++        String identity() {
++            return new dev.skillmanager.project.PluginMarketplace(new SkillStore(store)).name();
++        }
++
++        String marketplaceDir() {
++            return store.resolve("plugin-marketplace").toString();
++        }
++
++        /**
++         * OHV-6 (#352), all four shapes, in THIS fixture's own {@code .claude} and
++         * {@code .codex} (under the temp root, never the operator's):
++         * <ol>
++         *   <li>Claude registers this home's directory as {@code skill-manager} and
++         *       enables {@code skt@skill-manager};</li>
++         *   <li>Claude enables {@code own@<identity>}, which nothing registers here;</li>
++         *   <li>the manifest names the OTHER home's identity;</li>
++         *   <li>Codex registers the other home's marketplace and enables a plugin from it.</li>
++         * </ol>
++         */
++        void damageMarketplaceIdentity() throws IOException {
++            String id = identity();
++            String theirs = new dev.skillmanager.project.PluginMarketplace(new SkillStore(other)).name();
++            Path manifest = store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
++            Files.createDirectories(manifest.getParent());
++            Files.writeString(manifest, "{\"name\": \"" + theirs + "\", \"plugins\": []}\n");
++            Path claude = root.resolve(".claude");
++            Files.createDirectories(claude.resolve("plugins"));
++            Files.writeString(claude.resolve("plugins/known_marketplaces.json"),
++                    "{\"skill-manager\": {\"source\": {\"source\": \"directory\", \"path\": \""
++                            + marketplaceDir() + "\"}}}\n");
++            Files.writeString(claude.resolve("settings.json"),
++                    "{\"enabledPlugins\": {\"skt@skill-manager\": true, \"own@" + id + "\": true}}\n");
++            Path codex = Files.createDirectories(root.resolve(".codex"));
++            Files.writeString(codex.resolve("config.toml"),
++                    "model = \"gpt-5\"  # the operator's\n\n"
++                            + "[marketplaces." + id + "]\nsource_type = \"local\"\nsource = \"" + marketplaceDir() + "\"\n\n"
++                            + "[marketplaces.skill-manager]\nsource_type = \"local\"\nsource = \""
++                            + other.resolve("plugin-marketplace") + "\"\n\n"
++                            + "[plugins.\"skt@skill-manager\"]\nenabled = true\n");
+         }
+ 
+         /**
+diff --git a/src/test/java/dev/skillmanager/store/HomeCloneTest.java b/src/test/java/dev/skillmanager/store/HomeCloneTest.java
+index d221845a..25017960 100644
+--- a/src/test/java/dev/skillmanager/store/HomeCloneTest.java
++++ b/src/test/java/dev/skillmanager/store/HomeCloneTest.java
+@@ -889,6 +889,30 @@ public final class HomeCloneTest {
+                             + "not a new rule about root files");
+         });
+ 
++        suite.test("OHV-6 (#352 shape 3): a clone's marketplace manifest names the CLONE, not its source", () -> {
++            Home source = Home.conventional("mp-source-");
++            var sourceMp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(source.store()));
++            sourceMp.regenerate();
++            String sourceName = sourceMp.name();
++            Home dest = Home.destination("mp-dest-");
++
++            HomeCloner.cloneHome(source.store(), dest.store());
++
++            var destMp = new dev.skillmanager.project.PluginMarketplace(new SkillStore(dest.store()));
++            String claimed = dev.skillmanager.project.PluginMarketplace.manifestName(destMp.manifestPath())
++                    .orElse(null);
++            assertFalse(sourceName.equals(destMp.name()), "precondition: two stores, two identities");
++            assertEquals(destMp.name(), claimed,
++                    "the copied manifest was regenerated under the clone's derived identity");
++            assertEquals(sourceName, dev.skillmanager.project.PluginMarketplace.manifestName(
++                    sourceMp.manifestPath()).orElse(null), "and the source is untouched");
++            assertFalse(HomeCloner.rederiveMarketplaceIdentity(new SkillStore(dest.store()), "test"),
++                    "a second pass has nothing to re-derive");
++            assertTrue(HomeRepair.detect(dest.store()).findings().stream()
++                            .noneMatch(f -> f.kind() == HomeRepair.Kind.MARKETPLACE_IDENTITY_COPIED),
++                    "and home repair agrees");
++        });
++
+         return suite.runAll();
+     }
+ 
+diff --git a/src/test/java/dev/skillmanager/store/HomeSyncTest.java b/src/test/java/dev/skillmanager/store/HomeSyncTest.java
+index fc9cf71d..cc9be103 100644
+--- a/src/test/java/dev/skillmanager/store/HomeSyncTest.java
++++ b/src/test/java/dev/skillmanager/store/HomeSyncTest.java
+@@ -558,6 +558,20 @@ public final class HomeSyncTest {
+                             "a unit the source does not have is never deleted");
+                 })
+ 
++                .test("OHV-6 (#352 shape 3): home sync leaves the destination's manifest naming the destination", () -> {
++                    Homes homes = Homes.create("mp-identity");
++                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
++                    var destMp = new dev.skillmanager.project.PluginMarketplace(homes.dest());
++                    // The manifest a copy carries: another home's identity.
++                    write(destMp.manifestPath(), "{\"name\": \"skill-manager-00000000\", \"plugins\": []}\n");
++
++                    sync(homes, false, false);
++
++                    assertEquals(destMp.name(), dev.skillmanager.project.PluginMarketplace
++                                    .manifestName(destMp.manifestPath()).orElse(null),
++                            "re-derived from the destination's store path");
++                })
++
+                 .test("a frozen destination refuses and a frozen source is only read", () -> {
+                     Homes homes = Homes.create("frozen");
+                     write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+diff --git a/test_graph/build.gradle.kts b/test_graph/build.gradle.kts
+index 6e746a88..03b2c443 100644
+--- a/test_graph/build.gradle.kts
++++ b/test_graph/build.gradle.kts
+@@ -1754,9 +1754,20 @@ validationGraph {
+      *     (DEF-OHV-001): repair and verify name it, --fix clears it,
+      *     a second --fix is a no-op ................ home.verdicts.half.rewritten.shim
+      *
++     * OHV-6 (#352) adds the four marketplace-identity shapes, each planted in
++     * the scratch SUBJECT's own .claude/.codex (never the operator's, never the
++     * sandbox's): repair and verify name it, --fix clears it, and the entries
++     * the repair must not touch survive:
++     *   - 1 Claude registers this home's path under another name
++     *     (re-pointed with its enablements) ... home.verdicts.marketplace.under.another.name
++     *   - 2 enabled under the identity, only a name CONTAINING it
++     *     registered (the substring trap) ...... home.verdicts.marketplace.identity.unregistered
++     *   - 3 marketplace.json copied from another home ..... home.verdicts.copied.marketplace.identity
++     *   - 4 Codex marketplace + Claude enablement of another
++     *     home's marketplace (DEF-OHV-005) ...... home.verdicts.foreign.marketplace.registration
++     *
+      * PENDING, with the ticket that adds each node:
+      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
+-     *   - #352's four marketplace-identity shapes (incl. DEF-OHV-005)  OHV-6 (#352)
+      *
+      * THE DAMAGED HOMES NEVER REACH THE LAWS. Both laws discover homes from
+      * published context values, so shape nodes publish nothing and delete their
+@@ -1777,6 +1788,10 @@ validationGraph {
+         node("sources/home-verdicts/DanglingAgentLinkIsReported.java")
+         node("sources/home-verdicts/OrphanedProjectionRecordIsReported.java")
+         node("sources/home-verdicts/HalfRewrittenShimIsReported.java")
++        node("sources/home-verdicts/MarketplaceUnderAnotherNameIsReported.java")
++        node("sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java")
++        node("sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java")
++        node("sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java")
+         node("sources/common/HomeFixpointLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+@@ -1786,7 +1801,11 @@ validationGraph {
+                 "home.verdicts.verify.names.every.repair.finding",
+                 "home.verdicts.dangling.agent.link",
+                 "home.verdicts.orphaned.projection.record",
+-                "home.verdicts.half.rewritten.shim")
++                "home.verdicts.half.rewritten.shim",
++                "home.verdicts.marketplace.under.another.name",
++                "home.verdicts.marketplace.identity.unregistered",
++                "home.verdicts.copied.marketplace.identity",
++                "home.verdicts.foreign.marketplace.registration")
+         node("sources/common/HomeMembershipLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+@@ -1796,7 +1815,11 @@ validationGraph {
+                 "home.verdicts.verify.names.every.repair.finding",
+                 "home.verdicts.dangling.agent.link",
+                 "home.verdicts.orphaned.projection.record",
+-                "home.verdicts.half.rewritten.shim")
++                "home.verdicts.half.rewritten.shim",
++                "home.verdicts.marketplace.under.another.name",
++                "home.verdicts.marketplace.identity.unregistered",
++                "home.verdicts.copied.marketplace.identity",
++                "home.verdicts.foreign.marketplace.registration")
+     }
+ 
+     /**
+diff --git a/test_graph/sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java b/test_graph/sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java
+new file mode 100644
+index 00000000..d52e74fa
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java
+@@ -0,0 +1,49 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.nio.file.Path;
++import java.util.List;
++
++/**
++ * #352 shape 3 (OHV-6): a home's {@code marketplace.json} carries ANOTHER home's
++ * identity because it was copied. Measured on 13 homes (seven worktrees carrying
++ * commit-diff-context-parent's {@code 919db26e}, six carrying deploy-cdc's). The
++ * harness CLIs read the name from that file, so every agent registers the copy
++ * under its source's name.
++ *
++ * <p>Planted by writing the NEIGHBOUR's derived identity into the subject's
++ * manifest. {@code home repair} names {@code MARKETPLACE_IDENTITY_COPIED},
++ * {@code home verify} exits 1 naming it, and {@code --fix} regenerates the
++ * marketplace so the manifest names the subject's own identity.
++ */
++public class CopiedMarketplaceIdentityIsReported {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.copied.marketplace.identity")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "marketplace", "ohv-6")
++            .timeout("600s");
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
++                new HomeVerdictsSupport.Shape("copied-marketplace-identity",
++                        "MARKETPLACE_IDENTITY_COPIED", 1, true),
++                (Path subject, Path neighbour) -> {
++                    HomeVerdictsSupport.writeManifest(subject, HomeVerdictsSupport.identityOf(neighbour));
++                    return "plugin-marketplace/.claude-plugin/marketplace.json";
++                },
++                (ctx2, subject, rel) -> {
++                    String id = HomeVerdictsSupport.identityOf(subject);
++                    var manifest = HomeVerdictsSupport.readStoreJson(subject, rel);
++                    return List.of(new HomeVerdictsSupport.Check(
++                            "the_manifest_names_this_home_s_derived_identity",
++                            id.equals(manifest.path("name").asText()),
++                            "expected " + id + ", manifest after --fix: " + manifest));
++                }));
++    }
++}
+diff --git a/test_graph/sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java b/test_graph/sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java
+new file mode 100644
+index 00000000..0f442db4
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java
+@@ -0,0 +1,104 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.nio.file.Path;
++import java.util.List;
++
++/**
++ * #352 shape 4 (OHV-6), both sides. Codex: {@code [marketplaces.skill-manager]}
++ * whose source is ANOTHER home's marketplace, with a plugin enabled from it next
++ * to the home's own — measured in 9 homes' {@code .codex/config.toml}, the root's
++ * included. Claude (DEF-OHV-005): {@code enabledPlugins} naming another home's
++ * marketplace, which the same config registers — the root's
++ * {@code skt@skill-manager-919db26e}. Plugins load twice, from two homes.
++ *
++ * <p>{@code home repair} names {@code FOREIGN_MARKETPLACE_REGISTRATION} on each,
++ * {@code home verify} exits 1 naming it, and {@code --fix} removes exactly those
++ * entries: the home's own marketplace, its own plugin, an unrelated plugin and the
++ * operator's own setting and comment survive byte for byte.
++ */
++public class ForeignMarketplaceRegistrationIsReported {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.foreign.marketplace.registration")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "marketplace", "ohv-6")
++            .timeout("600s");
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
++                new HomeVerdictsSupport.Shape("foreign-marketplace-registration",
++                        "FOREIGN_MARKETPLACE_REGISTRATION", 1, true),
++                (Path subject, Path neighbour) -> {
++                    String id = HomeVerdictsSupport.identityOf(subject);
++                    String theirs = HomeVerdictsSupport.identityOf(neighbour);
++                    HomeVerdictsSupport.writeAgentFile(subject, ".codex/config.toml", """
++                            model = "gpt-5"   # the operator's own setting
++
++                            [marketplaces.%1$s]
++                            source_type = "local"
++                            source = %2$s
++
++                            [marketplaces.skill-manager]
++                            source_type = "local"
++                            source = %3$s
++
++                            [plugins."hv-plugin@%1$s"]
++                            enabled = true
++
++                            [plugins."hv-plugin@skill-manager"]
++                            enabled = true
++
++                            [plugins."github@openai-curated"]
++                            enabled = true
++                            """.formatted(id,
++                            HomeVerdictsSupport.jsonString(HomeVerdictsSupport.marketplaceRoot(subject)),
++                            HomeVerdictsSupport.jsonString(HomeVerdictsSupport.marketplaceRoot(neighbour))));
++                    HomeVerdictsSupport.writeAgentFile(subject, ".claude/plugins/known_marketplaces.json", """
++                            {
++                              %1$s: {
++                                "source": {
++                                  "source": "directory",
++                                  "path": %2$s
++                                },
++                                "installLocation": %2$s,
++                                "lastUpdated": "2026-09-13T00:00:00.000Z"
++                              }
++                            }""".formatted(HomeVerdictsSupport.jsonString(theirs),
++                            HomeVerdictsSupport.jsonString(HomeVerdictsSupport.marketplaceRoot(neighbour))));
++                    HomeVerdictsSupport.writeAgentFile(subject, ".claude/settings.json", """
++                            {
++                              "enabledPlugins": {
++                                %s: true
++                              }
++                            }""".formatted(HomeVerdictsSupport.jsonString("hv-plugin@" + theirs)));
++                    return ".codex/config.toml:marketplaces.skill-manager";
++                },
++                (ctx2, subject, rel) -> {
++                    String id = HomeVerdictsSupport.identityOf(subject);
++                    String theirs = HomeVerdictsSupport.identityOf(subject.getParent().getParent()
++                            .resolve("neighbour").resolve(".skill-manager"));
++                    String codex = HomeVerdictsSupport.readAgentText(subject, ".codex/config.toml");
++                    var settings = HomeVerdictsSupport.readJson(subject, ".claude/settings.json");
++                    return List.of(
++                            new HomeVerdictsSupport.Check("the_foreign_codex_marketplace_and_its_plugin_are_gone",
++                                    !codex.contains("[marketplaces.skill-manager]")
++                                            && !codex.contains("hv-plugin@skill-manager\""),
++                                    "config.toml after --fix:\n" + codex),
++                            new HomeVerdictsSupport.Check("the_home_s_own_and_unrelated_codex_entries_survive",
++                                    codex.startsWith("model = \"gpt-5\"   # the operator's own setting\n")
++                                            && codex.contains("[marketplaces." + id + "]")
++                                            && codex.contains("[plugins.\"hv-plugin@" + id + "\"]")
++                                            && codex.contains("[plugins.\"github@openai-curated\"]"),
++                                    "config.toml after --fix:\n" + codex),
++                            new HomeVerdictsSupport.Check("the_claude_enablement_of_another_home_is_gone",
++                                    !settings.path("enabledPlugins").has("hv-plugin@" + theirs),
++                                    "settings.json after --fix: " + settings));
++                }));
++    }
++}
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+index 09d6c891..c29cbb45 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+@@ -40,6 +40,19 @@ import java.nio.file.Path;
+  *   <tr><td>half-rewritten own-home shim: token header, literal exec line (DEF-OHV-001, OHV-4)</td>
+  *       <td>home.verdicts.half.rewritten.shim</td><td>1 FROZEN_HOME_PATH_IN_SHIM</td>
+  *       <td>1, names it; --fix re-anchors the exec line, a second --fix is a no-op</td></tr>
++ *   <tr><td>#352 shape 1: Claude registers this home's path under another name (OHV-6)</td>
++ *       <td>home.verdicts.marketplace.under.another.name</td>
++ *       <td>1 MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME</td>
++ *       <td>1, names it; --fix re-points registration and enablement together</td></tr>
++ *   <tr><td>#352 shape 2: enabled under the identity, only a name containing it registered (OHV-6)</td>
++ *       <td>home.verdicts.marketplace.identity.unregistered</td>
++ *       <td>1 MARKETPLACE_IDENTITY_UNREGISTERED</td><td>1, names it; --fix registers the identity</td></tr>
++ *   <tr><td>#352 shape 3: marketplace.json copied from another home (OHV-6)</td>
++ *       <td>home.verdicts.copied.marketplace.identity</td><td>1 MARKETPLACE_IDENTITY_COPIED</td>
++ *       <td>1, names it; --fix regenerates the manifest</td></tr>
++ *   <tr><td>#352 shape 4: Codex marketplace and Claude enablement of another home's (OHV-6, DEF-OHV-005)</td>
++ *       <td>home.verdicts.foreign.marketplace.registration</td>
++ *       <td>1 FOREIGN_MARKETPLACE_REGISTRATION</td><td>1, names it; --fix removes only those entries</td></tr>
+  * </table>
+  *
+  * <p>The three "0 until OHV-2" cells were GOAL-one-verdict clause (1) failing,
+@@ -50,10 +63,6 @@ import java.nio.file.Path;
+  *
+  * <ul>
+  *   <li>{@code /var} vs {@code /private/var} reference (#343) — <b>OHV-5 (#346)</b></li>
+- *   <li>#352's four marketplace-identity shapes (1 Claude registers this path under
+- *       another name; 2 generated name a substring of another; 3 generated name equal
+- *       to another home's; 4 Codex/Claude registers or enables another home's
+- *       marketplace, incl. DEF-OHV-005) — <b>OHV-6 (#352)</b></li>
+  * </ul>
+  *
+  * <h2>This node</h2>
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+index ba521924..02b80388 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+@@ -146,6 +146,89 @@ final class HomeVerdictsSupport {
+         return "installed/" + unit + ".projections.json";
+     }
+ 
++    // ------------------------------------------- marketplace identity (OHV-6)
++
++    /**
++     * The identity {@code PluginMarketplace.name()} derives for a non-root store:
++     * {@code skill-manager-} + the first four bytes of SHA-256 over the store's
++     * real path, in hex. Spelled out here rather than read from the product, so
++     * the node's expectation is an independent oracle, not the code under test.
++     */
++    static String identityOf(Path store) {
++        String canonical;
++        try {
++            canonical = store.toRealPath().toString();
++        } catch (IOException notThere) {
++            canonical = store.toAbsolutePath().normalize().toString();
++        }
++        try {
++            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
++                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
++            StringBuilder hex = new StringBuilder("skill-manager-");
++            for (int i = 0; i < 4; i++) hex.append(String.format("%02x", digest[i]));
++            return hex.toString();
++        } catch (java.security.NoSuchAlgorithmException e) {
++            throw new IllegalStateException(e);
++        }
++    }
++
++    /** {@code <store>/plugin-marketplace}, in the spelling the product registers. */
++    static String marketplaceRoot(Path store) {
++        return store.toAbsolutePath().normalize().resolve("plugin-marketplace").toString();
++    }
++
++    static String jsonString(String s) {
++        try {
++            return JsonMapper.MAPPER.writeValueAsString(s);
++        } catch (IOException e) {
++            throw new IllegalStateException(e);
++        }
++    }
++
++    /**
++     * Write {@code rel} under the SUBJECT's home root ({@code <store>/..}) — its
++     * structural agent directories, which is what {@code home repair} reads.
++     * Never the operator's {@code ~/.claude}/{@code ~/.codex}, and not the graph
++     * sandbox's either: nothing here consults the environment.
++     */
++    static void writeAgentFile(Path store, String rel, String content) throws IOException {
++        Path file = store.getParent().resolve(rel);
++        Files.createDirectories(file.getParent());
++        Files.writeString(file, content, StandardCharsets.UTF_8);
++    }
++
++    /** A marketplace manifest naming {@code name}, with no plugins — the shape a copy carries. */
++    static void writeManifest(Path store, String name) throws IOException {
++        Path manifest = store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
++        Files.createDirectories(manifest.getParent());
++        Files.createDirectories(store.resolve("plugin-marketplace/plugins"));
++        Files.writeString(manifest, "{\n  \"name\" : " + jsonString(name)
++                + ",\n  \"owner\" : { \"name\" : \"skill-manager\" },\n  \"plugins\" : [ ]\n}\n",
++                StandardCharsets.UTF_8);
++    }
++
++    static String readAgentText(Path store, String rel) {
++        return read(store.getParent().resolve(rel));
++    }
++
++    /** Parsed JSON of an agent file, or an empty object when it is absent or unreadable. */
++    static JsonNode readJson(Path store, String rel) {
++        return parseOrEmpty(readAgentText(store, rel));
++    }
++
++    static JsonNode readStoreJson(Path store, String rel) {
++        return parseOrEmpty(read(store.resolve(rel)));
++    }
++
++    private static JsonNode parseOrEmpty(String text) {
++        try {
++            JsonNode node = JsonMapper.MAPPER.readTree(text);
++            return node == null ? JsonMapper.MAPPER.createObjectNode() : node;
++        } catch (IOException | RuntimeException e) {
++            return JsonMapper.MAPPER.createObjectNode();
++        }
++    }
++
+     // ------------------------------------------------------------- the CLI
+ 
+     /** One CLI invocation, both streams kept apart. */
+diff --git a/test_graph/sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java b/test_graph/sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java
+new file mode 100644
+index 00000000..7d85cf3f
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java
+@@ -0,0 +1,78 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.nio.file.Path;
++import java.util.List;
++
++/**
++ * #352 shape 2 (OHV-6): "already added" was a substring test. The home enables a
++ * plugin under its OWN identity, and its Claude config registers only a
++ * marketplace whose name CONTAINS that identity ({@code <identity>-old}, at the
++ * neighbour's directory). {@code list.stdout().contains(identity)} was true, so the
++ * old {@code ensureMarketplaceAdded} skipped the add and the plugin named a
++ * marketplace that was not there — the root's {@code skill-manager} inside every
++ * {@code skill-manager-<hash>}, planted in a scratch home.
++ *
++ * <p>{@code home repair} names {@code MARKETPLACE_IDENTITY_UNREGISTERED} on the
++ * enablement, {@code home verify} exits 1 naming it, and {@code --fix} registers
++ * the identity at this home's directory — in the form {@code claude plugin
++ * marketplace add} writes — leaving the unenabled {@code -old} entry alone.
++ */
++public class MarketplaceIdentityUnregisteredIsReported {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.marketplace.identity.unregistered")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "marketplace", "ohv-6")
++            .timeout("600s");
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
++                new HomeVerdictsSupport.Shape("marketplace-identity-unregistered",
++                        "MARKETPLACE_IDENTITY_UNREGISTERED", 1, true),
++                (Path subject, Path neighbour) -> {
++                    String id = HomeVerdictsSupport.identityOf(subject);
++                    HomeVerdictsSupport.writeManifest(subject, id);
++                    HomeVerdictsSupport.writeAgentFile(subject, ".claude/plugins/known_marketplaces.json", """
++                            {
++                              %1$s: {
++                                "source": {
++                                  "source": "directory",
++                                  "path": %2$s
++                                },
++                                "installLocation": %2$s,
++                                "lastUpdated": "2026-09-13T00:00:00.000Z"
++                              }
++                            }""".formatted(HomeVerdictsSupport.jsonString(id + "-old"),
++                            HomeVerdictsSupport.jsonString(HomeVerdictsSupport.marketplaceRoot(neighbour))));
++                    HomeVerdictsSupport.writeAgentFile(subject, ".claude/settings.json", """
++                            {
++                              "enabledPlugins": {
++                                %s: true
++                              }
++                            }""".formatted(HomeVerdictsSupport.jsonString("hv-plugin@" + id)));
++                    return ".claude/settings.json:enabledPlugins.hv-plugin@" + id;
++                },
++                (ctx2, subject, rel) -> {
++                    String id = HomeVerdictsSupport.identityOf(subject);
++                    var known = HomeVerdictsSupport.readJson(subject, ".claude/plugins/known_marketplaces.json");
++                    var settings = HomeVerdictsSupport.readJson(subject, ".claude/settings.json");
++                    return List.of(
++                            new HomeVerdictsSupport.Check("the_identity_is_registered_at_this_home",
++                                    known.path(id).path("source").path("path").asText()
++                                            .equals(HomeVerdictsSupport.marketplaceRoot(subject)),
++                                    "known_marketplaces.json after --fix: " + known),
++                            new HomeVerdictsSupport.Check("the_enabled_plugin_is_kept",
++                                    settings.path("enabledPlugins").has("hv-plugin@" + id),
++                                    "settings.json after --fix: " + settings),
++                            new HomeVerdictsSupport.Check("the_name_that_merely_contains_it_is_untouched",
++                                    known.has(id + "-old"),
++                                    "known_marketplaces.json after --fix: " + known));
++                }));
++    }
++}
+diff --git a/test_graph/sources/home-verdicts/MarketplaceUnderAnotherNameIsReported.java b/test_graph/sources/home-verdicts/MarketplaceUnderAnotherNameIsReported.java
+new file mode 100644
+index 00000000..963f7966
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/MarketplaceUnderAnotherNameIsReported.java
+@@ -0,0 +1,98 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.nio.file.Path;
++import java.util.List;
++
++/**
++ * #352 shape 1 (OHV-6): Claude registers this home's marketplace DIRECTORY under
++ * a name that is not its identity. Measured in tla-spec-dev's checkout:
++ * {@code .claude/plugins/known_marketplaces.json} and
++ * {@code extraKnownMarketplaces} name the path {@code skill-manager}, three plugins
++ * are enabled {@code @skill-manager}, and every sync fails with
++ * {@code Marketplace 'skill-manager-0fd46eec' not found}.
++ *
++ * <p>Planted in the SUBJECT's own {@code .claude} (its structural agent dir under
++ * the scratch root) — never the operator's, never the graph sandbox's.
++ * {@code home repair} names {@code MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME},
++ * {@code home verify} exits 1 naming it, and {@code --fix} re-points the
++ * registration AND the enablement at the identity together, leaving an unrelated
++ * marketplace and plugin exactly as they were.
++ */
++public class MarketplaceUnderAnotherNameIsReported {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.marketplace.under.another.name")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "marketplace", "ohv-6")
++            .timeout("600s");
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
++                new HomeVerdictsSupport.Shape("marketplace-under-another-name",
++                        "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME", 1, true),
++                (Path subject, Path neighbour) -> {
++                    String mp = HomeVerdictsSupport.marketplaceRoot(subject);
++                    HomeVerdictsSupport.writeAgentFile(subject, ".claude/plugins/known_marketplaces.json", """
++                            {
++                              "claude-plugins-official": {
++                                "source": {
++                                  "source": "github",
++                                  "repo": "anthropics/claude-plugins-official"
++                                },
++                                "installLocation": "/nowhere/claude-plugins-official",
++                                "lastUpdated": "2026-09-13T00:00:00.000Z"
++                              },
++                              "skill-manager": {
++                                "source": {
++                                  "source": "directory",
++                                  "path": %1$s
++                                },
++                                "installLocation": %1$s,
++                                "lastUpdated": "2026-09-13T00:00:00.000Z"
++                              }
++                            }""".formatted(HomeVerdictsSupport.jsonString(mp)));
++                    HomeVerdictsSupport.writeAgentFile(subject, ".claude/settings.json", """
++                            {
++                              "enabledPlugins": {
++                                "hv-plugin@skill-manager": true,
++                                "other@claude-plugins-official": true
++                              },
++                              "extraKnownMarketplaces": {
++                                "skill-manager": {
++                                  "source": {
++                                    "source": "directory",
++                                    "path": %s
++                                  }
++                                }
++                              }
++                            }""".formatted(HomeVerdictsSupport.jsonString(mp)));
++                    return ".claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager";
++                },
++                (ctx2, subject, rel) -> {
++                    String id = HomeVerdictsSupport.identityOf(subject);
++                    var known = HomeVerdictsSupport.readJson(subject, ".claude/plugins/known_marketplaces.json");
++                    var settings = HomeVerdictsSupport.readJson(subject, ".claude/settings.json");
++                    return List.of(
++                            new HomeVerdictsSupport.Check("the_registration_is_re_pointed_at_the_identity",
++                                    known.has(id) && !known.has("skill-manager")
++                                            && known.path(id).path("source").path("path").asText()
++                                                    .equals(HomeVerdictsSupport.marketplaceRoot(subject)),
++                                    "known_marketplaces.json after --fix: " + known),
++                            new HomeVerdictsSupport.Check("the_enabled_plugin_migrates_with_it",
++                                    settings.path("enabledPlugins").has("hv-plugin@" + id)
++                                            && !settings.path("enabledPlugins").has("hv-plugin@skill-manager")
++                                            && settings.path("extraKnownMarketplaces").has(id),
++                                    "settings.json after --fix: " + settings),
++                            new HomeVerdictsSupport.Check("an_unrelated_marketplace_and_plugin_are_untouched",
++                                    known.has("claude-plugins-official")
++                                            && settings.path("enabledPlugins").has("other@claude-plugins-official"),
++                                    "after --fix: " + known + " / " + settings));
++                }));
++    }
++}

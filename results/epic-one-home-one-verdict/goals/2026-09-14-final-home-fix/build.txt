@@ -1,0 +1,2 @@
+skill-manager 0.27.2+gbe8b48ddbe9e
+build:  be8b48ddbe9e (refs/heads/epic/one-home-one-verdict)

@@ -88,9 +88,12 @@ public final class ArtifactsCommand implements Callable<Integer> {
                 description = "Only artifacts owned by this unit.")
         String owner;
 
+        /** Test seam, as on {@link PruneArtifacts}. */
+        public SkillStore injectedStore;
+
         @Override
         public Integer call() throws IOException {
-            SkillStore store = requireHome();
+            SkillStore store = injectedStore != null ? injectedStore : requireHome();
             if (store == null) return NotAHomeException.EXIT_CODE;
 
             ArtifactKind wanted = null;
@@ -119,6 +122,9 @@ public final class ArtifactsCommand implements Callable<Integer> {
 
         private static void render(ArtifactIndex index, List<Artifact> selected) {
             System.out.println("artifacts — " + index.home());
+            // Which build produced this listing (#338): a lazily-built home
+            // lists differently under a CLI that knows a newer kind.
+            System.out.println(dev.skillmanager.cli.BuildIdentity.stampLine());
             System.out.println(index.ledgerPresent()
                     ? "ledger: " + ArtifactLedger.FILENAME + " ("
                             + index.ledger().rows().size() + " row(s), recorded "

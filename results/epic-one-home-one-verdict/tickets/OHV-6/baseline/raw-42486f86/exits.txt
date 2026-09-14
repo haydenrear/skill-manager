@@ -1,0 +1,12 @@
+root verify=0
+root repair=0
+project verify=1
+project repair=1
+tla-spec-dev verify=1
+tla-spec-dev repair=1
+meta-orchestrator verify=1
+meta-orchestrator repair=1
+meta-harness verify=1
+meta-harness repair=1
+wt-229 verify=1
+wt-229 repair=1

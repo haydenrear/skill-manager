@@ -211,7 +211,9 @@ public final class HomeCommand {
      * never which of them is shown. Issue #133.
      */
     @Command(name = "verify",
-            description = "Check that a home holds no absolute reference back to another home.")
+            description = "Check that a home holds no absolute reference back to another home, "
+                    + "and that `home repair` finds no damage in it (every finding is named and "
+                    + "fails the check).")
     public static final class VerifyCmd implements Callable<Integer> {
 
         /**
@@ -261,6 +263,11 @@ public final class HomeCommand {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
+            // #338: the build that renders this verdict, first, so every line
+            // below it -- the ✓ included -- is attributable to one CLI. A home
+            // is judged by whichever build answers, and a newer one may know a
+            // defect class an older pin does not.
+            Log.info("%s", dev.skillmanager.cli.BuildIdentity.stampLine());
             HomeCloner.Verification result = against == null
                     ? HomeCloner.verify(home, strict)
                     : HomeCloner.verify(against, home, strict);
@@ -418,6 +425,77 @@ public final class HomeCommand {
                         home, home);
                 noteCaveat(home);
             }
+            // OHV-2 (#339). EVERYTHING `home repair` FINDS, and this command
+            // refuses on it.
+            //
+            // GOAL-one-verdict clause (1): measured at kickoff, `home verify`
+            // exited 0 on 50 of 61 homes where `home repair` reported damage —
+            // two commands, one home, one minute, opposite answers. The fix is
+            // composition, not a second detector: the same HomeRepair.detect
+            // the other command renders, each finding named by kind and
+            // subject in the spelling `home repair --json` uses, so a reader
+            // (or a graph) can match the two outputs line for line. Detection
+            // opens nothing for writing (DEF-067), so running it here keeps
+            // this command an observer.
+            //
+            // Before the isolation verdict, which stays last. A finding that
+            // duplicates a line above (FOREIGN_PATH_IN_SHIM, DANGLING_CLI_PIN)
+            // is printed again here on purpose: dropping it on a text match is
+            // how a finding would go unnamed the day the two spellings drift.
+            HomeRepair.Report detected = HomeRepair.detect(home);
+            // ONE EXEMPTION, and it is evidence this command holds and `home
+            // repair` cannot: a link the isolation walk above SANCTIONED as a
+            // parent-store shim. With `--against <source>` that walk inherits
+            // the source's sanction (HIS-7 / #223: a worktree copied from a
+            // sanctioned project home), while repair takes no source and judges
+            // the copy alone. Failing verify on that link would re-break every
+            // ticket-worktree clone the sanction exists for. Matched by kind
+            // and subject only, and printed rather than dropped.
+            java.util.Set<String> sanctioned = new java.util.HashSet<>();
+            for (String row : parentShims) {
+                int arrow = row.indexOf(" -> ");
+                sanctioned.add(arrow < 0 ? row : row.substring(0, arrow));
+            }
+            List<HomeRepair.Finding> kept = new java.util.ArrayList<>();
+            for (HomeRepair.Finding finding : detected.findings()) {
+                if (finding.kind() == HomeRepair.Kind.FOREIGN_PATH_IN_SHIM
+                        && sanctioned.contains(finding.subject())) {
+                    Log.info("`home repair` reports %s %s; not counted here, because the "
+                                    + "isolation check above sanctioned that link as a "
+                                    + "parent-store shim%s",
+                            finding.kind(), finding.subject(),
+                            against == null ? "" : " on the evidence of --against " + against);
+                    continue;
+                }
+                kept.add(finding);
+            }
+            HomeRepair.Report damage = new HomeRepair.Report(detected.home(), detected.examined(), kept);
+            if (!damage.clean()) {
+                Log.error("%d finding(s) `home repair` reports in %s, of %d entr%s examined — "
+                                + "each is damage, and this check fails on it",
+                        damage.findings().size(), home, damage.examined(),
+                        damage.examined() == 1 ? "y" : "ies");
+                for (HomeRepair.Finding finding : damage.findings()) {
+                    Log.error("  %s %s — %s", finding.kind(), finding.subject(), finding.detail());
+                    Log.error("      repair: %s", finding.remedy());
+                }
+                int repairable = damage.repairable().size();
+                if (repairable > 0) {
+                    // The one remedy spelling every caller of this command
+                    // parses, so HomeFixpointLaw can run it as printed.
+                    Log.error("  %d of these: complete it with: %s home repair --home %s --fix, "
+                                    + "then re-run this check",
+                            repairable, homeEnvPrefix(home),
+                            HomeDescriptor.shellQuote(home.toString()));
+                }
+                if (repairable < damage.findings().size()) {
+                    Log.error("  %d cannot be repaired by `home repair --fix` — the repair: lines "
+                            + "above say what to do instead", damage.findings().size() - repairable);
+                }
+            } else {
+                Log.info("`home repair` finds no damage in %s (%d entr%s examined)", home,
+                        damage.examined(), damage.examined() == 1 ? "y" : "ies");
+            }
             // Last, because it is the verdict, and because a terminal keeps
             // the tail. Never gated on --strict: a path that RESOLVES into
             // another home is not a historical record under any reading.
@@ -461,7 +539,11 @@ public final class HomeCommand {
             // HIS-19: `|| !deadPins.isEmpty()`. This clause is the regression
             // test for the 0.24.0 incident — every other term was already true
             // of that home and every one of them was FALSE, so it exited 0.
-            if (!result.clean() || !unresolved.isEmpty() || !deadPins.isEmpty()) return 1;
+            // OHV-2: `|| !damage.clean()` -- verify and repair cannot disagree.
+            if (!result.clean() || !unresolved.isEmpty() || !deadPins.isEmpty()
+                    || !damage.clean()) {
+                return 1;
+            }
             // "no path reaches any other home" is FALSE of a child home, and a
             // verdict that says it anyway is the same defect as the three
             // earlier versions of this line: a guarantee wider than the run.
@@ -1206,6 +1288,10 @@ public final class HomeCommand {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
+            String build = dev.skillmanager.cli.BuildIdentity.stamp();
+            // #338: every drift answer names the build that gave it. Under
+            // --json the build rides in the document instead.
+            if (!json) Log.info("build: %s", build);
             if (record) {
                 HomeDigest baseline = HomeDigest.read(store).orElse(null);
                 DriftGate recorded = DriftGate.recordSince(store, baseline, "home drift --record")
@@ -1234,8 +1320,9 @@ public final class HomeCommand {
             DriftGate pending = DriftGate.pending(store).orElse(null);
             if (json) {
                 System.out.println(pending == null
-                        ? "{\"pending\":false,\"units\":[]}"
-                        : "{\"pending\":true,\"operation\":\"" + esc(pending.operation())
+                        ? "{\"pending\":false,\"build\":\"" + esc(build) + "\",\"units\":[]}"
+                        : "{\"pending\":true,\"build\":\"" + esc(build)
+                                + "\",\"operation\":\"" + esc(pending.operation())
                                 + "\",\"detectedAt\":\"" + esc(pending.detectedAt())
                                 + "\",\"units\":" + driftJson(pending) + "}");
                 return pending == null ? 0 : DriftGate.EXIT_CODE;
@@ -2253,6 +2340,10 @@ public final class HomeCommand {
             Path pin = injectedPin != null
                     ? injectedPin
                     : dev.skillmanager.launch.RunningCli.locateOrNull();
+            // #338: the verdict below is this build's. Printed before it, on
+            // both paths, so "nothing is damaged" can never again be read
+            // without the CLI that said it.
+            if (!json) Log.info("%s", dev.skillmanager.cli.BuildIdentity.stampLine());
             if (!fix) {
                 HomeRepair.Report report = HomeRepair.detect(root, pin);
                 if (json) {
@@ -2267,7 +2358,8 @@ public final class HomeCommand {
                 outcome = HomeRepair.repair(root, pin);
             } catch (FrozenHomeException frozen) {
                 if (json) System.out.println("""
-                        {"home":"%s","error":"frozen"}""".formatted(esc(root.toString())));
+                        {"home":"%s","build":"%s","error":"frozen"}""".formatted(
+                        esc(root.toString()), esc(dev.skillmanager.cli.BuildIdentity.stamp())));
                 Log.error("%s", frozen.getMessage());
                 return FrozenHomeException.EXIT_CODE;
             }
@@ -2334,6 +2426,8 @@ public final class HomeCommand {
         private static String reportJson(HomeRepair.Report report, HomeRepair.Outcome outcome) {
             StringBuilder sb = new StringBuilder("{\"home\":\"")
                     .append(esc(report.home().toString()))
+                    .append("\",\"build\":\"")
+                    .append(esc(dev.skillmanager.cli.BuildIdentity.stamp()))
                     .append("\",\"examined\":").append(report.examined())
                     .append(",\"clean\":").append(report.clean())
                     .append(",\"findings\":[");
@@ -2429,6 +2523,11 @@ public final class HomeCommand {
                         notes.add(driver.agentId() + ": marketplace-add failed — "
                                 + (added.stderr().isBlank() ? added.stdout() : added.stderr()));
                         continue;
+                    }
+                    // OHV-6 (#352 d): what the agent had, when it was not already
+                    // this identity at this path.
+                    if (!added.stdout().isBlank() && !added.stdout().startsWith("already")) {
+                        notes.add(driver.agentId() + ": " + added.stdout().strip());
                     }
                     driver.refreshMarketplace(mp.root(), marketplaceName);
                     boolean allOk = true;

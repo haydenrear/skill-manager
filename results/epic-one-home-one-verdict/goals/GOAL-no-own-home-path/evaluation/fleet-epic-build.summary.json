@@ -1,0 +1,50 @@
+{
+  "build": [
+    "skill-manager 0.27.2+g85d0d4511eb0",
+    "build:  85d0d4511eb0 (refs/heads/feature/OHV-8)"
+  ],
+  "homes": 57,
+  "excluded": [
+    "/Users/hayde/IdeaProjects/wt-epic-one-home-one-verdict/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-0/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-3/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-4/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-5/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-6/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-7/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-8/.skill-manager",
+    "/Users/hayde/IdeaProjects/wt-ohv-9/.skill-manager"
+  ],
+  "verify_rc0": 15,
+  "repair_clean": 15,
+  "repair_unreadable": 0,
+  "GOAL_one_verdict_3_verify0_while_repair_damaged": 0,
+  "verify_nonzero_while_repair_clean": 0,
+  "GOAL_no_own_home_path_3_homes_with_any_own_path_entry": 33,
+  "GOAL_no_own_home_path_3_homes_with_running_line_entry": 33,
+  "GOAL_marketplace_3_repair_kinds": {
+    "shape1": 1,
+    "shape2": 0,
+    "shape3": 15,
+    "shape4": 6,
+    "any_1_3_4": 22
+  },
+  "GOAL_marketplace_3_old_harness": {
+    "shape1": 0,
+    "shape3": 17,
+    "shape4": 7,
+    "any_1_3_4": 22
+  },
+  "repair_kind_homes": {
+    "FOREIGN_PATH_IN_SHIM": 2,
+    "FROZEN_HOME_PATH_IN_SHIM": 33,
+    "UNSTAMPED_PM_TREE": 40,
+    "FOREIGN_MARKETPLACE_REGISTRATION": 6,
+    "DANGLING_AGENT_LINK": 2,
+    "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME": 1,
+    "MARKETPLACE_IDENTITY_COPIED": 15,
+    "ORPHANED_PROJECTION_RECORD": 6
+  }
+}

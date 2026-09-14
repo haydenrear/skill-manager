@@ -1,0 +1,1 @@
+  run `skill-manager gateway detach` first to take ownership, or pass --force if you really mean to stop the shared one.

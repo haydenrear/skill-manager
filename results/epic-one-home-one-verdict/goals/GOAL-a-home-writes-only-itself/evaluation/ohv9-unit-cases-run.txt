@@ -1,0 +1,54 @@
+[jbang] Building jar for RunOhv9Tests.java...
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+== SkillScriptWriteThroughTest (7 cases)
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-backend-13781021449146803633/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh
+→ cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-backend-13781021449146803633/child/.skill-manager/logs/skill-scripts/20260914-153629-416-wt-unit-wt-tool.log
+cli: skill-script wt-tool — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-backend-13781021449146803633/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-backend-13781021449146803633/parent/.skill-manager) while it runs, so it cannot write through it
+cli: rewrote bin/cli/wt-tool to resolve the home it is standing in (it had this home's absolute path baked in, which a copy of the home would not have)
+✓ cli: installed wt-tool -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-backend-13781021449146803633/child/.skill-manager/bin/cli/wt-tool
+  [PASS] OHV-9 (a): a cat > installer in a child does not rewrite the parent's shim (backend)
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-registry-17665392701530511376/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh
+→ cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-registry-17665392701530511376/child/.skill-manager/logs/skill-scripts/20260914-153629-941-wt-unit-wt-tool.log
+cli: skill-script wt-tool — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-registry-17665392701530511376/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-registry-17665392701530511376/parent/.skill-manager) while it runs, so it cannot write through it
+cli: rewrote bin/cli/wt-tool to resolve the home it is standing in (it had this home's absolute path baked in, which a copy of the home would not have)
+✓ cli: installed wt-tool -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-registry-17665392701530511376/child/.skill-manager/bin/cli/wt-tool
+  [PASS] OHV-9 (a): the same install through the registry over a sanctioned mirror leaves the parent byte-identical
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-7321286708729025405/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh
+→ cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-7321286708729025405/child/.skill-manager/logs/skill-scripts/20260914-153630-128-wt-unit-wt-tool.log
+cli: skill-script wt-tool — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-7321286708729025405/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-7321286708729025405/parent/.skill-manager) while it runs, so it cannot write through it
+✓ cli: skill-script wt-tool completed (no 'binary' declared — skipping post-run verification)
+  [PASS] OHV-9 (a): a detached link the script did not replace is restored exactly
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-fail-11537636292987903654/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh
+→ cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-fail-11537636292987903654/child/.skill-manager/logs/skill-scripts/20260914-153630-305-wt-unit-wt-tool.log
+cli: skill-script wt-tool — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-fail-11537636292987903654/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-fail-11537636292987903654/parent/.skill-manager) while it runs, so it cannot write through it
+  [PASS] OHV-9 (a): a failing script still gets the link restored
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-changed-2195546086188341761/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh
+→ cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-changed-2195546086188341761/child/.skill-manager/logs/skill-scripts/20260914-153630-525-wt-unit-wt-tool.log
+cli: skill-script wt-tool — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-changed-2195546086188341761/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-changed-2195546086188341761/parent/.skill-manager) while it runs, so it cannot write through it
+  [PASS] OHV-9 (a): a script that writes the other home's file by its own path fails the install, naming that home
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-14391067524891527096/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh
+→ cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-14391067524891527096/child/.skill-manager/logs/skill-scripts/20260914-153630-700-wt-unit-wt-tool.log
+cli: skill-script wt-tool — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-14391067524891527096/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-14391067524891527096/parent/.skill-manager) while it runs, so it cannot write through it
+  [PASS] OHV-9 (a): a script that recreates the link back out is a foreign write and fails
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-inside-12348819750040987046/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh
+→ cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-inside-12348819750040987046/child/.skill-manager/logs/skill-scripts/20260914-153630-874-wt-unit-wt-tool.log
+cli: skill-script wt-tool — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-inside-12348819750040987046/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-inside-12348819750040987046/parent/.skill-manager) while it runs, so it cannot write through it
+✓ cli: skill-script wt-tool completed (no 'binary' declared — skipping post-run verification)
+  [PASS] OHV-9 (a): a link resolving inside this home is left in place while the script runs
+   → 7 passed, 0 failed
+== BinCliWritersDoNotFollowLinksTest (7 cases)
+  [PASS] OHV-9 (b): npm/brew placement (placeLink) replaces a link into another home, never writes it
+  [PASS] OHV-9 (b): npm/brew copy fallback (placeCopy, no options) replaces the link, never writes it
+  [PASS] OHV-9 (b): tar placement (placeCopy, REPLACE_EXISTING + COPY_ATTRIBUTES) replaces the link, never writes it
+  [PASS] OHV-9 (b): InstallerRegistry's post-install relativizeShims leaves a link into another home alone
+cli: wt-tool was this home's link into /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-b-ownership-2580095469630334977/parent/.skill-manager; rebuilding it here, so this home owns it
+! cli: the rebuild of wt-tool produced nothing, so its link into the parent store was put back — this home still does not own that artifact
+  [PASS] OHV-9 (b): InstallerRegistry take-ownership deletes the link and its restore recreates it; the parent is never written
+cli: test — detached bin/cli/not-yet (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-b-dangling-16936019505044732494/parent/.skill-manager/bin/cli/not-yet, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-b-dangling-16936019505044732494/parent/.skill-manager) while it runs, so it cannot write through it
+cli: test — detached bin/cli/wt-tool (a link to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-b-dangling-16936019505044732494/parent/.skill-manager/bin/cli/wt-tool, in the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-b-dangling-16936019505044732494/parent/.skill-manager) while it runs, so it cannot write through it
+  [PASS] OHV-9 (a): a DANGLING link into another home is still detached (resolution does not stop at bin/cli)
+  [PASS] OHV-9 (b): LauncherShims replaces a bin/cli/skill-manager link into another home instead of writing its pin there
+   → 7 passed, 0 failed
+OHV-9 CASES: ALL PASSED
+rc=0 temp_entries_before=    9481 after=    9495

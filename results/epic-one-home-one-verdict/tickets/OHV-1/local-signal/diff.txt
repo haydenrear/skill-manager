@@ -1,0 +1,14 @@
+1,3c1,3
+< skill-manager 0.27.2
+< build:  artifact 862d3a4c6017 built 2026-09-13T17:38:37Z (skill-manager.jar)
+< cli:    /opt/homebrew/Cellar/skill-manager/0.27.2/libexec/bin/skill-manager
+---
+> skill-manager 0.27.2+gde4231386a9b
+> build:  de4231386a9b (refs/heads/feature/OHV-1)
+> cli:    /Users/hayde/IdeaProjects/wt-ohv-1/skill-manager
+4a5
+> build: skill-manager 0.27.2+gde4231386a9b @ de4231386a9b (refs/heads/feature/OHV-1)
+8c9
+< {"home":"/Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager","examined":41,"clean":true,"findings":[]}
+---
+> {"home":"/Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager","build":"skill-manager 0.27.2+gde4231386a9b @ de4231386a9b (refs/heads/feature/OHV-1)","examined":41,"clean":true,"findings":[]}

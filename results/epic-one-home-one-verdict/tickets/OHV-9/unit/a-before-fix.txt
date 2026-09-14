@@ -1,0 +1,31 @@
+  [FAIL] OHV-9 (a): a cat > installer in a child does not rewrite the parent's shim (backend): the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
+echo parent-owned
+> but was <#!/usr/bin/env bash
+# child-built
+java.lang.AssertionError: the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
+echo parent-owned
+> but was <#!/usr/bin/env bash
+# child-built
+  [FAIL] OHV-9 (a): the same install through the registry over a sanctioned mirror leaves the parent byte-identical: the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
+echo parent-owned
+> but was <#!/usr/bin/env bash
+# child-built
+java.lang.AssertionError: the parent's shim is byte-identical after the child's install: expected <#!/bin/sh
+echo parent-owned
+> but was <#!/usr/bin/env bash
+# child-built
+  [FAIL] OHV-9 (a): a detached link the script did not replace is restored exactly: the script ran with the foreign link detached: expected <detached
+> but was <present
+java.lang.AssertionError: the script ran with the foreign link detached: expected <detached
+> but was <present
+  [PASS] OHV-9 (a): a failing script still gets the link restored
+  [FAIL] OHV-9 (a): a script that writes the other home's file by its own path fails the install, naming that home: not true: a changed foreign target fails the install
+java.lang.AssertionError: not true: a changed foreign target fails the install
+  [FAIL] OHV-9 (a): a script that recreates the link back out is a foreign write and fails: naming the other home: skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
+ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists: expected <skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
+ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists> to contain </private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/parent/.skill-manager>
+java.lang.AssertionError: naming the other home: skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
+ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists: expected <skill-script wt-tool exited 1 (log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/logs/skill-scripts/20260914-143547-836-wt-unit-wt-tool.log)
+ln: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/child/.skill-manager/bin/cli/wt-tool: File exists> to contain </private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-9463863333689773036/parent/.skill-manager>
+  [PASS] OHV-9 (a): a link resolving inside this home is left in place while the script runs
+   → 2 passed, 5 failed

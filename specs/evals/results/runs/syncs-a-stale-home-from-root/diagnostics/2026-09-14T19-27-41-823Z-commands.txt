@@ -1,0 +1,41 @@
+skt status 2>&1 | head -60
+---
+skt check 2>&1 | head -80
+---
+skt check --json 2>&1 | head -60
+---
+skt check --json 2>&1 | tail -30
+---
+skt sync git-issue-workflow 2>&1 | head -40
+---
+cd /private/tmp/e-bnntoZ/home/cwd/.skill-manager/skills/git-issue-workflow 2>/dev/null && ../../../.eval-bin/git remote -v; echo "---"; cd /private/tmp/e-bnntoZ/home/cwd && .eval-bin/git -C .skill-manager/skills/git-issue-workflow log --oneline -3 2>&1
+---
+skt check 2>&1 | head -20
+---
+cd /private/tmp/e-bnntoZ/home/cwd/.skill-manager && ls; echo "=== units json ==="; python3 - <<'EOF'
+import json,glob,os
+for p in glob.glob('/private/tmp/e-bnntoZ/home/cwd/.skill-manager/**/*.json', recursive=True):
+    if 'git-issue-workflow' in open(p, errors='ignore').read():
+        print(p)
+EOF
+---
+python3 -c "
+import json
+for u in ['git-issue-workflow','git-epic-workflow','git-integration-repo']:
+    d=json.load(open('/private/tmp/e-bnntoZ/home/cwd/.skill-manager/installed/%s.json'%u))
+    print('===',u)
+    for k in ('source','origin','coordinate','revision','commit','errors','version','installed_at'):
+        if k in d: print(' ',k,'=',json.dumps(d[k])[:400])
+"
+---
+cd /private/tmp/e-bnntoZ/home/cwd && .eval-bin/git -C .skill-manager/skills/git-issue-workflow status --short --branch 2>&1 | head; echo "=== local source mirror tip ==="; .eval-bin/git -C .skill-manager/sources/git-issue-workflow.git log --oneline -3 2>&1
+---
+timeout 25 .eval-bin/git ls-remote https://github.com/haydenrear/git-issue-workflow-skill 2>&1 | head -5
+---
+cd $TMPDIR && timeout 60 .eval-bin/git --version >/dev/null 2>&1; timeout 60 /private/tmp/e-bnntoZ/home/cwd/.eval-bin/git clone --depth 1 https://github.com/haydenrear/git-issue-workflow-skill "$TMPDIR/probe-giw" 2>&1 | tail -5
+---
+.skill-manager/bin/cli/skill-manager sync git-epic-workflow git-integration-repo 2>&1 | tail -15
+---
+.skill-manager/bin/cli/skill-manager sync git-epic-workflow 2>&1 | tail -12
+---
+skt check 2>&1 | head; echo "=== installed rev ==="; skt status 2>&1 | grep -i "git-issue-workflow"

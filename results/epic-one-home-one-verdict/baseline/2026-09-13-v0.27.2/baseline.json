@@ -1,0 +1,580 @@
+{
+  "measured_at_commit": "71c5146489fea3283e9df81dba311f53f4169c9e",
+  "homes": [
+    {
+      "label": "root",
+      "home": "/Users/hayde/.skill-manager",
+      "verdicts": {
+        "released_build": [
+          "skill-manager 0.27.2",
+          "build:  artifact 862d3a4c6017 built 2026-09-13T17:38:37Z (skill-manager.jar)"
+        ],
+        "pinned_build": [
+          "skill-manager 0.27.2",
+          "build:  artifact 862d3a4c6017 built 2026-09-13T17:38:37Z (skill-manager.jar)"
+        ],
+        "home verify": {
+          "rc": 0,
+          "last": [
+            "NOT CHECKED: whether a reference back to the home this one was copied from survives \u2014 pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories).",
+            "\u2713 every reference in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)",
+            "  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260913-180436-d1b3.log"
+          ]
+        },
+        "home repair": {
+          "rc": 0,
+          "json": {
+            "home": "/Users/hayde/.skill-manager",
+            "examined": 78,
+            "clean": true,
+            "findings": []
+          },
+          "finding_count": 0,
+          "last": [
+            "{\"home\":\"/Users/hayde/.skill-manager\",\"examined\":78,\"clean\":true,\"findings\":[]}"
+          ]
+        },
+        "home drift": {
+          "rc": 0,
+          "json": {
+            "pending": false,
+            "units": []
+          },
+          "last": [
+            "{\"pending\":false,\"units\":[]}"
+          ]
+        },
+        "artifacts list": {
+          "rc": 0,
+          "summary": {
+            "artifacts": 291,
+            "by_kind": {
+              "unit-store": 29,
+              "cli-shim": 25,
+              "provisioned-tree": 23,
+              "projection": 173,
+              "marketplace-entry": 3,
+              "harness-instance": 6,
+              "mcp-registration": 2,
+              "doc-import": 1,
+              "unit-digest": 29
+            },
+            "by_materialization": {
+              "materialized": 255,
+              "partial": 0,
+              "declared-only": 33,
+              "unknown": 3
+            },
+            "by_agreement": {
+              "agrees": 81,
+              "disagrees": 0,
+              "unrecorded": 52,
+              "unverifiable": 158
+            },
+            "by_origin": {
+              "home": 0,
+              "ledger": 18,
+              "ledger-and-home": 273
+            }
+          }
+        },
+        "skt check": {
+          "rc": 0,
+          "json": {
+            "schema": 5,
+            "home": "/Users/hayde/.skill-manager",
+            "tier": "root",
+            "cli": {
+              "state": "ok",
+              "installed": "0.27.2",
+              "latest": "0.27.2",
+              "local_build": false,
+              "outdated": false
+            },
+            "artifacts": {
+              "state": "ok",
+              "total": 291,
+              "stale": 33,
+              "unverifiable": 166,
+              "current": 92,
+              "not_built": 33,
+              "rebuildable": 0,
+              "rows": [],
+              "stale_stores": [
+                "skill-dev-skill",
+                "skill-manager"
+              ]
+            },
+            "checked_units": [
+              "acp-cdc-ai-python",
+              "andrej-karpathy-skills",
+              "debugging",
+              "deploy-helm",
+              "discovery",
+              "doc-repo-devops",
+              "git-epic-workflow",
+              "git-integration-repo",
+              "git-issue-workflow",
+              "git-issue",
+              "hyper-experiments-finance",
+              "hyper-experiments",
+              "llm-wiki",
+              "plugin-repository",
+              "skt",
+              "spec-double-compiler",
+              "test-graph",
+              "tracing-observability",
+              "vision-toolbelt-skill"
+            ],
+            "unverifiable": [],
+            "upstream_stale": [],
+            "ahead_of_remote": [],
+            "network": true,
+            "checked_at": 1789337113.1737971,
+            "notifications": []
+          },
+          "last": [
+            "  \"checked_at\": 1789337113.1737971,",
+            "  \"notifications\": []",
+            "}"
+          ]
+        }
+      },
+      "observations": {
+        "O1_own_absolute_path_in_generated_content": {
+          "files_scanned": 2575,
+          "files_with_own_absolute_path": 12,
+          "by_top": {
+            "bin": 3,
+            "projects": 1,
+            "venvs (interpreter shebangs, expected absolute)": 7,
+            "installed": 1
+          },
+          "non_venv_examples": [
+            "bin/cli/computeq",
+            "bin/cli/monitoring",
+            "bin/cli/helm-deploy",
+            "projects/meta-harness/skill-project.toml",
+            "installed/doc-repo-devops.projections.json"
+          ]
+        },
+        "O2_census_vs_disk": {
+          "measured": true,
+          "declared": 291,
+          "declared_only": [
+            "unit-store:skill-dev-skill",
+            "unit-store:skill-manager",
+            "cli-shim:brew/claude",
+            "cli-shim:brew/codex",
+            "cli-shim:brew/docker",
+            "cli-shim:brew/gh",
+            "cli-shim:brew/helm",
+            "cli-shim:brew/k3d",
+            "cli-shim:brew/kubernetes-cli",
+            "cli-shim:brew/ollama",
+            "cli-shim:npm/@google/gemini-cli",
+            "cli-shim:pip/pytest",
+            "cli-shim:pip/tb-query",
+            "cli-shim:skill-script/skill-dev",
+            "provisioned-tree:cache/uv-tools",
+            "projection:default:claude:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+            "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:codex:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+            "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:gemini:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+            "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+            "projection:project:commit-diff-context-parent:unit:cdc-agent-substrate-plugin#SYMLINK/target/.claude/plugins/cdc-agent-substrate-plugin",
+            "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+            "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+            "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+            "projection:project:commit-diff-context-parent:unit:skt#SYMLINK/target/.claude/plugins/skt",
+            "projection:project:meta-harness:unit:cdc-agent-substrate-plugin#SYMLINK/target/.claude/plugins/cdc-agent-substrate-plugin",
+            "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+            "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+            "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+            "projection:project:meta-harness:unit:skt#SYMLINK/target/.claude/plugins/skt",
+            "unit-digest:skill-dev-skill",
+            "unit-digest:skill-manager"
+          ],
+          "product_missing_outputs": 15,
+          "stat_missing_outputs": 18,
+          "stat_missing_examples": [
+            "unit-store:skill-dev-skill -> skills/skill-dev-skill",
+            "unit-store:skill-manager -> skills/skill-manager",
+            "cli-shim:brew/claude -> bin/cli/claude",
+            "cli-shim:brew/codex -> bin/cli/codex",
+            "cli-shim:brew/docker -> bin/cli/docker",
+            "cli-shim:brew/gh -> bin/cli/gh",
+            "cli-shim:brew/helm -> bin/cli/helm",
+            "cli-shim:brew/k3d -> bin/cli/k3d",
+            "cli-shim:brew/kubernetes-cli -> bin/cli/kubectl",
+            "cli-shim:brew/ollama -> bin/cli/ollama",
+            "cli-shim:npm/@google/gemini-cli -> bin/cli/gemini",
+            "cli-shim:npm/gemini-cli -> bin/cli/<unknown>",
+            "cli-shim:npm/google -> bin/cli/<unknown>",
+            "cli-shim:npm/google-gemini-cli -> bin/cli/<unknown>",
+            "cli-shim:pip/pytest -> bin/cli/pytest",
+            "cli-shim:pip/tb-query -> bin/cli/tb-query",
+            "cli-shim:skill-script/skill-dev -> bin/cli/skill-dev",
+            "provisioned-tree:cache/uv-tools -> cache/uv-tools"
+          ],
+          "presence_disagreements": [],
+          "ledger_only_rows": [
+            "projection:default:claude:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+            "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:codex:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+            "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:gemini:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+            "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+            "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+            "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+            "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+            "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+            "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+            "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+            "unit-digest:skill-dev-skill",
+            "unit-digest:skill-manager"
+          ],
+          "agreement_disagrees": []
+        },
+        "O3_agent_links_outside_home": {
+          "links": 54,
+          "dangling": [],
+          "into_another_home": []
+        },
+        "O4_orphan_projection_records": [],
+        "O5_marketplace_identity": {
+          "generated_name": "skill-manager",
+          "claude_registered_names_at_this_path": [
+            "skill-manager"
+          ],
+          "shape1_claude_name_differs": [],
+          "shape2_substring_exposed": true,
+          "claude_enabled_skill_manager_plugins": [
+            "andrej-karpathy-skills@skill-manager",
+            "cdc-agent-substrate-plugin@skill-manager",
+            "cdc-agent-substrate-plugin@skill-manager-919db26e",
+            "skt@skill-manager",
+            "skt@skill-manager-919db26e"
+          ],
+          "claude_enabled_under_other_name": [
+            "cdc-agent-substrate-plugin@skill-manager-919db26e",
+            "skt@skill-manager-919db26e"
+          ],
+          "codex": {
+            "marketplaces": {
+              "skill-manager": "/Users/hayde/.skill-manager/plugin-marketplace",
+              "skill-manager-919db26e": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace",
+              "openai-bundled": "/Users/hayde/.codex/.tmp/bundled-marketplaces/openai-bundled",
+              "openai-primary-runtime": "/Users/hayde/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
+            },
+            "plugins": [
+              "github@openai-curated",
+              "andrej-karpathy-skills@skill-manager",
+              "store-plugin@skill-manager",
+              "skt@skill-manager",
+              "cdc-agent-substrate-plugin@skill-manager",
+              "cdc-agent-substrate-plugin@skill-manager-919db26e",
+              "skt@skill-manager-919db26e",
+              "sites@openai-bundled",
+              "browser@openai-bundled",
+              "visualize@openai-bundled",
+              "google-calendar@openai-curated",
+              "slack@openai-curated",
+              "documents@openai-primary-runtime",
+              "pdf@openai-primary-runtime",
+              "spreadsheets@openai-primary-runtime",
+              "presentations@openai-primary-runtime",
+              "template-creator@openai-primary-runtime",
+              "demo-bundle@skill-manager"
+            ]
+          },
+          "shape4_codex_foreign_or_misnamed": [
+            {
+              "name": "skill-manager-919db26e",
+              "source": "/Users/hayde/IdeaProjects/commit-diff-context-parent/.skill-manager/plugin-marketplace"
+            }
+          ]
+        },
+        "O6_pm_unstamped": {
+          "versions": 4,
+          "unstamped": []
+        },
+        "O7_record_vs_checkout": {
+          "hash_disagreements": [],
+          "version_disagreements": [
+            {
+              "unit": "acp-cdc-ai-python",
+              "record_version": "0.1.0",
+              "checkout_manifest_version": "0.2.0"
+            },
+            {
+              "unit": "git-epic-workflow",
+              "record_version": "0.1.0",
+              "checkout_manifest_version": "0.4.1"
+            },
+            {
+              "unit": "git-issue-workflow",
+              "record_version": "0.4.0",
+              "checkout_manifest_version": "0.4.1"
+            },
+            {
+              "unit": "git-issue",
+              "record_version": "0.1.0",
+              "checkout_manifest_version": "0.4.0"
+            },
+            {
+              "unit": "skt",
+              "record_version": "0.8.1",
+              "checkout_manifest_version": "0.8.2"
+            }
+          ]
+        },
+        "O8_bin_refs_into_another_home": {
+          "count": 0,
+          "items": []
+        }
+      }
+    },
+    {
+      "label": "project-skill-manager",
+      "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+      "verdicts": {
+        "released_build": [
+          "skill-manager 0.27.2",
+          "build:  artifact 862d3a4c6017 built 2026-09-13T17:38:37Z (skill-manager.jar)"
+        ],
+        "pinned_build": [
+          "skill-manager 0.27.2+g71c5146489fe",
+          "build:  71c5146489fe (refs/heads/main)"
+        ],
+        "home verify": {
+          "rc": 0,
+          "last": [
+            "    bin/cli/tlc2 -> /Users/hayde/.skill-manager",
+            "\u2713 every reference in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 1 sanctioned parent-store shim(s) above (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)",
+            "  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260913-180516-4cc8.log"
+          ]
+        },
+        "home repair": {
+          "rc": 0,
+          "json": {
+            "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+            "examined": 43,
+            "clean": true,
+            "findings": []
+          },
+          "finding_count": 0,
+          "last": [
+            "{\"home\":\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\",\"examined\":43,\"clean\":true,\"findings\":[]}"
+          ]
+        },
+        "home drift": {
+          "rc": 0,
+          "json": {
+            "pending": false,
+            "units": []
+          },
+          "last": [
+            "{\"pending\":false,\"units\":[]}"
+          ]
+        },
+        "artifacts list": {
+          "rc": 0,
+          "summary": {
+            "artifacts": 54,
+            "by_kind": {
+              "unit-store": 8,
+              "cli-shim": 15,
+              "provisioned-tree": 6,
+              "projection": 24,
+              "marketplace-entry": 1,
+              "harness-instance": 0,
+              "mcp-registration": 0,
+              "doc-import": 0,
+              "unit-digest": 0
+            },
+            "by_materialization": {
+              "materialized": 44,
+              "partial": 0,
+              "declared-only": 10,
+              "unknown": 0
+            },
+            "by_agreement": {
+              "agrees": 31,
+              "disagrees": 3,
+              "unrecorded": 0,
+              "unverifiable": 20
+            },
+            "by_origin": {
+              "home": 3,
+              "ledger": 0,
+              "ledger-and-home": 51
+            }
+          }
+        },
+        "skt check": {
+          "rc": 0,
+          "json": {
+            "schema": 5,
+            "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+            "tier": "project",
+            "cli": {
+              "state": "ok",
+              "installed": "0.27.2+g71c5146489fe",
+              "latest": "0.27.2",
+              "local_build": true,
+              "outdated": false
+            },
+            "artifacts": {
+              "state": "ok",
+              "total": 54,
+              "stale": 10,
+              "unverifiable": 0,
+              "current": 44,
+              "not_built": 10,
+              "rebuildable": 0,
+              "rows": [],
+              "stale_stores": []
+            },
+            "checked_units": [
+              "deploy-helm",
+              "git-epic-workflow",
+              "git-issue-workflow",
+              "git-issue",
+              "skt",
+              "spec-double-compiler",
+              "test-graph",
+              "tracing-observability"
+            ],
+            "unverifiable": [],
+            "upstream_stale": [],
+            "ahead_of_remote": [],
+            "network": true,
+            "checked_at": 1789337140.2685661,
+            "notifications": []
+          },
+          "last": [
+            "  \"checked_at\": 1789337140.2685661,",
+            "  \"notifications\": []",
+            "}"
+          ]
+        },
+        "home repair (pinned build)": {
+          "rc": 0,
+          "last": [
+            "{\"home\":\"/Users/hayde/IdeaProjects/skill-manager/.skill-manager\",\"examined\":43,\"clean\":true,\"findings\":[]}"
+          ]
+        },
+        "home verify (pinned build)": {
+          "rc": 0,
+          "last": [
+            "    bin/cli/tlc2 -> /Users/hayde/.skill-manager",
+            "\u2713 every reference in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 1 sanctioned parent-store shim(s) above (source-reference check not run \u2014 see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere \u2014 bin/launch, a venv console-script shebang \u2014 is not covered by this line. `home repair` reads the same two directories)",
+            "  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260913-180542-b8ca.log"
+          ]
+        }
+      },
+      "observations": {
+        "O1_own_absolute_path_in_generated_content": {
+          "files_scanned": 137,
+          "files_with_own_absolute_path": 7,
+          "by_top": {
+            "venvs (interpreter shebangs, expected absolute)": 7
+          },
+          "non_venv_examples": []
+        },
+        "O2_census_vs_disk": {
+          "measured": true,
+          "declared": 54,
+          "declared_only": [
+            "cli-shim:brew/docker",
+            "cli-shim:brew/gh",
+            "cli-shim:brew/helm",
+            "cli-shim:brew/k3d",
+            "cli-shim:brew/kubernetes-cli",
+            "cli-shim:brew/opentofu",
+            "cli-shim:pip/pytest",
+            "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager"
+          ],
+          "product_missing_outputs": 7,
+          "stat_missing_outputs": 7,
+          "stat_missing_examples": [
+            "cli-shim:brew/docker -> bin/cli/docker",
+            "cli-shim:brew/gh -> bin/cli/gh",
+            "cli-shim:brew/helm -> bin/cli/helm",
+            "cli-shim:brew/k3d -> bin/cli/k3d",
+            "cli-shim:brew/kubernetes-cli -> bin/cli/kubectl",
+            "cli-shim:brew/opentofu -> bin/cli/tofu",
+            "cli-shim:pip/pytest -> bin/cli/pytest"
+          ],
+          "presence_disagreements": [],
+          "ledger_only_rows": [],
+          "agreement_disagrees": [
+            "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+            "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager"
+          ]
+        },
+        "O3_agent_links_outside_home": {
+          "links": 24,
+          "dangling": [
+            "/Users/hayde/IdeaProjects/skill-manager/.claude/skills/skill-manager -> /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager",
+            "/Users/hayde/IdeaProjects/skill-manager/.codex/skills/skill-manager -> /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager",
+            "/Users/hayde/IdeaProjects/skill-manager/.gemini/skills/skill-manager -> /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager"
+          ],
+          "into_another_home": []
+        },
+        "O4_orphan_projection_records": [
+          "skill-manager.projections.json"
+        ],
+        "O5_marketplace_identity": {
+          "generated_name": "skill-manager-fd6e57d4",
+          "claude_registered_names_at_this_path": [
+            "skill-manager-fd6e57d4"
+          ],
+          "shape1_claude_name_differs": [],
+          "shape2_substring_exposed": false,
+          "claude_enabled_skill_manager_plugins": [
+            "skt@skill-manager-fd6e57d4"
+          ],
+          "claude_enabled_under_other_name": [],
+          "codex": {
+            "marketplaces": {
+              "skill-manager-fd6e57d4": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/plugin-marketplace"
+            },
+            "plugins": [
+              "skt@skill-manager-fd6e57d4"
+            ]
+          },
+          "shape4_codex_foreign_or_misnamed": []
+        },
+        "O6_pm_unstamped": {
+          "versions": 2,
+          "unstamped": []
+        },
+        "O7_record_vs_checkout": {
+          "hash_disagreements": [],
+          "version_disagreements": [
+            {
+              "unit": "skt",
+              "record_version": "0.8.1",
+              "checkout_manifest_version": "0.8.2"
+            }
+          ]
+        },
+        "O8_bin_refs_into_another_home": {
+          "count": 1,
+          "items": [
+            {
+              "path": "bin/cli/tlc2",
+              "link": "/Users/hayde/.skill-manager/bin/cli/tlc2"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

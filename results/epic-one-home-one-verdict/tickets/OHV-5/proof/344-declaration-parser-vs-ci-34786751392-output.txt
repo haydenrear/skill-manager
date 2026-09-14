@@ -1,0 +1,13 @@
+home=/tmp/sm-testgraph-17776394850897309102/home-clone/fixture-home
+  entries=[venvs/hc-venv/bin/hc]
+  unexplained(fixture decl)=[]
+  unexplained(clone decl)=[venvs/hc-venv/bin/hc -> /tmp/sm-testgraph-17776394850897309102/home-clone/fixture-home/venvs/hc-venv/bin/python]
+home=/tmp/sm-testgraph-17776394850897309102/home-clone/project/.skill-manager
+  entries=[bin/cli/hc-venv-tool]
+  unexplained(fixture decl)=[bin/cli/hc-venv-tool -> /tmp/sm-testgraph-17776394850897309102/home-clone/project/.skill-manager/venvs/hc-venv/bin/hc]
+  unexplained(clone decl)=[]
+home=/tmp/home-clone-credential-12222003867693916437/copy
+  entries=[bin/cli/hc-venv-tool]
+  unexplained(fixture decl)=[bin/cli/hc-venv-tool -> /tmp/home-clone-credential-12222003867693916437/copy/venvs/hc-venv/bin/hc]
+  unexplained(clone decl)=[]
+parsed=[Declaration[home=/tmp/x/home, entries=[bin/cli/a, venvs/b], reason=why, with a comma]] malformed=[garbage]

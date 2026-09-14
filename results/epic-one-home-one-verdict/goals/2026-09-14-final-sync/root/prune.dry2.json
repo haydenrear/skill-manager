@@ -1,0 +1,91 @@
+{
+  "home" : "/Users/hayde/.skill-manager",
+  "ledgerPresent" : true,
+  "dryRun" : true,
+  "pruned" : [ ],
+  "kept" : [ {
+    "id" : "projection:default:claude:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+    "kind" : "projection",
+    "owner" : "skill-dev-skill",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:codex:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+    "kind" : "projection",
+    "owner" : "skill-dev-skill",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:gemini:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+    "kind" : "projection",
+    "owner" : "skill-dev-skill",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:commit-diff-context-parent:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.claude/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.codex/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  }, {
+    "id" : "projection:project:meta-harness:unit:skill-manager#SYMLINK/target/.gemini/skills/skill-manager",
+    "kind" : "projection",
+    "owner" : "skill-manager",
+    "verdict" : "refused",
+    "paths" : [ ],
+    "reason" : "no ledger row names an output for it, and this pass cannot prove its outputs are gone — the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+  } ]
+}

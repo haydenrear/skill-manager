@@ -7,11 +7,28 @@ The integration tests live under `test_graph/` and run via:
 ```
 python skills/test_graph/scripts/run.py --all      # every registered graph
 python skills/test_graph/scripts/run.py <graph>    # one graph (smoke / plugin-smoke / sponsored / source-tracking / ...)
+python skills/test_graph/scripts/run.py doc-smoke artifact-dag sync-settles   # several graphs
 ```
 
 A full `--all` run is ~7 minutes. Each registered graph runs as a Gradle
-task; the wrapper aggregates output but Gradle stops at the first
-failing task so later graphs in the sweep don't run.
+task, always in `build.gradle.kts` declaration order (not command-line
+order). `--all` and a multi-graph invocation are a **sweep**: they run
+Gradle with `--continue`, so a red graph does not stop the graphs after
+it (`--fail-fast` restores stopping at the first red). A sweep ends with
+
+```
+== test graph sweep <sweepId> ==
+graphs_selected=N  graphs_executed=N  graphs_passed=N  graphs_failed=N  graphs_not_run=N
+  PASSED / FAILED / NOT RUN  <graph>  <seconds>  build/validation-reports/<runId>
+```
+
+and exits non-zero if any selected graph failed or did not run. Those
+counts come from a ledger the runner's Gradle init script writes during
+that invocation (`test_graph/build/validation-sweeps/<sweepId>/sweep.json`).
+**Never count coverage from `build/validation-reports/`** — it keeps
+passing reports from earlier runs, so a graph that never executed still
+looks green there (DEF-OUN-023). A single `run.py <graph>` prints no
+summary; add `--continue` if you want one.
 
 ### When a graph fails — debugging workflow
 

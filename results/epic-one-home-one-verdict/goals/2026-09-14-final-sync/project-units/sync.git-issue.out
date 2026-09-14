@@ -1,0 +1,8 @@
+! Telemetry export unavailable; continuing without telemetry.
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 9 unit(s) → /Users/hayde/IdeaProjects/skill-manager/.skill-manager/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+✓ agents: 7 unit(s) linked into claude, codex, gemini
+✓ tools: 2 already present
+✓ cli: 17 already present
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260914-143109-5389.log

@@ -1,0 +1,30 @@
+failure	test-graph: artifact-dag
+failure	test-graph: checkout-home
+failure	test-graph: home-clone
+failure	test-graph: home-tripwire
+failure	test-graph: onboarding
+failure	test-graph: ticket-lifecycle
+skipped	test-graph (selenium): ${{ matrix.graph }}
+success	graphs executed
+success	select graph set
+success	skill-manager unit tests (RunTests.java + spec models)
+success	test-graph: doc-smoke
+success	test-graph: git-latest-source-tracking
+success	test-graph: harness-smoke
+success	test-graph: home-integrity
+success	test-graph: home-sync
+success	test-graph: onboard
+success	test-graph: plugin-smoke
+success	test-graph: project-child-home
+success	test-graph: project-env
+success	test-graph: project-libs
+success	test-graph: project-manifest
+success	test-graph: project-profiles
+success	test-graph: project-resolve
+success	test-graph: project-smoke
+success	test-graph: smoke
+success	test-graph: source-tracking
+success	test-graph: spec-conformance
+success	test-graph: sponsored
+success	test-graph: sync-settles
+success	virtual-mcp-gateway pytest

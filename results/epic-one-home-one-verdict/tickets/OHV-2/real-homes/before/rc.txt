@@ -1,0 +1,6 @@
+project verify rc=0
+project repair rc=0
+root verify rc=0
+root repair rc=0
+tla2 verify rc=0
+tla2 repair rc=1

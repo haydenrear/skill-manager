@@ -1,0 +1,23 @@
+NO FRONT-DOOR COMMAND RECOGNISED.
+VERB_RE=(?:home\s+close-out|home\s+sync|close-out)  PROG_RE=<default>
+
+The graders below this point are red because nothing was replayed,
+NOT because each is a separate finding:
+  front-door, front-door-runs, worktree-has-its-own-home, source-undamaged
+
+--- every Bash command the agent ran, which is what to match against ---
+ls -a /private/tmp/e-gugDOd/home/cwd/ ; echo "--- wt ---"; ls -a /private/tmp/e-gugDOd/home/cwd/../wt-TICKET-9/ 2>&1
+---
+.eval-bin/git worktree list 2>&1; echo "--- parent ---"; ls -a /private/tmp/e-gugDOd/home/ 2>&1
+---
+ls -a /private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/ 2>&1; echo "--- wt home ---"; ls /private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/.skill-manager/ 2>&1; echo "--- proj home ---"; ls /private/tmp/e-gugDOd/home/cwd/.skill-manager/ 2>&1; echo "--- bin ---"; ls /private/tmp/e-gugDOd/home/cwd/.skill-manager/bin/cli/ 2>&1
+---
+.skill-manager/bin/cli/skill-manager home --help 2>&1 | head -60
+---
+.skill-manager/bin/cli/skill-manager home sync --help 2>&1 | head -60
+---
+.skill-manager/bin/cli/skill-manager home sync \
+  --from=/private/tmp/ohv-evals/builds/reconciles-a-worktree-into-the-project-home/wt-TICKET-9/.skill-manager \
+  --to=/private/tmp/e-gugDOd/home/cwd/.skill-manager 2>&1 | tail -30
+--- pieces that looked like the front door but failed the arg allowlist ---
+.skill-manager/bin/cli/skill-manager home sync \

@@ -1,0 +1,17 @@
+✓ resolve: 0 unit(s)
+→ exec: /Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/pm/uv/0.4.18/bin/uv tool install --force jinja2-cli[yaml]==0.8.2
+✓ cli: installed jinja2-cli[yaml]==0.8.2 via uv tool (bin=/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/bin/cli)
+→ cli: skill-script tracing-observability — running /Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/skills/tracing-observability/skill-scripts/install-python-package.sh
+→ cli: skill-script tracing-observability — writing output to /Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/logs/skill-scripts/20260914-125427-593-tracing-observability-tracing-observability.log
+cli: rewrote bin/cli/tracing-observability-install to resolve the home it is standing in (it had this home's absolute path baked in, which a copy of the home would not have)
+✓ cli: installed tracing-observability -> /Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/bin/cli/tracing-observability-install
+✓ units.lock.toml: wrote 11 unit(s) → /Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+✓ agents: 9 unit(s) linked into claude, codex, gemini
+✓ tools: 3 already present
+✓ cli: 19 already present, 2 installed
+  ADDED    claude (/Users/hayde/IdeaProjects/wt-229-library-attestation/.claude/.claude.json)  → http://127.0.0.1:51717/mcp
+  ADDED    codex (/Users/hayde/IdeaProjects/wt-229-library-attestation/.codex/config.toml)  → http://127.0.0.1:51717/mcp
+  ADDED    gemini (/Users/hayde/IdeaProjects/wt-229-library-attestation/.gemini/settings.json)  → http://127.0.0.1:51717/mcp
+agent MCP configs: ADDED 3, UPDATED 0 → http://127.0.0.1:51717/mcp
+ACTION_REQUIRED: restart Claude / Codex for the virtual-mcp-gateway entry to take effect — without a restart the agent will not see any MCP tools.

@@ -1,0 +1,19 @@
+! Telemetry export unavailable; continuing without telemetry.
+! cli: slm failed: skill-script slm exited 1 (log: /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/logs/skill-scripts/20260914-125024-750-slm-agent-slm.log)
+last 15 line(s) of skill-script output:
+$ /Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/skills/slm-agent/skill-scripts/install-slm.sh
+[slm-agent] FAILED to resolve an slm CLI. Candidates tried:
+[slm-agent]   - vendored-workspace: no enclosing integration checkout found
+[slm-agent]   - path: no slm on PATH
+slm-agent: could not resolve the `slm` CLI.
+
+`slm` ships with stream-lite-manager, a PRIVATE uv workspace member of the
+meta-orchestrator integration repository. It cannot be installed from PyPI.
+Do one of:
+
+  * run this install from inside a checkout that vendors
+    constituents/stream-lite-manager (uv sync there first, so .venv/bin/slm
+    exists), or
+  * point SLM_AGENT_WORKSPACE at such a checkout, or
+  * point SLM_CLI at an existing slm executable.
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260914-085022-c4d6.log

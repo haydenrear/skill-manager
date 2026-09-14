@@ -1,0 +1,63 @@
+{
+  "nodeId" : "cold.artifact.refusal.names.build",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:51:11.705968Z",
+  "endedAt" : "2026-09-14T15:51:16.757112Z",
+  "assertions" : [ {
+    "name" : "the_fixture_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "the_shim_travelled_and_its_tree_did_not",
+    "status" : "passed"
+  }, {
+    "name" : "an_unbuilt_shim_refuses_rather_than_running",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_the_cold_artifact",
+    "status" : "passed"
+  }, {
+    "name" : "the_refusal_names_the_build_command_that_warms_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:51:11.718705Z",
+    "endedAt" : "2026-09-14T15:51:14.659994Z",
+    "exitCode" : 0,
+    "pid" : 37012,
+    "log" : "node-logs/cold.artifact.refusal.names.build.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "home-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "clone", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:14.660256Z",
+    "endedAt" : "2026-09-14T15:51:16.576574Z",
+    "exitCode" : 0,
+    "pid" : 37133,
+    "log" : "node-logs/cold.artifact.refusal.names.build.home-clone.log",
+    "error" : null
+  }, {
+    "label" : "invoke-cold-shim",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager/bin/cli/ad-alpha-tool" ],
+    "startedAt" : "2026-09-14T15:51:16.577228Z",
+    "endedAt" : "2026-09-14T15:51:16.755979Z",
+    "exitCode" : 86,
+    "pid" : 37267,
+    "log" : "node-logs/cold.artifact.refusal.names.build.invoke-cold-shim.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "coldShimExit" : 86,
+    "durationMs" : 5052
+  },
+  "logs" : [ "what invoking the cold shim actually printed:\nskill-manager: 'ad-alpha-tool' is declared in this home and has not been built.\n  reason:  it runs out of $SKILL_MANAGER_HOME/cache/skill-script-ad-alpha-unit-ad-alpha-tool/bin/ad-alpha-tool, which this home does not have\n  home:    /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager\n  build it:  skill-manager build 'cli-shim:skill-script/ad-alpha-tool'\n        or:  skt build 'cli-shim:skill-script/ad-alpha-tool'\n  note:    that command exits 1 even when it built what you asked for (ARTI-06); re-run this entry point rather than trusting its status.\n" ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-source/.skill-manager",
+    "cloneHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/cold-clone/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:51:11.005043Z","executorEndedAt":"2026-09-14T15:51:16.864916Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cold.artifact.refusal.names.build.stdout.log","inputContextFile":"context/cold.artifact.refusal.names.build.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

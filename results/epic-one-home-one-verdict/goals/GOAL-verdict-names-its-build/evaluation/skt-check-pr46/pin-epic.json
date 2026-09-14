@@ -1,0 +1,52 @@
+{
+  "schema": 6,
+  "home": "/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager",
+  "tier": "root",
+  "skt_version": "0.8.2",
+  "skill_manager_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+  "cli": {
+    "state": "ok",
+    "installed": "0.27.2+g85d0d4511eb0",
+    "build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+    "latest": "0.27.2",
+    "local_build": true,
+    "outdated": false
+  },
+  "artifacts": {
+    "state": "ok",
+    "total": 7,
+    "stale": 0,
+    "unverifiable": 0,
+    "current": 7,
+    "not_built": 0,
+    "rebuildable": 0,
+    "rows": [],
+    "stale_stores": []
+  },
+  "checked_units": [
+    "skill-manager",
+    "skt"
+  ],
+  "unverifiable": [],
+  "upstream_stale": [],
+  "ahead_of_remote": [],
+  "network": true,
+  "checked_at": 1789401151.308314,
+  "notifications": [
+    {
+      "kind": "new-version",
+      "unit": "skill-manager",
+      "installed": "0efb7f5e",
+      "remote": "043a0d33",
+      "message": "new version available for skill-manager \u2014 pull with: skt sync skill-manager"
+    },
+    {
+      "kind": "new-version",
+      "unit": "skt",
+      "installed": "3aa09795",
+      "remote": "9f983984",
+      "message": "new version available for skt \u2014 pull with: skt sync skt"
+    }
+  ],
+  "hint": "multiple units are stale \u2014 sync in skill-imports dependency order (a unit importing files another stale unit adds fails validation if synced first)"
+}

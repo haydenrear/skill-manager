@@ -1,0 +1,3780 @@
+{"runId":"20260914-123718","status":"errored","traceId":"0cdf6086ee02150881cc63aeb99c3f0d","execution":{"mode":"full","graphName":"cdcWorktreeOverlayIsolation","complete":false,"expectedNodeIds":["intellij.port.scaffold.ready","cdc.indexing.cli.installed","cdc.changed-worktree.fixture","cdc.changed-worktree.lifecycle","cdc.changed-worktree.query","cdc.worktree.overlay-isolation.validated","cdc.adopted-sibling-worktrees","cdc.agent-substrate.source-plugin.validated","cdc.skill-manager-worktree.provisioned","cdc.skill-manager-close-lifecycle.validated","cdc.agent-substrate.index-profile.validated"],"observedNodeIds":["cdc.adopted-sibling-worktrees","cdc.agent-substrate.index-profile.validated","cdc.agent-substrate.source-plugin.validated","cdc.changed-worktree.fixture","cdc.changed-worktree.lifecycle","cdc.changed-worktree.query","cdc.indexing.cli.installed","cdc.skill-manager-close-lifecycle.validated","cdc.skill-manager-worktree.provisioned","cdc.worktree.overlay-isolation.validated","intellij.port.scaffold.ready"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["intellij.port.scaffold.ready","cdc.indexing.cli.installed","cdc.changed-worktree.fixture","cdc.changed-worktree.lifecycle","cdc.changed-worktree.query","cdc.worktree.overlay-isolation.validated","cdc.adopted-sibling-worktrees","cdc.agent-substrate.source-plugin.validated","cdc.skill-manager-worktree.provisioned","cdc.skill-manager-close-lifecycle.validated","cdc.agent-substrate.index-profile.validated"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false,"failure":{"type":"java.lang.RuntimeException","message":"node cdc.skill-manager-close-lifecycle.validated failed: Skill Manager close lifecycle failed"}},"nodes":[{
+  "nodeId": "cdc.adopted-sibling-worktrees",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:38:53.862938Z",
+  "endedAt": "2026-09-14T12:39:57.218042Z",
+  "assertions": [
+    {
+      "name": "siblings-git-clone_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-clone_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-clone_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-clone_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-email_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-email_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-email_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-email_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-name_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-name_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-name_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-git-user-name_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-add_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-add_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-add_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-add_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-commit-a_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-commit-a_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-commit-a_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-commit-a_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-worktree_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-worktree_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-worktree_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-worktree_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-worktree_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-worktree_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-worktree_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-worktree_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-onboarding_base_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_gen0_base_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_gen0_base_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_left_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_overlay_right_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_left_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_overlay_right_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-add_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-add_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-add_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-add_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-commit-b_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-commit-b_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-commit-b_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-parent-commit-b_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-left_after_parent_b_parent_b_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_parent_b_parent_b_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-add_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-add_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-add_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-add_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-commit_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-commit_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-commit_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-commit_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-restart-status_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-restart-status_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-restart-status_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-left-restart-status_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-merge-left_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-merge-left_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-merge-left_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-merge-left_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-status-after-merge_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-status-after-merge_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-status-after-merge_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-right-status-after-merge_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_base_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_python_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_python_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_python_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_python_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_skill_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_skill_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_skill_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-query-right_after_left_release_right_skill_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-onboarding-release_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-onboarding-release_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-onboarding-release_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "siblings-base-onboarding-release_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "external_siblings_started_at_exact_a",
+      "status": "passed"
+    },
+    {
+      "name": "one_parent_onboarding_published_four_exact_polyglot_paths",
+      "status": "passed"
+    },
+    {
+      "name": "filtered_indexable_base_file_sealed_and_retention_verified",
+      "status": "passed"
+    },
+    {
+      "name": "child_gen0_used_alias_inventory_without_cold_base_scan_publish_seal_or_pin",
+      "status": "passed"
+    },
+    {
+      "name": "parent_polyglot_raw_artifacts_match_native_extractors",
+      "status": "passed"
+    },
+    {
+      "name": "children_aliased_the_live_parent_base_without_publications",
+      "status": "passed"
+    },
+    {
+      "name": "generation_zero_answers_used_no_operator_supplied_index_root",
+      "status": "passed"
+    },
+    {
+      "name": "child_base_read_aliases_did_not_copy_index_state",
+      "status": "passed"
+    },
+    {
+      "name": "siblings_share_immutable_base_but_not_mutable_reads",
+      "status": "passed"
+    },
+    {
+      "name": "public_cli_reported_exact_base_read_lineage",
+      "status": "passed"
+    },
+    {
+      "name": "polyglot_base_is_queryable_from_gen0_and_both_overlays",
+      "status": "passed"
+    },
+    {
+      "name": "polyglot_sibling_overlays_are_independently_queryable",
+      "status": "passed"
+    },
+    {
+      "name": "polyglot_child_raw_artifacts_are_isolated_and_native",
+      "status": "passed"
+    },
+    {
+      "name": "markdown_skill_and_toml_references_join_to_python_symbols",
+      "status": "passed"
+    },
+    {
+      "name": "child_publications_are_exact_and_never_republish_base_paths",
+      "status": "passed"
+    },
+    {
+      "name": "parent_b_polyglot_edits_did_not_retarget_either_child",
+      "status": "passed"
+    },
+    {
+      "name": "committed_child_restart_preserved_a_relative_overlay",
+      "status": "passed"
+    },
+    {
+      "name": "merge_hook_released_only_left_and_right_remained_queryable",
+      "status": "passed"
+    },
+    {
+      "name": "all_cross_process_calls_were_authenticated",
+      "status": "passed"
+    },
+    {
+      "name": "all_processes_cleaned",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "siblings-git-clone-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-clone.stdout.log"
+    },
+    {
+      "type": "siblings-git-clone-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-clone.stderr.log"
+    },
+    {
+      "type": "siblings-git-clone-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-clone.bounded-process.json"
+    },
+    {
+      "type": "siblings-git-user-email-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-user-email.stdout.log"
+    },
+    {
+      "type": "siblings-git-user-email-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-user-email.stderr.log"
+    },
+    {
+      "type": "siblings-git-user-email-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-user-email.bounded-process.json"
+    },
+    {
+      "type": "siblings-git-user-name-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-user-name.stdout.log"
+    },
+    {
+      "type": "siblings-git-user-name-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-user-name.stderr.log"
+    },
+    {
+      "type": "siblings-git-user-name-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-git-user-name.bounded-process.json"
+    },
+    {
+      "type": "siblings-base-add-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-add.stdout.log"
+    },
+    {
+      "type": "siblings-base-add-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-add.stderr.log"
+    },
+    {
+      "type": "siblings-base-add-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-add.bounded-process.json"
+    },
+    {
+      "type": "siblings-base-commit-a-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-commit-a.stdout.log"
+    },
+    {
+      "type": "siblings-base-commit-a-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-commit-a.stderr.log"
+    },
+    {
+      "type": "siblings-base-commit-a-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-commit-a.bounded-process.json"
+    },
+    {
+      "type": "siblings-base-onboarding-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-onboarding.stdout.log"
+    },
+    {
+      "type": "siblings-base-onboarding-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-onboarding.stderr.log"
+    },
+    {
+      "type": "siblings-left-worktree-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-worktree.stdout.log"
+    },
+    {
+      "type": "siblings-left-worktree-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-worktree.stderr.log"
+    },
+    {
+      "type": "siblings-left-worktree-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-worktree.bounded-process.json"
+    },
+    {
+      "type": "siblings-right-worktree-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-worktree.stdout.log"
+    },
+    {
+      "type": "siblings-right-worktree-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-worktree.stderr.log"
+    },
+    {
+      "type": "siblings-right-worktree-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-worktree.bounded-process.json"
+    },
+    {
+      "type": "siblings-left-start-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-start.stdout.log"
+    },
+    {
+      "type": "siblings-left-start-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-start.stderr.log"
+    },
+    {
+      "type": "siblings-right-start-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-start.stdout.log"
+    },
+    {
+      "type": "siblings-right-start-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-start.stderr.log"
+    },
+    {
+      "type": "siblings-query-onboarding_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-onboarding_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-onboarding_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-onboarding_base_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-onboarding_base_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-onboarding_base_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-onboarding_base_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-onboarding_base_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-onboarding_base_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-onboarding_base_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_gen0_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_gen0_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_gen0_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_gen0_base_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_gen0_base_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_gen0_base_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_gen0_base_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_gen0_base_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_gen0_base_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_gen0_base_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_gen0_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_gen0_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_gen0_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_gen0_base_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_gen0_base_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_gen0_base_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_gen0_base_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_gen0_base_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_gen0_base_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_gen0_base_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_left-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_left-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_left-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_left_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_left_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_left_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_left_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_left_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_left_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_left_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_right-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_right-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_right-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_right_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_right_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_right_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_overlay_right_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_right_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_overlay_right_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_overlay_right_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_left-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_left-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_left-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_left_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_left_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_left_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_left_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_left_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_left_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_left_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_right-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_right-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_right-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_right_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_right_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_right_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_overlay_right_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_right_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_overlay_right_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_overlay_right_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-parent-add-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-parent-add.stdout.log"
+    },
+    {
+      "type": "siblings-parent-add-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-parent-add.stderr.log"
+    },
+    {
+      "type": "siblings-parent-add-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-parent-add.bounded-process.json"
+    },
+    {
+      "type": "siblings-parent-commit-b-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-parent-commit-b.stdout.log"
+    },
+    {
+      "type": "siblings-parent-commit-b-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-parent-commit-b.stderr.log"
+    },
+    {
+      "type": "siblings-parent-commit-b-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-parent-commit-b.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-left_after_parent_b_parent_b_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-left_after_parent_b_parent_b_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_parent_b_parent_b_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_parent_b_parent_b_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-left-add-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-add.stdout.log"
+    },
+    {
+      "type": "siblings-left-add-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-add.stderr.log"
+    },
+    {
+      "type": "siblings-left-add-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-add.bounded-process.json"
+    },
+    {
+      "type": "siblings-left-commit-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-commit.stdout.log"
+    },
+    {
+      "type": "siblings-left-commit-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-commit.stderr.log"
+    },
+    {
+      "type": "siblings-left-commit-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-commit.bounded-process.json"
+    },
+    {
+      "type": "siblings-left-restart-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-restart.stdout.log"
+    },
+    {
+      "type": "siblings-left-restart-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-restart.stderr.log"
+    },
+    {
+      "type": "siblings-left-restart-status-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-restart-status.stdout.log"
+    },
+    {
+      "type": "siblings-left-restart-status-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-restart-status.stderr.log"
+    },
+    {
+      "type": "siblings-left-restart-status-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-restart-status.bounded-process.json"
+    },
+    {
+      "type": "siblings-left-idempotent-start-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-idempotent-start.stdout.log"
+    },
+    {
+      "type": "siblings-left-idempotent-start-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-left-idempotent-start.stderr.log"
+    },
+    {
+      "type": "siblings-merge-left-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-merge-left.stdout.log"
+    },
+    {
+      "type": "siblings-merge-left-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-merge-left.stderr.log"
+    },
+    {
+      "type": "siblings-merge-left-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-merge-left.bounded-process.json"
+    },
+    {
+      "type": "siblings-right-status-after-merge-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-status-after-merge.stdout.log"
+    },
+    {
+      "type": "siblings-right-status-after-merge-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-status-after-merge.stderr.log"
+    },
+    {
+      "type": "siblings-right-status-after-merge-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-right-status-after-merge.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_base_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_base_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right_python-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right_python.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right_python-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right_python.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right_python-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right_python.bounded-process.json"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right_skill-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right_skill.stdout.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right_skill-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right_skill.stderr.log"
+    },
+    {
+      "type": "siblings-query-right_after_left_release_right_skill-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-query-right_after_left_release_right_skill.bounded-process.json"
+    },
+    {
+      "type": "siblings-base-onboarding-release-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-onboarding-release.stdout.log"
+    },
+    {
+      "type": "siblings-base-onboarding-release-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-onboarding-release.stderr.log"
+    },
+    {
+      "type": "siblings-base-onboarding-release-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/siblings-base-onboarding-release.bounded-process.json"
+    },
+    {
+      "type": "adopted-sibling-summary",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/adopted-sibling-worktrees/summary.json"
+    },
+    {
+      "type": "adopted-sibling-control-plane-http",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/adopted-sibling-worktrees/control-plane-http.jsonl"
+    },
+    {
+      "type": "adopted-sibling-publisher-http",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/adopted-sibling-worktrees/publisher-http.jsonl"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "siblings-git-clone_exit_code": 0,
+    "siblings-git-clone_run_cmd_peak_process_tree_rss_mib": 7,
+    "siblings-git-clone_run_cmd_observed_output_bytes": 175,
+    "siblings-git-user-email_exit_code": 0,
+    "siblings-git-user-email_run_cmd_peak_process_tree_rss_mib": 0,
+    "siblings-git-user-email_run_cmd_observed_output_bytes": 0,
+    "siblings-git-user-name_exit_code": 0,
+    "siblings-git-user-name_run_cmd_peak_process_tree_rss_mib": 0,
+    "siblings-git-user-name_run_cmd_observed_output_bytes": 0,
+    "siblings-base-add_exit_code": 0,
+    "siblings-base-add_run_cmd_peak_process_tree_rss_mib": 0,
+    "siblings-base-add_run_cmd_observed_output_bytes": 104,
+    "siblings-base-commit-a_exit_code": 0,
+    "siblings-base-commit-a_run_cmd_peak_process_tree_rss_mib": 6,
+    "siblings-base-commit-a_run_cmd_observed_output_bytes": 0,
+    "siblings-base-onboarding_exit_code": 0,
+    "siblings-left-worktree_exit_code": 0,
+    "siblings-left-worktree_run_cmd_peak_process_tree_rss_mib": 6,
+    "siblings-left-worktree_run_cmd_observed_output_bytes": 90,
+    "siblings-right-worktree_exit_code": 0,
+    "siblings-right-worktree_run_cmd_peak_process_tree_rss_mib": 6,
+    "siblings-right-worktree_run_cmd_observed_output_bytes": 91,
+    "siblings-left-start_exit_code": 0,
+    "siblings-right-start_exit_code": 0,
+    "siblings-query-onboarding_base_exit_code": 0,
+    "siblings-query-onboarding_base_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-onboarding_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-onboarding_base_base_python_exit_code": 0,
+    "siblings-query-onboarding_base_base_python_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-onboarding_base_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-onboarding_base_base_skill_exit_code": 0,
+    "siblings-query-onboarding_base_base_skill_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-onboarding_base_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-left_gen0_base_exit_code": 0,
+    "siblings-query-left_gen0_base_run_cmd_peak_process_tree_rss_mib": 178,
+    "siblings-query-left_gen0_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-left_gen0_base_base_python_exit_code": 0,
+    "siblings-query-left_gen0_base_base_python_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-left_gen0_base_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-left_gen0_base_base_skill_exit_code": 0,
+    "siblings-query-left_gen0_base_base_skill_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-left_gen0_base_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-right_gen0_base_exit_code": 0,
+    "siblings-query-right_gen0_base_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-right_gen0_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-right_gen0_base_base_python_exit_code": 0,
+    "siblings-query-right_gen0_base_base_python_run_cmd_peak_process_tree_rss_mib": 176,
+    "siblings-query-right_gen0_base_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-right_gen0_base_base_skill_exit_code": 0,
+    "siblings-query-right_gen0_base_base_skill_run_cmd_peak_process_tree_rss_mib": 182,
+    "siblings-query-right_gen0_base_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-left_overlay_base_exit_code": 0,
+    "siblings-query-left_overlay_base_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-left_overlay_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-left_overlay_base_python_exit_code": 0,
+    "siblings-query-left_overlay_base_python_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-left_overlay_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-left_overlay_base_skill_exit_code": 0,
+    "siblings-query-left_overlay_base_skill_run_cmd_peak_process_tree_rss_mib": 182,
+    "siblings-query-left_overlay_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-left_overlay_left_exit_code": 0,
+    "siblings-query-left_overlay_left_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-left_overlay_left_run_cmd_observed_output_bytes": 456,
+    "siblings-query-left_overlay_left_python_exit_code": 0,
+    "siblings-query-left_overlay_left_python_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-left_overlay_left_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-left_overlay_left_skill_exit_code": 0,
+    "siblings-query-left_overlay_left_skill_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-left_overlay_left_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-left_overlay_right_exit_code": 0,
+    "siblings-query-left_overlay_right_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-left_overlay_right_run_cmd_observed_output_bytes": 306,
+    "siblings-query-left_overlay_right_python_exit_code": 0,
+    "siblings-query-left_overlay_right_python_run_cmd_peak_process_tree_rss_mib": 177,
+    "siblings-query-left_overlay_right_python_run_cmd_observed_output_bytes": 295,
+    "siblings-query-left_overlay_right_skill_exit_code": 0,
+    "siblings-query-left_overlay_right_skill_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-left_overlay_right_skill_run_cmd_observed_output_bytes": 312,
+    "siblings-query-right_overlay_base_exit_code": 0,
+    "siblings-query-right_overlay_base_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-right_overlay_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-right_overlay_base_python_exit_code": 0,
+    "siblings-query-right_overlay_base_python_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-right_overlay_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-right_overlay_base_skill_exit_code": 0,
+    "siblings-query-right_overlay_base_skill_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-right_overlay_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-right_overlay_left_exit_code": 0,
+    "siblings-query-right_overlay_left_run_cmd_peak_process_tree_rss_mib": 182,
+    "siblings-query-right_overlay_left_run_cmd_observed_output_bytes": 304,
+    "siblings-query-right_overlay_left_python_exit_code": 0,
+    "siblings-query-right_overlay_left_python_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-right_overlay_left_python_run_cmd_observed_output_bytes": 294,
+    "siblings-query-right_overlay_left_skill_exit_code": 0,
+    "siblings-query-right_overlay_left_skill_run_cmd_peak_process_tree_rss_mib": 182,
+    "siblings-query-right_overlay_left_skill_run_cmd_observed_output_bytes": 310,
+    "siblings-query-right_overlay_right_exit_code": 0,
+    "siblings-query-right_overlay_right_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-right_overlay_right_run_cmd_observed_output_bytes": 463,
+    "siblings-query-right_overlay_right_python_exit_code": 0,
+    "siblings-query-right_overlay_right_python_run_cmd_peak_process_tree_rss_mib": 178,
+    "siblings-query-right_overlay_right_python_run_cmd_observed_output_bytes": 427,
+    "siblings-query-right_overlay_right_skill_exit_code": 0,
+    "siblings-query-right_overlay_right_skill_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-right_overlay_right_skill_run_cmd_observed_output_bytes": 540,
+    "siblings-parent-add_exit_code": 0,
+    "siblings-parent-add_run_cmd_peak_process_tree_rss_mib": 6,
+    "siblings-parent-add_run_cmd_observed_output_bytes": 104,
+    "siblings-parent-commit-b_exit_code": 0,
+    "siblings-parent-commit-b_run_cmd_peak_process_tree_rss_mib": 6,
+    "siblings-parent-commit-b_run_cmd_observed_output_bytes": 0,
+    "siblings-query-left_after_parent_b_base_exit_code": 0,
+    "siblings-query-left_after_parent_b_base_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-left_after_parent_b_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-left_after_parent_b_base_python_exit_code": 0,
+    "siblings-query-left_after_parent_b_base_python_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-left_after_parent_b_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-left_after_parent_b_base_skill_exit_code": 0,
+    "siblings-query-left_after_parent_b_base_skill_run_cmd_peak_process_tree_rss_mib": 182,
+    "siblings-query-left_after_parent_b_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-left_after_parent_b_parent_b_exit_code": 0,
+    "siblings-query-left_after_parent_b_parent_b_run_cmd_peak_process_tree_rss_mib": 176,
+    "siblings-query-left_after_parent_b_parent_b_run_cmd_observed_output_bytes": 311,
+    "siblings-query-left_after_parent_b_parent_b_python_exit_code": 0,
+    "siblings-query-left_after_parent_b_parent_b_python_run_cmd_peak_process_tree_rss_mib": 176,
+    "siblings-query-left_after_parent_b_parent_b_python_run_cmd_observed_output_bytes": 303,
+    "siblings-query-left_after_parent_b_parent_b_skill_exit_code": 0,
+    "siblings-query-left_after_parent_b_parent_b_skill_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-left_after_parent_b_parent_b_skill_run_cmd_observed_output_bytes": 317,
+    "siblings-query-right_after_parent_b_base_exit_code": 0,
+    "siblings-query-right_after_parent_b_base_run_cmd_peak_process_tree_rss_mib": 182,
+    "siblings-query-right_after_parent_b_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-right_after_parent_b_base_python_exit_code": 0,
+    "siblings-query-right_after_parent_b_base_python_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-right_after_parent_b_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-right_after_parent_b_base_skill_exit_code": 0,
+    "siblings-query-right_after_parent_b_base_skill_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-right_after_parent_b_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-right_after_parent_b_parent_b_exit_code": 0,
+    "siblings-query-right_after_parent_b_parent_b_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-right_after_parent_b_parent_b_run_cmd_observed_output_bytes": 311,
+    "siblings-query-right_after_parent_b_parent_b_python_exit_code": 0,
+    "siblings-query-right_after_parent_b_parent_b_python_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-right_after_parent_b_parent_b_python_run_cmd_observed_output_bytes": 303,
+    "siblings-query-right_after_parent_b_parent_b_skill_exit_code": 0,
+    "siblings-query-right_after_parent_b_parent_b_skill_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-right_after_parent_b_parent_b_skill_run_cmd_observed_output_bytes": 317,
+    "siblings-left-add_exit_code": 0,
+    "siblings-left-add_run_cmd_peak_process_tree_rss_mib": 7,
+    "siblings-left-add_run_cmd_observed_output_bytes": 0,
+    "siblings-left-commit_exit_code": 0,
+    "siblings-left-commit_run_cmd_peak_process_tree_rss_mib": 6,
+    "siblings-left-commit_run_cmd_observed_output_bytes": 0,
+    "siblings-left-restart_exit_code": 0,
+    "siblings-left-restart-status_exit_code": 0,
+    "siblings-left-restart-status_run_cmd_peak_process_tree_rss_mib": 163,
+    "siblings-left-restart-status_run_cmd_observed_output_bytes": 321,
+    "siblings-left-idempotent-start_exit_code": 0,
+    "siblings-merge-left_exit_code": 0,
+    "siblings-merge-left_run_cmd_peak_process_tree_rss_mib": 189,
+    "siblings-merge-left_run_cmd_observed_output_bytes": 484,
+    "siblings-right-status-after-merge_exit_code": 0,
+    "siblings-right-status-after-merge_run_cmd_peak_process_tree_rss_mib": 162,
+    "siblings-right-status-after-merge_run_cmd_observed_output_bytes": 321,
+    "siblings-query-right_after_left_release_base_exit_code": 0,
+    "siblings-query-right_after_left_release_base_run_cmd_peak_process_tree_rss_mib": 181,
+    "siblings-query-right_after_left_release_base_run_cmd_observed_output_bytes": 462,
+    "siblings-query-right_after_left_release_base_python_exit_code": 0,
+    "siblings-query-right_after_left_release_base_python_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-right_after_left_release_base_python_run_cmd_observed_output_bytes": 423,
+    "siblings-query-right_after_left_release_base_skill_exit_code": 0,
+    "siblings-query-right_after_left_release_base_skill_run_cmd_peak_process_tree_rss_mib": 179,
+    "siblings-query-right_after_left_release_base_skill_run_cmd_observed_output_bytes": 533,
+    "siblings-query-right_after_left_release_right_exit_code": 0,
+    "siblings-query-right_after_left_release_right_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-right_after_left_release_right_run_cmd_observed_output_bytes": 463,
+    "siblings-query-right_after_left_release_right_python_exit_code": 0,
+    "siblings-query-right_after_left_release_right_python_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-right_after_left_release_right_python_run_cmd_observed_output_bytes": 427,
+    "siblings-query-right_after_left_release_right_skill_exit_code": 0,
+    "siblings-query-right_after_left_release_right_skill_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-query-right_after_left_release_right_skill_run_cmd_observed_output_bytes": 540,
+    "siblings-base-onboarding-release_exit_code": 0,
+    "siblings-base-onboarding-release_run_cmd_peak_process_tree_rss_mib": 180,
+    "siblings-base-onboarding-release_run_cmd_observed_output_bytes": 261,
+    "durationMs": 63355
+  },
+  "logs": [],
+  "published": {
+    "summaryPath": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/adopted-sibling-worktrees/summary.json",
+    "adoptedSiblingWorktreesValidated": "true"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:38:53.583435Z","executorEndedAt":"2026-09-14T12:40:02.230247Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.adopted-sibling-worktrees.stdout.log","inputContextFile":"context/cdc.adopted-sibling-worktrees.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{"envelopeVersion":1,"nodeId":"cdc.agent-substrate.index-profile.validated","status":"skipped","failureMessage":"node skipped after earlier graph failure","startedAt":"2026-09-14T12:45:13.724147Z","endedAt":"2026-09-14T12:45:13.724147Z","executorStartedAt":"2026-09-14T12:45:13.724147Z","executorEndedAt":"2026-09-14T12:45:13.724147Z","spawnExitCode":-1,"capturedStdoutLog":"node-logs/cdc.agent-substrate.index-profile.validated.stdout.log","inputContextFile":"context/cdc.agent-substrate.index-profile.validated.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d","assertions":[],"artifacts":[],"processes":[],"metrics":{},"logs":[],"published":{}},{
+  "nodeId": "cdc.agent-substrate.source-plugin.validated",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:40:02.765736Z",
+  "endedAt": "2026-09-14T12:40:06.493058Z",
+  "assertions": [
+    {
+      "name": "cdc-agent-substrate-source-plugin-unittest_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "cdc-agent-substrate-source-plugin-unittest_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "cdc-agent-substrate-source-plugin-unittest_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "cdc-agent-substrate-source-plugin-unittest_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "plugin_source_tests_pass",
+      "status": "passed"
+    },
+    {
+      "name": "all_plugin_contracts_executed",
+      "status": "passed"
+    },
+    {
+      "name": "unittest_reported_ok",
+      "status": "passed"
+    },
+    {
+      "name": "plugin_test_process_tree_bounded",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "cdc-agent-substrate-source-plugin-unittest-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cdc-agent-substrate-source-plugin-unittest.stdout.log"
+    },
+    {
+      "type": "cdc-agent-substrate-source-plugin-unittest-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cdc-agent-substrate-source-plugin-unittest.stderr.log"
+    },
+    {
+      "type": "cdc-agent-substrate-source-plugin-unittest-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cdc-agent-substrate-source-plugin-unittest.bounded-process.json"
+    },
+    {
+      "type": "agent-substrate-source-plugin",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/agent-substrate-source-plugin.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "cdc-agent-substrate-source-plugin-unittest_exit_code": 0,
+    "cdc-agent-substrate-source-plugin-unittest_run_cmd_peak_process_tree_rss_mib": 47,
+    "cdc-agent-substrate-source-plugin-unittest_run_cmd_observed_output_bytes": 2119,
+    "durationMs": 3727
+  },
+  "logs": [],
+  "published": {
+    "pluginSourceValidated": "true",
+    "pluginContractTestCount": "12"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:40:02.278091Z","executorEndedAt":"2026-09-14T12:40:11.516312Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.agent-substrate.source-plugin.validated.stdout.log","inputContextFile":"context/cdc.agent-substrate.source-plugin.validated.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{
+  "nodeId": "cdc.changed-worktree.fixture",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:37:41.621115Z",
+  "endedAt": "2026-09-14T12:37:46.960445Z",
+  "assertions": [
+    {
+      "name": "git-init_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "git-init_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-init_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-init_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-email_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-email_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-email_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-email_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-name_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-name_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-name_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-user-name_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "git-empty-commit_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "git-empty-commit_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-empty-commit_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-empty-commit_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "persister-build_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "persister-build_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "persister-build_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "persister-build_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "control-plane-build_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "control-plane-build_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "control-plane-build_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "control-plane-build_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "git-commit-identity_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "git-commit-identity_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-commit-identity_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-commit-identity_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "git-tree-identity_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "git-tree-identity_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-tree-identity_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "git-tree-identity_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "cli-extraction-plan_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "cli-extraction-plan_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "cli-extraction-plan_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "cli-extraction-plan_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture_processes_built",
+      "status": "passed"
+    },
+    {
+      "name": "empty_git_base_seeded",
+      "status": "passed"
+    },
+    {
+      "name": "extraction_plan_digest_read_from_build",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "git-init-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-init.stdout.log"
+    },
+    {
+      "type": "git-init-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-init.stderr.log"
+    },
+    {
+      "type": "git-init-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-init.bounded-process.json"
+    },
+    {
+      "type": "git-user-email-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-user-email.stdout.log"
+    },
+    {
+      "type": "git-user-email-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-user-email.stderr.log"
+    },
+    {
+      "type": "git-user-email-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-user-email.bounded-process.json"
+    },
+    {
+      "type": "git-user-name-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-user-name.stdout.log"
+    },
+    {
+      "type": "git-user-name-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-user-name.stderr.log"
+    },
+    {
+      "type": "git-user-name-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-user-name.bounded-process.json"
+    },
+    {
+      "type": "git-empty-commit-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-empty-commit.stdout.log"
+    },
+    {
+      "type": "git-empty-commit-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-empty-commit.stderr.log"
+    },
+    {
+      "type": "git-empty-commit-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-empty-commit.bounded-process.json"
+    },
+    {
+      "type": "persister-build-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/persister-build.stdout.log"
+    },
+    {
+      "type": "persister-build-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/persister-build.stderr.log"
+    },
+    {
+      "type": "persister-build-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/persister-build.bounded-process.json"
+    },
+    {
+      "type": "control-plane-build-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/control-plane-build.stdout.log"
+    },
+    {
+      "type": "control-plane-build-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/control-plane-build.stderr.log"
+    },
+    {
+      "type": "control-plane-build-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/control-plane-build.bounded-process.json"
+    },
+    {
+      "type": "git-commit-identity-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-commit-identity.stdout.log"
+    },
+    {
+      "type": "git-commit-identity-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-commit-identity.stderr.log"
+    },
+    {
+      "type": "git-commit-identity-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-commit-identity.bounded-process.json"
+    },
+    {
+      "type": "git-tree-identity-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-tree-identity.stdout.log"
+    },
+    {
+      "type": "git-tree-identity-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-tree-identity.stderr.log"
+    },
+    {
+      "type": "git-tree-identity-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/git-tree-identity.bounded-process.json"
+    },
+    {
+      "type": "cli-extraction-plan-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cli-extraction-plan.stdout.log"
+    },
+    {
+      "type": "cli-extraction-plan-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cli-extraction-plan.stderr.log"
+    },
+    {
+      "type": "cli-extraction-plan-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cli-extraction-plan.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-fixture",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-fixture/fixture.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "git-init_exit_code": 0,
+    "git-init_run_cmd_peak_process_tree_rss_mib": 6,
+    "git-init_run_cmd_observed_output_bytes": 199,
+    "git-user-email_exit_code": 0,
+    "git-user-email_run_cmd_peak_process_tree_rss_mib": 0,
+    "git-user-email_run_cmd_observed_output_bytes": 0,
+    "git-user-name_exit_code": 0,
+    "git-user-name_run_cmd_peak_process_tree_rss_mib": 0,
+    "git-user-name_run_cmd_observed_output_bytes": 0,
+    "git-empty-commit_exit_code": 0,
+    "git-empty-commit_run_cmd_peak_process_tree_rss_mib": 6,
+    "git-empty-commit_run_cmd_observed_output_bytes": 62,
+    "persister-build_exit_code": 0,
+    "persister-build_run_cmd_peak_process_tree_rss_mib": 395,
+    "persister-build_run_cmd_observed_output_bytes": 0,
+    "control-plane-build_exit_code": 0,
+    "control-plane-build_run_cmd_peak_process_tree_rss_mib": 402,
+    "control-plane-build_run_cmd_observed_output_bytes": 0,
+    "git-commit-identity_exit_code": 0,
+    "git-commit-identity_run_cmd_peak_process_tree_rss_mib": 0,
+    "git-commit-identity_run_cmd_observed_output_bytes": 41,
+    "git-tree-identity_exit_code": 0,
+    "git-tree-identity_run_cmd_peak_process_tree_rss_mib": 0,
+    "git-tree-identity_run_cmd_observed_output_bytes": 41,
+    "cli-extraction-plan_exit_code": 0,
+    "cli-extraction-plan_run_cmd_peak_process_tree_rss_mib": 171,
+    "cli-extraction-plan_run_cmd_observed_output_bytes": 10471,
+    "durationMs": 5339
+  },
+  "logs": [],
+  "published": {
+    "fixturePath": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-fixture/fixture.json"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:37:41.406509Z","executorEndedAt":"2026-09-14T12:37:51.967347Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.changed-worktree.fixture.stdout.log","inputContextFile":"context/cdc.changed-worktree.fixture.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{
+  "nodeId": "cdc.changed-worktree.lifecycle",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:37:52.255047Z",
+  "endedAt": "2026-09-14T12:38:17.710083Z",
+  "assertions": [
+    {
+      "name": "real_daemon_pid_changed",
+      "status": "passed"
+    },
+    {
+      "name": "real_apply_delta_returned_exact_successor_token",
+      "status": "passed"
+    },
+    {
+      "name": "activation_owned_resolver_generations_without_manual_ingest",
+      "status": "passed"
+    },
+    {
+      "name": "activation_owned_base_resolver_generation_remained_empty",
+      "status": "passed"
+    },
+    {
+      "name": "activation_owned_resolution_context_distinct_from_consumer_plan",
+      "status": "passed"
+    },
+    {
+      "name": "predecessor_resolver_answer_remained_immutable",
+      "status": "passed"
+    },
+    {
+      "name": "successor_resolver_answer_observed_update",
+      "status": "passed"
+    },
+    {
+      "name": "activation_failed_after_prepare_before_finalize",
+      "status": "passed"
+    },
+    {
+      "name": "pending_wal_replayed_and_cleared",
+      "status": "passed"
+    },
+    {
+      "name": "prepare_replay_was_idempotent",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "changed-worktree-daemon-start-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-daemon-start.stdout.log"
+    },
+    {
+      "type": "changed-worktree-daemon-start-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-daemon-start.stderr.log"
+    },
+    {
+      "type": "changed-worktree-daemon-restart-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-daemon-restart.stdout.log"
+    },
+    {
+      "type": "changed-worktree-daemon-restart-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-daemon-restart.stderr.log"
+    },
+    {
+      "type": "changed-worktree-release-reclaim-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-release-reclaim.stdout.log"
+    },
+    {
+      "type": "changed-worktree-release-reclaim-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-release-reclaim.stderr.log"
+    },
+    {
+      "type": "changed-worktree-lifecycle-summary",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-lifecycle/summary.json"
+    },
+    {
+      "type": "changed-worktree-control-plane-http",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-lifecycle/control-plane-http.jsonl"
+    },
+    {
+      "type": "changed-worktree-publisher-http",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-lifecycle/publisher-http.jsonl"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "changed-worktree-daemon-start_exit_code": 0,
+    "changed-worktree-daemon-restart_exit_code": 0,
+    "changed-worktree-release-reclaim_exit_code": 0,
+    "durationMs": 25455
+  },
+  "logs": [],
+  "published": {
+    "summaryPath": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-lifecycle/summary.json"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:37:51.999533Z","executorEndedAt":"2026-09-14T12:38:22.721394Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.changed-worktree.lifecycle.stdout.log","inputContextFile":"context/cdc.changed-worktree.lifecycle.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{
+  "nodeId": "cdc.changed-worktree.query",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:38:23.035275Z",
+  "endedAt": "2026-09-14T12:38:28.198274Z",
+  "assertions": [
+    {
+      "name": "changed-worktree-query-added_old_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-added_old_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-added_old_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-added_old_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_old_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_old_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_old_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_old_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_new_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_new_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_new_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-modified_new_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-renamed_new_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-renamed_new_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-renamed_new_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-renamed_new_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-restarted_new_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-restarted_new_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-restarted_new_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-restarted_new_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-deleted_new_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-deleted_new_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-deleted_new_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-deleted_new_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_bare_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_bare_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_bare_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_bare_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_collision_bare_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_collision_bare_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_collision_bare_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_collision_bare_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_bare_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_bare_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_bare_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_bare_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_new_lexeme_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_new_lexeme_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_new_lexeme_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_new_lexeme_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_declaration_fqdn_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_declaration_fqdn_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_declaration_fqdn_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_renamed_declaration_fqdn_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_declaration_fqdn_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_declaration_fqdn_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_declaration_fqdn_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "changed-worktree-query-java_caller_declaration_fqdn_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "all_cli_queries_succeeded",
+      "status": "passed"
+    },
+    {
+      "name": "add_exposes_old_target",
+      "status": "passed"
+    },
+    {
+      "name": "modify_removes_old_target",
+      "status": "passed"
+    },
+    {
+      "name": "modify_adds_new_target",
+      "status": "passed"
+    },
+    {
+      "name": "rename_moves_source_path",
+      "status": "passed"
+    },
+    {
+      "name": "restart_preserves_renamed_answer",
+      "status": "passed"
+    },
+    {
+      "name": "delete_removes_new_target",
+      "status": "passed"
+    },
+    {
+      "name": "real_control_plane_create_and_apply",
+      "status": "passed"
+    },
+    {
+      "name": "authenticated_cross_process_calls",
+      "status": "passed"
+    },
+    {
+      "name": "publisher_crossed_publish_load_activate",
+      "status": "passed"
+    },
+    {
+      "name": "activation_retried_exact_request_after_restart",
+      "status": "passed"
+    },
+    {
+      "name": "daemon_pid_changed",
+      "status": "passed"
+    },
+    {
+      "name": "wal_observed_and_cleared",
+      "status": "passed"
+    },
+    {
+      "name": "java_call_site_reaches_the_reverse_index",
+      "status": "passed"
+    },
+    {
+      "name": "java_changed_file_rows_were_replaced",
+      "status": "passed"
+    },
+    {
+      "name": "java_fqdn_addressed_question_is_confidently_empty",
+      "status": "passed"
+    },
+    {
+      "name": "java_bare_lexeme_conflates_unrelated_receivers",
+      "status": "passed"
+    },
+    {
+      "name": "java_cross_file_dependents_were_not_revisited",
+      "status": "passed"
+    },
+    {
+      "name": "every_answer_declared_its_currency",
+      "status": "passed"
+    },
+    {
+      "name": "superseded_generations_declared_themselves_stale",
+      "status": "passed"
+    },
+    {
+      "name": "newest_generation_declared_itself_current",
+      "status": "passed"
+    },
+    {
+      "name": "declared_stale_answer_differs_from_the_current_answer",
+      "status": "passed"
+    },
+    {
+      "name": "bounded_resident_memory_observed",
+      "status": "passed"
+    },
+    {
+      "name": "live_step_reclaimed_superseded_generations",
+      "status": "passed"
+    },
+    {
+      "name": "older_reader_still_resolves_after_sweep",
+      "status": "passed"
+    },
+    {
+      "name": "release_reclaimed_resolver_generations",
+      "status": "passed"
+    },
+    {
+      "name": "release_reclaim_left_contribution_raw_untouched",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "changed-worktree-query-added_old-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-added_old.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-added_old-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-added_old.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-added_old-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-added_old.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-modified_old-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-modified_old.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-modified_old-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-modified_old.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-modified_old-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-modified_old.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-modified_new-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-modified_new.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-modified_new-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-modified_new.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-modified_new-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-modified_new.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-renamed_new-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-renamed_new.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-renamed_new-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-renamed_new.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-renamed_new-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-renamed_new.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-restarted_new-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-restarted_new.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-restarted_new-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-restarted_new.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-restarted_new-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-restarted_new.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-deleted_new-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-deleted_new.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-deleted_new-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-deleted_new.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-deleted_new-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-deleted_new.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-java_caller_bare-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_caller_bare.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-java_caller_bare-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_caller_bare.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-java_caller_bare-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_caller_bare.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-java_collision_bare-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_collision_bare.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-java_collision_bare-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_collision_bare.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-java_collision_bare-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_collision_bare.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_bare-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_bare.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_bare-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_bare.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_bare-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_bare.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_new_lexeme-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_new_lexeme.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_new_lexeme-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_new_lexeme.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_new_lexeme-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_new_lexeme.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_declaration_fqdn-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_declaration_fqdn.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_declaration_fqdn-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_declaration_fqdn.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-java_renamed_declaration_fqdn-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_renamed_declaration_fqdn.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-query-java_caller_declaration_fqdn-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_caller_declaration_fqdn.stdout.log"
+    },
+    {
+      "type": "changed-worktree-query-java_caller_declaration_fqdn-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_caller_declaration_fqdn.stderr.log"
+    },
+    {
+      "type": "changed-worktree-query-java_caller_declaration_fqdn-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/changed-worktree-query-java_caller_declaration_fqdn.bounded-process.json"
+    },
+    {
+      "type": "changed-worktree-summary",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-lifecycle/summary.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "changed-worktree-query-added_old_exit_code": 0,
+    "changed-worktree-query-added_old_run_cmd_peak_process_tree_rss_mib": 165,
+    "changed-worktree-query-added_old_run_cmd_observed_output_bytes": 574,
+    "changed-worktree-query-modified_old_exit_code": 0,
+    "changed-worktree-query-modified_old_run_cmd_peak_process_tree_rss_mib": 165,
+    "changed-worktree-query-modified_old_run_cmd_observed_output_bytes": 441,
+    "changed-worktree-query-modified_new_exit_code": 0,
+    "changed-worktree-query-modified_new_run_cmd_peak_process_tree_rss_mib": 165,
+    "changed-worktree-query-modified_new_run_cmd_observed_output_bytes": 574,
+    "changed-worktree-query-renamed_new_exit_code": 0,
+    "changed-worktree-query-renamed_new_run_cmd_peak_process_tree_rss_mib": 163,
+    "changed-worktree-query-renamed_new_run_cmd_observed_output_bytes": 578,
+    "changed-worktree-query-restarted_new_exit_code": 0,
+    "changed-worktree-query-restarted_new_run_cmd_peak_process_tree_rss_mib": 165,
+    "changed-worktree-query-restarted_new_run_cmd_observed_output_bytes": 578,
+    "changed-worktree-query-deleted_new_exit_code": 0,
+    "changed-worktree-query-deleted_new_run_cmd_peak_process_tree_rss_mib": 163,
+    "changed-worktree-query-deleted_new_run_cmd_observed_output_bytes": 441,
+    "changed-worktree-query-java_caller_bare_exit_code": 0,
+    "changed-worktree-query-java_caller_bare_run_cmd_peak_process_tree_rss_mib": 165,
+    "changed-worktree-query-java_caller_bare_run_cmd_observed_output_bytes": 820,
+    "changed-worktree-query-java_collision_bare_exit_code": 0,
+    "changed-worktree-query-java_collision_bare_run_cmd_peak_process_tree_rss_mib": 165,
+    "changed-worktree-query-java_collision_bare_run_cmd_observed_output_bytes": 1026,
+    "changed-worktree-query-java_renamed_bare_exit_code": 0,
+    "changed-worktree-query-java_renamed_bare_run_cmd_peak_process_tree_rss_mib": 165,
+    "changed-worktree-query-java_renamed_bare_run_cmd_observed_output_bytes": 816,
+    "changed-worktree-query-java_renamed_new_lexeme_exit_code": 0,
+    "changed-worktree-query-java_renamed_new_lexeme_run_cmd_peak_process_tree_rss_mib": 163,
+    "changed-worktree-query-java_renamed_new_lexeme_run_cmd_observed_output_bytes": 598,
+    "changed-worktree-query-java_renamed_declaration_fqdn_exit_code": 0,
+    "changed-worktree-query-java_renamed_declaration_fqdn_run_cmd_peak_process_tree_rss_mib": 157,
+    "changed-worktree-query-java_renamed_declaration_fqdn_run_cmd_observed_output_bytes": 439,
+    "changed-worktree-query-java_caller_declaration_fqdn_exit_code": 0,
+    "changed-worktree-query-java_caller_declaration_fqdn_run_cmd_peak_process_tree_rss_mib": 155,
+    "changed-worktree-query-java_caller_declaration_fqdn_run_cmd_observed_output_bytes": 467,
+    "durationMs": 5162
+  },
+  "logs": [],
+  "published": {
+    "summaryPath": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/changed-worktree-lifecycle/summary.json",
+    "lifecycleValidated": "true"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:38:22.747932Z","executorEndedAt":"2026-09-14T12:38:33.213450Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.changed-worktree.query.stdout.log","inputContextFile":"context/cdc.changed-worktree.query.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{
+  "nodeId": "cdc.indexing.cli.installed",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:37:24.576311Z",
+  "endedAt": "2026-09-14T12:37:36.327929Z",
+  "assertions": [
+    {
+      "name": "commit-diff-index-install_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "commit-diff-index-install_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "commit-diff-index-install_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "commit-diff-index-install_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "install_dist_ok",
+      "status": "passed"
+    },
+    {
+      "name": "install_dist_process_tree_bounded_to_1536_mib",
+      "status": "passed"
+    },
+    {
+      "name": "cli_exists",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "commit-diff-index-install-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/commit-diff-index-install.stdout.log"
+    },
+    {
+      "type": "commit-diff-index-install-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/commit-diff-index-install.stderr.log"
+    },
+    {
+      "type": "commit-diff-index-install-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/commit-diff-index-install.bounded-process.json"
+    },
+    {
+      "type": "cold-cli-install-start",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/cold-cli-install-start.json"
+    },
+    {
+      "type": "commit-diff-index-cli",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/commit-diff-context-index/build/install/commit-diff-index/bin/commit-diff-index"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "commit-diff-index-install_exit_code": 0,
+    "commit-diff-index-install_run_cmd_peak_process_tree_rss_mib": 661,
+    "commit-diff-index-install_run_cmd_observed_output_bytes": 2849,
+    "coldCliInstallRequired": 0,
+    "coldCliInstallAttested": 0,
+    "coldCliPreexistingOutputRootCount": 9,
+    "durationMs": 11751
+  },
+  "logs": [],
+  "published": {
+    "cliPath": "/Users/hayde/IdeaProjects/wt-240-packed-publication/commit-diff-context-index/build/install/commit-diff-index/bin/commit-diff-index"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:37:24.359771Z","executorEndedAt":"2026-09-14T12:37:41.338990Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.indexing.cli.installed.stdout.log","inputContextFile":"context/cdc.indexing.cli.installed.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{
+  "nodeId": "cdc.skill-manager-close-lifecycle.validated",
+  "status": "failed",
+  "startedAt": "2026-09-14T12:43:41.342219Z",
+  "endedAt": "2026-09-14T12:45:08.665015Z",
+  "assertions": [
+    {
+      "name": "fixture-codex-plugin-list_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-codex-plugin-list_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-codex-plugin-list_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-codex-plugin-list_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-codex-session-start_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-codex-session-start_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-codex-session-start_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-codex-session-start_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-giw-close-dry-run_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-giw-close-dry-run_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-giw-close-dry-run_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-giw-close-dry-run_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-refused_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-refused_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-refused_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-refused_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-success_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-success_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-success_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-close-success_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-worktree-list_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-worktree-list_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-worktree-list_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-worktree-list_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "child_claude_plugin_projection_resolves_inside_child_home",
+      "status": "passed"
+    },
+    {
+      "name": "child_codex_plugin_is_installed_and_enabled",
+      "status": "failed"
+    },
+    {
+      "name": "codex_session_reached_local_file_provider_failure_after_hooks",
+      "status": "passed"
+    },
+    {
+      "name": "codex_session_start_invoked_projected_cdc_hook",
+      "status": "failed"
+    },
+    {
+      "name": "codex_accepted_session_start_hook_output",
+      "status": "passed"
+    },
+    {
+      "name": "generic_giw_dry_run_invoked_check",
+      "status": "passed"
+    },
+    {
+      "name": "failed_release_returned_skt_refusal",
+      "status": "passed"
+    },
+    {
+      "name": "failed_release_preserved_worktree_and_child_home",
+      "status": "passed"
+    },
+    {
+      "name": "failed_release_reached_generic_callback",
+      "status": "passed"
+    },
+    {
+      "name": "successful_skt_close_retried_release",
+      "status": "passed"
+    },
+    {
+      "name": "generic_callback_order_is_check_then_release_then_release",
+      "status": "passed"
+    },
+    {
+      "name": "successful_close_left_no_registered_worktree",
+      "status": "passed"
+    },
+    {
+      "name": "lifecycle_completed_without_internal_error",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "fixture-codex-plugin-list-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-codex-plugin-list.stdout.log"
+    },
+    {
+      "type": "fixture-codex-plugin-list-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-codex-plugin-list.stderr.log"
+    },
+    {
+      "type": "fixture-codex-plugin-list-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-codex-plugin-list.bounded-process.json"
+    },
+    {
+      "type": "fixture-codex-session-start-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-codex-session-start.stdout.log"
+    },
+    {
+      "type": "fixture-codex-session-start-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-codex-session-start.stderr.log"
+    },
+    {
+      "type": "fixture-codex-session-start-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-codex-session-start.bounded-process.json"
+    },
+    {
+      "type": "fixture-giw-close-dry-run-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-giw-close-dry-run.stdout.log"
+    },
+    {
+      "type": "fixture-giw-close-dry-run-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-giw-close-dry-run.stderr.log"
+    },
+    {
+      "type": "fixture-giw-close-dry-run-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-giw-close-dry-run.bounded-process.json"
+    },
+    {
+      "type": "fixture-skt-close-refused-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-close-refused.stdout.log"
+    },
+    {
+      "type": "fixture-skt-close-refused-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-close-refused.stderr.log"
+    },
+    {
+      "type": "fixture-skt-close-refused-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-close-refused.bounded-process.json"
+    },
+    {
+      "type": "fixture-skt-close-success-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-close-success.stdout.log"
+    },
+    {
+      "type": "fixture-skt-close-success-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-close-success.stderr.log"
+    },
+    {
+      "type": "fixture-skt-close-success-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-close-success.bounded-process.json"
+    },
+    {
+      "type": "fixture-git-worktree-list-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-worktree-list.stdout.log"
+    },
+    {
+      "type": "fixture-git-worktree-list-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-worktree-list.stderr.log"
+    },
+    {
+      "type": "fixture-git-worktree-list-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-worktree-list.bounded-process.json"
+    },
+    {
+      "type": "skill-manager-close-lifecycle",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/skill-manager-worktree-lifecycle/close-lifecycle.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "fixture-codex-plugin-list_exit_code": 0,
+    "fixture-codex-plugin-list_run_cmd_peak_process_tree_rss_mib": 20,
+    "fixture-codex-plugin-list_run_cmd_observed_output_bytes": 41,
+    "fixture-codex-session-start_exit_code": 1,
+    "fixture-codex-session-start_run_cmd_peak_process_tree_rss_mib": 111,
+    "fixture-codex-session-start_run_cmd_observed_output_bytes": 970,
+    "fixture-giw-close-dry-run_exit_code": 0,
+    "fixture-giw-close-dry-run_run_cmd_peak_process_tree_rss_mib": 1068,
+    "fixture-giw-close-dry-run_run_cmd_observed_output_bytes": 482,
+    "fixture-skt-close-refused_exit_code": 4,
+    "fixture-skt-close-refused_run_cmd_peak_process_tree_rss_mib": 1089,
+    "fixture-skt-close-refused_run_cmd_observed_output_bytes": 1303,
+    "fixture-skt-close-success_exit_code": 0,
+    "fixture-skt-close-success_run_cmd_peak_process_tree_rss_mib": 1088,
+    "fixture-skt-close-success_run_cmd_observed_output_bytes": 414,
+    "fixture-git-worktree-list_exit_code": 0,
+    "fixture-git-worktree-list_run_cmd_peak_process_tree_rss_mib": 0,
+    "fixture-git-worktree-list_run_cmd_observed_output_bytes": 234,
+    "durationMs": 87322
+  },
+  "logs": [],
+  "published": {
+    "closeLifecycleValidated": "false"
+  },
+  "failureMessage": "Skill Manager close lifecycle failed"
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:43:40.975309Z","executorEndedAt":"2026-09-14T12:45:13.684326Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.skill-manager-close-lifecycle.validated.stdout.log","inputContextFile":"context/cdc.skill-manager-close-lifecycle.validated.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d","rerunGuidance":{"resumeGraphCommand":"./gradlew 'cdcWorktreeOverlayIsolation' --resume-from-build '/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718' --resume-from-node 'cdc.skill-manager-close-lifecycle.validated'","runOnlyCommand":"./gradlew 'cdcWorktreeOverlayIsolation' --resume-from-build '/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718' --run-only-node 'cdc.skill-manager-close-lifecycle.validated'","inputContextFile":"context/cdc.skill-manager-close-lifecycle.validated.input.json"}},{
+  "nodeId": "cdc.skill-manager-worktree.provisioned",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:40:11.846612Z",
+  "endedAt": "2026-09-14T12:43:35.926135Z",
+  "assertions": [
+    {
+      "name": "fixture-git-init_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-init_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-init_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-init_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-email_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-email_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-email_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-email_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-name_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-name_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-name_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-name_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-add_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-add_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-add_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-add_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-commit_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-commit_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-commit_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-git-commit_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-project-home-bootstrap_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-project-home-bootstrap_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-project-home-bootstrap_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-project-home-bootstrap_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-source-plugin-sync_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-source-plugin-sync_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-source-plugin-sync_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-source-plugin-sync_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-cdc-project-configure_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-cdc-project-configure_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-cdc-project-configure_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-cdc-project-configure_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-ticket-new_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-ticket-new_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-ticket-new_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-skt-ticket-new_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "project_home_is_isolated",
+      "status": "passed"
+    },
+    {
+      "name": "actual_project_local_skt_created_worktree",
+      "status": "passed"
+    },
+    {
+      "name": "actual_giw_created_child_home",
+      "status": "passed"
+    },
+    {
+      "name": "project_config_copied_byte_for_byte",
+      "status": "passed"
+    },
+    {
+      "name": "child_plugin_store_matches_checked_out_source",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "fixture-git-init-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-init.stdout.log"
+    },
+    {
+      "type": "fixture-git-init-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-init.stderr.log"
+    },
+    {
+      "type": "fixture-git-init-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-init.bounded-process.json"
+    },
+    {
+      "type": "fixture-git-email-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-email.stdout.log"
+    },
+    {
+      "type": "fixture-git-email-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-email.stderr.log"
+    },
+    {
+      "type": "fixture-git-email-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-email.bounded-process.json"
+    },
+    {
+      "type": "fixture-git-name-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-name.stdout.log"
+    },
+    {
+      "type": "fixture-git-name-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-name.stderr.log"
+    },
+    {
+      "type": "fixture-git-name-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-name.bounded-process.json"
+    },
+    {
+      "type": "fixture-git-add-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-add.stdout.log"
+    },
+    {
+      "type": "fixture-git-add-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-add.stderr.log"
+    },
+    {
+      "type": "fixture-git-add-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-add.bounded-process.json"
+    },
+    {
+      "type": "fixture-git-commit-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-commit.stdout.log"
+    },
+    {
+      "type": "fixture-git-commit-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-commit.stderr.log"
+    },
+    {
+      "type": "fixture-git-commit-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-git-commit.bounded-process.json"
+    },
+    {
+      "type": "fixture-project-home-bootstrap-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-project-home-bootstrap.stdout.log"
+    },
+    {
+      "type": "fixture-project-home-bootstrap-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-project-home-bootstrap.stderr.log"
+    },
+    {
+      "type": "fixture-project-home-bootstrap-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-project-home-bootstrap.bounded-process.json"
+    },
+    {
+      "type": "fixture-source-plugin-sync-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-source-plugin-sync.stdout.log"
+    },
+    {
+      "type": "fixture-source-plugin-sync-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-source-plugin-sync.stderr.log"
+    },
+    {
+      "type": "fixture-source-plugin-sync-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-source-plugin-sync.bounded-process.json"
+    },
+    {
+      "type": "fixture-cdc-project-configure-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-cdc-project-configure.stdout.log"
+    },
+    {
+      "type": "fixture-cdc-project-configure-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-cdc-project-configure.stderr.log"
+    },
+    {
+      "type": "fixture-cdc-project-configure-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-cdc-project-configure.bounded-process.json"
+    },
+    {
+      "type": "fixture-skt-ticket-new-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-ticket-new.stdout.log"
+    },
+    {
+      "type": "fixture-skt-ticket-new-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-ticket-new.stderr.log"
+    },
+    {
+      "type": "fixture-skt-ticket-new-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/fixture-skt-ticket-new.bounded-process.json"
+    },
+    {
+      "type": "skill-manager-worktree-provisioned",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/skill-manager-worktree-lifecycle/provisioned.json"
+    },
+    {
+      "type": "skill-manager-worktree-fixture",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/skill-manager-worktree-lifecycle/fixture.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "fixture-git-init_exit_code": 0,
+    "fixture-git-init_run_cmd_peak_process_tree_rss_mib": 5,
+    "fixture-git-init_run_cmd_observed_output_bytes": 0,
+    "fixture-git-email_exit_code": 0,
+    "fixture-git-email_run_cmd_peak_process_tree_rss_mib": 0,
+    "fixture-git-email_run_cmd_observed_output_bytes": 0,
+    "fixture-git-name_exit_code": 0,
+    "fixture-git-name_run_cmd_peak_process_tree_rss_mib": 6,
+    "fixture-git-name_run_cmd_observed_output_bytes": 0,
+    "fixture-git-add_exit_code": 0,
+    "fixture-git-add_run_cmd_peak_process_tree_rss_mib": 0,
+    "fixture-git-add_run_cmd_observed_output_bytes": 0,
+    "fixture-git-commit_exit_code": 0,
+    "fixture-git-commit_run_cmd_peak_process_tree_rss_mib": 6,
+    "fixture-git-commit_run_cmd_observed_output_bytes": 0,
+    "fixture-project-home-bootstrap_exit_code": 0,
+    "fixture-project-home-bootstrap_run_cmd_peak_process_tree_rss_mib": 1867,
+    "fixture-project-home-bootstrap_run_cmd_observed_output_bytes": 0,
+    "fixture-source-plugin-sync_exit_code": 0,
+    "fixture-source-plugin-sync_run_cmd_peak_process_tree_rss_mib": 1745,
+    "fixture-source-plugin-sync_run_cmd_observed_output_bytes": 7396,
+    "fixture-cdc-project-configure_exit_code": 0,
+    "fixture-cdc-project-configure_run_cmd_peak_process_tree_rss_mib": 3,
+    "fixture-cdc-project-configure_run_cmd_observed_output_bytes": 268,
+    "fixture-skt-ticket-new_exit_code": 0,
+    "fixture-skt-ticket-new_run_cmd_peak_process_tree_rss_mib": 2211,
+    "fixture-skt-ticket-new_run_cmd_observed_output_bytes": 1142,
+    "durationMs": 204079
+  },
+  "logs": [],
+  "published": {
+    "fixturePath": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/skill-manager-worktree-lifecycle/fixture.json",
+    "worktreePath": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/skill-manager-worktree-lifecycle/project-CDC-TG-LIFECYCLE"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:40:11.539126Z","executorEndedAt":"2026-09-14T12:43:40.949650Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.skill-manager-worktree.provisioned.stdout.log","inputContextFile":"context/cdc.skill-manager-worktree.provisioned.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{
+  "nodeId": "cdc.worktree.overlay-isolation.validated",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:38:33.498561Z",
+  "endedAt": "2026-09-14T12:38:48.483565Z",
+  "assertions": [
+    {
+      "name": "cdc-worktree-overlay-isolation-gradle-test_run_cmd_not_timed_out",
+      "status": "passed"
+    },
+    {
+      "name": "cdc-worktree-overlay-isolation-gradle-test_run_cmd_output_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "cdc-worktree-overlay-isolation-gradle-test_run_cmd_rss_within_budget",
+      "status": "passed"
+    },
+    {
+      "name": "cdc-worktree-overlay-isolation-gradle-test_run_cmd_rss_sampling_complete",
+      "status": "passed"
+    },
+    {
+      "name": "focused_gradle_tests_pass",
+      "status": "passed"
+    },
+    {
+      "name": "exact_overlay_contract_executed",
+      "status": "passed"
+    },
+    {
+      "name": "no_failed_or_skipped_contracts",
+      "status": "passed"
+    },
+    {
+      "name": "gradle_process_tree_bounded",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "cdc-worktree-overlay-isolation-gradle-test-stdout",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cdc-worktree-overlay-isolation-gradle-test.stdout.log"
+    },
+    {
+      "type": "cdc-worktree-overlay-isolation-gradle-test-stderr",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cdc-worktree-overlay-isolation-gradle-test.stderr.log"
+    },
+    {
+      "type": "cdc-worktree-overlay-isolation-gradle-test-bounded-process",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/processes/cdc-worktree-overlay-isolation-gradle-test.bounded-process.json"
+    },
+    {
+      "type": "worktree-overlay-isolation",
+      "path": "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/worktree-overlay-isolation.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "cdc-worktree-overlay-isolation-gradle-test_exit_code": 0,
+    "cdc-worktree-overlay-isolation-gradle-test_run_cmd_peak_process_tree_rss_mib": 1166,
+    "cdc-worktree-overlay-isolation-gradle-test_run_cmd_observed_output_bytes": 3090,
+    "durationMs": 14985
+  },
+  "logs": [],
+  "published": {
+    "overlayIsolationValidated": "true",
+    "validatedTestCount": "23"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:38:33.243958Z","executorEndedAt":"2026-09-14T12:38:53.497308Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cdc.worktree.overlay-isolation.validated.stdout.log","inputContextFile":"context/cdc.worktree.overlay-isolation.validated.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"},{
+  "nodeId": "intellij.port.scaffold.ready",
+  "status": "passed",
+  "startedAt": "2026-09-14T12:37:19.296755Z",
+  "endedAt": "2026-09-14T12:37:19.299284Z",
+  "assertions": [
+    {
+      "name": "exists:settings.gradle.kts",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/build.gradle.kts",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/README.md",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/vendor/intellij/.gitkeep",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/src/main/java/com/hayden/intellijport/api/JavaSourceIndexer.java",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/src/main/java/com/hayden/intellijport/api/JavaIndexRequest.java",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/src/main/java/com/hayden/intellijport/api/JavaIndexOptions.java",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/src/main/java/com/hayden/intellijport/api/JavaIndexResult.java",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/src/main/java/com/hayden/intellijport/api/JavaSymbolRecord.java",
+      "status": "passed"
+    },
+    {
+      "name": "exists:intellij-port/src/main/java/com/hayden/intellijport/api/JavaReferenceRecord.java",
+      "status": "passed"
+    },
+    {
+      "name": "settings_includes_intellij_port",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 2
+  },
+  "logs": [],
+  "published": {
+    "moduleDir": "/Users/hayde/IdeaProjects/wt-240-packed-publication/intellij-port"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T12:37:19.067707Z","executorEndedAt":"2026-09-14T12:37:24.319208Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/intellij.port.scaffold.ready.stdout.log","inputContextFile":"context/intellij.port.scaffold.ready.input.json","traceId":"0cdf6086ee02150881cc63aeb99c3f0d"}]}

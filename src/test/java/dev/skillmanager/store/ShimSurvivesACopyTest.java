@@ -117,6 +117,122 @@ public final class ShimSurvivesACopyTest {
                     "a second pass finds nothing to do — sync runs this on every install");
         });
 
+        // ---------------------------------------------------------------- OHV-4
+
+        suite.test("OHV-4: a HALF-rewritten shim is reported on content and re-anchored completely", () -> {
+            Path home = newHome();
+            Path shim = halfRewrittenShim(home, "computeq");
+
+            java.util.List<String> frozen = ShimHomeContract.frozenHomeLines(home, shim);
+            assertEquals(1, frozen.size(), "exactly the exec line is frozen; got " + frozen);
+            assertTrue(frozen.get(0).startsWith("exec "), "and it is the exec line: " + frozen);
+
+            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
+            assertTrue(rewritten != null,
+                    "the token already being in the shim is no longer 'already rewritten'");
+            assertFalse(rewritten.contains(home.toString()), "no given spelling survives: " + rewritten);
+            assertFalse(rewritten.contains(home.toRealPath().toString()), "no real spelling survives");
+            assertContains(rewritten, "exec \"${SKILL_MANAGER_SHIM_HOME}/cache/skill-script-deploy-helm-computeq/venv/bin/computeq\" \"$@\"",
+                    "the exec line derives the home");
+            assertEquals(1, (int) rewritten.lines().filter(l -> l.startsWith("SKILL_MANAGER_SHIM_HOME=")).count(),
+                    "no second preamble: the existing assignment precedes the rewritten line");
+            assertEquals(1, (int) rewritten.lines().filter(l -> l.startsWith("#!")).count(), "one shebang");
+
+            Files.writeString(shim, rewritten);
+            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(), "clean after the rewrite");
+            assertTrue(ShimHomeContract.selfDerivingRewrite(home, shim) == null, "and a second pass is a no-op");
+        });
+
+        suite.test("OHV-4: the rewritten half shim runs its tool from a COPY of the home", () -> {
+            Path home = newHome();
+            Path shim = halfRewrittenShim(home, "computeq");
+            Files.writeString(shim, ShimHomeContract.selfDerivingRewrite(home, shim));
+            Path copy = Files.createTempDirectory("shim-half-copy-").resolve("home");
+            copyTree(home, copy);
+            // The source's tool is removed: only the copy's can answer.
+            Files.delete(home.resolve("cache/skill-script-deploy-helm-computeq/venv/bin/computeq"));
+            Process p = new ProcessBuilder("bash", copy.resolve("bin/cli/computeq").toString())
+                    .redirectErrorStream(true).start();
+            String out = new String(p.getInputStream().readAllBytes());
+            assertEquals(0, p.waitFor(), "the copied shim runs the COPY's tool: " + out);
+            assertContains(out, "computeq-ran", "and it is the tool, not a dangling path");
+        });
+
+        suite.test("OHV-4: the home root itself on an assignment line is frozen too", () -> {
+            Path home = newHome();
+            Path shim = home.resolve("bin/cli/root-assign");
+            Files.writeString(shim, "#!/usr/bin/env bash\nSM_HOME=\"" + home + "\"\n"
+                    + "exec cat \"$SM_HOME/skills/x/SKILL.md\"\n");
+            assertEquals(1, ShimHomeContract.frozenHomeLines(home, shim).size(),
+                    "SM_HOME=\"<home>\" spells the home as surely as a longer path does");
+            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
+            assertContains(rewritten, "SM_HOME=\"${SKILL_MANAGER_SHIM_HOME}\"", "re-anchored whole");
+        });
+
+        suite.test("OHV-4: a sibling home that shares the prefix is not this home", () -> {
+            Path home = newHome();
+            Path sibling = home.resolveSibling(home.getFileName() + "-other");
+            Path shim = home.resolve("bin/cli/sibling");
+            Files.writeString(shim, "#!/usr/bin/env bash\nexec \"" + sibling + "/venvs/x/bin/t\" \"$@\"\n");
+            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(),
+                    "<home>-other is a different directory, not a longer path under <home>");
+            assertTrue(ShimHomeContract.selfDerivingRewrite(home, shim) == null, "and nothing is rewritten");
+        });
+
+        // #341 "Watch for": prose about a path is not a reference to one. Since
+        // OHV-2 verify fails on every repair finding, so a comment-only match
+        // would turn verify red on a shim that runs correctly.
+        suite.test("OHV-4: a home spelled ONLY in a # comment is not a frozen line", () -> {
+            Path home = newHome();
+            Path shim = home.resolve("bin/cli/commented");
+            Files.writeString(shim, "#!/usr/bin/env bash\n"
+                    + "# generated for " + home + "/skills/acme by its installer\n"
+                    + "exec true \"$@\"\n");
+            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(),
+                    "the detector does not read comment lines");
+            // The REWRITE contract is unchanged from before OHV-4: it re-anchors
+            // every line, comments included, when it is asked to. The installer
+            // asks; `home repair --fix` does not (no finding), which
+            // DamagedHomeIsRepairableTest pins as byte-identical.
+            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
+            assertTrue(rewritten != null, "the rewrite still offers to re-anchor the comment");
+            assertFalse(rewritten.contains(home.toString()), "and would leave no spelling: " + rewritten);
+        });
+
+        suite.test("OHV-4: a venv-internal shebang is deliberately NOT reported", () -> {
+            Path home = newHome();
+            Path shim = home.resolve("bin/cli/console-script");
+            Files.writeString(shim, "#!" + home + "/venvs/x/bin/python\n"
+                    + "import sys\nfrom x.cli import main\nsys.exit(main())\n");
+            assertTrue(ShimHomeContract.frozenHomeLines(home, shim).isEmpty(),
+                    "the kernel reads a shebang literally, no token can live there, and venvs/ "
+                            + "is re-provisioned: out of scope by design");
+        });
+
+        suite.test("OHV-4: a non-shell file spelling the home on an exec line is reported, not rewritten", () -> {
+            Path home = newHome();
+            Path shim = home.resolve("bin/cli/no-shebang");
+            Files.writeString(shim, "exec \"" + home + "/venvs/x/bin/t\" \"$@\"\n");
+            assertEquals(1, ShimHomeContract.frozenHomeLines(home, shim).size(),
+                    "reported on content, with or without a rewrite on offer");
+            assertTrue(ShimHomeContract.selfDerivingRewrite(home, shim) == null,
+                    "no shebang: not a shape the rewrite understands");
+        });
+
+        suite.test("OHV-4: a home named by another spelling of itself is still this home", () -> {
+            Path home = newHome();
+            Path real = home.toRealPath();
+            Path shim = home.resolve("bin/cli/other-spelling");
+            // On macOS the temp home is given as /var/... and is really
+            // /private/var/...; write the spelling the caller did NOT pass.
+            Files.writeString(shim, "#!/usr/bin/env bash\nexec \"" + real + "/venvs/x/bin/t\" \"$@\"\n");
+            assertEquals(1, ShimHomeContract.frozenHomeLines(home, shim).size(),
+                    "the real spelling of a home given through a symlink is this home");
+            String rewritten = ShimHomeContract.selfDerivingRewrite(home, shim);
+            assertFalse(rewritten.contains(real.toString()), "and it is re-anchored: " + rewritten);
+            assertFalse(rewritten.contains("/private${"), "longest spelling first, no /private${...} residue");
+        });
+
         return suite.runAll();
     }
 
@@ -124,6 +240,28 @@ public final class ShimSurvivesACopyTest {
         Path home = Files.createTempDirectory("shim-home-").resolve("home");
         Files.createDirectories(home.resolve("bin/cli"));
         return home;
+    }
+
+    /**
+     * DEF-OHV-001: the root home's bin/cli/computeq, as measured 2026-09-13 — the
+     * token in the preamble and the export line, this home literal on the exec
+     * line — plus the tool it execs, which prints a marker. Its anchor is the
+     * pre-DEF-OHV-190 {@code ${BASH_SOURCE[0]:-$0}} line on purpose: that is
+     * what such shims carry, and under bash it must survive the repair.
+     */
+    private static Path halfRewrittenShim(Path home, String name) throws Exception {
+        Path tool = home.resolve("cache/skill-script-deploy-helm-" + name + "/venv/bin/" + name);
+        Files.createDirectories(tool.getParent());
+        Files.writeString(tool, "#!/bin/sh\necho " + name + "-ran\n");
+        tool.toFile().setExecutable(true);
+        Path shim = home.resolve("bin/cli").resolve(name);
+        Files.writeString(shim, "#!/usr/bin/env bash\n"
+                + "# Rewritten by skill-manager: resolve the home this shim is standing in\n"
+                + "# rather than the one it was written into, so a copy of the home works.\n"
+                + "SKILL_MANAGER_SHIM_HOME=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n"
+                + "export MONITORING_DEPLOY_CDC_ROOT=\"${SKILL_MANAGER_SHIM_HOME}/skills/deploy-helm\"\n"
+                + "exec \"" + tool + "\" \"$@\"\n");
+        return shim;
     }
 
     /** The exact shape measured on this repository's own tla-spec-dev shim. */

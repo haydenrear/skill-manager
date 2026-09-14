@@ -1,0 +1,41 @@
+=== .claude/settings.json
+(absent before)
+{
+  "enabledPlugins": {
+    "cdc-agent-substrate-plugin@skill-manager-3132fc05": true,
+    "skt@skill-manager-3132fc05": true
+  },
+  "extraKnownMarketplaces": {
+    "skill-manager-3132fc05": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/plugin-marketplace"
+      }
+    }
+  }
+}
+=== .claude/plugins/known_marketplaces.json
+(absent before)
+{
+  "skill-manager-3132fc05": {
+    "source": {
+      "source": "directory",
+      "path": "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/plugin-marketplace"
+    },
+    "installLocation": "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/plugin-marketplace",
+    "lastUpdated": "2026-09-14T12:54:29.021Z"
+  }
+}=== .codex/config.toml
+(absent before)
+[mcp_servers.virtual_mcp_gateway]
+url = "http://127.0.0.1:51717/mcp"
+
+[marketplaces.skill-manager-3132fc05]
+source_type = "local"
+source = "/Users/hayde/IdeaProjects/wt-229-library-attestation/.skill-manager/plugin-marketplace"
+
+[plugins."cdc-agent-substrate-plugin@skill-manager-3132fc05"]
+enabled = true
+
+[plugins."skt@skill-manager-3132fc05"]
+enabled = true

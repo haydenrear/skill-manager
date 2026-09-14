@@ -1,0 +1,5 @@
+$ /Users/hayde/IdeaProjects/wt-ohv-8/skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-ohv-8/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager
+2026-09-14T15:55:46Z
+! Telemetry export unavailable; continuing without telemetry.
+✓ /Users/hayde/IdeaProjects/wt-ohv-8/.skill-manager holds nothing that removing it would destroy
+rc=0

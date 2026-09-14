@@ -1,0 +1,9 @@
+SMH="${SKILL_MANAGER_HOME:-$HOME/.skill-manager}"; echo "SKILL_MANAGER_HOME=${SKILL_MANAGER_HOME:-<unset>}"; echo "resolved SMH=$SMH"; test -x "$SMH/bin/cli/skt" && echo "skt: PRESENT" || echo "skt: absent"; test -x "$SMH/skills/git-issue-workflow/scripts/wt" && echo "wt: PRESENT" || echo "wt: absent"
+---
+SMH=/private/tmp/e-4DrpEj/home/cwd/.skill-manager; test -d "$SMH" && echo "project home: PRESENT" || echo "project home: absent"; test -x "$SMH/bin/cli/skt" && echo "skt: PRESENT" || echo "skt: absent"; test -x "$SMH/skills/git-issue-workflow/scripts/wt" && echo "wt: PRESENT" || echo "wt: absent"
+---
+command -v skt >/dev/null 2>&1 && echo "skt on PATH" || echo "skt NOT on PATH"; ./.skill-manager/bin/cli/skt ticket new --help 2>&1 | head -40
+---
+skt ticket new TICKET-42 --base main
+---
+git -C /private/tmp/e-4DrpEj/home/cwd status --short

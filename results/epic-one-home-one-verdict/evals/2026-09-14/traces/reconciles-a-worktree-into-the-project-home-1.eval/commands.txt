@@ -1,0 +1,1 @@
+skill-manager home sync --from ../wt-TICKET-9/.skill-manager --to ./.skill-manager 2>&1

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+export MONITORING_DEPLOY_CDC_ROOT="/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/skill-manager-worktree-lifecycle/project/.skill-manager/skills/deploy-helm"
+exec "/Users/hayde/IdeaProjects/wt-240-packed-publication/test_graph/build/validation-reports/20260914-123718/artifacts/skill-manager-worktree-lifecycle/project/.skill-manager/cache/skill-script-deploy-helm-helm-deploy/venv/bin/helm-deploy" "$@"

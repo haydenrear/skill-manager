@@ -1,0 +1,49 @@
+{
+  "nodeId" : "home.verdicts.clean.home",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:34:38.569312Z",
+  "endedAt" : "2026-09-14T15:34:41.207357Z",
+  "assertions" : [ {
+    "name" : "production_accepts_the_layout_as_a_home",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_exits_0_and_says_clean",
+    "status" : "passed"
+  }, {
+    "name" : "home_repair_json_stdout_alone_is_one_json_object",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_exits_0",
+    "status" : "passed"
+  }, {
+    "name" : "the_finding_parser_matches_by_field_not_by_key_order_or_whitespace",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "repair",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "repair", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/clean/.skill-manager", "--json" ],
+    "startedAt" : "2026-09-14T15:34:38.572983Z",
+    "endedAt" : "2026-09-14T15:34:39.822598Z",
+    "exitCode" : 0,
+    "pid" : 93142,
+    "log" : "node-logs/home.verdicts.clean.home.repair.stdout.log",
+    "error" : null
+  }, {
+    "label" : "verify",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/clean/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:34:39.824318Z",
+    "endedAt" : "2026-09-14T15:34:41.144350Z",
+    "exitCode" : 0,
+    "pid" : 93186,
+    "log" : "node-logs/home.verdicts.clean.home.verify.stdout.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "repair.exit" : 0,
+    "verify.exit" : 0,
+    "durationMs" : 2638
+  },
+  "logs" : [ "repair --json stdout: {\"home\":\"/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/clean/.skill-manager\",\"build\":\"skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)\",\"examined\":0,\"clean\":true,\"findings\":[]}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:34:37.892402Z","executorEndedAt":"2026-09-14T15:34:41.273933Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.clean.home.stdout.log","inputContextFile":"context/home.verdicts.clean.home.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

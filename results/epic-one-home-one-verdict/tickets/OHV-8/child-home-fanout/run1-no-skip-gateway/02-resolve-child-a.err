@@ -1,0 +1,10 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/child-fanout/home
+Picked up JAVA_TOOL_OPTIONS: -Duser.home=/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/child-fanout/home
+! reconcile: no skill-manager projection for u-shared on claude at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/child-fanout/home/.claude/skills/u-shared. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for u-shared on codex at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/child-fanout/home/.codex/skills/u-shared. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for u-shared on gemini at /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/child-fanout/home/.gemini/skills/u-shared. In order to create all symlinks missing, please run: skill-manager sync
+! gateway at gateway.invalid is unreachable and not local — not attempting to start
+✗ project dependency resolve failed publishing declared units, exit=0, errors=1
+  (re-run with --verbose for the stack trace)
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/project-resolve-20260914-114844-1c03.log
+! Telemetry export unavailable; continuing without telemetry.

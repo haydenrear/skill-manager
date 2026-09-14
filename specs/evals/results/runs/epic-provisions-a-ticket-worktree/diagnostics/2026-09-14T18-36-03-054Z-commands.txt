@@ -1,0 +1,3 @@
+SKT="${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/bin/cli/skt"; echo "home=${SKILL_MANAGER_HOME:-$HOME/.skill-manager}"; if [ -x "$SKT" ]; then echo "skt-at-home: $SKT"; else echo "skt-at-home: NOT-EXECUTABLE ($SKT)"; fi; echo "skt-on-path: $(command -v skt || echo none)"; echo "HEAD=$(git rev-parse HEAD)"
+---
+skt ticket new DEMO-1 --base 10a6ceab49d7b70b8e6c8f7a7662b5c5fd101e12 --path ../wt-DEMO-1

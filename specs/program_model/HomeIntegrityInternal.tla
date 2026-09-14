@@ -44,6 +44,14 @@
 \*       51 of the operator's 106 projections resolve into child homes this
 \*       home itself registered, and reading that as "serves bytes from another
 \*       home" turns correct child-home materialization into a defect report.
+\*
+\* SIBLING MODULE, 2026-09-14: HomeVerdictsInternal.tla holds the
+\* one-home-one-verdict (#337) policy groups -- verify/repair agreement, shim
+\* anchoring, prune fixpoint and reaping, record versions, marketplace identity,
+\* and writes through a foreign bin/cli link. They are not groups HERE because
+\* this module's healthy specification interleaves its groups and its state
+\* space is their product; that module's header gives the arithmetic and says
+\* which of this module's invariants it deliberately does not restate.
 
 EXTENDS Integers
 

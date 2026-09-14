@@ -1,0 +1,9 @@
+repair-default-1 rc=0 seconds=14.24
+repair-default-2 rc=0 seconds=14.20
+repair-otel-disabled-1 rc=0 seconds=0.95
+repair-otel-disabled-2 rc=0 seconds=0.96
+version-default rc=0 seconds=14.15
+released-repair-default rc=0 seconds=13.74
+released-repair-otel-disabled rc=0 seconds=0.43
+TIMING-DONE
+BEFORE-RAW-DONE

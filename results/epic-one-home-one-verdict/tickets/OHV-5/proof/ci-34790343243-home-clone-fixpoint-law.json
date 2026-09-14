@@ -1,0 +1,24 @@
+{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-09-13T23:55:38.984147696Z",
+  "endedAt" : "2026-09-13T23:55:54.774939519Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 3,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 0,
+    "homesDamagedOnPurpose" : 3,
+    "durationMs" : 15790
+  },
+  "logs" : [ "DAMAGED ON PURPOSE /tmp/sm-testgraph-1704496588102741859/home-clone/project/.skill-manager: verify reports exactly the declared [bin/cli/hc-venv-tool] and nothing else\nDAMAGED ON PURPOSE /tmp/sm-testgraph-1704496588102741859/home-clone/fixture-home: verify reports exactly the declared [venvs/hc-venv/bin/hc] and nothing else\nDAMAGED ON PURPOSE /tmp/home-clone-credential-13875071893806392000/copy: verify reports exactly the declared [bin/cli/hc-venv-tool] and nothing else\nDAMAGED ON PURPOSE (declared by entry via intentionallyDamagedHomes; every other finding judged as usual): /tmp/sm-testgraph-1704496588102741859/home-clone/project/.skill-manager [bin/cli/hc-venv-tool] — clone of home.clone.fixture.built: inherits its planted hc-venv-tool shim without venvs/; /tmp/sm-testgraph-1704496588102741859/home-clone/fixture-home [venvs/hc-venv/bin/hc] — home.clone.fixture.built step 6 plants a console script whose interpreter venvs/hc-venv/bin/python is never created; /tmp/home-clone-credential-13875071893806392000/copy [bin/cli/hc-venv-tool] — copy of home.clone.fixture.built: inherits its planted hc-venv-tool shim without venvs/" ],
+  "published" : {
+    "homesChecked" : "/tmp/sm-testgraph-1704496588102741859/home-clone/project/.skill-manager,/tmp/sm-testgraph-1704496588102741859/home-clone/fixture-home,/tmp/home-clone-credential-13875071893806392000/copy",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-13T23:55:38.258774857Z","executorEndedAt":"2026-09-13T23:55:54.944576164Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"370202d2db0bdc72cec08ec926582e9c"}

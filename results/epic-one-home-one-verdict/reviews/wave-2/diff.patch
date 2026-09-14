@@ -1,0 +1,2538 @@
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/README.md b/results/epic-one-home-one-verdict/tickets/OHV-2/README.md
+new file mode 100644
+index 00000000..49701dbd
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/README.md
+@@ -0,0 +1,288 @@
++# OHV-2 (#339) — home verify fails on what home repair finds, and both see agent links and projection records
++
++Branch `feature/OHV-2`, cut from `origin/epic/one-home-one-verdict` at `3d6d4cd4`.
++Slice at schedule revision 2: (a) verify composes repair's detection, (b) a
++`DANGLING_AGENT_LINK` kind, (c) an `ORPHANED_PROJECTION_RECORD` kind with a
++`--fix` prune.
++
++## (a) `home verify` fails on every `home repair` finding, and names each
++
++- **Change:** `HomeCommand.VerifyCmd` runs `HomeRepair.detect(home)` after
++  its own checks and before the isolation verdict. Each finding is printed as
++  `✗   <KIND> <subject> — <detail>` with a `repair:` line under it, which is
++  the spelling `home repair --json` uses. The command exits 1 if anything
++  remains. When some findings are fixable it prints the remedy in the one
++  spelling `HomeFixpointLaw` parses:
++  `complete it with: <env> skill-manager home repair --home <h> --fix, then re-run this check`.
++  On a clean home it prints `` `home repair` finds no damage in <h> (N entries examined) ``.
++- **One exemption:** a `FOREIGN_PATH_IN_SHIM` finding on a link that verify's
++  own isolation walk sanctioned as a parent-store shim is printed but not
++  counted. With `--against <source>`, verify inherits the source's sanction
++  (HIS-7 / #223, a worktree copied from a sanctioned project home), while
++  repair judges the copy alone. Without the exemption,
++  `ChildHomeShimIsolationTest` "a COPY of a sanctioned child inherits the
++  sanction" went red. That is every ticket-worktree clone.
++- **Graph:** new node `home.verdicts.verify.names.every.repair.finding`. It
++  plants five kinds in one home, requires verify to exit 1 and to name every
++  `(kind, subject)` that repair's JSON reports, requires the printed remedy to
++  be `home repair --home <subject> --fix`, and requires both readers to be
++  clean after the fix. Control: verify exits 0 on the unplanted home. The
++  three `TODAY_home_verify_exits_0` assertions (`frozen.shim`,
++  `misanchored.agent.link`, `unstamped.pm.tree`) are flipped to
++  `TODAY_home_verify_exits_1` / `…_names_the_shape`.
++- **Unit:** `DamagedHomeIsRepairableTest` "OHV-2: dangling links …" runs
++  `VerifyCmd` in process and asserts exit != 0 and each finding named.
++  `HomeUnresolvedGateTest`'s fixture now writes the self-deriving shim shape
++  (the old literal shape is a `FROZEN_HOME_PATH_IN_SHIM` that verify now
++  correctly refuses on). The gate still fires on the same missing path.
++
++## (b) `DANGLING_AGENT_LINK`
++
++- **What:** a symlink in an agent directory that points into this store and
++  resolves to nothing.
++- **Where it looks, from what the home records:**
++  1. the home's structural agent dirs (`HomeRepair.agentDirsOf`:
++     `<homeRoot>/.claude|.codex|.gemini` × `skills|plugins`);
++  2. every directory the projection records name: each binding's
++     `targetRoot` and each projection's `destPath` parent, orphaned records
++     included, since a retired unit's record is where its surviving links are
++     written down.
++- **Not covered:** a directory no record names any more; agent dirs moved by
++  `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `GEMINI_HOME` (this class never reads
++  the environment, by design, HIS-14); agent subdirs other than those two
++  lists; and a dangling link into another home.
++- **`--fix`:** removes the link only when it sits in the home's own agent
++  dirs (the write confinement is the home's two axes) and no
++  `installed/<unit>.json` still records the unit. A link in a record-named dir
++  is reported with `rm <abs>` as its remedy. A still-recorded unit gets
++  "re-install it here".
++- **Graph:** `home.verdicts.dangling.agent.link` plants
++  `.codex/skills/hv-gone -> <store>/skills/hv-gone`.
++- **Unit:** planted in `damageEveryKind()` (the `Kind.values()` guard), plus
++  "OHV-2: dangling links …". That test covers the own-dir link (repairable,
++  removed), the record-named link (reported, absolute subject, left in
++  place), and a dangling link into another home (not reported, untouched).
++
++## (c) `ORPHANED_PROJECTION_RECORD`
++
++- **What:** `installed/<unit>.projections.json` with no `installed/<unit>.json`
++  and no `skills|plugins|docs|harnesses/<unit>` directory. The unit-dir clause
++  keeps the prune off a live unit's ledger. It excluded none of the 69 orphans
++  on this machine.
++- **`--fix`:** deletes that record file and nothing else, after re-checking
++  that the unit has not come back.
++- **Graph:** `home.verdicts.orphaned.projection.record`.
++- **Unit:** planted in `damageEveryKind()`. "OHV-2: dangling links …" asserts
++  the gone record is deleted and a record whose unit directory exists is
++  left alone.
++
++## home-verdicts node list
++
++`home.verdicts.fixture`, `clean.home`, `frozen.shim`,
++`foreign.path.in.shim`, `misanchored.agent.link`, `unstamped.pm.tree`,
++**`verify.names.every.repair.finding`**, **`dangling.agent.link`**,
++**`orphaned.projection.record`**, plus `home.fixpoint.law` and
++`home.membership.law` (12 nodes including `env.prepared`).
++
++Local run (validation-reports `20260914-031226`, started before the last two
++source edits, so the final-tree rerun below is the one that counts): nodes 1–8
++passed. That includes the three flipped shapes (`TODAY_home_verify_exits_1`,
++`verify.exit` = 1) and `verify.names.every.repair.finding`
++(`repair.findings` = 5, `verify.unnamed` = 0).
++
++Nodes 9–12 then passed too:
++- `dangling.agent.link` and `orphaned.projection.record` each reported
++  `verify.exit` = 1, `repair.exit` = 1, 1 finding;
++- `home.fixpoint.law` and `home.membership.law` passed, each with 1 home checked.
++
++That run ended 12/12, `BUILD SUCCESSFUL in 18m 34s`. The final-tree rerun is
++below.
++
++CI run 34802282392 (`graph_set=full`, `af7e4b52`): `skill-manager unit tests
++(RunTests.java + spec models)` **success** on Linux, `virtual-mcp-gateway
++pytest` success.
++
++Final-tree local rerun on `af7e4b52` (validation-reports `20260914-033054`,
++clean tree): **all 12 nodes passed**, `BUILD SUCCESSFUL in 18m 7s`.
++
++### CI run 1: 34802282392 (`graph_set=full`, `af7e4b52`), 26 selected / 26 executed / 24 passed / 2 failed
++
++`home-verdicts` passed on Linux. **`home-clone` and `checkout-home` failed,
++both in `home.fixpoint.law`,** for one reason, and it is this change's:
++
++- `home.clone.fixture.built` plants legacy shapes on purpose. Step 4's
++  `bin/cli/hc-venv-tool` execs `<home>/venvs/…` literally, which is a
++  `FROZEN_HOME_PATH_IN_SHIM`. Step 5's `pm/uv/0.0.0` has no platform stamp,
++  which is an `UNSTAMPED_PM_TREE`. The fixture home and both its copies
++  (`home.cloned.into.project`, the credential copy) carry them.
++- Verify now names both. `IntentionalDamage.unexplained` only understood the
++  "do not resolve" section, so both became unexplained refusals. The law ran
++  the FIRST printed remedy (`build …`, the unresolved one), and the re-verify
++  still refused (job 103847224069, `home.fixpoint.law` inline log).
++
++**Fix (test-side; in scope as an IntentionalDamage declaration change):**
++- `IntentionalDamage.repairSubjects` parses verify's repair section.
++- `unexplained` excuses a declared repair finding and its `repair:` line, and
++  excuses the section's header and remedy only when every finding under them
++  is declared.
++- `HomeFixpointLaw` counts repair subjects as "reported", so a declared entry
++  that stops being reported still fails the law.
++- The fixture home's declaration adds `bin/cli/hc-venv-tool`. It resolves
++  there, so it appears only as a repair finding. (The clone and the credential
++  copy already declared it.)
++- `pm/uv/0.0.0` is **not** declared in the final tree. `48d18070` declared it
++  on all three homes; `6eb77ce4` replaced that with a stamped fixture. See
++  "stamped, not declared" below and DEF-OHV-121.
++- Parser checked against real output (`real-homes/after/project.verify.err`):
++  4 subjects parsed; all declared → nothing unexplained; one subject undeclared
++  → its finding, `repair:`, header and remedy lines; none declared → 10 lines.
++
++### CI run 2: 34804201355 (`graph_set=full`, `9d2fd94a`): superseded, then cancelled
++
++**Cancelled by run 3's dispatch.** `ci.yml` declares
++`concurrency: ci-${{ github.workflow }}-${{ github.ref }}` with
++`cancel-in-progress` on every ref except main. So there is no
++`graphs-executed` artifact for this run.
++
++Its jobs had settled at 27 success, 1 failure, 2 cancelled and 1 skipped
++(selenium). Of the 26 graphs, that is **24 passed, 1 failed (`home-clone`) and
++1 cancelled (`onboarding`)**. The other two cancelled/skipped jobs were the
++`graphs executed` counter and selenium. Every result quoted below completed
++before the cancel.
++
++Dispatched on `9d2fd94a`, whose declarations named `pm/uv/0.0.0`. Before it
++finished, local `home-clone` on `48d18070` (run `20260914-035302`) showed that
++declaration fails in home-clone: "declared intentionally damaged at
++[pm/uv/0.0.0] but home verify (exit 1) does not report it", on the fixture home
++only. Run 2 then measured the same split on Linux, and it is DEF-OHV-121's
++cleanest evidence. With `pm/uv/0.0.0` declared:
++
++- **`home-clone` failed** with the local verdicts line for line: the fixture
++  home was "declared … but not reported", and both copies were "DAMAGED ON
++  PURPOSE".
++- **`checkout-home` passed.**
++
++One declaration, green in one graph and red in the other.
++`home-integrity`, `home-verdicts`, `plugin-smoke` and unit tests passed on
++Linux. home-clone and checkout-home are decided by run 3.
++
++### The home-clone fixture's `pm/uv/0.0.0`: stamped, not declared
++
++- **Why the tree was unstamped at all.** Step 5 dates from `5ca3cb07`
++  (2026-07-26, home-level isolation). `PmPlatform`'s stamp arrived later, in
++  `cad0b830` (2026-09-06). The fixture predates stamps, and the step's claim is
++  "`pm/` is carried".
++- **Coverage (epic-agent review).**
++  `git grep -n -i -E 'stamp|\.platform|unstamped' HEAD -- test_graph/sources/home-clone/ test_graph/sources/checkout-home/`
++  matches only `CopyCarriesNoForeignBinary`'s own stamped and foreign-stamp
++  homes, plus OHV-2's declarations. **No node asserts on the fixture's
++  unstamped tree, surviving or refused.**
++  - Copied-home property (c)
++    (`results/epic-one-unit-one-name/tickets/OUN-12/README.md`) rests on
++    `CopyCrossesAPlatformTest` ("an UNSTAMPED toolchain is judged by the
++    binary's magic number") and on `home.copy.carries.no.foreign.binary`'s
++    controls. Neither reads the fixture's `pm/uv`.
++  - Unstamped detection is pinned by `home.verdicts.unstamped.pm.tree`.
++  - Stamping therefore deletes no coverage. The fixture now writes the stamp
++    `PmPlatform` writes, and no declaration names `pm/`.
++- **The apparent inconsistency is DEF-OHV-121, not a detector split.** It is
++  also not a platform difference or a `/var` spelling issue.
++  - `home.copy.carries.no.foreign.binary` (home-clone node 10) cleans up with
++    `deleteRecursive(source.resolve("pm"))` on the SHARED fixture. That removes
++    the whole `pm/`, including step 5's `uv`.
++  - In `home-clone`, the fixture home has no `pm/` when the law runs. CI prints
++    "1 finding(s) … of 26 entries"; locally `ls pm` says no such file.
++  - `checkout-home` has no node 10, so the tree survives there. CI reports
++    `UNSTAMPED_PM_TREE pm/uv/0.0.0` "of 27 entries".
++  - Copies made before node 10 carry the tree in both graphs.
++  - `PathSpellings` needs no wiring into `HomeRepair`. I chose not to fix the
++    node here: it is outside this ticket's conflict keys and not `HomeRepair`
++    code.
++
++`48d18070` and the stamp change touch only `test_graph/sources`. No `src/` file
++changed after `afaabc8d`, so the full `jbang RunTests.java` run on that tree
++(1555 passed, 0 failed) still covers production and unit-test code.
++
++### CI run 3: 34805817917 (`graph_set=full`, `6eb77ce4`): 26 selected / 26 executed / 26 passed / 0 failed
++
++This meets the epic tip's 26/26/0 (run 34798708463).
++
++- Jobs: 30 success, 1 skipped (the selenium matrix).
++- Graphs, all green on Linux:
++  - `home-verdicts`, including the three new OHV-2 nodes and the flipped
++    assertions;
++  - `home-clone` and `checkout-home` on the stamped fixture;
++  - `home-integrity` and `plugin-smoke`.
++- Unit tests (`RunTests.java` + spec models) passed.
++- Artifact: `ci/run3-34805817917.graphs-executed.json`.
++
++Local `home-clone` on the stamped fixture (validation-reports
++`20260914-040735`): **16 of 16 passed**, `BUILD SUCCESSFUL in 14m 35s`.
++`home.fixpoint.law` checked 3 homes, and all 3 were DAMAGED ON PURPOSE,
++reporting exactly what was declared:
++
++- fixture home: `[venvs/hc-venv/bin/hc, bin/cli/hc-venv-tool]`;
++- clone and credential copy: `[bin/cli/hc-venv-tool]`.
++
++No `pm/` finding appeared anywhere. `home.membership.law` passed.
++
++## Blast radius
++
++See [blast-radius.md](blast-radius.md). No caller outside this repo runs
++`home verify` and gates on its exit code, so it landed as specified. Callers
++inside the repo that changed:
++- the home-verdicts TODAY assertions;
++- `HomeUnresolvedGateTest`'s fixture;
++- the `--against` parent-shim exemption;
++- `IntentionalDamage`, the fixpoint law's reported set, the home-clone
++  fixture's declaration (adds `bin/cli/hc-venv-tool`), and its step 5, which now
++  stamps `pm/uv/0.0.0`. All were found by CI run 1 and refined after local
++  `home-clone` and CI run 2.
++
++## Real homes (read-only; no `--fix`)
++
++Before: released `/opt/homebrew/bin/skill-manager` 0.27.2. After: this
++worktree's raw build `0.27.2+g3d6d4cd4ce6e` (feature/OHV-2, pre-commit).
++Raw outputs are in `real-homes/before/` and `real-homes/after/`.
++
++| home | before verify / repair | after verify / repair | after findings |
++| --- | --- | --- | --- |
++| project `/Users/hayde/IdeaProjects/skill-manager/.skill-manager` | 0 / 0 (43 examined) | **1 / 1** (75 examined) | 3 `DANGLING_AGENT_LINK` (`.claude|.codex|.gemini/skills/skill-manager`), 1 `ORPHANED_PROJECTION_RECORD` (`installed/skill-manager.projections.json`), all repairable |
++| root `~/.skill-manager` | 0 / 0 (78) | 0 / 0 (310) | none. The #339 comment's `skill-dev-skill` links are no longer on disk. |
++| `tla-spec-dev-2/.skill-manager` | **0** / 1 | **1** / 1 | 1 `FROZEN_HOME_PATH_IN_SHIM`, 2 `UNSTAMPED_PM_TREE` |
++
++Against `expected_effect`: project home 4 → 0 facts unreported by
++verify/repair for the shapes they own (the target was 4 → 2; census phantoms
++and a stale record version are OHV-3's). tla-spec-dev-2 moves from
++verify-0-while-repair-damaged to agreeing. 3 new planted shapes are pinned.
++
++## Tests
++
++- `jbang RunTests.java`: first full run 1552 passed / 3 failed. The failures
++  were `HomeUnresolvedGateTest` ×2 (fixture wrote frozen shims) and
++  `ChildHomeShimIsolationTest` ×1 (`--against` sanction), both fixed above.
++  Focused rerun of those suites plus every verify-calling suite: 157 cases,
++  0 failures. **Second full run, on the tree committed as `afaabc8d`: exit
++  0, 1555 passed, 0 failed, "ALL PASSED"** (88 GiB free before and after).
++- `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
++
++## Deferred
++
++In [deferred.yaml](deferred.yaml):
++
++- **DEF-OHV-120** (minor): git-epic-workflow and git-issue-workflow docs still
++  describe verify as resolution-only.
++- **DEF-OHV-121** (minor): `CopyCarriesNoForeignBinary`'s cleanup deletes the
++  shared home-clone fixture's whole `pm/`, so the fixture's state depends on
++  which graph ran (home-clone vs checkout-home). Reproduced from disk on macOS
++  and from both CI graphs on Linux. CI run 34804201355's home-clone job
++  (103852736511) failed with the local macOS run's exact verdicts: the fixture
++  home was "declared … but not reported", and both copies were "DAMAGED ON
++  PURPOSE". Not a `HomeRepair` or path-spelling defect.
++
++## Close-out
++
++`skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager`
++(PATH build `~/.skill-manager/bin/cli/skill-manager`) → **exit 0**,
++"✓ … holds nothing that removing it would destroy". No unit was edited in the
++ticket home, and no `home sync` was run. Output: `close-out/`.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/blast-radius.md b/results/epic-one-home-one-verdict/tickets/OHV-2/blast-radius.md
+new file mode 100644
+index 00000000..a8fed0e5
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/blast-radius.md
+@@ -0,0 +1,55 @@
++# OHV-2 blast radius — who gates on `home verify`'s exit code
++
++Measured 2026-09-13 before landing (a), at `feature/OHV-2` off `3d6d4cd4`.
++
++**Verdict: not bad.** No caller outside this repository runs `home verify` and
++gates on its exit code. The scripts that mention it (`bootstrap-home.sh`,
++`selftest.sh`, skt) only quote it in prose or comments. Every gating caller is
++inside this repo: a graph node, the fixpoint law, or a unit test. The change
++therefore landed as specified, with no `--strict`/severity split.
++
++## Method
++
++- `rg "home.{0,12}verify|['\"]verify['\"]"` over `src`, `test_graph/sources`,
++  `test_graph/build.gradle.kts`, `skills`, `scripts`, `.github`, `CLAUDE.md`.
++- The same pattern over the worktree home's shipped scripts:
++  `.skill-manager/skills/*/scripts`, `.skill-manager/plugins/skt/src`, and
++  `~/.skill-manager/skills/*/scripts`, `~/.skill-manager/plugins/*/src|bin`.
++  Comment-only lines and `git rev-parse --verify` / `show-ref --verify` hits
++  were dropped.
++- `*.md` under the installed skills, for instructions that tell an agent to
++  treat verify's exit as a gate.
++
++## Callers outside this repo
++
++| caller | invokes `home verify`? | gates on exit? | effect on a home with today's common findings |
++| --- | --- | --- | --- |
++| git-issue-workflow `scripts/bootstrap-home.sh` | **no**: it runs `home clone` (in-process `HomeCloner.verify`, unchanged) and its own `find` for dangling links; `home verify` appears only in a warning sentence (l.1951) and comments | no | none. Its warning "home verify REFUSES this home until they do" stays true. |
++| git-issue-workflow `scripts/selftest.sh` | no; it asserts that bootstrap's *sentence* mentions `home verify` (l.377) | no | none |
++| git-issue-workflow `scripts/wt`, `new-change.sh`, `close-change.sh`, `agent-home.sh` | no | — | none |
++| skt plugin (`src/skt/*.py`: `ticket`, `sweep`, `check`, `homes`, `publish`) | no; the only hit is a docstring in `check.py:636` | — | none |
++| git-epic-workflow `SKILL.md:212`, git-issue-workflow `references/skill-homes.md` | prose describing what verify answers | no | the description is now incomplete: verify also fails on repair findings. Doc drift only; this is unit content in another repo, not fixed here. |
++| skt `references/derived-artifacts.md` (l.292–330) | prose: "`home verify` exits 0 on a healthy lazy clone" | no | still true for a clean lazy clone (`PRUNED_INHERITED_ENTRY` is policy-gated off on lazy homes) |
++| `home clone` acceptance (production) | calls `HomeCloner.verify` in-process, not `VerifyCmd` | its own exit | unchanged: (a) composes in `VerifyCmd` only |
++
++## Callers inside this repo (in scope)
++
++| caller | gates on exit | expected on its fixture home | status |
++| --- | --- | --- | --- |
++| `common/HomeFixpointLaw` (every graph) | yes: exit 0, or its printed remedy must clear it | Predicted no frozen or unstamped findings, since fixtures are written by current code. **Wrong for home-clone's fixture**, which plants the legacy shapes on purpose (CI run 34802282392: `home-clone`, `checkout-home` red). The law also runs only the FIRST printed remedy, so a home with both an unresolved reference and a repair finding runs `build …` and not `home repair --fix`. | **changed:** repair subjects count as "reported" for declared homes. The first-remedy-only behaviour is unchanged and flagged for review. |
++| `lib/IntentionalDamage` (#344 declarations) | treats every ✗ line outside the "do not resolve" section as unexplained | Predicted no change, since only the home-clone homes declare and their declared entry is a dangling shim. **Wrong:** those homes also carry `FROZEN_HOME_PATH_IN_SHIM bin/cli/hc-venv-tool` and `UNSTAMPED_PM_TREE pm/uv/0.0.0`, planted on purpose | **changed:** `repairSubjects` and repair-section handling in `unexplained`. The fixture's declaration also names `bin/cli/hc-venv-tool` (a frozen shim, planted on purpose). `pm/uv/0.0.0` is **stamped** at fixture creation rather than declared, because declaring it cannot be right in both graphs that share the fixture (DEF-OHV-121). |
++| `home-verdicts/*` (OHV-0 nodes) | pinned `TODAY_home_verify_exits_0` on 3 shapes | flipped to 1 + names-it in this change | local + CI |
++| `home-integrity/DamagedHomeIsRepairable` | `verifyBefore == 1` names FOREIGN_PATH_IN_SHIM; `verifyOther` must NOT name it | the undamaged copy has no repair findings | CI |
++| `home-integrity/ReadersAgreeAboutOneClone` | bare verify on a clone leaf == 0 | leaf is a sanctioned clone; repair is expected clean | CI |
++| `home-clone/HomeClonedIntoProject`, `artifact-dag/LazyCloneDeclaresWithoutBuilding`, `onboarding/OnboardingRemediesAreRunnable`, `ticket-lifecycle/TicketLifecycleProvisioned` | yes | fresh clones and bootstraps, expected repair-clean | CI |
++| unit: `DurableCliPinTest`, `HomeBindsBothAxesTest`, `LazyHomeScaffoldTest`, `RemediesAreRunnableTest`, `HomeVerifyDiagnosticTextTest` | yes | — | green locally (focused run) |
++
++## What does change for an operator
++
++`home verify` now exits 1 on most real homes. At kickoff, repair reported
++damage on 50 of 61 homes where verify exited 0, mostly
++`FROZEN_HOME_PATH_IN_SHIM` and `UNSTAMPED_PM_TREE`, and 69 orphaned projection
++records sit across the fleet. Nobody's automation refuses on that. A person or
++agent running `home verify` by habit now sees every finding named, with
++`home repair --home <h> --fix` as the printed remedy. That remedy is GOAL-one-verdict
++clause (3) moving toward 0.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/ci/run1-34802282392.graphs-executed.json b/results/epic-one-home-one-verdict/tickets/OHV-2/ci/run1-34802282392.graphs-executed.json
+new file mode 100644
+index 00000000..aad8d96f
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/ci/run1-34802282392.graphs-executed.json
+@@ -0,0 +1,261 @@
++{
++  "deferred": [
++    "browser-auth",
++    "refresh-flow",
++    "password-reset",
++    "hyper-experiments"
++  ],
++  "event": "workflow_dispatch",
++  "graphs": [
++    {
++      "executed": true,
++      "graph": "artifact-dag",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 10,
++      "nodes_declared": 10,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "checkout-home",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 7,
++      "nodes_declared": 8,
++      "outcome": "failure",
++      "passed": false
++    },
++    {
++      "executed": true,
++      "graph": "doc-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 23,
++      "nodes_declared": 23,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "git-latest-source-tracking",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 12,
++      "nodes_declared": 12,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "harness-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 14,
++      "nodes_declared": 14,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-clone",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 15,
++      "nodes_declared": 16,
++      "outcome": "failure",
++      "passed": false
++    },
++    {
++      "executed": true,
++      "graph": "home-integrity",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 19,
++      "nodes_declared": 19,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-sync",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 21,
++      "nodes_declared": 21,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-tripwire",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-verdicts",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 12,
++      "nodes_declared": 12,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "onboard",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "onboarding",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 23,
++      "nodes_declared": 23,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "plugin-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 28,
++      "nodes_declared": 28,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-child-home",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 13,
++      "nodes_declared": 13,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-env",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-libs",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-manifest",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-profiles",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-resolve",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 53,
++      "nodes_declared": 53,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "source-tracking",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "spec-conformance",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "sponsored",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "sync-settles",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 2,
++      "nodes_declared": 2,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "ticket-lifecycle",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++      "nodes_attempted": 14,
++      "nodes_declared": 14,
++      "outcome": "success",
++      "passed": true
++    }
++  ],
++  "graphs_executed": 26,
++  "graphs_failed": 2,
++  "graphs_passed": 24,
++  "graphs_registered": 30,
++  "graphs_selected": 26,
++  "graphs_unaccounted": 0,
++  "nodes_attempted": 351,
++  "nodes_declared": 353,
++  "ref": "refs/heads/feature/OHV-2",
++  "repository": "haydenrear/skill-manager",
++  "run_attempt": "1",
++  "run_id": "34802282392",
++  "run_url": "https://github.com/haydenrear/skill-manager/actions/runs/34802282392",
++  "schema": "test-graph-ci-execution/v1",
++  "scope": "full",
++  "sha": "af7e4b52b28afaeddb370776872761173664eb63"
++}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/ci/run3-34805817917.graphs-executed.json b/results/epic-one-home-one-verdict/tickets/OHV-2/ci/run3-34805817917.graphs-executed.json
+new file mode 100644
+index 00000000..6d851829
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/ci/run3-34805817917.graphs-executed.json
+@@ -0,0 +1,261 @@
++{
++  "deferred": [
++    "browser-auth",
++    "refresh-flow",
++    "password-reset",
++    "hyper-experiments"
++  ],
++  "event": "workflow_dispatch",
++  "graphs": [
++    {
++      "executed": true,
++      "graph": "artifact-dag",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 10,
++      "nodes_declared": 10,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "checkout-home",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "doc-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 23,
++      "nodes_declared": 23,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "git-latest-source-tracking",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 12,
++      "nodes_declared": 12,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "harness-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 14,
++      "nodes_declared": 14,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-clone",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 16,
++      "nodes_declared": 16,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-integrity",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 19,
++      "nodes_declared": 19,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-sync",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 21,
++      "nodes_declared": 21,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-tripwire",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "home-verdicts",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 12,
++      "nodes_declared": 12,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "onboard",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "onboarding",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 23,
++      "nodes_declared": 23,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "plugin-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 28,
++      "nodes_declared": 28,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-child-home",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 13,
++      "nodes_declared": 13,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-env",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-libs",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-manifest",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-profiles",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-resolve",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "project-smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 8,
++      "nodes_declared": 8,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "smoke",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 53,
++      "nodes_declared": 53,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "source-tracking",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "spec-conformance",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 4,
++      "nodes_declared": 4,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "sponsored",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 15,
++      "nodes_declared": 15,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "sync-settles",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 2,
++      "nodes_declared": 2,
++      "outcome": "success",
++      "passed": true
++    },
++    {
++      "executed": true,
++      "graph": "ticket-lifecycle",
++      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++      "nodes_attempted": 14,
++      "nodes_declared": 14,
++      "outcome": "success",
++      "passed": true
++    }
++  ],
++  "graphs_executed": 26,
++  "graphs_failed": 0,
++  "graphs_passed": 26,
++  "graphs_registered": 30,
++  "graphs_selected": 26,
++  "graphs_unaccounted": 0,
++  "nodes_attempted": 353,
++  "nodes_declared": 353,
++  "ref": "refs/heads/feature/OHV-2",
++  "repository": "haydenrear/skill-manager",
++  "run_attempt": "1",
++  "run_id": "34805817917",
++  "run_url": "https://github.com/haydenrear/skill-manager/actions/runs/34805817917",
++  "schema": "test-graph-ci-execution/v1",
++  "scope": "full",
++  "sha": "6eb77ce43f68814cb7213b125420c783ed4f4f99"
++}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/close-out.err b/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/close-out.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/close-out.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/close-out.out b/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/close-out.out
+new file mode 100644
+index 00000000..1b056f4c
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/close-out.out
+@@ -0,0 +1 @@
++✓ /Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager holds nothing that removing it would destroy
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/rc.txt b/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/rc.txt
+new file mode 100644
+index 00000000..195fd129
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/close-out/rc.txt
+@@ -0,0 +1 @@
++close-out rc=0
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml b/results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml
+new file mode 100644
+index 00000000..50ce4023
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml
+@@ -0,0 +1,104 @@
++# Deferred findings — OHV-2 (#339). IDs DEF-OHV-120..129 only.
++# Searched before adding: results/*/deferred/backlog.yaml (skill-homes.md,
++# "home verify ... answers", projections.json) and `gh issue list --search`.
++
++findings:
++  - id: DEF-OHV-120
++    found_by: OHV-2 blast-radius sweep
++    found_at_commit: 3d6d4cd4
++    severity: minor
++    maps_to: "adjacent: git-epic-workflow and git-issue-workflow skill repos (unit content), not this epic's code"
++    summary: >
++      Two installed skills describe `home verify` as answering only "does
++      everything in it resolve". After OHV-2 it also fails on every
++      `home repair` finding. git-epic-workflow/SKILL.md:212 says
++      "`home verify` answers 'does everything in it *resolve*'", and
++      git-issue-workflow/references/skill-homes.md:371-377 says "Do not chase
++      `home verify`". Neither gates on the exit code, so nothing refuses work.
++      An agent reading them will under-read a non-zero verify as a resolution
++      failure.
++    disk_observation: >
++      rg -n "home verify" .skill-manager/skills/git-epic-workflow/SKILL.md
++      .skill-manager/skills/git-issue-workflow/references/skill-homes.md
++      (worktree home /Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager, unit
++      content as installed at 3d6d4cd4).
++    why_not_a_duplicate: >
++      HIS backlog l.3575 records the verify/repair disagreement itself (fixed
++      here). l.4214/4356/4964/4997 record other skill-homes.md drift (project
++      sync, clone), not verify's scope.
++    suggested_fix: one sentence in each doc after OHV-2 merges; land it through the skill repos, not a home edit
++    disposition: pending
++
++  - id: DEF-OHV-121
++    found_by: >
++      OHV-2 — home-clone and checkout-home in CI run 34802282392, plus local run
++      20260914-035302 (reproduced at the epic agent's request)
++    found_at_commit: 48d18070
++    severity: minor
++    maps_to: "adjacent: test_graph home-clone fixture hygiene, not a HomeRepair detector defect"
++    summary: >
++      UNSTAMPED_PM_TREE appeared to answer differently for one planted shape by
++      home or platform. It does not. What changes is the fixture home's disk
++      state, and that depends on which GRAPH runs.
++      home.copy.carries.no.foreign.binary (CopyCarriesNoForeignBinary.java:120)
++      cleans up with deleteRecursive(source.resolve("pm")) on the SHARED
++      fixture home. That deletes the whole pm/, including
++      home.clone.fixture.built's step-5 pm/uv/0.0.0, not just the
++      pm/node/22.9.0 the node itself planted.
++      - The home-clone graph runs that node (10/16) before home.fixpoint.law
++        (15/16), so the fixture home there has no pm/ at law time.
++      - checkout-home reuses the fixture without node 10, so the tree survives.
++      - The copies made before node 10 (home.cloned.into.project and the
++        credential copy) carry it in both graphs.
++      The behaviour is the same on macOS and Linux. No /var vs /private/var
++      spelling is involved, so OHV-5's PathSpellings needs no wiring into
++      HomeRepair's pm scan.
++    disk_observation: >
++      Local (macOS), run 20260914-035302, under
++      /private/var/folders/b7/.../T/sm-testgraph-18332811825236613049/home-clone/:
++      fixture-home/pm does not exist (`ls` says "No such file or directory");
++      project/.skill-manager/pm/uv/0.0.0 exists with no .platform; and
++      T/home-clone-credential-9601167589825407330/copy/pm/uv/0.0.0 exists with no
++      .platform.
++      CI (Linux), home-clone report 20260914-033550: the fixture-home verify
++      header reads "1 finding(s) `home repair` reports ... of 26 entries
++      examined", the frozen shim only.
++      CI (Linux), checkout-home report 20260914-033657: fixture-home reports
++      FROZEN_HOME_PATH_IN_SHIM bin/cli/hc-venv-tool and UNSTAMPED_PM_TREE
++      pm/uv/0.0.0, "of 27 entries examined"; the extra entry is the surviving
++      pm version directory.
++      Both graphs ran their nodes in declared order.
++      Linux reproduction of the macOS result: CI run 34804201355 (feature/OHV-2
++      at 9d2fd94a, which declared pm/uv/0.0.0), home-clone job 103852736511.
++      The fixture-home verdict reads "declared intentionally damaged at
++      [pm/uv/0.0.0] but home verify (exit 1) does not report it". Both copies
++      read "DAMAGED ON PURPOSE ... exactly the declared [bin/cli/hc-venv-tool,
++      pm/uv/0.0.0]". This matches the local macOS run line for line, so the
++      split is between graphs, not between platforms.
++    impact: >
++      Every home-clone node after 10/16 sees a fixture with no pm/. A
++      declaration naming pm/ content passes in one graph and fails in the other.
++      OHV-2 hit exactly this: declaring pm/uv/0.0.0 went red locally in
++      home-clone ("declared ... but home verify does not report it"), and it
++      would have been green in checkout-home.
++    why_not_a_duplicate: >
++      Searched results/*/deferred/backlog.yaml for CopyCarriesNoForeignBinary,
++      deleteRecursive, "shared fixture" and pm/uv: no entry. OUN-12's README
++      describes the node's controls, not the scope of its cleanup.
++    ohv2_disposition: >
++      Not fixed here. The node is outside this ticket's conflict keys, and the
++      defect is not in HomeRepair code. Instead, OHV-2 stamps the fixture's
++      pm/uv/0.0.0 at creation, which is what PmPlatform writes for every
++      provisioned tree, so no home in either graph carries an unstamped tree
++      and no declaration names pm/.
++      No coverage is lost:
++      `git grep -n -i -E 'stamp|\.platform|unstamped' HEAD --
++      test_graph/sources/home-clone/ test_graph/sources/checkout-home/` matches
++      only CopyCarriesNoForeignBinary's own stamped and foreign-stamp homes, plus
++      OHV-2's declarations. Unstamped judgement stays covered by
++      CopyCrossesAPlatformTest ("an UNSTAMPED toolchain is judged by the
++      binary's magic number") and by home.verdicts.unstamped.pm.tree.
++    suggested_fix: >
++      Make CopyCarriesNoForeignBinary delete only pm/node/22.9.0 (what it
++      planted), or plant into its own copy of the fixture.
++    disposition: pending
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.repair.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.repair.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.repair.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.repair.json
+new file mode 100644
+index 00000000..ff830f51
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/skill-manager/.skill-manager","build":"skill-manager 0.27.2+g3d6d4cd4ce6e @ 3d6d4cd4ce6e (refs/heads/feature/OHV-2)","examined":75,"clean":false,"findings":[{"kind":"DANGLING_AGENT_LINK","subject":".claude/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"DANGLING_AGENT_LINK","subject":".codex/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"DANGLING_AGENT_LINK","subject":".gemini/skills/skill-manager","detail":"points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected","repair":"skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing","repairable":true},{"kind":"ORPHANED_PROJECTION_RECORD","subject":"installed/skill-manager.projections.json","detail":"records 3 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it","repair":"skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.verify.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.verify.err
+new file mode 100644
+index 00000000..a537b7cd
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.verify.err
+@@ -0,0 +1,15 @@
++[jbang] Building jar for SkillManager.java...
++Note: /Users/hayde/IdeaProjects/wt-ohv-2/src/main/java/dev/skillmanager/mcp/GatewayClient.java uses or overrides a deprecated API.
++Note: Recompile with -Xlint:deprecation for details.
++! Telemetry export unavailable; continuing without telemetry.
++✗ 4 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/skill-manager/.skill-manager, of 75 entries examined — each is damage, and this check fails on it
++✗   DANGLING_AGENT_LINK .claude/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   DANGLING_AGENT_LINK .codex/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   DANGLING_AGENT_LINK .gemini/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
++✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
++✗   ORPHANED_PROJECTION_RECORD installed/skill-manager.projections.json — records 3 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it
++✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
++✗   4 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/skill-manager/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/skill-manager/.claude CODEX_HOME=/Users/hayde/IdeaProjects/skill-manager/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/skill-manager/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/skill-manager /Users/hayde/IdeaProjects/skill-manager/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager --fix, then re-run this check
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260913-231203-4b68.log
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.verify.out b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.verify.out
+new file mode 100644
+index 00000000..97bf0e64
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/project.verify.out
+@@ -0,0 +1,4 @@
++build: skill-manager 0.27.2+g3d6d4cd4ce6e @ 3d6d4cd4ce6e (refs/heads/feature/OHV-2)
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
++    bin/cli/tlc2 -> /Users/hayde/.skill-manager
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/rc.txt b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/rc.txt
+new file mode 100644
+index 00000000..2862d038
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/rc.txt
+@@ -0,0 +1,6 @@
++project verify rc=1
++project repair rc=1
++root verify rc=0
++root repair rc=0
++tla2 verify rc=1
++tla2 repair rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.repair.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.repair.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.repair.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.repair.json
+new file mode 100644
+index 00000000..0674ff01
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/.skill-manager","build":"skill-manager 0.27.2+g3d6d4cd4ce6e @ 3d6d4cd4ce6e (refs/heads/feature/OHV-2)","examined":310,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.verify.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.verify.err
+new file mode 100644
+index 00000000..b2ce3443
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.verify.err
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260913-231242-8c2b.log
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.verify.out b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.verify.out
+new file mode 100644
+index 00000000..71ce88df
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/root.verify.out
+@@ -0,0 +1,4 @@
++build: skill-manager 0.27.2+g3d6d4cd4ce6e @ 3d6d4cd4ce6e (refs/heads/feature/OHV-2)
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++`home repair` finds no damage in /Users/hayde/.skill-manager (310 entries examined)
++✓ every reference in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.repair.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.repair.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.repair.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.repair.json
+new file mode 100644
+index 00000000..72d7717c
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager","build":"skill-manager 0.27.2+g3d6d4cd4ce6e @ 3d6d4cd4ce6e (refs/heads/feature/OHV-2)","examined":153,"clean":false,"findings":[{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tla-spec-dev","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/node/22.9.0","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/uv/0.4.18","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.verify.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.verify.err
+new file mode 100644
+index 00000000..e4777d5d
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.verify.err
+@@ -0,0 +1,9 @@
++! Telemetry export unavailable; continuing without telemetry.
++✗ 3 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager, of 153 entries examined — each is damage, and this check fails on it
++✗   FROZEN_HOME_PATH_IN_SHIM bin/cli/tla-spec-dev — names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied
++✗       repair: skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)
++✗   UNSTAMPED_PM_TREE pm/node/22.9.0 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
++✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
++✗   UNSTAMPED_PM_TREE pm/uv/0.4.18 — carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it
++✗       repair: skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it
++✗   3 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/tla-spec-dev-2/.claude CODEX_HOME=/Users/hayde/IdeaProjects/tla-spec-dev-2/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/tla-spec-dev-2/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/tla-spec-dev-2 /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager --fix, then re-run this check
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.verify.out b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.verify.out
+new file mode 100644
+index 00000000..dce92db8
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/after/tla2.verify.out
+@@ -0,0 +1,3 @@
++build: skill-manager 0.27.2+g3d6d4cd4ce6e @ 3d6d4cd4ce6e (refs/heads/feature/OHV-2)
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++descent: /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager records that it was cloned from /Users/hayde/.skill-manager, and names no parent store — so no foreign path in it is sanctioned by that record
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.repair.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.repair.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.repair.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.repair.json
+new file mode 100644
+index 00000000..7b2f788b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/skill-manager/.skill-manager","examined":43,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.verify.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.verify.err
+new file mode 100644
+index 00000000..dc3a5199
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.verify.err
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260913-230133-bade.log
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.verify.out b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.verify.out
+new file mode 100644
+index 00000000..57d64aec
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/project.verify.out
+@@ -0,0 +1,4 @@
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
++    bin/cli/tlc2 -> /Users/hayde/.skill-manager
++✓ every reference in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 1 sanctioned parent-store shim(s) above (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/rc.txt b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/rc.txt
+new file mode 100644
+index 00000000..b50baf7b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/rc.txt
+@@ -0,0 +1,6 @@
++project verify rc=0
++project repair rc=0
++root verify rc=0
++root repair rc=0
++tla2 verify rc=0
++tla2 repair rc=1
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.repair.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.repair.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.repair.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.repair.json
+new file mode 100644
+index 00000000..bab6ed08
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/.skill-manager","examined":78,"clean":true,"findings":[]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.verify.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.verify.err
+new file mode 100644
+index 00000000..fce290f3
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.verify.err
+@@ -0,0 +1,2 @@
++! Telemetry export unavailable; continuing without telemetry.
++  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260913-230210-f177.log
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.verify.out b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.verify.out
+new file mode 100644
+index 00000000..8eefb907
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/root.verify.out
+@@ -0,0 +1,2 @@
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++✓ every reference in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.repair.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.repair.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.repair.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.repair.json b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.repair.json
+new file mode 100644
+index 00000000..dbda40ca
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.repair.json
+@@ -0,0 +1 @@
++{"home":"/Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager","examined":78,"clean":false,"findings":[{"kind":"FROZEN_HOME_PATH_IN_SHIM","subject":"bin/cli/tla-spec-dev","detail":"names this home by absolute path, so it runs the home it was WRITTEN in rather than the one it is standing in — correct here, wrong the moment this home is copied","repair":"skill-manager home repair --fix (or `sync <unit> --force-scripts`, which rewrites it on the way past)","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/node/22.9.0","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true},{"kind":"UNSTAMPED_PM_TREE","subject":"pm/uv/0.4.18","detail":"carries no platform stamp, so a copy of this home on another platform cannot tell these bytes are foreign — it reports the tool installed and fails with a format error later, far from the copy that caused it","repair":"skill-manager home repair --fix stamps it for THIS platform, which is only true while the home is still on the machine that provisioned it","repairable":true}]}
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.verify.err b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.verify.err
+new file mode 100644
+index 00000000..fed33a2b
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.verify.err
+@@ -0,0 +1 @@
++! Telemetry export unavailable; continuing without telemetry.
+diff --git a/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.verify.out b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.verify.out
+new file mode 100644
+index 00000000..0e113900
+--- /dev/null
++++ b/results/epic-one-home-one-verdict/tickets/OHV-2/real-homes/before/tla2.verify.out
+@@ -0,0 +1,3 @@
++NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
++descent: /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager records that it was cloned from /Users/hayde/.skill-manager, and names no parent store — so no foreign path in it is sanctioned by that record
++✓ every reference in /Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above) (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories)
+diff --git a/specs/epics/one-home-one-verdict/ticket_plan.yaml b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+index 015cad4d..4066f0b8 100644
+--- a/specs/epics/one-home-one-verdict/ticket_plan.yaml
++++ b/specs/epics/one-home-one-verdict/ticket_plan.yaml
+@@ -443,7 +443,7 @@ tickets:
+   - id: OHV-2
+     github_issue: https://github.com/haydenrear/skill-manager/issues/339
+     title: "home verify fails on what home repair finds, and both see agent links and projection records"
+-    status: planned
++    status: closed
+     role: implementation
+     schedule_revision: 2
+     amended_at_revision_2: >
+diff --git a/src/main/java/dev/skillmanager/commands/HomeCommand.java b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+index f3d55aab..015290be 100644
+--- a/src/main/java/dev/skillmanager/commands/HomeCommand.java
++++ b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+@@ -211,7 +211,9 @@ public final class HomeCommand {
+      * never which of them is shown. Issue #133.
+      */
+     @Command(name = "verify",
+-            description = "Check that a home holds no absolute reference back to another home.")
++            description = "Check that a home holds no absolute reference back to another home, "
++                    + "and that `home repair` finds no damage in it (every finding is named and "
++                    + "fails the check).")
+     public static final class VerifyCmd implements Callable<Integer> {
+ 
+         /**
+@@ -423,6 +425,77 @@ public final class HomeCommand {
+                         home, home);
+                 noteCaveat(home);
+             }
++            // OHV-2 (#339). EVERYTHING `home repair` FINDS, and this command
++            // refuses on it.
++            //
++            // GOAL-one-verdict clause (1): measured at kickoff, `home verify`
++            // exited 0 on 50 of 61 homes where `home repair` reported damage —
++            // two commands, one home, one minute, opposite answers. The fix is
++            // composition, not a second detector: the same HomeRepair.detect
++            // the other command renders, each finding named by kind and
++            // subject in the spelling `home repair --json` uses, so a reader
++            // (or a graph) can match the two outputs line for line. Detection
++            // opens nothing for writing (DEF-067), so running it here keeps
++            // this command an observer.
++            //
++            // Before the isolation verdict, which stays last. A finding that
++            // duplicates a line above (FOREIGN_PATH_IN_SHIM, DANGLING_CLI_PIN)
++            // is printed again here on purpose: dropping it on a text match is
++            // how a finding would go unnamed the day the two spellings drift.
++            HomeRepair.Report detected = HomeRepair.detect(home);
++            // ONE EXEMPTION, and it is evidence this command holds and `home
++            // repair` cannot: a link the isolation walk above SANCTIONED as a
++            // parent-store shim. With `--against <source>` that walk inherits
++            // the source's sanction (HIS-7 / #223: a worktree copied from a
++            // sanctioned project home), while repair takes no source and judges
++            // the copy alone. Failing verify on that link would re-break every
++            // ticket-worktree clone the sanction exists for. Matched by kind
++            // and subject only, and printed rather than dropped.
++            java.util.Set<String> sanctioned = new java.util.HashSet<>();
++            for (String row : parentShims) {
++                int arrow = row.indexOf(" -> ");
++                sanctioned.add(arrow < 0 ? row : row.substring(0, arrow));
++            }
++            List<HomeRepair.Finding> kept = new java.util.ArrayList<>();
++            for (HomeRepair.Finding finding : detected.findings()) {
++                if (finding.kind() == HomeRepair.Kind.FOREIGN_PATH_IN_SHIM
++                        && sanctioned.contains(finding.subject())) {
++                    Log.info("`home repair` reports %s %s; not counted here, because the "
++                                    + "isolation check above sanctioned that link as a "
++                                    + "parent-store shim%s",
++                            finding.kind(), finding.subject(),
++                            against == null ? "" : " on the evidence of --against " + against);
++                    continue;
++                }
++                kept.add(finding);
++            }
++            HomeRepair.Report damage = new HomeRepair.Report(detected.home(), detected.examined(), kept);
++            if (!damage.clean()) {
++                Log.error("%d finding(s) `home repair` reports in %s, of %d entr%s examined — "
++                                + "each is damage, and this check fails on it",
++                        damage.findings().size(), home, damage.examined(),
++                        damage.examined() == 1 ? "y" : "ies");
++                for (HomeRepair.Finding finding : damage.findings()) {
++                    Log.error("  %s %s — %s", finding.kind(), finding.subject(), finding.detail());
++                    Log.error("      repair: %s", finding.remedy());
++                }
++                int repairable = damage.repairable().size();
++                if (repairable > 0) {
++                    // The one remedy spelling every caller of this command
++                    // parses, so HomeFixpointLaw can run it as printed.
++                    Log.error("  %d of these: complete it with: %s home repair --home %s --fix, "
++                                    + "then re-run this check",
++                            repairable, homeEnvPrefix(home),
++                            HomeDescriptor.shellQuote(home.toString()));
++                }
++                if (repairable < damage.findings().size()) {
++                    Log.error("  %d cannot be repaired by `home repair --fix` — the repair: lines "
++                            + "above say what to do instead", damage.findings().size() - repairable);
++                }
++            } else {
++                Log.info("`home repair` finds no damage in %s (%d entr%s examined)", home,
++                        damage.examined(), damage.examined() == 1 ? "y" : "ies");
++            }
+             // Last, because it is the verdict, and because a terminal keeps
+             // the tail. Never gated on --strict: a path that RESOLVES into
+             // another home is not a historical record under any reading.
+@@ -466,7 +539,11 @@ public final class HomeCommand {
+             // HIS-19: `|| !deadPins.isEmpty()`. This clause is the regression
+             // test for the 0.24.0 incident — every other term was already true
+             // of that home and every one of them was FALSE, so it exited 0.
+-            if (!result.clean() || !unresolved.isEmpty() || !deadPins.isEmpty()) return 1;
++            // OHV-2: `|| !damage.clean()` -- verify and repair cannot disagree.
++            if (!result.clean() || !unresolved.isEmpty() || !deadPins.isEmpty()
++                    || !damage.clean()) {
++                return 1;
++            }
+             // "no path reaches any other home" is FALSE of a child home, and a
+             // verdict that says it anyway is the same defect as the three
+             // earlier versions of this line: a guarantee wider than the run.
+diff --git a/src/main/java/dev/skillmanager/store/HomeRepair.java b/src/main/java/dev/skillmanager/store/HomeRepair.java
+index d804fab4..26b25fea 100644
+--- a/src/main/java/dev/skillmanager/store/HomeRepair.java
++++ b/src/main/java/dev/skillmanager/store/HomeRepair.java
+@@ -281,9 +281,73 @@ public final class HomeRepair {
+          * ({@code danglingPinIn}, HIS-12), so this consults it rather than
+          * growing a second one.
+          */
+-        DANGLING_CLI_PIN
++        DANGLING_CLI_PIN,
++
++        /**
++         * A link in an agent directory OUTSIDE the store that points INTO this
++         * home and resolves to nothing.
++         *
++         * <p>OHV-2 / DEF-OHV-002, and the #339 comment. After a unit is retired
++         * its store directory goes and its agent links stay: this repo's own
++         * checkout held {@code .claude/.codex/.gemini/skills/skill-manager}, all
++         * three dangling into the project home, and after the Sep 8
++         * {@code skill-dev-skill} retirement 75 such entries sat across 25
++         * checkouts. {@code home verify} walks the STORE and {@code home
++         * repair}'s agent-link arm asks only "does it resolve into ANOTHER
++         * home", so both called every one of those homes clean.
++         *
++         * <h3>Where it looks, and why there</h3>
++         *
++         * <p>The home's own structural agent directories ({@link #agentDirsOf})
++         * and every directory this home's projection records NAME — each
++         * binding's {@code targetRoot} and each projection's
++         * {@code destPath} parent. Both are facts the home already holds; a
++         * scan of the filesystem for "anything pointing here" would be a guess.
++         *
++         * <p><b>Not covered</b>, stated so nobody reads the silence as a clean
++         * machine: a directory no record names any longer (a checkout whose
++         * unit's record was already deleted — the orphan-record fix makes that
++         * set grow, which is why the link is judged first and separately); an
++         * agent directory redirected by {@code CLAUDE_CONFIG_DIR} and friends,
++         * which this class never reads by design; agent subdirectories other
++         * than the recorded ones and {@code skills}/{@code plugins}; and a
++         * dangling link into ANOTHER home, which is not this home's to report.
++         *
++         * <p>Repairable only by REMOVAL, only in the home's own agent
++         * directories, and only when no {@code installed/<unit>.json} still
++         * claims the unit: a link that resolves to nothing loses nothing by
++         * going. A link in a record-named directory is reported and left — the
++         * write confinement is the home's two axes, and a record must not be
++         * able to widen what a repair may touch. A link whose unit is still
++         * recorded is a missing store copy, which is a re-install, not a prune.
++         */
++        DANGLING_AGENT_LINK,
++
++        /**
++         * {@code installed/<unit>.projections.json} with no
++         * {@code installed/<unit>.json} beside it and no unit directory for that
++         * name in the store.
++         *
++         * <p>OHV-2 / DEF-OHV-002: measured in 6 homes at kickoff, surviving the
++         * unit they describe. Nothing pruned them and nothing reported them, and
++         * {@code artifacts list} still derives projection rows from them.
++         *
++         * <p>The unit-directory clause is a deliberate narrowing: a record with
++         * bytes on disk and no install record is membership's question (the
++         * membership law's GAINED finding), and deleting a projection ledger for
++         * a unit that is still here would be destructive. Repair deletes the
++         * record file and nothing else; the links it names are judged by
++         * {@link #DANGLING_AGENT_LINK}.
++         */
++        ORPHANED_PROJECTION_RECORD
+     }
+ 
++    /** The suffix every projection ledger in {@code installed/} carries. */
++    static final String PROJECTIONS_SUFFIX = ".projections.json";
++
++    /** Store directories a unit of any kind lives in, for the orphan narrowing. */
++    private static final List<String> UNIT_DIRS = List.of("skills", "plugins", "docs", "harnesses");
++
+     /**
+      * One damaged thing, named with the repair for it.
+      *
+@@ -400,9 +464,173 @@ public final class HomeRepair {
+         // rather than a clean home — the same reason `examined` exists at all.
+         examined += scanFrozenShims(root, findings);
+         examined += scanUnstampedPmTrees(root, findings);
++        // OHV-2 / DEF-OHV-002: what the home PROJECTED, read from the records
++        // that say so.
++        examined += danglingAgentLinks(root, findings);
++        examined += orphanedProjectionRecords(root, findings);
+         return new Report(root, examined, findings);
+     }
+ 
++    /**
++     * OHV-2 (b) — links outside the store, pointing into it, resolving to
++     * nothing. See {@link Kind#DANGLING_AGENT_LINK} for the scope and its limits.
++     */
++    private static int danglingAgentLinks(Path store, List<Finding> findings) {
++        Path homeRoot = AgentHomes.homeRootFor(store);
++        Path realStore = Fs.realOrNormalized(store);
++        Set<Path> own = new LinkedHashSet<>();
++        for (Path agentDir : agentDirsOf(store)) {
++            for (String kind : PROJECTED_DIRS) own.add(agentDir.resolve(kind).toAbsolutePath().normalize());
++        }
++        Set<Path> dirs = new LinkedHashSet<>(own);
++        dirs.addAll(recordedProjectionDirs(store));
++        Set<Path> seen = new java.util.HashSet<>();
++        int examined = 0;
++        for (Path dir : dirs) {
++            if (!Files.isDirectory(dir)) continue;
++            // One directory in two spellings (/var vs /private/var, or a record
++            // naming the structural dir) is listed once, under the first
++            // spelling — the structural one, since those were added first.
++            if (!seen.add(Fs.realOrNormalized(dir))) continue;
++            List<Path> entries;
++            try (var list = Files.list(dir)) {
++                entries = list.sorted().toList();
++            } catch (IOException cannotList) {
++                Log.detail("home repair: could not list %s (%s)", dir, cannotList.getMessage());
++                continue;
++            }
++            for (Path entry : entries) {
++                if (!Files.isSymbolicLink(entry)) continue;
++                examined++;
++                if (Files.exists(entry)) continue;
++                Path target;
++                try {
++                    Path raw = Files.readSymbolicLink(entry);
++                    target = (raw.isAbsolute() ? raw : entry.getParent().resolve(raw)).normalize();
++                } catch (IOException | RuntimeException unreadable) {
++                    continue;
++                }
++                if (!target.startsWith(store) && !Fs.realOrNormalized(target).startsWith(realStore)) {
++                    continue;
++                }
++                String name = entry.getFileName().toString();
++                boolean ownDir = own.contains(dir);
++                boolean recorded = Files.exists(store.resolve("installed").resolve(name + ".json"),
++                        LinkOption.NOFOLLOW_LINKS);
++                Path abs = entry.toAbsolutePath().normalize();
++                String subject = abs.startsWith(homeRoot)
++                        ? homeRoot.relativize(abs).toString().replace('\\', '/')
++                        : abs.toString();
++                findings.add(new Finding(Kind.DANGLING_AGENT_LINK, subject,
++                        "points at " + target + ", inside this home, and nothing is there"
++                                + (recorded
++                                        ? " — installed/" + name + ".json still records the unit, "
++                                                + "so its store copy is what is missing"
++                                        : " — this home no longer holds the unit it projected"),
++                        recorded
++                                ? "re-install it here (`skill-manager sync " + name + "`), or "
++                                        + "uninstall it so its links go with it"
++                                : ownDir
++                                        ? "skill-manager home repair --fix removes the link — it "
++                                                + "resolves to nothing, so removing it loses nothing"
++                                        : "remove it by hand (rm " + abs + "): it sits in a "
++                                                + "directory a projection record names, outside this "
++                                                + "home's own agent directories, and `home repair "
++                                                + "--fix` writes only to the home's own two axes",
++                        ownDir && !recorded, null));
++            }
++        }
++        return examined;
++    }
++
++    /**
++     * Every directory this home's projection records name: each binding's
++     * {@code targetRoot} and each projection's {@code destPath} parent. Orphaned
++     * records included — a retired unit's record is exactly where its
++     * surviving links are written down.
++     */
++    static Set<Path> recordedProjectionDirs(Path store) {
++        Set<Path> out = new LinkedHashSet<>();
++        try {
++            for (dev.skillmanager.bindings.Binding b
++                    : new dev.skillmanager.bindings.BindingStore(new SkillStore(store)).listAll()) {
++                if (b.targetRoot() != null) out.add(b.targetRoot().toAbsolutePath().normalize());
++                if (b.projections() == null) continue;
++                for (dev.skillmanager.bindings.Projection p : b.projections()) {
++                    Path dest = p.destPath();
++                    if (dest != null && dest.getParent() != null) {
++                        out.add(dest.getParent().toAbsolutePath().normalize());
++                    }
++                }
++            }
++        } catch (RuntimeException unreadable) {
++            Log.detail("home repair: could not read projection records in %s (%s)",
++                    store, unreadable.getMessage());
++        }
++        return out;
++    }
++
++    /**
++     * OHV-2 (c) — a projection ledger that outlived its unit. See
++     * {@link Kind#ORPHANED_PROJECTION_RECORD}.
++     */
++    private static int orphanedProjectionRecords(Path store, List<Finding> findings) {
++        Path installed = store.resolve("installed");
++        if (!Files.isDirectory(installed, LinkOption.NOFOLLOW_LINKS)) return 0;
++        List<Path> records;
++        try (var list = Files.list(installed)) {
++            records = list.filter(p -> p.getFileName().toString().endsWith(PROJECTIONS_SUFFIX))
++                    .sorted().toList();
++        } catch (IOException cannotList) {
++            return 0;
++        }
++        int examined = 0;
++        for (Path record : records) {
++            if (!Files.isRegularFile(record, LinkOption.NOFOLLOW_LINKS)) continue;
++            examined++;
++            String unit = unitOfRecord(record);
++            if (unit == null || unitStillHere(store, unit)) continue;
++            int projections = 0;
++            try {
++                for (dev.skillmanager.bindings.Binding b
++                        : new dev.skillmanager.bindings.BindingStore(new SkillStore(store))
++                                .read(unit).bindings()) {
++                    projections += b.projections() == null ? 0 : b.projections().size();
++                }
++            } catch (RuntimeException unreadable) {
++                // The count is description; the finding does not depend on it.
++            }
++            findings.add(new Finding(Kind.ORPHANED_PROJECTION_RECORD,
++                    "installed/" + record.getFileName(),
++                    "records " + projections + " projection(s) of " + unit + ", and this home "
++                            + "holds no installed/" + unit + ".json and no " + unit + " unit "
++                            + "directory — the unit is gone and its record outlived it",
++                    "skill-manager home repair --fix deletes this record and nothing else; a "
++                            + "link it names that is left dangling is reported separately as "
++                            + Kind.DANGLING_AGENT_LINK,
++                    true, null));
++        }
++        return examined;
++    }
++
++    private static String unitOfRecord(Path record) {
++        String file = record.getFileName().toString();
++        if (!file.endsWith(PROJECTIONS_SUFFIX)) return null;
++        String unit = file.substring(0, file.length() - PROJECTIONS_SUFFIX.length());
++        return unit.isEmpty() ? null : unit;
++    }
++
++    /** An install record, or a unit directory of any kind, for {@code unit}. */
++    private static boolean unitStillHere(Path store, String unit) {
++        if (Files.exists(store.resolve("installed").resolve(unit + ".json"), LinkOption.NOFOLLOW_LINKS)) {
++            return true;
++        }
++        for (String dir : UNIT_DIRS) {
++            if (Files.exists(store.resolve(dir).resolve(unit), LinkOption.NOFOLLOW_LINKS)) return true;
++        }
++        return false;
++    }
++
+     /**
+      * The home's own agent directories, structurally derived from its store.
+      *
+@@ -1086,6 +1314,24 @@ public final class HomeRepair {
+                 WriteConfinement.checkWrite(store.resolve(finding.subject()), WHAT);
+                 LauncherShims.write(new SkillStore(store), finding.target());
+             }
++            // OHV-2. Removal, re-checked at the moment of writing: the finding
++            // is a snapshot and the link may have come back to life since.
++            case DANGLING_AGENT_LINK -> {
++                Path link = AgentHomes.homeRootFor(store).resolve(finding.subject());
++                WriteConfinement.requireInside(link, homeOf(link), "home repair (remove)");
++                if (!Files.isSymbolicLink(link)) throw new IOException(link + " is no longer a link");
++                if (Files.exists(link)) throw new IOException(link + " resolves again; left in place");
++                Files.delete(link);
++            }
++            case ORPHANED_PROJECTION_RECORD -> {
++                Path record = store.resolve(finding.subject());
++                WriteConfinement.checkWrite(record, WHAT);
++                String unit = unitOfRecord(record);
++                if (unit == null || unitStillHere(store, unit)) {
++                    throw new IOException("the unit " + unit + " is back; its record is left in place");
++                }
++                Files.deleteIfExists(record);
++            }
+         }
+     }
+ 
+diff --git a/src/test/java/dev/skillmanager/commands/HomeUnresolvedGateTest.java b/src/test/java/dev/skillmanager/commands/HomeUnresolvedGateTest.java
+index 7646102b..be886df1 100644
+--- a/src/test/java/dev/skillmanager/commands/HomeUnresolvedGateTest.java
++++ b/src/test/java/dev/skillmanager/commands/HomeUnresolvedGateTest.java
+@@ -114,10 +114,28 @@ public final class HomeUnresolvedGateTest {
+         return root;
+     }
+ 
+-    /** A generated CLI shim, which is what {@code bin/cli/} holds. */
++    /**
++     * A generated CLI shim, which is what {@code bin/cli/} holds — in the
++     * SELF-DERIVING shape the writer produces since OUN-10, the way
++     * {@code ShimHomeContract.selfDerivingRewrite} spells it.
++     *
++     * <p>OHV-2 (#339): this helper used to write {@code exec "<home>/cache/…"}
++     * literally. That is a FROZEN_HOME_PATH_IN_SHIM, and since `home verify`
++     * fails on every `home repair` finding, the two "passes once provisioned"
++     * cases went red for a reason that was not theirs. The unresolved gate
++     * reads the {@code ${SKILL_MANAGER_SHIM_HOME}} token as this home
++     * ({@code HomeCloner.TOKEN_ROOT_SPELLINGS}), so it still fires on exactly
++     * the same missing path.
++     */
+     private static void shim(Path home, String name, String target) throws Exception {
+         Path dir = Files.createDirectories(home.resolve("bin/cli"));
+-        Files.writeString(dir.resolve(name), "#!/bin/sh\nexec \"" + target + "\" \"$@\"\n");
++        String prefix = home.toString();
++        String derived = target.startsWith(prefix + "/")
++                ? "${SKILL_MANAGER_SHIM_HOME}" + target.substring(prefix.length())
++                : target;
++        Files.writeString(dir.resolve(name), "#!/bin/sh\n"
++                + "SKILL_MANAGER_SHIM_HOME=\"$(cd \"$(dirname \"$0\")/../..\" && pwd)\"\n"
++                + "exec \"" + derived + "\" \"$@\"\n");
+     }
+ 
+     // --------------------------------------------------------------- plumbing
+diff --git a/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java b/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
+index 52f24005..c125be7d 100644
+--- a/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
++++ b/src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java
+@@ -405,6 +405,68 @@ public final class DamagedHomeIsRepairableTest {
+                             "and --fix created no link at a path nothing stands at");
+                 })
+ 
++                .test("OHV-2: dangling links into this home are found where the home RECORDS them, and --fix removes only what it owns", () -> {
++                    Fixture fx = Fixture.build("ohv2-scope");
++                    // (1) In the home's own agent dir, unit unrecorded: repairable.
++                    fx.damageDanglingAgentLink();
++                    // (2) In a directory only a projection record names — a
++                    // project checkout the root home projected into. Reported,
++                    // never written: a record must not widen the repair's scope.
++                    Path checkout = fx.root.getParent().resolve("checkout").resolve(".claude").resolve("skills");
++                    Files.createDirectories(checkout);
++                    Path external = checkout.resolve("gone");
++                    Files.createSymbolicLink(external, fx.store.resolve("skills").resolve("gone"));
++                    fx.writeProjectionRecord("gone", checkout);
++                    // (3) A record whose unit directory is still here: NOT an
++                    // orphan (membership's question), and --fix must not touch it.
++                    fx.writeProjectionRecord(UNIT, fx.claudeSkills());
++                    // (4) A link into ANOTHER home that dangles is not this home's.
++                    Path elsewhere = Files.createDirectories(fx.root.resolve(".gemini").resolve("skills"));
++                    Files.createSymbolicLink(elsewhere.resolve("theirs"),
++                            fx.other.resolve("skills").resolve("nope"));
++
++                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
++                    List<HomeRepair.Finding> dangling = report.findings().stream()
++                            .filter(f -> f.kind() == HomeRepair.Kind.DANGLING_AGENT_LINK).toList();
++                    assertTrue(dangling.stream().anyMatch(f -> f.subject().equals(".codex/skills/gone")
++                                    && f.repairable()),
++                            "the own-dir link is reported and repairable; got " + dangling);
++                    String externalAbs = external.toAbsolutePath().normalize().toString();
++                    assertTrue(dangling.stream().anyMatch(f -> f.subject().equals(externalAbs)
++                                    && !f.repairable()),
++                            "the record-named link is reported by absolute path and NOT repairable; got "
++                                    + dangling);
++                    assertTrue(dangling.stream().noneMatch(f -> f.subject().contains("theirs")),
++                            "a dangling link into another home is not this home's finding; got " + dangling);
++                    List<HomeRepair.Finding> orphans = report.findings().stream()
++                            .filter(f -> f.kind() == HomeRepair.Kind.ORPHANED_PROJECTION_RECORD).toList();
++                    assertEquals(1, orphans.size(), "exactly the gone record; got " + orphans);
++                    assertEquals("installed/gone.projections.json", orphans.get(0).subject(),
++                            "the orphan is named home-relative");
++
++                    // The verify composition: exits 1 and names each finding.
++                    Result verify = verifyCmd(fx.store);
++                    assertTrue(verify.rc != 0, "verify fails when repair reports; rc=" + verify.rc);
++                    assertContains(verify.all(), "DANGLING_AGENT_LINK .codex/skills/gone",
++                            "verify names the own-dir link");
++                    assertContains(verify.all(), "DANGLING_AGENT_LINK " + externalAbs,
++                            "verify names the record-named link");
++                    assertContains(verify.all(), "ORPHANED_PROJECTION_RECORD installed/gone.projections.json",
++                            "verify names the orphaned record");
++
++                    HomeRepair.repair(fx.store, fx.pin);
++                    assertFalse(Files.exists(fx.root.resolve(".codex/skills/gone"), LinkOption.NOFOLLOW_LINKS),
++                            "the own-dir dangling link was removed");
++                    assertTrue(Files.isSymbolicLink(external),
++                            "the record-named link was left in place");
++                    assertFalse(Files.exists(fx.store.resolve("installed/gone.projections.json")),
++                            "the orphaned record was deleted");
++                    assertTrue(Files.isRegularFile(fx.store.resolve("installed/" + UNIT + ".projections.json")),
++                            "the record of a unit still on disk was left alone");
++                    assertTrue(Files.isSymbolicLink(elsewhere.resolve("theirs")),
++                            "and another home's dangling link was not touched");
++                })
++
+                 .test("every damage shape is reported, one line each, naming the repair", () -> {
+                     // GENERIC OVER Kind.values() on purpose: a new kind that
+                     // nothing plants fails here rather than shipping undetected,
+@@ -1450,6 +1512,51 @@ public final class DamagedHomeIsRepairableTest {
+             damageShadowedMirror();
+             damageFrozenShim();
+             damageUnstampedPmTree();
++            damageDanglingAgentLink();
++            damageOrphanedProjectionRecord();
++        }
++
++        /**
++         * OHV-2 (b), DEF-OHV-002. A retirement's leftover: this home's own
++         * {@code .codex/skills/gone} points into this store at a unit that is
++         * not there, and nothing records the unit.
++         */
++        void damageDanglingAgentLink() throws IOException {
++            Path skills = Files.createDirectories(root.resolve(".codex").resolve("skills"));
++            Files.createSymbolicLink(skills.resolve("gone"), store.resolve("skills").resolve("gone"));
++        }
++
++        /**
++         * OHV-2 (c), DEF-OHV-002. {@code installed/gone.projections.json} with no
++         * {@code installed/gone.json} and no unit directory.
++         */
++        void damageOrphanedProjectionRecord() throws IOException {
++            writeProjectionRecord("gone", root.resolve(".codex").resolve("skills"));
++        }
++
++        /** A projection ledger for {@code unit}, one SYMLINK projection into {@code targetRoot}. */
++        void writeProjectionRecord(String unit, Path targetRoot) throws IOException {
++            Files.createDirectories(store.resolve("installed"));
++            Files.writeString(store.resolve("installed").resolve(unit + ".projections.json"), """
++                    {
++                      "unitName" : "%1$s",
++                      "bindings" : [ {
++                        "bindingId" : "default:codex:%1$s",
++                        "unitName" : "%1$s",
++                        "unitKind" : "SKILL",
++                        "targetRoot" : "%2$s",
++                        "conflictPolicy" : "ERROR",
++                        "createdAt" : "2026-09-07T13:23:56.717976Z",
++                        "source" : "DEFAULT_AGENT",
++                        "projections" : [ {
++                          "bindingId" : "default:codex:%1$s",
++                          "sourcePath" : "$SKILL_MANAGER_HOME/skills/%1$s",
++                          "destPath" : "%3$s",
++                          "kind" : "SYMLINK"
++                        } ]
++                      } ]
++                    }
++                    """.formatted(unit, targetRoot, targetRoot.resolve(unit)), StandardCharsets.UTF_8);
+         }
+ 
+         /**
+@@ -1607,7 +1714,26 @@ public final class DamagedHomeIsRepairableTest {
+ 
+     // ------------------------------------------------------------ plumbing
+ 
+-    private record Result(int rc, String out, String err) {}
++    private record Result(int rc, String out, String err) {
++        String all() { return out + "\n" + err; }
++    }
++
++    /** {@code skill-manager home verify --home <store>}, in process, output captured. */
++    private static Result verifyCmd(Path store) {
++        PrintStream realOut = System.out;
++        PrintStream realErr = System.err;
++        ByteArrayOutputStream out = new ByteArrayOutputStream();
++        ByteArrayOutputStream err = new ByteArrayOutputStream();
++        try {
++            System.setOut(new PrintStream(out, true));
++            System.setErr(new PrintStream(err, true));
++            int rc = new CommandLine(new HomeCommand()).execute("verify", "--home", store.toString());
++            return new Result(rc, out.toString(), err.toString());
++        } finally {
++            System.setOut(realOut);
++            System.setErr(realErr);
++        }
++    }
+ 
+     private static Result cli(Path pin, String... args) {
+         PrintStream realOut = System.out;
+diff --git a/test_graph/build.gradle.kts b/test_graph/build.gradle.kts
+index b6ebf6b5..d3ddcc4e 100644
+--- a/test_graph/build.gradle.kts
++++ b/test_graph/build.gradle.kts
+@@ -1740,18 +1740,18 @@ validationGraph {
+      * `home repair --json` (exit + finding kind) and `home verify` say about it.
+      * Every fix in the epic adds or tightens the node that pins its shape.
+      *
+-     * PINNED (green on today's tree): clean home (0/0); fully frozen own-home
+-     * shim, misanchored agent link, unstamped pm tree (repair 1, verify 0 —
+-     * GOAL-one-verdict clause 1 failing, asserted as TODAY's behaviour); foreign
+-     * path in a shim (repair 1, verify 1).
++     * PINNED: clean home (0/0); fully frozen own-home shim, foreign path in a
++     * shim, misanchored agent link, unstamped pm tree (repair 1, verify 1 and
++     * names the kind + subject — three of those were verify 0 until OHV-2).
++     *
++     * OHV-2 (#339) adds:
++     *   - verify names every repair finding, five kinds in one home ....... (a)
++     *   - dangling agent-dir link into the home (DEF-OHV-002) ............. (b)
++     *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ........ (c)
+      *
+      * PENDING, with the ticket that adds each node:
+      *   - half-rewritten shim, header re-anchored, exec line literal
+      *     (DEF-OHV-001) ............................................ OHV-4 (#341)
+-     *   - dangling agent-dir link outside the home (DEF-OHV-002) ..... OHV-2 (#339)
+-     *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ... OHV-2 (#339)
+-     *   - verify fails whenever repair reports: flip the three
+-     *     TODAY_home_verify_exits_0 assertions .......................... OHV-2 (#339)
+      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
+      *   - #352's four marketplace-identity shapes (incl. DEF-OHV-005)  OHV-6 (#352)
+      *
+@@ -1770,18 +1770,27 @@ validationGraph {
+         node("sources/home-verdicts/ForeignPathInShimIsReported.java")
+         node("sources/home-verdicts/MisanchoredAgentLinkIsReported.java")
+         node("sources/home-verdicts/UnstampedPmTreeIsReported.java")
++        node("sources/home-verdicts/VerifyNamesEveryRepairFinding.java")
++        node("sources/home-verdicts/DanglingAgentLinkIsReported.java")
++        node("sources/home-verdicts/OrphanedProjectionRecordIsReported.java")
+         node("sources/common/HomeFixpointLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+                 "home.verdicts.foreign.path.in.shim",
+                 "home.verdicts.misanchored.agent.link",
+-                "home.verdicts.unstamped.pm.tree")
++                "home.verdicts.unstamped.pm.tree",
++                "home.verdicts.verify.names.every.repair.finding",
++                "home.verdicts.dangling.agent.link",
++                "home.verdicts.orphaned.projection.record")
+         node("sources/common/HomeMembershipLaw.java").dependsOn(
+                 "home.verdicts.clean.home",
+                 "home.verdicts.frozen.shim",
+                 "home.verdicts.foreign.path.in.shim",
+                 "home.verdicts.misanchored.agent.link",
+-                "home.verdicts.unstamped.pm.tree")
++                "home.verdicts.unstamped.pm.tree",
++                "home.verdicts.verify.names.every.repair.finding",
++                "home.verdicts.dangling.agent.link",
++                "home.verdicts.orphaned.projection.record")
+     }
+ 
+     /**
+diff --git a/test_graph/sources/common/HomeFixpointLaw.java b/test_graph/sources/common/HomeFixpointLaw.java
+index 67f62416..5b7ee3c2 100644
+--- a/test_graph/sources/common/HomeFixpointLaw.java
++++ b/test_graph/sources/common/HomeFixpointLaw.java
+@@ -117,6 +117,9 @@ public final class HomeFixpointLaw {
+                 if (declared != null) {
+                     String output = first.out + "\n" + first.err;
+                     Set<String> reported = IntentionalDamage.unresolvedEntries(output);
++                    // OHV-2: verify also names `home repair` findings, and a
++                    // planted shape may be reported only there.
++                    reported.addAll(IntentionalDamage.repairSubjects(output));
+                     Set<String> unseen = new LinkedHashSet<>(declared.entries());
+                     unseen.removeAll(reported);
+                     if (!unseen.isEmpty()) {
+diff --git a/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java b/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java
+index 169c780b..e68e0ff2 100644
+--- a/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java
++++ b/test_graph/sources/home-clone/HomeCloneFixtureBuilt.java
+@@ -2,12 +2,16 @@
+ //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+ //SOURCES HomeCloneSupport.java
+ //SOURCES ../lib/IntentionalDamage.java
++//SOURCES ../../../src/main/java/dev/skillmanager/pm/PmPlatform.java
++//SOURCES ../../../src/main/java/dev/skillmanager/util/Platform.java
+ 
+ import com.hayden.testgraphsdk.sdk.Node;
+ import com.hayden.testgraphsdk.sdk.NodeResult;
+ import com.hayden.testgraphsdk.sdk.NodeSpec;
+ import com.hayden.testgraphsdk.sdk.ProcessRecord;
+ 
++import dev.skillmanager.pm.PmPlatform;
++
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.util.ArrayList;
+@@ -157,6 +161,14 @@ public class HomeCloneFixtureBuilt {
+             // 5. pm/ entry — must be carried
+             HomeCloneSupport.write(fixture.resolve("pm/uv/0.0.0/bin/uv-marker"),
+                     "bundled package manager\n");
++            // STAMPED, the way PmPlatform stamps every directory it provisions.
++            // The claim under test is "pm/ is carried", not "an unstamped tree";
++            // unstamped is UNSTAMPED_PM_TREE, which `home verify` refuses on
++            // since OHV-2 (#339). Declaring it as planted damage instead was
++            // tried and was platform-dependent: CI's fixture home still reported
++            // it when the law ran, a local macOS run's did not, while both
++            // copies did. A fixture must not plant damage it does not mean.
++            PmPlatform.stamp(fixture.resolve("pm/uv/0.0.0"));
+ 
+             // 6. venvs/ entry — must NOT be carried
+             HomeCloneSupport.writeExecutable(fixture.resolve("venvs/hc-venv/bin/hc"), """
+@@ -296,13 +308,19 @@ public class HomeCloneFixtureBuilt {
+                     .metric("contentSelfReferences", (int) contentRefs)
+                     .metric("symlinkSelfReferences", (int) symlinkRefs)
+                     .publish("fixtureHome", fixtureStr)
+-                    // Step 6 planted this on purpose. Declared, by entry, so
++                    // Steps 4-6 planted these on purpose. Declared, by entry, so
+                     // home.fixpoint.law judges every OTHER finding in this home
+-                    // as usual and fails if verify stops seeing this one (#344).
++                    // as usual and fails if verify stops seeing one (#344).
++                    // Since OHV-2 (#339) verify also names `home repair`
++                    // findings: step 4's shim names this home absolutely
++                    // (FROZEN_HOME_PATH_IN_SHIM) — the legacy shape the clone's
++                    // re-anchoring is asserted against, so it stays planted.
+                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(fixture,
+-                            List.of("venvs/hc-venv/bin/hc"),
++                            List.of("venvs/hc-venv/bin/hc",
++                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
+                             "home.clone.fixture.built step 6 plants a console script whose "
+-                                    + "interpreter venvs/hc-venv/bin/python is never created"))
++                                    + "interpreter venvs/hc-venv/bin/python is never created; "
++                                    + "step 4's shim is frozen on purpose"))
+                     .publish("projectDir", projectDir.toString())
+                     .publish("cloneStore", HomeCloneSupport.storeOf(projectDir).toString())
+                     .publish("sourceDigest", sourceDigest)
+diff --git a/test_graph/sources/home-verdicts/DanglingAgentLinkIsReported.java b/test_graph/sources/home-verdicts/DanglingAgentLinkIsReported.java
+new file mode 100644
+index 00000000..f190acc4
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/DanglingAgentLinkIsReported.java
+@@ -0,0 +1,42 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.nio.file.Files;
++import java.nio.file.Path;
++
++/**
++ * A dangling agent link INTO the home (DEF-OHV-002, OHV-2 (b)): the subject's
++ * {@code .codex/skills/hv-gone} points at {@code <store>/skills/hv-gone}, which
++ * is not there — the shape a retirement leaves. Measured on this repo's own
++ * checkout ({@code .claude/.codex/.gemini/skills/skill-manager}) and in 75
++ * entries across 25 checkouts after the {@code skill-dev-skill} retirement.
++ *
++ * <p>Before OHV-2 neither reader named it: {@code home verify} walks the store,
++ * and {@code home repair}'s agent-link arm only asks whether a link reaches
++ * ANOTHER home. Now {@code home repair} names {@code DANGLING_AGENT_LINK},
++ * {@code home verify} exits 1 naming it, and {@code --fix} removes the link
++ * (it resolves to nothing, and no {@code installed/hv-gone.json} claims it).
++ */
++public class DanglingAgentLinkIsReported {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.dangling.agent.link")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "agent-link", "ohv-2")
++            .timeout("600s");
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
++                new HomeVerdictsSupport.Shape("dangling-agent-link", "DANGLING_AGENT_LINK", 1, true),
++                (Path subject, Path neighbour) -> {
++                    Path link = subject.getParent().resolve(".codex/skills").resolve("hv-gone");
++                    Files.createSymbolicLink(link, subject.resolve("skills").resolve("hv-gone"));
++                    return ".codex/skills/hv-gone";
++                }));
++    }
++}
+diff --git a/test_graph/sources/home-verdicts/FrozenShimIsReported.java b/test_graph/sources/home-verdicts/FrozenShimIsReported.java
+index cd52746b..2e12c100 100644
+--- a/test_graph/sources/home-verdicts/FrozenShimIsReported.java
++++ b/test_graph/sources/home-verdicts/FrozenShimIsReported.java
+@@ -14,8 +14,9 @@ import java.nio.file.Path;
+  * {@code SKILL_MANAGER_SHIM_HOME} anywhere in it. DEF-OUN-018; measured on the
+  * fleet as the {@code tla-spec-dev} and deploy-helm skill-script shims.
+  *
+- * <p>Today: {@code home repair} names {@code FROZEN_HOME_PATH_IN_SHIM} and
+- * {@code home verify} exits 0 without naming it. <b>OHV-2 flips verify to 1.</b>
++ * <p>{@code home repair} names {@code FROZEN_HOME_PATH_IN_SHIM}. Pinned at OHV-0
++ * with {@code home verify} exiting 0 without naming it; <b>flipped by OHV-2
++ * (#339)</b>: verify now exits 1 and names the kind and subject.
+  *
+  * <p>Not the HALF-rewritten shape (DEF-OHV-001): that one repair exempts today,
+  * so its node is OHV-4's.
+@@ -30,7 +31,7 @@ public class FrozenShimIsReported {
+ 
+     public static void main(String[] args) {
+         Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
+-                new HomeVerdictsSupport.Shape("frozen-shim", "FROZEN_HOME_PATH_IN_SHIM", 0, false),
++                new HomeVerdictsSupport.Shape("frozen-shim", "FROZEN_HOME_PATH_IN_SHIM", 1, true),
+                 (Path subject, Path neighbour) -> {
+                     Path tool = HomeVerdictsSupport.venvTool(subject, "frozen", "frozen-tool");
+                     HomeVerdictsSupport.literalShim(subject, "frozen-tool", tool);
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+index 0766b58a..d868b8cf 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsFixture.java
+@@ -23,29 +23,31 @@ import java.nio.file.Path;
+  *   <tr><th>shape</th><th>node</th><th>repair</th><th>verify</th></tr>
+  *   <tr><td>clean home, laid out from nothing</td><td>home.verdicts.clean.home</td><td>0</td><td>0</td></tr>
+  *   <tr><td>fully frozen own-home shim (DEF-OUN-018)</td><td>home.verdicts.frozen.shim</td>
+- *       <td>1 FROZEN_HOME_PATH_IN_SHIM</td><td><b>0</b></td></tr>
++ *       <td>1 FROZEN_HOME_PATH_IN_SHIM</td><td>1, names it (0 until OHV-2)</td></tr>
+  *   <tr><td>foreign path in a shim (DEF-104)</td><td>home.verdicts.foreign.path.in.shim</td>
+  *       <td>1 FOREIGN_PATH_IN_SHIM</td><td>1, names it</td></tr>
+  *   <tr><td>misanchored agent link (#159)</td><td>home.verdicts.misanchored.agent.link</td>
+- *       <td>1 MISANCHORED_AGENT_LINK</td><td><b>0</b></td></tr>
++ *       <td>1 MISANCHORED_AGENT_LINK</td><td>1, names it (0 until OHV-2)</td></tr>
+  *   <tr><td>unstamped pm tree (DEF-OUN-018)</td><td>home.verdicts.unstamped.pm.tree</td>
+- *       <td>1 UNSTAMPED_PM_TREE</td><td><b>0</b></td></tr>
++ *       <td>1 UNSTAMPED_PM_TREE</td><td>1, names it (0 until OHV-2)</td></tr>
++ *   <tr><td>verify names every repair finding, five kinds in one home (OHV-2 a)</td>
++ *       <td>home.verdicts.verify.names.every.repair.finding</td><td>1</td><td>1, names all</td></tr>
++ *   <tr><td>dangling agent-dir link into the home (DEF-OHV-002, OHV-2 b)</td>
++ *       <td>home.verdicts.dangling.agent.link</td><td>1 DANGLING_AGENT_LINK</td><td>1, names it</td></tr>
++ *   <tr><td>orphaned installed/&lt;unit&gt;.projections.json (DEF-OHV-002, OHV-2 c)</td>
++ *       <td>home.verdicts.orphaned.projection.record</td><td>1 ORPHANED_PROJECTION_RECORD</td>
++ *       <td>1, names it</td></tr>
+  * </table>
+  *
+- * <p>Every bold 0 is GOAL-one-verdict clause (1) failing, and is asserted as
+- * today's behaviour on purpose: a graph that is red on arrival is a graph nobody
+- * reads. <b>OHV-2 (#339) makes verify fail whenever repair reports, and must
+- * flip those three {@code verifyExitToday} values to 1 in the same change.</b>
++ * <p>The three "0 until OHV-2" cells were GOAL-one-verdict clause (1) failing,
++ * asserted as the behaviour of their day so the graph was green on arrival.
++ * OHV-2 (#339) made verify fail whenever repair reports and flipped them.
+  *
+  * <h2>PENDING — each named shape gets its node from the ticket that fixes it</h2>
+  *
+  * <ul>
+  *   <li>half-rewritten shim: header re-anchored, {@code exec} line literal
+  *       (DEF-OHV-001) — <b>OHV-4 (#341)</b></li>
+- *   <li>dangling agent-dir link outside the home (DEF-OHV-002) — <b>OHV-2 (#339)</b></li>
+- *   <li>orphaned {@code installed/*.projections.json} (DEF-OHV-002) — <b>OHV-2 (#339)</b></li>
+- *   <li>verify fails whenever repair reports (flip the TODAY assertions above) —
+- *       <b>OHV-2 (#339)</b></li>
+  *   <li>{@code /var} vs {@code /private/var} reference (#343) — <b>OHV-5 (#346)</b></li>
+  *   <li>#352's four marketplace-identity shapes (1 Claude registers this path under
+  *       another name; 2 generated name a substring of another; 3 generated name equal
+diff --git a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+index 824b43e4..3580b112 100644
+--- a/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
++++ b/test_graph/sources/home-verdicts/HomeVerdictsSupport.java
+@@ -113,6 +113,39 @@ final class HomeVerdictsSupport {
+         shim.toFile().setExecutable(true);
+     }
+ 
++    /**
++     * {@code installed/<unit>.projections.json} in the shape a real sync writes
++     * (one default Codex binding, one SYMLINK projection), with no
++     * {@code installed/<unit>.json} and no unit directory. Returns the
++     * home-relative subject.
++     */
++    static String orphanRecord(Path store, String unit) throws IOException {
++        Path dest = store.getParent().resolve(".codex/skills").resolve(unit);
++        String json = """
++                {
++                  "unitName" : "%1$s",
++                  "bindings" : [ {
++                    "bindingId" : "default:codex:%1$s",
++                    "unitName" : "%1$s",
++                    "unitKind" : "SKILL",
++                    "targetRoot" : "%2$s",
++                    "conflictPolicy" : "ERROR",
++                    "createdAt" : "2026-09-07T13:23:56.717976Z",
++                    "source" : "DEFAULT_AGENT",
++                    "projections" : [ {
++                      "bindingId" : "default:codex:%1$s",
++                      "sourcePath" : "$SKILL_MANAGER_HOME/skills/%1$s",
++                      "destPath" : "%3$s",
++                      "kind" : "SYMLINK"
++                    } ]
++                  } ]
++                }
++                """.formatted(unit, dest.getParent(), dest);
++        Files.writeString(store.resolve("installed").resolve(unit + ".projections.json"), json,
++                StandardCharsets.UTF_8);
++        return "installed/" + unit + ".projections.json";
++    }
++
+     // ------------------------------------------------------------- the CLI
+ 
+     /** One CLI invocation, both streams kept apart. */
+@@ -246,9 +279,10 @@ final class HomeVerdictsSupport {
+      *
+      * @param kind              the {@code HomeRepair.Kind} {@code home repair} must name
+      * @param verifyExitToday   {@code home verify}'s exit on the planted home TODAY.
+-     *                          OHV-2 (#339) makes verify fail whenever repair reports;
+-     *                          it must change every 0 here to 1.
+-     * @param verifyNamesToday  whether {@code home verify}'s output names the kind today
++     *                          Since OHV-2 (#339) verify fails whenever repair reports,
++     *                          so every repairable shape here is 1.
++     * @param verifyNamesToday  whether {@code home verify}'s output names the kind and
++     *                          subject today — true for every shape since OHV-2
+      */
+     record Shape(String dir, String kind, int verifyExitToday, boolean verifyNamesToday) {}
+ 
+diff --git a/test_graph/sources/home-verdicts/MisanchoredAgentLinkIsReported.java b/test_graph/sources/home-verdicts/MisanchoredAgentLinkIsReported.java
+index 014ed270..29d7d801 100644
+--- a/test_graph/sources/home-verdicts/MisanchoredAgentLinkIsReported.java
++++ b/test_graph/sources/home-verdicts/MisanchoredAgentLinkIsReported.java
+@@ -14,12 +14,12 @@ import java.nio.file.Path;
+  * RESOLVES, into the neighbour home's store. Issue #159's measurement (24 links
+  * under the operator's {@code ~/.claude/skills} pointing into a worktree home).
+  *
+- * <p>Today: {@code home repair} names {@code MISANCHORED_AGENT_LINK};
+- * {@code home verify} exits 0 ("every reference resolves" — it does).
+- * <b>OHV-2 flips verify to 1.</b>
++ * <p>{@code home repair} names {@code MISANCHORED_AGENT_LINK}. Pinned at OHV-0
++ * with {@code home verify} exiting 0 ("every reference resolves" — it does);
++ * <b>flipped by OHV-2 (#339)</b>: verify now exits 1 and names it.
+  *
+- * <p>Not the DANGLING link outside the home (DEF-OHV-002): neither reader
+- * reports that today, so its node is OHV-2's.
++ * <p>Not the DANGLING link outside the home (DEF-OHV-002): that is
++ * {@code DanglingAgentLinkIsReported}.
+  */
+ public class MisanchoredAgentLinkIsReported {
+ 
+@@ -31,7 +31,7 @@ public class MisanchoredAgentLinkIsReported {
+ 
+     public static void main(String[] args) {
+         Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
+-                new HomeVerdictsSupport.Shape("misanchored-agent-link", "MISANCHORED_AGENT_LINK", 0, false),
++                new HomeVerdictsSupport.Shape("misanchored-agent-link", "MISANCHORED_AGENT_LINK", 1, true),
+                 (Path subject, Path neighbour) -> {
+                     Path link = subject.getParent().resolve(".claude/skills").resolve(HomeVerdictsSupport.UNIT);
+                     Files.deleteIfExists(link);
+diff --git a/test_graph/sources/home-verdicts/OrphanedProjectionRecordIsReported.java b/test_graph/sources/home-verdicts/OrphanedProjectionRecordIsReported.java
+new file mode 100644
+index 00000000..bcfa38ba
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/OrphanedProjectionRecordIsReported.java
+@@ -0,0 +1,36 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.nio.file.Path;
++
++/**
++ * An orphaned projection record (DEF-OHV-002, OHV-2 (c)):
++ * {@code installed/hv-gone.projections.json} with no
++ * {@code installed/hv-gone.json} and no {@code hv-gone} unit directory. Measured
++ * in 6 homes at kickoff, including this repo's project home
++ * ({@code installed/skill-manager.projections.json}).
++ *
++ * <p>Before OHV-2 nothing reported or pruned it. Now {@code home repair} names
++ * {@code ORPHANED_PROJECTION_RECORD}, {@code home verify} exits 1 naming it, and
++ * {@code --fix} deletes the record and nothing else.
++ */
++public class OrphanedProjectionRecordIsReported {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.orphaned.projection.record")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "projection-record", "ohv-2")
++            .timeout("600s");
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
++                new HomeVerdictsSupport.Shape("orphaned-projection-record",
++                        "ORPHANED_PROJECTION_RECORD", 1, true),
++                (Path subject, Path neighbour) -> HomeVerdictsSupport.orphanRecord(subject, "hv-gone")));
++    }
++}
+diff --git a/test_graph/sources/home-verdicts/UnstampedPmTreeIsReported.java b/test_graph/sources/home-verdicts/UnstampedPmTreeIsReported.java
+index c1ed49dd..9329d419 100644
+--- a/test_graph/sources/home-verdicts/UnstampedPmTreeIsReported.java
++++ b/test_graph/sources/home-verdicts/UnstampedPmTreeIsReported.java
+@@ -13,8 +13,9 @@ import java.nio.file.Path;
+  * An unstamped pm tree: {@code pm/node/22.9.0} with no {@code .platform} stamp,
+  * the population provisioned before {@code PmPlatform} stamped. DEF-OUN-018.
+  *
+- * <p>Today: {@code home repair} names {@code UNSTAMPED_PM_TREE};
+- * {@code home verify} exits 0. <b>OHV-2 flips verify to 1.</b>
++ * <p>{@code home repair} names {@code UNSTAMPED_PM_TREE}. Pinned at OHV-0 with
++ * {@code home verify} exiting 0; <b>flipped by OHV-2 (#339)</b>: verify now
++ * exits 1 and names it.
+  */
+ public class UnstampedPmTreeIsReported {
+ 
+@@ -26,7 +27,7 @@ public class UnstampedPmTreeIsReported {
+ 
+     public static void main(String[] args) {
+         Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
+-                new HomeVerdictsSupport.Shape("unstamped-pm-tree", "UNSTAMPED_PM_TREE", 0, false),
++                new HomeVerdictsSupport.Shape("unstamped-pm-tree", "UNSTAMPED_PM_TREE", 1, true),
+                 (Path subject, Path neighbour) -> {
+                     Path bin = Files.createDirectories(subject.resolve("pm/node/22.9.0/bin"));
+                     Files.writeString(bin.resolve("node"), "#!/bin/sh\nexit 0\n");
+diff --git a/test_graph/sources/home-verdicts/VerifyNamesEveryRepairFinding.java b/test_graph/sources/home-verdicts/VerifyNamesEveryRepairFinding.java
+new file mode 100644
+index 00000000..3be3a5a5
+--- /dev/null
++++ b/test_graph/sources/home-verdicts/VerifyNamesEveryRepairFinding.java
+@@ -0,0 +1,164 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
++//SOURCES ../lib/SmEnv.java
++//SOURCES HomeVerdictsSupport.java
++
++import com.hayden.testgraphsdk.sdk.Node;
++import com.hayden.testgraphsdk.sdk.NodeResult;
++import com.hayden.testgraphsdk.sdk.NodeSpec;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.LinkOption;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Set;
++
++/**
++ * OHV-2 (a), #339: <b>{@code home verify} fails on whatever {@code home repair}
++ * finds, and names every finding.</b>
++ *
++ * <p>GOAL-one-verdict clause (1) as a set equality rather than one shape at a
++ * time: five kinds planted in ONE home (frozen shim, unstamped pm tree,
++ * misanchored agent link, dangling agent link, orphaned projection record).
++ * Every {@code (kind, subject)} pair that {@code home repair --json} reports —
++ * parsed, not planted-list-derived, so a finding nobody planted is held to the
++ * same rule — must appear in {@code home verify}'s output as
++ * {@code "<KIND> <subject>"}, and verify must exit 1.
++ *
++ * <p>Then the remedy verify PRINTS is the one that clears it: the
++ * {@code complete it with:} span is the same line {@code HomeFixpointLaw} runs.
++ * This node checks that span names {@code home repair --home <subject> --fix},
++ * runs that repair, and requires both readers to come back clean.
++ *
++ * <p>CONTROL: verify on the unplanted home exits 0. Without it, "verify exits 1"
++ * would be satisfied by a verify that fails every home.
++ */
++public class VerifyNamesEveryRepairFinding {
++
++    static final NodeSpec SPEC = NodeSpec.of("home.verdicts.verify.names.every.repair.finding")
++            .kind(NodeSpec.Kind.ASSERTION)
++            .dependsOn(HomeVerdictsSupport.FIXTURE)
++            .tags("home", "verdicts", "verify", "ohv-2")
++            .timeout("600s");
++
++    static final List<String> PLANTED_KINDS = List.of(
++            "FROZEN_HOME_PATH_IN_SHIM", "UNSTAMPED_PM_TREE", "MISANCHORED_AGENT_LINK",
++            "DANGLING_AGENT_LINK", "ORPHANED_PROJECTION_RECORD");
++
++    public static void main(String[] args) {
++        Node.run(args, SPEC, ctx -> {
++            String scratchStr = ctx.get(HomeVerdictsSupport.FIXTURE, "scratchRoot").orElse(null);
++            if (scratchStr == null) {
++                return NodeResult.fail(SPEC.id(), "missing " + HomeVerdictsSupport.FIXTURE + " context");
++            }
++            Path work = Path.of(scratchStr).resolve("verify-names-every-finding");
++            NodeResult result;
++            try {
++                HomeVerdictsSupport.deleteRecursively(work);
++                Path subject = HomeVerdictsSupport.layOutHome(work.resolve("subject"));
++                Path neighbour = HomeVerdictsSupport.layOutHome(work.resolve("neighbour"));
++                HomeVerdictsSupport.holdUnit(subject);
++                HomeVerdictsSupport.holdUnit(neighbour);
++
++                var control = HomeVerdictsSupport.verify(ctx, "control-verify", subject);
++
++                // The five plants, each the same bytes its single-shape node plants.
++                Path tool = HomeVerdictsSupport.venvTool(subject, "frozen", "frozen-tool");
++                HomeVerdictsSupport.literalShim(subject, "frozen-tool", tool);
++                Path pmBin = Files.createDirectories(subject.resolve("pm/node/22.9.0/bin"));
++                Files.writeString(pmBin.resolve("node"), "#!/bin/sh\nexit 0\n");
++                Path mis = subject.getParent().resolve(".claude/skills").resolve(HomeVerdictsSupport.UNIT);
++                Files.deleteIfExists(mis);
++                Files.createSymbolicLink(mis, neighbour.resolve("skills").resolve(HomeVerdictsSupport.UNIT));
++                Files.createSymbolicLink(subject.getParent().resolve(".gemini/skills/hv-gone"),
++                        subject.resolve("skills").resolve("hv-gone"));
++                HomeVerdictsSupport.orphanRecord(subject, "hv-orphan");
++
++                var repair = HomeVerdictsSupport.repairJson(ctx, "repair", subject);
++                var verify = HomeVerdictsSupport.verify(ctx, "verify", subject);
++                HomeVerdictsSupport.RepairReport report = HomeVerdictsSupport.report(repair);
++
++                Set<String> reportedKinds = new LinkedHashSet<>();
++                List<String> unnamed = new ArrayList<>();
++                for (HomeVerdictsSupport.Finding f : report.findings()) {
++                    reportedKinds.add(f.kind());
++                    if (!verify.both().contains(f.kind() + " " + f.subject())) {
++                        unnamed.add(f.kind() + " " + f.subject());
++                    }
++                }
++                List<String> missingKinds = new ArrayList<>(PLANTED_KINDS);
++                missingKinds.removeAll(reportedKinds);
++
++                String remedy = remedyFrom(verify.both());
++                boolean remedyIsRepairFix = remedy != null
++                        && remedy.contains(" home repair --home ")
++                        && remedy.contains(subject.toString())
++                        && remedy.endsWith("--fix");
++
++                var fix = HomeVerdictsSupport.repairJson(ctx, "fix", subject, "--fix");
++                var repairAfter = HomeVerdictsSupport.repairJson(ctx, "repair-after-fix", subject);
++                var verifyAfter = HomeVerdictsSupport.verify(ctx, "verify-after-fix", subject);
++
++                boolean controlClean = control.exit() == 0;
++                boolean repairRed = repair.exit() == 1 && report.object();
++                boolean everyPlantedKindReported = missingKinds.isEmpty();
++                boolean verifyRed = verify.exit() == 1;
++                boolean verifyNamesEvery = !report.findings().isEmpty() && unnamed.isEmpty();
++                boolean bothCleanAfter = repairAfter.exit() == 0
++                        && HomeVerdictsSupport.report(repairAfter).parsedClean()
++                        && verifyAfter.exit() == 0;
++
++                List<String> failures = new ArrayList<>();
++                if (!controlClean) failures.add("control: verify on the unplanted home exited " + control.exit());
++                if (!repairRed) failures.add("`home repair --json` exited " + repair.exit());
++                if (!everyPlantedKindReported) failures.add("repair did not report planted kinds " + missingKinds);
++                if (!verifyRed) failures.add("`home verify` exited " + verify.exit() + " on a home repair calls damaged");
++                if (!verifyNamesEvery) failures.add("`home verify` does not name " + unnamed);
++                if (!remedyIsRepairFix) failures.add("verify's printed remedy is not `home repair --home <subject> --fix`: " + remedy);
++                if (!bothCleanAfter) failures.add("after --fix: repair " + repairAfter.exit() + ", verify " + verifyAfter.exit());
++
++                result = (failures.isEmpty() ? NodeResult.pass(SPEC.id())
++                        : NodeResult.fail(SPEC.id(), String.join(" | ", failures)))
++                        .process(control.proc()).process(repair.proc()).process(verify.proc())
++                        .process(fix.proc()).process(repairAfter.proc()).process(verifyAfter.proc())
++                        .assertion("control_home_verify_exits_0_on_the_unplanted_home", controlClean)
++                        .assertion("home_repair_json_exits_1", repairRed)
++                        .assertion("home_repair_reports_every_planted_kind", everyPlantedKindReported)
++                        .assertion("home_verify_exits_1_when_home_repair_reports", verifyRed)
++                        .assertion("home_verify_names_every_repair_finding_by_kind_and_subject", verifyNamesEvery)
++                        .assertion("home_verify_prints_home_repair_fix_as_its_remedy", remedyIsRepairFix)
++                        .assertion("after_the_fix_both_readers_are_clean", bothCleanAfter)
++                        .metric("repair.findings", report.findings().size())
++                        .metric("verify.unnamed", unnamed.size())
++                        .log("remedy as printed: " + remedy + "\nrepair --json stdout: " + repair.stdout().strip());
++            } catch (IOException | RuntimeException e) {
++                result = NodeResult.error(SPEC.id(), e);
++            } finally {
++                try {
++                    HomeVerdictsSupport.deleteRecursively(work);
++                } catch (IOException ignored) {
++                    // reported below
++                }
++            }
++            return result.assertion("the_damaged_homes_are_deleted",
++                    !Files.exists(work, LinkOption.NOFOLLOW_LINKS));
++        });
++    }
++
++    /** The span HomeFixpointLaw.remedyFrom takes — the first one printed. */
++    static String remedyFrom(String output) {
++        for (String raw : output.split("\n")) {
++            int at = raw.indexOf("complete it with: ");
++            if (at < 0) continue;
++            String rest = raw.substring(at + "complete it with: ".length()).trim();
++            int tail = rest.indexOf(", then re-run this check");
++            if (tail >= 0) rest = rest.substring(0, tail);
++            rest = rest.trim();
++            if (!rest.isEmpty()) return rest;
++        }
++        return null;
++    }
++}
+diff --git a/test_graph/sources/lib/IntentionalDamage.java b/test_graph/sources/lib/IntentionalDamage.java
+index 0b88f7ba..ee889e3e 100644
+--- a/test_graph/sources/lib/IntentionalDamage.java
++++ b/test_graph/sources/lib/IntentionalDamage.java
+@@ -130,19 +130,81 @@ final class IntentionalDamage {
+         return out;
+     }
+ 
++    /**
++     * The subjects of the {@code home repair} findings {@code home verify}
++     * prints since OHV-2 (#339): the {@code ✗   <KIND> <subject> — <detail>}
++     * rows under {@code "<n> finding(s) `home repair` reports in <home>"}.
++     *
++     * <p>A declaration names an entry, and a planted shape can surface in
++     * either section: home-clone's {@code bin/cli/hc-venv-tool} is a dangling
++     * reference in a clone and a frozen shim everywhere. The law asks "does
++     * verify still report every declared entry", so both sections count.
++     */
++    static Set<String> repairSubjects(String output) {
++        Set<String> out = new LinkedHashSet<>();
++        boolean inSection = false;
++        for (String raw : output.split("\n")) {
++            if (!raw.startsWith("✗")) { inSection = false; continue; }
++            String trimmed = raw.substring(1).strip();
++            if (isRepairHeader(trimmed)) { inSection = true; continue; }
++            if (!inSection) continue;
++            String subject = repairFindingSubject(trimmed);
++            if (subject != null) { out.add(subject); continue; }
++            if (trimmed.startsWith("repair: ") || isRepairTrailer(trimmed)) continue;
++            inSection = false;
++        }
++        return out;
++    }
++
+     /**
+      * Every {@code ✗} line of verify's output that the declared entries do not
+-     * account for: anything outside the unresolved section, and any finding in
+-     * it whose entry was not declared. Empty means the refusal is exactly the
+-     * planted damage and nothing else.
++     * account for: anything outside the two finding sections, any unresolved
++     * finding whose entry was not declared, and any {@code home repair} finding
++     * whose subject was not declared, together with that section's header and
++     * remedy lines. Empty means the refusal is exactly the planted damage and
++     * nothing else.
+      */
+     static List<String> unexplained(String output, Set<String> declared) {
+         List<String> out = new ArrayList<>();
+         boolean inSection = false;
++        // The repair section (OHV-2). Its header and remedy lines are only
++        // unexplained when some finding under them is; buffered until the
++        // section ends, because the findings come between them.
++        List<String> repairFrame = null;
++        boolean repairUndeclared = false;
++        boolean lastFindingDeclared = false;
+         for (String raw : output.split("\n")) {
+-            if (!raw.startsWith("✗")) { inSection = false; continue; }
++            if (!raw.startsWith("✗")) {
++                inSection = false;
++                if (repairFrame != null && repairUndeclared) out.addAll(repairFrame);
++                repairFrame = null;
++                continue;
++            }
+             String line = raw.substring(1);
+             String trimmed = line.strip();
++            if (repairFrame != null) {
++                String subject = repairFindingSubject(trimmed);
++                if (subject != null) {
++                    lastFindingDeclared = declared.contains(subject);
++                    if (!lastFindingDeclared) { repairUndeclared = true; out.add(trimmed); }
++                    continue;
++                }
++                if (trimmed.startsWith("repair: ")) {
++                    if (!lastFindingDeclared) out.add(trimmed);
++                    continue;
++                }
++                if (isRepairTrailer(trimmed)) { repairFrame.add(trimmed); continue; }
++                if (repairUndeclared) out.addAll(repairFrame);
++                repairFrame = null;
++                // falls through: this line belongs to whatever comes next
++            }
++            if (isRepairHeader(trimmed)) {
++                inSection = false;
++                repairFrame = new ArrayList<>(List.of(trimmed));
++                repairUndeclared = false;
++                lastFindingDeclared = false;
++                continue;
++            }
+             if (trimmed.contains("reference(s) in ") && trimmed.contains(" do not resolve")) {
+                 inSection = true;
+                 continue;
+@@ -154,9 +216,30 @@ final class IntentionalDamage {
+             }
+             out.add(trimmed);
+         }
++        if (repairFrame != null && repairUndeclared) out.addAll(repairFrame);
+         return out;
+     }
+ 
++    /** {@code "<n> finding(s) `home repair` reports in <home>, …"} — verify's repair section header. */
++    static boolean isRepairHeader(String trimmed) {
++        return trimmed.contains("finding(s) `home repair` reports in ");
++    }
++
++    /** The section's closing lines: its remedy, and its count of what --fix cannot repair. */
++    static boolean isRepairTrailer(String trimmed) {
++        return trimmed.matches("\\d+ of these: complete it with: .*")
++                || trimmed.matches("\\d+ cannot be repaired by .*");
++    }
++
++    /** {@code <subject>} of a {@code "<KIND> <subject> — <detail>"} row, or null. */
++    static String repairFindingSubject(String trimmed) {
++        int space = trimmed.indexOf(' ');
++        if (space <= 0 || !trimmed.substring(0, space).matches("[A-Z][A-Z_]+")) return null;
++        int dash = trimmed.indexOf(" — ", space + 1);
++        if (dash <= space + 1) return null;
++        return trimmed.substring(space + 1, dash);
++    }
++
+     static Path resolved(Path p) {
+         Path abs = p.toAbsolutePath().normalize();
+         try {

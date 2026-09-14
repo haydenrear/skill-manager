@@ -1,0 +1,3 @@
+! Telemetry export unavailable; continuing without telemetry.
+✓ /Users/hayde/IdeaProjects/wt-ohv-4/.skill-manager holds nothing that removing it would destroy
+rc=0

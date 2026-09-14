@@ -66,16 +66,9 @@ public final class NpmBackend implements InstallerBackend {
         try (Stream<Path> entries = Files.list(srcBin)) {
             for (Path entry : (Iterable<Path>) entries::iterator) {
                 Path link = store.cliBinDir().resolve(entry.getFileName().toString());
-                if (Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)
-                        || Files.isSymbolicLink(link)) {
-                    Files.delete(link);
-                }
-                try {
-                    Files.createSymbolicLink(link, entry);
-                } catch (UnsupportedOperationException | IOException e) {
-                    Files.copy(entry, link);
-                    Fs.makeExecutable(link);
-                }
+                // OHV-9 (#367): delete-then-link, so an entry linking into another
+                // home is replaced, never written through. No detach needed here.
+                ForeignBinLinks.placeLink(link, entry);
             }
         }
         Log.ok("cli: installed npm %s → %s (linked into %s)", pkg, prefix, store.cliBinDir());

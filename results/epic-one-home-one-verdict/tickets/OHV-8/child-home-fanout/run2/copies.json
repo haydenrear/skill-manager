@@ -1,0 +1,88 @@
+{
+  "child-a": {
+    "home": "/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/child-fanout-run2/proj/child-a/.skill-manager",
+    "units": {
+      "u-one": {
+        "exists": true,
+        "is_symlink": false,
+        "real_dir": true,
+        "realpath_inside_child": true,
+        "skill_md_inode": 1488799921
+      },
+      "u-two": {
+        "exists": true,
+        "is_symlink": false,
+        "real_dir": true,
+        "realpath_inside_child": true,
+        "skill_md_inode": 1488799927
+      },
+      "u-child-only": {
+        "exists": true,
+        "is_symlink": false,
+        "real_dir": true,
+        "realpath_inside_child": true,
+        "skill_md_inode": 1488800250
+      }
+    },
+    "child_homes_dir": [
+      ".materialization",
+      "audit.log",
+      "bin",
+      "cache",
+      "docs",
+      "harnesses",
+      "installed",
+      "npm",
+      "plugins",
+      "policy.toml",
+      "projects",
+      "skills",
+      "units.lock.toml",
+      "venvs"
+    ]
+  },
+  "child-b": {
+    "home": "/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/child-fanout-run2/proj/child-b/.skill-manager",
+    "units": {
+      "u-one": {
+        "exists": true,
+        "is_symlink": false,
+        "real_dir": true,
+        "realpath_inside_child": true,
+        "skill_md_inode": 1488799984
+      },
+      "u-three": {
+        "exists": true,
+        "is_symlink": false,
+        "real_dir": true,
+        "realpath_inside_child": true,
+        "skill_md_inode": 1488799990
+      }
+    },
+    "child_homes_dir": [
+      ".materialization",
+      "bin",
+      "cache",
+      "docs",
+      "harnesses",
+      "installed",
+      "npm",
+      "plugins",
+      "projects",
+      "skills",
+      "venvs"
+    ]
+  },
+  "u-one inodes distinct across children": true,
+  "parent holds u-child-only": false,
+  "parent child-homes records": [
+    "project_ohv8-child-a",
+    "project_ohv8-child-b"
+  ],
+  "parent skills": [
+    "u-one",
+    "u-shared",
+    "u-three",
+    "u-two"
+  ]
+}

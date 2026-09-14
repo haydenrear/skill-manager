@@ -1,0 +1,18 @@
+✓ resolve: 0 unit(s)
+gateway: runpod init from env: [RUNPOD_API_KEY]
+gateway: runpod spec changed — re-registering
+✓ gateway: registered runpod (NPM, scope=global-sticky)
+✓ units.lock.toml: wrote 29 unit(s) → /Users/hayde/IdeaProjects/meta-harness/.skill-manager/units.lock.toml
+→ cloning https://github.com/haydenrear/skill-publisher-skill
+---MCP-INSTALL-RESULTS-BEGIN---
+[ {
+  "serverId" : "runpod",
+  "status" : "deployed",
+  "scope" : "global-sticky",
+  "message" : "registered and deployed"
+} ]
+---MCP-INSTALL-RESULTS-END---
+✓ synced 1 unit(s) — 1 merged
+✓ agents: 10 unit(s) linked into claude, codex, gemini
+✓ tools: 4 already present
+✓ cli: 25 already present

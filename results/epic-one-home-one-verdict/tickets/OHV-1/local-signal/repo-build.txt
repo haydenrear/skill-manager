@@ -1,0 +1,10 @@
+skill-manager 0.27.2+gde4231386a9b
+build:  de4231386a9b (refs/heads/feature/OHV-1)
+cli:    /Users/hayde/IdeaProjects/wt-ohv-1/skill-manager
+--- home repair (text)
+build: skill-manager 0.27.2+gde4231386a9b @ de4231386a9b (refs/heads/feature/OHV-1)
+✓ nothing in /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager is damaged in a way this command knows about (41 entries examined)
+exit=0
+--- home repair --json
+{"home":"/Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager","build":"skill-manager 0.27.2+gde4231386a9b @ de4231386a9b (refs/heads/feature/OHV-1)","examined":41,"clean":true,"findings":[]}
+exit=0

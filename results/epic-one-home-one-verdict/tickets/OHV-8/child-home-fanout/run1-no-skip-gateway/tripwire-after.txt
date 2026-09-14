@@ -1,0 +1,7 @@
+ef3f5fd7bf72b151636427a663404f03308dd82d1bd0703c867d16ea5cf1f79b  /Users/hayde/.claude/settings.json
+3887ee3249fd662cc7580fe3f87680fa04c78467ea652e9cfcc2fdb13ba3f730  /Users/hayde/.claude/plugins/known_marketplaces.json
+0e7b49e3c55923054c210b6deca5fe7afbae76656dc65db5256dc69f6fc806da  /Users/hayde/.codex/config.toml
+e65697d3696a71d739624d2c3075c4de0c4ebbc324b749445ffa9e6531a7e357  /Users/hayde/.skill-manager/units.lock.toml
+4764beca8dd84d197aad660b0967819f0dcea81b9c7f6d6d752c020a1d5abfff  /Users/hayde/.skill-manager/artifacts.lock.toml
+2a4f35dd0c375b0f0529d99acad5f39588bbe01b8b9f3144d049f60cdd93a101  /Users/hayde/.skill-manager/cli-lock.toml
+bced6ce57fe66dea7a16f841b652596b5aeb4724c2666042767639b2e2029868  -

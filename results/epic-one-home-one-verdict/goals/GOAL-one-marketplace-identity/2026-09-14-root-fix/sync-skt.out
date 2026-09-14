@@ -1,0 +1,26 @@
+✓ resolve: 0 unit(s)
+→ cli: skill-script slm — running /Users/hayde/.skill-manager/skills/slm-agent/skill-scripts/install-slm.sh
+→ cli: skill-script slm — writing output to /Users/hayde/.skill-manager/logs/skill-scripts/20260914-141838-263-slm-agent-slm.log
+gateway: runpod init from env: [RUNPOD_API_KEY]
+gateway: runpod spec changed — re-registering
+✓ gateway: registered runpod (NPM, scope=global-sticky)
+✓ units.lock.toml: wrote 29 unit(s) → /Users/hayde/.skill-manager/units.lock.toml
+→ cloning https://github.com/haydenrear/skill-publisher-skill
+✓ side effects: 11 binding(s) bound, 29 projection(s) materialized
+child homes: 3 unit(s) left as-is (local changes) across 3 home(s) — `--verbose` or the run log names each one
+→ cloning https://github.com/haydenrear/skill-publisher-skill
+✓ project-sync commit-diff-context-parent — 11 resolved unit(s), 0 binding(s) refreshed
+---MCP-INSTALL-RESULTS-BEGIN---
+[ {
+  "serverId" : "runpod",
+  "status" : "deployed",
+  "scope" : "global-sticky",
+  "message" : "registered and deployed"
+} ]
+---MCP-INSTALL-RESULTS-END---
+✓ synced 1 unit(s) — 1 merged
+✓ agents: 18 unit(s) linked into claude, codex, gemini
+✓ tools: 4 already present
+✓ cli: 26 already present, 1 failed
+child homes: 7 unit(s) left as-is (local changes) across 7 home(s) — `--verbose` or the run log names each one
+child homes: 7 unit(s) left as-is (local changes) across 7 home(s) — `--verbose` or the run log names each one

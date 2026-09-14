@@ -1,0 +1,69 @@
+Usage: skill-manager [-hvV] [--agent-context] [COMMAND]
+Build tool for agent skills: CLI deps, skill references, MCP servers.
+      --agent-context   Emit a bounded agent-facing context block to stderr
+                          after the command.
+  -h, --help            Show this help message and exit.
+  -v, --verbose         Verbose output
+  -V, --version         Print version information and exit.
+Commands:
+  list, ls        List installed units.
+  artifacts       Name and inspect the artifacts this home derived.
+  build           Rebuild derived artifacts — one, some, or everything stale.
+  lock            Inspect units.lock.toml.
+  install         Install a unit and its declared dependencies.
+  uninstall, un   Uninstall a unit and clean up its side effects.
+  remove, rm      Remove an installed unit (skill or plugin) from the store.
+                    Lower-level than `uninstall` — by default does not unlink
+                    agent symlinks or unregister MCP servers. Use `uninstall`
+                    for the full cleanup.
+  sync            Refresh installed units and re-run install side effects.
+  upgrade         Upgrade installed git-tracked units — skills and plugins — to
+                    the latest registry version (and optionally skill-manager
+                    itself). Plugins re-register with Claude/Codex via their
+                    CLIs after the bytes update so hooks reload.
+  show            Show details for an installed unit.
+  deps            Show the transitive dependency tree of an installed unit
+                    (skill or plugin). For plugins, the tree includes both
+                    plugin-level deps and every contained skill's deps (unioned
+                    at parse time). With --who-imports, walk the edges
+                    BACKWARDS instead: what in this home depends on the named
+                    unit, across both `skill-imports` (addressed by name) and
+                    manifest references (addressed by coordinate), transitively
+                    and without looping.
+  gateway         Manage the virtual MCP gateway process: up, down, attach,
+                    detach, status.
+  registry        Inspect or configure the skill registry.
+  publish         Register a unit with the registry.
+  search          Search the registry for skills and plugins (the KIND column
+                    shows which). Sponsored slots are rendered separately and
+                    can be hidden with --no-ads.
+  policy          Inspect or initialize the skill-manager policy.
+  pm              Manage bundled, version-pinned package managers (uv,
+                    node/npm).
+  cli             Inspect the CLI lock (which tools are installed, which skills
+                    requested them).
+  env             Materialize and run project-local uv environments.
+  exec            Run a command bound to a Skill Manager home: export the
+                    home's env, put its bin/ first on PATH, and refuse a launch
+                    that would still read the global agent config. Use `--`
+                    before a command with its own options.
+  create          Scaffold a new skill or plugin directory.
+  ads             Manage sponsored-placement campaigns on the registry.
+  login           Authenticate against the registry and cache the bearer token.
+  create-account  Register a new user on the registry.
+  reset-password  Request a password-reset email for an account.
+  onboard         Install the bundled skills (one shared install program) and
+                    start the gateway.
+  bind            Bind an installed unit or doc source to a target root.
+  unbind          Reverse every projection from a binding and remove it from
+                    the ledger.
+  rebind          Move a binding to a new target root (unbind + bind in one
+                    journal).
+  bindings        Inspect the projection ledger (list | show <bindingId>).
+  harness         Manage harness templates and their instances.
+  home            Inspect, copy, describe, and set the policy of Skill Manager
+                    homes.
+  project         Register and inspect skill project manifests.
+  sandbox         Inspect this process's sandbox.
+  unit            Work with an installed unit as source: publish home edits
+                    back to its repo.

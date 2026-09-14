@@ -1,0 +1,111 @@
+{
+  "nodeId" : "lazy.clone.declares.without.building",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:50:55.469909Z",
+  "endedAt" : "2026-09-14T15:51:10.859587Z",
+  "assertions" : [ {
+    "name" : "both_fixtures_installed",
+    "status" : "passed"
+  }, {
+    "name" : "the_source_home_holds_built_cache_trees",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_succeeds",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_declares_every_cli_shim_the_source_had",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_declares_every_unit_store_the_source_had",
+    "status" : "passed"
+  }, {
+    "name" : "every_declared_shim_reports_itself_unbuilt",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_carries_no_built_cache_tree",
+    "status" : "passed"
+  }, {
+    "name" : "home_verify_accepts_a_declared_but_unbuilt_home_as_normal",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_records_the_descent_that_makes_it_a_clone",
+    "status" : "passed"
+  }, {
+    "name" : "production_agrees_no_path_in_the_clone_names_the_source",
+    "status" : "passed"
+  }, {
+    "name" : "production_still_refuses_a_planted_path_into_the_source",
+    "status" : "passed"
+  }, {
+    "name" : "the_planted_decoy_is_removed_from_the_clone",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-alpha",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/units/ad-alpha-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:55.483258Z",
+    "endedAt" : "2026-09-14T15:50:58.496939Z",
+    "exitCode" : 0,
+    "pid" : 36421,
+    "log" : "node-logs/lazy.clone.declares.without.building.install-alpha.log",
+    "error" : null
+  }, {
+    "label" : "install-beta",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/units/ad-beta-unit", "--yes" ],
+    "startedAt" : "2026-09-14T15:50:58.497228Z",
+    "endedAt" : "2026-09-14T15:51:01.069486Z",
+    "exitCode" : 0,
+    "pid" : 36544,
+    "log" : "node-logs/lazy.clone.declares.without.building.install-beta.log",
+    "error" : null
+  }, {
+    "label" : "home-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "clone", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:01.070481Z",
+    "endedAt" : "2026-09-14T15:51:03.040338Z",
+    "exitCode" : 0,
+    "pid" : 36637,
+    "log" : "node-logs/lazy.clone.declares.without.building.home-clone.log",
+    "error" : null
+  }, {
+    "label" : "artifacts-list-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "artifacts", "list", "--json" ],
+    "startedAt" : "2026-09-14T15:51:03.040596Z",
+    "endedAt" : "2026-09-14T15:51:04.897163Z",
+    "exitCode" : 0,
+    "pid" : 36701,
+    "log" : "node-logs/lazy.clone.declares.without.building.artifacts-list-clone.log",
+    "error" : null
+  }, {
+    "label" : "home-verify-clone",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:04.900016Z",
+    "endedAt" : "2026-09-14T15:51:08.227401Z",
+    "exitCode" : 0,
+    "pid" : 36759,
+    "log" : "node-logs/lazy.clone.declares.without.building.home-verify-clone.log",
+    "error" : null
+  }, {
+    "label" : "home-verify-isolation",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager", "--against", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager" ],
+    "startedAt" : "2026-09-14T15:51:08.227654Z",
+    "endedAt" : "2026-09-14T15:51:09.529154Z",
+    "exitCode" : 0,
+    "pid" : 36899,
+    "log" : "node-logs/lazy.clone.declares.without.building.home-verify-isolation.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "declaredArtifacts" : 14,
+    "cloneCacheTrees" : 0,
+    "verifyBareExitCode" : 0,
+    "verifyAgainstExitCode" : 0,
+    "durationMs" : 15390
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-source/.skill-manager",
+    "cloneHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13722319171578825940/artifact-dag/lazy-clone/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:50:54.790631Z","executorEndedAt":"2026-09-14T15:51:10.979988Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/lazy.clone.declares.without.building.stdout.log","inputContextFile":"context/lazy.clone.declares.without.building.input.json","traceId":"10b416e19a3d7000820f0ef959ea29b5"}

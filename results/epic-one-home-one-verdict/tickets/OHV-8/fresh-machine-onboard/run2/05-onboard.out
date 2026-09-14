@@ -1,0 +1,13 @@
+→ onboarding from /Users/hayde/IdeaProjects/wt-ohv-8 (local install dir)
+✓ resolve: 2 unit(s)
+✓ installed skt
+✓ installed skill-manager
+→ cli: skill-script skt — running /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/plugins/skt/skill-scripts/install-skt.sh
+→ cli: skill-script skt — writing output to /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/logs/skill-scripts/20260914-154931-883-skt-skt.log
+✓ cli: installed skt -> /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/bin/cli/skt
+✓ cli: skt [skill-script] installed for skt
+✓ units.lock.toml: wrote 2 unit(s) → /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/9972f0f0-9e78-40bb-8155-34bfc5133ca5/scratchpad/ohv8/fresh-machine-run2/home/.skill-manager/units.lock.toml
+✓ agents: 1 unit(s) linked into claude, codex, gemini
+✓ cli: 1 installed
+
+onboard summary: installed=2 skipped=0 gateway=up
