@@ -1,0 +1,23 @@
+! Telemetry export unavailable; continuing without telemetry.
+! cli: slm failed: skill-script slm exited 1 (log: /Users/hayde/.skill-manager/logs/skill-scripts/20260914-141838-263-slm-agent-slm.log)
+last 15 line(s) of skill-script output:
+$ /Users/hayde/.skill-manager/skills/slm-agent/skill-scripts/install-slm.sh
+[slm-agent] FAILED to resolve an slm CLI. Candidates tried:
+[slm-agent]   - vendored-workspace: no enclosing integration checkout found
+[slm-agent]   - path: no slm on PATH
+slm-agent: could not resolve the `slm` CLI.
+
+`slm` ships with stream-lite-manager, a PRIVATE uv workspace member of the
+meta-orchestrator integration repository. It cannot be installed from PyPI.
+Do one of:
+
+  * run this install from inside a checkout that vendors
+    constituents/stream-lite-manager (uv sync there first, so .venv/bin/slm
+    exists), or
+  * point SLM_AGENT_WORKSPACE at such a checkout, or
+  * point SLM_CLI at an existing slm executable.
+! commit-diff-context-parent: [skills.skill-manager] is served by the skt plugin now — nothing is installed for it. Delete that block from skill-project.toml; references to skill-manager need no edits.
+! meta-harness: [skills.skill-manager] is served by the skt plugin now — nothing is installed for it. Delete that block from skill-project.toml; references to skill-manager need no edits.
+! project-sync meta-harness skipped (not refreshed) — meta-harness: 3 declared vendored path(s) do not survive a move, a clone or a worktree. This project was PARTIALLY REFRESHED before the refusal — no units needed installing, so the store and its units-lock are untouched, child home scaffolded, registration snapshot rewritten; bindings NOT materialized and the project lock NOT written (the unit sync itself is unaffected) — repair it with skill-manager project resolve --project-dir /Users/hayde/IdeaProjects/meta-harness --repair-vendored
+! 1 unit(s) changed in /Users/hayde/.skill-manager (16 file(s)) — a launch will refuse until this is read: /Users/hayde/.skill-manager/bin/cli/skill-manager home drift --ack --home /Users/hayde/.skill-manager
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260914-101836-706b.log

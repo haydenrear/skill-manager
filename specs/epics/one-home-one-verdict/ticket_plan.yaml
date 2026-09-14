@@ -45,8 +45,26 @@
 #     which cleared the hung Docker backend behind DEF-OHV-140.
 # Only OHV-8's assignment carries the changed goal text and is undelivered;
 # it moves to schedule_revision 3. Delivered tickets keep revision 2.
+#
+# AMENDMENT, schedule_revision 4, 2026-09-14, owner decision ("Fix all 13 and also
+# find the cause and fix the cause"). Before OHV-6's root marketplace fix, the root
+# home's computeq/helm-deploy/monitoring shims were found rewritten (08:41 EDT, 25
+# minutes after OHV-4's root fix) to exec into a commit-diff-context-parent test
+# report. Cause: that repo's cdcWorktreeOverlayIsolation graph built a project home
+# whose bin/cli entries were symlinks to the operator's real root shims, and
+# deploy-helm's skill-script install wrote its launcher THROUGH those links
+# (SkillScriptBackend neither detaches nor notices a write through a foreign link).
+# DEF-OHV-011. So:
+#   - new ticket OHV-9 (#367), wave 5: a skill-script install never writes through a
+#     link into another home. Appended at the end of `tickets` (dispatched ordinals
+#     unchanged). No depends_on: everything it builds on is merged, and giving it
+#     edges into delivered tickets would rewrite their sealed reverse edges.
+#   - new goal GOAL-a-home-writes-only-itself, decided by OHV-8.
+#   - OHV-8 moves to wave 6, depends on OHV-9, promotes after it, and owns the new
+#     goal; it moves to schedule_revision 4.
+#   - the test-isolation half is commit-diff-context-parent#262 (adjacent).
 version: 1
-schedule_revision: 3
+schedule_revision: 4
 name: one-home-one-verdict
 slug: one-home-one-verdict
 branch: epic/one-home-one-verdict
@@ -81,6 +99,7 @@ adjacent:
   - {issue: 269, why: "HBR-1 child-home shim boundary -- the open home-boundary-resolution epic"}
   - {finding: DEF-OHV-006, why: "skt ticket sweep cannot prove squash-merged work -- skt plugin"}
   - {finding: DEF-OHV-009, why: "git-epic-workflow validator cannot retire one contributor to a shared goal"}
+  - {issue: "commit-diff-context-parent#262", why: "a CDC test graph parents its project home on the operator's real ~/.skill-manager -- the test-isolation half of DEF-OHV-011; OHV-9 fixes the skill-manager half"}
   - {what: "one home-state reader; one writer behind the five records; TLA spec baseline onboarding", why: "dropped at schedule_revision 2 -- unmeasured recurrence claims"}
 
 deferment_policy:
@@ -232,6 +251,31 @@ epic_goals:
       measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
       evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/raw/
     target: "5 of 5, distinguishable across two builds"
+
+  - id: GOAL-a-home-writes-only-itself
+    kind: quality
+    evidence_root: results/epic-one-home-one-verdict/goals/GOAL-a-home-writes-only-itself/
+    evaluation_ticket: OHV-8
+    statement: >
+      An install in one home never writes another home's files, even when this home's
+      bin/cli holds links into the other one. (Added at schedule_revision 4 after the
+      operator's root shims were overwritten through such links, DEF-OHV-011.)
+    metric: >
+      (1) in a scratch parent/child pair where the child's bin/cli/<tool> links to the
+      parent's shim, a skill-script install into the child leaves every parent file
+      byte-identical and gives the child its own real shim; (2) an installer that
+      writes through a foreign target anyway is caught and the install fails naming
+      the other home; (3) the same for every other backend that writes bin/cli.
+    harness: "python skills/test_graph/scripts/run.py home-verdicts (OHV-9's write-through node); jbang RunTests.java (OHV-9's backend cases)"
+    baseline:
+      value: >
+        (1) no -- measured on the operator's real root 2026-09-14: three root shims
+        overwritten at 08:41-08:42 EDT through a CDC test project home's bin/cli links.
+        (2) no -- SkillScriptBackend stamps bin/cli with NOFOLLOW_LINKS and
+        reportFrozenShims skips symlinks. (3) unmeasured.
+      measured_at: "7357b8ab2a6b70bba5ca494614f8945f7e0a443f"
+      evidence: results/epic-one-home-one-verdict/goals/GOAL-one-marketplace-identity/2026-09-14-root-fix/leak-cause/
+    target: "(1) yes; (2) yes; (3) yes, or each backend named as unable to follow a link, with the reason"
 
 tickets:
   - id: OHV-1
@@ -597,13 +641,13 @@ tickets:
     title: "Terminal evaluation -- decide the six goals on the integrated epic"
     status: planned
     role: evaluation
-    owns_goals: ["GOAL-one-verdict", "GOAL-one-record", "GOAL-no-own-home-path", "GOAL-one-marketplace-identity", "GOAL-ci-green-fresh-runner", "GOAL-verdict-names-its-build"]
-    schedule_revision: 3
-    wave: 5
-    depends_on: ["OHV-0", "OHV-1", "OHV-2", "OHV-3", "OHV-4", "OHV-5", "OHV-6", "OHV-7"]
+    owns_goals: ["GOAL-one-verdict", "GOAL-one-record", "GOAL-no-own-home-path", "GOAL-one-marketplace-identity", "GOAL-ci-green-fresh-runner", "GOAL-verdict-names-its-build", "GOAL-a-home-writes-only-itself"]
+    schedule_revision: 4
+    wave: 6
+    depends_on: ["OHV-0", "OHV-1", "OHV-2", "OHV-3", "OHV-4", "OHV-5", "OHV-6", "OHV-7", "OHV-9"]
     blocks: []
-    promotion_order: 9
-    promotion_predecessor: OHV-6
+    promotion_order: 10
+    promotion_predecessor: OHV-9
     slice: >
       Run every goal harness on the reconciled epic tip from a fresh start,
       after all contributors merge; also the two things never tested for real:
@@ -648,3 +692,60 @@ tickets:
         contribution: guard
         expected_effect: "decides the goal; adds no behavioral delta"
         local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-a-home-writes-only-itself
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
+
+  - id: OHV-9
+    github_issue: https://github.com/haydenrear/skill-manager/issues/367
+    title: "A skill-script install never writes through a link into another home"
+    status: planned
+    role: implementation
+    schedule_revision: 4
+    added_at_revision_4: >
+      Owner, 2026-09-14: "Fix all 13 and also find the cause and fix the cause."
+      DEF-OHV-011.
+    wave: 5
+    depends_on: []
+    blocks: ["OHV-8"]
+    promotion_order: 9
+    promotion_predecessor: OHV-6
+    slice: >
+      (a) SkillScriptBackend: before running a skill-script, detach every bin/cli entry
+      that is a symlink resolving outside this home (record name -> target), run the
+      script, restore the links for names the script did not create, and fail the
+      install -- naming the other home -- if a detached target's file changed during
+      the run (stat before/after, content never read). (b) The same rule for every other
+      backend that writes into bin/cli (NpmBackend, BrewBackend, InstallerRegistry):
+      apply it, or show and document why the backend cannot follow an existing link.
+      (c) A home-verdicts node planting the leak shape in scratch parent/child homes
+      (never the operator's): parent bin/cli/tool real, child bin/cli/tool -> parent,
+      a skill-script that writes `cat >"$SKILL_MANAGER_HOME/bin/cli/tool"`; asserts the
+      parent is byte-identical and the child has its own real, token-form shim.
+      (d) deploy-helm's helper `rm -f "$launcher"` before writing it, as a PR to its
+      repository (haydenrear/deploy-cdc), not published into any home.
+      Not in scope: commit-diff-context-parent's test fixture (#262 there).
+    conflict_keys:
+      production: ["cli/installer/skill-script-backend", "cli/installer/bin-writes"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/home-verdicts"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic (schedule_revision 2)"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["home-verdicts", "plugin-smoke", "home-clone", "checkout-home", "project-child-home", "home-integrity"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-one-home-one-verdict/tickets/OHV-9/
+    goals:
+      - goal: GOAL-a-home-writes-only-itself
+        contribution: direct
+        expected_effect: "(1) no -> yes, (2) no -> yes, (3) unmeasured -> yes or documented per backend"
+        local_signal: "python skills/test_graph/scripts/run.py home-verdicts; the unit cases for detach/restore/changed-target"
+      - goal: GOAL-no-own-home-path
+        contribution: guard
+        expected_effect: "the shim the child gets is token-form; root and project stay at 0"
+        local_signal: "python3.12 scripts/measure_goal_no_own_home_path.py"

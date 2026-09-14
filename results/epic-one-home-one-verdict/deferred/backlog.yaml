@@ -288,3 +288,49 @@ findings:
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml and tickets/OHV-4/timing/
     suggested_fix: a short connect timeout and non-blocking export in CliObservability, and/or OTEL_SDK_DISABLED in the graph sandbox unless opted in
     disposition: pending
+
+  # Filed by OHV-6 into results/epic-one-home-one-verdict/tickets/OHV-6/deferred.yaml; merged here at wave-4 close.
+  - id: DEF-OHV-160
+    found_by: OHV-6 real-home validation
+    found_at_commit: dc4f6356
+    severity: minor
+    maps_to: "scripts/goal-harnesses; GOAL-one-marketplace-identity clauses (2)/(3); OHV-8 must account for it"
+    summary: >
+      scripts/measure_goal_one_marketplace_identity.py looks for shape 1 only in the
+      GLOBAL ~/.claude/plugins/known_marketplaces.json. A project home registers in its
+      checkout's .claude/plugins/known_marketplaces.json, so the harness read shape 1 = 0
+      while tla-spec-dev and meta-orchestrator carried it. It also counts a project's
+      own-path `<plugin>@skill-manager` enablement as shape 4.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-6/deferred.yaml
+    disposition: pending
+
+  - id: DEF-OHV-011
+    found_by: epic agent, pre-fix check of the root home before OHV-6's marketplace fix
+    found_at_commit: 7357b8ab
+    severity: blocking
+    maps_to: OHV-9 (new at schedule_revision 4)
+    summary: >
+      A skill-script install in one home overwrote the operator's real root home's
+      bin/cli shims. commit-diff-context-parent's cdcWorktreeOverlayIsolation graph
+      (wt-240-packed-publication, report 20260914-123718) built a project home whose
+      bin/cli/{computeq,helm-deploy,monitoring} were symlinks to
+      /Users/hayde/.skill-manager/bin/cli/<tool>. deploy-helm's install then ran
+      `cat >"$launcher"` through each link (08:41-08:42 EDT). The root shims ended up
+      exec'ing into the test report's artifact directory. SkillScriptBackend stamps
+      bin/cli without following links, and reportFrozenShims skips symlinks, so the
+      write through a foreign link was invisible.
+    reproduction: >
+      Scratch parent home with bin/cli/tool (real file); child home whose bin/cli/tool
+      is a symlink to it; a skill-script installer that writes
+      `cat >"$SKILL_MANAGER_HOME/bin/cli/tool"`. Install into the child: the parent's
+      file changes.
+    disk_observation: >
+      results/epic-one-home-one-verdict/goals/GOAL-one-marketplace-identity/2026-09-14-root-fix/leak-cause/cdc-project-home-bin-cli.ls.txt
+      (the symlinks into /Users/hayde/.skill-manager/bin/cli), plus
+      pre-fix13-leaked-shims/ (the overwritten root shims) and leaked-shim-mtimes.txt.
+    why_not_a_duplicate: >
+      #269 (HBR-1) is shims resolving a skill through a symlink into another home at
+      exec time; this is an install WRITING through such a link. No backlog entry or
+      issue names a write through a bin/cli link.
+    disposition: ticketed
+    disposition_ticket: OHV-9
