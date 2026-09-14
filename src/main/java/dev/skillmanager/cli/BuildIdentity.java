@@ -159,6 +159,57 @@ public final class BuildIdentity implements picocli.CommandLine.IVersionProvider
         }
     }
 
+    // ----------------------------------------------------------- verdict stamp
+
+    /**
+     * The build a VERDICT names: the {@code --version} release line and the
+     * {@code build:} line, joined — {@code skill-manager 0.27.2+gde4231386a9b @
+     * de4231386a9b (refs/heads/main)} for a source run, {@code skill-manager
+     * 0.27.2 @ artifact … (skill-manager.jar)} for an installed one.
+     *
+     * <h2>Why a verdict carries it (skill-manager#338)</h2>
+     *
+     * <p>A home is judged by the CLI it pins, and nothing in {@code home
+     * verify}, {@code home repair}, {@code home drift} or {@code artifacts
+     * list} said which one answered. Measured 2026-09-12: the same home read
+     * "nothing is damaged (73 entries examined)" under the pinned 0.26.0 and
+     * carried 8 findings under a build with two new detectors, one minute
+     * apart. Both statements were true; only one was current, and the output
+     * gave no way to tell which. This is the same two derivations
+     * {@code --version} prints, not a third one, so the verdict and
+     * {@code --version} cannot name different builds.
+     */
+    public static String stamp() {
+        return releaseLine() + " @ " + build();
+    }
+
+    /** The text-mode line every verdict command prints: {@code build: <stamp>}. */
+    public static String stampLine() {
+        return "build: " + stamp();
+    }
+
+    /**
+     * A checkout root consulted BEFORE the ambient ones, or null.
+     *
+     * <p>The two-build seam: an in-process test cannot be launched from two
+     * different checkouts, and a test that judges one home with one build
+     * cannot tell "the build is printed" from "a constant is printed" (#338's
+     * test constraint). Not a configuration surface — nothing outside tests
+     * sets it, and {@link #judgedFrom} restores the previous value on close.
+     */
+    private static volatile Path checkoutOverride;
+
+    /**
+     * Answer as if running from the checkout at {@code root} (a directory
+     * holding {@code SkillManager.java} and a {@code .git}) until the returned
+     * handle is closed. Test seam; see {@link #checkoutOverride}.
+     */
+    public static AutoCloseable judgedFrom(Path root) {
+        Path previous = checkoutOverride;
+        checkoutOverride = root == null ? null : root.toAbsolutePath().normalize();
+        return () -> checkoutOverride = previous;
+    }
+
     // --------------------------------------------------------------- sources
 
     private static String fromGitCheckout() {
@@ -283,6 +334,8 @@ public final class BuildIdentity implements picocli.CommandLine.IVersionProvider
      */
     private static List<Path> candidateRoots() {
         List<Path> roots = new ArrayList<>();
+        Path forced = checkoutOverride;
+        if (forced != null) roots.add(forced);
         String installDir = System.getenv(RunningCli.INSTALL_DIR);
         if (installDir != null && !installDir.isBlank()) {
             Path dir = Path.of(installDir.trim()).toAbsolutePath().normalize();

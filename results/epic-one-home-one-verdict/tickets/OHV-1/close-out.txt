@@ -1,0 +1,3 @@
+home sync --dry-run: waiting for /Users/hayde/IdeaProjects/skill-manager/.skill-manager — another skill-manager process holds this home's lock
+✓ /Users/hayde/IdeaProjects/wt-ohv-1/.skill-manager holds nothing that removing it would destroy
+exit=0

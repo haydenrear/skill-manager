@@ -261,6 +261,11 @@ public final class HomeCommand {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
+            // #338: the build that renders this verdict, first, so every line
+            // below it -- the ✓ included -- is attributable to one CLI. A home
+            // is judged by whichever build answers, and a newer one may know a
+            // defect class an older pin does not.
+            Log.info("%s", dev.skillmanager.cli.BuildIdentity.stampLine());
             HomeCloner.Verification result = against == null
                     ? HomeCloner.verify(home, strict)
                     : HomeCloner.verify(against, home, strict);
@@ -1206,6 +1211,10 @@ public final class HomeCommand {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
+            String build = dev.skillmanager.cli.BuildIdentity.stamp();
+            // #338: every drift answer names the build that gave it. Under
+            // --json the build rides in the document instead.
+            if (!json) Log.info("build: %s", build);
             if (record) {
                 HomeDigest baseline = HomeDigest.read(store).orElse(null);
                 DriftGate recorded = DriftGate.recordSince(store, baseline, "home drift --record")
@@ -1234,8 +1243,9 @@ public final class HomeCommand {
             DriftGate pending = DriftGate.pending(store).orElse(null);
             if (json) {
                 System.out.println(pending == null
-                        ? "{\"pending\":false,\"units\":[]}"
-                        : "{\"pending\":true,\"operation\":\"" + esc(pending.operation())
+                        ? "{\"pending\":false,\"build\":\"" + esc(build) + "\",\"units\":[]}"
+                        : "{\"pending\":true,\"build\":\"" + esc(build)
+                                + "\",\"operation\":\"" + esc(pending.operation())
                                 + "\",\"detectedAt\":\"" + esc(pending.detectedAt())
                                 + "\",\"units\":" + driftJson(pending) + "}");
                 return pending == null ? 0 : DriftGate.EXIT_CODE;
@@ -2253,6 +2263,10 @@ public final class HomeCommand {
             Path pin = injectedPin != null
                     ? injectedPin
                     : dev.skillmanager.launch.RunningCli.locateOrNull();
+            // #338: the verdict below is this build's. Printed before it, on
+            // both paths, so "nothing is damaged" can never again be read
+            // without the CLI that said it.
+            if (!json) Log.info("%s", dev.skillmanager.cli.BuildIdentity.stampLine());
             if (!fix) {
                 HomeRepair.Report report = HomeRepair.detect(root, pin);
                 if (json) {
@@ -2267,7 +2281,8 @@ public final class HomeCommand {
                 outcome = HomeRepair.repair(root, pin);
             } catch (FrozenHomeException frozen) {
                 if (json) System.out.println("""
-                        {"home":"%s","error":"frozen"}""".formatted(esc(root.toString())));
+                        {"home":"%s","build":"%s","error":"frozen"}""".formatted(
+                        esc(root.toString()), esc(dev.skillmanager.cli.BuildIdentity.stamp())));
                 Log.error("%s", frozen.getMessage());
                 return FrozenHomeException.EXIT_CODE;
             }
@@ -2334,6 +2349,8 @@ public final class HomeCommand {
         private static String reportJson(HomeRepair.Report report, HomeRepair.Outcome outcome) {
             StringBuilder sb = new StringBuilder("{\"home\":\"")
                     .append(esc(report.home().toString()))
+                    .append("\",\"build\":\"")
+                    .append(esc(dev.skillmanager.cli.BuildIdentity.stamp()))
                     .append("\",\"examined\":").append(report.examined())
                     .append(",\"clean\":").append(report.clean())
                     .append(",\"findings\":[");

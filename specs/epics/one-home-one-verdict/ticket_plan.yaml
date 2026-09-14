@@ -215,7 +215,7 @@ tickets:
   - id: OHV-1
     github_issue: https://github.com/haydenrear/skill-manager/issues/338
     title: "Every verdict names the build that produced it"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 1
