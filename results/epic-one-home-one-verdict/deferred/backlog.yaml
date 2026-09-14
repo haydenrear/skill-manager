@@ -238,3 +238,34 @@ findings:
       forget` verb, or a GOAL-one-record rescope.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-3/deferred.yaml
     disposition: pending
+
+  # Filed by OHV-2 into results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml;
+  # merged here at wave-2 close. The full text, disk observations and CI job ids are in the ticket file.
+  - id: DEF-OHV-120
+    found_by: OHV-2 blast-radius sweep
+    found_at_commit: 3d6d4cd4
+    severity: minor
+    maps_to: "adjacent: git-epic-workflow and git-issue-workflow skill repos (unit content)"
+    summary: >
+      git-epic-workflow SKILL.md:212 and git-issue-workflow references/skill-homes.md
+      describe `home verify` as answering only "does everything in it resolve".
+      After OHV-2 it also fails on every `home repair` finding. Neither gates on
+      the exit code.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml
+    disposition: pending
+
+  - id: DEF-OHV-121
+    found_by: OHV-2 (CI runs 34802282392 and 34804201355, local run 20260914-035302)
+    found_at_commit: 48d18070
+    severity: minor
+    maps_to: "adjacent: test_graph home-clone fixture hygiene"
+    summary: >
+      home.copy.carries.no.foreign.binary (CopyCarriesNoForeignBinary.java:120)
+      runs deleteRecursive(source.resolve("pm")) on the SHARED home-clone fixture
+      home. That deletes the fixture's pm/uv/0.0.0 as well as the pm/node tree the
+      node planted. home-clone runs the node before the fixpoint law and
+      checkout-home does not, so a declaration naming pm/ content passes in one
+      graph and fails in the other. The behaviour is the same on macOS and Linux.
+      It is not a detector defect.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml
+    disposition: pending
