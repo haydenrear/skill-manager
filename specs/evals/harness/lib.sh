@@ -717,6 +717,13 @@ eval_run_case() {
     local diag
     for diag in "$b"/eval-diagnostics-*; do
       [ -d "$diag" ] || continue
+      # ONCE PER DIAGNOSTICS DIR. With EVAL_KEEP_BUILD the build outlives an
+      # invocation, and archiving every dir each time copied round 3b's
+      # diagnostics under all eight invocations: 452 transcripts, 125 MB, most
+      # of them the same file. A dir is recorded when archived and skipped
+      # after; the dirs themselves stay, since a reader may still be using them.
+      grep -qxF "$(basename "$diag")" "$b/.archived-diagnostics" 2>/dev/null && continue
+      basename "$diag" >> "$b/.archived-diagnostics"
       mkdir -p "$dest/diagnostics"
       # BOTH artifacts. commands.txt is written on every run and answers the
       # COST grader -- `Bash called 32x (expected 1..4)` is unreadable without
