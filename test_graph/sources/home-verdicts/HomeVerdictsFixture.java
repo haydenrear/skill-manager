@@ -37,6 +37,9 @@ import java.nio.file.Path;
  *   <tr><td>orphaned installed/&lt;unit&gt;.projections.json (DEF-OHV-002, OHV-2 c)</td>
  *       <td>home.verdicts.orphaned.projection.record</td><td>1 ORPHANED_PROJECTION_RECORD</td>
  *       <td>1, names it</td></tr>
+ *   <tr><td>half-rewritten own-home shim: token header, literal exec line (DEF-OHV-001, OHV-4)</td>
+ *       <td>home.verdicts.half.rewritten.shim</td><td>1 FROZEN_HOME_PATH_IN_SHIM</td>
+ *       <td>1, names it; --fix re-anchors the exec line, a second --fix is a no-op</td></tr>
  * </table>
  *
  * <p>The three "0 until OHV-2" cells were GOAL-one-verdict clause (1) failing,
@@ -46,8 +49,6 @@ import java.nio.file.Path;
  * <h2>PENDING — each named shape gets its node from the ticket that fixes it</h2>
  *
  * <ul>
- *   <li>half-rewritten shim: header re-anchored, {@code exec} line literal
- *       (DEF-OHV-001) — <b>OHV-4 (#341)</b></li>
  *   <li>{@code /var} vs {@code /private/var} reference (#343) — <b>OHV-5 (#346)</b></li>
  *   <li>#352's four marketplace-identity shapes (1 Claude registers this path under
  *       another name; 2 generated name a substring of another; 3 generated name equal
