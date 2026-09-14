@@ -427,9 +427,7 @@ public final class MarketplaceRegistrations {
             container.removeAll();
             copy.forEach(container::set);
         }
-        StringBuilder sb = new StringBuilder();
-        writeJson(obj, 0, sb);
-        writeAtomically(entry.file(), sb.toString());
+        writeJsonFile(entry.file(), obj);
         return true;
     }
 
@@ -463,9 +461,7 @@ public final class MarketplaceRegistrations {
             reg.put("installLocation", source);
             reg.put("lastUpdated", java.time.Instant.now().toString());
             Files.createDirectories(known.getParent());
-            StringBuilder sb = new StringBuilder();
-            writeJson(knownRoot, 0, sb);
-            writeAtomically(known, sb.toString());
+            writeJsonFile(known, knownRoot);
             written.add(known);
         }
         Path settings = claudeSettings(claudeDir);
@@ -474,9 +470,7 @@ public final class MarketplaceRegistrations {
                     ? x : s.putObject("extraKnownMarketplaces");
             if (!extra.has(identity)) {
                 extra.putObject(identity).putObject("source").put("source", "directory").put("path", source);
-                StringBuilder sb = new StringBuilder();
-                writeJson(s, 0, sb);
-                writeAtomically(settings, sb.toString());
+                writeJsonFile(settings, s);
                 written.add(settings);
             }
         }
@@ -552,10 +546,22 @@ public final class MarketplaceRegistrations {
         ObjectNode container = containerOf(obj, entry.section());
         if (container == null || !container.has(entry.key())) return false;
         container.remove(entry.key());
-        StringBuilder sb = new StringBuilder();
-        writeJson(obj, 0, sb);
-        writeAtomically(file, sb.toString());
+        writeJsonFile(file, obj);
         return true;
+    }
+
+    /**
+     * Re-serialize {@code root} into {@code file}, ending the way the file ended:
+     * the Claude CLI writes no trailing newline, a hand-edited settings file
+     * usually has one, and a repair must not add or remove it.
+     */
+    private static void writeJsonFile(Path file, JsonNode root) throws IOException {
+        boolean newline = Files.isRegularFile(file)
+                && Files.readString(file, StandardCharsets.UTF_8).endsWith("\n");
+        StringBuilder sb = new StringBuilder();
+        writeJson(root, 0, sb);
+        if (newline) sb.append('\n');
+        writeAtomically(file, sb.toString());
     }
 
     /** {@code JSON.stringify(value, null, 2)}'s layout. */

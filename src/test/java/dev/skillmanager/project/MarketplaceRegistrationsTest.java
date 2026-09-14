@@ -116,6 +116,21 @@ public final class MarketplaceRegistrationsTest {
             assertContains(settings, "\"k@official\": true", "an unrelated enablement stays");
             assertTrue(MarketplaceRegistrations.judge(MarketplaceRegistrations.read(claude, null),
                     "skill-manager-abcd1234", mp).isEmpty(), "and nothing disagrees afterwards");
+            assertFalse(known.endsWith("\n"), "a file Claude wrote without a trailing newline keeps none");
+        });
+
+        suite.test("a hand-edited settings file keeps its trailing newline through a removal", () -> {
+            Path tmp = Files.createTempDirectory("mr-newline-");
+            Path claude = tmp.resolve(".claude");
+            write(claude.resolve("settings.json"),
+                    "{\n  \"enabledPlugins\": {\n    \"skt@skill-manager-919db26e\": true\n  },\n  \"verbose\": true\n}\n");
+            var entry = MarketplaceRegistrations.read(claude, null).stream()
+                    .filter(e -> e.key().equals("skt@skill-manager-919db26e")).findFirst().orElseThrow();
+
+            assertTrue(MarketplaceRegistrations.remove(entry), "removed");
+
+            assertEquals("{\n  \"enabledPlugins\": {},\n  \"verbose\": true\n}\n",
+                    Files.readString(claude.resolve("settings.json")), "only the entry changed, the ending did not");
         });
 
         suite.test("shape 2: a registered name that CONTAINS the identity is not the identity", () -> {
