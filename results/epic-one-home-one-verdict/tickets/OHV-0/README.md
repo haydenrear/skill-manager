@@ -65,6 +65,18 @@ Every harness is read-only: `artifacts list --json`, `home repair --json`
   `20260914-000125`): **9 of 9 nodes passed**, BUILD SUCCESSFUL in 1m08s,
   including the parser self-check in `home.verdicts.clean.home`. This run is the
   local evidence for the PR head. Copied to `graph-home-verdicts-local-json/`.
+- **Reconciled with the epic tip.** `git merge --no-ff
+  origin/epic/one-home-one-verdict` at `b218322c` (after OHV-7 #363, bringing
+  OHV-1's build stamp) produced `e70e491a` with no conflicts, and OHV-0 is
+  still `status: closed`. `run.py home-verdicts` on the merged tree (local
+  macOS, run `20260914-015344`): **9 of 9 nodes passed**, BUILD SUCCESSFUL in
+  12m32s. The run is Docker-free, so the unresponsive local Docker did not
+  touch it. The slowdown is unexplained; a recompile after the merge is the
+  likely cause. `home repair --json` stdout now carries
+  `"build":"skill-manager 0.27.2+ge70e491a1378 @ e70e491a1378 (refs/heads/feature/OHV-0)"`
+  between `home` and `examined`, and `home verify` starts with a `build:` line.
+  The parser matched by field regardless, and no assertion changed. Copied to
+  `graph-home-verdicts-local-merged/`.
 - `run.py home-integrity` (local macOS, run `20260913-235031`): 19 of 19 nodes
   passed, BUILD SUCCESSFUL in 2m19s.
 - `skill-manager home close-out --home <worktree>/.skill-manager --into
@@ -75,6 +87,31 @@ Every harness is read-only: `artifacts list --json`, `home repair --json`
 - `validate_epic_plan.py` with OHV-0 `status: closed`: OK.
 - `select-graph-set.py --scope full --print`: 26 selected, `home-verdicts`
   included, and CORE/EXCLUDED unedited.
+
+## 4. CI — the graph evidence
+
+Run [34791432559](https://github.com/haydenrear/skill-manager/actions/runs/34791432559)
+ran `workflow_dispatch` with `graph_set=full` on `feature/OHV-0` at `2bc05b0e`,
+the head with the JSON parser. Its artifact is
+`ci-34791432559/graphs-executed.json`.
+
+| | this run | main baseline (34786751392) |
+| --- | ---: | ---: |
+| selected | 26 | 25 |
+| executed | **26** | 25 |
+| passed | **20** | 19 |
+| failed | **6** | 6 |
+| unaccounted | 0 | — |
+
+- **`home-verdicts`: executed, 9 of 9 nodes attempted, passed on Linux.**
+- `home-integrity`: 19 of 19, passed.
+- Failed: `artifact-dag`, `checkout-home`, `home-clone`, `home-tripwire`,
+  `onboarding`, `ticket-lifecycle`. That is exactly main's baseline set, so
+  there is **no new failure**. The +1 executed and +1 passed is `home-verdicts`.
+- `skill-manager unit tests (RunTests.java + spec models)` and
+  `virtual-mcp-gateway pytest` passed.
+- Run 34790739553, on the earlier text-matcher head `7d2eef26`, was cancelled
+  after the parser change and is not evidence.
 
 ## Deferred findings
 
