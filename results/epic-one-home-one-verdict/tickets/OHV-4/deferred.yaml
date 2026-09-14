@@ -1,0 +1,67 @@
+version: 1
+ticket: OHV-4
+github_issue: https://github.com/haydenrear/skill-manager/issues/341
+findings:
+  - id: DEF-OHV-140
+    found_by: OHV-4 (#341), the home-verdicts timing the wave-2 review asked for
+    found_at_commit: 25b095ca
+    severity: major
+    maps_to: none in this epic (not OHV-4's slice); candidate owner the terminal sweep / OHV-8 runtime reading
+    related: [DEF-065]
+    summary: >
+      Every skill-manager CLI process on this machine costs ~14 s of fixed wall
+      time waiting on its OTLP telemetry export, because the default endpoint
+      http://localhost:4318 is held open by Docker Desktop's backend while the
+      Docker engine is unresponsive: connections neither refuse nor answer.
+      home-verdicts runs ~50 CLI processes, so ~11-12 of its 18 minutes are this.
+    reproduction: >
+      On a clean scratch home laid out with SkillStore.init()'s directories
+      (results/epic-one-home-one-verdict/tickets/OHV-4/timing/timings.txt):
+        ./skill-manager home repair --home <scratch> --json                      -> 14.24 s, 14.20 s
+        OTEL_SDK_DISABLED=true ./skill-manager home repair --home <scratch> --json -> 0.95 s, 0.96 s
+        ./skill-manager --version                                                -> 14.15 s
+        /opt/homebrew/bin/skill-manager (0.27.2) home repair ... --json          -> 13.74 s; with OTEL_SDK_DISABLED=true 0.43 s
+      Graph: python skills/test_graph/scripts/run.py home-verdicts at 25b095ca,
+      untouched -> BUILD SUCCESSFUL in 18m 14s (wall 1095 s); the run's envelopes
+      (validation-reports/20260914-050417/envelope/*.json) record 50 CLI
+      processes, every one 14.1-14.3 s regardless of command, summing to 711 s.
+    disk_observation: >
+      curl -X POST -m 20 http://localhost:4318/v1/metrics (also 127.0.0.1 and
+      [::1]) -> no HTTP response, rc=28 after ~8 s. lsof -nP -iTCP:4318 ->
+      com.docker (pid 3528) LISTEN on *:4318, earlier [::1]:4318 connections
+      CLOSED. Node stderr: "! Telemetry export unavailable; continuing without
+      telemetry." and okhttp "InterruptedIOException: timeout" (exporter), not
+      "Connection refused".
+    mechanism: >
+      CliObservability (unchanged since 1519cbba, 2026-07-23) defaults
+      otel.exporter.otlp.endpoint to http://localhost:4318 when no
+      OTEL_EXPORTER_OTLP_*ENDPOINT is set, and flushAndClose force-flushes and
+      shuts down three providers under DEFAULT_FLUSH_TIMEOUT_MILLIS = 5000. A
+      REFUSED port fails fast; a port that accepts and never answers spends the
+      deadline. DEF-065 (2026-08-23) recorded the refused case. The code did not
+      change between OHV-0 (~1 min) and OHV-1 (12.5 min); what plausibly changed
+      is the machine: the disk filled, Docker became unresponsive (wave-1
+      review), and its backend kept the port. Plausible, not proven: Docker was
+      not restarted (instructed not to), so the ~1 min number cannot be
+      reproduced in the other state.
+    why_not_a_duplicate: >
+      DEF-065 is the per-NODE floor (jbang startup 5.68 s + the node SDK's
+      exporter, refused). This is the per-CLI-PROCESS cost inside a node, with a
+      hanging rather than a refusing endpoint, and it multiplies by the number of
+      CLI invocations a node makes (7 per home-verdicts shape node), which is why
+      home-verdicts grew faster than its node count. No GitHub issue matches
+      "telemetry" or "OTLP export timeout".
+    impact: >
+      Local graph iteration: home-verdicts 18 min instead of ~2-3; every graph
+      that spawns the CLI pays ~14 s per invocation locally. CI runners have no
+      listener on 4318, so they get the fast refused path (CI's graph runtimes do
+      not show this).
+    suggested_fix: >
+      Out of OHV-4's slice. Either the graph sandbox (SmEnv.apply) sets
+      OTEL_SDK_DISABLED=true (or a refused endpoint) for CLI processes unless a
+      graph opts in, or CliObservability bounds the whole export to a short
+      connect timeout. Settling experiment: restart Docker (owner decision) and
+      re-time one home repair --json; or run home-verdicts with
+      OTEL_SDK_DISABLED=true exported and compare wall time.
+    blocking: false
+    disposition: pending

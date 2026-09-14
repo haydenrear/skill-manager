@@ -486,7 +486,7 @@ tickets:
   - id: OHV-4
     github_issue: https://github.com/haydenrear/skill-manager/issues/341
     title: "A shim never spells its own home, and a half-rewritten one is reported"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     amended_at_revision_2: >

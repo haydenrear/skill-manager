@@ -1,0 +1,11 @@
+harness-before rc=1
+verify-before rc=1
+repair-before rc=1
+fix rc=0
+fix-again rc=0
+repair-after rc=0
+verify-after rc=0
+commented byte-identical after --fix: yes
+computeq-ran
+computeq runs rc=0
+harness-after rc=1
