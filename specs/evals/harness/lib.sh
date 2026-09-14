@@ -280,8 +280,43 @@ eval_tmpdir() { printf '%s' "$1/tmp"; }
 branch_home() {
   local src="$1" dst="$2" need="${3:-no}"
   rm -rf "$dst"; mkdir -p "$(dirname "$dst")"
-  "$src/bin/cli/skill-manager" home clone --from "$src" --to "$dst" >/dev/null 2>&1 \
-    || { echo "setup: could not branch the home from $src" >&2; return 1; }
+  local clone_log; clone_log="$(mktemp -t branch-home)"
+  if ! "$src/bin/cli/skill-manager" home clone --from "$src" --to "$dst" >"$clone_log" 2>&1; then
+    # A SOURCE HOME WITH SHIMS INTO A THIRD HOME. Measured 2026-09-14: the root
+    # home's bin/cli/{computeq,helm-deploy,monitoring} pointed into another
+    # worktree's test_graph validation artifacts, so every clone failed
+    # verification. The CLI's own remedy is to repair the SOURCE -- which is the
+    # operator's home and not this harness's to write. The copy is ours, so it
+    # is repaired where it stands; shims that repair cannot re-anchor (they
+    # name venvs that exist only in that third home) are moved aside INSIDE the
+    # copy, and the copy must then pass `home verify`. Anything else refuses.
+    local sm="$dst/bin/cli/skill-manager" verify_log shim moved=""
+    if [ ! -x "$sm" ]; then
+      echo "setup: could not branch the home from $src -- home clone said:" >&2
+      tail -20 "$clone_log" | sed 's/^/         /' >&2; rm -f "$clone_log"; return 1
+    fi
+    homeenv() { env SKILL_MANAGER_HOME="$dst" CLAUDE_CONFIG_DIR="$dst/.claude" CODEX_HOME="$dst/.codex" \
+                  GEMINI_HOME="$dst/.gemini" SKILL_MANAGER_CONFINE_ROOT="$dst" "$@"; }
+    homeenv "$sm" home repair --home "$dst" --fix >/dev/null 2>&1 || true
+    verify_log="$(homeenv "$sm" home verify --home "$dst" 2>&1)"
+    if [ $? -ne 0 ]; then
+      if printf '%s\n' "$verify_log" | grep '✗   ' | grep -qv 'FOREIGN_PATH_IN_SHIM bin/cli/\|complete it with'; then
+        echo "setup: the branched home fails verification for reasons other than foreign shims:" >&2
+        printf '%s\n' "$verify_log" | tail -12 | sed 's/^/         /' >&2; rm -f "$clone_log"; return 1
+      fi
+      mkdir -p "$dst/.eval-quarantined-shims"
+      for shim in $(printf '%s\n' "$verify_log" | sed -n 's/.*FOREIGN_PATH_IN_SHIM bin\/cli\/\([^ ]*\).*/\1/p' | sort -u); do
+        mv "$dst/bin/cli/$shim" "$dst/.eval-quarantined-shims/" && moved="$moved $shim"
+      done
+      homeenv "$sm" home verify --home "$dst" >/dev/null 2>&1 || {
+        echo "setup: the branched home still fails verification after quarantining:$moved" >&2
+        rm -f "$clone_log"; return 1; }
+    fi
+    echo "  note: $src fails clone verification (shims into a third home); the COPY was" >&2
+    echo "        repaired and verifies${moved:+; quarantined in the copy only:$moved}." >&2
+    echo "        The source is untouched -- repairing it is the operator's call." >&2
+  fi
+  rm -f "$clone_log"
   # REPAIR THE BRANCH, because it will be cloned AGAIN.
   #
   # A branched home still carries paths naming the home it came from. That is
