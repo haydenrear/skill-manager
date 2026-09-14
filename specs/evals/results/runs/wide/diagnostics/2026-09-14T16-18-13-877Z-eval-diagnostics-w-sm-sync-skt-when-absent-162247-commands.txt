@@ -1,0 +1,5 @@
+Bash {"command": "ls /private/tmp/e-bXiVFF/home/cwd/cases/w-sm-sync-skt-when-absent/ 2>/dev/null; echo \"---\"; find /private/tmp/e-bXiVFF/home -name \"sync-output.txt\" -path \"*w-sm-sync-skt*\" 2>/dev/null", "description": "Locate the saved sync output file"}
+---
+Read {"file_path": "/private/tmp/e-bXiVFF/home/cwd/cases/w-sm-sync-skt-when-absent/sync-output.txt"}
+---
+Bash {"command": "skill-manager install github:haydenrear/skt", "description": "Install the skt unit into this home"}

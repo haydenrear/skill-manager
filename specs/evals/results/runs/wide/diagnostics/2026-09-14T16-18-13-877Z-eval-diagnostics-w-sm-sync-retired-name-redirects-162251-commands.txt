@@ -1,0 +1,15 @@
+Bash {"command": "skt status 2>&1 | head -60", "description": "Check skill-manager home status"}
+---
+Bash {"command": "skill-manager --help 2>&1 | head -80", "description": "Show skill-manager CLI help"}
+---
+Bash {"command": "skt check 2>&1 | head -60", "description": "Check for stale or updatable units"}
+---
+Bash {"command": "skill-manager list 2>&1 | head -60", "description": "List installed units"}
+---
+Bash {"command": "skill-manager show skt 2>&1 | head -40", "description": "Show details for the skt plugin"}
+---
+Bash {"command": "skt sync skt 2>&1 | head -40", "description": "Sync the skt plugin in this home"}
+---
+Bash {"command": "skt check 2>&1 | head -30", "description": "Re-check notifications after sync"}
+---
+Bash {"command": "skill-manager lock 2>&1 | grep -iA6 '^\\[*.*skt' | head -40", "description": "Inspect lock record for skt source coordinate"}

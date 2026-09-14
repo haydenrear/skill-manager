@@ -1,0 +1,13 @@
+Read {"file_path": "/private/tmp/e-prLfZL/home/cwd/cases/w-giw-wt-new-dirty-ok/refusal.txt"}
+---
+Bash {"command": "git status --short && git branch --show-current", "description": "Show working tree status and branch"}
+---
+Bash {"command": "pwd; ls -a; echo \"---\"; git -C . status --short; echo \"--- branch:\"; git branch -a 2>/dev/null | head -20", "description": "Inspect working directory and repo state"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "command -v skt; echo \"exit=$?\"", "description": "Check whether skt is on PATH"}
+---
+Bash {"command": "skt ticket new --help 2>&1 | head -40", "description": "Show ticket creation options"}
+---
+Bash {"command": "WT_DIRTY_OK=1 skt ticket new TICKET-12", "description": "Create the TICKET-12 worktree allowing a dirty parent tree"}

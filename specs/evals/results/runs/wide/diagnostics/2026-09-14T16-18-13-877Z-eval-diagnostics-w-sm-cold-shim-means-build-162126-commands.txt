@@ -1,0 +1,25 @@
+Read {"file_path": "/private/tmp/e-UHXq3g/home/cwd/cases/w-sm-cold-shim-means-build/jinja2-output.txt"}
+---
+Bash {"command": "ls -la ./.skill-manager/bin/cli/", "description": "List skill-manager CLI shims"}
+---
+Bash {"command": "skt build 'cli-shim:pip/jinja2-cli[yaml]'", "description": "Build the declared jinja2 CLI shim"}
+---
+Bash {"command": "./.skill-manager/bin/cli/jinja2 --version; echo \"[exit $?]\"", "description": "Re-run the jinja2 entry point to check it works"}
+---
+Bash {"command": "skt build --force 'cli-shim:pip/jinja2-cli[yaml]'", "description": "Force rebuild of the jinja2 CLI shim"}
+---
+Bash {"command": "skt build --help 2>&1 | head -60", "description": "Show skt build options"}
+---
+Bash {"command": "skill-manager build --help 2>&1 | head -80", "description": "Show skill-manager build options"}
+---
+Skill {"args": "cli tool shim declared-only, build no-op: pip backend says dependency already satisfied outside the home", "skill": "skt:skill-manager"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/skt/skills/skt/references/derived-artifacts.md"}
+---
+Bash {"command": "command -v jinja2; jinja2 --version; echo \"[exit $?]\"", "description": "Check ambient jinja2 on PATH"}
+---
+Bash {"command": "whence -a jinja2 2>&1; echo \"---\"; ls -l /opt/homebrew/bin/jinja2 2>&1", "description": "Look for other jinja2 copies on PATH"}
+---
+Bash {"command": "skill-manager artifacts show 'cli-shim:pip/jinja2-cli[yaml]' 2>&1 | head -40", "description": "Show the jinja2 artifact record"}
+---
+Bash {"command": "ls -l ./.skill-manager/venvs/ 2>&1; echo \"---\"; ls -l ./.skill-manager/venvs/jinja2-cli/bin/jinja2 2>&1", "description": "Check the jinja2-cli venv on disk"}

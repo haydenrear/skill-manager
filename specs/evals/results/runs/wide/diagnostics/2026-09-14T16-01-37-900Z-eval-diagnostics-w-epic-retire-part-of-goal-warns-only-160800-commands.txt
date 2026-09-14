@@ -1,0 +1,19 @@
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "ls -la cases/w-epic-retire-part-of-goal-warns-only/ 2>/dev/null; echo \"---\"; pwd", "description": "List case directory contents"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/", "description": "List skill scripts"}
+---
+Read {"file_path": "/private/tmp/e-XNRhu8/home/cwd/cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" --help", "description": "Show plan validator usage"}
+---
+Bash {"command": "uv run --script \"/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py\" --verbose cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml; echo \"EXIT=$?\"", "description": "Validate the epic ticket plan"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow && grep -rn \"disposition\" references/ | head -40", "description": "Find allowed goal disposition values"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/goals-and-evaluation.md", "limit": 40, "offset": 288}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/plan-and-schedule.md", "limit": 100, "offset": 410}
+---
+Bash {"command": "ls -d specs specs/.history 2>&1 | head; echo \"---\"; ls cases/ 2>&1 | head -20", "description": "Check for specs history tree"}

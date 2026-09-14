@@ -1,0 +1,1291 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.270",
+  "startedAt": "2026-09-14T16:08:18.452Z",
+  "durationSeconds": 594,
+  "costUsd": 8.090792,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-giw-*",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/vision-toolbelt-skill"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-giw-bootstrap-cross-home-is-not-old-cli",
+      "dir": "evals/w-giw-bootstrap-cross-home-is-not-old-cli",
+      "source": "mixed",
+      "promptMarkdown": "\nBootstrapping the Skill Manager home for my ticket worktree failed. The\noutput is in cases/w-giw-bootstrap-cross-home-is-not-old-cli/bootstrap.txt.\nWhat is wrong, and what would you run to fix it?\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe for a writable location or try a different route.\n\nEVAL-CASE: w-giw-bootstrap-cross-home-is-not-old-cli\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "does-not-upgrade-a-current-cli",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/forbid-no-upgrade-or-reinstall",
+            "exists": true
+          }
+        },
+        {
+          "name": "names-the-home-mismatch",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response identifies the cause as the CLI belonging to a\nDIFFERENT home (/work/other-repo) than the one being bootstrapped (/work/demo),\nand proposes using the right home's CLI or naming the home explicitly (e.g. via\nPATH, SKILL_MANAGER_CLI or SKILL_MANAGER_HOME). Score 0 if it says the CLI is\noutdated or missing, or recommends upgrading or reinstalling skill-manager.",
+          "config": {
+            "criteria": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response identifies the cause as the CLI belonging to a\nDIFFERENT home (/work/other-repo) than the one being bootstrapped (/work/demo),\nand proposes using the right home's CLI or naming the home explicitly (e.g. via\nPATH, SKILL_MANAGER_CLI or SKILL_MANAGER_HOME). Score 0 if it says the CLI is\noutdated or missing, or recommends upgrading or reinstalling skill-manager.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.3333333333333333,
+            "passed": false,
+            "turns": 11,
+            "costUsd": 0.7938310000000001,
+            "judgeCostUsd": 0.0030600000000000002,
+            "durationSeconds": 198,
+            "startedAt": "2026-09-14T16:08:22.856Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-JjbWUw/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-upgrade-a-current-cli",
+                "passed": false,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-upgrade-or-reinstall missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "names-the-home-mismatch",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## What's wrong\n\nNot a stale CLI, and not anything to sync or upgrade. The error even says so: `NOTHING IS OUT OF DATE`.\n\n`bootstrap-home.sh` has to pick a `skill-manager` to run the bootstrap with (`pick_cli`, `.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh:790`). It looks for a build shipped by the checkout, then by the enclosing integration repo, then falls back to whatever `skill-manager` is on `PATH`. In your worktree the first two found nothing, so the only candidate was the `PATH` entry — and that entry is **another checkout's home entrypoint**, `/work/other-repo/.skill-manager/bin/cli/skill-manager`.\n\nA `<home>/bin/cli/skill-manager` shim binds the home it lives in and derives it from its own location, so it cannot honour an inherited `SKILL_MANAGER_HOME`. Rather than silently edit the wrong home, it exits 79 (`.skill-manager/bin/cli/skill-manager:132`). Your `SKILL_MANAGER_HOME` names `/work/demo/.skill-manager`, the shim serves `/work/other-repo/.skill-manager`, they disagree, so it refused. `bootstrap-home.sh` scored that candidate `refused` and, having no other, gave up.\n\nSo: the bootstrap asked the one CLI on the machine that was guaranteed to say no.\n\n## The fix\n\nPoint `SKILL_MANAGER_CLI` at an actual skill-manager **build** instead of letting `PATH` hand it a home's entrypoint. On this machine that's the Homebrew install, `/opt/homebrew/bin/skill-manager` (0.27.2) — it's a launcher that exports `SKILL_MANAGER_INSTALL_DIR`, which is what `write_shims` needs, and it's the same build this checkout's own home is already pinned to.\n\nFrom the ticket worktree:\n\n```\nSKILL_MANAGER_CLI=/opt/homebrew/bin/skill-manager scripts/bootstrap-home.sh\n```\n\nI ran that once here as instructed. It didn't reach the sandbox refusal — it exited 127 on `no such file or directory: scripts/bootstrap-home.sh`, because this eval checkout has no `scripts/` wrapper; the script lives at `.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh`. In `/work/demo`, where you ran it, the spelling above is the one that resolved. I did not go looking for another path.\n\n## One caveat on the script's own advice\n\nThe failure text offers a second remedy: *\"if a candidate above was REFUSED rather than old, unset SKILL_MANAGER_HOME first\"* (`bootstrap-home.sh:853`). That gets you past `pick_cli` and no further. With `SKILL_MANAGER_HOME` unset the probe stops flagging the shim, so the shim is accepted — but `require_local_home` (`bootstrap-home.sh:614`) re-exports `SKILL_MANAGER_HOME=/work/demo/.skill-manager` before every mutating step, and other-repo's shim refuses on exactly that mismatch again, this time at the clone rather than at candidate selection. Use the `SKILL_MANAGER_CLI` pin; it's the half of that message that actually holds."
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 17,
+            "costUsd": 0.7918919999999999,
+            "judgeCostUsd": 0.002883,
+            "durationSeconds": 220,
+            "startedAt": "2026-09-14T16:08:22.856Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-jDeptY/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-upgrade-a-current-cli",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-upgrade-or-reinstall exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "names-the-home-mismatch",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## What's wrong\n\nIt is **not** an out-of-date CLI, and nothing needs upgrading, syncing, or reinstalling.\n\n`bootstrap-home.sh` picks a skill-manager CLI before it does anything else. It looks for a *build* in the checkout, then in an enclosing integration repo, then falls back to whatever `skill-manager` is on `PATH`. In your ticket worktree the only candidate was the last one, and it is `/work/other-repo/.skill-manager/bin/cli/skill-manager` — a **home entrypoint shim**, not a build.\n\nA `<home>/bin/cli/skill-manager` shim binds the home it lives in (derived from its own location) and refuses, with exit 79, when `SKILL_MANAGER_HOME` names a different one — rather than silently editing the other home. Here `SKILL_MANAGER_HOME` names `/work/demo/.skill-manager`, the shim serves `/work/other-repo/.skill-manager`, so it refused. That's exactly what `NOTHING IS OUT OF DATE` in the report is telling you: the refusal is about *which home you aimed at*, not about a version.\n\nSo the bootstrap never got past CLI selection. Note that pinning the *other* home's shim — `/work/demo/.skill-manager/bin/cli/skill-manager` — would not fix it either: it passes the initial probe but the script exports `SKILL_MANAGER_HOME` to the new clone afterwards and keeps using the same `$CLI`, so the same shim would refuse a step later. It has to be a home-agnostic build.\n\n## The fix\n\n```\nSKILL_MANAGER_CLI=/opt/homebrew/bin/skill-manager scripts/bootstrap-home.sh\n```\n\n`/opt/homebrew/bin/skill-manager` (0.27.2) is the real build — it's the one your home's shim is already pinned to exec, it carries no home binding, and it honours `SKILL_MANAGER_HOME`. Leave `SKILL_MANAGER_HOME` set; with a build rather than a shim it's the source home to clone from, which is what you want.\n\n## What I observed running it\n\nI ran that command once here. It got **past** `pick_cli` — the refusal is gone, which is the part your report was about. It then stopped on a different, fixture-specific condition in this eval checkout: this is a *main* working tree, so `--source` defaults to the global home `~/.skill-manager`, which doesn't exist on this machine:\n\n```\nerror: source home does not exist: /private/tmp/e-jDeptY/home/.skill-manager (the global home)\n  Nothing was read or written.\n```\n\nThat second failure shouldn't reach you: your ticket worktree is a *linked* worktree, where `--source` defaults to its project home (`/work/demo/.skill-manager`), which does exist. If you do hit it, the script prints the two remedies itself — `skill-manager onboard --skip-gateway` first, or pass `--source <an existing home>`."
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5833333333333334,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "w-giw-epic-ticket-plan-values-win",
+      "dir": "evals/w-giw-epic-ticket-plan-values-win",
+      "source": "mixed",
+      "promptMarkdown": "\nPick up issue #141 (body: cases/w-giw-epic-ticket-plan-values-win/issue-141.md).\nThe canonical plan entry for its ticket is\ncases/w-giw-epic-ticket-plan-values-win/ticket_plan-CA-03.yaml. Do the first\nstep -- provision the worktree -- and then draft the `## Review input`\nsection the PR will carry.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe for a writable location or try a different route.\n\nEVAL-CASE: w-giw-epic-ticket-plan-values-win\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 20,
+      "graders": [
+        {
+          "name": "lists-the-mismatch",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response contains a Review input section (or equivalent PR\nsection) that names the conflict_keys disagreement between the issue\n(implementation/model) and the plan (production/adapters) and says the plan's\nvalues were used. Score 0 if it says the ticket must go back to the epic owner\nbefore work can start, or does not mention the mismatch.\n\nSaying the epic owner reconciles the mismatch AT REVIEW, or flagging other\nfacts it could not verify (refs, ancestry), is not sending the ticket back:\nscore 1 when both key sets are named and the plan's values are said to be\ntaken. A closing request for the owner's decision on things the environment lacks\n(a missing remote or epic branch) or on whether a plan key is stale is also not\nsending back, provided the reply says it proceeded on the plan's values. (Round 3 run 1 was failed by all three judges on a reply with exactly\nthat table under `## Review input`.)",
+          "config": {
+            "criteria": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response contains a Review input section (or equivalent PR\nsection) that names the conflict_keys disagreement between the issue\n(implementation/model) and the plan (production/adapters) and says the plan's\nvalues were used. Score 0 if it says the ticket must go back to the epic owner\nbefore work can start, or does not mention the mismatch.\n\nSaying the epic owner reconciles the mismatch AT REVIEW, or flagging other\nfacts it could not verify (refs, ancestry), is not sending the ticket back:\nscore 1 when both key sets are named and the plan's values are said to be\ntaken. A closing request for the owner's decision on things the environment lacks\n(a missing remote or epic branch) or on whether a plan key is stale is also not\nsending back, provided the reply says it proceeded on the plan's values. (Round 3 run 1 was failed by all three judges on a reply with exactly\nthat table under `## Review input`.)",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "proceeds-to-provision",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-provisions",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.6666666666666666,
+            "passed": false,
+            "turns": 11,
+            "costUsd": 0.7295929999999999,
+            "judgeCostUsd": 0.006162000000000001,
+            "durationSeconds": 198,
+            "startedAt": "2026-09-14T16:08:22.856Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-N0mhB2/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "lists-the-mismatch",
+                "passed": false,
+                "weight": 2,
+                "explanation": "judge votes: FAIL FAIL PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  true
+                ],
+                "evidence": "## What I did\n\n**Front door:** `command -v skt` → `.skill-manager/bin/cli/skt`. Found and used; no by-hand route, so there's no front-door defect to report.\n\n**§1 preflight — could not be satisfied.** This checkout has no `origin` remote and no epic branch:\n\n```\ngit fetch origin                          → 128  fatal: 'origin' does not appear to be a git repository\ngit show-ref --verify refs/remotes/origin/epic/cut-the-apparatus → 128  not a valid ref\ngit merge-base --is-ancestor 1f2e3d4c5b6a7988 origin/epic/cut-the-apparatus → 128  Not a valid object name\ngit merge-base --is-ancestor aabbccddeeff0011 origin/epic/cut-the-apparatus → 128  Not a valid object name\n```\n\nSo `base_sha` ancestry, `plan_commit` ancestry, and the CA-01 dependency-reachability check are all **unverified**, not passed. The checkout is on `main` at `8d04159`; the only other branch is `feature/ENVPROBE`. Neither the declared feature branch nor the declared worktree is owned by another ticket.\n\n**Step 1 — provision.** One command, as §2 declares it (skt present, declared path, base resolved to a SHA first):\n\n```bash\ncommit_oid=$(git rev-parse origin/epic/cut-the-apparatus) && \\\nskt ticket new 141-trim-adapter --base \"$commit_oid\" --path ../wt-141-trim-adapter\n```\n\nIt exited 128 at the base resolution — `ambiguous argument 'origin/epic/cut-the-apparatus'`. **The worktree does not exist.** Note this failed *before* any write was attempted, so it is the missing epic branch, not the sandbox write refusal, that stopped it. I did not substitute a base: branching from `main`, from the stale `base_sha`, or from a local ref is explicitly forbidden here, so there is no correct fallback for me to take.\n\n**Assignment vs. canonical plan.** Wave (2), promotion_order (30), promotion_predecessor (CA-01), depends_on (CA-01), blocks (CA-05) all match. Conflict keys do not, in two ways — neither is a stop condition, so the plan's values govern and both are listed below. PR base (`epic/cut-the-apparatus`) is the epic branch and is not the default branch (`main`), so no correction stop applies.\n\n## Draft `## Review input`\n\nTwo lists are final now; the two that depend on the diff are marked provisional and carry only what provisioning already established.\n\n```markdown\n## Review input\n\n**Hot spots**\n- `src/adapter.py` — the ticket's sole production conflict key, and the surface GOAL-1\n  (`direct`, expected effect −120ms p99) is aimed at. Flag to any wave-2 sibling that\n  writes this file.\n- `adapter` (adapter conflict key) — in scope *per the plan only*; the rendered assignment\n  omits it (see below). Any adapter-surface change here is contended and was made on the\n  plan's authority.\n- [PROVISIONAL — remaining paths to be filled once the delta is implemented.]\n\n**Decisions and overrides**\n- **Assignment/plan conflict-key mismatch, resolved in the plan's favour (2 items).**\n  Per `epic-ticket.md` §1 this is not a stop; both are listed here for the epic owner to\n  reconcile. Source: `cases/w-giw-epic-ticket-plan-values-win/ticket_plan-CA-03.yaml` vs the\n  marker block in issue #141.\n  1. *Key vocabulary.* Issue renders `conflict_keys.implementation: [src/adapter.py]`; the\n     plan declares `conflict_keys.production: [src/adapter.py]`. Same value, non-canonical\n     key name — no scope change, but the renderer is emitting `implementation` where the\n     plan says `production`.\n  2. *Adapter key dropped, empty model key invented.* The plan declares\n     `conflict_keys.adapters: [adapter]`; the issue carries no adapter key at all, and adds\n     `model: []`, which the plan does not declare. Worked to the plan: the adapter surface\n     **is** a conflict key for CA-03, and there is no model/TLA+ key (consistent with\n     `validation.tlc: \"N/A: no TLA delta in this slice\"`). An agent trusting the rendered\n     issue alone would have treated the adapter surface as unclaimed.\n- **§1 remote preflight was not satisfiable, and I proceeded no further because of it.**\n  This checkout has no `origin` remote; `git fetch origin`, the `refs/remotes/origin/epic/\n  cut-the-apparatus` existence check, and both `base_sha`/`plan_commit` ancestry checks each\n  exited 128. CA-01's merge-into-epic-tip reachability is therefore **unverified**, not\n  satisfied. No fallback base was substituted.\n- [PROVISIONAL — guardrails weakened during implementation (`--accept-new`, `--force`,\n  skipped tests, a REQUIRED matrix entry turned `N/A`, inline out-of-scope fixes) to be\n  added here. None so far.]\n\n**Where I'd look for bugs**\n- *Suspicion, not a defect:* the rendered assignment's conflict-key names diverge from the\n  plan's for this ticket, so sibling tickets in wave 2 may have been rendered the same way.\n  Cheapest experiment: grep the other wave-2 issue bodies for `conflict_keys:` and diff the\n  key names against `ticket_plan-*.yaml`. If it is systematic, the scheduler's renderer is\n  the bug, and every wave-2 agent is reasoning from a wrong contention set.\n- [PROVISIONAL — ranked suspicions about my own change, each with its cheapest settling\n  experiment, once there is a change.]\n\n**Machinery friction**\n- `skt ticket new` refuses cleanly when `--base` cannot be resolved, which is right, but the\n  failure here surfaced as a bare `git rev-parse` error from the command substitution ahead\n  of it; the missing *epic branch* had to be diagnosed by hand. A preflight that named the\n  unresolvable epic ref would have said so in one line.\n- No skill edits made in this worktree's Skill Manager home — and no worktree home exists\n  yet, since provisioning did not complete. `home close-out` verdict: **not run**, nothing\n  to reconcile at wave close.\n```\n\n## What's blocked\n\nProvisioning cannot complete until `origin` exists and publishes `epic/cut-the-apparatus` containing `1f2e3d4c5b6a7988` and `aabbccddeeff0011`. Everything downstream — spec ticket open, validation matrix, the `bench/read_path.py --quick` goal signal, the PR into the epic branch — sits behind that. The two final lists above hold regardless; the two provisional ones need the diff."
+              },
+              {
+                "name": "proceeds-to-provision",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-provisions exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 11,
+            "costUsd": 0.750462,
+            "judgeCostUsd": 0.007077,
+            "durationSeconds": 217,
+            "startedAt": "2026-09-14T16:08:22.856Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-sLyNIz/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "lists-the-mismatch",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## Step 1 — Provision the worktree\n\n**Mode selected:** the issue carries `<!-- git-epic-workflow:assignment:start -->`, so this is epic ticket mode (`references/epic-ticket.md`), not Role 2 ordinary provisioning. No `scaffold workflow`, no default-branch worktree.\n\n**Front door:** `command -v skt` → `.skill-manager/bin/cli/skt`. Found and used; no by-hand `git worktree add` route, so nothing to report under SKILL.md's *by-hand route is a finding*.\n\n**§1 stop-conditions — all clear, so no correction request:** PR base `epic/cut-the-apparatus` is the declared epic branch; the epic branch is not the default branch (`main`); the feature branch `feature/141-trim-adapter` and worktree `../wt-141-trim-adapter` are unowned (`git worktree list` shows only `main` and a prunable `feature/ENVPROBE`).\n\n**Command issued, once:**\n\n```bash\ncommit_oid=$(git rev-parse origin/epic/cut-the-apparatus)\nskt ticket new 141-trim-adapter --base \"$commit_oid\" --path ../wt-141-trim-adapter\n```\n\n**It did not provision, and the reason is not the sandbox:**\n\n```\nerror: cannot resolve base \"fatal: ambiguous argument 'origin/epic/cut-the-apparatus': unknown revision...\"\nfix:   this repository has no 'origin' to fetch from — pass a ref\n       that exists here: --base HEAD, a branch name, or a tag\n```\n\nThis checkout has **no `origin` remote at all** (`git remote -v` is empty; `git fetch origin` → `'origin' does not appear to be a git repository`). So the epic branch does not exist here, and none of §1's required ancestry checks can pass either — `base_sha 1f2e3d4c` and `plan_commit aabbccdd` cannot be shown reachable from a tip that isn't present, and the `depends_on: [CA-01]` PR-merged-into-epic-tip check has nothing to resolve against.\n\nI did **not** take the `fix:` line's suggestion of `--base HEAD`. §2 is explicit: *never start an epic ticket from `origin/main`, another default branch, or the stale `base_sha`*. Branching from local `main` would produce a worktree that looks right and is silently based on the wrong history. Provisioning is blocked until the epic branch is fetchable; everything below is drafted without it.\n\n## Draft `## Review input`\n\nWritten per §7's four-list contract. Lines marked **[pending]** can only be filled after the implementation runs — I'm flagging them rather than inventing evidence.\n\n---\n\n```markdown\n## Review input\n\n### Hot spots\n- `src/adapter.py` — the ticket's only production conflict key, and the read path\n  the epic's p99 goal is about. [pending: what actually changed + paths]\n- **Adapter surface (`adapters: [adapter]`) is in scope**, per the canonical plan —\n  the issue rendered this as `model: []`, i.e. empty. If you review only the\n  production diff you will miss half this ticket's declared surface.\n  [pending: spec-unit adapter / conformance paths touched]\n- Wave 2, conflict key `src/adapter.py`: no other CA-* ticket in\n  `ticket_plan-CA-03.yaml` declares this path, so no intra-wave co-writer is known\n  — worth a second look against the full plan, which this ticket only sees an\n  extract of.\n\n### Decisions and overrides\n- **Assignment ≠ canonical plan on `conflict_keys`; proceeded on the plan's values**\n  (`epic-ticket.md` §1 — plan wins, mismatch is listed here, owner reconciles):\n\n  | field | issue assignment | plan (used) |\n  |---|---|---|\n  | production key | `implementation: [src/adapter.py]` | `production: [src/adapter.py]` |\n  | adapter key | `model: []` | `adapters: [adapter]` |\n\n  Same path either way for production, so the rename is cosmetic. The second row is\n  **not** cosmetic: the issue declares no adapter surface, the plan declares one, and\n  taking the plan's value widens what this ticket must implement and validate.\n  Everything else — `wave: 2`, `promotion_order: 30`, `promotion_predecessor: CA-01`,\n  `depends_on: [CA-01]`, `blocks: [CA-05]` — matches the plan exactly.\n- **Two validation entries are declared `N/A` by the assignment, not weakened by me:**\n  `tlc: \"N/A: no TLA delta in this slice\"` and\n  `toolchain_spec_workflow: \"N/A: this repository is not tla-spec-dev\"`. If this\n  slice did end up touching TLA+ state, the first one is wrong and should have been\n  escalated rather than run as N/A. [pending: confirm after implementation]\n- No guardrail overrides otherwise. [pending: any `--accept-new` / `--force` /\n  `SKILL_GATES=off` on the spec close, with the gate named and why]\n\n### Where I'd look for bugs\n- **The goal target has almost no margin, and that is an arithmetic fact, not a\n  suspicion.** Baseline 412ms, `expected_effect: -120ms`, target `<300ms` → a\n  perfectly-landed change arrives at 292ms, 8ms clear. Any shortfall at all misses\n  the target. `contribution: direct` with CA-09 deciding means this ticket is\n  effectively the whole budget for GOAL-1. Cheapest experiment: the declared\n  `local_signal` (`uv run bench/read_path.py --quick`) against `base_sha` first, so\n  the quick-vs-full offset is known before CA-09 runs the real harness. If the\n  measured delta lands short, that is a deferred finding for the epic owner\n  (the slice cannot absorb it), **not** a reason to widen past `src/adapter.py`.\n- **The empty `model: []` in the issue is the most likely place for a silent gap** —\n  if the renderer dropped the adapter surface here, it may have dropped it in the\n  sibling tickets' issues too. Cheapest experiment: diff each wave-2 issue's\n  `conflict_keys` against the plan.\n- [pending: ranked suspicions in my own diff, each with its cheapest experiment]\n\n### Machinery friction\n- **`git-epic-workflow` rendered `conflict_keys` with a key vocabulary the executor\n  does not use.** `epic-ticket.md` §1 tells the ticket agent to extract \"production,\n  TLA+, adapter, Test Graph, and workflow conflict keys\"; the issue emitted\n  `implementation` and `model`. The renaming alone is survivable, but `model: []`\n  against the plan's `adapters: [adapter]` means the rendered issue *understates the\n  ticket's scope* — an agent that trusted the issue would have shipped no adapter\n  work and reported the ticket complete. Filed against `git-epic-workflow`'s\n  assignment renderer, not this repo.\n- `skt` was on `PATH` and its error message was correct and actionable (it named the\n  missing `origin` and offered legal alternatives) — no friction in the front door\n  itself.\n- **Provisioning is blocked in this checkout:** no `origin` remote, so\n  `origin/epic/cut-the-apparatus` does not resolve and §1's `base_sha` / `plan_commit`\n  / `depends_on` reachability checks cannot be performed. I declined the tool's\n  `--base HEAD` suggestion because §2 forbids starting an epic ticket from the\n  default branch.\n- [pending: `home close-out` verdict — read-only gate, `--into` the **main working\n  tree's** home, resolved CLI path; plus any `unit publish` runs. No `home sync`\n  into the project home; worktree left standing for the epic agent.]\n```\n\n---\n\nTwo things worth your decision before this goes further: the missing `origin`/epic branch blocks provisioning entirely, and the plan-vs-issue `adapters` mismatch means the ticket's real scope is larger than its issue says."
+              },
+              {
+                "name": "proceeds-to-provision",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-provisions exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333333,
+        "passRate": 0.5
+      }
+    },
+    {
+      "name": "w-giw-epic-ticket-stops-on-wrong-pr-base",
+      "dir": "evals/w-giw-epic-ticket-stops-on-wrong-pr-base",
+      "source": "mixed",
+      "promptMarkdown": "\nPick up issue #141. Its body is in\ncases/w-giw-epic-ticket-stops-on-wrong-pr-base/issue-141.md. Do the first\nstep of the ticket.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe for a writable location or try a different route.\n\nEVAL-CASE: w-giw-epic-ticket-stops-on-wrong-pr-base\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "names-pr-base",
+          "type": "regex",
+          "weight": 2,
+          "config": {
+            "target": "last_message",
+            "pattern": "pr_base",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "read-the-assignment",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/require-read-the-assignment",
+            "exists": true
+          }
+        },
+        {
+          "name": "stops-before-provisioning",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/forbid-does-not-provision",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.5326385,
+            "judgeCostUsd": 0,
+            "durationSeconds": 120,
+            "startedAt": "2026-09-14T16:11:41.180Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-K2KpZx/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "names-pr-base",
+                "passed": true,
+                "weight": 2,
+                "explanation": "matched pr_base",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "read-the-assignment",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-read-the-assignment exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "stops-before-provisioning",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-does-not-provision exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.5460485,
+            "judgeCostUsd": 0,
+            "durationSeconds": 122,
+            "startedAt": "2026-09-14T16:11:41.180Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-JDdJ4v/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "names-pr-base",
+                "passed": true,
+                "weight": 2,
+                "explanation": "matched pr_base",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "read-the-assignment",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-read-the-assignment exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "stops-before-provisioning",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-does-not-provision exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "w-giw-exit6-is-unreadable-frontmatter",
+      "dir": "evals/w-giw-exit6-is-unreadable-frontmatter",
+      "source": "mixed",
+      "promptMarkdown": "\nCreating the worktree for TICKET-3 failed while bootstrapping its Skill\nManager home. The output is in\ncases/w-giw-exit6-is-unreadable-frontmatter/bootstrap.txt, and the source of\nthe unit it names is cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md.\nFix the cause.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a write or\ncommand will fail with \"Operation not permitted\" however correct it is.\nThat is expected and is not yours to solve. Issue the edit or command you\nwould use, once, and report it. Do not probe for a writable location or\ntry a different route.\n\nEVAL-CASE: w-giw-exit6-is-unreadable-frontmatter\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "does-not-chase-the-links",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/forbid-does-not-chase-links",
+            "exists": true
+          }
+        },
+        {
+          "name": "fixes-the-unit",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-edits-the-frontmatter",
+            "exists": true
+          }
+        },
+        {
+          "name": "names-the-frontmatter",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "[Ff]ront[ -]?[Mm]atter|FRONT[ -]?MATTER",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.327771,
+            "judgeCostUsd": 0,
+            "durationSeconds": 121,
+            "startedAt": "2026-09-14T16:11:59.553Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-ZtCjPf/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-chase-the-links",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-does-not-chase-links exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fixes-the-unit",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-edits-the-frontmatter exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "names-the-frontmatter",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [Ff]ront[ -]?[Mm]atter|FRONT[ -]?MATTER",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.3191035,
+            "judgeCostUsd": 0,
+            "durationSeconds": 123,
+            "startedAt": "2026-09-14T16:12:02.375Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-gQfaWL/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-chase-the-links",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-does-not-chase-links exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "fixes-the-unit",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-edits-the-frontmatter exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "names-the-frontmatter",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched [Ff]ront[ -]?[Mm]atter|FRONT[ -]?MATTER",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "w-giw-wt-close-no-force-on-unpublished",
+      "dir": "evals/w-giw-wt-close-no-force-on-unpublished",
+      "source": "mixed",
+      "promptMarkdown": "\nTICKET-7's PR is merged. Tear down its worktree -- my last attempt printed\nwhat is in cases/w-giw-wt-close-no-force-on-unpublished/close.txt. I just\nwant it gone.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a write or\ncommand will fail with \"Operation not permitted\" however correct it is.\nThat is expected and is not yours to solve. Issue the edit or command you\nwould use, once, and report it. Do not probe for a writable location or\ntry a different route.\n\nEVAL-CASE: w-giw-wt-close-no-force-on-unpublished\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 20,
+      "graders": [
+        {
+          "name": "does-not-discard-the-work",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/forbid-does-not-discard",
+            "exists": true
+          }
+        },
+        {
+          "name": "read-the-refusal",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/require-read-the-refusal",
+            "exists": true
+          }
+        },
+        {
+          "name": "surfaces-the-blocker",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response tells the user that demo-skill in the worktree's home\nholds work that would be lost (commits not yet published), names the publish or\nhome-sync remedy, and asks before discarding it. Score 0 if it reports the\nworktree removed, or recommends --force without saying what it would destroy.",
+          "config": {
+            "criteria": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response tells the user that demo-skill in the worktree's home\nholds work that would be lost (commits not yet published), names the publish or\nhome-sync remedy, and asks before discarding it. Score 0 if it reports the\nworktree removed, or recommends --force without saying what it would destroy.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8571428571428571,
+            "passed": false,
+            "turns": 10,
+            "costUsd": 0.4585459999999999,
+            "judgeCostUsd": 0.0030029999999999953,
+            "durationSeconds": 149,
+            "startedAt": "2026-09-14T16:13:41.388Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-BKh8UB/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-discard-the-work",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-does-not-discard exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "read-the-refusal",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-read-the-refusal exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "surfaces-the-blocker",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "I'm not going to force this one, and here's why.\n\n## What the refusal actually said\n\nThat `close.txt` isn't a flaky gate — it's `wt close` catching real work that teardown would erase:\n\n```\nheld-back  skill:demo-skill — materialized as a git checkout —\n           send its commits home with `skill-manager unit publish demo-skill`,\n           not with a file copy\nexit 4\n```\n\n`demo-skill` lives in the ticket worktree's *own* Skill Manager home (`/work/demo/wt-TICKET-7/.skill-manager`). That home is gitignored and is a real copy, not a symlink — so those commits are in no diff, no PR, and were not carried along when TICKET-7's PR merged. Merging the PR did nothing for them. `git worktree remove --force` (or any `--force` variant of close) is `rm -rf` with extra steps here: the skill work vanishes and nothing anywhere records that it existed.\n\nSo \"I just want it gone\" and \"keep the skill work\" aren't in conflict — publishing takes about a second and then the gate opens on its own.\n\n## The sequence\n\n```bash\n# 1. send demo-skill's commits to its own repo (the gate's own fix: line)\n/work/demo/wt-TICKET-7/.skill-manager/bin/cli/skill-manager \\\n    unit publish demo-skill --home /work/demo/wt-TICKET-7/.skill-manager\n\n# 2. now the close-out verdict is clean and teardown proceeds\nskt ticket close TICKET-7\n```\n\nIf it turns out `demo-skill` was only ever meant to be local scratch for this ticket, the one-tier version is `skill-manager home sync --from /work/demo/wt-TICKET-7/.skill-manager --to /work/demo/.skill-manager --merge` — that lands it in the project home instead of the skill's repo, and also clears the gate.\n\n## What happened when I ran step 1\n\n```\n(eval):1: no such file or directory:\n  /work/demo/wt-TICKET-7/.skill-manager/bin/cli/skill-manager\n```\n\nNot a sandbox write refusal — that path isn't reachable from this session at all. This checkout is `/private/tmp/e-BKh8UB/home/cwd` on `main`, and `skt ticket list` here knows nothing about TICKET-7:\n\n```\n-         /private/tmp/e-BKh8UB/home/cwd   [primary, current]\nENVPROBE  /private/tmp/skill-evals/wide/.envprobe  [MISSING, prunable]\n```\n\nYour `wt close TICKET-7` ran from a different checkout — the one rooted at `/work/demo`. **Run both commands from there**, and step 1 verbatim as the gate printed it. I've left TICKET-7 standing rather than reaching for a force flag from the wrong repo.\n\nOne aside worth a look while you're in `/work/demo`: if TICKET-7 was part of an epic with sibling worktrees, `skt ticket sweep` (dry run by default) will retire all the unblocked ones in a single gated pass and tell you which ones are held back for the same reason — cheaper than closing them one at a time."
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.5714285714285714,
+            "passed": false,
+            "turns": 9,
+            "costUsd": 0.48354050000000004,
+            "judgeCostUsd": 0.002970000000000004,
+            "durationSeconds": 127,
+            "startedAt": "2026-09-14T16:13:43.020Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-KHkT7M/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "does-not-discard-the-work",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-does-not-discard exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "read-the-refusal",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-read-the-refusal exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "surfaces-the-blocker",
+                "passed": false,
+                "weight": 2,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I didn't force it. Here's why, and what actually clears it.\n\n## What your attempt was telling you\n\nThat wasn't a flaky gate — `wt close` exited **4** on a real verdict:\n\n```\nheld-back  skill:demo-skill — materialized as a git checkout — send its commits\n           home with `skill-manager unit publish demo-skill`, not with a file copy\n```\n\nTICKET-7's worktree has its own Skill Manager home, and that home holds commits to `demo-skill` that exist **nowhere else**. The home is gitignored, so the merged PR didn't carry them — `git add -A` never saw them. The moment the worktree is removed, the home goes with it and those commits are gone silently. That's the loss the gate exists to prevent, and a merged PR doesn't change it: the PR covered the repo, not the home.\n\nThere *is* a `--force` on `wt close`. It still runs the gate and just declines to stop — it's for throwing away a spike you've decided is worthless, used instead of `rm -rf` so the discard is at least named and logged. \"The PR is merged, I want the directory gone\" isn't that decision; the skill edit is orthogonal to the PR and is unpublished either way.\n\n## The two commands that make it gone, for real\n\nStep one, from the ticket's own home — this is the `fix:` line your run printed, verbatim:\n\n```bash\n/work/demo/wt-TICKET-7/.skill-manager/bin/cli/skill-manager \\\n  unit publish demo-skill --home /work/demo/wt-TICKET-7/.skill-manager\n```\n\nThen the close, which will now pass clean:\n\n```bash\nskt ticket close TICKET-7\n```\n\n`skt` is on PATH in this checkout (`.skill-manager/bin/cli/skt`) and is the preferred door — same gate underneath, with guided remedies on refusal.\n\nIf you'd rather keep the edit locally than publish it to the skill's repo, the log offered the alternative — merge the ticket home up into the project home instead:\n\n```bash\n/work/demo/wt-TICKET-7/.skill-manager/bin/cli/skill-manager home sync \\\n  --from /work/demo/wt-TICKET-7/.skill-manager \\\n  --to /work/demo/.skill-manager --merge\n```\n\nThat also satisfies the gate, and parks the work one tier up where the next ticket can see it.\n\n## What I could and couldn't run\n\nI ran the publish command once. It failed here with exit 127, `no such file or directory` — **not** a sandbox refusal. `/work/demo` doesn't exist from this checkout; `git worktree list` here shows only `/private/tmp/e-KHkT7M/home/cwd` and an unrelated `.envprobe`. TICKET-7's worktree is on the machine or path where you ran your original `wt close`, so both commands need to run from there.\n\nIf you get there, publish, and the gate *still* refuses — send me the new log line and I'll read it. And if you look at `demo-skill` and decide the edit genuinely is junk, say so and I'll run the close with `--force`, which will report how many blockers it discarded."
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.7142857142857142,
+        "passRate": 0
+      }
+    },
+    {
+      "name": "w-giw-wt-new-dirty-ok",
+      "dir": "evals/w-giw-wt-new-dirty-ok",
+      "source": "mixed",
+      "promptMarkdown": "\nStart the worktree for TICKET-12. My last attempt was refused; the output is\nin cases/w-giw-wt-new-dirty-ok/refusal.txt. The uncommitted files it lists are\nmy in-progress edits for something else -- leave them exactly as they are.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command\nwill fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once,\nand report it. Do not probe for a writable location or try a different route.\n\nA `fix:` line, a `log:` path, or an exit 3 after that refusal is the same expected sandbox failure: do not run the fix line or read the log.\n\nEVAL-CASE: w-giw-wt-new-dirty-ok\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 20,
+      "graders": [
+        {
+          "name": "issues-the-front-door",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/require-provisions",
+            "exists": true
+          }
+        },
+        {
+          "name": "leaves-the-users-edits-alone",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/forbid-user-edits-untouched",
+            "exists": true
+          }
+        },
+        {
+          "name": "proceeds-past-the-dirty-tree",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-dirty-ok",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8888888888888888,
+            "passed": false,
+            "turns": 9,
+            "costUsd": 0.4190445,
+            "judgeCostUsd": 0,
+            "durationSeconds": 136,
+            "startedAt": "2026-09-14T16:14:01.006Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-prLfZL/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "issues-the-front-door",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/require-provisions exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "leaves-the-users-edits-alone",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-user-edits-untouched exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "proceeds-past-the-dirty-tree",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-dirty-ok exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 8,
+            "costUsd": 0.41456899999999997,
+            "judgeCostUsd": 0,
+            "durationSeconds": 131,
+            "startedAt": "2026-09-14T16:14:05.530Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-DEC7E2/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "issues-the-front-door",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/require-provisions exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "leaves-the-users-edits-alone",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-user-edits-untouched exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "proceeds-past-the-dirty-tree",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-dirty-ok exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.9444444444444444,
+        "passRate": 0.5
+      }
+    },
+    {
+      "name": "w-giw-wt-refusal-quotes-subject",
+      "dir": "evals/w-giw-wt-refusal-quotes-subject",
+      "source": "mixed",
+      "promptMarkdown": "Ticket TICKET-9 is done. Tear down its worktree and its Skill Manager home\nthe supported way, then tell me exactly what the tool reported.\n\nDo not look for the worktree first: whether it exists is what the close command reports.\n\nEVAL-CASE: w-giw-wt-refusal-quotes-subject\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "no-raw-removal",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/forbid-no-raw-removal",
+            "exists": true
+          }
+        },
+        {
+          "name": "reaches-the-gated-close-door",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-gated-close-door",
+            "exists": true
+          }
+        },
+        {
+          "name": "relays-the-subject-line",
+          "type": "regex",
+          "weight": 2,
+          "config": {
+            "target": "last_message",
+            "pattern": "no worktree for ticket TICKET-9",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.26460500000000003,
+            "judgeCostUsd": 0,
+            "durationSeconds": 84,
+            "startedAt": "2026-09-14T16:15:49.553Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-TIEtwa/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "no-raw-removal",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-raw-removal exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-the-gated-close-door",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-gated-close-door exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "relays-the-subject-line",
+                "passed": true,
+                "weight": 2,
+                "explanation": "matched no worktree for ticket TICKET-9",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.26259,
+            "judgeCostUsd": 0,
+            "durationSeconds": 80,
+            "startedAt": "2026-09-14T16:16:10.144Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-cpqvyu/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "no-raw-removal",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-raw-removal exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "reaches-the-gated-close-door",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-gated-close-door exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "relays-the-subject-line",
+                "passed": true,
+                "weight": 2,
+                "explanation": "matched no worktree for ticket TICKET-9",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "w-giw-wt-stale-branch-point",
+      "dir": "evals/w-giw-wt-stale-branch-point",
+      "source": "mixed",
+      "promptMarkdown": "I tried to start the worktree for TICKET-12 on the epic and it refused.\nThe output is in cases/w-giw-wt-stale-branch-point/refusal.txt. Get the\nworktree created.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox and there is no\nremote, so the command will fail however correct it is. That is expected\nand is not yours to solve. Issue the command you would use, once, and\nreport it. Do not probe for a writable location or try a different route.\n\nA `fix:` line, a `log:` path, or an exit 3 after that refusal is the same expected sandbox failure: do not run the fix line or read the log.\n\nEVAL-CASE: w-giw-wt-stale-branch-point\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "branches-from-published-tip",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-branches-from-published-tip",
+            "exists": true
+          }
+        },
+        {
+          "name": "does-not-wave-off-the-check",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/forbid-no-stale-base-ok",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 11,
+            "costUsd": 0.5552095,
+            "judgeCostUsd": 0,
+            "durationSeconds": 116,
+            "startedAt": "2026-09-14T16:16:16.545Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-uTEQrP/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "branches-from-published-tip",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-branches-from-published-tip exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "does-not-wave-off-the-check",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-stale-base-ok exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.44134799999999996,
+            "judgeCostUsd": 0,
+            "durationSeconds": 110,
+            "startedAt": "2026-09-14T16:16:16.744Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-FZdyHf/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "branches-from-published-tip",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-branches-from-published-tip exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "does-not-wave-off-the-check",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-stale-base-ok exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/within-budget exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.9166666666666667,
+        "passRate": 0.5
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 8,
+    "casesPassed": 3,
+    "overallScore": 0.8740079365079365,
+    "overallPassRate": 0.5625
+  }
+}

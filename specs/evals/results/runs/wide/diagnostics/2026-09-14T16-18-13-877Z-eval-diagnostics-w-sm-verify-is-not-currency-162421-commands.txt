@@ -1,0 +1,9 @@
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt status 2>&1", "description": "Report Skill Manager home status"}
+---
+Bash {"command": "skt check 2>&1", "description": "Check for stale units and new versions"}
+---
+Bash {"command": "skt check --json 2>&1 | head -120", "description": "Get detailed check output as JSON"}
+---
+Bash {"command": "skt status --json 2>&1 | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nu=d.get('units') or d\ndef g(x,k,dflt=None): return x.get(k,dflt)\nrows=u if isinstance(u,list) else u.get('rows',[])\nfor r in rows:\n    print(r.get('name'), r.get('kind'), 'cm=' + str(r.get('change_managed', r.get('cm'))))\n\" 2>&1 | head -40", "description": "List units and change-management status"}

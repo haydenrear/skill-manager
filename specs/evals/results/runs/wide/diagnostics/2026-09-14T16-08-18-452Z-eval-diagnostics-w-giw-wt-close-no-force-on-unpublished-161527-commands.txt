@@ -1,0 +1,13 @@
+Bash {"command": "pwd && ls -a && git worktree list", "description": "List worktrees and current dir"}
+---
+Bash {"command": "find /private/tmp -maxdepth 6 -path '*cases/w-giw-wt-close-no-force-on-unpublished*' 2>/dev/null | head -20", "description": "Locate eval case dir"}
+---
+Bash {"command": "ls cases/ && echo \"---\" && cat cases/w-giw-wt-close-no-force-on-unpublished/close.txt 2>/dev/null", "description": "Inspect cases directory and close.txt"}
+---
+Skill {"args": "tear down TICKET-7 worktree, wt close refused with exit 4 unpublished skill work", "skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "grep -n -i -B5 -A60 'force' /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/complete.md | head -150", "description": "Read force semantics in complete.md"}
+---
+Bash {"command": "command -v skt; echo \"---\"; ls /work/demo 2>&1 | head -5; echo \"--- parent dirs\"; ls .. | head -20", "description": "Check skt on PATH and locate demo worktree"}
+---
+Bash {"command": "/work/demo/wt-TICKET-7/.skill-manager/bin/cli/skill-manager unit publish demo-skill --home /work/demo/wt-TICKET-7/.skill-manager", "description": "Publish demo-skill from the ticket home"}
