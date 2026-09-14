@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/SmEnv.java
+//SOURCES ../lib/IntentionalDamage.java
 
 import com.hayden.testgraphsdk.sdk.ContextItem;
 import com.hayden.testgraphsdk.sdk.Node;
@@ -97,10 +98,50 @@ public final class HomeFixpointLaw {
             List<String> violations = new ArrayList<>();
             List<String> log = new ArrayList<>();
 
+            // Homes a node damaged ON PURPOSE, by entry (#344). See
+            // IntentionalDamage: exact home, exact findings, counted and named,
+            // and a declared finding verify does NOT report is a violation.
+            List<String> malformed = new ArrayList<>();
+            Map<Path, IntentionalDamage.Declaration> damaged =
+                    IntentionalDamage.byHome(declarations(ctx.context(), malformed));
+            for (String bad : malformed) {
+                violations.add("malformed " + IntentionalDamage.KEY + " declaration: " + bad);
+            }
+            List<String> damagedOnPurpose = new ArrayList<>();
+
             for (Path candidate : candidates) {
                 Run first = verify(cli, candidate);
                 if (first.exit == NOT_A_HOME) continue;          // not a home; not our business
                 checked.add(candidate.toString());
+                IntentionalDamage.Declaration declared = damaged.get(candidate);
+                if (declared != null) {
+                    String output = first.out + "\n" + first.err;
+                    Set<String> reported = IntentionalDamage.unresolvedEntries(output);
+                    Set<String> unseen = new LinkedHashSet<>(declared.entries());
+                    unseen.removeAll(reported);
+                    if (!unseen.isEmpty()) {
+                        violations.add(candidate + ": declared intentionally damaged at " + unseen
+                                + " but home verify (exit " + first.exit + ") does not report it — "
+                                + "the declaration is stale, or verify is blind to a defect the "
+                                + "fixture really planted (the #343 shape)");
+                        log.add("FAIL  " + candidate + " — declared damage not reported by verify\n"
+                                + first.tail());
+                        continue;
+                    }
+                    List<String> unexplained = IntentionalDamage.unexplained(output, declared.entries());
+                    if (unexplained.isEmpty()) {
+                        damagedOnPurpose.add(candidate + " " + declared.entries()
+                                + " — " + declared.reason());
+                        log.add("DAMAGED ON PURPOSE " + candidate + ": verify reports exactly the "
+                                + "declared " + declared.entries() + " and nothing else");
+                        continue;
+                    }
+                    // Something beyond the planted damage: judged like any home,
+                    // and the re-verify is held to the same "only what was
+                    // declared" rule below.
+                    log.add("DECLARED " + candidate + " " + declared.entries()
+                            + " but verify also refuses on: " + unexplained);
+                }
                 if (first.exit == 0) {
                     log.add("PASS  " + candidate);
                     continue;
@@ -117,7 +158,10 @@ public final class HomeFixpointLaw {
 
                 Run fix = shell(cli, remedy, candidate);
                 Run second = verify(cli, candidate);
-                if (second.exit == 0) {
+                boolean onlyDeclaredRemains = declared != null
+                        && IntentionalDamage.unexplained(second.out + "\n" + second.err,
+                                declared.entries()).isEmpty();
+                if (second.exit == 0 || onlyDeclaredRemains) {
                     repaired.add(candidate.toString());
                     log.add("REPAIRED " + candidate + " (remedy exit " + fix.exit + ")");
                 } else {
@@ -144,13 +188,30 @@ public final class HomeFixpointLaw {
                     .metric("homesChecked", checked.size())
                     .metric("homesRepaired", repaired.size())
                     .metric("homesOutsideSandbox", outsideSandbox.size())
+                    .metric("homesDamagedOnPurpose", damagedOnPurpose.size())
                     .publish("homesChecked", String.join(",", checked))
                     .publish("homesRepaired", String.join(",", repaired))
                     .log(String.join("\n", log)
                             + (outsideSandbox.isEmpty() ? ""
                                     : "\nSKIPPED (outside the sandbox, never mutated): "
-                                            + String.join(", ", outsideSandbox)));
+                                            + String.join(", ", outsideSandbox))
+                            + (damagedOnPurpose.isEmpty() ? ""
+                                    : "\nDAMAGED ON PURPOSE (declared by entry via "
+                                            + IntentionalDamage.KEY + "; every other finding "
+                                            + "judged as usual): "
+                                            + String.join("; ", damagedOnPurpose)));
         });
+    }
+
+    /** Every {@link IntentionalDamage#KEY} value any upstream node published. */
+    private static List<IntentionalDamage.Declaration> declarations(
+            List<ContextItem> context, List<String> malformed) {
+        List<IntentionalDamage.Declaration> out = new ArrayList<>();
+        for (ContextItem item : context) {
+            String value = item.data().get(IntentionalDamage.KEY);
+            if (value != null) out.addAll(IntentionalDamage.parse(value, malformed));
+        }
+        return out;
     }
 
     // ------------------------------------------------------------ discovery

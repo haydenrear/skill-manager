@@ -1801,12 +1801,18 @@ public final class HomeCloner {
      * intermediate directory, a symlinked {@code $HOME} or checkout,
      * {@code /Volumes/…}. See {@code HomeVerifyPathSpellingTest}, which builds
      * exactly that and records the vacuous shape it did not use.
+     *
+     * <p><b>And the alias spellings, #343.</b> {@code {given, real}} collapses to
+     * one entry when the caller hands over the RESOLVED path: given
+     * {@code /private/var/x}, the {@code /var/x} spelling a shim most often
+     * holds on macOS was never scanned, and the literal scan cannot find
+     * {@code /private/var/x} inside {@code /var/x/...}. So a genuinely dangling
+     * shim read clean locally and was refused on Linux. {@link PathSpellings}
+     * adds the top-level-symlink aliases of both, in both directions. The given
+     * spelling stays first: it is the canonical one findings are reported in.
      */
     static List<String> rootSpellings(Path root) {
-        Path abs = root.toAbsolutePath().normalize();
-        String given = abs.toString();
-        String real = realOrSame(abs).toString();
-        return given.equals(real) ? List.of(given) : List.of(given, real);
+        return PathSpellings.of(root);
     }
 
     /**
