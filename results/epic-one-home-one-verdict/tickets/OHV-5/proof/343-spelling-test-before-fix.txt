@@ -1,0 +1,7 @@
+  [PASS] a missing reference is found through the symlinked spelling too
+  [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
+  [PASS] #343: alias spellings are derived in both directions from a root alias table
+  [FAIL] #343: a home GIVEN by its /private/var path finds a reference written as /var: not true: home verify handed /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-spelling-alias-13635826097649495378/home must report a shim naming /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-spelling-alias-13635826097649495378/home/venvs/nope/bin/probe, which does not exist
+  [PASS] a reference that DOES resolve is reported by neither spelling
+  [PASS] the recovered path is reported in the spelling the caller asked about
+FAILURES=1

@@ -1,0 +1,7 @@
+  [PASS] a missing reference is found through the symlinked spelling too
+  [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
+  [PASS] #343: alias spellings are derived in both directions from a root alias table
+  [PASS] #343: a home GIVEN by its /private/var path finds a reference written as /var
+  [PASS] a reference that DOES resolve is reported by neither spelling
+  [PASS] the recovered path is reported in the spelling the caller asked about
+FAILURES=0
