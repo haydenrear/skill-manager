@@ -57,10 +57,9 @@ for f in "$ROOT"/evals/w-*/units-override.txt; do
       || { echo "setup: override names $unit, which the home does not have ($f)" >&2; exit 1; }
     [ -f "$checkout/SKILL.md" ] \
       || { echo "setup: override $unit=$checkout has no SKILL.md ($f)" >&2; exit 1; }
-    mkdir -p "$BUILD/overrides"
-    rsync -a --delete --exclude .git --exclude __pycache__ --exclude .venv \
-      --exclude .skill-manager --exclude .claude "$checkout/" "$BUILD/overrides/$unit/"
-    ln -sfn "$BUILD/overrides/$unit" "$BUILD/units/$unit/skills/$unit"
+    # Placed INSIDE the wrapper, like every other unit (eval_place_skill says
+    # why a symlink out of the plugin dir is unreadable from a run).
+    eval_place_skill "$checkout" "$BUILD/units/$unit/skills/$unit" || exit 1
     echo "$unit=$checkout" >> "$BUILD/overrides.txt"
     echo "override: $unit <- $checkout ($(git -C "$checkout" rev-parse --short HEAD 2>/dev/null || echo no-git)$(git -C "$checkout" diff --quiet 2>/dev/null || echo ', UNCOMMITTED changes'))"
   done < "$f"

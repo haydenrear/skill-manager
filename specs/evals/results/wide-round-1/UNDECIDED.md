@@ -15,8 +15,20 @@ counting reds does not count these.
 | 3 | `timed out after 180s`, one of them at 0 turns | the first ~100 s of each run went to the byte copy above | the clone, and 420 s |
 | 1 | `w-harness-smoke` 0.25 — the command WAS recorded, `.eval/case` was not | its Stop hook ran while the disk was full; the diagnostics archived as `unknown` | the clone |
 
+**And beneath all of those, a defect that would have spoiled the round anyway,
+found by reading the saved traces of the runs that did start:** every unit's
+wrapper symlinked its `skills/<unit>` out of the plugin directory, and the run's
+sandbox only reads plugin directories. The Skill tool still delivered SKILL.md,
+so the skill appeared to load, but `references/` and `scripts/` were
+`Operation not permitted` — `w-epic-plan-free-form-lane` could not list the
+validator it was told to run, and `w-misc-otlp-endpoint-native-runner` spent 3
+of its 4 turns searching deploy-helm for a reference it could not see. Fixed by
+`eval_place_skill` (lib.sh): content is cloned into the wrapper and pruned.
+The deep cases use the same wrappers, so their earlier rounds were reading
+SKILL.md only as well.
+
 Still to read against their traces before they count as findings in a later
-round: `w-misc-plugin-repo-finalize-sh` (finalize.sh not issued in 4 turns) and
+round (neither trace was kept — both runs finished and were torn down): `w-misc-plugin-repo-finalize-sh` (finalize.sh not issued in 4 turns) and
 `w-misc-debug-bounded-wait` (llm FAIL FAIL FAIL after loading the debugging
 skill and one `ls`).
 

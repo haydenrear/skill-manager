@@ -329,6 +329,39 @@ branch_home() {
   fi
 }
 
+# PLACE A SKILL'S CONTENT INSIDE ITS WRAPPER, NEVER AS A SYMLINK OUT OF IT.
+# eval_place_skill <src-dir> <dst-dir>
+#
+# A symlinked skill LOADS -- plugin containment stops at the entry -- but a run
+# cannot READ it: the sandbox's allowRead is the plugin dirs, and the symlink
+# target is not one. Measured in wide round 1, from inside a run:
+#
+#   ls .../units/git-epic-workflow/skills/git-epic-workflow/: Operation not permitted
+#
+# The Skill tool still delivered SKILL.md, so nothing looked wrong until an
+# agent needed references/ or scripts/ -- every validator, every "run the
+# skill's script" -- and spent its turns searching for files it could not see.
+#
+# So the content is CLONED in (APFS clonefile: ~0 bytes, ~0 s) and pruned of
+# what a skill never needs at run time. The prune is not optional:
+# spec-double-compiler is 30,297 entries with .git and specs/.history and
+# `plugin eval` refuses a plugin directory over 20,000; pruned it is ~5,300.
+eval_place_skill() {
+  local src="${1%/}" dst="$2" n
+  rm -rf "$dst"; mkdir -p "$(dirname "$dst")"
+  cp -Rc "$src" "$dst" 2>/dev/null || cp -R "$src" "$dst" \
+    || { echo "setup: could not place $src into $dst" >&2; return 1; }
+  find "$dst" \( -name .git -o -name __pycache__ -o -name node_modules -o -name .venv \
+                 -o -name .skill-manager -o -name .claude -o -path '*/specs/.history' \) \
+       -prune -exec rm -rf {} + 2>/dev/null
+  n="$(find "$dst" | wc -l | tr -d ' ')"
+  if [ "$n" -gt "${EVAL_MAX_PLUGIN_ENTRIES:-19000}" ]; then
+    echo "setup: $dst holds $n entries after pruning; plugin eval refuses a" >&2
+    echo "       plugin directory over 20,000 -- extend the prune in eval_place_skill" >&2
+    return 1
+  fi
+}
+
 # PROVE THE ENVIRONMENT BEFORE SPENDING A RUN ON IT.
 #
 # Twelve runs and about $12 went on environment faults that a $0 probe would
@@ -482,14 +515,16 @@ eval_build_case() {
     mkdir -p "$build/units/$u/.claude-plugin" "$build/units/$u/skills"
     printf '{"name":"%s","version":"0.1.0","description":"live unit from the branched home"}\n' \
       "$u" > "$build/units/$u/.claude-plugin/plugin.json"
-    ln -sfn "$d" "$build/units/$u/skills/$u"
+    eval_place_skill "$d" "$build/units/$u/skills/$u" || return 1
   done
   for p in "$build"/home/plugins/*/; do
     [ -d "$p" ] || continue; pn="$(basename "$p")"
     mkdir -p "$build/units/$pn/.claude-plugin" "$build/units/$pn/skills"
     printf '{"name":"%s","version":"0.1.0","description":"live plugin from the branched home"}\n' \
       "$pn" > "$build/units/$pn/.claude-plugin/plugin.json"
-    for c in "$p"skills/*/; do [ -d "$c" ] && ln -sfn "$c" "$build/units/$pn/skills/$(basename "$c")"; done
+    for c in "$p"skills/*/; do
+      [ -d "$c" ] && { eval_place_skill "$c" "$build/units/$pn/skills/$(basename "$c")" || return 1; }
+    done
   done
   cp -R "$root/units-template/." "$build/units/"
 
