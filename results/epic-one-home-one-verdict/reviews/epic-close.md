@@ -64,17 +64,20 @@ Promotion order held. Every wave produced a review artifact (`reviews/wave-1` �
 - **Backups**, kept outside the repository: `/Users/hayde/IdeaProjects/.oh*-backup-2026-09-14*`.
 - **Standing risk:** the root was overwritten twice on 2026-09-14 by commit-diff-context-parent test graphs running builds without OHV-9. It stays exposed until OHV-9 is released and commit-diff-context-parent#262 is fixed. Tracked as #378.
 
-## 6. Deferred findings: 30, none pending
+## 6. Deferred findings: 32, none pending
 
 | Disposition | Count |
 | --- | ---: |
-| ticketed | 7 |
-| fixed at finalization (DEF-OHV-181, DEF-OHV-182) | 2 |
-| carried as grouped issues | 21 |
+| ticketed | 6 |
+| fixed at finalization (DEF-OHV-181, DEF-OHV-182, DEF-OHV-190) | 3 |
+| carried as grouped issues | 23 |
 
-- **Carried issues:** skill-manager #372–#378 and #380, skt#47, git-epic-workflow#19, git-issue-workflow#31.
+- **Carried issues:** skill-manager #372–#378, #380 and #269, skt#47, git-epic-workflow#19, git-issue-workflow#31.
 - **From the TLA+ modelling after close (#379):** DEF-OHV-190 to DEF-OHV-194.
-  - **DEF-OHV-190 blocks the merge.** The shim anchor `${BASH_SOURCE[0]:-$0}` is a syntax error under dash. OHV-4 widened the rewrite to sh and dash shims, so a rewritten `#!/bin/sh` shim breaks on Debian and Ubuntu. Reproduced in `debian:stable-slim`, and fixed by a PR into the epic branch before merge.
+  - **DEF-OHV-190 was blocking and is now fixed.** The shim anchor `${BASH_SOURCE[0]:-$0}` is a syntax error under dash, and OHV-4 widened the rewrite to sh and dash shims, so a rewritten `#!/bin/sh` shim broke on Debian and Ubuntu. Reproduced in `debian:stable-slim`.
+    - Fixed by #381 (merged `bbc00af8`), which writes `${BASH_SOURCE:-$0}`. Existing sh and dash shims that carry the old line are reported and re-anchored; bash, zsh and ksh shims are left alone.
+    - Evidence: `ShimAnchorRunsUnderEveryShellTest` went from 3/9 passing to 9/9; the full unit suite passes 1606/0; `home-verdicts` passes 18/18. See `tickets/OHV-dash/`.
+  - **DEF-OHV-195 and DEF-OHV-196, found by that fix, are carried to #269.** A shim run through a symlink derives the link's home, and a shebang with flags is skipped.
   - **DEF-OHV-191 to DEF-OHV-194 are carried:** #380, and a comment on #374.
 
 ## 7. Guardrail overrides and implicit decisions
@@ -96,6 +99,6 @@ The owner granted "mildly destructive" latitude at close to reach a consistent s
 2. **TLA+ models and attribution.** Done in #379, merged at `f1e228a5`.
    - `HomeVerdictsInternal.tla` has 23 configurations, and TLC matches the expected result on all 23. The epic agent re-ran 6 of them independently and got the same results.
    - Attribution: `attribution/2026-09-14-epic-attribution.md`, 59 rows.
-3. **The DEF-OHV-190 fix** for the dash shim anchor.
+3. **The DEF-OHV-190 fix**: done, #381 merged at `bbc00af8`.
 4. **A final `graph_set=full` CI run on the epic tip**, after (1) and (3) merge.
 5. **Merge #371, skt#46 and deploy-helm#63** (owner authorized, given sufficient evidence). Then sweep the 12+ epic worktrees and delete the backup directories.

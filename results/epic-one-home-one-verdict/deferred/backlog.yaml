@@ -458,8 +458,8 @@ findings:
     severity: major
     summary: "The shim anchor line uses ${BASH_SOURCE[0]:-$0}, which is a syntax error under dash. OHV-4 widened the rewrite to sh/dash shebangs, so on Debian/Ubuntu a rewritten #!/bin/sh shim anchors at / and fails with rc 127."
     reproduction: "#!/bin/sh script with the anchor line, run by sh in debian:stable-slim: 'Bad substitution', home=/"
-    disposition: ticketed
-    disposition_note: "merge-blocking fix PR into the epic branch (fix/OHV-dash-shim-anchor)"
+    disposition: fixed-inline
+    disposition_evidence: "#381 merged bbc00af8; ShimAnchorRunsUnderEveryShellTest red 3/9 -> green 9/9; RunTests 1606/0; home-verdicts 18/18 (tickets/OHV-dash/)"
 
   - id: DEF-OHV-191
     found_by: TLA+ modelling after close (#379)
@@ -495,4 +495,22 @@ findings:
     reproduction: "skill-manager artifacts list vs home repair --json on a home with an orphaned projection record"
     disposition: carried
     disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/374"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
+
+  - id: DEF-OHV-195
+    found_by: DEF-OHV-190 fix (#381)
+    severity: minor
+    summary: "A re-anchored shim reached through a symlink from another home derives the link's home (old and new anchor alike); pre-epic absolute shims worked through such links. Only foreign link on the operator's project home today is tlc2, which is not an anchored shim and still works."
+    reproduction: "tickets/OHV-dash/README.md"
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/269"]
+    disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
+
+  - id: DEF-OHV-196
+    found_by: DEF-OHV-190 fix (#381)
+    severity: minor
+    summary: "isShellShebang reads the last shebang word, so '#!/bin/sh -e' shims are neither checked nor rewritten (fails safe; predates the epic)."
+    reproduction: "tickets/OHV-dash/README.md"
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/269"]
     disposition_decided: "epic agent under owner standing decision \"File grouped issues\", 2026-09-14"
