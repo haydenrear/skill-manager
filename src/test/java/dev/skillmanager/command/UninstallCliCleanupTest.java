@@ -47,6 +47,49 @@ public final class UninstallCliCleanupTest {
                     "orphaned cli-lock row removed");
         });
 
+        // OHV-3 (d), owner decision on #292's residual: an uninstall removes a
+        // ledger IT created. RecordArtifactLedger writes artifacts.lock.toml at
+        // the start of a removal so the prune has rows to act on; in a home
+        // that had none, leaving it is the one byte the pair did not restore.
+        suite.test("an uninstall in a home with no ledger leaves no ledger behind", () -> {
+            TestHarness h = TestHarness.create();
+            installSkillScriptSkill(h, "alpha", "alpha-tool");
+            h.seedUnit("alpha", UnitKind.SKILL);
+            touchCliBin(h, "alpha-tool");
+            recordSkillScript(h, "alpha-tool", "alpha");
+            Path ledger = dev.skillmanager.artifacts.ArtifactLedger.file(h.store());
+            assertFalse(Files.exists(ledger), "precondition: the home has no ledger");
+
+            runUninstallCleanup(h, "alpha");
+
+            assertFalse(Files.exists(ledger),
+                    "the ledger the uninstall wrote for its own prune is gone again");
+            assertEquals(null, CliLock.load(h.store()).get("skill-script", "alpha-tool"),
+                    "and the prune it was written for still ran");
+        });
+
+        suite.test("an uninstall in a home that HAD a ledger keeps it", () -> {
+            TestHarness h = TestHarness.create();
+            installSkillScriptSkill(h, "alpha", "alpha-tool");
+            installSkillScriptSkill(h, "beta", "beta-tool");
+            h.seedUnit("alpha", UnitKind.SKILL);
+            h.seedUnit("beta", UnitKind.SKILL);
+            touchCliBin(h, "alpha-tool");
+            recordSkillScript(h, "alpha-tool", "alpha");
+            dev.skillmanager.artifacts.ArtifactLedger.of(
+                    dev.skillmanager.artifacts.ArtifactIndex.of(h.store()).artifacts()).save(h.store());
+            Path ledger = dev.skillmanager.artifacts.ArtifactLedger.file(h.store());
+            assertTrue(Files.isRegularFile(ledger), "precondition: the home recorded a ledger");
+
+            runUninstallCleanup(h, "alpha");
+
+            assertTrue(Files.isRegularFile(ledger),
+                    "a ledger the home already had is the home's, not the uninstall's");
+            assertTrue(dev.skillmanager.artifacts.ArtifactLedger.load(h.store())
+                            .byId(dev.skillmanager.artifacts.ArtifactIds.unitStore("beta")).isPresent(),
+                    "and it still describes the unit that stayed");
+        });
+
         suite.test("uninstall preserves shared CLI artifact and rewrites requested_by", () -> {
             TestHarness h = TestHarness.create();
             installSkillScriptSkill(h, "alpha", "shared-tool");

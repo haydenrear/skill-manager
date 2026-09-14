@@ -2278,7 +2278,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt pruneOrphanArtifacts(SkillEffect.PruneOrphanArtifacts e,
                                                EffectContext ctx) {
         try {
-            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()));
+            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()),
+                    e.knownOutputs());
             List<String> pruned = ArtifactPrune.apply(ctx.store(), plan);
             for (ArtifactPrune.Step step : plan.refusals()) {
                 Log.warn("kept %s — %s", step.id(), step.reason());
@@ -2287,6 +2288,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 Log.ok("pruned %d orphaned artifact(s) of %s: %s",
                         pruned.size(), e.unitName(), String.join(", ", pruned));
             }
+            // OHV-3 (d): a ledger this removal created goes with it, when it
+            // adds nothing the home cannot derive.
+            if (e.discardLedgerIfCreated()) ArtifactPrune.discardCreatedLedger(ctx.store());
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
             // A removal that succeeded and left an orphan is a smaller failure

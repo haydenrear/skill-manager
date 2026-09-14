@@ -1,0 +1,53 @@
+{
+  "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+  "label": "project-prune",
+  "census": {
+    "measured": true,
+    "declared": 54,
+    "by_origin": {
+      "ledger-and-home": 51,
+      "home": 3
+    },
+    "phantom_outputs": [
+      "cli-shim:brew/docker",
+      "cli-shim:brew/gh",
+      "cli-shim:brew/helm",
+      "cli-shim:brew/k3d",
+      "cli-shim:brew/kubernetes-cli",
+      "cli-shim:brew/opentofu",
+      "cli-shim:pip/pytest"
+    ],
+    "phantom_count": 7,
+    "reported_missing_count": 7,
+    "ledger_only_rows": [],
+    "ledger_only_count": 0
+  },
+  "versions": {
+    "version_disagreements": [
+      {
+        "unit": "skt",
+        "record": "0.8.1",
+        "manifest": "0.8.2"
+      }
+    ],
+    "count": 1
+  },
+  "prune": {
+    "rc": 0,
+    "pruned": [],
+    "refused": [
+      [
+        "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+        "no ledger row names an output for it, and this command deletes only what the ledger recorded \u2014 run `skill-manager artifacts record` while the producer is still installed"
+      ],
+      [
+        "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+        "no ledger row names an output for it, and this command deletes only what the ledger recorded \u2014 run `skill-manager artifacts record` while the producer is still installed"
+      ],
+      [
+        "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+        "no ledger row names an output for it, and this command deletes only what the ledger recorded \u2014 run `skill-manager artifacts record` while the producer is still installed"
+      ]
+    ]
+  }
+}

@@ -397,7 +397,7 @@ tickets:
   - id: OHV-3
     github_issue: https://github.com/haydenrear/skill-manager/issues/340
     title: "The census names nothing the disk does not hold, and a prune stays pruned"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     amended_at_revision_2: >

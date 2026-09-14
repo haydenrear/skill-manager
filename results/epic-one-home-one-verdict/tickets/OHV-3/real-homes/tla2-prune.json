@@ -1,0 +1,158 @@
+{
+  "home": "/Users/hayde/IdeaProjects/tla-spec-dev-2/.skill-manager",
+  "label": "tla2-prune",
+  "census": {
+    "measured": true,
+    "declared": 180,
+    "by_origin": {
+      "ledger-and-home": 156,
+      "ledger": 24
+    },
+    "phantom_outputs": [
+      "cli-shim:brew/claude",
+      "cli-shim:brew/codex",
+      "cli-shim:brew/docker",
+      "cli-shim:brew/gh",
+      "cli-shim:brew/helm",
+      "cli-shim:brew/k3d",
+      "cli-shim:brew/kubernetes-cli",
+      "cli-shim:brew/ollama",
+      "cli-shim:npm/@google/gemini-cli",
+      "cli-shim:npm/gemini-cli",
+      "cli-shim:npm/google",
+      "cli-shim:npm/google-gemini-cli",
+      "cli-shim:pip/pytest",
+      "cli-shim:pip/tb-query",
+      "provisioned-tree:cache/publish",
+      "provisioned-tree:cache/stage-10194834132827967245",
+      "provisioned-tree:cache/stage-10471045184956909478",
+      "provisioned-tree:cache/stage-11137297749852442752",
+      "provisioned-tree:cache/stage-11628736099217900009",
+      "provisioned-tree:cache/stage-14394475976772604878",
+      "provisioned-tree:cache/stage-1896826649669521283",
+      "provisioned-tree:cache/stage-2117855482744722222",
+      "provisioned-tree:cache/stage-3298447630655860111",
+      "provisioned-tree:cache/stage-3337165980579020169",
+      "provisioned-tree:cache/stage-8813481027288485423",
+      "provisioned-tree:cache/stage-9701821112548534456",
+      "provisioned-tree:cache/uv-tools",
+      "provisioned-tree:npm/hyper-experiments",
+      "provisioned-tree:skills/acp-cdc-ai-python/scripts/sources/.venv",
+      "provisioned-tree:skills/hyper-experiments-finance/sources/hyper-experiments-finance/.venv",
+      "unit-store:skill-dev-skill",
+      "unit-store:skill-manager"
+    ],
+    "phantom_count": 32,
+    "reported_missing_count": 29,
+    "ledger_only_rows": [
+      "projection:default:claude:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+      "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+      "projection:default:codex:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+      "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+      "projection:default:gemini:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+      "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager"
+    ],
+    "ledger_only_count": 6
+  },
+  "versions": {
+    "version_disagreements": [
+      {
+        "unit": "acp-cdc-ai-python",
+        "record": "0.1.0",
+        "manifest": "0.2.0"
+      }
+    ],
+    "count": 1
+  },
+  "prune": {
+    "rc": 0,
+    "pruned": [
+      [
+        "unit-store:skill-dev-skill",
+        []
+      ],
+      [
+        "unit-store:skill-manager",
+        []
+      ],
+      [
+        "cli-shim:npm/gemini-cli",
+        []
+      ],
+      [
+        "cli-shim:npm/google",
+        []
+      ],
+      [
+        "cli-shim:npm/google-gemini-cli",
+        []
+      ],
+      [
+        "cli-shim:skill-script/skill-dev",
+        [
+          "bin/cli/skill-dev"
+        ]
+      ],
+      [
+        "provisioned-tree:cache/uv-tools",
+        []
+      ],
+      [
+        "harness-instance:learning-app-exp-ai-router",
+        [
+          "harnesses/instances/learning-app-exp-ai-router"
+        ]
+      ],
+      [
+        "harness-instance:learning-app-exp-coordinator",
+        [
+          "harnesses/instances/learning-app-exp-coordinator"
+        ]
+      ],
+      [
+        "harness-instance:learning-app-exp-domain-architect",
+        [
+          "harnesses/instances/learning-app-exp-domain-architect"
+        ]
+      ],
+      [
+        "harness-instance:learning-app-exp-strategy-prototyper",
+        [
+          "harnesses/instances/learning-app-exp-strategy-prototyper"
+        ]
+      ],
+      [
+        "harness-instance:learning-app-exp-tracer",
+        [
+          "harnesses/instances/learning-app-exp-tracer"
+        ]
+      ]
+    ],
+    "refused": [
+      [
+        "projection:default:claude:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+        "no ledger row names an output for it, and this pass cannot prove its outputs are gone \u2014 the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+      ],
+      [
+        "projection:default:claude:skill-manager#SYMLINK/target/skill-manager",
+        "no ledger row names an output for it, and this pass cannot prove its outputs are gone \u2014 the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+      ],
+      [
+        "projection:default:codex:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+        "no ledger row names an output for it, and this pass cannot prove its outputs are gone \u2014 the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+      ],
+      [
+        "projection:default:codex:skill-manager#SYMLINK/target/skill-manager",
+        "no ledger row names an output for it, and this pass cannot prove its outputs are gone \u2014 the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+      ],
+      [
+        "projection:default:gemini:skill-dev-skill#SYMLINK/target/skill-dev-skill",
+        "no ledger row names an output for it, and this pass cannot prove its outputs are gone \u2014 the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+      ],
+      [
+        "projection:default:gemini:skill-manager#SYMLINK/target/skill-manager",
+        "no ledger row names an output for it, and this pass cannot prove its outputs are gone \u2014 the row is kept, because a row dropped over a file still on disk leaves that file unreachable by any later teardown"
+      ]
+    ]
+  }
+}

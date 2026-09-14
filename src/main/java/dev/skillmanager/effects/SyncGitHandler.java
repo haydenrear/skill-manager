@@ -196,6 +196,10 @@ public final class SyncGitHandler {
         }
 
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {
+            // OHV-3 (c): up to date by HASH is exactly where a stale record
+            // VERSION survived (DEF-OHV-004), because nothing else wrote the
+            // record on this path.
+            refreshRecordVersion(ctx, store, skillName);
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
         }
         BaselineWatch watch = BaselineWatch.before(store, skillName, e.kind());
@@ -615,7 +619,8 @@ public final class SyncGitHandler {
         try {
             ctx.source(skillName).ifPresent(old -> {
                 try {
-                    ctx.writeSource(old.withGitMoved(GitOps.headHash(storeDir), UnitStore.nowIso()));
+                    ctx.writeSource(dev.skillmanager.source.RecordVersionRefresh.orSame(ctx.store(),
+                            old.withGitMoved(GitOps.headHash(storeDir), UnitStore.nowIso())));
                 } catch (IOException ex) {
                     Log.warn("could not refresh source record for %s: %s", skillName, ex.getMessage());
                 }
@@ -623,6 +628,18 @@ public final class SyncGitHandler {
             ctx.clearError(skillName, InstalledUnit.ErrorKind.MERGE_CONFLICT);
         } catch (Exception ex) {
             Log.warn("could not refresh source record for %s: %s", skillName, ex.getMessage());
+        }
+    }
+
+    /** Restate the record's version from the checkout when its hash is HEAD. Never fatal. */
+    private static void refreshRecordVersion(EffectContext ctx, SkillStore store, String skillName) {
+        try {
+            var current = ctx.source(skillName);
+            if (current.isEmpty()) return;
+            var refreshed = dev.skillmanager.source.RecordVersionRefresh.refreshed(store, current.get());
+            if (refreshed.isPresent()) ctx.writeSource(refreshed.get());
+        } catch (Exception ex) {
+            Log.warn("could not refresh the recorded version of %s: %s", skillName, ex.getMessage());
         }
     }
 

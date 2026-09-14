@@ -1,0 +1,11 @@
+{
+  "name" : "acp-cdc-ai-python",
+  "version" : "0.1.0",
+  "kind" : "GIT",
+  "installSource" : "GIT",
+  "origin" : "https://github.com/haydenrear/acp-cdc-ai-python-skill",
+  "gitHash" : "f45866987dd8e9b5284ade741ef44cf815fa84ee",
+  "installedAt" : "2026-08-20T02:06:59.083235Z",
+  "errors" : [ ],
+  "unitKind" : "SKILL"
+}
