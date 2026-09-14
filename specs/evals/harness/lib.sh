@@ -277,11 +277,53 @@ eval_tmpdir() { printf '%s' "$1/tmp"; }
 # agent projections -- the agent's skills come from the eval HOME, not from the
 # home sitting in the workspace under test. Guarding both alike failed setup on
 # a home that was perfectly correct for its job.
+# PUTTING AN UNRELEASED BUILD UNDER TEST (#353, third bullet).
+#
+# A branched home's bin/cli/skill-manager pin is whatever its source pins, and
+# only PATH reaches the sandbox, so a home pinned to the repo's jbang wrapper
+# dies inside a run ("Downloading JDK 17", network denied). The release shape
+# needs no jbang at runtime: bin/skill-manager execs `java -jar
+# lib/skill-manager.jar`, exactly as .github/workflows/release.yml assembles it.
+#
+# EVAL_CLI_DIST names such a stage directory (bin/ lib/ share/). Each branched
+# home is re-pinned to a COPY of it inside $BUILD/units/toolchain/cli -- a
+# plugin directory, because plugin dirs are what `plugin eval` puts on the
+# sandbox's allowRead, and $BUILD itself is not readable from inside a run.
+# Unset, nothing changes: the branch keeps its source's pin, as before.
+eval_build_of() {
+  case "$1" in
+    */fixture-workspace/.skill-manager) dirname "$(dirname "$1")" ;;
+    */home) dirname "$1" ;;
+    *) return 1 ;;
+  esac
+}
+
+eval_pin_cli() {
+  local dst="$1" build pin
+  [ -n "${EVAL_CLI_DIST:-}" ] || return 0
+  build="$(eval_build_of "$dst")" || { echo "setup: cannot place a CLI for $dst" >&2; return 1; }
+  pin="$build/units/toolchain/cli/bin/skill-manager"
+  if [ ! -x "$pin" ]; then
+    mkdir -p "$build/units/toolchain/cli"
+    cp -R "$EVAL_CLI_DIST/." "$build/units/toolchain/cli/"
+  fi
+  SKILL_MANAGER_CLI="$pin" "$pin" home shims --home "$dst" >/dev/null 2>&1 || {
+    echo "setup: \`home shims\` could not pin $dst to $pin" >&2; return 1; }
+  # ASSERT THE PIN, THEN TRUST IT. A shim still naming the source's build
+  # measures that build while every log line says otherwise.
+  grep -qF "cli=\"\${SKILL_MANAGER_CLI:-$pin}\"" "$dst/bin/cli/skill-manager" || {
+    echo "setup: $dst/bin/cli/skill-manager is not pinned to $pin" >&2
+    grep -n 'SKILL_MANAGER_CLI:-' "$dst/bin/cli/skill-manager" >&2 || true
+    return 1; }
+  echo "  pinned $(basename "$build")/${dst#$build/} -> units/toolchain/cli" >&2
+}
+
 branch_home() {
   local src="$1" dst="$2" need="${3:-no}"
   rm -rf "$dst"; mkdir -p "$(dirname "$dst")"
   "$src/bin/cli/skill-manager" home clone --from "$src" --to "$dst" >/dev/null 2>&1 \
     || { echo "setup: could not branch the home from $src" >&2; return 1; }
+  eval_pin_cli "$dst" || return 1
   # REPAIR THE BRANCH, because it will be cloned AGAIN.
   #
   # A branched home still carries paths naming the home it came from. That is
@@ -321,6 +363,8 @@ branch_home() {
   # and an eval built on it hands the agent a session with no skills in it at
   # all. This is what makes eval_claude_home possible.
   "$dst/bin/cli/skill-manager" sync >/dev/null 2>&1 || true
+  # repair and sync both regenerate shims; the pin must survive them.
+  eval_pin_cli "$dst" || return 1
   if [ "$need" = "projections" ] && [ ! -d "$dst/.claude/skills" ]; then
     echo "setup: sync did not derive $dst/.claude/skills -- the eval HOME is" >&2
     echo "       built from that directory, so the run would start with no" >&2
