@@ -553,7 +553,7 @@ tickets:
   - id: OHV-6
     github_issue: https://github.com/haydenrear/skill-manager/issues/352
     title: "A home's plugin marketplace has one identity, and every agent registration agrees with it"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 4

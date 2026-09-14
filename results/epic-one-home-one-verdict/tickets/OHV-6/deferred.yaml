@@ -1,0 +1,37 @@
+# OHV-6 (#352) deferred findings. IDs DEF-OHV-160..169 reserved for this ticket.
+version: 1
+findings:
+  - id: DEF-OHV-160
+    found_by: OHV-6 real-home validation
+    found_at_commit: dc4f6356
+    severity: minor
+    maps_to: "adjacent: scripts/goal-harnesses (OHV-0's conflict key), GOAL-one-marketplace-identity clause (2)/(3)"
+    summary: >
+      scripts/measure_goal_one_marketplace_identity.py looks for shape 1 only in the
+      GLOBAL ~/.claude/plugins/known_marketplaces.json for every home. A project home
+      registers its marketplace in its CHECKOUT's .claude/plugins/known_marketplaces.json
+      (skill-manager drives `claude` with CLAUDE_CONFIG_DIR=<checkout>/.claude), so the
+      harness read shape 1 = 0 across the fleet while tla-spec-dev and meta-orchestrator
+      both carried it there (the #352 comment's "shape 1 reading 0 doesn't mean the
+      failure is gone"). It also counts a project's `<plugin>@skill-manager` enablement of
+      its OWN path under the old name as shape 4, and its clause_1 text still says
+      "pending OHV-6". The home repair detector (OHV-6) reads the checkout files; the
+      harness should read the same ones.
+    reproduction: |
+      # before OHV-6's --fix, read-only:
+      python3.12 -c "import json;print(json.load(open('/Users/hayde/IdeaProjects/tla-spec-dev/.claude/plugins/known_marketplaces.json')))"
+      #   -> {'skill-manager': {'source': {'path': '/Users/hayde/IdeaProjects/tla-spec-dev/.skill-manager/plugin-marketplace'}}}
+      python3 scripts/measure_goal_one_marketplace_identity.py --fleet   # fleet shape1: 0
+    disk_observation: >
+      tla-spec-dev and meta-orchestrator checkout .claude/plugins/known_marketplaces.json
+      registered their own plugin-marketplace as `skill-manager` (backups under
+      wt-epic-one-home-one-verdict/results/epic-one-home-one-verdict/tickets/OHV-6-backups/);
+      measure_before.json reports shape1 0 for both.
+    evidence:
+      - results/epic-one-home-one-verdict/tickets/OHV-6/baseline/measure_before.json
+      - results/epic-one-home-one-verdict/tickets/OHV-6/baseline/ohv6-build-prefix/tla-spec-dev.repair.json
+    suggested_fix: >
+      read <checkout>/.claude/plugins/known_marketplaces.json (root: ~/.claude/...) per home,
+      as MarketplaceRegistrations does; or call `home repair --json` and count the four
+      MARKETPLACE_* kinds. OHV-8 should read clause (3) with this in mind.
+    disposition: pending

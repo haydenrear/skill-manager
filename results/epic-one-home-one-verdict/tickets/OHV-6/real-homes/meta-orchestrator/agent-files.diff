@@ -1,0 +1,30 @@
+=== .claude/settings.json
+3c3,4
+<     "andrej-karpathy-skills@skill-manager": true
+---
+>     "andrej-karpathy-skills@skill-manager-88340088": true,
+>     "skt@skill-manager-88340088": true
+6c7
+<     "skill-manager": {
+---
+>     "skill-manager-88340088": {
+=== .claude/plugins/known_marketplaces.json
+2c2
+<   "skill-manager": {
+---
+>   "skill-manager-88340088": {
+8c8
+<     "lastUpdated": "2026-08-06T22:43:37.895Z"
+---
+>     "lastUpdated": "2026-09-14T12:52:19.758Z"
+=== .codex/config.toml
+4,8d3
+< [marketplaces.skill-manager]
+< last_updated = "2026-08-06T22:41:28Z"
+< source_type = "local"
+< source = "/Users/hayde/IdeaProjects/meta-orchestrator/.skill-manager/plugin-marketplace"
+< 
+14,16d8
+< [plugins."andrej-karpathy-skills@skill-manager"]
+< enabled = true
+< 

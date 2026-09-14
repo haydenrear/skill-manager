@@ -1,0 +1,24 @@
+{
+  "label": "meta-orchestrator",
+  "backup": "/Users/hayde/IdeaProjects/wt-epic-one-home-one-verdict/results/epic-one-home-one-verdict/tickets/OHV-6-backups/meta-orchestrator-20260914T084442",
+  "marketplace_findings_before": [
+    "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager",
+    "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/settings.json:extraKnownMarketplaces.skill-manager",
+    "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/settings.json:enabledPlugins.andrej-karpathy-skills@skill-manager",
+    "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .codex/config.toml:marketplaces.skill-manager",
+    "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .codex/config.toml:plugins.andrej-karpathy-skills@skill-manager"
+  ],
+  "kinds_before": [
+    "FROZEN_HOME_PATH_IN_SHIM",
+    "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME",
+    "UNSTAMPED_PM_TREE"
+  ],
+  "kinds_after_fix": [],
+  "marketplace_findings_after_fix": [],
+  "sync_agent_sync_failed_lines": [],
+  "sync_marketplace_lines": [],
+  "kinds_after_sync": [],
+  "marketplace_findings_after_sync": [],
+  "recorded_errors_after_sync": {},
+  "globals_changed": false
+}
