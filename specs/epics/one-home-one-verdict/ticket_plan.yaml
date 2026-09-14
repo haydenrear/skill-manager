@@ -261,7 +261,7 @@ epic_goals:
       bin/cli holds links into the other one. (Added at schedule_revision 4 after the
       operator's root shims were overwritten through such links, DEF-OHV-011.)
     metric: >
-      (1) in a scratch parent/child pair where the child's bin/cli/<tool> links to the
+      (1) in a scratch parent/child pair where the child's bin/cli/tool links to the
       parent's shim, a skill-script install into the child leaves every parent file
       byte-identical and gives the child its own real shim; (2) an installer that
       writes through a foreign target anyway is caught and the install fails naming
