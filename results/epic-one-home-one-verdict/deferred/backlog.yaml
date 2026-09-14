@@ -186,3 +186,55 @@ findings:
       validate_epic_plan.py -> error naming active tickets [OHV-3, OHV-5, OHV-8].
     suggested_fix: allow a per-ticket goal disposition "withdrawn_contribution" for guard/enabling links, which leaves the goal active
     disposition: pending
+
+  - id: DEF-OHV-010
+    found_by: wave 1 (disk exhaustion that stopped OHV-3's local verification)
+    found_at_commit: 8bd883f3
+    severity: major
+    maps_to: "adjacent: unit test suite hygiene (RunTests.java and the store/artifacts tests) — not a ticket in this epic"
+    summary: >
+      The unit suite leaves its temp homes behind. In one day, the macOS user temp dir
+      (getconf DARWIN_USER_TEMP_DIR) filled with about 35,000 top-level fixture dirs and
+      41 GiB. The largest prefixes were skill-handler-test (5,155), doc-consumer (2,010),
+      artifacts-home (2,010), sm-lazy-home-decoy (1,071), matrix-empty-path (595) and
+      json-contract (542). Free disk fell to 1.5 GiB mid-run. jbang then could not write
+      classes, and OHV-3's artifact-dag and RunTests results were invalid ("No space left
+      on device"). Five parallel ticket worktrees each running `jbang RunTests.java`
+      several times turn a slow leak into an outage.
+    reproduction: >
+      T=$(getconf DARWIN_USER_TEMP_DIR); before=$(ls "$T" | wc -l); jbang RunTests.java;
+      after=$(ls "$T" | wc -l) -> after - before is in the thousands, and du grows by GiBs.
+      Owner-approved cleanup 2026-09-13: deleted 20,508 entries older than 3h; free space
+      went from 58 to 102 GiB.
+    suggested_fix: create test homes under one per-run root that the runner deletes on exit (or @TempDir-style cleanup per test); fail the suite if it leaves more than N entries in the temp dir
+    disposition: pending
+
+  # Filed by OHV-3 into results/epic-one-home-one-verdict/tickets/OHV-3/deferred.yaml;
+  # merged here at wave-1 close. The ticket file holds the full text, the disk observation and the options.
+  - id: DEF-OHV-130
+    found_by: OHV-3 (real-home census before/after a prune)
+    found_at_commit: 59196929
+    severity: minor
+    maps_to: GOAL-one-record clause (1); OHV-8 decides
+    summary: >
+      Most census "outputs missing on disk" are CLI shims that an installed unit
+      declares but satisfies from PATH, so no shim is ever written. The census still
+      gives each one a home output bin/cli/<tool> (missing, declared-only), and no
+      prune can or should reap a row whose owner is installed. All 7 of 7 on this
+      project home, and 11 of 26 on tla-spec-dev-2 after a prune.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-3/deferred.yaml
+    disposition: pending
+
+  - id: DEF-OHV-131
+    found_by: OHV-3 step (b), whole-home prune on tla-spec-dev-2
+    found_at_commit: 59196929
+    severity: minor
+    maps_to: GOAL-one-record clause (1); DEF-OHV-003 residue; OHV-8 decides
+    summary: >
+      Ledger-only projection rows from past removals (6 on tla-spec-dev-2, 14 on
+      root) are kept by a whole-home prune by design: nothing proves their
+      agent-side links are gone. No new such rows are produced after OHV-3. The
+      existing ones need an owner remedy: an agent-root heuristic, an `artifacts
+      forget` verb, or a GOAL-one-record rescope.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-3/deferred.yaml
+    disposition: pending
