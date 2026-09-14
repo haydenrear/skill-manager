@@ -30,6 +30,12 @@ import java.util.concurrent.TimeUnit;
  * exec "&lt;home&gt;/cache/skill-script-hv-unit-half-tool/venv/bin/half-tool" "$@"
  * </pre>
  *
+ * <p>The {@code ${BASH_SOURCE[0]:-$0}} anchor is the line skill-manager wrote
+ * before DEF-OHV-190, kept here on purpose: shims carrying it exist, and under
+ * a bash shebang it works, so the repair must re-anchor the exec line and leave
+ * that line alone (exactly one assignment afterwards). New rewrites write
+ * {@code ${BASH_SOURCE:-$0}}.
+ *
  * <p>Until OHV-4 {@code home repair} exempted it: its detector asked "can the
  * rewrite still offer something", and the rewrite declined any shim already
  * holding the token. Both verdicts called the root home clean over a shim that a

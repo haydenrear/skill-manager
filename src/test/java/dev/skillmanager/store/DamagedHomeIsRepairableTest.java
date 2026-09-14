@@ -1635,7 +1635,9 @@ public final class DamagedHomeIsRepairableTest {
          * {@code exec} line that still spells this home. Exempt from
          * {@code home repair} until OHV-4, because the rewrite declined any shim
          * already holding the token and the detector only reported what the
-         * rewrite would take.
+         * rewrite would take. The anchor is the pre-DEF-OHV-190
+         * {@code ${BASH_SOURCE[0]:-$0}} line on purpose: correct under this bash
+         * shebang, so it is not a finding of its own and the fix leaves it.
          */
         void damageHalfRewrittenShim() throws IOException {
             Path tool = store.resolve("cache/skill-script-" + UNIT + "-" + HALF_TOOL + "/venv/bin")
