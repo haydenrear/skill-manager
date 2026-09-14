@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.28.0](https://github.com/haydenrear/skill-manager/compare/v0.27.2...v0.28.0) (2026-09-14)
+
+
+### Features
+
+* **epic:** schedule one-home-one-verdict — six goals, nine tickets, baselines measured on v0.27.2 ([cb8243b](https://github.com/haydenrear/skill-manager/commit/cb8243b1016f8f3ea2be8f6fee413dbac8e9b29b)), closes [#337](https://github.com/haydenrear/skill-manager/issues/337)
+* **epic:** schedule_revision 2 — fix each defect where it lives, pin it with a regression graph ([de42313](https://github.com/haydenrear/skill-manager/commit/de4231386a9b9ad99f555b0ecfe828d6f0b0b0c9)), closes [#337](https://github.com/haydenrear/skill-manager/issues/337)
+* **epic:** schedule_revision 3 — GOAL-one-record clause (1) rescoped, skt[#46](https://github.com/haydenrear/skill-manager/issues/46) at finalization ([bbe29bd](https://github.com/haydenrear/skill-manager/commit/bbe29bd4777abbac41624acbe494b4e753fb0fbc)), closes [#337](https://github.com/haydenrear/skill-manager/issues/337)
+* **epic:** schedule_revision 4 — OHV-9 removes the cause of the root home shim leak; wave 4 review ([926cd65](https://github.com/haydenrear/skill-manager/commit/926cd655ecd694577670f588b5486f69a85122c9)), closes [#337](https://github.com/haydenrear/skill-manager/issues/337)
+* **OHV-0:** home-verdicts graph pins four home defect shapes; goal harnesses reproduce the kickoff ([7d2eef2](https://github.com/haydenrear/skill-manager/commit/7d2eef2672ba59d1fee488fe628902c7cf23205a)), closes [#356](https://github.com/haydenrear/skill-manager/issues/356)
+* **test_graph:** a multi-graph sweep keeps going past a red and counts only what it ran ([c27bd01](https://github.com/haydenrear/skill-manager/commit/c27bd018e33ad79d63799e69701e954f562f1227)), closes [#357](https://github.com/haydenrear/skill-manager/issues/357)
+* **verdicts:** every verdict names the build that produced it (OHV-1) ([ea638f5](https://github.com/haydenrear/skill-manager/commit/ea638f5560e0947d59381c4b452f199c6a48556a)), closes [#338](https://github.com/haydenrear/skill-manager/issues/338)
+* **verdicts:** OHV-1 — every verdict names the build that produced it ([8bd883f](https://github.com/haydenrear/skill-manager/commit/8bd883f3f2d4ca47b4a18eac0a363101248a6560))
+
+
+### Bug Fixes
+
+* **artifacts:** a prune stays pruned — the re-record excludes what the pass proved gone (OHV-3 a) ([52c6db6](https://github.com/haydenrear/skill-manager/commit/52c6db6c5ec0ffe3c9a3e87123f7ca142ede13a4))
+* **artifacts:** OHV-3 — the census names nothing the disk does not hold, and a prune stays pruned ([3d6d4cd](https://github.com/haydenrear/skill-manager/commit/3d6d4cd4ce6e512fa66a2089f3e725fb7b81ac56))
+* **artifacts:** uninstall and retirement reap their ledger rows, only where absence is proven (OHV-3 b) ([7474f5d](https://github.com/haydenrear/skill-manager/commit/7474f5d507bc191c6641c7f4c0e51b9f314d83fb))
+* **ci:** OHV-5 — the full graph set runs green on a fresh CI runner ([f38a929](https://github.com/haydenrear/skill-manager/commit/f38a9298313f12f4aa521fb770a081e9d5aac588))
+* **epic:** GOAL-a-home-writes-only-itself metric names a literal tool, not a &lt;placeholder&gt; ([4578ce7](https://github.com/haydenrear/skill-manager/commit/4578ce78d8ad85cf9e40508a519105338518de72)), closes [#337](https://github.com/haydenrear/skill-manager/issues/337)
+* **epic:** GOAL-ci-green-fresh-runner's harness is a runnable command, not a &lt;placeholder&gt; ([c3310fc](https://github.com/haydenrear/skill-manager/commit/c3310fc56ebd534ea0f687eac9cb945f8fdd5d86)), closes [#337](https://github.com/haydenrear/skill-manager/issues/337)
+* **home:** OHV-2 — home verify fails on what home repair finds, and both see agent links and projection records ([48d23c5](https://github.com/haydenrear/skill-manager/commit/48d23c515dee9a8b5e87a4709e1efb9014dc9cdf))
+* **home:** OHV-2 — home verify fails on what home repair finds, and both see agent links and projection records ([afaabc8](https://github.com/haydenrear/skill-manager/commit/afaabc8d9069f3efa57ecad7e3be1308e7c581db)), closes [#339](https://github.com/haydenrear/skill-manager/issues/339)
+* **installer:** OHV-9 — a skill-script install never writes through a bin/cli link into another home ([6b017b9](https://github.com/haydenrear/skill-manager/commit/6b017b949c211a16ed2a829488cbd631279b2b99)), closes [#367](https://github.com/haydenrear/skill-manager/issues/367)
+* **installer:** OHV-9 — a skill-script install never writes through a link into another home ([5ab5770](https://github.com/haydenrear/skill-manager/commit/5ab5770b64250a68634b6a12f5a343d47a07e2b0))
+* **marketplace:** OHV-6 — a home's plugin marketplace has one identity, and every agent registration agrees with it ([7357b8a](https://github.com/haydenrear/skill-manager/commit/7357b8ab2a6b70bba5ca494614f8945f7e0a443f))
+* **marketplace:** OHV-6 — a home's plugin marketplace has one identity, and every agent registration agrees with it ([83651bf](https://github.com/haydenrear/skill-manager/commit/83651bfc2af591f370411566c668e2da85e8d8d6)), closes [#352](https://github.com/haydenrear/skill-manager/issues/352)
+* **marketplace:** OHV-6 — a repaired agent config keeps its trailing newline ([dc4f635](https://github.com/haydenrear/skill-manager/commit/dc4f63565b2d907610d811a3ec7fdea36d529b2d)), closes [#352](https://github.com/haydenrear/skill-manager/issues/352)
+* **OHV-0:** home-verdicts parses home repair --json instead of matching key order ([2bc05b0](https://github.com/haydenrear/skill-manager/commit/2bc05b0ee985c55dc3b5b7e599baaee62e7ba7e1)), closes [#356](https://github.com/haydenrear/skill-manager/issues/356)
+* **ohv-5:** the full graph set can pass on a fresh runner ([2e058be](https://github.com/haydenrear/skill-manager/commit/2e058bed6ce3c312b86ca281859843dc9c3d793a))
+* **shims:** OHV-4 — a shim never spells its own home, and a half-rewritten one is reported ([42486f8](https://github.com/haydenrear/skill-manager/commit/42486f86f2e0d305f84efddcc0a5f4377cfbc939))
+* **shims:** OHV-4 (a)+(b) — FROZEN_HOME_PATH_IN_SHIM detects on shim content, and the rewrite re-anchors exec lines ([a25a28b](https://github.com/haydenrear/skill-manager/commit/a25a28b51a90d28d32bbe020a7c179271b621440)), closes [#341](https://github.com/haydenrear/skill-manager/issues/341)
+* **shims:** OHV-4 (c) — the skill-script shim writer leaves no literal home on the exec line ([a9b26fb](https://github.com/haydenrear/skill-manager/commit/a9b26fb5f3b753b78d03e280ddaac94a99e6bb28)), closes [#341](https://github.com/haydenrear/skill-manager/issues/341)
+* **shims:** portable home anchor so sh/dash shims resolve their home ([bbc00af](https://github.com/haydenrear/skill-manager/commit/bbc00af8e4cf04c62fe678a08e8eb9351d511ff2))
+* **shims:** portable home anchor so sh/dash shims resolve their home ([7677c40](https://github.com/haydenrear/skill-manager/commit/7677c40795559c4bfd621bf4639ad4f528078450))
+* **shims:** portable home anchor so sh/dash shims resolve their home ([#381](https://github.com/haydenrear/skill-manager/issues/381)) ([bbc00af](https://github.com/haydenrear/skill-manager/commit/bbc00af8e4cf04c62fe678a08e8eb9351d511ff2))
+* **sync:** an installed record's version is restated from its checkout when the hash is HEAD (OHV-3 c) ([8f202a9](https://github.com/haydenrear/skill-manager/commit/8f202a9f0558a4993e6a160ca2f27315d7f0697c)), closes [#340](https://github.com/haydenrear/skill-manager/issues/340)
+* **test-graph:** OHV-7 — a local graph sweep keeps going past a red and reports only what it executed ([b218322](https://github.com/haydenrear/skill-manager/commit/b218322caa7d0a86675f4166dd713cc71bd66bf6))
+* **uninstall:** an uninstall removes the ledger it created (OHV-3 d) ([48a0ab4](https://github.com/haydenrear/skill-manager/commit/48a0ab4502136863d42d8351ccc0571140b65422))
+
 ## [0.27.2](https://github.com/haydenrear/skill-manager/compare/v0.27.1...v0.27.2) (2026-09-13)
 
 
