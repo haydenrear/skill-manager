@@ -21,7 +21,7 @@ execution:
     need work. Get a spec ticket started for that follow-up work.
     The spec root is cases/w-sdc-open-closed-ticket-adds-new-entry/specs.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem is read-only, so writes and commands
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so writes and commands
     that write will fail with "Operation not permitted". That is expected. Issue
     what you would, once each, and report it.
 

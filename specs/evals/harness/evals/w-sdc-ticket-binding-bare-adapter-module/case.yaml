@@ -21,7 +21,7 @@ execution:
     cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/adapters.py
     Add the binding for it to that view's case_adapters.toml, next to the others.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem is read-only, so the edit will fail
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the edit will fail
     with "Operation not permitted". That is expected. Make the edit you would
     make, once, and report it.
 

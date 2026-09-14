@@ -117,6 +117,11 @@ def _subject(rule: dict, text: str) -> str:
         value = json.loads(text).get(field)
     except (ValueError, AttributeError):
         return ""
+    if field == "command" and isinstance(value, str):
+        # One shell command written over several lines is still one command.
+        # Round 3: agents wrote `generate cases \` + newline + `--out /abs/...`,
+        # and every rule bounded to one line scored the correct call as absent.
+        value = re.sub(r"\\\r?\n[ \t]*", " ", value)
     return value if isinstance(value, str) else json.dumps(value)
 
 
@@ -242,6 +247,11 @@ def self_test() -> int:
     no_force = {"forbid": [{"id": "f", "tool": "Bash", "match": "--force"}]}
     check("bash rule ignores description", verdicts(no_force, described), {"forbid-f": True})
     check("bash rule reads the command", verdicts(no_force, forced), {"forbid-f": False})
+    # Wide round 3: one command over several lines is still one command.
+    wrapped = [("Bash", json.dumps({"command": "tla-spec-dev generate cases \\\n  a.tla \\\n  --out /abs/run-1",
+                                    "description": "x"}, sort_keys=True))]
+    check("continuation lines join", verdicts({"require": [{"id": "o", "tool": "Bash",
+        "match": "generate\\s+cases\\b[^\\n]*--out\\s+/"}]}, wrapped), {"require-o": True})
     check("multi-tool rule still reads all", verdicts(
         {"forbid": [{"id": "f", "tool": "Bash|Read", "match": "--force"}]}, described),
         {"forbid-f": False})

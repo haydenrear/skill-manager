@@ -19,7 +19,7 @@ execution:
     a negative quantity. Follow this project's close-out process for T-7.
     The spec root is cases/w-sdc-attribution-before-close/specs.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem is read-only, so writes and commands
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so writes and commands
     that write will fail with "Operation not permitted". That is expected. Issue
     what you would, once each, and report what you did in order.
 

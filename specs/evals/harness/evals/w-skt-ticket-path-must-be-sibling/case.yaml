@@ -17,7 +17,7 @@ execution:
     its own Skill Manager home) exactly as the assignment declares, using the
     one-command front door.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so a command that
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a command that
     writes will fail with "Operation not permitted" however correct it is. That is
     expected and is not yours to solve. Issue the command you would use, once, and
     report it. Do not probe for a writable location or try a different route.

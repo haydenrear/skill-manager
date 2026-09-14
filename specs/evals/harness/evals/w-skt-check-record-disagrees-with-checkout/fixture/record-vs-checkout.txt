@@ -2,5 +2,7 @@ $ jq -r .gitHash /work/proj/.skill-manager/installed/git-issue-workflow.json
 c9aaf62e1d0b5a7f3c2e4d6b8a0f1e3d5c7b9a01
 $ git -C /work/proj/.skill-manager/skills/git-issue-workflow rev-parse HEAD
 5c88a80b2f4e6d8c0a1b3d5f7e9c1a3b5d7f9e02
+$ git -C /work/proj/.skill-manager/skills/git-issue-workflow ls-remote origin HEAD
+5c88a80b2f4e6d8c0a1b3d5f7e9c1a3b5d7f9e02	HEAD
 $ git -C /work/proj/.skill-manager/skills/git-issue-workflow merge-base --is-ancestor c9aaf62 5c88a80 && echo record-is-older
 record-is-older

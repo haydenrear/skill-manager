@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: "plugin eval[^\\n]*--allow-tools[^\\n]*Write"
+pattern: "plugin eval(?:[^\\n]|\\\\\\n)*--allow-tools(?:[^\\n]|\\\\\\n)*Write"
 weight: 2
 ---
 

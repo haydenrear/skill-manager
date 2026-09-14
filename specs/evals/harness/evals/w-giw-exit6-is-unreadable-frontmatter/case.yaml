@@ -23,7 +23,7 @@ execution:
     the unit it names is cases/w-giw-exit6-is-unreadable-frontmatter/demo-skill/SKILL.md.
     Fix the cause.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so a write or
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a write or
     command will fail with "Operation not permitted" however correct it is.
     That is expected and is not yours to solve. Issue the edit or command you
     would use, once, and report it. Do not probe for a writable location or

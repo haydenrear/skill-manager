@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: "plugin eval[^\\n]*--case"
+pattern: "plugin eval(?:[^\\n]|\\\\\\n)*--case"
 weight: 3
 ---
 

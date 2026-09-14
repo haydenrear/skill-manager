@@ -21,7 +21,7 @@ execution:
     (spec root cases/w-sdc-complexity-ledger-is-advisory/specs). Is T-5 closed?
     Tell me what, if anything, is still left to do, and do it.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem is read-only, so any write will fail
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so any write will fail
     with "Operation not permitted". That is expected; issue what you would, once.
 
     EVAL-CASE: w-sdc-complexity-ledger-is-advisory

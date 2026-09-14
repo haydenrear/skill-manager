@@ -19,7 +19,7 @@ execution:
     The output is in cases/w-giw-wt-stale-branch-point/refusal.txt. Get the
     worktree created.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only and there is no
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox and there is no
     remote, so the command will fail however correct it is. That is expected
     and is not yours to solve. Issue the command you would use, once, and
     report it. Do not probe for a writable location or try a different route.

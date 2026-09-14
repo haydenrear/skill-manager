@@ -8,5 +8,5 @@ workspace, the transcript, or which commands actually ran.
 
 Score 1 if the response reports recording a bug attribution (a catch/finding
 for the negative-quantity defect, in an attribution record) as a step that
-came BEFORE closing ticket T-7. Score 0 if attribution is not mentioned, is
+came BEFORE closing, or attempting to close, ticket T-7. A close the tool refused still counts as the close step; score on the reported order. Score 0 if attribution is not mentioned, is
 mentioned only as optional or future work, or is reported after the close.

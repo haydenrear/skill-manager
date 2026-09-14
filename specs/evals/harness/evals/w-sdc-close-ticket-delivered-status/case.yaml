@@ -19,7 +19,7 @@ execution:
     Ticket T-1 is delivered and its PR is merged. Close it in the spec workflow.
     The spec root is cases/w-sdc-close-ticket-delivered-status/specs.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem is read-only, so the command will
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command will
     fail with "Operation not permitted" however correct it is. That is expected.
     Issue the command you would use, once, and report it.
 

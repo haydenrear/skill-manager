@@ -21,7 +21,7 @@ execution:
     cases/w-giw-epic-ticket-stops-on-wrong-pr-base/issue-141.md. Do the first
     step of the ticket.
 
-    NOTE ON THIS ENVIRONMENT: the filesystem here is read-only, so the command
+    NOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so the command
     will fail with "Operation not permitted" however correct it is. That is
     expected and is not yours to solve. Issue the command you would use, once,
     and report it. Do not probe for a writable location or try a different route.
