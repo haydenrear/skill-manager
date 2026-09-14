@@ -52,7 +52,16 @@ public final class PipBackend implements InstallerBackend {
         Map<String, String> env = new LinkedHashMap<>(PackageCaches.sharedEnvEnsured(store.venvsDir()));
         env.put("UV_TOOL_BIN_DIR", store.cliBinDir().toString());
         env.put("UV_TOOL_DIR", store.venvsDir().toString());
-        Shell.mustWithEnv(List.of(uv, "tool", "install", "--force", pkg), env);
+        // OHV-9 (#367): uv writes bin/cli entries itself, in a forked process
+        // this codebase does not control, so it gets the same detach/restore as
+        // a skill-script rather than an argument about how uv replaces files.
+        ForeignBinLinks foreign = ForeignBinLinks.detach(store, "uv tool install of " + pkg);
+        try {
+            Shell.mustWithEnv(List.of(uv, "tool", "install", "--force", pkg), env);
+        } finally {
+            foreign.restore();
+        }
+        foreign.requireNoForeignWrite();
         Log.ok("cli: installed %s via uv tool (bin=%s)", pkg, store.cliBinDir());
         return InstallOutcome.INSTALLED;
     }

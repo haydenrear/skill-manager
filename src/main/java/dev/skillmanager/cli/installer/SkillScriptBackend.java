@@ -217,8 +217,24 @@ public final class SkillScriptBackend implements InstallerBackend {
         Path logPath = skillScriptLogPath(store, skillName, dep.name());
         Log.step("cli: skill-script %s — running %s", dep.name(), script);
         Log.step("cli: skill-script %s — writing output to %s", dep.name(), logPath);
+        // OHV-9 (#367, DEF-OHV-011): a bin/cli link into another home is taken
+        // out of the script's way before it runs. `cat >"$SKILL_MANAGER_HOME/bin/cli/x"`
+        // follows a link, and that is how deploy-helm's installer, run in a
+        // project home, rewrote the operator's root shims. With the link gone
+        // the script writes this home's own file; links it did not replace are
+        // put back in the finally, and a foreign target that changed anyway
+        // fails the install below. See ForeignBinLinks.
+        ForeignBinLinks foreign = ForeignBinLinks.detach(store, "skill-script " + dep.name());
         Map<String, Long> binBefore = binStamps(store);
-        int rc = Shell.runToLog(cmd, env, logPath);
+        int rc;
+        try {
+            rc = Shell.runToLog(cmd, env, logPath);
+        } finally {
+            foreign.restore();
+        }
+        // Before the exit code: a script that wrote into another home and then
+        // failed has done the worse thing, and that is what must be read first.
+        foreign.requireNoForeignWrite();
         reportFrozenShims(dep, store, binBefore);
         if (rc != 0) {
             throw new IOException("skill-script " + dep.name() + " exited " + rc
