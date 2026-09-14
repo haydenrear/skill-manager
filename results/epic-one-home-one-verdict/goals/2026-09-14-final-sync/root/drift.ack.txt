@@ -1,0 +1,4 @@
+build: skill-manager 0.27.2+g2b5f83ea98d8 @ 2b5f83ea98d8 (refs/heads/epic/one-home-one-verdict)
+✓ acknowledged 4 changed unit(s) in /Users/hayde/.skill-manager
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-drift-20260914-142610-f884.log
+! Telemetry export unavailable; continuing without telemetry.

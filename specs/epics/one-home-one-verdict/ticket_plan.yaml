@@ -92,6 +92,22 @@ purpose: >
   This epic fixes each defect where it lives, makes `verify` and `repair`
   unable to disagree, and pins every shape with a regression graph.
 
+closure:
+  state: implementation-closed
+  closed_at: "2026-09-14"
+  record: results/epic-one-home-one-verdict/reviews/epic-close.md
+  epic_pr: https://github.com/haydenrear/skill-manager/pull/371
+  tickets: "10 planned, 10 delivered, 0 retired"
+  goals: "every clause met at final readings (two fleet rows are context); skt check met on skt#46's branch, merged with the epic by owner decision"
+  spec_workflow: "none; no specs/current or specs/desired_program_model was ever scaffolded (dropped at schedule_revision 2)"
+  deferred: "25 findings: 6 ticketed, 2 fixed at finalization, 17 carried as issues; none pending"
+  before_merge: >
+    eval suite against the epic build; TLA+ models in specs/program_model updated to the
+    epic's changes with the epic's bug attribution (owner request 2026-09-14); a final
+    graph_set=full CI run on the tip. Then merge #371, haydenrear/skt#46 and
+    haydenrear/deploy-helm#63 (owner authorized, given sufficient evidence), sweep the
+    worktrees, and delete the backups.
+
 adjacent:
   - {issue: 351, why: "Gemini consumes no plugins -- agent projection, not home verdicts"}
   - {issue: 353, why: "eval harness: a max_turns run loses Stop-hook graders (#328)"}

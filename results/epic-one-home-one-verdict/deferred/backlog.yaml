@@ -404,8 +404,8 @@ findings:
       single-unit sync also reinstalls CLI deps for every installed unit (27 on root),
       re-registers MCP and reinstalls plugins, which is broader than the approved refresh.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
-    disposition: pending
-    disposition_note: "awaiting owner decision at finalization: run the full syncs, accept the miss, or carry an issue for a record-only refresh"
+    disposition: fixed-inline
+    disposition_evidence: "owner-approved full syncs with the epic build 2026-09-14 14:18-14:24 EDT (root: acp-cdc-ai-python, git-epic-workflow, git-issue-workflow, git-issue; project: skt), backups outside the repository; stale record versions root 0, project 0 (goals/2026-09-14-final-sync/)"
 
   - id: DEF-OHV-183
     found_by: OHV-8
