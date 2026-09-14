@@ -616,7 +616,7 @@ eval_fixture_checkout() {
   ( cd "$ws" && export TMPDIR="$(eval_tmpdir "$build")" && "$git" init -q . \
     && "$git" config user.email eval@example.invalid && "$git" config user.name eval \
     && printf 'demo project\n' > README.md \
-    && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n' > .gitignore \
+    && printf '.skill-manager/\n.claude/\n.codex/\n.gemini/\n.eval-bin/\n' > .gitignore \
     && "$git" add -A && "$git" commit -qm initial && "$git" checkout -q -B "$branch" )
 }
 

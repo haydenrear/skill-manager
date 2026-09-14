@@ -17,6 +17,6 @@ execution:
   prompt: |
 
     Validate the epic plan at cases/w-epic-plan-free-form-lane/ticket_plan.yaml
-    before I dispatch it, and tell me whether it is ready.
+    before I dispatch it, and tell me whether the plan validator accepts it.
 
     EVAL-CASE: w-epic-plan-free-form-lane

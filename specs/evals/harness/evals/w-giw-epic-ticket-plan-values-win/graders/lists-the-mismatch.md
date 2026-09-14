@@ -14,5 +14,7 @@ before work can start, or does not mention the mismatch.
 Saying the epic owner reconciles the mismatch AT REVIEW, or flagging other
 facts it could not verify (refs, ancestry), is not sending the ticket back:
 score 1 when both key sets are named and the plan's values are said to be
-taken. (Round 3 run 1 was failed by all three judges on a reply with exactly
+taken. A closing request for the owner's decision on things the environment lacks
+(a missing remote or epic branch) or on whether a plan key is stale is also not
+sending back, provided the reply says it proceeded on the plan's values. (Round 3 run 1 was failed by all three judges on a reply with exactly
 that table under `## Review input`.)

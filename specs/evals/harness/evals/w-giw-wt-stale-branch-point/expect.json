@@ -3,7 +3,7 @@
     {
       "id": "branches-from-published-tip",
       "tool": "Bash",
-      "match": "(skt\\s+ticket\\s+new|\\bwt\\s+new)\\b[^\\n]*TICKET-12[^\\n]*origin/epic/demo-epic"
+      "match": "(skt[\"']?\\s+ticket\\s+new|\\b(?:wt|WT\\}?)[\"']?\\s+new)\\b[^\\n]*TICKET-12[^\\n]*origin/epic/demo-epic"
     }
   ],
   "forbid": [

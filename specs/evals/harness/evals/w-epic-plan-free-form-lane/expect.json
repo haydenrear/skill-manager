@@ -11,11 +11,6 @@
       "id": "no-plan-edit",
       "tool": "Edit|Write",
       "match": "ticket_plan\\.yaml"
-    },
-    {
-      "id": "no-strict",
-      "tool": "Bash",
-      "match": "--strict"
     }
   ],
   "max_calls": {

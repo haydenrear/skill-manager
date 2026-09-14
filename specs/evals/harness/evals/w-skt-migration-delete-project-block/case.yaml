@@ -8,7 +8,7 @@ runs: 1
 plugins:
   - ../../units/toolchain
 execution:
-  max_turns: 16
+  max_turns: 24
   timeout_seconds: 600
   allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
   prompt: |

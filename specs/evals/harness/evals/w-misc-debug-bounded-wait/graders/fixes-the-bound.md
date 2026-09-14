@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: "([Rr]aise|[Ii]ncrease|[Ee]xtend|[Bb]ump|[Ll]engthen|[Ll]onger)[^\\n]{0,60}([Tt]imeout|[Ll]imit|[Jj]ob)|([Ss]hrink|[Ss]horten|[Rr]educe)[^\\n]{0,40}([Ss]cenario|[Rr]epro|[Tt]est)|([Dd]rop|[Ll]ower|[Cc]ut|[Ss]et|[Mm]ove)[^\\n]{0,40}(internal|own)\\s+timeout"
+pattern: "([Rr]ais(e|ing)|[Ii]ncreas(e|ing)|[Ee]xtend|[Bb]ump|[Ll]engthen|[Ll]onger)[^\\n]{0,60}([Tt]imeout|[Ll]imit|[Jj]ob)|([Ss]hrink|[Ss]horten|[Rr]educe)[^\\n]{0,40}([Ss]cenario|[Rr]epro|[Tt]est)|([Dd]rop|[Ll]ower|[Cc]ut|[Ss]et|[Mm]ove)[^\\n]{0,40}(internal|own|test('s)?)\\s+timeout"
 weight: 2
 ---
 
