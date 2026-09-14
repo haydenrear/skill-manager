@@ -1,0 +1,31 @@
+Read {"file_path": "/private/tmp/e-tHdjRE/home/cwd/cases/w-skt-not-installed-is-not-not-synced/ticket-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-tHdjRE/home/cwd/cases/w-skt-not-installed-is-not-not-synced/installed-units.txt"}
+---
+Bash {"command": "skill-manager --help 2>&1 | head -80", "description": "Show skill-manager CLI help"}
+---
+Bash {"command": "skill-manager install --help 2>&1 | head -60; echo \"=== SYNC ===\"; skill-manager sync --help 2>&1 | head -60", "description": "Show install and sync subcommand help"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/ 2>/dev/null; echo \"---\"; cat /private/tmp/skill-evals/wide/units/skt/plugin.json 2>/dev/null; echo \"---toml---\"; cat /private/tmp/skill-evals/wide/units/skt/skill-manager.toml 2>/dev/null", "description": "Inspect skt plugin manifest"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/skills/; echo \"=== .claude-plugin ===\"; ls -a /private/tmp/skill-evals/wide/units/skt/; echo \"=== find manifests ===\"; find /private/tmp/skill-evals/wide/units/skt -maxdepth 3 -name \"*.toml\" -o -maxdepth 3 -name \"plugin.json\" | head -30", "description": "Inspect skt plugin contents"}
+---
+Bash {"command": "skill-manager project --help 2>&1 | head -40; echo \"=== LIST ===\"; skill-manager list --help 2>&1 | head -30", "description": "Show project and list subcommand help"}
+---
+Bash {"command": "cat /private/tmp/skill-evals/wide/units/skt/skills/skt/skill-manager.toml; echo \"=== plugin.json ===\"; cat /private/tmp/skill-evals/wide/units/skt/.claude-plugin/plugin.json", "description": "Read skt skill manifest and plugin manifest"}
+---
+Bash {"command": "grep -rn \"git-issue-workflow\" /private/tmp/skill-evals/wide/units/skt/ --include=*.toml --include=*.json | head -20", "description": "Search skt unit for git-issue-workflow references in manifests"}
+---
+Bash {"command": "grep -rn \"git-issue-workflow\" /private/tmp/skill-evals/wide/units/skt/ 2>/dev/null | head -40", "description": "Search skt unit for git-issue-workflow mentions"}
+---
+Bash {"command": "ls -a /private/tmp/e-tHdjRE/home/cwd/.skill-manager/ 2>/dev/null; echo \"=== units ===\"; ls /private/tmp/e-tHdjRE/home/cwd/.skill-manager/skills 2>/dev/null; ls /private/tmp/e-tHdjRE/home/cwd/.skill-manager/plugins 2>/dev/null", "description": "Inspect project skill-manager home"}
+---
+Bash {"command": "sed -n '35,80p' /private/tmp/skill-evals/wide/units/skt/skills/skt/SKILL.md", "description": "Read skt SKILL.md install vs sync section"}
+---
+Bash {"command": "sed -n '140,170p' /private/tmp/skill-evals/wide/units/skt/skills/skill-manager/SKILL.md", "description": "Read skill-manager SKILL.md sync section"}
+---
+Bash {"command": "grep -rn \"bin/cli/skill-manager install\\|no \\`--home\\`\\|has no --home\\|SKILL_MANAGER_HOME\" /private/tmp/skill-evals/wide/units/skt/skills/ | head -30", "description": "Search skt docs for home-targeting rules for install"}
+---
+Bash {"command": "grep -rn \"git-issue-workflow-skill\\|haydenrear/git-issue-workflow\" /private/tmp/skill-evals/wide/units/ 2>/dev/null | head -20", "description": "Find canonical git-issue-workflow repo coordinate"}
+---
+Bash {"command": "/work/proj/.skill-manager/bin/cli/skill-manager install github:haydenrear/git-issue-workflow-skill", "description": "Install git-issue-workflow into the project home"}
