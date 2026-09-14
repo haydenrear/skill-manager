@@ -53,6 +53,21 @@ def main() -> int:
     per_home, parts, total = {}, [], 0
     for label, home in homes:
         entries = obs.bin_cli_own_path_entries(home)
+        # OHV-4 (#341): an entry that names the home ONLY in its first-line
+        # shebang (a venv-internal `#!<home>/venvs/.../python` entrypoint) is a
+        # deliberately-unreported shape -- `home repair` does not report it and
+        # --fix cannot rewrite it, because the kernel reads a shebang literally
+        # and it cannot hold a token. Counted, and kept OUT of "unreported", so
+        # that population never reads as a detector gap.
+        # Likewise an entry that spells the home only in `#` comment lines
+        # (possibly plus the shebang): prose about a path is not a reference to
+        # one, so the detector does not read comments (#341 "Watch for") and
+        # --fix leaves such a shim byte-identical.
+        sp = obs.spellings(home)
+        for e in entries:
+            where = _where_spelled(home / "bin" / "cli" / e["entry"], sp)
+            e["shebang_only"] = where == "shebang"
+            e["comment_only"] = where == "comment"
         rep = obs.repair_report(home)
         doc = rep["doc"]
         reported = None
@@ -64,8 +79,15 @@ def main() -> int:
                                             else f"bin/cli/{e['entry']}" in reported)
         total += len(entries)
         half = [e["entry"] for e in entries if e["half_rewritten"]]
-        unreported = [e["entry"] for e in entries if e["reported_by_home_repair"] is False]
+        shebang_only = [e["entry"] for e in entries if e["shebang_only"]]
+        comment_only = [e["entry"] for e in entries if e["comment_only"]]
+        unreported = [e["entry"] for e in entries
+                      if e["reported_by_home_repair"] is False
+                      and not e["shebang_only"] and not e["comment_only"]]
         per_home[label] = {"home": str(home), "entries": entries,
+                           "unreported": unreported,
+                           "shebang_only_out_of_scope": shebang_only,
+                           "comment_only_not_a_reference": comment_only,
                            "home_repair_rc": rep["rc"],
                            "home_repair_findings": (len(doc.get("findings", []))
                                                     if isinstance(doc, dict) else None),
@@ -74,7 +96,10 @@ def main() -> int:
         if entries:
             detail = (f" ({', '.join(e['entry'] for e in entries)}; {len(half)} half-rewritten, "
                       + (f"{len(unreported)} unreported by home repair" if reported is not None
-                         else "home repair unreadable") + ")")
+                         else "home repair unreadable")
+                      + (f", {len(shebang_only)} shebang-only (out of scope)" if shebang_only else "")
+                      + (f", {len(comment_only)} comment-only (not a reference)" if comment_only else "")
+                      + ")")
         parts.append(f"{label} {len(entries)}{detail}")
 
     payload["value"] = "; ".join(parts)
@@ -86,6 +111,29 @@ def main() -> int:
         payload["fleet"] = {"homes": len(fleet), "homes_with_own_path_bin_cli": len(with_entry),
                             "note": "context, no threshold"}
     return obs.emit(payload, unmeasured=False)
+
+
+def _where_spelled(path: Path, spellings):
+    """Where the home is spelled, when not on a line that runs.
+
+    "shebang" -- only on the first-line shebang; "comment" -- only on `#`
+    comment lines (with or without the shebang); None -- on at least one line
+    that is neither, i.e. a line `home repair` is expected to report.
+    """
+    text = obs.is_text(path)
+    if text is None:
+        return None
+    lines = text.split("\n")
+    shebang = lines[0] if lines and lines[0].startswith("#!") else None
+    body = lines[1:] if shebang is not None else lines
+    in_shebang = shebang is not None and any(s in shebang for s in spellings)
+    in_comment = any(l.lstrip().startswith("#") and any(s in l for s in spellings) for l in body)
+    in_running = any(not l.lstrip().startswith("#") and any(s in l for s in spellings) for l in body)
+    if in_running:
+        return None
+    if in_comment:
+        return "comment"
+    return "shebang" if in_shebang else None
 
 
 if __name__ == "__main__":
