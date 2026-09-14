@@ -1766,6 +1766,14 @@ validationGraph {
      *   - 4 Codex marketplace + Claude enablement of another
      *     home's marketplace (DEF-OHV-005) ...... home.verdicts.foreign.marketplace.registration
      *
+     * OHV-9 (#367) adds the write-through shape (DEF-OHV-011), in scratch
+     * parent/child homes: the child's bin/cli/wt-tool links to the parent's
+     * real shim (a sanctioned mirror), and a skill-script in the child writes
+     * `cat >"$SKILL_MANAGER_HOME/bin/cli/wt-tool"`. The parent must be
+     * byte-identical and the child must hold its own token-form shim. No
+     * repair/verify here: the subject is what an INSTALL writes, and the
+     * homes are deleted, never published ...... home.verdicts.child.install.writes.only.itself
+     *
      * PENDING, with the ticket that adds each node:
      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
      *
@@ -1792,6 +1800,7 @@ validationGraph {
         node("sources/home-verdicts/MarketplaceIdentityUnregisteredIsReported.java")
         node("sources/home-verdicts/CopiedMarketplaceIdentityIsReported.java")
         node("sources/home-verdicts/ForeignMarketplaceRegistrationIsReported.java")
+        node("sources/home-verdicts/ChildInstallWritesOnlyItself.java")
         node("sources/common/HomeFixpointLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
@@ -1805,7 +1814,8 @@ validationGraph {
                 "home.verdicts.marketplace.under.another.name",
                 "home.verdicts.marketplace.identity.unregistered",
                 "home.verdicts.copied.marketplace.identity",
-                "home.verdicts.foreign.marketplace.registration")
+                "home.verdicts.foreign.marketplace.registration",
+                "home.verdicts.child.install.writes.only.itself")
         node("sources/common/HomeMembershipLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
@@ -1819,7 +1829,8 @@ validationGraph {
                 "home.verdicts.marketplace.under.another.name",
                 "home.verdicts.marketplace.identity.unregistered",
                 "home.verdicts.copied.marketplace.identity",
-                "home.verdicts.foreign.marketplace.registration")
+                "home.verdicts.foreign.marketplace.registration",
+                "home.verdicts.child.install.writes.only.itself")
     }
 
     /**

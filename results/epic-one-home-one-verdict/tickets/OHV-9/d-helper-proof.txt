@@ -1,0 +1,2 @@
+old: parent now = child
+new: parent now = parent; child is link? no; child = child
