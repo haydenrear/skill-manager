@@ -106,6 +106,11 @@ def _subject(rule: dict, text: str) -> str:
     naming the wrong one, tripped a forbid rule about writing the wrong one.
     """
     field = rule.get("field")
+    # A Bash-only rule is about the COMMAND. Its input also carries the agent's
+    # own free-text `description`, which can name the very thing a forbid rule
+    # is about ("checking we do NOT pass --force") -- so it is not searched.
+    if not field and rule.get("tool", "Bash") == "Bash":
+        field = "command"
     if not field:
         return text
     try:
@@ -229,6 +234,17 @@ def self_test() -> int:
                            "match": "(^|/)specs/deferred_findings\\.yaml$"}]}
     check("field ignores content", verdicts(by_path, wrote_right_file), {"forbid-root": True})
     check("field still catches the path", verdicts(by_path, wrote_wrong_file), {"forbid-root": False})
+    # A Bash-only rule reads the command, never the agent's own description.
+    described = [("Bash", json.dumps({"command": "skt ticket close T-1",
+                                      "description": "close without --force"}, sort_keys=True))]
+    forced = [("Bash", json.dumps({"command": "skt ticket close T-1 --force",
+                                   "description": "close it"}, sort_keys=True))]
+    no_force = {"forbid": [{"id": "f", "tool": "Bash", "match": "--force"}]}
+    check("bash rule ignores description", verdicts(no_force, described), {"forbid-f": True})
+    check("bash rule reads the command", verdicts(no_force, forced), {"forbid-f": False})
+    check("multi-tool rule still reads all", verdicts(
+        {"forbid": [{"id": "f", "tool": "Bash|Read", "match": "--force"}]}, described),
+        {"forbid-f": False})
     check("no field searches everything", verdicts(
         {"forbid": [{"id": "root", "tool": "Write", "match": "deferred_findings"}]},
         wrote_right_file), {"forbid-root": False})

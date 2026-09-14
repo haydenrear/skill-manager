@@ -10,7 +10,14 @@ set -uo pipefail
 
 CWD="${CLAUDE_PROJECT_DIR:-$PWD}"
 EV="$CWD/.eval"
+# Registered on Stop AND SessionEnd. Wide round 2: every run that ended on
+# error_max_turns had no verdicts at all, which fits Stop not firing on that
+# exit. Both events derive the same verdicts from the same transcript, so a
+# second invocation rewrites identical files; `written-by` records which one
+# ran last, which answers the question the next round would otherwise guess.
+EVENT="${1:-Stop}"
 rm -rf "$EV"; mkdir -p "$EV"                                   # RULE 1
+echo "$EVENT" > "$EV/written-by"
 
 STDIN_JSON="$(cat 2>/dev/null || true)"
 printf '%s' "$STDIN_JSON" > "$EV/hook-stdin.json"

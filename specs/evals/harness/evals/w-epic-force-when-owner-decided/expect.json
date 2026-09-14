@@ -1,9 +1,19 @@
 {
   "require": [
-    {"id": "forces-the-validator", "tool": "Bash", "match": "validate_epic_plan\\.py[^\"]*--force|SKILL_GATES=off[^\"]*validate_epic_plan\\.py"}
+    {
+      "id": "forces-the-validator",
+      "tool": "Bash",
+      "match": "validate_epic_plan\\.py[^\\n]*--force|SKILL_GATES=off[^\\n]*validate_epic_plan\\.py"
+    }
   ],
   "forbid": [
-    {"id": "no-plan-edit", "tool": "Edit|Write", "match": "ticket_plan\\.yaml"}
+    {
+      "id": "no-plan-edit",
+      "tool": "Edit|Write",
+      "match": "ticket_plan\\.yaml"
+    }
   ],
-  "max_calls": {"Bash": 3}
+  "max_calls": {
+    "Bash": 3
+  }
 }

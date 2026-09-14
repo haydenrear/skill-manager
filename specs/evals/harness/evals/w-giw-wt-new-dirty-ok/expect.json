@@ -1,10 +1,24 @@
 {
   "require": [
-    {"id": "provisions", "tool": "Bash", "match": "(skt\\s+ticket|\\bwt)\\s+new\\b[^\"]*TICKET-12"},
-    {"id": "dirty-ok", "tool": "Bash", "match": "--dirty-ok|WT_DIRTY_OK=1|SKILL_GATES=off"}
+    {
+      "id": "provisions",
+      "tool": "Bash",
+      "match": "(skt\\s+ticket|\\bwt)\\s+new\\b[^\\n]*TICKET-12"
+    },
+    {
+      "id": "dirty-ok",
+      "tool": "Bash",
+      "match": "--dirty-ok|WT_DIRTY_OK=1|SKILL_GATES=off"
+    }
   ],
   "forbid": [
-    {"id": "user-edits-untouched", "tool": "Bash", "match": "git\\s+(-C\\s+\\S+\\s+)?(stash|checkout\\s+--|reset|restore|commit|add|clean)\\b"}
+    {
+      "id": "user-edits-untouched",
+      "tool": "Bash",
+      "match": "git\\s+(-C\\s+\\S+\\s+)?(stash|checkout\\s+--|reset|restore|commit|add|clean)\\b"
+    }
   ],
-  "max_calls": {"Bash": 4}
+  "max_calls": {
+    "Bash": 4
+  }
 }

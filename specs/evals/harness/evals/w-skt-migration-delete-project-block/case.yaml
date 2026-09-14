@@ -8,8 +8,8 @@ runs: 1
 plugins:
   - ../../units/toolchain
 execution:
-  max_turns: 10
-  timeout_seconds: 420
+  max_turns: 16
+  timeout_seconds: 600
   allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
   prompt: |
     The session-start report for this checkout is in cases/w-skt-migration-delete-project-block/status-output.txt and

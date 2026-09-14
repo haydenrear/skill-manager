@@ -11,8 +11,8 @@ runs: 1
 plugins:
   - ../../units/toolchain
 execution:
-  max_turns: 10
-  timeout_seconds: 420
+  max_turns: 16
+  timeout_seconds: 600
   allowed_tools: [Read, Glob, Grep, Skill, Bash]
   prompt: |
     I maintain a plugin bundle and want to rehearse `skill-manager install` of

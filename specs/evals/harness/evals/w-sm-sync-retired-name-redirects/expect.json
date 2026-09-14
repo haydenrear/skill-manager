@@ -1,9 +1,19 @@
 {
   "require": [
-    {"id": "syncs", "tool": "Bash", "match": "\\b(skill-manager|skt)\\s+sync\\b"}
+    {
+      "id": "syncs",
+      "tool": "Bash",
+      "match": "\\b(skill-manager|skt)\\s+sync\\b"
+    }
   ],
   "forbid": [
-    {"id": "no-reinstall-retired", "tool": "Bash", "match": "\\b(skill-manager|skt)\\s+install\\b[^\"]*skill-manager"}
+    {
+      "id": "no-reinstall-retired",
+      "tool": "Bash",
+      "match": "\\b(skill-manager|skt)\\s+install\\b[^\\n]*skill-manager"
+    }
   ],
-  "max_calls": {"Bash": 4}
+  "max_calls": {
+    "Bash": 4
+  }
 }

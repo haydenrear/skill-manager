@@ -1,7 +1,13 @@
 {
   "require": [],
   "forbid": [
-    {"id": "no-upgrade-or-reinstall", "tool": "Bash", "match": "brew\\s+(upgrade|install|reinstall)|\\binstall\\s+[^\"]*skill-manager|curl\\s|jbang\\s+app\\s+install"}
+    {
+      "id": "no-upgrade-or-reinstall",
+      "tool": "Bash",
+      "match": "brew\\s+(upgrade|install|reinstall)|\\binstall\\s+[^\\n]*skill-manager|curl\\s|jbang\\s+app\\s+install"
+    }
   ],
-  "max_calls": {"Bash": 3}
+  "max_calls": {
+    "Bash": 3
+  }
 }

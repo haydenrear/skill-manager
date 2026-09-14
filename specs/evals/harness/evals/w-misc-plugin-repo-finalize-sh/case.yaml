@@ -10,8 +10,8 @@ runs: 1
 plugins:
   - ../../units/toolchain
 execution:
-  max_turns: 12
-  timeout_seconds: 420
+  max_turns: 20
+  timeout_seconds: 600
   allowed_tools: [Read, Glob, Grep, Skill, Bash]
   prompt: |
     cases/w-misc-plugin-repo-finalize-sh/ is a plugin repository that bundles
