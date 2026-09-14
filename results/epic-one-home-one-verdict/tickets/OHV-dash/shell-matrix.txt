@@ -1,0 +1,13 @@
+form  shell       | path | interp | copy | link
+old   /bin/sh     | ok   | ok     | ok   | rc=126(./lnk/t: line 3: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q0000)
+old   /bin/dash   | rc=127(./h/bin/cli/t: 2: Bad substitution) | rc=127(h/bin/cli/t: 2: Bad substitution) | rc=127(./copy/bin/cli/t: 2: Bad substitution) | rc=127(./lnk/t: 2: Bad substitution)
+old   /bin/bash   | ok   | ok     | ok   | rc=126(./lnk/t: line 3: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q0000)
+old   /bin/zsh    | ok   | ok     | ok   | rc=127(./lnk/t:3: no such file or directory: /var/folders/b7/rsz3g6)
+old   /bin/ksh    | ok   | ok     | ok   | rc=127(./lnk/t[3]: exec: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q000)
+new   /bin/sh     | ok   | ok     | ok   | rc=126(./lnk/t: line 3: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q0000)
+new   /bin/dash   | ok   | ok     | ok   | rc=127(./lnk/t: 3: exec: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q000)
+new   /bin/bash   | ok   | ok     | ok   | rc=126(./lnk/t: line 3: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q0000)
+new   /bin/zsh    | ok   | ok     | ok   | rc=127(./lnk/t:3: no such file or directory: /var/folders/b7/rsz3g6)
+new   /bin/ksh    | ok   | ok     | ok   | rc=127(./lnk/t[3]: exec: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q000)
+
+/bin/sh is: bash 3.2.57(1)-release (Darwin)
