@@ -1,0 +1,16 @@
+build: skill-manager 0.27.2+gbe8b48ddbe9e @ be8b48ddbe9e (refs/heads/epic/one-home-one-verdict)
+! Telemetry export unavailable; continuing without telemetry.
+NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/IdeaProjects/skill-manager/.skill-manager resolves, and no path in it reaches any other Skill Manager home (LINK targets are checked everywhere in this home; script CONTENT is read only under bin/cli and bin/mcp, so a generated script elsewhere — bin/launch, a venv console-script shebang — is not covered by this line. `home repair` reads the same two directories).
+1 shim(s) in /Users/hayde/IdeaProjects/skill-manager/.skill-manager link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
+    bin/cli/tlc2 -> /Users/hayde/.skill-manager
+✗ 4 finding(s) `home repair` reports in /Users/hayde/IdeaProjects/skill-manager/.skill-manager, of 81 entries examined — each is damage, and this check fails on it
+✗   DANGLING_AGENT_LINK .claude/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .codex/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   DANGLING_AGENT_LINK .gemini/skills/skill-manager — points at /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager, inside this home, and nothing is there — this home no longer holds the unit it projected
+✗       repair: skill-manager home repair --fix removes the link — it resolves to nothing, so removing it loses nothing
+✗   ORPHANED_PROJECTION_RECORD installed/skill-manager.projections.json — records 3 projection(s) of skill-manager, and this home holds no installed/skill-manager.json and no skill-manager unit directory — the unit is gone and its record outlived it
+✗       repair: skill-manager home repair --fix deletes this record and nothing else; a link it names that is left dangling is reported separately as DANGLING_AGENT_LINK
+✗   4 of these: complete it with: env SKILL_MANAGER_HOME=/Users/hayde/IdeaProjects/skill-manager/.skill-manager CLAUDE_CONFIG_DIR=/Users/hayde/IdeaProjects/skill-manager/.claude CODEX_HOME=/Users/hayde/IdeaProjects/skill-manager/.codex GEMINI_HOME=/Users/hayde/IdeaProjects/skill-manager/.gemini SKILL_MANAGER_CONFINE_ROOT=/Users/hayde/IdeaProjects/skill-manager /Users/hayde/IdeaProjects/skill-manager/.skill-manager/bin/cli/skill-manager home repair --home /Users/hayde/IdeaProjects/skill-manager/.skill-manager --fix, then re-run this check
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260914-122515-3b58.log

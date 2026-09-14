@@ -1,0 +1,3 @@
+/Users/hayde/IdeaProjects/skill-manager/.claude/skills/skill-manager -> /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager
+/Users/hayde/IdeaProjects/skill-manager/.codex/skills/skill-manager -> /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager
+/Users/hayde/IdeaProjects/skill-manager/.gemini/skills/skill-manager -> /Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager

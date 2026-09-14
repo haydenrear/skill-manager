@@ -46,7 +46,9 @@ findings:
       was the missing detector, which has been added. This is that detector exempting
       a shim the rewriter left half-done.
     suggested_fix: detect on content (any literal home spelling in an exec/export line), independent of whether a rewrite is available; make the rewrite cover exec lines
-    disposition: pending
+    disposition: ticketed
+    disposition_ticket: OHV-4
+    disposition_evidence: "#365 merged 42486f86; root home re-anchored 2026-09-14 (goals/GOAL-no-own-home-path/2026-09-14-root-fix/)"
 
   - id: DEF-OHV-002
     found_by: kickoff baseline
@@ -69,7 +71,9 @@ findings:
     note: >
       The 0.27.2 attribution's batch 3 reports "0 dangling agent links" over 31
       homes. This repo's own project home was not in that batch.
-    disposition: pending
+    disposition: ticketed
+    disposition_ticket: OHV-2
+    disposition_evidence: "#364 merged 48d23c51; project home's 3 links and 1 record now reported by verify and repair"
 
   - id: DEF-OHV-003
     found_by: kickoff baseline
@@ -84,7 +88,9 @@ findings:
       and their unit-digests. It also carries 15 missing outputs.
     reproduction: python3 scripts/release_regression.py -> R1 root ledger_only_rows (14), phantom_outputs (15)
     evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/release_regression.json]
-    disposition: pending
+    disposition: ticketed
+    disposition_ticket: OHV-3
+    disposition_evidence: "#361 merged 3d6d4cd4 going forward; rows that pre-date OHV-3 remain as DEF-OHV-131"
 
   - id: DEF-OHV-004
     found_by: kickoff baseline
@@ -103,7 +109,9 @@ findings:
       git -C .skill-manager/plugins/skt show HEAD:.claude-plugin/plugin.json | grep version -> 0.8.2
     evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/baseline.json]
     why_not_a_duplicate: no backlog entry or issue names a record version disagreeing with its checkout manifest
-    disposition: pending
+    disposition: ticketed
+    disposition_ticket: OHV-3
+    disposition_evidence: "#361 merged 3d6d4cd4, step (c); proven by RecordVersionRefreshTest (real-home sync refused, see OHV-3 README)"
 
   - id: DEF-OHV-005
     found_by: kickoff baseline
@@ -118,7 +126,9 @@ findings:
     reproduction: python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['enabledPlugins'])"
     evidence: [results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/baseline.json]
     suggested_fix: add to #352 as a comment, not a new issue
-    disposition: pending
+    disposition: ticketed
+    disposition_ticket: OHV-6
+    disposition_evidence: "#366 merged 7357b8ab; root's Claude and Codex registrations removed 2026-09-14 (goals/GOAL-one-marketplace-identity/2026-09-14-root-fix/)"
 
   - id: DEF-OHV-006
     found_by: kickoff (previous epic's worktree sweep)
@@ -140,7 +150,9 @@ findings:
       gh pr view <n> --json mergeCommit + git merge-base --is-ancestor -> all merged into their base
     evidence: [results/epic-one-home-one-verdict/attribution/2026-09-13-kickoff-baseline.md]
     suggested_fix: accept PR-merged (gh) or tree-equivalence as containment; make the no-target default refuse rather than skip
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skt/issues/47"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   - id: DEF-OHV-007
     found_by: kickoff baseline
@@ -151,7 +163,9 @@ findings:
       scripts/measure_goals.py ignores --help and runs the full goal ledger,
       several minutes across every home on the machine.
     reproduction: python3 scripts/measure_goals.py --help
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/375"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   - id: DEF-OHV-008
     found_by: kickoff baseline
@@ -163,7 +177,9 @@ findings:
       `gateway.server --config /var/folders/.../supersession-sync-10428141792301021182/home/...`
       after 6h46m, with nothing owning it.
     reproduction: ps -eo pid,etime,command | grep 'supersession-sync-.*gateway'
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/372"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   - id: DEF-OHV-009
     found_by: schedule_revision 2 amendment
@@ -185,7 +201,9 @@ findings:
       GOAL-ci-green-fresh-runner (any disposition), then run
       validate_epic_plan.py -> error naming active tickets [OHV-3, OHV-5, OHV-8].
     suggested_fix: allow a per-ticket goal disposition "withdrawn_contribution" for guard/enabling links, which leaves the goal active
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/git-epic-workflow/issues/19"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   - id: DEF-OHV-010
     found_by: wave 1 (disk exhaustion that stopped OHV-3's local verification)
@@ -207,7 +225,9 @@ findings:
       Owner-approved cleanup 2026-09-13: deleted 20,508 entries older than 3h; free space
       went from 58 to 102 GiB.
     suggested_fix: create test homes under one per-run root that the runner deletes on exit (or @TempDir-style cleanup per test); fail the suite if it leaves more than N entries in the temp dir
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/372"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   # Filed by OHV-3 into results/epic-one-home-one-verdict/tickets/OHV-3/deferred.yaml;
   # merged here at wave-1 close. The ticket file holds the full text, the disk observation and the options.
@@ -223,7 +243,9 @@ findings:
       prune can or should reap a row whose owner is installed. All 7 of 7 on this
       project home, and 11 of 26 on tla-spec-dev-2 after a prune.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-3/deferred.yaml
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/374"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   - id: DEF-OHV-131
     found_by: OHV-3 step (b), whole-home prune on tla-spec-dev-2
@@ -237,7 +259,9 @@ findings:
       existing ones need an owner remedy: an agent-root heuristic, an `artifacts
       forget` verb, or a GOAL-one-record rescope.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-3/deferred.yaml
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/374"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   # Filed by OHV-2 into results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml;
   # merged here at wave-2 close. The full text, disk observations and CI job ids are in the ticket file.
@@ -252,7 +276,9 @@ findings:
       After OHV-2 it also fails on every `home repair` finding. Neither gates on
       the exit code.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/git-epic-workflow/issues/19", "https://github.com/haydenrear/git-issue-workflow/issues/31"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   - id: DEF-OHV-121
     found_by: OHV-2 (CI runs 34802282392 and 34804201355, local run 20260914-035302)
@@ -268,7 +294,9 @@ findings:
       graph and fails in the other. The behaviour is the same on macOS and Linux.
       It is not a detector defect.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-2/deferred.yaml
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/372"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   # Filed by OHV-4 into results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml;
   # merged here at wave-3 close. Full mechanism, timings and disk observation are in the ticket file.
@@ -287,7 +315,9 @@ findings:
       took 1 s instead of 14.15 s.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-4/deferred.yaml and tickets/OHV-4/timing/
     suggested_fix: a short connect timeout and non-blocking export in CliObservability, and/or OTEL_SDK_DISABLED in the graph sandbox unless opted in
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/373"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   # Filed by OHV-6 into results/epic-one-home-one-verdict/tickets/OHV-6/deferred.yaml; merged here at wave-4 close.
   - id: DEF-OHV-160
@@ -302,7 +332,9 @@ findings:
       while tla-spec-dev and meta-orchestrator carried it. It also counts a project's
       own-path `<plugin>@skill-manager` enablement as shape 4.
     reproduction: see results/epic-one-home-one-verdict/tickets/OHV-6/deferred.yaml
-    disposition: pending
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/375"]
+    disposition_decided: "owner, 2026-09-14, finalization: file grouped issues"
 
   - id: DEF-OHV-011
     found_by: epic agent, pre-fix check of the root home before OHV-6's marketplace fix
@@ -334,3 +366,88 @@ findings:
       issue names a write through a bin/cli link.
     disposition: ticketed
     disposition_ticket: OHV-9
+
+  # Filed by OHV-8 (terminal evaluation) into results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml;
+  # merged here at finalization. Full text, reproductions and disk observations are in the ticket file.
+  - id: DEF-OHV-180
+    found_by: OHV-8
+    severity: major
+    summary: >
+      The operator's root shims were overwritten again at 11:31 EDT 2026-09-14 by a
+      commit-diff-context-parent test graph on a build without OHV-9, and then left
+      half-rewritten by another session's released 0.27.2 `home repair --fix`.
+      Repaired with the epic build at 12:26 EDT (goals/2026-09-14-final-home-fix/). The
+      leak recurs until OHV-9 is released and commit-diff-context-parent#262 is fixed.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/378", "https://github.com/haydenrear/commit-diff-context-parent/issues/262"]
+    disposition_decided: "owner, 2026-09-14, finalization"
+
+  - id: DEF-OHV-181
+    found_by: OHV-8
+    severity: minor
+    summary: >
+      The project home still carried the kickoff's 3 dangling agent links and 1 orphaned
+      projection record; no ticket was scoped to write it.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: fixed-inline
+    disposition_evidence: "owner-approved epic-build `home repair --fix` 2026-09-14 12:26 EDT; project repair and verify exit 0 (goals/2026-09-14-final-home-fix/project/)"
+
+  - id: DEF-OHV-182
+    found_by: OHV-8
+    severity: minor
+    summary: >
+      Installed record versions still disagree with the checkout while the hash agrees:
+      root 4 (acp-cdc-ai-python, git-epic-workflow, git-issue-workflow, git-issue),
+      project 1 (skt). GOAL-one-record clause (3) missed. OHV-3 (c) refreshes the version
+      on a sync; the dry runs (goals/2026-09-14-final-home-fix/sync-dry-run/) show a
+      single-unit sync also reinstalls CLI deps for every installed unit (27 on root),
+      re-registers MCP and reinstalls plugins, which is broader than the approved refresh.
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: pending
+    disposition_note: "awaiting owner decision at finalization: run the full syncs, accept the miss, or carry an issue for a record-only refresh"
+
+  - id: DEF-OHV-183
+    found_by: OHV-8
+    severity: minor
+    summary: "Fresh-machine onboard from a checkout installs vendored skt 0.3.0 and skill-manager-skill 0.1.1, both stale on first `skt check`."
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/376"]
+    disposition_decided: "owner, 2026-09-14, finalization"
+
+  - id: DEF-OHV-184
+    found_by: OHV-8
+    severity: minor
+    summary: "`onboard` writes no bin/cli/skill-manager pin, so `skt check` (skt#46) names no skill-manager build on a freshly onboarded home."
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/376"]
+    disposition_decided: "owner, 2026-09-14, finalization"
+
+  - id: DEF-OHV-185
+    found_by: OHV-8
+    severity: minor
+    summary: "The /var vs /private/var shape (#343) is still PENDING in home-verdicts; no graph node plants it (11 of 12 known shapes pinned)."
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/377"]
+    disposition_decided: "owner, 2026-09-14, finalization"
+
+  - id: DEF-OHV-186
+    found_by: OHV-8
+    severity: minor
+    summary: "`project resolve` without --skip-gateway and an unreachable gateway fails with 'exit=0, errors=1', exits 1, and names no error."
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/376"]
+    disposition_decided: "owner, 2026-09-14, finalization"
+
+  - id: DEF-OHV-187
+    found_by: OHV-8
+    severity: minor
+    summary: "release_regression.py R1 cannot parse output (stdout and stderr merged; telemetry line on stderr) and resolves the wrong project home from a worktree."
+    reproduction: see results/epic-one-home-one-verdict/tickets/OHV-8/deferred.yaml
+    disposition: carried
+    disposition_issues: ["https://github.com/haydenrear/skill-manager/issues/375"]
+    disposition_decided: "owner, 2026-09-14, finalization"
