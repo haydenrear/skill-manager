@@ -184,6 +184,16 @@ public final class HomeRepair {
          * {@link ShimHomeContract#selfDerivingRewrite} the installer applies,
          * it costs the shim nothing where it stands, and it refuses any shim
          * whose shape it cannot rewrite rather than guessing.
+         *
+         * <p><b>Detected on CONTENT since OHV-4 (#341, DEF-OHV-001)</b>, by
+         * {@link ShimHomeContract#frozenHomeLines}: any literal spelling of
+         * this home on a line that runs, whether or not a rewrite is on offer.
+         * It used to be reported only when the rewrite still had something to
+         * offer, which exempted the HALF-rewritten shim (token in the export
+         * line, home literal in the exec line) the root home carried. A shape
+         * the rewrite refuses is now reported with {@code repairable=false}.
+         * A venv-internal shebang ({@code #!<home>/venvs/.../python}) is
+         * deliberately NOT reported; {@code frozenHomeLines} says why.
          */
         FROZEN_HOME_PATH_IN_SHIM,
 
@@ -1177,11 +1187,15 @@ public final class HomeRepair {
     /**
      * DEF-OUN-018, half one: shims that name THIS home absolutely.
      *
-     * <p>Read with the same {@link ShimHomeContract} the installer uses, so a
-     * shape it declines to rewrite is a shape this declines to report — a
-     * finding nothing can act on is noise, and this class already carries one
-     * of those on purpose ({@code bin/cli} as a directory link) with the
-     * reason written down.
+     * <p>OHV-4 (#341, DEF-OHV-001): reported on what the shim SAYS
+     * ({@link ShimHomeContract#frozenHomeLines}), not on whether
+     * {@link ShimHomeContract#selfDerivingRewrite} has a rewrite to offer. The
+     * old gate ("only report what can be rewritten") is exactly what exempted
+     * the half-rewritten shim: the rewriter declined it because it already held
+     * the token, so the detector declined to report it, and verify and repair
+     * both called the root home clean over three shims a copied home would run
+     * from the source host's path. Whether the finding is repairable is now a
+     * separate question, answered on the finding.
      */
     private static int scanFrozenShims(Path store, List<Finding> findings) {
         int examined = 0;
@@ -1192,19 +1206,20 @@ public final class HomeRepair {
                 for (Path shim : entries.sorted().toList()) {
                     if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) continue;
                     examined++;
-                    if (ShimHomeContract.frozenHomePaths(store, shim).isEmpty()) continue;
-                    // Only report what can actually be rewritten. The contract
-                    // refuses a shape it does not understand rather than
-                    // half-rewriting it, and so does this.
-                    if (ShimHomeContract.selfDerivingRewrite(store, shim) == null) continue;
+                    if (ShimHomeContract.frozenHomeLines(store, shim).isEmpty()) continue;
+                    boolean rewritable = ShimHomeContract.selfDerivingRewrite(store, shim) != null;
                     String rel = store.relativize(shim).toString();
                     findings.add(new Finding(Kind.FROZEN_HOME_PATH_IN_SHIM, rel,
                             "names this home by absolute path, so it runs the home it was "
                                     + "WRITTEN in rather than the one it is standing in — "
                                     + "correct here, wrong the moment this home is copied",
-                            "skill-manager home repair --fix (or `sync <unit> "
-                                    + "--force-scripts`, which rewrites it on the way past)",
-                            true, shim));
+                            rewritable
+                                    ? "skill-manager home repair --fix (or `sync <unit> "
+                                            + "--force-scripts`, which rewrites it on the way past)"
+                                    : "not a shell script `home repair --fix` can rewrite: derive "
+                                            + "the home from the shim's own location on that line, "
+                                            + "or reinstall the unit that wrote it",
+                            rewritable, shim));
                 }
             } catch (IOException ignored) {
                 // A directory that cannot be listed is another kind's subject.

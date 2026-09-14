@@ -247,26 +247,63 @@ public final class ShimHomeContract {
      * <p>Returns null unless the file is a text shell script with a shebang.
      * A compiled launcher, a Python console script with a frozen interpreter
      * shebang, anything not obviously a shell body — those are reported by
-     * {@link #frozenHomePaths} and left alone. Half-rewriting a file whose
-     * shape is not understood is worse than the freeze.
+     * {@link #frozenHomeLines} where they spell the home on a line that runs,
+     * and left alone. Half-rewriting a file whose shape is not understood is
+     * worse than the freeze.
+     *
+     * <h2>A shim that already holds the token is NOT "already rewritten" (OHV-4)</h2>
+     *
+     * <p>This used to return null for any body containing
+     * {@link #SHIM_HOME_VAR}. That produced DEF-OHV-001, measured on the root
+     * home: {@code bin/cli/computeq}, {@code helm-deploy} and {@code monitoring}
+     * carried this preamble and a token-derived {@code export} line, and an
+     * {@code exec "/Users/.../.skill-manager/cache/skill-script-.../venv/bin/<tool>"}
+     * that was still literal. Any path that put the token into one line first —
+     * an installer that half-adopted the recipe, or
+     * {@code HomeRepair}'s {@code FOREIGN_PATH_IN_SHIM} fix, which maps another
+     * home's path to this one's and then calls this — left every other line
+     * frozen for good, and {@code home repair} (which asked this method whether
+     * to report) exempted the result.
+     *
+     * <p>So every remaining literal spelling is re-anchored, whether or not the
+     * token is already there. The preamble is added only when no assignment of
+     * the token precedes the first rewritten line; a second pass finds no
+     * literal and returns null, which is the idempotence the installer and
+     * {@code --fix} rely on.
+     *
+     * <p>Replacement is of a WHOLE path prefix: a spelling followed by a path
+     * character ({@code /home-other}) or preceded by one
+     * ({@code /private/var/...} while replacing {@code /var/...}) is not this
+     * home and is left alone. And the result is checked before it is returned:
+     * a rewrite that leaves any spelling behind returns null rather than a
+     * second half-rewritten shim.
+     *
+     * <h2>Comment lines: rewritten, and deliberately not DETECTED</h2>
+     *
+     * <p>The rewrite's trigger is its own, and wider than the detector's: a
+     * literal spelling on ANY line after the shebang, {@code #} comments
+     * included — the trigger it had before OHV-4, when every token in the file
+     * counted. So once asked, it leaves no spelling of the home in the bytes
+     * (BLOCKER 2's repaired wrapper carries its base path in a comment, and a
+     * copied home carrying the source's path in prose is still the source's
+     * path). {@link #frozenHomeLines} does NOT read comments, because a finding
+     * there would make {@code home verify} red on a shim that runs correctly
+     * (#341 "Watch for": prose about a path is not a reference to one). The
+     * consequence, stated: a shim whose ONLY spelling is a comment is not a
+     * finding, so {@code home repair --fix} leaves it byte-identical; the
+     * skill-script installer, which asks this method directly, still
+     * re-anchors it on a fresh install.
      */
     public static String selfDerivingRewrite(Path home, Path shim) {
         if (home == null || shim == null) return null;
-        List<String> frozen = frozenHomePaths(home, shim);
-        if (frozen.isEmpty()) return null;
-        String body;
-        try {
-            if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) return null;
-            body = Files.readString(shim);
-        } catch (IOException | RuntimeException notText) {
-            return null;
-        }
-        if (!body.startsWith("#!")) return null;
+        String body = readShim(shim);
+        if (body == null || !body.startsWith("#!")) return null;
         int firstNl = body.indexOf('\n');
         if (firstNl < 0) return null;
         String shebang = body.substring(0, firstNl);
         if (!isShellShebang(shebang)) return null;
-        if (body.contains(SHIM_HOME_VAR)) return null;      // already rewritten
+        List<String> spellings = spellingsLongestFirst(home);
+        if (!spelledAfterShebang(body, spellings)) return null;
 
         // Depth is fixed by the store: bin/cli/<name>, so the home is two up.
         // Derived from the shim's OWN location, which is the whole point --
@@ -275,16 +312,182 @@ public final class ShimHomeContract {
                 + "# rather than the one it was written into, so a copy of the home works.\n"
                 + SHIM_HOME_VAR + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n";
 
-        String rewritten = body.substring(firstNl + 1);
+        String[] lines = body.substring(firstNl + 1).split("\n", -1);
+        boolean assigned = false;
+        boolean needsPreamble = false;
         boolean changed = false;
-        for (Path root : rootSpellings(home)) {
-            String prefix = root.toString();
-            if (!rewritten.contains(prefix)) continue;
-            rewritten = rewritten.replace(prefix, "${" + SHIM_HOME_VAR + "}");
-            changed = true;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            boolean assignment = SHIM_HOME_ASSIGNMENT.matcher(line).find();
+            String replaced = replaceSpellings(line, spellings);
+            if (assignment && !replaced.equals(line)) {
+                // `SKILL_MANAGER_SHIM_HOME="/abs/home"`: rewriting it would make
+                // the variable name itself. A shape nobody generates; refused.
+                return null;
+            }
+            if (assignment) assigned = true;
+            if (!replaced.equals(line)) {
+                if (!assigned) needsPreamble = true;
+                lines[i] = replaced;
+                changed = true;
+            }
         }
         if (!changed) return null;
-        return shebang + preamble + rewritten;
+        String rewritten = shebang + (needsPreamble ? preamble : "\n") + String.join("\n", lines);
+        // POSTCONDITION: never hand back a shim that still spells the home on any
+        // line the rewrite reads -- stricter than the detector, so a rewrite can
+        // never leave a finding behind either.
+        if (spelledAfterShebang(rewritten, spellings)) return null;
+        return rewritten;
+    }
+
+    /**
+     * The lines of {@code shim} that spell {@code home} literally, in a place
+     * that RUNS — the content rule {@code HomeRepair}'s
+     * {@code FROZEN_HOME_PATH_IN_SHIM} reports on (OHV-4, #341). Trimmed, in
+     * file order; empty is conformant.
+     *
+     * <h2>The rule</h2>
+     *
+     * <p>A literal spelling of this home — any of {@link PathSpellings#of}'s
+     * given, real and alias forms, as a whole path prefix, the home root itself
+     * included — on:
+     *
+     * <ul>
+     *   <li>any non-comment line after the shebang of a SHELL script (the shape
+     *       {@link #selfDerivingRewrite} can re-anchor); or</li>
+     *   <li>an {@code exec}, {@code export} or shell-assignment line of any
+     *       other text file, which is then reported but not rewritable.</li>
+     * </ul>
+     *
+     * <p>This is deliberately independent of whether a rewrite is on offer.
+     * The detector used to ask {@code selfDerivingRewrite(...) != null}, so a
+     * shim the rewriter had half-done — token in the {@code export} line, home
+     * literal in the {@code exec} line — was exempt precisely because it was
+     * broken in the way the rewriter produced (DEF-OHV-001). "Can I rewrite
+     * this" is not "does this name the home".
+     *
+     * <h2>Deliberately NOT reported: a venv-internal shebang</h2>
+     *
+     * <p>The FIRST line is never read. A console-script entrypoint pip wrote
+     * opens {@code #!<home>/venvs/<venv>/bin/python}; that is a literal own-home
+     * path too, and it is out of scope on purpose, for three reasons:
+     *
+     * <ul>
+     *   <li>The kernel reads a shebang literally. It cannot hold
+     *       {@code ${SKILL_MANAGER_SHIM_HOME}}, so no rewrite exists and a
+     *       finding would be one {@code --fix} can never clear.</li>
+     *   <li>It belongs to the toolchain tree, not to a shim skill-manager
+     *       generates: {@code venvs/} is a toolchain root a clone never carries
+     *       and re-provisioning regenerates, interpreter path included.</li>
+     *   <li>A shebang is not a line that names a path at runtime from the
+     *       shim's own bytes — {@link HomeRepair#absolutePathTokens} has never
+     *       tokenized one, so {@link #frozenHomePaths} did not see it
+     *       either.</li>
+     * </ul>
+     *
+     * <p>A copied home carrying such an entrypoint is the re-provisioning
+     * question ({@code home verify}'s unresolved references, {@code build}),
+     * not this one. {@code scripts/measure_goal_no_own_home_path.py} counts the
+     * shape separately as {@code shebang_only_out_of_scope} so it never reads as
+     * a detector gap.
+     *
+     * <h2>Deliberately NOT reported: a spelling only in a {@code #} comment</h2>
+     *
+     * <p>Comment lines are not read. Prose about a path is not a reference to
+     * one — #341's "Watch for" records the cold-artifact scanner reporting its
+     * own refusal text as a dangling path — and since OHV-2 {@code home verify}
+     * fails on every {@code home repair} finding, so a comment-only match would
+     * turn verify red on a shim that runs correctly. This classifier is
+     * therefore NOT the rewrite's trigger: {@link #selfDerivingRewrite} reads
+     * comments too and says what that means for {@code --fix}.
+     */
+    public static List<String> frozenHomeLines(Path home, Path shim) {
+        if (home == null || shim == null) return List.of();
+        String body = readShim(shim);
+        if (body == null) return List.of();
+        return frozenLinesIn(body, spellingsLongestFirst(home));
+    }
+
+    /** exec / export / {@code NAME=} (optionally local, readonly or declare). */
+    private static final java.util.regex.Pattern RUNNING_LINE = java.util.regex.Pattern.compile(
+            "^\\s*(?:exec\\b|export\\b|(?:local\\s+|readonly\\s+|declare(?:\\s+-\\w+)*\\s+)?"
+                    + "[A-Za-z_][A-Za-z0-9_]*=)");
+
+    private static final java.util.regex.Pattern SHIM_HOME_ASSIGNMENT = java.util.regex.Pattern.compile(
+            "^\\s*(?:export\\s+)?" + SHIM_HOME_VAR + "=");
+
+    private static List<String> frozenLinesIn(String body, List<String> spellings) {
+        String[] lines = body.split("\n", -1);
+        int from = 0;
+        boolean shell = false;
+        if (lines.length > 0 && lines[0].startsWith("#!")) {
+            shell = isShellShebang(lines[0]);
+            from = 1;     // the shebang: see frozenHomeLines, deliberately not read
+        }
+        List<String> out = new ArrayList<>();
+        for (int i = from; i < lines.length; i++) {
+            String trimmed = lines[i].strip();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+            if (!spellsAny(lines[i], spellings)) continue;
+            if (shell || RUNNING_LINE.matcher(lines[i]).find()) out.add(trimmed);
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * The REWRITE's classifier, kept separate from the detector's
+     * ({@link #frozenLinesIn}) on purpose: any line after the shebang, comments
+     * included. See {@link #selfDerivingRewrite}.
+     */
+    private static boolean spelledAfterShebang(String body, List<String> spellings) {
+        int firstNl = body.indexOf('\n');
+        String rest = body.startsWith("#!") ? (firstNl < 0 ? "" : body.substring(firstNl + 1)) : body;
+        for (String line : rest.split("\n", -1)) {
+            if (spellsAny(line, spellings)) return true;
+        }
+        return false;
+    }
+
+    /** The home's spellings as whole-prefix patterns, longest spelling first. */
+    private static List<String> spellingsLongestFirst(Path home) {
+        List<String> spellings = new ArrayList<>(PathSpellings.of(home));
+        spellings.removeIf(s -> s.isEmpty() || "/".equals(s));
+        spellings.sort(java.util.Comparator.comparingInt(String::length).reversed());
+        return List.copyOf(spellings);
+    }
+
+    private static java.util.regex.Pattern wholePrefix(String spelling) {
+        return java.util.regex.Pattern.compile("(?<![A-Za-z0-9_.\\-/])"
+                + java.util.regex.Pattern.quote(spelling) + "(?=[/\"'\\s:;,)}]|$)");
+    }
+
+    private static boolean spellsAny(String line, List<String> spellings) {
+        for (String s : spellings) {
+            if (line.contains(s) && wholePrefix(s).matcher(line).find()) return true;
+        }
+        return false;
+    }
+
+    private static String replaceSpellings(String line, List<String> spellings) {
+        String out = line;
+        for (String s : spellings) {
+            if (!out.contains(s)) continue;
+            out = wholePrefix(s).matcher(out)
+                    .replaceAll(java.util.regex.Matcher.quoteReplacement("${" + SHIM_HOME_VAR + "}"));
+        }
+        return out;
+    }
+
+    /** The shim's text, or null when it is not a regular, readable, shim-sized text file. */
+    private static String readShim(Path shim) {
+        try {
+            if (!Files.isRegularFile(shim, LinkOption.NOFOLLOW_LINKS)) return null;
+            if (Files.size(shim) > 1024L * 1024L) return null;
+            return Files.readString(shim);
+        } catch (IOException | RuntimeException notText) {
+            return null;
+        }
     }
 
     /**

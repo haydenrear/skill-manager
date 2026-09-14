@@ -1749,9 +1749,12 @@ validationGraph {
      *   - dangling agent-dir link into the home (DEF-OHV-002) ............. (b)
      *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ........ (c)
      *
-     * PENDING, with the ticket that adds each node:
+     * OHV-4 (#341) adds:
      *   - half-rewritten shim, header re-anchored, exec line literal
-     *     (DEF-OHV-001) ............................................ OHV-4 (#341)
+     *     (DEF-OHV-001): repair and verify name it, --fix clears it,
+     *     a second --fix is a no-op ................ home.verdicts.half.rewritten.shim
+     *
+     * PENDING, with the ticket that adds each node:
      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
      *   - #352's four marketplace-identity shapes (incl. DEF-OHV-005)  OHV-6 (#352)
      *
@@ -1773,6 +1776,7 @@ validationGraph {
         node("sources/home-verdicts/VerifyNamesEveryRepairFinding.java")
         node("sources/home-verdicts/DanglingAgentLinkIsReported.java")
         node("sources/home-verdicts/OrphanedProjectionRecordIsReported.java")
+        node("sources/home-verdicts/HalfRewrittenShimIsReported.java")
         node("sources/common/HomeFixpointLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
@@ -1781,7 +1785,8 @@ validationGraph {
                 "home.verdicts.unstamped.pm.tree",
                 "home.verdicts.verify.names.every.repair.finding",
                 "home.verdicts.dangling.agent.link",
-                "home.verdicts.orphaned.projection.record")
+                "home.verdicts.orphaned.projection.record",
+                "home.verdicts.half.rewritten.shim")
         node("sources/common/HomeMembershipLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
@@ -1790,7 +1795,8 @@ validationGraph {
                 "home.verdicts.unstamped.pm.tree",
                 "home.verdicts.verify.names.every.repair.finding",
                 "home.verdicts.dangling.agent.link",
-                "home.verdicts.orphaned.projection.record")
+                "home.verdicts.orphaned.projection.record",
+                "home.verdicts.half.rewritten.shim")
     }
 
     /**

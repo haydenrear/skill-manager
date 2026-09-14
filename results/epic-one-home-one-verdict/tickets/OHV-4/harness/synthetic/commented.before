@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# generated for <scratch>/ohv4-synth/.skill-manager/skills/acme
+exec true "$@"

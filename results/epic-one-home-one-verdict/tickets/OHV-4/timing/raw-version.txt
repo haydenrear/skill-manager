@@ -1,0 +1,4 @@
+skill-manager 0.27.2+g25b095ca8f7b
+build:  25b095ca8f7b (refs/heads/feature/OHV-4)
+cli:    /Users/hayde/IdeaProjects/wt-ohv-4/skill-manager
+! Telemetry export unavailable; continuing without telemetry.

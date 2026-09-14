@@ -286,11 +286,56 @@ final class HomeVerdictsSupport {
      */
     record Shape(String dir, String kind, int verifyExitToday, boolean verifyNamesToday) {}
 
+    /** One extra assertion a shape node makes about the repaired home. */
+    record Check(String name, boolean ok, String failure) {}
+
+    /**
+     * Runs after {@code --fix} and the separate detections, while the subject
+     * still exists, for a shape whose repaired BYTES matter (OHV-4's
+     * half-rewritten shim: the fix must re-anchor the exec line, not only
+     * silence the finding).
+     */
+    interface AfterFix {
+        List<Check> check(NodeContext ctx, Path subject, String rel) throws IOException;
+    }
+
+    /**
+     * Every spelling of {@code path} a generated file could hold: given, real,
+     * and the macOS top-level aliases of both ({@code /var} vs
+     * {@code /private/var}, {@code /tmp}, {@code /etc}). Longest first.
+     */
+    static List<String> spellings(Path path) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        Path given = path.toAbsolutePath().normalize();
+        out.add(given.toString());
+        try {
+            out.add(given.toRealPath().toString());
+        } catch (IOException notThere) {
+            // given only
+        }
+        for (String s : List.copyOf(out)) {
+            for (String alias : List.of("/var", "/tmp", "/etc")) {
+                String target = "/private" + alias;
+                if (s.startsWith(target + "/")) out.add(alias + s.substring(target.length()));
+                if (s.startsWith(alias + "/")) out.add(target + s.substring(alias.length()));
+            }
+        }
+        List<String> sorted = new ArrayList<>(out);
+        sorted.sort(Comparator.comparingInt(String::length).reversed());
+        return List.copyOf(sorted);
+    }
+
     /**
      * Plant, detect, ask verify, repair, detect again, delete. Seven separate CLI
      * processes, because a detector that repairs is no longer a detector (DEF-067).
      */
     static NodeResult runShape(NodeContext ctx, NodeSpec spec, Shape shape, Plant plant) {
+        return runShape(ctx, spec, shape, plant, null);
+    }
+
+    /** {@link #runShape(NodeContext, NodeSpec, Shape, Plant)} plus {@code afterFix}'s checks. */
+    static NodeResult runShape(NodeContext ctx, NodeSpec spec, Shape shape, Plant plant,
+                               AfterFix afterFix) {
         String id = spec.id();
         String scratchStr = ctx.get(FIXTURE, "scratchRoot").orElse(null);
         if (scratchStr == null) {
@@ -335,6 +380,10 @@ final class HomeVerdictsSupport {
             boolean verifyNamesAsToday = verifyNames == shape.verifyNamesToday();
             boolean fixCleared = after.exit() == 0 && report(after).parsedClean();
             boolean verifyCleanAfterFix = verifyAfter.exit() == 0;
+            List<Check> extra = afterFix == null ? List.of() : afterFix.check(ctx, subject, rel);
+            for (Check c : extra) {
+                if (!c.ok()) failures.add(c.name() + ": " + c.failure());
+            }
 
             if (!controlClean) failures.add("control: the unplanted subject was not clean: exit "
                     + control.exit() + " " + control.stdout().strip());
@@ -376,6 +425,7 @@ final class HomeVerdictsSupport {
                             + " (names it: " + verifyNames + ") fix=" + fix.exit()
                             + " after=" + after.exit() + " verify-after=" + verifyAfter.exit()
                             + "\nrepair --json stdout: " + detect.stdout().strip());
+            for (Check c : extra) result = result.assertion(c.name(), c.ok());
         } catch (IOException | RuntimeException e) {
             result = NodeResult.error(id, e);
         } finally {

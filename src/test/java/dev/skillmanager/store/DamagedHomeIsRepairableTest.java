@@ -486,6 +486,62 @@ public final class DamagedHomeIsRepairableTest {
                         assertTrue(finding.remedy() != null && !finding.remedy().isBlank(),
                                 "every finding names its repair; " + finding + " named none");
                     }
+
+                    // OHV-4 (#341, DEF-OHV-001): the kind is planted TWICE —
+                    // fully frozen and half-rewritten — and the guard above
+                    // passes on either alone. So the half-rewritten variant's
+                    // own subject is asserted, and so is what --fix does to it.
+                    Path half = fx.store.resolve("bin/cli").resolve(Fixture.HALF_TOOL);
+                    assertTrue(report.findings().stream().anyMatch(f ->
+                                    f.kind() == HomeRepair.Kind.FROZEN_HOME_PATH_IN_SHIM
+                                            && f.subject().equals("bin/cli/" + Fixture.HALF_TOOL)
+                                            && f.repairable()),
+                            "the HALF-rewritten shim (token export, literal exec) is reported "
+                                    + "and repairable; got " + report.findings());
+                    HomeRepair.repair(fx.store, fx.pin);
+                    String healed = Files.readString(half, StandardCharsets.UTF_8);
+                    assertTrue(ShimHomeContract.frozenHomeLines(fx.store, half).isEmpty(),
+                            "--fix re-anchored every line, the exec line included: " + healed);
+                    assertContains(healed, "exec \"${" + ShimHomeContract.SHIM_HOME_VAR + "}/cache/",
+                            "the exec line now derives the home");
+                    assertEquals(1, (int) healed.lines()
+                                    .filter(l -> l.startsWith(ShimHomeContract.SHIM_HOME_VAR + "=")).count(),
+                            "one assignment of the token: no second preamble");
+                    HomeRepair.Report after = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(after.findings().stream()
+                                    .noneMatch(f -> f.subject().equals("bin/cli/" + Fixture.HALF_TOOL)),
+                            "a separate detection no longer names it; got " + after.findings());
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertEquals(healed, Files.readString(half, StandardCharsets.UTF_8),
+                            "a second --fix changes no byte of it");
+                })
+
+                .test("OHV-4: a home spelled only in a # comment is not a finding, and --fix leaves the shim byte-identical", () -> {
+                    // #341 "Watch for": prose about a path is not a reference to
+                    // one. verify fails on every repair finding (OHV-2), so a
+                    // comment-only match would make verify red on a shim that
+                    // runs correctly.
+                    Fixture fx = Fixture.build("comment-only");
+                    Path shim = fx.store.resolve("bin/cli").resolve("commented");
+                    String body = "#!/usr/bin/env bash\n"
+                            + "# generated for " + fx.store + "/skills/" + UNIT + " by its installer\n"
+                            + "exec true \"$@\"\n";
+                    Files.writeString(shim, body, StandardCharsets.UTF_8);
+                    shim.toFile().setExecutable(true);
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(report.findings().stream()
+                                    .noneMatch(f -> f.subject().equals("bin/cli/commented")),
+                            "a comment-only spelling is not FROZEN_HOME_PATH_IN_SHIM; got " + report.findings());
+                    assertTrue(report.clean(), "and the otherwise healthy fixture stays clean; got "
+                            + report.findings());
+                    // THE CONTRACT, stated: --fix acts only on findings, so it is
+                    // a no-op here and the file is byte-identical. (The installer's
+                    // rewrite would still re-anchor the comment on a fresh install,
+                    // as it did before OHV-4; ShimSurvivesACopyTest pins that.)
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertEquals(body, Files.readString(shim, StandardCharsets.UTF_8),
+                            "--fix leaves a comment-only shim byte-identical");
                 })
 
                 .test("BLOCKER 2: a rewrite replaces a PATH, not a substring, and keeps the shim running", () -> {
@@ -1497,6 +1553,34 @@ public final class DamagedHomeIsRepairableTest {
             damageCliPin();
         }
 
+        static final String HALF_TOOL = "half-tool";
+
+        /**
+         * OHV-4 (#341), DEF-OHV-001. The root home's {@code bin/cli/computeq}
+         * shape: the rewrite preamble and a token-derived {@code export}, and an
+         * {@code exec} line that still spells this home. Exempt from
+         * {@code home repair} until OHV-4, because the rewrite declined any shim
+         * already holding the token and the detector only reported what the
+         * rewrite would take.
+         */
+        void damageHalfRewrittenShim() throws IOException {
+            Path tool = store.resolve("cache/skill-script-" + UNIT + "-" + HALF_TOOL + "/venv/bin")
+                    .resolve(HALF_TOOL);
+            Files.createDirectories(tool.getParent());
+            Files.writeString(tool, "#!/bin/sh\nexit 0\n");
+            tool.toFile().setExecutable(true);
+            Path shim = store.resolve("bin/cli").resolve(HALF_TOOL);
+            Files.writeString(shim, "#!/usr/bin/env bash\n"
+                    + "# Rewritten by skill-manager: resolve the home this shim is standing in\n"
+                    + "# rather than the one it was written into, so a copy of the home works.\n"
+                    + ShimHomeContract.SHIM_HOME_VAR
+                    + "=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\n"
+                    + "export MONITORING_DEPLOY_CDC_ROOT=\"${" + ShimHomeContract.SHIM_HOME_VAR
+                    + "}/skills/" + UNIT + "\"\n"
+                    + "exec \"" + tool + "\" \"$@\"\n", StandardCharsets.UTF_8);
+            shim.toFile().setExecutable(true);
+        }
+
         /**
          * Every shape the detector knows, repairable or not — the fixture for
          * the DETECTION-coverage guard.
@@ -1511,6 +1595,7 @@ public final class DamagedHomeIsRepairableTest {
             damageAll();
             damageShadowedMirror();
             damageFrozenShim();
+            damageHalfRewrittenShim();
             damageUnstampedPmTree();
             damageDanglingAgentLink();
             damageOrphanedProjectionRecord();
