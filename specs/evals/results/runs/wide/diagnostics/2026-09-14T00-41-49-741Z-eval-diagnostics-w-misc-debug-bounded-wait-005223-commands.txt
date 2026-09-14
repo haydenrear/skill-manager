@@ -1,0 +1,3 @@
+Skill {"skill": "debugging:debugging"}
+---
+Bash {"command": "ls -a; echo \"---\"; ls .github/workflows 2>/dev/null", "description": "List files in working directory"}

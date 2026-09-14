@@ -657,7 +657,12 @@ eval_run_case() {
         && echo "  diagnostics: $(grep -c '^---$' "$diag/commands.txt" 2>/dev/null | awk '{print $1+1}') commands the agent ran"
     done
   }
-  trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
+  # EVAL_KEEP_BUILD=1 keeps the BUILD (not the sandboxes) so the wide lane can
+  # run several globs from one $0 setup instead of rebuilding a ~10 GB home
+  # between them.
+  local keep_build="$keep"
+  [ "${EVAL_KEEP_BUILD:-0}" = 1 ] && keep_build=1
+  trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep_build"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
 
   # EVAL_CASE_GLOB / EVAL_MAX_COST_USD / EVAL_CONCURRENCY exist for the wide
   # lane (wide/run.sh), which runs many tiny cases from ONE build. A deep case

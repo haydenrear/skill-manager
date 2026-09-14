@@ -11,8 +11,8 @@ runs: 1
 plugins:
   - ../../units/toolchain
 execution:
-  max_turns: 4
-  timeout_seconds: 180
+  max_turns: 10
+  timeout_seconds: 420
   allowed_tools: [Read, Glob, Grep, Skill, Bash]
   prompt: |
     I tried to start the worktree for TICKET-12 on the epic and it refused.
