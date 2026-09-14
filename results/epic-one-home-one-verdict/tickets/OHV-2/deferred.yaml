@@ -1,0 +1,30 @@
+# Deferred findings — OHV-2 (#339). IDs DEF-OHV-120..129 only.
+# Searched before adding: results/*/deferred/backlog.yaml (skill-homes.md,
+# "home verify ... answers", projections.json) and `gh issue list --search`.
+
+findings:
+  - id: DEF-OHV-120
+    found_by: OHV-2 blast-radius sweep
+    found_at_commit: 3d6d4cd4
+    severity: minor
+    maps_to: "adjacent: git-epic-workflow and git-issue-workflow skill repos (unit content), not this epic's code"
+    summary: >
+      Two installed skills describe `home verify` as answering only "does
+      everything in it resolve". After OHV-2 it also fails on every
+      `home repair` finding. git-epic-workflow/SKILL.md:212 says
+      "`home verify` answers 'does everything in it *resolve*'", and
+      git-issue-workflow/references/skill-homes.md:371-377 says "Do not chase
+      `home verify`". Neither gates on the exit code, so nothing refuses work.
+      An agent reading them will under-read a non-zero verify as a resolution
+      failure.
+    disk_observation: >
+      rg -n "home verify" .skill-manager/skills/git-epic-workflow/SKILL.md
+      .skill-manager/skills/git-issue-workflow/references/skill-homes.md
+      (worktree home /Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager, unit
+      content as installed at 3d6d4cd4).
+    why_not_a_duplicate: >
+      HIS backlog l.3575 records the verify/repair disagreement itself (fixed
+      here). l.4214/4356/4964/4997 record other skill-homes.md drift (project
+      sync, clone), not verify's scope.
+    suggested_fix: one sentence in each doc after OHV-2 merges; land it through the skill repos, not a home edit
+    disposition: pending

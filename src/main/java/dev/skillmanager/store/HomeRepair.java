@@ -281,8 +281,72 @@ public final class HomeRepair {
          * ({@code danglingPinIn}, HIS-12), so this consults it rather than
          * growing a second one.
          */
-        DANGLING_CLI_PIN
+        DANGLING_CLI_PIN,
+
+        /**
+         * A link in an agent directory OUTSIDE the store that points INTO this
+         * home and resolves to nothing.
+         *
+         * <p>OHV-2 / DEF-OHV-002, and the #339 comment. After a unit is retired
+         * its store directory goes and its agent links stay: this repo's own
+         * checkout held {@code .claude/.codex/.gemini/skills/skill-manager}, all
+         * three dangling into the project home, and after the Sep 8
+         * {@code skill-dev-skill} retirement 75 such entries sat across 25
+         * checkouts. {@code home verify} walks the STORE and {@code home
+         * repair}'s agent-link arm asks only "does it resolve into ANOTHER
+         * home", so both called every one of those homes clean.
+         *
+         * <h3>Where it looks, and why there</h3>
+         *
+         * <p>The home's own structural agent directories ({@link #agentDirsOf})
+         * and every directory this home's projection records NAME — each
+         * binding's {@code targetRoot} and each projection's
+         * {@code destPath} parent. Both are facts the home already holds; a
+         * scan of the filesystem for "anything pointing here" would be a guess.
+         *
+         * <p><b>Not covered</b>, stated so nobody reads the silence as a clean
+         * machine: a directory no record names any longer (a checkout whose
+         * unit's record was already deleted — the orphan-record fix makes that
+         * set grow, which is why the link is judged first and separately); an
+         * agent directory redirected by {@code CLAUDE_CONFIG_DIR} and friends,
+         * which this class never reads by design; agent subdirectories other
+         * than the recorded ones and {@code skills}/{@code plugins}; and a
+         * dangling link into ANOTHER home, which is not this home's to report.
+         *
+         * <p>Repairable only by REMOVAL, only in the home's own agent
+         * directories, and only when no {@code installed/<unit>.json} still
+         * claims the unit: a link that resolves to nothing loses nothing by
+         * going. A link in a record-named directory is reported and left — the
+         * write confinement is the home's two axes, and a record must not be
+         * able to widen what a repair may touch. A link whose unit is still
+         * recorded is a missing store copy, which is a re-install, not a prune.
+         */
+        DANGLING_AGENT_LINK,
+
+        /**
+         * {@code installed/<unit>.projections.json} with no
+         * {@code installed/<unit>.json} beside it and no unit directory for that
+         * name in the store.
+         *
+         * <p>OHV-2 / DEF-OHV-002: measured in 6 homes at kickoff, surviving the
+         * unit they describe. Nothing pruned them and nothing reported them, and
+         * {@code artifacts list} still derives projection rows from them.
+         *
+         * <p>The unit-directory clause is a deliberate narrowing: a record with
+         * bytes on disk and no install record is membership's question (the
+         * membership law's GAINED finding), and deleting a projection ledger for
+         * a unit that is still here would be destructive. Repair deletes the
+         * record file and nothing else; the links it names are judged by
+         * {@link #DANGLING_AGENT_LINK}.
+         */
+        ORPHANED_PROJECTION_RECORD
     }
+
+    /** The suffix every projection ledger in {@code installed/} carries. */
+    static final String PROJECTIONS_SUFFIX = ".projections.json";
+
+    /** Store directories a unit of any kind lives in, for the orphan narrowing. */
+    private static final List<String> UNIT_DIRS = List.of("skills", "plugins", "docs", "harnesses");
 
     /**
      * One damaged thing, named with the repair for it.
@@ -400,7 +464,171 @@ public final class HomeRepair {
         // rather than a clean home — the same reason `examined` exists at all.
         examined += scanFrozenShims(root, findings);
         examined += scanUnstampedPmTrees(root, findings);
+        // OHV-2 / DEF-OHV-002: what the home PROJECTED, read from the records
+        // that say so.
+        examined += danglingAgentLinks(root, findings);
+        examined += orphanedProjectionRecords(root, findings);
         return new Report(root, examined, findings);
+    }
+
+    /**
+     * OHV-2 (b) — links outside the store, pointing into it, resolving to
+     * nothing. See {@link Kind#DANGLING_AGENT_LINK} for the scope and its limits.
+     */
+    private static int danglingAgentLinks(Path store, List<Finding> findings) {
+        Path homeRoot = AgentHomes.homeRootFor(store);
+        Path realStore = Fs.realOrNormalized(store);
+        Set<Path> own = new LinkedHashSet<>();
+        for (Path agentDir : agentDirsOf(store)) {
+            for (String kind : PROJECTED_DIRS) own.add(agentDir.resolve(kind).toAbsolutePath().normalize());
+        }
+        Set<Path> dirs = new LinkedHashSet<>(own);
+        dirs.addAll(recordedProjectionDirs(store));
+        Set<Path> seen = new java.util.HashSet<>();
+        int examined = 0;
+        for (Path dir : dirs) {
+            if (!Files.isDirectory(dir)) continue;
+            // One directory in two spellings (/var vs /private/var, or a record
+            // naming the structural dir) is listed once, under the first
+            // spelling — the structural one, since those were added first.
+            if (!seen.add(Fs.realOrNormalized(dir))) continue;
+            List<Path> entries;
+            try (var list = Files.list(dir)) {
+                entries = list.sorted().toList();
+            } catch (IOException cannotList) {
+                Log.detail("home repair: could not list %s (%s)", dir, cannotList.getMessage());
+                continue;
+            }
+            for (Path entry : entries) {
+                if (!Files.isSymbolicLink(entry)) continue;
+                examined++;
+                if (Files.exists(entry)) continue;
+                Path target;
+                try {
+                    Path raw = Files.readSymbolicLink(entry);
+                    target = (raw.isAbsolute() ? raw : entry.getParent().resolve(raw)).normalize();
+                } catch (IOException | RuntimeException unreadable) {
+                    continue;
+                }
+                if (!target.startsWith(store) && !Fs.realOrNormalized(target).startsWith(realStore)) {
+                    continue;
+                }
+                String name = entry.getFileName().toString();
+                boolean ownDir = own.contains(dir);
+                boolean recorded = Files.exists(store.resolve("installed").resolve(name + ".json"),
+                        LinkOption.NOFOLLOW_LINKS);
+                Path abs = entry.toAbsolutePath().normalize();
+                String subject = abs.startsWith(homeRoot)
+                        ? homeRoot.relativize(abs).toString().replace('\\', '/')
+                        : abs.toString();
+                findings.add(new Finding(Kind.DANGLING_AGENT_LINK, subject,
+                        "points at " + target + ", inside this home, and nothing is there"
+                                + (recorded
+                                        ? " — installed/" + name + ".json still records the unit, "
+                                                + "so its store copy is what is missing"
+                                        : " — this home no longer holds the unit it projected"),
+                        recorded
+                                ? "re-install it here (`skill-manager sync " + name + "`), or "
+                                        + "uninstall it so its links go with it"
+                                : ownDir
+                                        ? "skill-manager home repair --fix removes the link — it "
+                                                + "resolves to nothing, so removing it loses nothing"
+                                        : "remove it by hand (rm " + abs + "): it sits in a "
+                                                + "directory a projection record names, outside this "
+                                                + "home's own agent directories, and `home repair "
+                                                + "--fix` writes only to the home's own two axes",
+                        ownDir && !recorded, null));
+            }
+        }
+        return examined;
+    }
+
+    /**
+     * Every directory this home's projection records name: each binding's
+     * {@code targetRoot} and each projection's {@code destPath} parent. Orphaned
+     * records included — a retired unit's record is exactly where its
+     * surviving links are written down.
+     */
+    static Set<Path> recordedProjectionDirs(Path store) {
+        Set<Path> out = new LinkedHashSet<>();
+        try {
+            for (dev.skillmanager.bindings.Binding b
+                    : new dev.skillmanager.bindings.BindingStore(new SkillStore(store)).listAll()) {
+                if (b.targetRoot() != null) out.add(b.targetRoot().toAbsolutePath().normalize());
+                if (b.projections() == null) continue;
+                for (dev.skillmanager.bindings.Projection p : b.projections()) {
+                    Path dest = p.destPath();
+                    if (dest != null && dest.getParent() != null) {
+                        out.add(dest.getParent().toAbsolutePath().normalize());
+                    }
+                }
+            }
+        } catch (RuntimeException unreadable) {
+            Log.detail("home repair: could not read projection records in %s (%s)",
+                    store, unreadable.getMessage());
+        }
+        return out;
+    }
+
+    /**
+     * OHV-2 (c) — a projection ledger that outlived its unit. See
+     * {@link Kind#ORPHANED_PROJECTION_RECORD}.
+     */
+    private static int orphanedProjectionRecords(Path store, List<Finding> findings) {
+        Path installed = store.resolve("installed");
+        if (!Files.isDirectory(installed, LinkOption.NOFOLLOW_LINKS)) return 0;
+        List<Path> records;
+        try (var list = Files.list(installed)) {
+            records = list.filter(p -> p.getFileName().toString().endsWith(PROJECTIONS_SUFFIX))
+                    .sorted().toList();
+        } catch (IOException cannotList) {
+            return 0;
+        }
+        int examined = 0;
+        for (Path record : records) {
+            if (!Files.isRegularFile(record, LinkOption.NOFOLLOW_LINKS)) continue;
+            examined++;
+            String unit = unitOfRecord(record);
+            if (unit == null || unitStillHere(store, unit)) continue;
+            int projections = 0;
+            try {
+                for (dev.skillmanager.bindings.Binding b
+                        : new dev.skillmanager.bindings.BindingStore(new SkillStore(store))
+                                .read(unit).bindings()) {
+                    projections += b.projections() == null ? 0 : b.projections().size();
+                }
+            } catch (RuntimeException unreadable) {
+                // The count is description; the finding does not depend on it.
+            }
+            findings.add(new Finding(Kind.ORPHANED_PROJECTION_RECORD,
+                    "installed/" + record.getFileName(),
+                    "records " + projections + " projection(s) of " + unit + ", and this home "
+                            + "holds no installed/" + unit + ".json and no " + unit + " unit "
+                            + "directory — the unit is gone and its record outlived it",
+                    "skill-manager home repair --fix deletes this record and nothing else; a "
+                            + "link it names that is left dangling is reported separately as "
+                            + Kind.DANGLING_AGENT_LINK,
+                    true, null));
+        }
+        return examined;
+    }
+
+    private static String unitOfRecord(Path record) {
+        String file = record.getFileName().toString();
+        if (!file.endsWith(PROJECTIONS_SUFFIX)) return null;
+        String unit = file.substring(0, file.length() - PROJECTIONS_SUFFIX.length());
+        return unit.isEmpty() ? null : unit;
+    }
+
+    /** An install record, or a unit directory of any kind, for {@code unit}. */
+    private static boolean unitStillHere(Path store, String unit) {
+        if (Files.exists(store.resolve("installed").resolve(unit + ".json"), LinkOption.NOFOLLOW_LINKS)) {
+            return true;
+        }
+        for (String dir : UNIT_DIRS) {
+            if (Files.exists(store.resolve(dir).resolve(unit), LinkOption.NOFOLLOW_LINKS)) return true;
+        }
+        return false;
     }
 
     /**
@@ -1085,6 +1313,24 @@ public final class HomeRepair {
             case DANGLING_CLI_PIN -> {
                 WriteConfinement.checkWrite(store.resolve(finding.subject()), WHAT);
                 LauncherShims.write(new SkillStore(store), finding.target());
+            }
+            // OHV-2. Removal, re-checked at the moment of writing: the finding
+            // is a snapshot and the link may have come back to life since.
+            case DANGLING_AGENT_LINK -> {
+                Path link = AgentHomes.homeRootFor(store).resolve(finding.subject());
+                WriteConfinement.requireInside(link, homeOf(link), "home repair (remove)");
+                if (!Files.isSymbolicLink(link)) throw new IOException(link + " is no longer a link");
+                if (Files.exists(link)) throw new IOException(link + " resolves again; left in place");
+                Files.delete(link);
+            }
+            case ORPHANED_PROJECTION_RECORD -> {
+                Path record = store.resolve(finding.subject());
+                WriteConfinement.checkWrite(record, WHAT);
+                String unit = unitOfRecord(record);
+                if (unit == null || unitStillHere(store, unit)) {
+                    throw new IOException("the unit " + unit + " is back; its record is left in place");
+                }
+                Files.deleteIfExists(record);
             }
         }
     }
