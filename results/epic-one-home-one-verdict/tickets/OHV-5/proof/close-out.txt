@@ -1,0 +1,2 @@
+✓ /Users/hayde/IdeaProjects/wt-ohv-5/.skill-manager holds nothing that removing it would destroy
+exit=0

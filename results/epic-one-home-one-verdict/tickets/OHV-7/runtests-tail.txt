@@ -1,0 +1,40 @@
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+  [PASS] SyncHarness effect: idempotent re-apply (UPGRADED facts)
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+  [PASS] SyncHarness effect: removed unit from template → orphan binding torn down
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+  [PASS] instantiate records a RESOLVED fingerprint of the template
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+  [PASS] SyncHarness re-records the fingerprint, and it moves with the template
+✓ side effects: 3 binding(s) bound, 8 projection(s) materialized
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+  [PASS] a pre-ARTI-17 instance is not promoted, and one sync fixes it
+  [PASS] a template that is gone yields a graded GAP, never a match
+   → 13 passed, 0 failed
+== ScaffoldedTreeIsNotContentTest (14 cases)
+  [PASS] the ignore block under test is the one the scaffolder emits
+  [PASS] an excluded path is NOT HASHED — a dereference leaves the child copy's digest equal to the store's
+  [PASS] an excluded path is NOT COPIED
+  [PASS] an excluded path is NOT DELETED — a wholesale refresh carries it across the swap
+  [PASS] a unit that legitimately contains sdk and standard-nodes keeps them — and the same fixture without the exclusion moves its digest
+  [PASS] a path the unit TRACKS is content even when its own .gitignore matches it
+  [PASS] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it
+  [PASS] an agent's file under an excluded path is NOT DISPOSABLE — the teardown predicate still sees it
+  [PASS] an excluded path the SOURCE also holds is still disposable — the guard is narrow
+  [PASS] a DIRECTORY-ONLY rule over an in-unit store link leaves the two walkers agreeing
+  [PASS] a directory-only rule over a link to a FILE is not excluded — the divergence is narrow
+  [PASS] a unit that GENUINELY differs is still held back, excluded paths or not
+  [PASS] no readable index means NOTHING is ignored — one rule for all three ways of not having one
+! child home: results in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-declaring-618827008649526476/child/.skill-manager/skills/graph-consumer is being replaced by the source's own copy — the source no longer treats it as generated, so this home's version of it is not carried across the swap
+  [PASS] when upstream stops declaring a path generated, the child's copy of it is not lost silently
+   → 14 passed, 0 failed
+
+ALL PASSED
+exit=0

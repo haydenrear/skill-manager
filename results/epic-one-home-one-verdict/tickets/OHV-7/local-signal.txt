@@ -1,0 +1,137 @@
+sweep 20260913-233938: doc-smoke, artifact-dag, sync-settles (continuing past red graphs)
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+
+> Task :doc-smoke
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.12.13 (path: /opt/homebrew/bin/uv)
+testGraph 'doc-smoke' run=20260913-234012 steps=23 fullPlanSteps=23 traceId=a5122732f0bba5400b22fbf07215fead
+  plan[1/23] env.prepared  [fixture, jbang]  sources/common/EnvPrepared.java
+  plan[2/23] resolver.cycles.verified  [assertion, jbang]  sources/resolve/ResolverCyclesVerified.java
+  plan[3/23] cli.metadata.catalog.covered  [assertion, jbang]  sources/smoke/doc/CliMetadataCatalogCovered.java
+  plan[4/23] cli.skill-docs.catalog.covered  [assertion, jbang]  sources/smoke/doc/CliSkillDocsCatalogCovered.java
+  plan[5/23] cli.help.progressive  [assertion, jbang]  sources/smoke/doc/CliHelpProgressiveDisclosure.java
+  plan[6/23] cli.agent.context.output  [assertion, jbang]  sources/smoke/doc/CliAgentContextOutput.java
+  plan[7/23] skill-manager.skill.docs.projected  [assertion, jbang]  sources/smoke/doc/SkillManagerSkillDocsProjected.java
+  plan[8/23] skill-manager.env.project.context  [assertion, jbang]  sources/smoke/doc/SkillManagerEnvReportsProjectContext.java
+  plan[9/23] doc.repo.installed  [action, jbang]  sources/smoke/doc/DocRepoInstalled.java
+  plan[10/23] doc.markdown.import.targets  [assertion, jbang]  sources/smoke/doc/DocMarkdownImportTargets.java
+  plan[11/23] doc.bound.to.project  [action, jbang]  sources/smoke/doc/DocBoundToProject.java
+  plan[12/23] doc.sync.upgrade  [assertion, jbang]  sources/smoke/doc/DocSyncUpgrade.java
+  plan[13/23] doc.sync.local.edit.preserved  [assertion, jbang]  sources/smoke/doc/DocSyncLocalEditPreserved.java
+  plan[14/23] doc.sync.force.clobbers  [assertion, jbang]  sources/smoke/doc/DocSyncForceClobbers.java
+  plan[15/23] doc.unbind.cleans.up  [assertion, jbang]  sources/smoke/doc/DocUnbindCleansUp.java
+  plan[16/23] doc.bind.two.sources  [action, jbang]  sources/smoke/doc/DocBindTwoSources.java
+  plan[17/23] doc.unbind.one.of.two  [assertion, jbang]  sources/smoke/doc/DocUnbindOneOfTwo.java
+  plan[18/23] doc.unbind.last.section.and.dir.gone  [assertion, jbang]  sources/smoke/doc/DocUnbindLastSectionAndDirGone.java
+  plan[19/23] doc.rebind.after.all.removed  [assertion, jbang]  sources/smoke/doc/DocRebindAfterAllRemoved.java
+  plan[20/23] doc.command.coverage  [assertion, jbang]  sources/smoke/doc/DocCommandCoverage.java
+  plan[21/23] doc.repo.uninstalled  [assertion, jbang]  sources/smoke/doc/DocRepoUninstalled.java
+  plan[22/23] home.fixpoint.law  [assertion, jbang]  sources/common/HomeFixpointLaw.java
+  plan[23/23] home.membership.law  [assertion, jbang]  sources/common/HomeMembershipLaw.java
+  [1/23] env.prepared (jbang)
+  [2/23] resolver.cycles.verified (jbang)
+  [3/23] cli.metadata.catalog.covered (jbang)
+  [4/23] cli.skill-docs.catalog.covered (jbang)
+  [5/23] cli.help.progressive (jbang)
+  [6/23] cli.agent.context.output (jbang)
+  [7/23] skill-manager.skill.docs.projected (jbang)
+  [8/23] skill-manager.env.project.context (jbang)
+  [9/23] doc.repo.installed (jbang)
+  [10/23] doc.markdown.import.targets (jbang)
+  [11/23] doc.bound.to.project (jbang)
+  [12/23] doc.sync.upgrade (jbang)
+  [13/23] doc.sync.local.edit.preserved (jbang)
+  [14/23] doc.sync.force.clobbers (jbang)
+  [15/23] doc.unbind.cleans.up (jbang)
+  [16/23] doc.bind.two.sources (jbang)
+  [17/23] doc.unbind.one.of.two (jbang)
+  [18/23] doc.unbind.last.section.and.dir.gone (jbang)
+  [19/23] doc.rebind.after.all.removed (jbang)
+  [20/23] doc.command.coverage (jbang)
+  [21/23] doc.repo.uninstalled (jbang)
+  [22/23] home.fixpoint.law (jbang)
+  [23/23] home.membership.law (jbang)
+wrote /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234012/summary.json + /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234012/report.md
+testGraph 'doc-smoke' done. traceId=a5122732f0bba5400b22fbf07215fead reports: /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234012
+
+> Task :artifact-dag
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.12.13 (path: /opt/homebrew/bin/uv)
+testGraph 'artifact-dag' run=20260913-234232 steps=10 fullPlanSteps=10 traceId=88c0f7dd95e41813c2a23108bc398e39
+  plan[1/10] env.prepared  [fixture, jbang]  sources/common/EnvPrepared.java
+  plan[2/10] artifacts.enumerated  [assertion, jbang]  sources/artifact-dag/ArtifactsEnumerated.java
+  plan[3/10] every.lock.row.fingerprinted  [assertion, jbang]  sources/artifact-dag/EveryLockRowFingerprinted.java
+  plan[4/10] edited.input.marks.dependents.stale  [assertion, jbang]  sources/artifact-dag/EditedInputMarksDependentsStale.java
+  plan[5/10] build.repairs.one.artifact  [assertion, jbang]  sources/artifact-dag/BuildRepairsOneArtifact.java
+  plan[6/10] lazy.clone.declares.without.building  [assertion, jbang]  sources/artifact-dag/LazyCloneDeclaresWithoutBuilding.java
+  plan[7/10] cold.artifact.refusal.names.build  [assertion, jbang]  sources/artifact-dag/ColdArtifactRefusalNamesBuild.java
+  plan[8/10] uninstall.prunes.the.subgraph  [assertion, jbang]  sources/artifact-dag/UninstallPrunesTheSubgraph.java
+  plan[9/10] home.fixpoint.law  [assertion, jbang]  sources/common/HomeFixpointLaw.java
+  plan[10/10] home.membership.law  [assertion, jbang]  sources/common/HomeMembershipLaw.java
+  [1/10] env.prepared (jbang)
+  [2/10] artifacts.enumerated (jbang)
+  [3/10] every.lock.row.fingerprinted (jbang)
+  [4/10] edited.input.marks.dependents.stale (jbang)
+  [5/10] build.repairs.one.artifact (jbang)
+  [6/10] lazy.clone.declares.without.building (jbang)
+  [7/10] cold.artifact.refusal.names.build (jbang)
+  [8/10] uninstall.prunes.the.subgraph (jbang)
+rerun guidance for 'uninstall.prunes.the.subgraph':
+  resume graph: ./gradlew 'artifact-dag' --resume-from-build '/Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234232' --resume-from-node 'uninstall.prunes.the.subgraph'
+  run only: ./gradlew 'artifact-dag' --resume-from-build '/Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234232' --run-only-node 'uninstall.prunes.the.subgraph'
+  [9/10] home.fixpoint.law skipped after earlier failure
+  [10/10] home.membership.law skipped after earlier failure
+wrote /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234232/summary.json + /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234232/report.md
+
+> Task :artifact-dag FAILED
+
+> Task :sync-settles
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.12.13 (path: /opt/homebrew/bin/uv)
+testGraph 'sync-settles' run=20260913-234350 steps=2 fullPlanSteps=2 traceId=f5bee052ed3142badaffad641f1ded2e
+  plan[1/2] env.prepared  [fixture, jbang]  sources/common/EnvPrepared.java
+  plan[2/2] sync.settles.scaffold.tree.does.not.strand.baseline  [assertion, jbang]  sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java
+  [1/2] env.prepared (jbang)
+  [2/2] sync.settles.scaffold.tree.does.not.strand.baseline (jbang)
+wrote /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234350/summary.json + /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234350/report.md
+testGraph 'sync-settles' done. traceId=f5bee052ed3142badaffad641f1ded2e reports: /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234350
+
+[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':artifact-dag'.
+> node uninstall.prunes.the.subgraph failed: the_resident_unit_installed=true the_transient_unit_installed=true the_census_grew_the_removed_units_artifacts=true the_uninstall_succeeds=true the_removed_units_store_entry_is_gone=true the_removed_units_cli_shim_is_gone=true the_removed_units_lock_row_is_gone=true the_resident_units_artifacts_survive=true the_provisioned_tree_the_removed_unit_produced_is_gone=true the_census_names_nothing_the_removed_unit_owned=false the_home_is_byte_comparable_to_before_the_install=false | survivingIds=[unit-store:ad-transient-unit, cli-shim:skill-script/ad-transient-tool, provisioned-tree:cache/skill-script-ad-transient-unit-ad-transient-tool, projection:default:claude:ad-transient-unit#SYMLINK/target/ad-transient-unit, projection:default:codex:ad-transient-unit#SYMLINK/target/ad-transient-unit, projection:default:gemini:ad-transient-unit#SYMLINK/target/ad-transient-unit] onlyAfter=[F artifacts.lock.toml 3745] onlyBefore=[] uninstallExit=0
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 4m 35s
+7 actionable tasks: 3 executed, 4 up-to-date
+
+== test graph sweep 20260913-233938 ==
+Counted from this invocation's own task outcomes, not from build/validation-reports/.
+graphs_selected=3  graphs_executed=3  graphs_passed=2  graphs_failed=1  graphs_not_run=0
+  PASSED   doc-smoke     160.9s  build/validation-reports/20260913-234012
+  FAILED   artifact-dag  84.1s  build/validation-reports/20260913-234232  (Execution failed for task ':artifact-dag'.)
+  PASSED   sync-settles  24.8s  build/validation-reports/20260913-234350
+sweep record: /Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-sweeps/20260913-233938/sweep.json
+run.py exit code: 1

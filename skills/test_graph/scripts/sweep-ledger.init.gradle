@@ -1,0 +1,80 @@
+// Gradle init script used by run.py for multi-graph invocations (--all, several
+// graph names, or --continue). It records what THIS Gradle invocation
+// scheduled and what each graph task actually did, as JSON lines, into the file
+// named by TEST_GRAPH_SWEEP_LEDGER.
+//
+// Why a ledger instead of reading build/validation-reports/: that directory
+// keeps every earlier run, so a graph that never executed in this sweep still
+// has an old passing report there (DEF-OUN-023). The ledger holds only events
+// from this invocation, so run.py's summary cannot count a stale pass.
+//
+// Events:
+//   {"event":"scheduled","task":..,"graph":bool}          once per root-project task in the task graph
+//   {"event":"finished","task":..,"graph":bool,"outcome":"passed|failed|skipped",
+//    "runDirs":[..],"seconds":..,"failure":..,"skipMessage":..}
+// A scheduled task with no "finished" event never ran (Gradle aborted, a
+// dependency failed, or the process was killed).
+import groovy.json.JsonOutput
+
+def ledgerPath = System.getenv('TEST_GRAPH_SWEEP_LEDGER')
+if (!ledgerPath || gradle.parent != null) {
+    // Not a run.py sweep, or an included build (build-logic): nothing to record.
+    return
+}
+
+def ledger = new File(ledgerPath)
+def lock = new Object()
+def write = { Map record ->
+    synchronized (lock) {
+        ledger << (JsonOutput.toJson(record) + '\n')
+    }
+}
+def isRootTask = { task -> task.project == task.project.rootProject }
+def isGraphTask = { task -> task.class.name.contains('RunTestGraphTask') }
+def reportRootOf = { task ->
+    try {
+        return isGraphTask(task) ? task.reportRoot.get().asFile : null
+    } catch (Throwable ignored) {
+        return null
+    }
+}
+def childNames = { File root ->
+    (root != null && root.isDirectory()) ? ((root.list() ?: new String[0]) as List) : []
+}
+
+def beforeRuns = [:]
+def startedAt = [:]
+
+gradle.taskGraph.whenReady { graph ->
+    graph.allTasks.findAll { isRootTask(it) }.each { task ->
+        write([event: 'scheduled', task: task.name, graph: isGraphTask(task)])
+    }
+}
+
+gradle.taskGraph.beforeTask { task ->
+    if (!isRootTask(task)) return
+    startedAt[task.path] = System.currentTimeMillis()
+    beforeRuns[task.path] = childNames(reportRootOf(task))
+}
+
+gradle.taskGraph.afterTask { task, state ->
+    if (!isRootTask(task)) return
+    def root = reportRootOf(task)
+    def before = beforeRuns[task.path] ?: []
+    // The run directories this task allocated: children of its report root
+    // that did not exist when the task started. Serial execution
+    // (--max-workers=1) keeps another graph from creating one in between.
+    def created = (childNames(root) - before).sort().collect { new File(root, it).absolutePath }
+    def outcome = state.failure != null ? 'failed' : (state.skipped ? 'skipped' : 'passed')
+    def started = startedAt[task.path]
+    write([
+        event      : 'finished',
+        task       : task.name,
+        graph      : isGraphTask(task),
+        outcome    : outcome,
+        skipMessage: state.skipMessage,
+        failure    : state.failure == null ? null : String.valueOf(state.failure.message).take(500),
+        runDirs    : created,
+        seconds    : started == null ? null : (System.currentTimeMillis() - started) / 1000.0,
+    ])
+}

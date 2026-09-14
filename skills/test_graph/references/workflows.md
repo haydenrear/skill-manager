@@ -268,6 +268,17 @@ Run every registered graph sequentially:
 declaration order. This avoids multiple local testbeds competing for shared
 resources when Gradle has a wider worker pool.
 
+`--all`, and `run.py <graphA> <graphB> ...` with more than one graph, run as a
+sweep: Gradle gets `--continue`, so a failing graph does not stop the graphs
+after it (`--fail-fast` opts out), and the run ends with a
+`graphs_selected / executed / passed / failed / not_run` summary plus one line
+per graph with its run directory. The counts come from a ledger written by
+`scripts/sweep-ledger.init.gradle` during that Gradle invocation, and the
+summary is saved to `build/validation-sweeps/<sweepId>/sweep.json`. Do not
+derive coverage from `build/validation-reports/`: it keeps reports from earlier
+runs. The sweep exits non-zero when any selected graph failed or did not run.
+Graphs always execute in declaration order, whatever order they are named in.
+
 Each graph task writes its own `summary.json` and `report.md` inline at the end
 of execution.
 

@@ -1,0 +1,42 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 3,
+  "graphs_executed": 3,
+  "graphs_passed": 2,
+  "graphs_failed": 1,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "doc-smoke",
+      "status": "passed",
+      "seconds": 160.886,
+      "run_dirs": [
+        "/Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234012"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "artifact-dag",
+      "status": "failed",
+      "seconds": 84.116,
+      "run_dirs": [
+        "/Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234232"
+      ],
+      "reason": "Execution failed for task ':artifact-dag'."
+    },
+    {
+      "graph": "sync-settles",
+      "status": "passed",
+      "seconds": 24.757,
+      "run_dirs": [
+        "/Users/hayde/IdeaProjects/wt-ohv-7/test_graph/build/validation-reports/20260913-234350"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20260913-233938",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}

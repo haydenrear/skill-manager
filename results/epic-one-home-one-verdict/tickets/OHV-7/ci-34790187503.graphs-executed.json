@@ -1,0 +1,252 @@
+{
+  "deferred": [
+    "browser-auth",
+    "refresh-flow",
+    "password-reset",
+    "hyper-experiments"
+  ],
+  "event": "workflow_dispatch",
+  "graphs": [
+    {
+      "executed": true,
+      "graph": "artifact-dag",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 8,
+      "nodes_declared": 10,
+      "outcome": "failure",
+      "passed": false
+    },
+    {
+      "executed": true,
+      "graph": "checkout-home",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 7,
+      "nodes_declared": 8,
+      "outcome": "failure",
+      "passed": false
+    },
+    {
+      "executed": true,
+      "graph": "doc-smoke",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 23,
+      "nodes_declared": 23,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "git-latest-source-tracking",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 12,
+      "nodes_declared": 12,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "harness-smoke",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 14,
+      "nodes_declared": 14,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "home-clone",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 15,
+      "nodes_declared": 16,
+      "outcome": "failure",
+      "passed": false
+    },
+    {
+      "executed": true,
+      "graph": "home-integrity",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 19,
+      "nodes_declared": 19,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "home-sync",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 21,
+      "nodes_declared": 21,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "home-tripwire",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 4,
+      "nodes_declared": 8,
+      "outcome": "failure",
+      "passed": false
+    },
+    {
+      "executed": true,
+      "graph": "onboard",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 15,
+      "nodes_declared": 15,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "onboarding",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 3,
+      "nodes_declared": 23,
+      "outcome": "failure",
+      "passed": false
+    },
+    {
+      "executed": true,
+      "graph": "plugin-smoke",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 28,
+      "nodes_declared": 28,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "project-child-home",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 13,
+      "nodes_declared": 13,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "project-env",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 4,
+      "nodes_declared": 4,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "project-libs",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 4,
+      "nodes_declared": 4,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "project-manifest",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 4,
+      "nodes_declared": 4,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "project-profiles",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 4,
+      "nodes_declared": 4,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "project-resolve",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 4,
+      "nodes_declared": 4,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "project-smoke",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 8,
+      "nodes_declared": 8,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "smoke",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 53,
+      "nodes_declared": 53,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "source-tracking",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 15,
+      "nodes_declared": 15,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "spec-conformance",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 4,
+      "nodes_declared": 4,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "sponsored",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 15,
+      "nodes_declared": 15,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "sync-settles",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 2,
+      "nodes_declared": 2,
+      "outcome": "success",
+      "passed": true
+    },
+    {
+      "executed": true,
+      "graph": "ticket-lifecycle",
+      "job_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+      "nodes_attempted": 2,
+      "nodes_declared": 14,
+      "outcome": "failure",
+      "passed": false
+    }
+  ],
+  "graphs_executed": 25,
+  "graphs_failed": 6,
+  "graphs_passed": 19,
+  "graphs_registered": 29,
+  "graphs_selected": 25,
+  "graphs_unaccounted": 0,
+  "nodes_attempted": 301,
+  "nodes_declared": 341,
+  "ref": "refs/heads/feature/OHV-7",
+  "repository": "haydenrear/skill-manager",
+  "run_attempt": "1",
+  "run_id": "34790187503",
+  "run_url": "https://github.com/haydenrear/skill-manager/actions/runs/34790187503",
+  "schema": "test-graph-ci-execution/v1",
+  "scope": "full",
+  "sha": "c27bd018e33ad79d63799e69701e954f562f1227"
+}

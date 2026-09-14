@@ -136,7 +136,7 @@ public class HomeCloneWorksWithSourceRenamed {
 
             boolean sourceRestored = Files.isDirectory(fixtureHome) && !Files.exists(movedAway);
             String afterDigest = sourceRestored
-                    ? HomeCloneSupport.treeDigest(fixtureHome)
+                    ? HomeCloneSupport.homeDigest(fixtureHome)
                     : "(not restored)";
             boolean sourceHomeIsStillByteIdentical = afterDigest.equals(sourceDigest);
 

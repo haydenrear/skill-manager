@@ -138,7 +138,7 @@ public class HomeCloneEditStaysInClone {
                     && !realPathStartsWith(agentLink, fixtureHome);
 
             // --- the acceptance criterion ----------------------------------
-            String afterDigest = HomeCloneSupport.treeDigest(fixtureHome);
+            String afterDigest = HomeCloneSupport.homeDigest(fixtureHome);
             // AND THE CLONE RUNS ITS OWN COPY. The sibling claim of this node's
             // first assertion: an edit lands in the clone, and the clone is
             // what executes it. A copy inherits its source's bin/cli mirrors
