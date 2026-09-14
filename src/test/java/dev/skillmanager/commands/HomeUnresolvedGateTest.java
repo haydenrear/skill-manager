@@ -114,10 +114,28 @@ public final class HomeUnresolvedGateTest {
         return root;
     }
 
-    /** A generated CLI shim, which is what {@code bin/cli/} holds. */
+    /**
+     * A generated CLI shim, which is what {@code bin/cli/} holds — in the
+     * SELF-DERIVING shape the writer produces since OUN-10, the way
+     * {@code ShimHomeContract.selfDerivingRewrite} spells it.
+     *
+     * <p>OHV-2 (#339): this helper used to write {@code exec "<home>/cache/…"}
+     * literally. That is a FROZEN_HOME_PATH_IN_SHIM, and since `home verify`
+     * fails on every `home repair` finding, the two "passes once provisioned"
+     * cases went red for a reason that was not theirs. The unresolved gate
+     * reads the {@code ${SKILL_MANAGER_SHIM_HOME}} token as this home
+     * ({@code HomeCloner.TOKEN_ROOT_SPELLINGS}), so it still fires on exactly
+     * the same missing path.
+     */
     private static void shim(Path home, String name, String target) throws Exception {
         Path dir = Files.createDirectories(home.resolve("bin/cli"));
-        Files.writeString(dir.resolve(name), "#!/bin/sh\nexec \"" + target + "\" \"$@\"\n");
+        String prefix = home.toString();
+        String derived = target.startsWith(prefix + "/")
+                ? "${SKILL_MANAGER_SHIM_HOME}" + target.substring(prefix.length())
+                : target;
+        Files.writeString(dir.resolve(name), "#!/bin/sh\n"
+                + "SKILL_MANAGER_SHIM_HOME=\"$(cd \"$(dirname \"$0\")/../..\" && pwd)\"\n"
+                + "exec \"" + derived + "\" \"$@\"\n");
     }
 
     // --------------------------------------------------------------- plumbing

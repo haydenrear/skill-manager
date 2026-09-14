@@ -14,8 +14,9 @@ import java.nio.file.Path;
  * {@code SKILL_MANAGER_SHIM_HOME} anywhere in it. DEF-OUN-018; measured on the
  * fleet as the {@code tla-spec-dev} and deploy-helm skill-script shims.
  *
- * <p>Today: {@code home repair} names {@code FROZEN_HOME_PATH_IN_SHIM} and
- * {@code home verify} exits 0 without naming it. <b>OHV-2 flips verify to 1.</b>
+ * <p>{@code home repair} names {@code FROZEN_HOME_PATH_IN_SHIM}. Pinned at OHV-0
+ * with {@code home verify} exiting 0 without naming it; <b>flipped by OHV-2
+ * (#339)</b>: verify now exits 1 and names the kind and subject.
  *
  * <p>Not the HALF-rewritten shape (DEF-OHV-001): that one repair exempts today,
  * so its node is OHV-4's.
@@ -30,7 +31,7 @@ public class FrozenShimIsReported {
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
-                new HomeVerdictsSupport.Shape("frozen-shim", "FROZEN_HOME_PATH_IN_SHIM", 0, false),
+                new HomeVerdictsSupport.Shape("frozen-shim", "FROZEN_HOME_PATH_IN_SHIM", 1, true),
                 (Path subject, Path neighbour) -> {
                     Path tool = HomeVerdictsSupport.venvTool(subject, "frozen", "frozen-tool");
                     HomeVerdictsSupport.literalShim(subject, "frozen-tool", tool);

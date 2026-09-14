@@ -131,18 +131,80 @@ final class IntentionalDamage {
     }
 
     /**
+     * The subjects of the {@code home repair} findings {@code home verify}
+     * prints since OHV-2 (#339): the {@code ✗   <KIND> <subject> — <detail>}
+     * rows under {@code "<n> finding(s) `home repair` reports in <home>"}.
+     *
+     * <p>A declaration names an entry, and a planted shape can surface in
+     * either section: home-clone's {@code bin/cli/hc-venv-tool} is a dangling
+     * reference in a clone and a frozen shim everywhere. The law asks "does
+     * verify still report every declared entry", so both sections count.
+     */
+    static Set<String> repairSubjects(String output) {
+        Set<String> out = new LinkedHashSet<>();
+        boolean inSection = false;
+        for (String raw : output.split("\n")) {
+            if (!raw.startsWith("✗")) { inSection = false; continue; }
+            String trimmed = raw.substring(1).strip();
+            if (isRepairHeader(trimmed)) { inSection = true; continue; }
+            if (!inSection) continue;
+            String subject = repairFindingSubject(trimmed);
+            if (subject != null) { out.add(subject); continue; }
+            if (trimmed.startsWith("repair: ") || isRepairTrailer(trimmed)) continue;
+            inSection = false;
+        }
+        return out;
+    }
+
+    /**
      * Every {@code ✗} line of verify's output that the declared entries do not
-     * account for: anything outside the unresolved section, and any finding in
-     * it whose entry was not declared. Empty means the refusal is exactly the
-     * planted damage and nothing else.
+     * account for: anything outside the two finding sections, any unresolved
+     * finding whose entry was not declared, and any {@code home repair} finding
+     * whose subject was not declared, together with that section's header and
+     * remedy lines. Empty means the refusal is exactly the planted damage and
+     * nothing else.
      */
     static List<String> unexplained(String output, Set<String> declared) {
         List<String> out = new ArrayList<>();
         boolean inSection = false;
+        // The repair section (OHV-2). Its header and remedy lines are only
+        // unexplained when some finding under them is; buffered until the
+        // section ends, because the findings come between them.
+        List<String> repairFrame = null;
+        boolean repairUndeclared = false;
+        boolean lastFindingDeclared = false;
         for (String raw : output.split("\n")) {
-            if (!raw.startsWith("✗")) { inSection = false; continue; }
+            if (!raw.startsWith("✗")) {
+                inSection = false;
+                if (repairFrame != null && repairUndeclared) out.addAll(repairFrame);
+                repairFrame = null;
+                continue;
+            }
             String line = raw.substring(1);
             String trimmed = line.strip();
+            if (repairFrame != null) {
+                String subject = repairFindingSubject(trimmed);
+                if (subject != null) {
+                    lastFindingDeclared = declared.contains(subject);
+                    if (!lastFindingDeclared) { repairUndeclared = true; out.add(trimmed); }
+                    continue;
+                }
+                if (trimmed.startsWith("repair: ")) {
+                    if (!lastFindingDeclared) out.add(trimmed);
+                    continue;
+                }
+                if (isRepairTrailer(trimmed)) { repairFrame.add(trimmed); continue; }
+                if (repairUndeclared) out.addAll(repairFrame);
+                repairFrame = null;
+                // falls through: this line belongs to whatever comes next
+            }
+            if (isRepairHeader(trimmed)) {
+                inSection = false;
+                repairFrame = new ArrayList<>(List.of(trimmed));
+                repairUndeclared = false;
+                lastFindingDeclared = false;
+                continue;
+            }
             if (trimmed.contains("reference(s) in ") && trimmed.contains(" do not resolve")) {
                 inSection = true;
                 continue;
@@ -154,7 +216,28 @@ final class IntentionalDamage {
             }
             out.add(trimmed);
         }
+        if (repairFrame != null && repairUndeclared) out.addAll(repairFrame);
         return out;
+    }
+
+    /** {@code "<n> finding(s) `home repair` reports in <home>, …"} — verify's repair section header. */
+    static boolean isRepairHeader(String trimmed) {
+        return trimmed.contains("finding(s) `home repair` reports in ");
+    }
+
+    /** The section's closing lines: its remedy, and its count of what --fix cannot repair. */
+    static boolean isRepairTrailer(String trimmed) {
+        return trimmed.matches("\\d+ of these: complete it with: .*")
+                || trimmed.matches("\\d+ cannot be repaired by .*");
+    }
+
+    /** {@code <subject>} of a {@code "<KIND> <subject> — <detail>"} row, or null. */
+    static String repairFindingSubject(String trimmed) {
+        int space = trimmed.indexOf(' ');
+        if (space <= 0 || !trimmed.substring(0, space).matches("[A-Z][A-Z_]+")) return null;
+        int dash = trimmed.indexOf(" — ", space + 1);
+        if (dash <= space + 1) return null;
+        return trimmed.substring(space + 1, dash);
     }
 
     static Path resolved(Path p) {

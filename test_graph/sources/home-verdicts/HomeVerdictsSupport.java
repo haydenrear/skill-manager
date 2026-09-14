@@ -113,6 +113,39 @@ final class HomeVerdictsSupport {
         shim.toFile().setExecutable(true);
     }
 
+    /**
+     * {@code installed/<unit>.projections.json} in the shape a real sync writes
+     * (one default Codex binding, one SYMLINK projection), with no
+     * {@code installed/<unit>.json} and no unit directory. Returns the
+     * home-relative subject.
+     */
+    static String orphanRecord(Path store, String unit) throws IOException {
+        Path dest = store.getParent().resolve(".codex/skills").resolve(unit);
+        String json = """
+                {
+                  "unitName" : "%1$s",
+                  "bindings" : [ {
+                    "bindingId" : "default:codex:%1$s",
+                    "unitName" : "%1$s",
+                    "unitKind" : "SKILL",
+                    "targetRoot" : "%2$s",
+                    "conflictPolicy" : "ERROR",
+                    "createdAt" : "2026-09-07T13:23:56.717976Z",
+                    "source" : "DEFAULT_AGENT",
+                    "projections" : [ {
+                      "bindingId" : "default:codex:%1$s",
+                      "sourcePath" : "$SKILL_MANAGER_HOME/skills/%1$s",
+                      "destPath" : "%3$s",
+                      "kind" : "SYMLINK"
+                    } ]
+                  } ]
+                }
+                """.formatted(unit, dest.getParent(), dest);
+        Files.writeString(store.resolve("installed").resolve(unit + ".projections.json"), json,
+                StandardCharsets.UTF_8);
+        return "installed/" + unit + ".projections.json";
+    }
+
     // ------------------------------------------------------------- the CLI
 
     /** One CLI invocation, both streams kept apart. */
@@ -246,9 +279,10 @@ final class HomeVerdictsSupport {
      *
      * @param kind              the {@code HomeRepair.Kind} {@code home repair} must name
      * @param verifyExitToday   {@code home verify}'s exit on the planted home TODAY.
-     *                          OHV-2 (#339) makes verify fail whenever repair reports;
-     *                          it must change every 0 here to 1.
-     * @param verifyNamesToday  whether {@code home verify}'s output names the kind today
+     *                          Since OHV-2 (#339) verify fails whenever repair reports,
+     *                          so every repairable shape here is 1.
+     * @param verifyNamesToday  whether {@code home verify}'s output names the kind and
+     *                          subject today — true for every shape since OHV-2
      */
     record Shape(String dir, String kind, int verifyExitToday, boolean verifyNamesToday) {}
 

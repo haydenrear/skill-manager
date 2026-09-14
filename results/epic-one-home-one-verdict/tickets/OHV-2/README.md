@@ -1,0 +1,288 @@
+# OHV-2 (#339) — home verify fails on what home repair finds, and both see agent links and projection records
+
+Branch `feature/OHV-2`, cut from `origin/epic/one-home-one-verdict` at `3d6d4cd4`.
+Slice at schedule revision 2: (a) verify composes repair's detection, (b) a
+`DANGLING_AGENT_LINK` kind, (c) an `ORPHANED_PROJECTION_RECORD` kind with a
+`--fix` prune.
+
+## (a) `home verify` fails on every `home repair` finding, and names each
+
+- **Change:** `HomeCommand.VerifyCmd` runs `HomeRepair.detect(home)` after
+  its own checks and before the isolation verdict. Each finding is printed as
+  `✗   <KIND> <subject> — <detail>` with a `repair:` line under it, which is
+  the spelling `home repair --json` uses. The command exits 1 if anything
+  remains. When some findings are fixable it prints the remedy in the one
+  spelling `HomeFixpointLaw` parses:
+  `complete it with: <env> skill-manager home repair --home <h> --fix, then re-run this check`.
+  On a clean home it prints `` `home repair` finds no damage in <h> (N entries examined) ``.
+- **One exemption:** a `FOREIGN_PATH_IN_SHIM` finding on a link that verify's
+  own isolation walk sanctioned as a parent-store shim is printed but not
+  counted. With `--against <source>`, verify inherits the source's sanction
+  (HIS-7 / #223, a worktree copied from a sanctioned project home), while
+  repair judges the copy alone. Without the exemption,
+  `ChildHomeShimIsolationTest` "a COPY of a sanctioned child inherits the
+  sanction" went red. That is every ticket-worktree clone.
+- **Graph:** new node `home.verdicts.verify.names.every.repair.finding`. It
+  plants five kinds in one home, requires verify to exit 1 and to name every
+  `(kind, subject)` that repair's JSON reports, requires the printed remedy to
+  be `home repair --home <subject> --fix`, and requires both readers to be
+  clean after the fix. Control: verify exits 0 on the unplanted home. The
+  three `TODAY_home_verify_exits_0` assertions (`frozen.shim`,
+  `misanchored.agent.link`, `unstamped.pm.tree`) are flipped to
+  `TODAY_home_verify_exits_1` / `…_names_the_shape`.
+- **Unit:** `DamagedHomeIsRepairableTest` "OHV-2: dangling links …" runs
+  `VerifyCmd` in process and asserts exit != 0 and each finding named.
+  `HomeUnresolvedGateTest`'s fixture now writes the self-deriving shim shape
+  (the old literal shape is a `FROZEN_HOME_PATH_IN_SHIM` that verify now
+  correctly refuses on). The gate still fires on the same missing path.
+
+## (b) `DANGLING_AGENT_LINK`
+
+- **What:** a symlink in an agent directory that points into this store and
+  resolves to nothing.
+- **Where it looks, from what the home records:**
+  1. the home's structural agent dirs (`HomeRepair.agentDirsOf`:
+     `<homeRoot>/.claude|.codex|.gemini` × `skills|plugins`);
+  2. every directory the projection records name: each binding's
+     `targetRoot` and each projection's `destPath` parent, orphaned records
+     included, since a retired unit's record is where its surviving links are
+     written down.
+- **Not covered:** a directory no record names any more; agent dirs moved by
+  `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `GEMINI_HOME` (this class never reads
+  the environment, by design, HIS-14); agent subdirs other than those two
+  lists; and a dangling link into another home.
+- **`--fix`:** removes the link only when it sits in the home's own agent
+  dirs (the write confinement is the home's two axes) and no
+  `installed/<unit>.json` still records the unit. A link in a record-named dir
+  is reported with `rm <abs>` as its remedy. A still-recorded unit gets
+  "re-install it here".
+- **Graph:** `home.verdicts.dangling.agent.link` plants
+  `.codex/skills/hv-gone -> <store>/skills/hv-gone`.
+- **Unit:** planted in `damageEveryKind()` (the `Kind.values()` guard), plus
+  "OHV-2: dangling links …". That test covers the own-dir link (repairable,
+  removed), the record-named link (reported, absolute subject, left in
+  place), and a dangling link into another home (not reported, untouched).
+
+## (c) `ORPHANED_PROJECTION_RECORD`
+
+- **What:** `installed/<unit>.projections.json` with no `installed/<unit>.json`
+  and no `skills|plugins|docs|harnesses/<unit>` directory. The unit-dir clause
+  keeps the prune off a live unit's ledger. It excluded none of the 69 orphans
+  on this machine.
+- **`--fix`:** deletes that record file and nothing else, after re-checking
+  that the unit has not come back.
+- **Graph:** `home.verdicts.orphaned.projection.record`.
+- **Unit:** planted in `damageEveryKind()`. "OHV-2: dangling links …" asserts
+  the gone record is deleted and a record whose unit directory exists is
+  left alone.
+
+## home-verdicts node list
+
+`home.verdicts.fixture`, `clean.home`, `frozen.shim`,
+`foreign.path.in.shim`, `misanchored.agent.link`, `unstamped.pm.tree`,
+**`verify.names.every.repair.finding`**, **`dangling.agent.link`**,
+**`orphaned.projection.record`**, plus `home.fixpoint.law` and
+`home.membership.law` (12 nodes including `env.prepared`).
+
+Local run (validation-reports `20260914-031226`, started before the last two
+source edits, so the final-tree rerun below is the one that counts): nodes 1–8
+passed. That includes the three flipped shapes (`TODAY_home_verify_exits_1`,
+`verify.exit` = 1) and `verify.names.every.repair.finding`
+(`repair.findings` = 5, `verify.unnamed` = 0).
+
+Nodes 9–12 then passed too:
+- `dangling.agent.link` and `orphaned.projection.record` each reported
+  `verify.exit` = 1, `repair.exit` = 1, 1 finding;
+- `home.fixpoint.law` and `home.membership.law` passed, each with 1 home checked.
+
+That run ended 12/12, `BUILD SUCCESSFUL in 18m 34s`. The final-tree rerun is
+below.
+
+CI run 34802282392 (`graph_set=full`, `af7e4b52`): `skill-manager unit tests
+(RunTests.java + spec models)` **success** on Linux, `virtual-mcp-gateway
+pytest` success.
+
+Final-tree local rerun on `af7e4b52` (validation-reports `20260914-033054`,
+clean tree): **all 12 nodes passed**, `BUILD SUCCESSFUL in 18m 7s`.
+
+### CI run 1: 34802282392 (`graph_set=full`, `af7e4b52`), 26 selected / 26 executed / 24 passed / 2 failed
+
+`home-verdicts` passed on Linux. **`home-clone` and `checkout-home` failed,
+both in `home.fixpoint.law`,** for one reason, and it is this change's:
+
+- `home.clone.fixture.built` plants legacy shapes on purpose. Step 4's
+  `bin/cli/hc-venv-tool` execs `<home>/venvs/…` literally, which is a
+  `FROZEN_HOME_PATH_IN_SHIM`. Step 5's `pm/uv/0.0.0` has no platform stamp,
+  which is an `UNSTAMPED_PM_TREE`. The fixture home and both its copies
+  (`home.cloned.into.project`, the credential copy) carry them.
+- Verify now names both. `IntentionalDamage.unexplained` only understood the
+  "do not resolve" section, so both became unexplained refusals. The law ran
+  the FIRST printed remedy (`build …`, the unresolved one), and the re-verify
+  still refused (job 103847224069, `home.fixpoint.law` inline log).
+
+**Fix (test-side; in scope as an IntentionalDamage declaration change):**
+- `IntentionalDamage.repairSubjects` parses verify's repair section.
+- `unexplained` excuses a declared repair finding and its `repair:` line, and
+  excuses the section's header and remedy only when every finding under them
+  is declared.
+- `HomeFixpointLaw` counts repair subjects as "reported", so a declared entry
+  that stops being reported still fails the law.
+- The fixture home's declaration adds `bin/cli/hc-venv-tool`. It resolves
+  there, so it appears only as a repair finding. (The clone and the credential
+  copy already declared it.)
+- `pm/uv/0.0.0` is **not** declared in the final tree. `48d18070` declared it
+  on all three homes; `6eb77ce4` replaced that with a stamped fixture. See
+  "stamped, not declared" below and DEF-OHV-121.
+- Parser checked against real output (`real-homes/after/project.verify.err`):
+  4 subjects parsed; all declared → nothing unexplained; one subject undeclared
+  → its finding, `repair:`, header and remedy lines; none declared → 10 lines.
+
+### CI run 2: 34804201355 (`graph_set=full`, `9d2fd94a`): superseded, then cancelled
+
+**Cancelled by run 3's dispatch.** `ci.yml` declares
+`concurrency: ci-${{ github.workflow }}-${{ github.ref }}` with
+`cancel-in-progress` on every ref except main. So there is no
+`graphs-executed` artifact for this run.
+
+Its jobs had settled at 27 success, 1 failure, 2 cancelled and 1 skipped
+(selenium). Of the 26 graphs, that is **24 passed, 1 failed (`home-clone`) and
+1 cancelled (`onboarding`)**. The other two cancelled/skipped jobs were the
+`graphs executed` counter and selenium. Every result quoted below completed
+before the cancel.
+
+Dispatched on `9d2fd94a`, whose declarations named `pm/uv/0.0.0`. Before it
+finished, local `home-clone` on `48d18070` (run `20260914-035302`) showed that
+declaration fails in home-clone: "declared intentionally damaged at
+[pm/uv/0.0.0] but home verify (exit 1) does not report it", on the fixture home
+only. Run 2 then measured the same split on Linux, and it is DEF-OHV-121's
+cleanest evidence. With `pm/uv/0.0.0` declared:
+
+- **`home-clone` failed** with the local verdicts line for line: the fixture
+  home was "declared … but not reported", and both copies were "DAMAGED ON
+  PURPOSE".
+- **`checkout-home` passed.**
+
+One declaration, green in one graph and red in the other.
+`home-integrity`, `home-verdicts`, `plugin-smoke` and unit tests passed on
+Linux. home-clone and checkout-home are decided by run 3.
+
+### The home-clone fixture's `pm/uv/0.0.0`: stamped, not declared
+
+- **Why the tree was unstamped at all.** Step 5 dates from `5ca3cb07`
+  (2026-07-26, home-level isolation). `PmPlatform`'s stamp arrived later, in
+  `cad0b830` (2026-09-06). The fixture predates stamps, and the step's claim is
+  "`pm/` is carried".
+- **Coverage (epic-agent review).**
+  `git grep -n -i -E 'stamp|\.platform|unstamped' HEAD -- test_graph/sources/home-clone/ test_graph/sources/checkout-home/`
+  matches only `CopyCarriesNoForeignBinary`'s own stamped and foreign-stamp
+  homes, plus OHV-2's declarations. **No node asserts on the fixture's
+  unstamped tree, surviving or refused.**
+  - Copied-home property (c)
+    (`results/epic-one-unit-one-name/tickets/OUN-12/README.md`) rests on
+    `CopyCrossesAPlatformTest` ("an UNSTAMPED toolchain is judged by the
+    binary's magic number") and on `home.copy.carries.no.foreign.binary`'s
+    controls. Neither reads the fixture's `pm/uv`.
+  - Unstamped detection is pinned by `home.verdicts.unstamped.pm.tree`.
+  - Stamping therefore deletes no coverage. The fixture now writes the stamp
+    `PmPlatform` writes, and no declaration names `pm/`.
+- **The apparent inconsistency is DEF-OHV-121, not a detector split.** It is
+  also not a platform difference or a `/var` spelling issue.
+  - `home.copy.carries.no.foreign.binary` (home-clone node 10) cleans up with
+    `deleteRecursive(source.resolve("pm"))` on the SHARED fixture. That removes
+    the whole `pm/`, including step 5's `uv`.
+  - In `home-clone`, the fixture home has no `pm/` when the law runs. CI prints
+    "1 finding(s) … of 26 entries"; locally `ls pm` says no such file.
+  - `checkout-home` has no node 10, so the tree survives there. CI reports
+    `UNSTAMPED_PM_TREE pm/uv/0.0.0` "of 27 entries".
+  - Copies made before node 10 carry the tree in both graphs.
+  - `PathSpellings` needs no wiring into `HomeRepair`. I chose not to fix the
+    node here: it is outside this ticket's conflict keys and not `HomeRepair`
+    code.
+
+`48d18070` and the stamp change touch only `test_graph/sources`. No `src/` file
+changed after `afaabc8d`, so the full `jbang RunTests.java` run on that tree
+(1555 passed, 0 failed) still covers production and unit-test code.
+
+### CI run 3: 34805817917 (`graph_set=full`, `6eb77ce4`): 26 selected / 26 executed / 26 passed / 0 failed
+
+This meets the epic tip's 26/26/0 (run 34798708463).
+
+- Jobs: 30 success, 1 skipped (the selenium matrix).
+- Graphs, all green on Linux:
+  - `home-verdicts`, including the three new OHV-2 nodes and the flipped
+    assertions;
+  - `home-clone` and `checkout-home` on the stamped fixture;
+  - `home-integrity` and `plugin-smoke`.
+- Unit tests (`RunTests.java` + spec models) passed.
+- Artifact: `ci/run3-34805817917.graphs-executed.json`.
+
+Local `home-clone` on the stamped fixture (validation-reports
+`20260914-040735`): **16 of 16 passed**, `BUILD SUCCESSFUL in 14m 35s`.
+`home.fixpoint.law` checked 3 homes, and all 3 were DAMAGED ON PURPOSE,
+reporting exactly what was declared:
+
+- fixture home: `[venvs/hc-venv/bin/hc, bin/cli/hc-venv-tool]`;
+- clone and credential copy: `[bin/cli/hc-venv-tool]`.
+
+No `pm/` finding appeared anywhere. `home.membership.law` passed.
+
+## Blast radius
+
+See [blast-radius.md](blast-radius.md). No caller outside this repo runs
+`home verify` and gates on its exit code, so it landed as specified. Callers
+inside the repo that changed:
+- the home-verdicts TODAY assertions;
+- `HomeUnresolvedGateTest`'s fixture;
+- the `--against` parent-shim exemption;
+- `IntentionalDamage`, the fixpoint law's reported set, the home-clone
+  fixture's declaration (adds `bin/cli/hc-venv-tool`), and its step 5, which now
+  stamps `pm/uv/0.0.0`. All were found by CI run 1 and refined after local
+  `home-clone` and CI run 2.
+
+## Real homes (read-only; no `--fix`)
+
+Before: released `/opt/homebrew/bin/skill-manager` 0.27.2. After: this
+worktree's raw build `0.27.2+g3d6d4cd4ce6e` (feature/OHV-2, pre-commit).
+Raw outputs are in `real-homes/before/` and `real-homes/after/`.
+
+| home | before verify / repair | after verify / repair | after findings |
+| --- | --- | --- | --- |
+| project `/Users/hayde/IdeaProjects/skill-manager/.skill-manager` | 0 / 0 (43 examined) | **1 / 1** (75 examined) | 3 `DANGLING_AGENT_LINK` (`.claude|.codex|.gemini/skills/skill-manager`), 1 `ORPHANED_PROJECTION_RECORD` (`installed/skill-manager.projections.json`), all repairable |
+| root `~/.skill-manager` | 0 / 0 (78) | 0 / 0 (310) | none. The #339 comment's `skill-dev-skill` links are no longer on disk. |
+| `tla-spec-dev-2/.skill-manager` | **0** / 1 | **1** / 1 | 1 `FROZEN_HOME_PATH_IN_SHIM`, 2 `UNSTAMPED_PM_TREE` |
+
+Against `expected_effect`: project home 4 → 0 facts unreported by
+verify/repair for the shapes they own (the target was 4 → 2; census phantoms
+and a stale record version are OHV-3's). tla-spec-dev-2 moves from
+verify-0-while-repair-damaged to agreeing. 3 new planted shapes are pinned.
+
+## Tests
+
+- `jbang RunTests.java`: first full run 1552 passed / 3 failed. The failures
+  were `HomeUnresolvedGateTest` ×2 (fixture wrote frozen shims) and
+  `ChildHomeShimIsolationTest` ×1 (`--against` sanction), both fixed above.
+  Focused rerun of those suites plus every verify-calling suite: 157 cases,
+  0 failures. **Second full run, on the tree committed as `afaabc8d`: exit
+  0, 1555 passed, 0 failed, "ALL PASSED"** (88 GiB free before and after).
+- `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
+
+## Deferred
+
+In [deferred.yaml](deferred.yaml):
+
+- **DEF-OHV-120** (minor): git-epic-workflow and git-issue-workflow docs still
+  describe verify as resolution-only.
+- **DEF-OHV-121** (minor): `CopyCarriesNoForeignBinary`'s cleanup deletes the
+  shared home-clone fixture's whole `pm/`, so the fixture's state depends on
+  which graph ran (home-clone vs checkout-home). Reproduced from disk on macOS
+  and from both CI graphs on Linux. CI run 34804201355's home-clone job
+  (103852736511) failed with the local macOS run's exact verdicts: the fixture
+  home was "declared … but not reported", and both copies were "DAMAGED ON
+  PURPOSE". Not a `HomeRepair` or path-spelling defect.
+
+## Close-out
+
+`skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager`
+(PATH build `~/.skill-manager/bin/cli/skill-manager`) → **exit 0**,
+"✓ … holds nothing that removing it would destroy". No unit was edited in the
+ticket home, and no `home sync` was run. Output: `close-out/`.

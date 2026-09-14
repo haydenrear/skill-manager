@@ -14,12 +14,12 @@ import java.nio.file.Path;
  * RESOLVES, into the neighbour home's store. Issue #159's measurement (24 links
  * under the operator's {@code ~/.claude/skills} pointing into a worktree home).
  *
- * <p>Today: {@code home repair} names {@code MISANCHORED_AGENT_LINK};
- * {@code home verify} exits 0 ("every reference resolves" — it does).
- * <b>OHV-2 flips verify to 1.</b>
+ * <p>{@code home repair} names {@code MISANCHORED_AGENT_LINK}. Pinned at OHV-0
+ * with {@code home verify} exiting 0 ("every reference resolves" — it does);
+ * <b>flipped by OHV-2 (#339)</b>: verify now exits 1 and names it.
  *
- * <p>Not the DANGLING link outside the home (DEF-OHV-002): neither reader
- * reports that today, so its node is OHV-2's.
+ * <p>Not the DANGLING link outside the home (DEF-OHV-002): that is
+ * {@code DanglingAgentLinkIsReported}.
  */
 public class MisanchoredAgentLinkIsReported {
 
@@ -31,7 +31,7 @@ public class MisanchoredAgentLinkIsReported {
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> HomeVerdictsSupport.runShape(ctx, SPEC,
-                new HomeVerdictsSupport.Shape("misanchored-agent-link", "MISANCHORED_AGENT_LINK", 0, false),
+                new HomeVerdictsSupport.Shape("misanchored-agent-link", "MISANCHORED_AGENT_LINK", 1, true),
                 (Path subject, Path neighbour) -> {
                     Path link = subject.getParent().resolve(".claude/skills").resolve(HomeVerdictsSupport.UNIT);
                     Files.deleteIfExists(link);

@@ -1740,18 +1740,18 @@ validationGraph {
      * `home repair --json` (exit + finding kind) and `home verify` say about it.
      * Every fix in the epic adds or tightens the node that pins its shape.
      *
-     * PINNED (green on today's tree): clean home (0/0); fully frozen own-home
-     * shim, misanchored agent link, unstamped pm tree (repair 1, verify 0 —
-     * GOAL-one-verdict clause 1 failing, asserted as TODAY's behaviour); foreign
-     * path in a shim (repair 1, verify 1).
+     * PINNED: clean home (0/0); fully frozen own-home shim, foreign path in a
+     * shim, misanchored agent link, unstamped pm tree (repair 1, verify 1 and
+     * names the kind + subject — three of those were verify 0 until OHV-2).
+     *
+     * OHV-2 (#339) adds:
+     *   - verify names every repair finding, five kinds in one home ....... (a)
+     *   - dangling agent-dir link into the home (DEF-OHV-002) ............. (b)
+     *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ........ (c)
      *
      * PENDING, with the ticket that adds each node:
      *   - half-rewritten shim, header re-anchored, exec line literal
      *     (DEF-OHV-001) ............................................ OHV-4 (#341)
-     *   - dangling agent-dir link outside the home (DEF-OHV-002) ..... OHV-2 (#339)
-     *   - orphaned installed/<unit>.projections.json (DEF-OHV-002) ... OHV-2 (#339)
-     *   - verify fails whenever repair reports: flip the three
-     *     TODAY_home_verify_exits_0 assertions .......................... OHV-2 (#339)
      *   - /var vs /private/var reference (#343) ..................... OHV-5 (#346)
      *   - #352's four marketplace-identity shapes (incl. DEF-OHV-005)  OHV-6 (#352)
      *
@@ -1770,18 +1770,27 @@ validationGraph {
         node("sources/home-verdicts/ForeignPathInShimIsReported.java")
         node("sources/home-verdicts/MisanchoredAgentLinkIsReported.java")
         node("sources/home-verdicts/UnstampedPmTreeIsReported.java")
+        node("sources/home-verdicts/VerifyNamesEveryRepairFinding.java")
+        node("sources/home-verdicts/DanglingAgentLinkIsReported.java")
+        node("sources/home-verdicts/OrphanedProjectionRecordIsReported.java")
         node("sources/common/HomeFixpointLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
                 "home.verdicts.foreign.path.in.shim",
                 "home.verdicts.misanchored.agent.link",
-                "home.verdicts.unstamped.pm.tree")
+                "home.verdicts.unstamped.pm.tree",
+                "home.verdicts.verify.names.every.repair.finding",
+                "home.verdicts.dangling.agent.link",
+                "home.verdicts.orphaned.projection.record")
         node("sources/common/HomeMembershipLaw.java").dependsOn(
                 "home.verdicts.clean.home",
                 "home.verdicts.frozen.shim",
                 "home.verdicts.foreign.path.in.shim",
                 "home.verdicts.misanchored.agent.link",
-                "home.verdicts.unstamped.pm.tree")
+                "home.verdicts.unstamped.pm.tree",
+                "home.verdicts.verify.names.every.repair.finding",
+                "home.verdicts.dangling.agent.link",
+                "home.verdicts.orphaned.projection.record")
     }
 
     /**

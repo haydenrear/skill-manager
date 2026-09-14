@@ -405,6 +405,68 @@ public final class DamagedHomeIsRepairableTest {
                             "and --fix created no link at a path nothing stands at");
                 })
 
+                .test("OHV-2: dangling links into this home are found where the home RECORDS them, and --fix removes only what it owns", () -> {
+                    Fixture fx = Fixture.build("ohv2-scope");
+                    // (1) In the home's own agent dir, unit unrecorded: repairable.
+                    fx.damageDanglingAgentLink();
+                    // (2) In a directory only a projection record names — a
+                    // project checkout the root home projected into. Reported,
+                    // never written: a record must not widen the repair's scope.
+                    Path checkout = fx.root.getParent().resolve("checkout").resolve(".claude").resolve("skills");
+                    Files.createDirectories(checkout);
+                    Path external = checkout.resolve("gone");
+                    Files.createSymbolicLink(external, fx.store.resolve("skills").resolve("gone"));
+                    fx.writeProjectionRecord("gone", checkout);
+                    // (3) A record whose unit directory is still here: NOT an
+                    // orphan (membership's question), and --fix must not touch it.
+                    fx.writeProjectionRecord(UNIT, fx.claudeSkills());
+                    // (4) A link into ANOTHER home that dangles is not this home's.
+                    Path elsewhere = Files.createDirectories(fx.root.resolve(".gemini").resolve("skills"));
+                    Files.createSymbolicLink(elsewhere.resolve("theirs"),
+                            fx.other.resolve("skills").resolve("nope"));
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    List<HomeRepair.Finding> dangling = report.findings().stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.DANGLING_AGENT_LINK).toList();
+                    assertTrue(dangling.stream().anyMatch(f -> f.subject().equals(".codex/skills/gone")
+                                    && f.repairable()),
+                            "the own-dir link is reported and repairable; got " + dangling);
+                    String externalAbs = external.toAbsolutePath().normalize().toString();
+                    assertTrue(dangling.stream().anyMatch(f -> f.subject().equals(externalAbs)
+                                    && !f.repairable()),
+                            "the record-named link is reported by absolute path and NOT repairable; got "
+                                    + dangling);
+                    assertTrue(dangling.stream().noneMatch(f -> f.subject().contains("theirs")),
+                            "a dangling link into another home is not this home's finding; got " + dangling);
+                    List<HomeRepair.Finding> orphans = report.findings().stream()
+                            .filter(f -> f.kind() == HomeRepair.Kind.ORPHANED_PROJECTION_RECORD).toList();
+                    assertEquals(1, orphans.size(), "exactly the gone record; got " + orphans);
+                    assertEquals("installed/gone.projections.json", orphans.get(0).subject(),
+                            "the orphan is named home-relative");
+
+                    // The verify composition: exits 1 and names each finding.
+                    Result verify = verifyCmd(fx.store);
+                    assertTrue(verify.rc != 0, "verify fails when repair reports; rc=" + verify.rc);
+                    assertContains(verify.all(), "DANGLING_AGENT_LINK .codex/skills/gone",
+                            "verify names the own-dir link");
+                    assertContains(verify.all(), "DANGLING_AGENT_LINK " + externalAbs,
+                            "verify names the record-named link");
+                    assertContains(verify.all(), "ORPHANED_PROJECTION_RECORD installed/gone.projections.json",
+                            "verify names the orphaned record");
+
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertFalse(Files.exists(fx.root.resolve(".codex/skills/gone"), LinkOption.NOFOLLOW_LINKS),
+                            "the own-dir dangling link was removed");
+                    assertTrue(Files.isSymbolicLink(external),
+                            "the record-named link was left in place");
+                    assertFalse(Files.exists(fx.store.resolve("installed/gone.projections.json")),
+                            "the orphaned record was deleted");
+                    assertTrue(Files.isRegularFile(fx.store.resolve("installed/" + UNIT + ".projections.json")),
+                            "the record of a unit still on disk was left alone");
+                    assertTrue(Files.isSymbolicLink(elsewhere.resolve("theirs")),
+                            "and another home's dangling link was not touched");
+                })
+
                 .test("every damage shape is reported, one line each, naming the repair", () -> {
                     // GENERIC OVER Kind.values() on purpose: a new kind that
                     // nothing plants fails here rather than shipping undetected,
@@ -1450,6 +1512,51 @@ public final class DamagedHomeIsRepairableTest {
             damageShadowedMirror();
             damageFrozenShim();
             damageUnstampedPmTree();
+            damageDanglingAgentLink();
+            damageOrphanedProjectionRecord();
+        }
+
+        /**
+         * OHV-2 (b), DEF-OHV-002. A retirement's leftover: this home's own
+         * {@code .codex/skills/gone} points into this store at a unit that is
+         * not there, and nothing records the unit.
+         */
+        void damageDanglingAgentLink() throws IOException {
+            Path skills = Files.createDirectories(root.resolve(".codex").resolve("skills"));
+            Files.createSymbolicLink(skills.resolve("gone"), store.resolve("skills").resolve("gone"));
+        }
+
+        /**
+         * OHV-2 (c), DEF-OHV-002. {@code installed/gone.projections.json} with no
+         * {@code installed/gone.json} and no unit directory.
+         */
+        void damageOrphanedProjectionRecord() throws IOException {
+            writeProjectionRecord("gone", root.resolve(".codex").resolve("skills"));
+        }
+
+        /** A projection ledger for {@code unit}, one SYMLINK projection into {@code targetRoot}. */
+        void writeProjectionRecord(String unit, Path targetRoot) throws IOException {
+            Files.createDirectories(store.resolve("installed"));
+            Files.writeString(store.resolve("installed").resolve(unit + ".projections.json"), """
+                    {
+                      "unitName" : "%1$s",
+                      "bindings" : [ {
+                        "bindingId" : "default:codex:%1$s",
+                        "unitName" : "%1$s",
+                        "unitKind" : "SKILL",
+                        "targetRoot" : "%2$s",
+                        "conflictPolicy" : "ERROR",
+                        "createdAt" : "2026-09-07T13:23:56.717976Z",
+                        "source" : "DEFAULT_AGENT",
+                        "projections" : [ {
+                          "bindingId" : "default:codex:%1$s",
+                          "sourcePath" : "$SKILL_MANAGER_HOME/skills/%1$s",
+                          "destPath" : "%3$s",
+                          "kind" : "SYMLINK"
+                        } ]
+                      } ]
+                    }
+                    """.formatted(unit, targetRoot, targetRoot.resolve(unit)), StandardCharsets.UTF_8);
         }
 
         /**
@@ -1607,7 +1714,26 @@ public final class DamagedHomeIsRepairableTest {
 
     // ------------------------------------------------------------ plumbing
 
-    private record Result(int rc, String out, String err) {}
+    private record Result(int rc, String out, String err) {
+        String all() { return out + "\n" + err; }
+    }
+
+    /** {@code skill-manager home verify --home <store>}, in process, output captured. */
+    private static Result verifyCmd(Path store) {
+        PrintStream realOut = System.out;
+        PrintStream realErr = System.err;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(out, true));
+            System.setErr(new PrintStream(err, true));
+            int rc = new CommandLine(new HomeCommand()).execute("verify", "--home", store.toString());
+            return new Result(rc, out.toString(), err.toString());
+        } finally {
+            System.setOut(realOut);
+            System.setErr(realErr);
+        }
+    }
 
     private static Result cli(Path pin, String... args) {
         PrintStream realOut = System.out;
