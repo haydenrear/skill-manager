@@ -1,8 +1,9 @@
 # OHV-3 evidence — the census names nothing the disk does not hold, and a prune stays pruned
 
-Ticket: #340 (carrying #292). Branch `feature/OHV-3`, rebased onto
-`origin/epic/one-home-one-verdict` at `8bd883f3` (OHV-1 merged; OHV-5, the
-promotion predecessor, not yet merged when this was written).
+Ticket: #340 (carrying #292). Branch `feature/OHV-3`. Rebased onto `8bd883f3` (OHV-1) for the first PR push, then
+reconciled by `git merge --no-ff origin/epic/one-home-one-verdict` at `f38a9298`
+(OHV-1, OHV-7, OHV-0, OHV-5) as merge `53d3e7e1`. No conflicts; the only plan
+difference from the tip is OHV-3's own `status: closed`.
 
 Each change landed as its own commit and was verified against BOTH graphs
 before the next one was written (#292's failed attempt landed three together
@@ -14,14 +15,14 @@ and could not be bisected). Local graph report ids are under
 | (a) re-record fixpoint | `52c6db6c` | ArtifactPruneTest 22/22 (2 new, red first) | **passed** `20260913-233504` | red, only `uninstall.prunes.the.subgraph`: 5 surviving ids (was 6 — the tree row no longer comes back), byte-comparable false |
 | (b) teardown reaps rows, only where absence is proven | `7474f5d5` | ArtifactPruneTest 28/28 (6 new) | **passed** `20260913-235305`, incl. `home.fixpoint.law` | `the_census_names_nothing_the_removed_unit_owned` **true**, `survivingIds=[]`; red ONLY on `the_home_is_byte_comparable_to_before_the_install` (`onlyAfter=[F artifacts.lock.toml]`) `20260914-000249` |
 | (c) record version from checkout | `8f202a9f` | RecordVersionRefreshTest 3/3 (new); sync suites green | **passed** `20260914-000714` | unchanged from (b) `20260914-001142` |
-| (d) uninstall removes the ledger it created | `48a0ab45` | ArtifactPruneTest 31/31, UninstallCliCleanupTest 7/7 (5 new, red first); RunTests ALL PASSED | **could not run locally**, see note; CI run 34798086104 is the evidence | **fully green** locally, 10/10 nodes `20260914-013614` |
+| (d) uninstall removes the ledger it created | `48a0ab45` | ArtifactPruneTest 31/31, UninstallCliCleanupTest 7/7 (5 new, red first); RunTests ALL PASSED | **could not run locally**, see note; **green on Linux** in CI run 34798708463 | **fully green** locally, 10/10 nodes `20260914-013614` |
 
 **Local plugin-smoke on (d) could not run.** After the host disk filled, Docker
 became unresponsive: `postgres.up` timed out after 90s (report `20260914-015014`,
 no node touching uninstall or the ledger ran), and `docker info` returned no
 server for more than 10 minutes. Docker was deliberately not restarted, because
 that would kill other agents' runs. On the epic agent's direction, the Linux
-plugin-smoke and artifact-dag jobs of CI run 34798086104 are (d)'s graph evidence.
+plugin-smoke and artifact-dag jobs of CI run 34798708463 are (d)'s graph evidence.
 
 `jbang RunTests.java`: ALL PASSED at (c) before the rebase, and ALL PASSED again
 on the rebased tree (`8f202a9f`). `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
@@ -208,20 +209,27 @@ unchanged; project home's `artifacts.lock.toml` byte-identical.
 * "versions 5/1 -> 0/0 after a sync": proven by `RecordVersionRefreshTest` only; the one real-home
   attempt was refused (exit 7, extra local changes), and the proof is carried to OHV-8.
 * GOAL-ci-green-fresh-runner "artifact-dag red -> green, plugin-smoke stays
-  green": after (d), artifact-dag is fully green locally (report `20260914-013614`,
-  10/10 nodes, including `home.fixpoint.law`); plugin-smoke: see the (d) row.
+  green": **met.** CI run 34798708463 on the merged head has artifact-dag and
+  plugin-smoke green, and 26/26 graphs passed with 0 failed.
 
 ## CI
 
-`gh workflow run ci.yml --ref feature/OHV-3 -f graph_set=full` → run
-34792035515 at `8f202a9f`. `graphs-executed.json`: selected 25, executed 25,
-passed 19, failed 6. These are the same six graphs as main's baseline
-(artifact-dag, checkout-home, home-clone, home-tripwire, onboarding,
-ticket-lifecycle). No new failure. plugin-smoke, the unit tests and the
-gateway pytest job pass. The artifact-dag job on Linux reports
-`the_census_names_nothing_the_removed_unit_owned=true`, `survivingIds=[]`, with
-only `the_home_is_byte_comparable_to_before_the_install=false` left (the owner
-decision).
+**Post-merge, the evidence for (d) and for the reconcile.** Run
+34798708463, `graph_set=full` on merged head `53d3e7e1`, conclusion success.
+`graphs-executed.json`: **selected 26, executed 26, passed 26, failed 0**.
+`artifact-dag` (10/10 nodes) and `plugin-smoke` are green on Linux. `home-verdicts`
+(new with OHV-0) is green. The five baseline failures OHV-5 owned (checkout-home,
+home-clone, home-tripwire, onboarding, ticket-lifecycle) are green. The unit tests
+and the gateway pytest job pass.
+
+Locally on the merged tree: `jbang RunTests.java` ALL PASSED, and artifact-dag
+passed 10/10 (report `20260914-021754`). Local plugin-smoke was not attempted
+because Docker is still down.
+
+Earlier runs. 34792035515 at `8f202a9f`, before (d) and before the merge: 25/25
+executed, 19 passed, 6 failed, all six being main's baseline failures.
+34798086104 on pre-merge `67b6f876` was cancelled at the epic agent's request,
+because the post-merge run is the one that counts.
 
 ## Close-out
 
