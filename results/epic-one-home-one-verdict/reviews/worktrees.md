@@ -15,7 +15,8 @@ Updated at wave-1 close, 2026-09-13. Free disk: 88 GiB.
 | `../wt-ohv-2` | `feature/OHV-2` | OHV-2 #339 | `3d6d4cd4` | #364 `48d23c51` | exit 0, nothing held | pushed | end-of-epic sweep |
 | `../wt-ohv-4` | `feature/OHV-4` | OHV-4 #341 | `48d23c51` | #365 `42486f86` | exit 0, nothing held | pushed | end-of-epic sweep |
 | `../wt-ohv-6` | `feature/OHV-6` | OHV-6 #352 | `42486f86` | #366 `7357b8ab` | exit 0, nothing held | pushed | end-of-epic sweep |
-| `../wt-ohv-8` | `feature/OHV-8` | OHV-8 #358 | `7357b8ab` | — | — | created at wave-4 close; evaluation now waits for OHV-9 | wave 6 |
+| `../wt-ohv-8` | `feature/OHV-8` | OHV-8 #358 | `7357b8ab`, fast-forwarded to `5ab5770b` at wave-5 close | — | — | no commits of its own yet | wave 6 in progress |
+| `../wt-ohv-9` | `feature/OHV-9` | OHV-9 #367 | `926cd655` | #368 `5ab5770b` | exit 0, nothing held | pushed | end-of-epic sweep |
 
 **Backups of real-home and global agent files** (can hold credentials; never committed): `/Users/hayde/IdeaProjects/.ohv6-realhome-backups-2026-09-14` (OHV-6 real homes), `/Users/hayde/IdeaProjects/.ohv6-root-marketplace-backup-2026-09-14` (root, first attempt, unused), `/Users/hayde/IdeaProjects/.ohv-root-fix13-backup-2026-09-14` (root 13-finding fix). All `chmod 700`. Delete after the epic's finalization is verified.
 
