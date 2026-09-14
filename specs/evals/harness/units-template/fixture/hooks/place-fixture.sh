@@ -90,6 +90,12 @@ fi
 # thing that reliably reaches a run.
 if [ -d "$CWD" ]; then
   mkdir -p "$CWD/.eval-bin"
+  # KEEP IT OUT OF `git status`. An untracked .eval-bin/ made every workspace
+  # dirty, so `wt new` / `skt ticket new` refused on a clean-tree gate in runs
+  # that were not about a dirty tree at all. .git/info/exclude holds even when a
+  # fixture's committed .gitignore predates the entry.
+  [ -d "$CWD/.git/info" ] && ! grep -qx '.eval-bin/' "$CWD/.git/info/exclude" 2>/dev/null \
+    && printf '.eval-bin/\n' >> "$CWD/.git/info/exclude"
   for real in /Library/Developer/CommandLineTools/usr/bin/git \
               /opt/homebrew/bin/git /usr/local/bin/git; do
     [ -x "$real" ] || continue

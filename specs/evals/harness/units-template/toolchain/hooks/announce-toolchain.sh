@@ -50,8 +50,15 @@ out="$out"$'\n'"write absolute paths:"
 # something to work around)`, i.e. gave up on the task's own premise. Three
 # runs, 0.10 / 0.10 / 0.30, red on the front-door grader in all three.
 # Consistent across three, so not the coin flip that produced the retraction.
-if [ -x .skill-manager/bin/cli/skt ]; then
-  out="$out"$'\n'"  skt, skill-manager -> this checkout's own home, ./.skill-manager/bin/cli"
+# THE FIXTURE MAY NOT BE PLACED YET. Both hooks run at SessionStart, and in the
+# wide lane this one announced "NO ./.skill-manager" in 162 of 166 transcripts
+# about a workspace that had one a moment later -- each run then spent 1-3
+# calls probing for it. The fixture SOURCE is readable here and is what is
+# about to be copied in, so it answers too.
+fixture_src="${CLAUDE_PLUGIN_ROOT:-}/../../fixture-workspace"
+if [ -x .skill-manager/bin/cli/skt ] || [ -x "$fixture_src/.skill-manager/bin/cli/skt" ]; then
+  out="$out"$'\n'"  skt, skill-manager -> this checkout's own home, ./.skill-manager/bin/cli (already on PATH)"
+  out="$out"$'\n'"  A loaded skill's directory is its 'Base directory for this skill:' line -- use it, do not search for it."
 else
   out="$out"$'\n'"  THIS CHECKOUT HAS NO ./.skill-manager, and that is a fact about the"
   out="$out"$'\n'"  workspace rather than a broken setup -- giving it one may BE the task."

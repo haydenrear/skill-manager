@@ -25,4 +25,6 @@ execution:
     expected and is not yours to solve. Issue the command you would use, once,
     and report it. Do not probe for a writable location or try a different route.
 
+    Report what the validator printed; do not explain its output from the validator's source.
+
     EVAL-CASE: w-epic-retire-part-of-goal-warns-only

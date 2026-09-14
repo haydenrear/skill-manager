@@ -18,4 +18,6 @@ execution:
     Ticket TICKET-9 is done. Tear down its worktree and its Skill Manager home
     the supported way, then tell me exactly what the tool reported.
 
+    Do not look for the worktree first: whether it exists is what the close command reports.
+
     EVAL-CASE: w-giw-wt-refusal-quotes-subject

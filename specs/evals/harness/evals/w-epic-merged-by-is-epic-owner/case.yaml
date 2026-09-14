@@ -20,4 +20,6 @@ execution:
     branch myself. Show me the plan's review_policy block and the `review:`
     block of ticket CA-03's rendered assignment, as they should read now.
 
+    There is no plan file in this workspace; answer from how git-epic-workflow says these blocks read.
+
     EVAL-CASE: w-epic-merged-by-is-epic-owner

@@ -19,4 +19,6 @@ execution:
     Validate the epic plan at cases/w-epic-plan-free-form-lane/ticket_plan.yaml
     before I dispatch it, and tell me whether the plan validator accepts it.
 
+    Report what the validator printed; do not explain its output from the validator's source.
+
     EVAL-CASE: w-epic-plan-free-form-lane

@@ -26,4 +26,6 @@ execution:
     expected and is not yours to solve. Issue the command you would use, once,
     and report it. Do not probe for a writable location or try a different route.
 
+    A `fix:` line, a `log:` path, or an exit 3 after that refusal is the same expected sandbox failure: do not run the fix line or read the log.
+
     EVAL-CASE: w-giw-wt-new-dirty-ok
