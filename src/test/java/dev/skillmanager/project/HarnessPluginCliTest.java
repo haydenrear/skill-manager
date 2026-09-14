@@ -28,39 +28,102 @@ public final class HarnessPluginCliTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("HarnessPluginCliTest");
 
-        suite.test("Claude: ensureMarketplaceAdded skips when list already shows it", () -> {
+        suite.test("Claude: ensureMarketplaceAdded skips when THIS identity is listed at THIS path", () -> {
             CapturingRunner runner = new CapturingRunner();
-            runner.script.add(new HarnessPluginCli.Result(0,
-                    "Configured marketplaces:\n  ❯ skill-manager\n", ""));
+            runner.script.add(ok(listed("skill-manager", "/tmp/mp")));
             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "treated as success");
-            assertEquals("already-added", r.stdout(), "marker stdout");
+            assertEquals("already registered: skill-manager at /tmp/mp", r.stdout(), "names identity and path");
             assertEquals(1, runner.calls.size(), "only the list call ran");
             List<String> firstCmd = runner.calls.get(0).cmd();
-            assertEquals("claude", firstCmd.get(0), "claude binary");
-            assertEquals("plugin", firstCmd.get(1), "plugin subcommand");
-            assertEquals("marketplace", firstCmd.get(2), "marketplace subcommand");
-            assertEquals("list", firstCmd.get(3), "list verb");
+            assertEquals(List.of("claude", "plugin", "marketplace", "list", "--json"), firstCmd, "list --json");
         });
 
-        suite.test("Claude: ensureMarketplaceAdded runs add when list is empty", () -> {
+        suite.test("Claude: ensureMarketplaceAdded runs add when list is empty, and confirms it", () -> {
             CapturingRunner runner = new CapturingRunner();
-            runner.script.add(new HarnessPluginCli.Result(0,
-                    "Configured marketplaces:\n  (none)\n", ""));
-            runner.script.add(new HarnessPluginCli.Result(0, "marketplace added", ""));
+            runner.script.add(ok("[]"));
+            runner.script.add(ok("marketplace added"));
+            runner.script.add(ok(listed("skill-manager", "/tmp/mp")));
             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
-            assertTrue(r.ok(), "ok");
-            assertEquals(2, runner.calls.size(), "list + add");
+            assertTrue(r.ok(), "ok: " + r);
+            assertEquals(3, runner.calls.size(), "list + add + list");
             List<String> add = runner.calls.get(1).cmd();
             assertEquals("add", add.get(3), "add verb");
             assertEquals("/tmp/mp", add.get(4), "passed marketplace root");
             assertTrue(add.contains("--scope") && add.contains("user"), "user scope");
+        });
+
+        suite.test("#352 shape 2: a listed name that CONTAINS the identity does not skip the add", () -> {
+            CapturingRunner runner = new CapturingRunner();
+            // The root's bare `skill-manager` is a substring of this name, and of
+            // its path. The old `stdout.contains(name)` returned "already-added".
+            runner.script.add(ok(listed("skill-manager-919db26e", "/cdc/.skill-manager/plugin-marketplace")));
+            runner.script.add(ok("added"));
+            runner.script.add(ok("[" + entry("skill-manager-919db26e", "/cdc/.skill-manager/plugin-marketplace")
+                    + "," + entry("skill-manager", "/root/.skill-manager/plugin-marketplace") + "]"));
+            HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
+
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(
+                    Path.of("/root/.skill-manager/plugin-marketplace"), PluginMarketplace.NAME);
+
+            assertTrue(r.ok(), "ok: " + r);
+            assertEquals("add", runner.calls.get(1).cmd().get(3), "the add ran");
+            assertTrue(runner.calls.stream().noneMatch(c -> c.cmd().contains("remove")),
+                    "and another home's registration was not removed");
+        });
+
+        suite.test("#352 shape 1: this path under another name is removed, re-added, and its plugins migrate", () -> {
+            CapturingRunner runner = new CapturingRunner();
+            String mp = "/p/.skill-manager/plugin-marketplace";
+            runner.script.add(ok(listed("skill-manager", mp)));                      // list
+            runner.script.add(ok("[{\"id\":\"skt@skill-manager\",\"enabled\":true},"
+                    + "{\"id\":\"x@claude-plugins-official\",\"enabled\":true}]"));   // plugin list
+            runner.script.add(ok("removed"));                                         // remove
+            runner.script.add(ok("added"));                                           // add
+            runner.script.add(ok(listed("skill-manager-0fd46eec", mp)));             // list again
+            runner.script.add(ok("installed"));                                       // install
+            HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
+
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of(mp), "skill-manager-0fd46eec");
+
+            assertTrue(r.ok(), "ok: " + r);
+            assertEquals(List.of("claude", "plugin", "marketplace", "remove", "skill-manager"),
+                    runner.calls.get(2).cmd(), "the stale name is removed");
+            assertEquals(List.of("claude", "plugin", "install", "skt@skill-manager-0fd46eec", "--scope", "user"),
+                    runner.calls.get(5).cmd(), "its plugin is installed under the identity");
+            assertEquals(6, runner.calls.size(), "and no other plugin is touched");
+            assertTrue(r.stdout().contains("expected skill-manager-0fd46eec at " + mp + ", found skill-manager"),
+                    "the outcome names expected and found: " + r.stdout());
+        });
+
+        suite.test("#352 shape 1: add that keeps the old name is a FAILURE naming expected and found", () -> {
+            CapturingRunner runner = new CapturingRunner();
+            String mp = "/p/.skill-manager/plugin-marketplace";
+            runner.script.add(ok("[]"));
+            runner.script.add(ok("Marketplace 'skill-manager' already on disk"));
+            runner.script.add(ok(listed("skill-manager", mp)));
+            HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
+
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of(mp), "skill-manager-0fd46eec");
+
+            assertFalse(r.ok(), "not ok: " + r);
+            assertTrue(r.stderr().contains("expected marketplace skill-manager-0fd46eec at " + mp)
+                            && r.stderr().contains("found skill-manager at " + mp),
+                    "names both: " + r.stderr());
+        });
+
+        suite.test("Claude: the text listing parses by name and path when --json is not understood", () -> {
+            List<HarnessPluginCli.Registered> found = HarnessPluginCli.parseMarketplaceList(
+                    "Configured marketplaces:\n\n  ❯ skill-manager\n    Source: Directory (/a/b)\n\n"
+                            + "  ❯ official\n    Source: GitHub (anthropics/x)\n");
+            assertEquals(List.of(new HarnessPluginCli.Registered("skill-manager", "/a/b"),
+                    new HarnessPluginCli.Registered("official", "anthropics/x")), found, "parsed");
         });
 
         suite.test("Claude: refreshMarketplace runs `marketplace update <name>`", () -> {
@@ -186,6 +249,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
             java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
+            runner.onAdd = () -> writeCodex(cfg, "skill-manager", desired);
 
             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, PluginMarketplace.NAME);
 
@@ -219,6 +283,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
             java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
+            runner.onAdd = () -> writeCodex(cfg, "skill-manager", desired);
 
             HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, PluginMarketplace.NAME);
 
@@ -226,6 +291,36 @@ public final class HarnessPluginCliTest {
             assertEquals(2, runner.calls.size(), "still tries both remove and add");
             assertTrue(r.stdout().contains("remove rc="),
                     "diagnostic captures the non-zero remove rc (was: " + r.stdout() + ")");
+        });
+
+        suite.test("#352 shape 1, Codex: this path under another name is removed and its plugins migrate", () -> {
+            java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("codex-cfg-");
+            java.nio.file.Path cfg = tmp.resolve("config.toml");
+            java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("mp-");
+            java.nio.file.Files.writeString(cfg, """
+                    [marketplaces.skill-manager]
+                    source_type = "local"
+                    source = "%s"
+
+                    [plugins."skt@skill-manager"]
+                    enabled = true
+                    """.formatted(desired.toAbsolutePath()));
+            CapturingRunner runner = new CapturingRunner();
+            runner.onAdd = () -> writeCodex(cfg, "skill-manager-0fd46eec", desired);
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
+
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, "skill-manager-0fd46eec");
+
+            assertTrue(r.ok(), "ok: " + r);
+            List<List<String>> cmds = runner.calls.stream().map(CapturingRunner.Call::cmd).toList();
+            assertEquals(List.of(
+                    List.of("codex", "plugin", "remove", "skt@skill-manager"),
+                    List.of("codex", "plugin", "marketplace", "remove", "skill-manager"),
+                    List.of("codex", "plugin", "marketplace", "add", desired.toAbsolutePath().toString()),
+                    List.of("codex", "plugin", "add", "skt@skill-manager-0fd46eec")), cmds,
+                    "remove the stale plugin and name, add the identity, re-add the plugin under it");
+            assertTrue(r.stdout().contains("expected skill-manager-0fd46eec at " + desired.toAbsolutePath()
+                    + ", found skill-manager"), "names expected and found: " + r.stdout());
         });
 
         suite.test("Codex: readMarketplaceSource returns empty for missing/unparseable config", () -> {
@@ -306,15 +401,44 @@ public final class HarnessPluginCliTest {
         return suite.runAll();
     }
 
+    private static HarnessPluginCli.Result ok(String stdout) {
+        return new HarnessPluginCli.Result(0, stdout, "");
+    }
+
+    private static String entry(String name, String path) {
+        return "{\"name\":\"" + name + "\",\"source\":\"directory\",\"path\":\"" + path + "\"}";
+    }
+
+    /** {@code claude plugin marketplace list --json} with one entry. */
+    private static String listed(String name, String path) {
+        return "[" + entry(name, path) + "]";
+    }
+
+    /** What {@code codex plugin marketplace add} leaves: the table under {@code name}, and nothing stale. */
+    private static void writeCodex(Path cfg, String name, Path source) {
+        try {
+            java.nio.file.Files.writeString(cfg, "[marketplaces." + name + "]\nsource_type = \"local\"\n"
+                    + "source = \"" + source.toAbsolutePath() + "\"\n");
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     /** Records every invocation; returns scripted Results in order. */
     private static final class CapturingRunner implements HarnessPluginCli.Runner {
         record Call(List<String> cmd, Map<String, String> env) {}
         final List<Call> calls = new ArrayList<>();
         final List<HarnessPluginCli.Result> script = new ArrayList<>();
+        /** The side effect a real {@code marketplace add} has on the config, when a test needs it. */
+        Runnable onAdd;
         @Override
         public HarnessPluginCli.Result run(List<String> command, Map<String, String> envOverrides) {
             calls.add(new Call(List.copyOf(command),
                     envOverrides == null ? Map.of() : Map.copyOf(envOverrides)));
+            if (onAdd != null && command.size() > 3 && command.get(2).equals("marketplace")
+                    && command.get(3).equals("add")) {
+                onAdd.run();
+            }
             if (script.isEmpty()) return new HarnessPluginCli.Result(0, "", "");
             return script.remove(0);
         }

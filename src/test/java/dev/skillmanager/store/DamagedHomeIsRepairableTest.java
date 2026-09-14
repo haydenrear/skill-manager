@@ -467,6 +467,80 @@ public final class DamagedHomeIsRepairableTest {
                             "and another home's dangling link was not touched");
                 })
 
+                .test("OHV-6: the four marketplace-identity shapes, repaired by touching only what they name", () -> {
+                    Fixture fx = Fixture.build("marketplace-identity");
+                    fx.damageMarketplaceIdentity();
+                    String id = fx.identity();
+                    Path claude = fx.root.resolve(".claude");
+                    Path codex = fx.root.resolve(".codex/config.toml");
+
+                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
+                    List<String> seen = before.findings().stream()
+                            .map(f -> f.kind() + " " + f.subject()).sorted().toList();
+                    assertEquals(List.of(
+                            "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:marketplaces.skill-manager",
+                            "FOREIGN_MARKETPLACE_REGISTRATION .codex/config.toml:plugins.skt@skill-manager",
+                            "MARKETPLACE_IDENTITY_COPIED plugin-marketplace/.claude-plugin/marketplace.json",
+                            "MARKETPLACE_IDENTITY_UNREGISTERED .claude/settings.json:enabledPlugins.own@" + id,
+                            "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/plugins/known_marketplaces.json:known_marketplaces.skill-manager",
+                            "MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME .claude/settings.json:enabledPlugins.skt@skill-manager"),
+                            seen, "exactly the planted entries, each with its kind");
+                    assertTrue(before.findings().stream().filter(f -> f.kind().name().contains("MARKETPLACE"))
+                                    .allMatch(f -> f.detail().contains(id)),
+                            "every marketplace finding names the identity it expected");
+
+                    HomeRepair.Outcome out = HomeRepair.repair(fx.store, fx.pin);
+
+                    assertTrue(out.failed().isEmpty(), "no repair refused: " + out.failed());
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                                    .noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
+                            "a separate detection finds none of them");
+                    assertEquals(id, dev.skillmanager.project.PluginMarketplace.manifestName(
+                            fx.store.resolve("plugin-marketplace/.claude-plugin/marketplace.json")).orElse(null),
+                            "shape 3: the manifest names this home");
+                    String known = Files.readString(claude.resolve("plugins/known_marketplaces.json"));
+                    String settings = Files.readString(claude.resolve("settings.json"));
+                    assertFalse(known.contains("\"skill-manager\""), "shape 1: the stale name is gone: " + known);
+                    assertContains(known, "\"" + id + "\"", "shape 1/2: the identity is registered");
+                    assertContains(settings, "\"skt@" + id + "\": true", "shape 1: the enablement migrated");
+                    assertContains(settings, "\"own@" + id + "\": true", "shape 2: the enablement is kept");
+                    String toml = Files.readString(codex);
+                    assertEquals("model = \"gpt-5\"  # the operator's\n\n[marketplaces." + id
+                                    + "]\nsource_type = \"local\"\nsource = \"" + fx.marketplaceDir() + "\"\n",
+                            toml, "shape 4: exactly the foreign table and its plugin are cut");
+
+                    HomeRepair.Outcome again = HomeRepair.repair(fx.store, fx.pin);
+                    assertTrue(again.repaired().stream().noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
+                            "a second --fix has nothing marketplace-related to do");
+                })
+
+                .test("OHV-6: a foreign enablement of a plugin THIS home carries is re-pointed, not dropped", () -> {
+                    Fixture fx = Fixture.build("foreign-carried");
+                    String id = fx.identity();
+                    Path manifest = fx.store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
+                    Files.createDirectories(manifest.getParent());
+                    Files.writeString(manifest, "{\"name\": \"" + id + "\", \"plugins\": [{\"name\": \"own\"}]}\n");
+                    Path codex = Files.createDirectories(fx.root.resolve(".codex")).resolve("config.toml");
+                    Files.writeString(codex,
+                            "[marketplaces." + id + "]\nsource_type = \"local\"\nsource = \"" + fx.marketplaceDir() + "\"\n\n"
+                                    + "[plugins.\"own@skill-manager\"]\nenabled = true\n\n"
+                                    + "[plugins.\"gone@skill-manager\"]\nenabled = true\n");
+
+                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(before.findings().stream().anyMatch(f ->
+                                    f.subject().equals(".codex/config.toml:plugins.own@skill-manager")
+                                            && f.remedy().contains("re-points it at own@" + id)),
+                            "the remedy says it will re-point: " + before.findings());
+                    HomeRepair.repair(fx.store, fx.pin);
+
+                    String toml = Files.readString(codex);
+                    assertContains(toml, "[plugins.\"own@" + id + "\"]", "the carried plugin stays enabled here");
+                    assertFalse(toml.contains("gone@"), "the plugin this home does not carry is removed: " + toml);
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).findings().stream()
+                                    .noneMatch(f -> f.kind().name().contains("MARKETPLACE")),
+                            "and nothing disagrees afterwards");
+                })
+
                 .test("every damage shape is reported, one line each, naming the repair", () -> {
                     // GENERIC OVER Kind.values() on purpose: a new kind that
                     // nothing plants fails here rather than shipping undetected,
@@ -1599,6 +1673,49 @@ public final class DamagedHomeIsRepairableTest {
             damageUnstampedPmTree();
             damageDanglingAgentLink();
             damageOrphanedProjectionRecord();
+            damageMarketplaceIdentity();
+        }
+
+        /** This home's derived marketplace identity and directory. */
+        String identity() {
+            return new dev.skillmanager.project.PluginMarketplace(new SkillStore(store)).name();
+        }
+
+        String marketplaceDir() {
+            return store.resolve("plugin-marketplace").toString();
+        }
+
+        /**
+         * OHV-6 (#352), all four shapes, in THIS fixture's own {@code .claude} and
+         * {@code .codex} (under the temp root, never the operator's):
+         * <ol>
+         *   <li>Claude registers this home's directory as {@code skill-manager} and
+         *       enables {@code skt@skill-manager};</li>
+         *   <li>Claude enables {@code own@<identity>}, which nothing registers here;</li>
+         *   <li>the manifest names the OTHER home's identity;</li>
+         *   <li>Codex registers the other home's marketplace and enables a plugin from it.</li>
+         * </ol>
+         */
+        void damageMarketplaceIdentity() throws IOException {
+            String id = identity();
+            String theirs = new dev.skillmanager.project.PluginMarketplace(new SkillStore(other)).name();
+            Path manifest = store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
+            Files.createDirectories(manifest.getParent());
+            Files.writeString(manifest, "{\"name\": \"" + theirs + "\", \"plugins\": []}\n");
+            Path claude = root.resolve(".claude");
+            Files.createDirectories(claude.resolve("plugins"));
+            Files.writeString(claude.resolve("plugins/known_marketplaces.json"),
+                    "{\"skill-manager\": {\"source\": {\"source\": \"directory\", \"path\": \""
+                            + marketplaceDir() + "\"}}}\n");
+            Files.writeString(claude.resolve("settings.json"),
+                    "{\"enabledPlugins\": {\"skt@skill-manager\": true, \"own@" + id + "\": true}}\n");
+            Path codex = Files.createDirectories(root.resolve(".codex"));
+            Files.writeString(codex.resolve("config.toml"),
+                    "model = \"gpt-5\"  # the operator's\n\n"
+                            + "[marketplaces." + id + "]\nsource_type = \"local\"\nsource = \"" + marketplaceDir() + "\"\n\n"
+                            + "[marketplaces.skill-manager]\nsource_type = \"local\"\nsource = \""
+                            + other.resolve("plugin-marketplace") + "\"\n\n"
+                            + "[plugins.\"skt@skill-manager\"]\nenabled = true\n");
         }
 
         /**

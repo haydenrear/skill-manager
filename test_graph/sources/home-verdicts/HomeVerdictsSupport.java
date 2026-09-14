@@ -146,6 +146,89 @@ final class HomeVerdictsSupport {
         return "installed/" + unit + ".projections.json";
     }
 
+    // ------------------------------------------- marketplace identity (OHV-6)
+
+    /**
+     * The identity {@code PluginMarketplace.name()} derives for a non-root store:
+     * {@code skill-manager-} + the first four bytes of SHA-256 over the store's
+     * real path, in hex. Spelled out here rather than read from the product, so
+     * the node's expectation is an independent oracle, not the code under test.
+     */
+    static String identityOf(Path store) {
+        String canonical;
+        try {
+            canonical = store.toRealPath().toString();
+        } catch (IOException notThere) {
+            canonical = store.toAbsolutePath().normalize().toString();
+        }
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder("skill-manager-");
+            for (int i = 0; i < 4; i++) hex.append(String.format("%02x", digest[i]));
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** {@code <store>/plugin-marketplace}, in the spelling the product registers. */
+    static String marketplaceRoot(Path store) {
+        return store.toAbsolutePath().normalize().resolve("plugin-marketplace").toString();
+    }
+
+    static String jsonString(String s) {
+        try {
+            return JsonMapper.MAPPER.writeValueAsString(s);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Write {@code rel} under the SUBJECT's home root ({@code <store>/..}) — its
+     * structural agent directories, which is what {@code home repair} reads.
+     * Never the operator's {@code ~/.claude}/{@code ~/.codex}, and not the graph
+     * sandbox's either: nothing here consults the environment.
+     */
+    static void writeAgentFile(Path store, String rel, String content) throws IOException {
+        Path file = store.getParent().resolve(rel);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, content, StandardCharsets.UTF_8);
+    }
+
+    /** A marketplace manifest naming {@code name}, with no plugins — the shape a copy carries. */
+    static void writeManifest(Path store, String name) throws IOException {
+        Path manifest = store.resolve("plugin-marketplace/.claude-plugin/marketplace.json");
+        Files.createDirectories(manifest.getParent());
+        Files.createDirectories(store.resolve("plugin-marketplace/plugins"));
+        Files.writeString(manifest, "{\n  \"name\" : " + jsonString(name)
+                + ",\n  \"owner\" : { \"name\" : \"skill-manager\" },\n  \"plugins\" : [ ]\n}\n",
+                StandardCharsets.UTF_8);
+    }
+
+    static String readAgentText(Path store, String rel) {
+        return read(store.getParent().resolve(rel));
+    }
+
+    /** Parsed JSON of an agent file, or an empty object when it is absent or unreadable. */
+    static JsonNode readJson(Path store, String rel) {
+        return parseOrEmpty(readAgentText(store, rel));
+    }
+
+    static JsonNode readStoreJson(Path store, String rel) {
+        return parseOrEmpty(read(store.resolve(rel)));
+    }
+
+    private static JsonNode parseOrEmpty(String text) {
+        try {
+            JsonNode node = JsonMapper.MAPPER.readTree(text);
+            return node == null ? JsonMapper.MAPPER.createObjectNode() : node;
+        } catch (IOException | RuntimeException e) {
+            return JsonMapper.MAPPER.createObjectNode();
+        }
+    }
+
     // ------------------------------------------------------------- the CLI
 
     /** One CLI invocation, both streams kept apart. */
