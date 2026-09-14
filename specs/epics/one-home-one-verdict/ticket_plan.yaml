@@ -26,15 +26,34 @@
 #     and test-graph work the owner asked for. Recorded as DEF-OHV-009.
 #   - review_policy: artifact per wave, no stop until finalization (owner,
 #     2026-09-13). Graphs stay suspended on push/PR (owner, 2026-09-13).
+#
+# AMENDMENT, schedule_revision 3, 2026-09-14, owner decisions after wave 2,
+# answering the four questions the wave-1 and wave-2 reviews carried forward:
+#   - GOAL-one-record clause (1) is RESCOPED. The kickoff's "0 missing outputs,
+#     0 ledger-only rows" counted two kinds of row no prune can or should reap:
+#     CLI shims an installed unit declares but PATH satisfies (DEF-OHV-130), and
+#     projection rows left by removals before OHV-3, whose agent-side links
+#     nothing can prove gone (DEF-OHV-131). Clause (1) now counts only rows whose
+#     owner is gone AND whose outputs are gone -- what OHV-3 made provable -- plus
+#     ledger-only rows produced by a removal after OHV-3. The kickoff reading is
+#     kept verbatim in the baseline; both findings become issues at finalization.
+#   - skt#46 (the `skt check` build stamp) merges and releases at finalization,
+#     together with the epic PR; GOAL-verdict-names-its-build is measured on the
+#     released pair.
+#   - the owner approved `home repair --fix` on the root home with the OHV-4
+#     build (run by the epic agent, backups taken) and restarted the machine,
+#     which cleared the hung Docker backend behind DEF-OHV-140.
+# Only OHV-8's assignment carries the changed goal text and is undelivered;
+# it moves to schedule_revision 3. Delivered tickets keep revision 2.
 version: 1
-schedule_revision: 2
+schedule_revision: 3
 name: one-home-one-verdict
 slug: one-home-one-verdict
 branch: epic/one-home-one-verdict
 base: "71c5146489fea3283e9df81dba311f53f4169c9e"
 repository: haydenrear/skill-manager
 ticket_prefix: OHV
-updated: "2026-09-13"
+updated: "2026-09-14"
 spec_workflow:
   state: none
   decided: "2026-09-13, owner, schedule_revision 2: dropped with the refactors"
@@ -137,16 +156,19 @@ epic_goals:
     evaluation_ticket: OHV-8
     statement: "The census names nothing the disk does not hold, a prune stays pruned, and an installed record agrees with its checkout."
     metric: >
-      (1) census outputs missing on disk (independent stat) plus ledger-only
-      rows, on root and this project home after a prune; (2) rows a prune drops
-      that the re-record restores; (3) installed records whose version disagrees
-      with the checkout's manifest while the hash agrees.
+      (1) AMENDED at schedule_revision 3: census rows whose owner is gone and
+      whose outputs are gone (independent stat), plus ledger-only rows produced
+      by a removal after OHV-3, on root and this project home after a prune --
+      excluding PATH-served declared shims (DEF-OHV-130) and pre-OHV-3
+      projection rows (DEF-OHV-131), which are counted and reported separately;
+      (2) rows a prune drops that the re-record restores; (3) installed records
+      whose version disagrees with the checkout's manifest while the hash agrees.
     harness: "python3 scripts/release_regression.py; python skills/test_graph/scripts/run.py artifact-dag; python3 scripts/measure_goal_one_record.py (OHV-0)"
     baseline:
-      value: "(1) root 15 missing + 14 ledger-only; project 7 + 0. (2) fixpoint: 59 before, 59 after (#292). (3) root 5, project 1"
+      value: "(1) as measured at kickoff under the original definition: root 15 missing + 14 ledger-only; project 7 + 0. Under the schedule_revision-3 definition: unmeasured at kickoff -- OHV-3 found all 7 project rows are PATH-served shims (DEF-OHV-130) and the 14 root ledger-only rows pre-date OHV-3 (DEF-OHV-131). (2) fixpoint: 59 before, 59 after (#292). (3) root 5, project 1"
       measured_at: "71c5146489fea3283e9df81dba311f53f4169c9e"
       evidence: results/epic-one-home-one-verdict/baseline/2026-09-13-v0.27.2/release_regression.json
-    target: "(1) 0 and 0 on both homes; (2) 0; (3) 0"
+    target: "(1) 0 on both homes under the schedule_revision-3 definition, with the DEF-OHV-130/131 rows reported as separate counts; (2) 0; (3) 0"
 
   - id: GOAL-no-own-home-path
     kind: quality
@@ -576,7 +598,7 @@ tickets:
     status: planned
     role: evaluation
     owns_goals: ["GOAL-one-verdict", "GOAL-one-record", "GOAL-no-own-home-path", "GOAL-one-marketplace-identity", "GOAL-ci-green-fresh-runner", "GOAL-verdict-names-its-build"]
-    schedule_revision: 2
+    schedule_revision: 3
     wave: 5
     depends_on: ["OHV-0", "OHV-1", "OHV-2", "OHV-3", "OHV-4", "OHV-5", "OHV-6", "OHV-7"]
     blocks: []
