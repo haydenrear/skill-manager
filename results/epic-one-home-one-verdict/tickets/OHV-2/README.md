@@ -84,15 +84,64 @@ Slice at schedule revision 2: (a) verify composes repair's detection, (b) a
 **`orphaned.projection.record`**, plus `home.fixpoint.law` and
 `home.membership.law` (12 nodes including `env.prepared`).
 
-Local run: _pending_. CI: _pending_.
+Local run (validation-reports `20260914-031226`, started before the last two
+source edits, so the final-tree rerun below is the one that counts): nodes 1–8
+passed. That includes the three flipped shapes (`TODAY_home_verify_exits_1`,
+`verify.exit` = 1) and `verify.names.every.repair.finding`
+(`repair.findings` = 5, `verify.unnamed` = 0). Nodes 9–12: _pending_.
+Final-tree rerun: _pending_.
+
+CI run 34802282392 (`graph_set=full`, `af7e4b52`): `skill-manager unit tests
+(RunTests.java + spec models)` **success** on Linux, `virtual-mcp-gateway
+pytest` success.
+
+Final-tree local rerun on `af7e4b52` (validation-reports `20260914-033054`,
+clean tree): **all 12 nodes passed**, `BUILD SUCCESSFUL in 18m 7s`.
+
+### CI run 1: 34802282392 (`graph_set=full`, `af7e4b52`), 26 selected / 26 executed / 24 passed / 2 failed
+
+`home-verdicts` passed on Linux. **`home-clone` and `checkout-home` failed,
+both in `home.fixpoint.law`,** for one reason, and it is this change's:
+
+- `home.clone.fixture.built` plants legacy shapes on purpose. Step 4's
+  `bin/cli/hc-venv-tool` execs `<home>/venvs/…` literally, which is a
+  `FROZEN_HOME_PATH_IN_SHIM`. Step 5's `pm/uv/0.0.0` has no platform stamp,
+  which is an `UNSTAMPED_PM_TREE`. The fixture home and both its copies
+  (`home.cloned.into.project`, the credential copy) carry them.
+- Verify now names both. `IntentionalDamage.unexplained` only understood the
+  "do not resolve" section, so both became unexplained refusals. The law ran
+  the FIRST printed remedy (`build …`, the unresolved one), and the re-verify
+  still refused (job 103847224069, `home.fixpoint.law` inline log).
+
+**Fix (test-side; in scope as an IntentionalDamage declaration change):**
+- `IntentionalDamage.repairSubjects` parses verify's repair section.
+- `unexplained` excuses a declared repair finding and its `repair:` line, and
+  excuses the section's header and remedy only when every finding under them
+  is declared.
+- `HomeFixpointLaw` counts repair subjects as "reported", so a declared entry
+  that stops being reported still fails the law.
+- The three declarations add `pm/uv/0.0.0`, and the fixture home adds
+  `bin/cli/hc-venv-tool` (it resolves there, so it appears only as a repair
+  finding).
+- Parser checked against real output (`real-homes/after/project.verify.err`):
+  4 subjects parsed; all declared → nothing unexplained; one subject undeclared
+  → its finding, `repair:`, header and remedy lines; none declared → 10 lines.
+
+### CI run 2: _pending_
+
+Local `home-clone` on the fixed tree: _pending_. `checkout-home` reuses
+home-clone's fixture nodes, so the same declarations cover it; CI decides.
 
 ## Blast radius
 
 See [blast-radius.md](blast-radius.md). No caller outside this repo runs
 `home verify` and gates on its exit code, so it landed as specified. Callers
-inside the repo that changed: the home-verdicts TODAY assertions,
-`HomeUnresolvedGateTest`'s fixture, and the `--against` parent-shim
-exemption.
+inside the repo that changed:
+- the home-verdicts TODAY assertions;
+- `HomeUnresolvedGateTest`'s fixture;
+- the `--against` parent-shim exemption;
+- `IntentionalDamage`, the fixpoint law's reported set, and the three
+  home-clone declarations (found by CI run 1).
 
 ## Real homes (read-only; no `--fix`)
 
@@ -117,7 +166,8 @@ verify-0-while-repair-damaged to agreeing. 3 new planted shapes are pinned.
   were `HomeUnresolvedGateTest` ×2 (fixture wrote frozen shims) and
   `ChildHomeShimIsolationTest` ×1 (`--against` sanction), both fixed above.
   Focused rerun of those suites plus every verify-calling suite: 157 cases,
-  0 failures. Second full run: _pending_.
+  0 failures. **Second full run, on the tree committed as `afaabc8d`: exit
+  0, 1555 passed, 0 failed, "ALL PASSED"** (88 GiB free before and after).
 - `uv run --with pytest pytest specs/program_model/tests -q`: 11 passed.
 
 ## Deferred
@@ -127,4 +177,7 @@ git-issue-workflow docs still describe verify as resolution-only.
 
 ## Close-out
 
-_pending_
+`skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-ohv-2/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager`
+(PATH build `~/.skill-manager/bin/cli/skill-manager`) → **exit 0**,
+"✓ … holds nothing that removing it would destroy". No unit was edited in the
+ticket home, and no `home sync` was run. Output: `close-out/`.
