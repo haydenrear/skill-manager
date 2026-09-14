@@ -1,0 +1,5 @@
+Ran 52 tests in 8.292s
+
+OK
+...........                                                              [100%]
+11 passed in 1.51s
