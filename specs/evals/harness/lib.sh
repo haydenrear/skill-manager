@@ -393,7 +393,7 @@ verify_env() {
 # setup stamps what it copied; run refuses if the sources have moved since.
 eval_sources_digest() {
   local root; root="$(eval_root)"
-  { find "$root/units-template" "$root/evals" -type f -exec shasum {} + 2>/dev/null | sort; \
+  { find "$root/units-template" "$root/evals" "$root/wide" -type f -exec shasum {} + 2>/dev/null | sort; \
     shasum "$root/lib.sh" 2>/dev/null; } | shasum | cut -d' ' -f1
 }
 
@@ -457,6 +457,10 @@ eval_build_case() {
   # rather than `du`, because copy-on-write clones lie to `du`. That is what
   # this does.
   local free_gb
+  # The parent must exist before df asks about it: on a fresh EVAL_BUILD_ROOT
+  # df fails, pipefail hands that to the assignment, and set -e ended setup
+  # there with no output at all.
+  mkdir -p "$(dirname "$build")"
   free_gb="$(df -g "$(dirname "$build")" 2>/dev/null | awk 'NR==2{print $4}')"
   if [ -n "$free_gb" ] && [ "$free_gb" -lt "${EVAL_MIN_FREE_GB:-25}" ]; then
     echo "setup: ${free_gb}G free, need ${EVAL_MIN_FREE_GB:-25}G — a case is a ~5G home clone" >&2
@@ -644,7 +648,9 @@ eval_run_case() {
       # COST grader -- `Bash called 32x (expected 1..4)` is unreadable without
       # the 32 commands, and the sandbox that used to hold them is now torn
       # down by default. WHY-NO-FRONT-DOOR.txt is written only on a red.
-      local stem="$dest/diagnostics/$(basename "${newest%/}")"
+      # The diagnostics dir name joins the stem: wide runs share one build and
+      # one result, so the run name alone would let each case overwrite the last.
+      local stem="$dest/diagnostics/$(basename "${newest%/}")-$(basename "$diag")"
       cp "$diag"/WHY-NO-FRONT-DOOR.txt "$stem-why-no-front-door.txt" 2>/dev/null \
         && echo "  diagnostics: why the front door was not recognised"
       cp "$diag"/commands.txt "$stem-commands.txt" 2>/dev/null \
@@ -653,10 +659,13 @@ eval_run_case() {
   }
   trap 'eval_archive_result "'"$build"'" "'"$case_name"'"; [ '"$keep"' = 1 ] && echo "kept: '"$build"'" || { rm -rf "'"$build"'" "'"$root"'/.evalhome-'"$case_name"'"; echo "torn down"; }' EXIT
 
+  # EVAL_CASE_GLOB / EVAL_MAX_COST_USD / EVAL_CONCURRENCY exist for the wide
+  # lane (wide/run.sh), which runs many tiny cases from ONE build. A deep case
+  # leaves them unset and runs exactly as before.
   ( cd "$build" && HOME="$root/.evalhome-$case_name" CLAUDE_CODE_WALNUT_SPIRE=1 \
-      "$claude" plugin eval . --case "$case_name" --ablation none \
-        --runs "${EVAL_RUNS:-1}" \
-        $keep_temp --max-cost-usd 2 \
+      "$claude" plugin eval . --case "${EVAL_CASE_GLOB:-$case_name}" --ablation none \
+        --runs "${EVAL_RUNS:-1}" --concurrency "${EVAL_CONCURRENCY:-1}" \
+        $keep_temp --max-cost-usd "${EVAL_MAX_COST_USD:-2}" \
         --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(skill-manager:*)' \
           'Bash(python3:*)' Read Write Edit Skill \
           'WebFetch(domain:github.com)' 'WebFetch(domain:codeload.github.com)' \
