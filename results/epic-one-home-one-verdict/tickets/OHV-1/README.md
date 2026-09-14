@@ -42,3 +42,7 @@ Against `expected_effect` "0 of 5 -> 5 of 5": **5 of 5 locally**, and a reader c
 ## Deferred findings
 
 None.
+
+## CI
+
+Run https://github.com/haydenrear/skill-manager/actions/runs/34790309867 (`graph_set=full`, workflow_dispatch on feature/OHV-1): **executed 25 / passed 19 / failed 6**. Failing: artifact-dag, checkout-home, home-clone, home-tripwire, onboarding, ticket-lifecycle. That is the same set as the main baseline (25/19/6), so this ticket adds **no new failure**. The plan's graphs for this ticket, **plugin-smoke** and **home-integrity**, both pass. Unit tests and virtual-mcp-gateway pytest are green. Artifact: `results/epic-one-home-one-verdict/tickets/OHV-1/ci-graphs-executed.json`.
