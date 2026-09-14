@@ -1,0 +1,6 @@
+skt check: 2 notification(s), tier root
+  new version available for skill-manager — pull with: skt sync skill-manager
+  new version available for skt — pull with: skt sync skt
+  hint: multiple units are stale — sync in skill-imports dependency order (a unit importing files another stale unit adds fails validation if synced first)
+  build: skt 0.8.2; skill-manager 0.27.2 @ artifact 862d3a4c6017 built 2026-09-13T17:38:37Z (skill-manager.jar)
+rc=10

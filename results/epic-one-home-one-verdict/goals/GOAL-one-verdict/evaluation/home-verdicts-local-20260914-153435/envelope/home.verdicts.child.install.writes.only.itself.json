@@ -1,0 +1,52 @@
+{
+  "nodeId" : "home.verdicts.child.install.writes.only.itself",
+  "status" : "passed",
+  "startedAt" : "2026-09-14T15:36:42.044744Z",
+  "endedAt" : "2026-09-14T15:36:44.441774Z",
+  "assertions" : [ {
+    "name" : "control_the_child_link_resolves_to_the_parents_shim",
+    "status" : "passed"
+  }, {
+    "name" : "install_into_the_child_exits_0",
+    "status" : "passed"
+  }, {
+    "name" : "the_parents_shim_is_byte_identical",
+    "status" : "passed"
+  }, {
+    "name" : "every_parent_file_is_byte_identical_after_the_child_install",
+    "status" : "passed"
+  }, {
+    "name" : "the_child_holds_its_own_real_shim",
+    "status" : "passed"
+  }, {
+    "name" : "the_child_shim_is_token_form",
+    "status" : "passed"
+  }, {
+    "name" : "the_child_shim_names_no_form_of_the_parent",
+    "status" : "passed"
+  }, {
+    "name" : "the_child_shim_runs_the_childs_tool",
+    "status" : "passed"
+  }, {
+    "name" : "the_scratch_homes_are_deleted",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-into-child",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-ohv-8/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6486854002877709424/home-verdicts/scratch/child-install-writes-only-itself/units/wt-unit", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-09-14T15:36:42.137085Z",
+    "endedAt" : "2026-09-14T15:36:44.244750Z",
+    "exitCode" : 0,
+    "pid" : 96679,
+    "log" : "node-logs/home.verdicts.child.install.writes.only.itself.install-into-child.stdout.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "parent.files.changed" : 0,
+    "install.exit" : 0,
+    "durationMs" : 2397
+  },
+  "logs" : [ "child shim after install:\n#!/usr/bin/env bash\n# Rewritten by skill-manager: resolve the home this shim is standing in\n# rather than the one it was written into, so a copy of the home works.\nSKILL_MANAGER_SHIM_HOME=\"$(cd \"$(dirname \"${BASH_SOURCE[0]:-$0}\")/../..\" && pwd)\"\nexec \"${SKILL_MANAGER_SHIM_HOME}/cache/skill-script-wt-unit-wt-tool/venv/bin/wt-tool\" \"$@\"\n" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-09-14T15:36:41.399306Z","executorEndedAt":"2026-09-14T15:36:44.506292Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.verdicts.child.install.writes.only.itself.stdout.log","inputContextFile":"context/home.verdicts.child.install.writes.only.itself.input.json","traceId":"37f2acc056faf6d3f62d0e1d7babf13c"}

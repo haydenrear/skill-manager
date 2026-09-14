@@ -1,0 +1,115 @@
+{
+  "homes": {
+    "root": {
+      "home": "/Users/hayde/.skill-manager",
+      "checkout": "/Users/hayde",
+      "generated_marketplace": "skill-manager",
+      "agent_links_examined": 54,
+      "verify_rc": 1,
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 6,
+      "disk_facts_damaged": [
+        {
+          "shape": "shim-runs-another-home",
+          "subject": "bin/cli/computeq",
+          "evidence": [
+            "/Users/hayde/IdeaProjects/wt-epic-library-sharing/test_graph/build/validation-reports/20260914-152657/artifacts/skill-manager-worktree-lifecycle/project/.skill-manager"
+          ],
+          "repair_kinds": [
+            "FOREIGN_PATH_IN_SHIM"
+          ],
+          "verify_names_it": true,
+          "reported_by_both": true
+        },
+        {
+          "shape": "shim-runs-another-home",
+          "subject": "bin/cli/helm-deploy",
+          "evidence": [
+            "/Users/hayde/IdeaProjects/wt-epic-library-sharing/test_graph/build/validation-reports/20260914-152657/artifacts/skill-manager-worktree-lifecycle/project/.skill-manager"
+          ],
+          "repair_kinds": [
+            "FOREIGN_PATH_IN_SHIM"
+          ],
+          "verify_names_it": true,
+          "reported_by_both": true
+        },
+        {
+          "shape": "shim-runs-another-home",
+          "subject": "bin/cli/monitoring",
+          "evidence": [
+            "/Users/hayde/IdeaProjects/wt-epic-library-sharing/test_graph/build/validation-reports/20260914-152657/artifacts/skill-manager-worktree-lifecycle/project/.skill-manager"
+          ],
+          "repair_kinds": [
+            "FOREIGN_PATH_IN_SHIM"
+          ],
+          "verify_names_it": true,
+          "reported_by_both": true
+        }
+      ],
+      "clause2_facts_damaged_while_not_reported_by_both": 0,
+      "repair_findings_no_observation_matched": []
+    },
+    "project": {
+      "home": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+      "checkout": "/Users/hayde/IdeaProjects/skill-manager",
+      "generated_marketplace": "skill-manager-fd6e57d4",
+      "agent_links_examined": 24,
+      "verify_rc": 1,
+      "repair_rc": 1,
+      "repair_build": "skill-manager 0.27.2+g85d0d4511eb0 @ 85d0d4511eb0 (refs/heads/feature/OHV-8)",
+      "repair_findings": 4,
+      "disk_facts_damaged": [
+        {
+          "shape": "shim-link-into-another-home",
+          "subject": "bin/cli/tlc2",
+          "evidence": "/Users/hayde/.skill-manager/bin/cli/tlc2",
+          "repair_kinds": [],
+          "verify_names_it": true,
+          "reported_by_both": false
+        },
+        {
+          "shape": "agent-link-dangling",
+          "subject": ".claude/skills/skill-manager",
+          "evidence": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager",
+          "repair_kinds": [
+            "DANGLING_AGENT_LINK"
+          ],
+          "verify_names_it": true,
+          "reported_by_both": true
+        },
+        {
+          "shape": "agent-link-dangling",
+          "subject": ".codex/skills/skill-manager",
+          "evidence": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager",
+          "repair_kinds": [
+            "DANGLING_AGENT_LINK"
+          ],
+          "verify_names_it": true,
+          "reported_by_both": true
+        },
+        {
+          "shape": "agent-link-dangling",
+          "subject": ".gemini/skills/skill-manager",
+          "evidence": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager/skills/skill-manager",
+          "repair_kinds": [
+            "DANGLING_AGENT_LINK"
+          ],
+          "verify_names_it": true,
+          "reported_by_both": true
+        },
+        {
+          "shape": "orphaned-projection-record",
+          "subject": "installed/skill-manager.projections.json",
+          "repair_kinds": [
+            "ORPHANED_PROJECTION_RECORD"
+          ],
+          "verify_names_it": true,
+          "reported_by_both": true
+        }
+      ],
+      "clause2_facts_damaged_while_not_reported_by_both": 1,
+      "repair_findings_no_observation_matched": []
+    }
+  }
+}

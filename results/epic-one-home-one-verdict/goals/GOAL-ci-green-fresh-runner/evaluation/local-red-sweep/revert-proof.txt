@@ -1,0 +1,18 @@
+2026-09-14T15:44:07Z
+$ git checkout -- test_graph/sources/artifact-dag/ArtifactsEnumerated.java
+$ git status --short -- test_graph/
+(empty above = reverted)
+$ git diff --stat HEAD -- test_graph/sources/artifact-dag/ArtifactsEnumerated.java
+$ grep -c "DELIBERATE RED" test_graph/sources/artifact-dag/ArtifactsEnumerated.java
+0
+$ git status --short (whole tree)
+ M scripts/home_observations.py
+ M scripts/measure_goal_one_record.py
+ M scripts/release_regression.py
+?? results/epic-one-home-one-verdict/goals/GOAL-a-home-writes-only-itself/
+?? results/epic-one-home-one-verdict/goals/GOAL-ci-green-fresh-runner/
+?? results/epic-one-home-one-verdict/goals/GOAL-no-own-home-path/evaluation/
+?? results/epic-one-home-one-verdict/goals/GOAL-one-record/
+?? results/epic-one-home-one-verdict/goals/GOAL-one-verdict/
+?? results/epic-one-home-one-verdict/tickets/OHV-8/
+?? scripts/measure_fleet_one_home_one_verdict.py

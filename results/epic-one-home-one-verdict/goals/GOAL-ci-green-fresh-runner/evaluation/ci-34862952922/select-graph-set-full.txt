@@ -1,0 +1,13 @@
+scope: **full**
+
+- registered in `test_graph/build.gradle.kts`: **30**
+- selected for this run: **26** — `smoke`, `onboard`, `sponsored`, `source-tracking`, `git-latest-source-tracking`, `plugin-smoke`, `harness-smoke`, `doc-smoke`, `project-manifest`, `project-resolve`, `project-smoke`, `spec-conformance`, `project-child-home`, `home-clone`, `home-tripwire`, `checkout-home`, `home-sync`, `ticket-lifecycle`, `project-env`, `project-libs`, `project-profiles`, `artifact-dag`, `onboarding`, `home-integrity`, `home-verdicts`, `sync-settles`
+- not in this run (4): `browser-auth`, `refresh-flow`, `password-reset`, `hyper-experiments`
+
+Deliberate exclusions (every scope):
+- `refresh-flow` — skill-manager-integration-repository#53 — under-budgeted by design: a 3s access-token TTL with CLOCK_SKEW_SECONDS=0 is verified by a live /auth/me round-trip that includes driver.quit(), which stalls 7.6-8.6s against a ~2.0s norm. Flakes ~1 in 4 on pre-epic code identically, so it is not an epic regression and not fixable from this ticket. Re-admit once the helper verifies the cached token instead of a live call inside the TTL.
+- `hyper-experiments` — skill-manager#143 — reaches github, npm and the live RunPod API; none of the three answer a question about skill-manager. Already opt-in at the build level (HYPER_EXPERIMENTS=1 / HYPER_LOCAL_DIR), so it is not in validationRunAll either. Run it deliberately, not on a push.
+
+Browser graphs (`browser-auth`, `password-reset`, `refresh-flow`) run in the `test-graph-browser` job on schedule and dispatch only.
+
+**Every selected graph needs the virtual-mcp-gateway venv, and therefore the PRIVATE `haydenrear/tracing_skill` dependency** — `skill-manager install` runs `EnsureGateway`, which builds it. Booting a gateway explicitly: `smoke`, `onboard`, `sponsored`, `source-tracking`, `git-latest-source-tracking`, `plugin-smoke`, `harness-smoke` (7 of 26); the rest reach it through `install`.

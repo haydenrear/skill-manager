@@ -1,0 +1,12 @@
+diff --git a/test_graph/sources/artifact-dag/ArtifactsEnumerated.java b/test_graph/sources/artifact-dag/ArtifactsEnumerated.java
+index d51ca3e0..c6d19ed5 100644
+--- a/test_graph/sources/artifact-dag/ArtifactsEnumerated.java
++++ b/test_graph/sources/artifact-dag/ArtifactsEnumerated.java
+@@ -51,6 +51,7 @@ public class ArtifactsEnumerated {
+ 
+     public static void main(String[] a) {
+         Node.run(a, SPEC, ctx -> {
++            if (Boolean.TRUE) return NodeResult.fail("artifacts.enumerated", "OHV-8 DELIBERATE RED (uncommitted, reverted after the run): GOAL-ci-green-fresh-runner clause (2)");
+             Path ws = ArtifactDagSupport.workspace(ctx, "enumerated");
+             Path store = ArtifactDagSupport.storeOf(ws);
+             Path units = ws.resolve("units");

@@ -1,0 +1,82 @@
+[jbang] Building jar for RunOneRecordTests.java...
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+== ArtifactPruneTest (31 cases)
+  [PASS] the skill-script cache tree goes with its unit
+  [PASS] pruning a shim drops its cli-lock.toml row
+  [PASS] a whole-home prune finds what past removals left behind
+  [PASS] a prune stays pruned: the re-record does not restore what it dropped
+  [PASS] a pruned id the home can still see keeps its row
+  [PASS] a projection whose captured link is gone is reaped, row only
+  [PASS] a projection whose link is still on disk keeps its row
+  [PASS] a projection row with no captured evidence is kept, by name
+  [PASS] a unit-store row goes, row only, once its owner and its bytes are gone
+  [PASS] a unit-store whose bytes are still on disk is never reaped
+  [PASS] a unit-digest row stays while home.digest.json still names the unit
+  [PASS] a created ledger that only restates the home is discarded
+! kept artifacts.lock.toml — this removal created it, but it still names provisioned-tree:cache/remembered-only, which the home can no longer derive, and it is the only record of it
+  [PASS] a created ledger holding a row the home cannot derive is kept
+  [PASS] a prune in a no-ledger home refuses cleanly, writes no ledger, and the census answers from disk
+  [PASS] a home with no ledger deletes nothing
+  [PASS] a target containing a .git is refused, by name
+  [PASS] an unattributed tree is not an orphan
+  [PASS] a surviving consumer keeps the tree
+  [PASS] a wrapper shim a registered child home links at is not an orphan
+  [PASS] a SYMLINK shim a child home links at keeps both it and its tree
+  [PASS] every hop of a child home's link chain is claimed, not just the last
+  [PASS] an output that reaches outside the home through a directory symlink is refused
+  [PASS] a subtree this pass cannot read is treated as holding a .git
+  [PASS] a row whose output is a unit store is refused, whatever kind it declares
+  [PASS] a harness instance is still in scope, though `harnesses` is a content root
+! artifacts prune: could not remove cache/blocked-tree (java.nio.file.AccessDeniedException: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-1151709123462914559/cache/blocked-tree/inner/file) — the rest of the plan still runs and the ledger is re-recorded from what is on disk
+  [PASS] one step that cannot be deleted does not abandon the rest, or the ledger
+! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-18357256744062806359/child-homes/child-corrupt/child-home.json — this pass cannot tell what that home links at, so it removes nothing
+  [PASS] a child-home record this pass cannot decode stops the prune, by name
+! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-9751166976030285879/bin/cli (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
+! artifacts prune: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/prune-child-unstattable-9751166976030285879/bin/mcp (AccessDeniedException) — this pass cannot tell what that child home links at, so it removes nothing. Make the path readable, or unregister that child home, and run again
+  [PASS] a child home's shim directory this pass cannot stat stops the prune
+! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-91261093598636075/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
+! artifacts prune: could not read the child-home record /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-91261093598636075/child-homes/child-record-sealed/child-home.json — this pass cannot tell what that home links at, so it removes nothing
+! child-home registry: could not stat /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/artifacts-home-91261093598636075/child-homes/child-record-sealed/child-home.json (AccessDeniedException) — this pass cannot tell what that child home depends on, so a caller that deletes must remove nothing. Make the path readable, or unregister that child home, and run again
+  [PASS] a child-home record this pass cannot stat stops the prune, by name
+  [PASS] a recorded output that escapes the home is refused
+  [PASS] the plain-text verdict says how many it refused, not just how many it removed
+   → 31 passed, 0 failed
+== UninstallCliCleanupTest (7 cases)
+✓ removed alpha from store
+✓ pruned 2 orphaned artifact(s) of alpha: unit-store:alpha, cli-shim:skill-script/alpha-tool
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14523515084140920622/units.lock.toml
+  [PASS] uninstall prunes orphaned skill-script binary and cli-lock row
+✓ removed alpha from store
+✓ pruned 2 orphaned artifact(s) of alpha: unit-store:alpha, cli-shim:skill-script/alpha-tool
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1356495255097846748/units.lock.toml
+  [PASS] an uninstall in a home with no ledger leaves no ledger behind
+✓ removed alpha from store
+✓ pruned 2 orphaned artifact(s) of alpha: unit-store:alpha, cli-shim:skill-script/alpha-tool
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1422838850103459302/units.lock.toml
+  [PASS] an uninstall in a home that HAD a ledger keeps it
+✓ removed alpha from store
+✓ pruned 1 orphaned artifact(s) of alpha: unit-store:alpha
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12640857390693422017/units.lock.toml
+  [PASS] uninstall preserves shared CLI artifact and rewrites requested_by
+✓ removed widget from store
+✓ pruned 4 orphaned artifact(s) of widget: unit-store:widget, cli-shim:pip/contained-cli, cli-shim:pip/plugin-cli, marketplace-entry:widget
+! claude: CLI claude not on PATH — install with: brew install claude
+! codex: CLI codex not on PATH — install with: brew install codex
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5689901398814883311/units.lock.toml
+  [PASS] uninstall re-walks plugin-level and contained-skill CLI deps
+✓ removed alpha from store
+✓ pruned 1 orphaned artifact(s) of alpha: unit-store:alpha
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7781044048084573260/units.lock.toml
+  [PASS] uninstall preserves CLI dep claimed by surviving plugin-contained skill
+✓ removed alpha from store
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7154552499342516685/units.lock.toml
+  [PASS] lower-level remove leaves CLI artifacts and cli-lock rows alone
+   → 7 passed, 0 failed
+== RecordVersionRefreshTest (3 cases)
+  [PASS] same hash, newer manifest: the record's version is restated
+  [PASS] a hash that is not HEAD changes nothing
+  [PASS] an agreeing version, or no hash, changes nothing
+   → 3 passed, 0 failed
+ONE-RECORD CASES: ALL PASSED
+rc=0 temp_entries_before=    9505 after=    9589
