@@ -148,6 +148,18 @@ unchanged; project home's `artifacts.lock.toml` byte-identical.
 * GOAL-ci-green-fresh-runner "artifact-dag red -> green, plugin-smoke stays
   green": plugin-smoke green; artifact-dag red on the owner-decision residual only.
 
+## CI
+
+`gh workflow run ci.yml --ref feature/OHV-3 -f graph_set=full` → run
+34792035515 at `8f202a9f`. `graphs-executed.json`: selected 25, executed 25,
+passed 19, failed 6. These are the same six graphs as main's baseline
+(artifact-dag, checkout-home, home-clone, home-tripwire, onboarding,
+ticket-lifecycle). No new failure. plugin-smoke, the unit tests and the
+gateway pytest job pass. The artifact-dag job on Linux reports
+`the_census_names_nothing_the_removed_unit_owned=true`, `survivingIds=[]`, with
+only `the_home_is_byte_comparable_to_before_the_install=false` left (the owner
+decision).
+
 ## Close-out
 
 `skill-manager home close-out --home /Users/hayde/IdeaProjects/wt-ohv-3/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager`
