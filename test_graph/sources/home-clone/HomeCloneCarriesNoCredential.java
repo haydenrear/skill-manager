@@ -138,9 +138,13 @@ public class HomeCloneCarriesNoCredential {
                 .publish("credentialCloneHome", dest.toString())
                 // A copy of the fixture, so it inherits the planted shim without
                 // venvs/. Declared by entry for home.fixpoint.law (#344).
+                // OHV-4 (#341): and hc-tool, whose `SM_HOME="<home>"` the copy
+                // re-anchors to its own literal path (FROZEN_HOME_PATH_IN_SHIM).
                 .publish(IntentionalDamage.KEY, IntentionalDamage.declare(dest,
-                        java.util.List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
-                        "copy of home.clone.fixture.built: inherits its planted "
+                        java.util.List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
+                                "bin/cli/" + HomeCloneSupport.GOOD_SHIM),
+                        "copy of home.clone.fixture.built: inherits its planted hc-tool (home path in "
+                                + "its body, re-anchored to this copy) and its planted "
                                 + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/"))
                 .log("#281 sat open as an 'unverified inference' because it was reasoned "
                         + "from the absence of an exclusion. Measured 2026-09-05, before "

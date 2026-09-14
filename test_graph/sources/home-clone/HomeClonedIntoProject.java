@@ -403,10 +403,15 @@ public class HomeClonedIntoProject {
                     // The clone inherits the fixture's planted shim and, by
                     // design, not venvs/ (toolchain roots are never carried), so
                     // bin/cli/hc-venv-tool dangles here. Declared by entry (#344).
+                    // OHV-4 (#341): the clone re-anchors hc-tool's
+                    // `SM_HOME="<fixture>"` to its OWN path, which is still an
+                    // own-home literal, so FROZEN_HOME_PATH_IN_SHIM names it here.
                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(cloneStore,
-                            List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
+                            List.of("bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
+                                    "bin/cli/" + HomeCloneSupport.GOOD_SHIM),
                             "clone of home.clone.fixture.built: inherits its planted "
-                                    + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/"));
+                                    + HomeCloneSupport.DANGLING_SHIM + " shim without venvs/, and "
+                                    + HomeCloneSupport.GOOD_SHIM + " re-anchored to this home's literal path"));
         });
     }
 

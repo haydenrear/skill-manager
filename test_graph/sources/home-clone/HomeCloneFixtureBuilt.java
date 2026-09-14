@@ -315,12 +315,19 @@ public class HomeCloneFixtureBuilt {
                     // findings: step 4's shim names this home absolutely
                     // (FROZEN_HOME_PATH_IN_SHIM) — the legacy shape the clone's
                     // re-anchoring is asserted against, so it stays planted.
+                    // Since OHV-4 (#341) the frozen-shim detector reads shim
+                    // CONTENT, the home root itself included, so step 3's
+                    // `SM_HOME="<fixture>"` (hc-tool, "home path in the BODY",
+                    // the shape #20 describes) is reported too. Planted on
+                    // purpose, and the clone's re-anchoring is asserted on it.
                     .publish(IntentionalDamage.KEY, IntentionalDamage.declare(fixture,
                             List.of("venvs/hc-venv/bin/hc",
-                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM),
+                                    "bin/cli/" + HomeCloneSupport.DANGLING_SHIM,
+                                    "bin/cli/" + HomeCloneSupport.GOOD_SHIM),
                             "home.clone.fixture.built step 6 plants a console script whose "
                                     + "interpreter venvs/hc-venv/bin/python is never created; "
-                                    + "step 4's shim is frozen on purpose"))
+                                    + "step 4's shim is frozen on purpose; step 3's shim holds "
+                                    + "the home path in its body on purpose"))
                     .publish("projectDir", projectDir.toString())
                     .publish("cloneStore", HomeCloneSupport.storeOf(projectDir).toString())
                     .publish("sourceDigest", sourceDigest)
