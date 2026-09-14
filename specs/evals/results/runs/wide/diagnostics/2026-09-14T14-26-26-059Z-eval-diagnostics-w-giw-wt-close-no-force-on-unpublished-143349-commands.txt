@@ -1,0 +1,27 @@
+Bash {"command": "ls -a /private/tmp/e-3nI7o7/home/cwd && echo \"---\" && ls /private/tmp/e-3nI7o7/home/cwd/.skill-manager 2>&1", "description": "List working directory contents"}
+---
+Bash {"command": ".eval-bin/git worktree list && echo \"--- branch:\" && .eval-bin/git branch -a", "description": "List git worktrees and branches"}
+---
+Bash {"command": "ls -R /private/tmp/e-3nI7o7/home/cwd/cases/w-giw-wt-close-no-force-on-unpublished 2>&1 | head -50", "description": "List case directory"}
+---
+Bash {"command": "cat /private/tmp/e-3nI7o7/home/cwd/cases/w-giw-wt-close-no-force-on-unpublished/close.txt 2>&1", "description": "Read close.txt"}
+---
+Bash {"command": "ls /private/tmp/e-3nI7o7/home/cwd/.skill-manager/skills/ 2>&1; echo \"--- installed:\"; ls /private/tmp/e-3nI7o7/home/cwd/.skill-manager/installed 2>&1", "description": "List installed skills"}
+---
+Bash {"command": "ls /private/tmp/e-3nI7o7/home/cwd/.skill-manager/bin 2>&1; echo \"--- .wt:\"; ls -a /private/tmp/e-3nI7o7/home/cwd/.wt 2>&1", "description": "Check skill-manager bin and wt dir"}
+---
+Skill {"args": "tear down TICKET-7 worktree after PR merged; wt close refused with held-back unpublished skill work", "skill": "git-issue-workflow:git-issue-workflow"}
+---
+Bash {"command": "SMH=\"$PWD/.skill-manager\"; test -x \"$SMH/bin/cli/skt\" && echo \"skt: YES\" || echo \"skt: no\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"wt: YES\" || echo \"wt: no\"; echo \"--- PATH skt:\"; command -v skt || echo \"not on PATH\"; echo \"--- parent dir:\"; ls /private/tmp/e-3nI7o7/home/", "description": "Test for skt and wt front doors"}
+---
+Bash {"command": "sed -n '/step 6/,/step 7/p' /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/complete.md | head -120", "description": "Read close-out gate details"}
+---
+Grep {"-C": 20, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/complete.md", "pattern": "--force"}
+---
+Bash {"command": "skt ticket close TICKET-7 --dry-run 2>&1 | head -60", "description": "Ask the close gate what it holds back"}
+---
+Bash {"command": "skt ticket --help 2>&1 | head -40; echo \"====\"; skt ticket list 2>&1 | head -40", "description": "Show ticket subcommands and list ticket worktrees"}
+---
+Bash {"command": "skt ticket close TICKET-7 2>&1 | head -40", "description": "Attempt ticket close through the gate"}
+---
+Bash {"command": "ls -d /work/demo /work/demo/wt-TICKET-7 2>&1", "description": "Check whether the demo worktree root exists here"}

@@ -1,0 +1,17 @@
+Skill {"skill": "skt:skill-manager"}
+---
+Bash {"command": "ls -la /private/tmp/e-tmWNIu/home/cwd/ && echo \"--- .skill-manager ---\" && ls -la /private/tmp/e-tmWNIu/home/cwd/.skill-manager 2>&1 | head -40", "description": "List workspace and project skill-manager home"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/; echo \"---\"; wc -l /private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/projects.md", "description": "List skill-manager references"}
+---
+Grep {"-C": 3, "-n": true, "head_limit": 120, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/projects.md", "pattern": "SKILL_MANAGER_HOME|mktemp|empty dir|home init|bootstrap-home"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/projects.md", "limit": 180, "offset": 180}
+---
+Grep {"output_mode": "files_with_matches", "path": "/private/tmp/skill-evals/wide/units/plugin-repository", "pattern": "install|SKILL_MANAGER_HOME|sandbox|rehears|temp"}
+---
+Grep {"-C": 6, "-n": true, "head_limit": 160, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/plugin-repository/skills/plugin-repository/references/lifecycle.md", "pattern": "SKILL_MANAGER_HOME|install"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/scripts/ 2>&1 | head; echo \"--- which ---\"; command -v skill-manager 2>&1; echo \"--- shim? ---\"; ls -la /private/tmp/e-tmWNIu/home/cwd/.skill-manager/bin/cli/ 2>&1 | head", "description": "Check bootstrap-home script and skill-manager CLI resolution"}
+---
+Bash {"command": "sed -n '1,60p' /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/scripts/bootstrap-home.sh", "description": "Read bootstrap-home.sh usage header"}

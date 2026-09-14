@@ -1,0 +1,23 @@
+Bash {"command": "ls -a && echo \"---\" && cat cases/w-giw-bootstrap-cross-home-is-not-old-cli/bootstrap.txt", "description": "List workspace and read bootstrap output"}
+---
+Bash {"command": "cat README.md && echo \"=== cases ===\" && ls cases/w-giw-bootstrap-cross-home-is-not-old-cli/ && echo \"=== sm ===\" && ls .skill-manager", "description": "Read README and case directory"}
+---
+Bash {"command": "ls .skill-manager/skills/ 2>/dev/null; find .skill-manager -name 'bootstrap-home.sh' 2>/dev/null | head", "description": "Locate bootstrap-home.sh"}
+---
+Bash {"command": "cd .skill-manager/skills/git-issue-workflow && ls -R . | head -60 && echo \"=== grep ===\" && grep -rn \"did not name\\|cross-home\\|refusing to run against\" --include=*.md --include=*.sh . | head -40", "description": "Explore git-issue-workflow skill"}
+---
+Grep {"-C": 5, "-n": true, "head_limit": 120, "output_mode": "content", "path": "/private/tmp/e-r6I1wm/home/cwd/.skill-manager/skills", "pattern": "did not name|cross-home|refusing to run against|no skill-manager CLI"}
+---
+Bash {"command": "sed -n '700,870p' scripts/bootstrap-home.sh", "description": "Read pick_cli in bootstrap-home.sh"}
+---
+Bash {"command": "grep -rn \"SKILL_MANAGER_CLI\" references/ SKILL.md scripts/wt scripts/lib.sh 2>/dev/null | head -40", "description": "Search docs for SKILL_MANAGER_CLI guidance"}
+---
+Bash {"command": "sed -n '200,340p' references/skill-homes.md", "description": "Read skill-homes.md CLI resolution section"}
+---
+Bash {"command": "cd /private/tmp/e-r6I1wm/home/cwd && ls .skill-manager/bin .skill-manager/bin/cli 2>/dev/null && echo \"=== pin ===\" && cat .skill-manager/bin/cli/skill-manager 2>/dev/null && echo \"=== env ===\" && env | grep -i skill", "description": "Inspect home bin/cli pin and skill env vars"}
+---
+Bash {"command": "cd .skill-manager/skills/git-issue-workflow/scripts && sed -n '1,120p' bootstrap-home.sh", "description": "Read bootstrap-home.sh header and usage"}
+---
+Bash {"command": "cd /private/tmp/e-r6I1wm/home/cwd && ls -l /opt/homebrew/bin/skill-manager 2>&1 | head -3; head -5 /opt/homebrew/bin/skill-manager 2>/dev/null; echo \"=== worktrees ===\"; git worktree list 2>&1 | head", "description": "Check the real skill-manager build and worktrees"}
+---
+Bash {"command": "SKILL_MANAGER_CLI=/opt/homebrew/bin/skill-manager .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>&1 | tail -30", "description": "Re-run bootstrap with CLI pinned to a real build"}

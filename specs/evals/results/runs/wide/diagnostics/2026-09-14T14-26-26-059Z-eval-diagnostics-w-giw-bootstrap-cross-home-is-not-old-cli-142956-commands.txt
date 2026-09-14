@@ -1,0 +1,35 @@
+Bash {"command": "ls cases/w-giw-bootstrap-cross-home-is-not-old-cli/ && cat cases/w-giw-bootstrap-cross-home-is-not-old-cli/bootstrap.txt", "description": "Read the bootstrap output file"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/git-issue-workflow/ 2>/dev/null; echo ---; ls /private/tmp/skill-evals/wide/units/git-issue-workflow/scripts 2>/dev/null"}
+---
+Bash {"command": "ls -a && echo \"--- SKILL_MANAGER_HOME=$SKILL_MANAGER_HOME\" && which skill-manager; echo \"---\"; git worktree list 2>/dev/null; git branch --show-current"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/*/ 2>/dev/null; echo ===; ls /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/*/scripts 2>/dev/null"}
+---
+Bash {"command": "grep -rl \"refusing to run against a home you did not name\\|cross-home\\|did not name\" /private/tmp/skill-evals/wide/units/ 2>/dev/null | head -20"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/scripts/ /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/"}
+---
+Bash {"command": "grep -rn \"did not name\\|cross-home\\|another home\\|SKILL_MANAGER_HOME\" /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>/dev/null | head -40"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/scripts/bootstrap-home.sh", "limit": 240, "offset": 630}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/scripts/bootstrap-home.sh", "limit": 80, "offset": 1}
+---
+Bash {"command": "grep -rn \"unset SKILL_MANAGER_HOME\\|env -u SKILL_MANAGER_HOME\\|refused\" /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/*.md /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/SKILL.md | head -30"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/skill-homes.md", "limit": 60, "offset": 195}
+---
+Bash {"command": "cat .skill-manager/bin/cli/skill-manager 2>/dev/null | head -60"}
+---
+Bash {"command": "grep -rn \"SKILL_MANAGER_CLI\" /private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/skill-homes.md | head -20"}
+---
+Bash {"command": "ls .skill-manager/ 2>/dev/null; echo \"--- builds:\"; ls .skill-manager/bin 2>/dev/null; command -v jbang; ls -d ~/.skill-manager 2>/dev/null; echo \"--- PATH entries:\"; echo $PATH | tr ':' '\\n'"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/skill-homes.md", "limit": 50, "offset": 280}
+---
+Bash {"command": "sed -n '60,200p' .skill-manager/bin/cli/skill-manager"}
+---
+Bash {"command": "ls -l /opt/homebrew/bin/skill-manager 2>&1; echo \"--- skill copy in home:\"; ls .skill-manager/skills/git-issue-workflow/scripts/ 2>&1 | head; echo \"--- repo scripts:\"; ls scripts 2>&1 | head"}
+---
+Bash {"command": "env -u SKILL_MANAGER_HOME SKILL_MANAGER_CLI=/opt/homebrew/bin/skill-manager .skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh 2>&1 | tail -30", "description": "Re-run home bootstrap pinned to the real build"}

@@ -1,0 +1,15 @@
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "ls -la /private/tmp/e-xlU1Zs/home/cwd/.skill-manager 2>&1 | head -40", "description": "List project Skill Manager home"}
+---
+Bash {"command": "ls .skill-manager/installed | head -60; echo \"--- units.lock ---\"; cat .skill-manager/units.lock.toml", "description": "Inspect installed units and lock file"}
+---
+Bash {"command": "cd /private/tmp/e-xlU1Zs/home/cwd/.skill-manager; echo \"== skills/ ==\"; ls skills; echo \"== plugins/ ==\"; ls plugins; echo \"== plugins/skt ==\"; ls plugins/skt 2>/dev/null; echo \"== plugins/skt/skills ==\"; ls plugins/skt/skills 2>/dev/null", "description": "List skills and plugins in the home"}
+---
+Bash {"command": "cd /private/tmp/e-xlU1Zs/home/cwd/.skill-manager; grep -rn -i \"retire\\|redirect\\|superseded\\|renamed\" --include=*.toml --include=*.json --include=*.md . 2>/dev/null | grep -v home.digest | head -30", "description": "Search home for retirement or redirect metadata"}
+---
+Bash {"command": "cd /private/tmp/e-xlU1Zs/home/cwd/.skill-manager; cat plugins/skt/skill-manager-plugin.toml; echo \"=== audit ===\"; cat audit.log", "description": "Read skt plugin manifest and audit log"}
+---
+Bash {"command": "cd /private/tmp/e-xlU1Zs/home/cwd/.skill-manager; ls bin bin/cli 2>/dev/null; echo \"SKILL_MANAGER_HOME=${SKILL_MANAGER_HOME:-<unset>}\"; command -v skt || echo \"skt not on PATH\"", "description": "Check CLI shims and home env var"}
+---
+Bash {"command": "cd /private/tmp/e-xlU1Zs/home/cwd && ./.skill-manager/bin/cli/skt sync skt 2>&1", "description": "Sync the skt plugin, which ships the skill-manager skill"}

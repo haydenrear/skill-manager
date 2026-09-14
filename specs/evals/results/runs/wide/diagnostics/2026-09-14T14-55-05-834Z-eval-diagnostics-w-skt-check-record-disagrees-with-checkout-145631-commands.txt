@@ -1,0 +1,7 @@
+Read {"file_path": "/private/tmp/e-oQu2of/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/check-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-oQu2of/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/record-vs-checkout.txt"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt sync git-issue-workflow", "description": "Re-sync git-issue-workflow to refresh its install record"}

@@ -1,0 +1,19 @@
+Bash {"command": "ls -a && echo \"--- branch ---\" && ./.eval-bin/git branch --show-current && echo \"--- worktrees ---\" && ./.eval-bin/git worktree list", "description": "List workspace contents and git worktrees"}
+---
+Bash {"command": "command -v skt skill-manager; echo \"---\"; ls /private/tmp/e-kxA2UU/home/.skill-manager 2>&1 | head -30", "description": "Check for skt and skill-manager CLIs"}
+---
+Bash {"command": "ls -a .skill-manager && echo \"=== cases ===\" && ls cases && echo \"=== README ===\" && head -40 README.md", "description": "Inspect skill-manager home and repo contents"}
+---
+Bash {"command": "cd /private/tmp/e-kxA2UU/home && ls -a; echo \"=== find epic checkouts ===\"; find /private/tmp/e-kxA2UU -maxdepth 3 -name \"*TICKET-9*\" -o -maxdepth 3 -name \"*demo-epic*\" 2>/dev/null | head -20", "description": "Look for TICKET-9 worktree and epic checkout"}
+---
+Bash {"command": "./.eval-bin/git branch -a; echo \"=== worktree dirs (sibling) ===\"; ls -a /private/tmp/e-kxA2UU/home/cwd/.. ; echo \"=== child-homes ===\"; ls -a .skill-manager/child-homes 2>&1; echo \"=== projects ===\"; ls -a .skill-manager/projects 2>&1", "description": "List branches, sibling dirs, child homes"}
+---
+Bash {"command": "export PATH=\"$PWD/.skill-manager/bin/cli:$PATH\"; skt --help 2>&1 | head -40; echo \"=== ticket help ===\"; skt ticket --help 2>&1 | head -40", "description": "Show skt CLI help and ticket subcommands"}
+---
+Skill {"args": "tear down TICKET-9 worktree and its Skill Manager home", "skill": "skt:skt"}
+---
+Bash {"command": "skt ticket list 2>&1; echo \"=== exit $? ===\"", "description": "List ticket worktrees read-only"}
+---
+Bash {"command": "skt ticket close TICKET-9 2>&1; echo \"=== exit $? ===\"", "description": "Close TICKET-9 worktree via supported path"}
+---
+Bash {"command": "./.eval-bin/git -C \"/private/tmp/e-kxA2UU/home/cwd\" worktree list; echo \"=== branches matching 9 ===\"; ./.eval-bin/git branch -a --list '*9*' ; echo \"(none if blank)\"", "description": "Confirm worktree list and any TICKET-9 branch"}

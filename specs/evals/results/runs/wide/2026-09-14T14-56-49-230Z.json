@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.270",
+  "startedAt": "2026-09-14T14:56:49.230Z",
+  "durationSeconds": 131,
+  "costUsd": 1.3401614999999998,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-skt-migration-delete-project-block",
+    "threshold": 1,
+    "concurrency": 4,
+    "plugins": [
+      {
+        "name": "acp-cdc-ai-python",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/acp-cdc-ai-python"
+      },
+      {
+        "name": "andrej-karpathy-skills",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/andrej-karpathy-skills"
+      },
+      {
+        "name": "cdc-agent-substrate-plugin",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/cdc-agent-substrate-plugin"
+      },
+      {
+        "name": "debugging",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/debugging"
+      },
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "discovery",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/discovery"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-integration-repo",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-integration-repo"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "hyper-experiments",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments"
+      },
+      {
+        "name": "hyper-experiments-finance",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/hyper-experiments-finance"
+      },
+      {
+        "name": "llm-wiki",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/llm-wiki"
+      },
+      {
+        "name": "plugin-repository",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/plugin-repository"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "slm-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/slm-agent"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracer-agent",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracer-agent"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "vision-toolbelt-skill",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/vision-toolbelt-skill"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-skt-migration-delete-project-block",
+      "dir": "evals/w-skt-migration-delete-project-block",
+      "source": "mixed",
+      "promptMarkdown": "The session-start report for this checkout is in cases/w-skt-migration-delete-project-block/status-output.txt and\nits manifest is cases/w-skt-migration-delete-project-block/skill-project.toml. Show me the manifest as it should\nread after the migration the report asks for. Do not edit any file — print the\nfull corrected manifest in your reply.\n\n\nEVAL-CASE: w-skt-migration-delete-project-block\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "declares-skt-plugin",
+          "type": "regex",
+          "weight": 2,
+          "config": {
+            "target": "last_message",
+            "pattern": "\\[plugins\\.skt\\]",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "drops-the-skill-block",
+          "type": "llm",
+          "weight": 3,
+          "graderMarkdown": "THE BEHAVIOUR (42d1f95). Score 1 only if the corrected manifest quoted in the\n   response has NO `[skills.skill-manager]` block, still has the\n   `[skills.git-issue]` block, and declares skt under `[plugins.skt]`. Score 0 if\n   the response keeps the skill-manager block, renames it in place to a skill,\n   or proposes editing skill imports instead.\n\n   THIS GRADER SCORES THE RESPONSE. IT CANNOT SEE THE WORKSPACE.",
+          "config": {
+            "criteria": "THE BEHAVIOUR (42d1f95). Score 1 only if the corrected manifest quoted in the\n   response has NO `[skills.skill-manager]` block, still has the\n   `[skills.git-issue]` block, and declares skt under `[plugins.skt]`. Score 0 if\n   the response keeps the skill-manager block, renames it in place to a skill,\n   or proposes editing skill imports instead.\n\n   THIS GRADER SCORES THE RESPONSE. IT CANNOT SEE THE WORKSPACE.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "no-file-edits",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/forbid-no-file-edits",
+            "exists": true
+          }
+        },
+        {
+          "name": "read-the-manifest",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/require-read-the-output",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.2857142857142857,
+            "passed": false,
+            "turns": 17,
+            "costUsd": 0.5242425,
+            "judgeCostUsd": 0.000892,
+            "durationSeconds": 94,
+            "startedAt": "2026-09-14T14:56:52.134Z",
+            "error": "exit 1: Reached maximum number of turns (16)",
+            "tracePath": "/private/tmp/e-qlwpCK/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "declares-skt-plugin",
+                "passed": false,
+                "weight": 2,
+                "explanation": "pattern not found in last_message",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "drops-the-skill-block",
+                "passed": false,
+                "weight": 3,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "I'll start by reading the report and manifest."
+              },
+              {
+                "name": "no-file-edits",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/forbid-no-file-edits exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "read-the-manifest",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-read-the-output exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.2857142857142857,
+            "passed": false,
+            "turns": 17,
+            "costUsd": 0.8159189999999998,
+            "judgeCostUsd": 0.0007320000000000002,
+            "durationSeconds": 128,
+            "startedAt": "2026-09-14T14:56:52.134Z",
+            "error": "exit 1: Reached maximum number of turns (16)",
+            "tracePath": "/private/tmp/e-xtFt1G/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "declares-skt-plugin",
+                "passed": false,
+                "weight": 2,
+                "explanation": "pattern not found in last_message",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "drops-the-skill-block",
+                "passed": false,
+                "weight": 3,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "Let me check the authoritative manifest schema before writing the corrected version."
+              },
+              {
+                "name": "no-file-edits",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/forbid-no-file-edits exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "read-the-manifest",
+                "passed": true,
+                "weight": 1,
+                "explanation": ".eval/require-read-the-output exists as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.2857142857142857,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.2857142857142857,
+    "overallPassRate": 0
+  }
+}

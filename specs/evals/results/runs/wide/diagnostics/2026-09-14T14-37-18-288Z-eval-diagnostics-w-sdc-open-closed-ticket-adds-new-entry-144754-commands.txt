@@ -1,0 +1,35 @@
+Bash {"command": "ls -a /private/tmp/e-yX18IJ/home/cwd && echo \"---\" && ls -R /private/tmp/e-yX18IJ/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry 2>/dev/null | head -100", "description": "List workspace and case directory"}
+---
+Bash {"command": ".eval-bin/git status --short && echo \"---BRANCH---\" && .eval-bin/git branch -a && echo \"---LOG---\" && .eval-bin/git log --oneline -15", "description": "Check git state"}
+---
+Read {"file_path": "/private/tmp/e-yX18IJ/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs/desired_program_model/ticket_plan.yaml"}
+---
+Bash {"command": "ls -a /private/tmp/e-yX18IJ/home/cwd/.skill-manager && echo \"===\" && cat /private/tmp/e-yX18IJ/home/cwd/README.md", "description": "Inspect skill-manager home and README"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "which tla-spec-dev; ls /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/", "description": "Check CLI availability and list references"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && wc -l references/spec_evolution.md references/workflows.md", "description": "Check reference sizes"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/spec_evolution.md"}
+---
+Bash {"command": "tla-spec-dev --help 2>&1 | head -60", "description": "Show CLI help"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/workflows.md"}
+---
+Bash {"command": "tla-spec-dev open --help 2>&1; echo \"=== path ===\"; readlink -f .skill-manager/bin/cli/tla-spec-dev", "description": "Show open subcommand help"}
+---
+Bash {"command": "cd /private/tmp/e-yX18IJ/home/cwd/.skill-manager && ls; echo \"=== cli file ===\"; head -30 bin/cli/tla-spec-dev", "description": "Inspect CLI wrapper"}
+---
+Grep {"-n": true, "head_limit": 60, "output_mode": "content", "path": "/private/tmp/e-yX18IJ/home/cwd/.skill-manager/skills/spec-double-compiler/scripts/tla_spec_dev.py", "pattern": "status"}
+---
+Bash {"command": "cd /private/tmp/e-yX18IJ/home/cwd && sed -n '230,330p' .skill-manager/skills/spec-double-compiler/scripts/tla_spec_dev.py", "description": "Read ticket plan handling in CLI"}
+---
+Bash {"command": "cd /private/tmp/e-yX18IJ/home/cwd/.skill-manager/skills/spec-double-compiler/scripts && grep -n \"ticket_plan\\|def .*ticket\\|status\" new_ticket_workflow.py | head -60", "description": "Inspect open-ticket implementation"}
+---
+Read {"file_path": "/private/tmp/e-yX18IJ/home/cwd/.skill-manager/skills/spec-double-compiler/scripts/new_ticket_workflow.py", "limit": 80, "offset": 793}
+---
+Edit {"file_path": "/private/tmp/e-yX18IJ/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs/desired_program_model/ticket_plan.yaml", "new_string": "  - id: T-2\n    title: \"Refund a completed order\"\n    status: done\n  - id: T-3\n    title: \"Refund a partially-shipped order\"\n    status: next\n    depends_on: [T-2]\n    objective: \"T-2 modeled refunds only for orders in a fully-completed state. Extend the program model so an order with some line items shipped and some unshipped can be refunded, with the refundable amount derived from the unshipped portion and the already-shipped portion remaining non-refundable. The boundary that must become true is the refund amount computed from per-item shipment state, not from order-level status alone.\"\n    desired_actions:\n      # TLA+ action names that must exist in the desired program model.\n      # Confirm/rename against the actions T-2 promoted into program_model.\n      - RefundPartiallyShippedOrder\n    implementation_scope:\n      # Production surfaces this ticket may touch. Fill in from discovery\n      # against the accepted baseline before opening the ticket workspace.\n      - Replace with implementation surfaces\n    current_increment:\n      model_state:\n        # State the whole-program current model gains. Preserve every\n        # existing program_model field; T-2's refund behavior is unchanged.\n        - shipped_items\n        - refundable_amount\n      model_actions:\n        - RefundPartiallyShippedOrder\n      adapters:\n        - ReplaceWithAdapter\n      unit_tests:\n        - pytest cases/w-sdc-open-closed-ticket-adds-new-entry/specs/current/tests\n      graph_after_unit_pass:\n        - replace.with.graph.node\n    acceptance:\n      commands:\n        - tla-spec-dev --spec-root cases/w-sdc-open-closed-ticket-adds-new-entry/specs run spec-unit-tests --ticket T-3\n      assertions:\n        - A partially-shipped order can be refunded for exactly its unshipped portion.\n        - Shipped line items are never included in the refunded amount.\n        - The refund behavior T-2 delivered for fully-completed orders is preserved unchanged.\n      evidence: []\n", "old_string": "  - id: T-2\n    title: \"Refund a completed order\"\n    status: done\n", "replace_all": false}
+---
+Bash {"command": "cd /private/tmp/e-yX18IJ/home/cwd && tla-spec-dev --spec-root cases/w-sdc-open-closed-ticket-adds-new-entry/specs open ticket T-3 2>&1", "description": "Open the T-3 ticket workspace"}

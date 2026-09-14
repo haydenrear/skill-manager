@@ -1,0 +1,11 @@
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "pwd && ls -a && ./.eval-bin/git status --short --branch && ./.eval-bin/git branch -a", "description": "Inspect checkout state and branches"}
+---
+Bash {"command": "ls .skill-manager 2>&1 | head -30; echo \"--- bin/cli ---\"; ls .skill-manager/bin/cli 2>&1; echo \"--- which skt ---\"; command -v skt; echo \"--- remotes ---\"; ./.eval-bin/git remote -v", "description": "Check project home, skt availability, remotes"}
+---
+Bash {"command": "skt ticket new --help 2>&1 | head -60", "description": "Read skt ticket new help"}
+---
+Bash {"command": "skt ticket new DOCS-3 --base release/2.0 2>&1; echo \"EXIT=$?\"", "description": "Provision ticket worktree via skt front door"}
+---
+Bash {"command": "git -C /private/tmp/e-012dPo/home/cwd status --short 2>&1; echo \"EXIT=$?\"", "description": "Run the fix line from the refusal"}

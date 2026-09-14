@@ -1,0 +1,5 @@
+Skill {"skill": "tracing-observability:tracing-observability"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/deploy-helm/skills/deploy-helm/references/ 2>/dev/null"}
+---
+Bash {"command": "cat /private/tmp/skill-evals/wide/units/deploy-helm/skills/deploy-helm/references/native-runner-observability.md; echo \"=====MONITORING=====\"; cat /private/tmp/skill-evals/wide/units/deploy-helm/skills/deploy-helm/references/monitoring-cluster.md"}

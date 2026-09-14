@@ -1,0 +1,27 @@
+Read {"file_path": "/private/tmp/e-IIpmLq/home/cwd/cases/w-epic-assignment-no-force-on-blocking/issue-142.md"}
+---
+Bash {"command": "ls -a && ./.eval-bin/git status --short --branch && ./.eval-bin/git branch -a", "description": "List workspace and show git branches"}
+---
+Skill {"args": "validate rendered assignment block on issue #142 (ticket CA-03, epic/cut-the-apparatus) before handing it out", "skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/", "description": "List skill scripts"}
+---
+Bash {"command": "ls .skill-manager/skills/ 2>/dev/null; ls .skill-manager/ 2>/dev/null", "description": "Inspect project skill-manager home"}
+---
+Bash {"command": "python3 .skill-manager/skills/git-epic-workflow/scripts/validate_assignment.py --help 2>&1 | head -50", "description": "Show assignment validator usage"}
+---
+Bash {"command": "ls .skill-manager/venvs/ 2>/dev/null; command -v uv; ls .skill-manager/skills/git-epic-workflow/ ", "description": "Look for venvs and uv"}
+---
+Bash {"command": "uv run --quiet --with pyyaml python .skill-manager/skills/git-epic-workflow/scripts/validate_assignment.py --help 2>&1 | head -60", "description": "Show validator usage via uv"}
+---
+Bash {"command": "for p in .skill-manager/venvs/jinja2-cli/bin/python /opt/homebrew/bin/python3 /usr/bin/python3 $(ls -d .skill-manager/venvs/*/bin/python 2>/dev/null); do printf '%s -> ' \"$p\"; \"$p\" -c 'import yaml;print(\"yaml ok\", yaml.__version__)' 2>&1 | tail -1; done", "description": "Find a python interpreter with PyYAML"}
+---
+Bash {"command": "PY=.skill-manager/venvs/jinja2-cli/bin/python; $PY .skill-manager/skills/git-epic-workflow/scripts/validate_assignment.py --help 2>&1 | head -60", "description": "Show validator usage"}
+---
+Bash {"command": "PY=.skill-manager/venvs/jinja2-cli/bin/python; $PY .skill-manager/skills/git-epic-workflow/scripts/validate_assignment.py --assignment cases/w-epic-assignment-no-force-on-blocking/issue-142.md --expect-ticket CA-03 --expect-epic-branch epic/cut-the-apparatus; echo \"exit=$?\"", "description": "Validate the rendered assignment"}
+---
+Bash {"command": "ls specs 2>&1 | head; ls cases/w-epic-assignment-no-force-on-blocking/; cat README.md 2>/dev/null | head -30", "description": "Check for canonical plan and case files"}
+---
+Bash {"command": "PY=.skill-manager/venvs/jinja2-cli/bin/python; grep -nE \"SKILL_GATES|force|WARN|warn\" .skill-manager/skills/git-epic-workflow/scripts/validate_assignment.py | head -40", "description": "Inspect validator for force/warning handling"}
+---
+Bash {"command": "./.eval-bin/git remote -v; echo ---; ./.eval-bin/git branch -a --list '*cut-the-apparatus*'; echo \"no-local-epic=$?\"; ./.eval-bin/git cat-file -t 1f2e3d4c5b6a7988 2>&1; ./.eval-bin/git cat-file -t aabbccddeeff0011 2>&1", "description": "Check remotes, epic branch, and referenced SHAs"}

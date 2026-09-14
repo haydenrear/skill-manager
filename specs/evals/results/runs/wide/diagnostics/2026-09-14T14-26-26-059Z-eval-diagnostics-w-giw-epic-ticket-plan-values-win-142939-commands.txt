@@ -1,0 +1,17 @@
+Read {"file_path": "/private/tmp/e-5afZ6V/home/cwd/cases/w-giw-epic-ticket-plan-values-win/issue-141.md"}
+---
+Read {"file_path": "/private/tmp/e-5afZ6V/home/cwd/cases/w-giw-epic-ticket-plan-values-win/ticket_plan-CA-03.yaml"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
+---
+Bash {"command": "echo \"SMH=${SKILL_MANAGER_HOME:-$HOME/.skill-manager}\" && SMH=\"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}\"; test -x \"$SMH/bin/cli/skt\" && echo \"SKT: yes\" || echo \"SKT: no\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"WT: yes\" || echo \"WT: no\"; ls -d ./.skill-manager 2>&1; command -v skt 2>&1 || echo \"skt not on PATH\"", "description": "Check skill manager home and front door"}
+---
+Bash {"command": "./.eval-bin/git status --porcelain | head -20; echo \"--- branch ---\"; ./.eval-bin/git rev-parse --abbrev-ref HEAD; echo \"--- refs ---\"; ./.eval-bin/git show-ref | head -40; echo \"--- worktrees ---\"; ./.eval-bin/git worktree list", "description": "Inspect repo state and refs"}
+---
+Bash {"command": "echo \"--- remotes ---\"; ./.eval-bin/git remote -v; echo \"--- fetch ---\"; ./.eval-bin/git fetch origin 2>&1 | head -20; echo \"--- epic ref ---\"; ./.eval-bin/git show-ref --verify refs/remotes/origin/epic/cut-the-apparatus 2>&1; echo \"--- all branches ---\"; ./.eval-bin/git branch -a 2>&1 | head -30", "description": "Check remotes and epic branch ref"}
+---
+Bash {"command": "skt --help 2>&1 | head -30; echo \"=== ticket subcommand ===\"; skt ticket --help 2>&1 | head -40", "description": "Inspect skt ticket CLI"}
+---
+Bash {"command": "skt ticket new 141-trim-adapter --base \"$(./.eval-bin/git rev-parse origin/epic/cut-the-apparatus 2>&1)\" --path ../wt-141-trim-adapter 2>&1 | head -40; echo \"exit=$?\"", "description": "Provision declared epic ticket worktree"}

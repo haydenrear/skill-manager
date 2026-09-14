@@ -1,0 +1,19 @@
+Bash {"command": "ls -a; ls .skill-manager 2>/dev/null", "description": "List workspace and skill-manager home"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt status 2>&1 | head -60", "description": "Run skt status"}
+---
+Bash {"command": "skt status --json 2>/dev/null | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nfor u in d.get('units',[]):\n    print(u.get('name'), u.get('version'), u.get('kind'), u.get('changeManaged'), u.get('source') or u.get('coordinate') or '')\n\" 2>&1 | tail -30", "description": "List all installed units as JSON"}
+---
+Bash {"command": "skt check 2>&1 | head -60", "description": "Run skt check"}
+---
+Bash {"command": "ls .skill-manager/plugins/skt/skills/ 2>&1; echo ---; ls .skill-manager/skills/ 2>&1; echo ---; grep -n -i \"skill-manager\" .skill-manager/units.lock.toml | head -40", "description": "Inspect plugin skills and lockfile"}
+---
+Bash {"command": "sed -n '160,215p' .skill-manager/units.lock.toml", "description": "Read lockfile entry around skill-manager"}
+---
+Bash {"command": "ls .skill-manager/installed 2>/dev/null | head -40; echo \"--- retired/alias grep ---\"; grep -rn -i \"retir\\|alias\\|redirect\\|superseded\\|renamed\" .skill-manager/units.lock.toml .skill-manager/home.digest.json .skill-manager/plugins/skt/plugin.json .skill-manager/plugins/skt/skill-manager.toml 2>/dev/null | head -30", "description": "Inspect installed dir and look for retirement/alias records"}
+---
+Bash {"command": "python3 -c \"\nimport json\nd=json.load(open('.skill-manager/installed/skt.projections.json'))\nprint(json.dumps(d)[:1200])\n\"; echo \"=== skt.json ===\"; python3 -c \"\nimport json\nd=json.load(open('.skill-manager/installed/skt.json'))\nprint(json.dumps(d,indent=1)[:1500])\n\"", "description": "Inspect skt plugin install records"}
+---
+Bash {"command": "skt sync skt 2>&1", "description": "Sync the skt plugin to its latest pushed source"}

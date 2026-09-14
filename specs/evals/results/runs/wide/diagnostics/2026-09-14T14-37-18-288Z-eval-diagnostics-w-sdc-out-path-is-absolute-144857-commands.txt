@@ -1,0 +1,27 @@
+Bash {"command": "pwd && ls -a", "description": "List workspace root contents"}
+---
+Bash {"command": "ls -a /private/tmp/e-jYEz48/home/cwd/cases/w-sdc-out-path-is-absolute 2>&1; echo \"---\"; ls -R /private/tmp/e-jYEz48/home/cwd/cases/w-sdc-out-path-is-absolute/specs 2>&1 | head -50", "description": "Inspect the case directory"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/generation_modes.md"}
+---
+Bash {"command": "cat /private/tmp/e-jYEz48/home/cwd/cases/w-sdc-out-path-is-absolute/specs/program_model/Cart.tla; echo \"=== MC.cfg ===\"; cat /private/tmp/e-jYEz48/home/cwd/cases/w-sdc-out-path-is-absolute/specs/program_model/MC.cfg", "description": "Read the Cart spec and config"}
+---
+Grep {"-C": 3, "head_limit": 80, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler", "pattern": "absolute"}
+---
+Grep {"-C": 4, "head_limit": 100, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references", "pattern": "spec-unit|--view internal|generate cases"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && ls scripts/ && echo \"=== spec_paths.py ===\" && cat scripts/spec_paths.py", "description": "List scripts and read path resolution helper"}
+---
+Grep {"-n": true, "head_limit": 120, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/scripts/tla_spec_dev.py", "pattern": "generate|--out|spec-unit|add_parser"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && python3 - <<'EOF'\nimport re\nsrc=open('scripts/generate_cases_from_tlc_dump.py').read()\ni=src.find('def add_arguments')\nprint(src[i:i+6000])\nEOF", "description": "Inspect generate cases argument definitions"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -n \"SUPPORTED_VIEWS\\|VIEW_OUTPUT\\|spec-unit\\|testgraph\\|args.view\" scripts/generate_cases_from_tlc_dump.py | head -40", "description": "Check view handling in the generator"}
+---
+Bash {"command": "command -v tla-spec-dev timeout gtimeout tlc2 java 2>&1; echo \"exit:$?\"", "description": "Check for CLI and timeout availability"}
+---
+Bash {"command": "timeout 120 tla-spec-dev --spec-root cases/w-sdc-out-path-is-absolute/specs generate cases \\\n  cases/w-sdc-out-path-is-absolute/specs/program_model/Cart.tla \\\n  cases/w-sdc-out-path-is-absolute/specs/program_model/MC.cfg \\\n  --out \"$PWD/cases/w-sdc-out-path-is-absolute/specs/generated/testgraph/run-1\" \\\n  --package cart_cases", "description": "Generate the spec-unit case package for Cart"}
+---
+Bash {"command": "ls -R /private/tmp/e-jYEz48/home/cwd/cases/w-sdc-out-path-is-absolute/specs/generated 2>&1 | head", "description": "Check whether any output was written"}

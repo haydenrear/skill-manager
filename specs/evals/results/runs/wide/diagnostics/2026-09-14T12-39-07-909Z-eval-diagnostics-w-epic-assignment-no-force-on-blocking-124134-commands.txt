@@ -1,0 +1,21 @@
+Read {"file_path": "/private/tmp/e-BZFBAF/home/cwd/cases/w-epic-assignment-no-force-on-blocking/issue-142.md"}
+---
+Bash {"command": "ls -a && ./.eval-bin/git status --short --branch 2>&1 | head -20", "description": "List working dir and git status"}
+---
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/", "description": "List skill scripts"}
+---
+Bash {"command": "python3 /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_assignment.py --help", "description": "Show validator usage"}
+---
+Bash {"command": "command -v uv; command -v pip3; ls .skill-manager 2>/dev/null | head", "description": "Check for uv/pip and skill-manager home"}
+---
+Bash {"command": "uv run --with pyyaml python /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_assignment.py --help 2>&1 | head -40", "description": "Run validator help with pyyaml"}
+---
+Bash {"command": "for p in $(ls -d .skill-manager/**/*venv*/bin/python3 2>/dev/null) $(find .skill-manager -maxdepth 5 -name python3 -path '*bin*' 2>/dev/null | head -20); do echo \"--- $p\"; \"$p\" -c 'import yaml; print(\"yaml OK\", yaml.__version__)' 2>&1 | tail -1; done", "description": "Search for a python with pyyaml in skill-manager home"}
+---
+Bash {"command": "PY=.skill-manager/venvs/jinja2-cli/bin/python3\n\"$PY\" /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_assignment.py --help 2>&1 | head -40", "description": "Show validator usage"}
+---
+Bash {"command": "PY=.skill-manager/venvs/jinja2-cli/bin/python3\n\"$PY\" /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_assignment.py \\\n  --assignment cases/w-epic-assignment-no-force-on-blocking/issue-142.md \\\n  --expect-ticket CA-03 --expect-epic-branch epic/cut-the-apparatus --verbose; echo \"EXIT=$?\"", "description": "Validate the rendered assignment for CA-03"}
+---
+Bash {"command": "ls cases/w-epic-assignment-no-force-on-blocking/; echo \"---\"; ls specs/desired_program_model/ticket_plan.yaml 2>&1; echo \"---branches\"; ./.eval-bin/git branch -a 2>&1 | head", "description": "Check for canonical plan and epic branch"}

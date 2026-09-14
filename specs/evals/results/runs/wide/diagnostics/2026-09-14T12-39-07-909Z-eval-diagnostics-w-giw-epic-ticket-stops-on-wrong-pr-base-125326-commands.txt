@@ -1,0 +1,11 @@
+Read {"file_path": "/private/tmp/e-vUdOMG/home/cwd/cases/w-giw-epic-ticket-stops-on-wrong-pr-base/issue-141.md"}
+---
+Bash {"command": "./.eval-bin/git status --short --branch && echo \"---\" && ./.eval-bin/git branch -a && echo \"---\" && ls -a", "description": "Show branch state and directory listing"}
+---
+Skill {"args": "issue #141 \u2014 epic assignment, do the first step", "skill": "git-issue-workflow:git-issue-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
+---
+Bash {"command": "SMH=\"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}\"; echo \"SMH=$SMH\"; test -x \"$SMH/bin/cli/skt\" && echo \"skt-cli: YES\" || echo \"skt-cli: no\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"wt: YES\" || echo \"wt: no\"; command -v skt || echo \"skt not on PATH\"", "description": "Test for the ticket front door"}
+---
+Bash {"command": "./.eval-bin/git remote -v; echo \"--- worktrees ---\"; ./.eval-bin/git worktree list; echo \"--- epic ref? ---\"; ./.eval-bin/git show-ref | grep -i -e epic -e cut-the-apparatus || echo \"(no epic/cut-the-apparatus ref, local or remote)\"; echo \"--- feature ref? ---\"; ./.eval-bin/git show-ref | grep -i 141 || echo \"(no feature/141-trim-adapter ref)\"", "description": "Read-only check of remotes, worktrees and epic refs"}

@@ -1,0 +1,9 @@
+Bash {"command": "ls -la /private/tmp/e-J6DrKM/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/", "description": "List case directory"}
+---
+Read {"file_path": "/private/tmp/e-J6DrKM/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/check-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-J6DrKM/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/record-vs-checkout.txt"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt publish git-issue-workflow", "description": "Publish the home-edited unit out of this home"}

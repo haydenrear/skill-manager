@@ -1,0 +1,13 @@
+Read {"file_path": "/private/tmp/e-foqwKi/home/cwd/cases/w-giw-epic-ticket-plan-values-win/issue-141.md"}
+---
+Read {"file_path": "/private/tmp/e-foqwKi/home/cwd/cases/w-giw-epic-ticket-plan-values-win/ticket_plan-CA-03.yaml"}
+---
+Skill {"skill": "git-issue-workflow:git-issue-workflow"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
+---
+Bash {"command": "SMH=\"${SKILL_MANAGER_HOME:-$HOME/.skill-manager}\"; echo \"SMH=$SMH\"; test -x \"$SMH/bin/cli/skt\" && echo \"SKT: yes\" || echo \"SKT: no\"; test -x \"$SMH/skills/git-issue-workflow/scripts/wt\" && echo \"WT: yes\" || echo \"WT: no\"; echo \"--- ./.skill-manager ---\"; ls -d ./.skill-manager 2>&1; test -x ./.skill-manager/bin/cli/skt && echo \"proj SKT: yes\" || echo \"proj SKT: no\"; test -x ./.skill-manager/skills/git-issue-workflow/scripts/wt && echo \"proj WT: yes\" || echo \"proj WT: no\"; echo \"--- which ---\"; command -v skt || echo \"skt not on PATH\"", "description": "Check for skt and wt front doors"}
+---
+Bash {"command": "./.eval-bin/git rev-parse --abbrev-ref HEAD; echo \"--- branches ---\"; ./.eval-bin/git branch -a; echo \"--- status ---\"; ./.eval-bin/git status --porcelain; echo \"--- remotes ---\"; ./.eval-bin/git remote -v; echo \"--- log ---\"; ./.eval-bin/git log --oneline -5 2>&1", "description": "Inspect repository branches and remotes"}
+---
+Bash {"command": "git fetch origin && commit_oid=$(git rev-parse origin/epic/cut-the-apparatus) && skt ticket new 141-trim-adapter --base \"$commit_oid\" --path ../wt-141-trim-adapter", "description": "Provision the declared epic ticket worktree"}

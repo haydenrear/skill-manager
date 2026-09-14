@@ -1,0 +1,15 @@
+Bash {"command": "ls -a /private/tmp/e-lfzsbp/home/cwd && echo \"--- branch ---\" && ./.eval-bin/git -C /private/tmp/e-lfzsbp/home/cwd branch --show-current && echo \"--- log ---\" && ./.eval-bin/git -C /private/tmp/e-lfzsbp/home/cwd log --oneline -10", "description": "List repo contents and git state"}
+---
+Skill {"skill": "git-issue:git-issue"}
+---
+Bash {"command": "cat -n README.md && echo \"=== branches ===\" && ./.eval-bin/git branch -a && echo \"=== ls .skill-manager ===\" && ls .skill-manager && echo \"=== cases ===\" && ls cases | head -30"}
+---
+Bash {"command": "echo \"=== remotes ===\" && ./.eval-bin/git remote -v; echo \"=== gh ===\"; gh repo view --json nameWithOwner,defaultBranchRef 2>&1 | head -20; echo \"=== skills dir ===\"; ls .skill-manager/skills 2>&1 | head -40"}
+---
+Bash {"command": "B=/private/tmp/skill-evals/wide/units/git-issue/skills/git-issue; ls $B $B/references; echo \"=== worktree-branch ===\"; cat -n $B/references/worktree-branch.md"}
+---
+Bash {"command": "ls .skill-manager/plugins 2>&1; echo \"=== skt on PATH? ===\"; command -v skt || echo \"no skt\"; echo \"=== repo files ===\"; ./.eval-bin/git ls-files | head -20; echo \"count:\"; ./.eval-bin/git ls-files | wc -l"}
+---
+Bash {"command": "B=/private/tmp/skill-evals/wide/units/git-issue/skills/git-issue; sed -n 1,200p $B/references/regression-close.md"}
+---
+Bash {"command": "B=/private/tmp/skill-evals/wide/units/git-issue/skills/git-issue; sed -n 200,320p $B/references/regression-close.md"}

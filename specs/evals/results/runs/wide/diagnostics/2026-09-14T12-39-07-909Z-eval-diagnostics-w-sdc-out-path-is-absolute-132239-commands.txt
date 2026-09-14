@@ -1,0 +1,19 @@
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "pwd && ls -la && ls cases/w-sdc-out-path-is-absolute/specs/program_model/ 2>/dev/null", "description": "Show working directory and case layout"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/generation_modes.md"}
+---
+Bash {"command": "ls -R cases/w-sdc-out-path-is-absolute | head -50 && echo ---- && cat cases/w-sdc-out-path-is-absolute/specs/program_model/MC.cfg", "description": "List case tree and show MC.cfg"}
+---
+Bash {"command": "which tla-spec-dev; ls .skill-manager/ 2>/dev/null; ls .skill-manager/skills 2>/dev/null", "description": "Check CLI availability and skill home"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/spec-double-compiler/ && ls /private/tmp/skill-evals/wide/units/spec-double-compiler/scripts 2>/dev/null | head -40", "description": "List skill repo contents"}
+---
+Bash {"command": "tla-spec-dev --help 2>&1 | head -60", "description": "Show CLI help"}
+---
+Bash {"command": "tla-spec-dev generate --help 2>&1 | head -40; echo ====; tla-spec-dev generate cases --help 2>&1 | head -80", "description": "Show generate subcommand help"}
+---
+Bash {"command": "tla-spec-dev generate cases --help 2>&1 | head -100", "description": "Show generate cases help"}
+---
+Bash {"command": "tla-spec-dev generate cases \\\n  cases/w-sdc-out-path-is-absolute/specs/program_model/Cart.tla \\\n  cases/w-sdc-out-path-is-absolute/specs/program_model/MC.cfg \\\n  --out /private/tmp/e-w6z2J1/home/cwd/cases/w-sdc-out-path-is-absolute/specs/generated/testgraph/run-1 2>&1 | tail -30", "description": "Generate spec-unit case package from the Cart model"}

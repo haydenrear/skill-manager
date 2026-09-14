@@ -1,0 +1,7 @@
+Skill {"skill": "tracing-observability:tracing-observability"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/tracing-observability/skills/tracing-observability/references/python/jaeger-spans.md"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/deploy-helm/skills/*/references/ 2>/dev/null || find /private/tmp/skill-evals/wide/units/deploy-helm -name 'monitoring-cluster.md'", "description": "Locate the deploy-helm monitoring cluster reference"}
+---
+Bash {"command": "echo \"=== monitoring-cluster.md ===\"; cat /private/tmp/skill-evals/wide/units/deploy-helm/skills/*/references/monitoring-cluster.md; echo; echo \"=== native-runner-observability.md ===\"; cat /private/tmp/skill-evals/wide/units/deploy-helm/skills/*/references/native-runner-observability.md", "description": "Read monitoring cluster and native runner observability references"}

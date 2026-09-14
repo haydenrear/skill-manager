@@ -1,0 +1,29 @@
+Bash {"command": "ls -la /private/tmp/e-zo1wAx/home/cwd && echo \"---\" && find /private/tmp/e-zo1wAx/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry -maxdepth 4 | head -100", "description": "List workspace and spec case tree"}
+---
+Bash {"command": "ls -la /private/tmp/e-zo1wAx/home/cwd/.skill-manager 2>&1 | head -20", "description": "Check for project skill manager home"}
+---
+Read {"file_path": "/private/tmp/e-zo1wAx/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs/desired_program_model/ticket_plan.yaml"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "which tla-spec-dev; echo \"rc=$?\"; ls .skill-manager/bin 2>/dev/null; echo \"--- full tree of spec root ---\"; find cases/w-sdc-open-closed-ticket-adds-new-entry -type f | head -50", "description": "Check CLI availability and spec root files"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '1,200p' references/spec_evolution.md 2>/dev/null | head -120", "description": "Read spec evolution reference"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && find . -name \"ticket_plan.yaml\" | head; echo \"=== examples ===\"; find . -name \"ticket_plan*\" -exec echo \"--- {}\" \\; -exec head -60 {} \\; 2>/dev/null | head -120", "description": "Find example ticket plans in skill"}
+---
+Bash {"command": "tla-spec-dev --help 2>&1 | head -60", "description": "Show spec dev CLI help"}
+---
+Bash {"command": "tla-spec-dev open ticket --help 2>&1 | head -40; echo \"=== SCAFFOLD WORKFLOW ===\"; tla-spec-dev scaffold workflow --help 2>&1 | head -40", "description": "Show open ticket and scaffold workflow help"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"ticket_plan\" references/workflows.md | head -30", "description": "Grep workflows reference for plan mentions"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '40,120p' references/workflows.md", "description": "Read workflows reference ticket section"}
+---
+Bash {"command": "ls -l .skill-manager/bin/cli/tla-spec-dev; head -5 .skill-manager/bin/cli/tla-spec-dev", "description": "Inspect CLI shim"}
+---
+Bash {"command": "grep -rn \"terminal\\|TERMINAL_STATUS\\|status\" .skill-manager/cache/**/tla-spec-dev*/**/open_ticket.py 2>/dev/null | head -20; echo \"---find---\"; find .skill-manager -name \"*.py\" -path \"*tla*\" 2>/dev/null | head -20", "description": "Locate CLI python sources"}
+---
+Edit {"file_path": "/private/tmp/e-zo1wAx/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs/desired_program_model/ticket_plan.yaml", "new_string": "  - id: T-2\n    title: \"Refund a completed order\"\n    status: done\n  - id: T-3\n    title: \"Refund a partially-shipped order\"\n    status: planned\n    depends_on: [T-2]\n    notes: >\n      Follow-up to the delivered T-2 refund behavior. T-2 modeled refunds of an\n      order whose lines are all shipped; an order with some lines shipped and\n      some unshipped is not covered by that action's guard. This ticket extends\n      the program model rather than reopening T-2, whose delivery receipt is\n      terminal.\n    acceptance_criteria:\n      - \"The model distinguishes shipped from unshipped lines on an order.\"\n      - \"A refund action admits a partially-shipped order and refunds only the\n         amount attributable to unshipped lines.\"\n      - \"An invariant relates refunded amount to shipped state, so a refund can\n         never exceed the unshipped portion.\"\n      - \"T-2's whole-order refund behavior is preserved unchanged.\"\n    validation_commands:\n      - \"tla-spec-dev --spec-root specs run spec-unit-tests --ticket T-3\"\n    evidence: []\n", "old_string": "  - id: T-2\n    title: \"Refund a completed order\"\n    status: done\n", "replace_all": false}
+---
+Bash {"command": "tla-spec-dev --spec-root cases/w-sdc-open-closed-ticket-adds-new-entry/specs open ticket T-3 2>&1 | head -40; echo \"rc=${PIPESTATUS[0]}\"", "description": "Open the new ticket workspace"}

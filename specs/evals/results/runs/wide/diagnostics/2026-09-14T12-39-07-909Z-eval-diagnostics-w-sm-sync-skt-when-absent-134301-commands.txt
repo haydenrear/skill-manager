@@ -1,0 +1,13 @@
+Bash {"command": "ls -a /private/tmp/e-3W26MH/home/cwd; echo ---; find /private/tmp/e-3W26MH/home/cwd -name 'sync-output.txt' -maxdepth 6 2>/dev/null", "description": "List workspace and find sync output file"}
+---
+Bash {"command": "cat /private/tmp/e-3W26MH/home/cwd/cases/w-sm-sync-skt-when-absent/sync-output.txt; echo \"=== ls case ===\"; ls -a /private/tmp/e-3W26MH/home/cwd/cases/w-sm-sync-skt-when-absent/", "description": "Read the recorded sync output"}
+---
+Bash {"command": "grep -rn \"install github:haydenrear/skt\\|install .*skt\\b\" .skill-manager --include=*.md -l 2>/dev/null | head -20; echo ===; ls .skill-manager", "description": "Search skill-manager home for skt install guidance"}
+---
+Bash {"command": "ls -a /private/tmp/e-3W26MH/home/cwd/.skill-manager", "description": "List skill-manager home contents"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "ls .skill-manager/projects .skill-manager/plugins .skill-manager/skills 2>&1 | head -40; echo \"=== skill-project ===\"; ls skill-project.toml 2>&1; find . -maxdepth 3 -name 'skill-project.toml' 2>/dev/null", "description": "Inspect project home state"}
+---
+Bash {"command": "skill-manager install github:haydenrear/skt", "description": "Install the skt plugin into the home"}

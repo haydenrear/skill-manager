@@ -1,0 +1,31 @@
+Bash {"command": "ls -la /private/tmp/e-aWkHAR/home/cwd && ls -R /private/tmp/e-aWkHAR/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module 2>/dev/null | head -50", "description": "List working directory and case files"}
+---
+Bash {"command": "cd /private/tmp/e-aWkHAR/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired && echo \"=== adapters.py ===\" && cat -n adapters.py && echo \"=== case_adapters.toml ===\" && cat -n case_adapters.toml", "description": "Read desired adapters and toml"}
+---
+Bash {"command": "cd /private/tmp/e-aWkHAR/home/cwd && ls .skill-manager/ && grep -rl \"case_adapters\" .skill-manager/ 2>/dev/null | head -20", "description": "Find skill docs mentioning case_adapters"}
+---
+Bash {"command": "cd /private/tmp/e-aWkHAR/home/cwd/.skill-manager/skills/spec-double-compiler && ls && ls references/ 2>/dev/null && grep -rn \"case_adapters\" --include=*.md . | head -40", "description": "Explore spec-double-compiler skill docs"}
+---
+Grep {"-n": true, "head_limit": 60, "output_mode": "content", "path": "/private/tmp/e-aWkHAR/home/cwd/.skill-manager/skills/spec-double-compiler/references", "pattern": "case_adapters"}
+---
+Read {"file_path": "/private/tmp/e-aWkHAR/home/cwd/.skill-manager/skills/spec-double-compiler/references/case_modules.md"}
+---
+Grep {"-n": true, "head_limit": 40, "output_mode": "content", "path": "/private/tmp/e-aWkHAR/home/cwd/.skill-manager/skills/spec-double-compiler", "pattern": "bare module path|bare adapter|module path"}
+---
+Grep {"-n": true, "head_limit": 40, "output_mode": "content", "path": "/private/tmp/e-aWkHAR/home/cwd/.skill-manager/skills/spec-double-compiler", "pattern": "tickets/.*/desired|desired/adapters|desired view"}
+---
+Bash {"command": "find specs -name case_adapters.toml | head -20 && echo \"---- current ----\" && sed -n 1,40p specs/current/case_adapters.toml 2>/dev/null", "description": "Find real case_adapters.toml examples"}
+---
+Bash {"command": "echo \"=== T RD-06 desired ===\" && cat specs/tickets/RD-06/desired/case_adapters.toml && echo \"=== program_model ===\" && cat specs/program_model/case_adapters.toml && echo \"=== ls RD-06 desired ===\" && ls specs/tickets/RD-06/desired", "description": "Compare ticket desired vs program_model adapter bindings"}
+---
+Bash {"command": "sed -n '1600,1680p' scripts/effect_conformance.py; echo \"=== 55,110 ===\"; sed -n '55,110p' scripts/effect_conformance.py", "description": "Read effect_conformance adapter loading docs"}
+---
+Bash {"command": "sed -n '1195,1300p' tests/test_effect_conformance.py", "description": "Read the bare module path test"}
+---
+Grep {"-n": true, "head_limit": 30, "output_mode": "content", "path": "/private/tmp/e-aWkHAR/home/cwd/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py", "pattern": "\"kind\"|\\bkind\\b"}
+---
+Grep {"-A": 4, "-n": true, "head_limit": 40, "output_mode": "content", "path": "/private/tmp/e-aWkHAR/home/cwd/.skill-manager/skills/spec-double-compiler/references", "pattern": "adapters\\.\\w+\\]|\\[adapters"}
+---
+Edit {"file_path": "/private/tmp/e-aWkHAR/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/case_adapters.toml", "new_string": "[adapters.Checkout]\nadapter = \"specs.program_model.adapters:CheckoutInternalAdapter\"\nkind = \"ecommerce-internal\"\n\n[adapters.Refund]\nadapter = \"adapters:RefundInternalAdapter\"\nkind = \"ecommerce-internal\"", "old_string": "[adapters.Checkout]\nadapter = \"specs.program_model.adapters:CheckoutInternalAdapter\"\nkind = \"ecommerce-internal\"", "replace_all": false}
+---
+Bash {"command": "cd /private/tmp/e-aWkHAR/home/cwd && cat cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/case_adapters.toml && echo \"--- git status ---\" && .eval-bin/git status --short", "description": "Verify file contents and git status"}

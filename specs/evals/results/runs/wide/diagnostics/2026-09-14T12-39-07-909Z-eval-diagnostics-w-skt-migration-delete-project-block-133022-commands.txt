@@ -1,0 +1,29 @@
+Read {"file_path": "/private/tmp/e-iaYifJ/home/cwd/cases/w-skt-migration-delete-project-block/status-output.txt"}
+---
+Read {"file_path": "/private/tmp/e-iaYifJ/home/cwd/cases/w-skt-migration-delete-project-block/skill-project.toml"}
+---
+Skill {"skill": "skt:skill-manager"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/skt/skills/skill-manager/references/projects.md"}
+---
+Bash {"command": "ls -la /private/tmp/e-iaYifJ/home/cwd/ 2>&1 | head -40; echo \"---\"; ls /private/tmp/e-iaYifJ/home/cwd/.skill-manager 2>&1 | head", "description": "List working directory contents"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/; echo \"---\"; cat /private/tmp/skill-evals/wide/units/skt/skill-manager-plugin.toml 2>/dev/null || cat /private/tmp/skill-evals/wide/units/skt/plugin.json 2>/dev/null", "description": "Inspect skt unit root and manifest"}
+---
+Bash {"command": "cd /private/tmp/e-iaYifJ/home/cwd/.skill-manager && ls installed/ | head -50; echo \"--- skt.json ---\"; cat installed/skt.json 2>/dev/null | head -40", "description": "List installed unit records and show skt record"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && grep -rn \"plugins\\.\" --include=*.md skills/ | grep -i -E \"\\[plugins|plugins\\.[a-z-]+\\]\" | head -30", "description": "Search skt docs for project manifest plugin table syntax"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/skt && ls skills/*/references/ && grep -rln \"skill-project.toml\" skills/ | head -20", "description": "List skt skill references and files mentioning project manifest"}
+---
+Grep {"-C": 4, "head_limit": 60, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/skt", "pattern": "\\[plugins\\.|\\[skills\\.|\\[harnesses\\.|\\[docs\\."}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/skt/skills/; echo \"---\"; ls /private/tmp/e-iaYifJ/home/cwd/.skill-manager/plugins/skt/skills/ 2>/dev/null", "description": "List skt skills in repo and installed home"}
+---
+Bash {"command": "find /private/tmp/skill-evals/wide/units /private/tmp/e-iaYifJ/home/cwd/.skill-manager -name \"skill-project.toml\" -o -name \"skill-manager-project.toml\" 2>/dev/null | head -20", "description": "Find example project manifests"}
+---
+Bash {"command": "cd /private/tmp/e-iaYifJ/home/cwd/.skill-manager && cat plugins/skt/skill-project.toml; echo \"=== git-issue ===\"; cat skills/git-issue/skill-project.toml", "description": "Show two example project manifests"}
+---
+Bash {"command": "grep -rn \"^\\[plugins\\.\\|^\\[harnesses\\.\\|^\\[docs\\.\" --include=skill-project.toml . | head -20; echo \"=== origins ===\"; python3 -c \"\nimport json,glob,os\nfor f in sorted(glob.glob('installed/*.json')):\n    if f.endswith('.projections.json'): continue\n    d=json.load(open(f))\n    print(f'{d.get(\\\"name\\\"):30} {d.get(\\\"unitKind\\\"):10} {d.get(\\\"origin\\\")}')\n\"", "description": "Find plugin tables in manifests and list unit origins"}
+---
+Bash {"command": "sed -n '40,75p' skills/deploy-helm/skill-project.toml; echo \"=== epic ===\"; sed -n '45,80p' skills/git-epic-workflow/skill-project.toml", "description": "Show plugin declaration examples in two manifests"}

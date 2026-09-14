@@ -1,0 +1,37 @@
+Bash {"command": "ls -la /private/tmp/e-qve2rH/home/cwd && echo \"---\" && ls -la /private/tmp/e-qve2rH/home/cwd/cases/w-epic-retire-part-of-goal-warns-only/", "description": "List workspace and case directory"}
+---
+Read {"file_path": "/private/tmp/e-qve2rH/home/cwd/cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml"}
+---
+Skill {"skill": "git-epic-workflow:git-epic-workflow"}
+---
+Bash {"command": "ls -R /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow", "description": "List skill contents"}
+---
+Bash {"command": "ls .skill-manager && echo \"--- bin/cli:\" && ls .skill-manager/bin/cli 2>/dev/null", "description": "Inspect project skill manager home"}
+---
+Bash {"command": "ls .skill-manager/skills/ | head -50", "description": "List installed skills in project home"}
+---
+Bash {"command": "sed -n '1,80p' /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py", "description": "Read validator header"}
+---
+Bash {"command": ".skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml; echo \"EXIT=$?\"", "description": "Run epic plan validator on the plan"}
+---
+Bash {"command": "grep -n \"cannot decide retired work\\|disposition conflicts with active\\|def main\\|truncat\\|\\[:1\\|width\" /private/tmp/skill-evals/wide/units/git-epic-workflow/scripts/validate_epic_plan.py 2>/dev/null || grep -n \"cannot decide retired work\\|disposition conflicts with active\\|truncat\\|shorten\\|120\" /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py", "description": "Locate warning text in validator source"}
+---
+Bash {"command": "grep -n \"retir\" -i /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/goals-and-evaluation.md", "description": "Find retirement guidance in goals reference"}
+---
+Bash {"command": "sed -n '1060,1110p' /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py", "description": "Read validator retirement/goal checks"}
+---
+Bash {"command": "sed -n '290,340p' /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/goals-and-evaluation.md", "description": "Read goal disposition on retirement section"}
+---
+Bash {"command": "grep -n \"5a\" -A 90 /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/references/plan-and-schedule.md | sed -n '1,140p'", "description": "Read retirement schema section"}
+---
+Bash {"command": ".skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py --help 2>&1 | head -40", "description": "Show validator options"}
+---
+Bash {"command": "ls -la cases/w-epic-retire-part-of-goal-warns-only/; echo \"--- specs tree:\"; ls -la specs 2>&1 | head", "description": "Check for receipt and specs tree"}
+---
+Bash {"command": ".skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py --verbose cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml; echo \"EXIT=$?\"", "description": "Run validator with full warning text"}
+---
+Bash {"command": ".skill-manager/skills/git-epic-workflow/scripts/validate_epic_plan.py --strict cases/w-epic-retire-part-of-goal-warns-only/ticket_plan.yaml; echo \"EXIT=$?\"", "description": "Run validator in strict mode"}
+---
+Bash {"command": "grep -n \"issue\\|plan_commit\\|schedule_revision\" /private/tmp/skill-evals/wide/units/git-epic-workflow/skills/git-epic-workflow/scripts/validate_epic_plan.py | grep -v successor | head -30", "description": "Check validator handling of issue and revision fields"}
+---
+Bash {"command": ".eval-bin/git status --short | head && echo \"--- branch:\" && .eval-bin/git branch --show-current && echo \"--- tracked top-level:\" && .eval-bin/git ls-files | sed 's#/.*##' | sort -u | head", "description": "Inspect repo shape and branch"}

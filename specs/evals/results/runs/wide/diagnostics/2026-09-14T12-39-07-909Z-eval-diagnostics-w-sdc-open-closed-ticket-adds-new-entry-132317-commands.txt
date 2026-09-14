@@ -1,0 +1,39 @@
+Bash {"command": "ls -la /private/tmp/e-y7meBl/home/cwd && echo \"--- specs root ---\" && ls -la /private/tmp/e-y7meBl/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs", "description": "List working dir and spec root"}
+---
+Bash {"command": "./.eval-bin/git status --short && echo \"--- branch ---\" && ./.eval-bin/git branch --show-current && echo \"--- log ---\" && ./.eval-bin/git log --oneline -15", "description": "Check git status and recent history"}
+---
+Bash {"command": "cd /private/tmp/e-y7meBl/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs && find . -type f | head -100 && echo \"=== dirs ===\" && find . -type d | head -50", "description": "Enumerate spec tree files"}
+---
+Read {"file_path": "/private/tmp/e-y7meBl/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs/desired_program_model/ticket_plan.yaml"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && ls references/ && echo \"=== CLI? ===\" && which tla-spec-dev || echo \"tla-spec-dev NOT on PATH\"", "description": "List skill references and check CLI availability"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"ticket_plan\" references/spec_evolution.md references/workflows.md | head -60", "description": "Find ticket_plan guidance in references"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '40,75p' references/workflows.md && echo \"=== spec_evolution 20-60 ===\" && sed -n '20,60p' references/spec_evolution.md", "description": "Read ticket authoring sections of references"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"ticket_plan.yaml\" --include=*.md --include=*.yaml --include=*.py -l . | head -20 && echo \"=== example plans ===\" && find . -name \"ticket_plan.yaml\" | head", "description": "Find example ticket_plan.yaml files"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"ordinal\\|immutable\\|reopen\" references/*.md | head -30", "description": "Search for plan ordinal immutability rules"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn -A25 \"ticket_plan.yaml\" templates/ 2>/dev/null | head -60; echo \"=== templates ls ===\"; ls templates/", "description": "Look for ticket plan templates"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '180,240p' references/spec_evolution.md", "description": "Read plan ordinal and rescheduling rules"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn -B3 -A30 \"tickets:\" --include=\"*.yaml\" --include=\"*.yml\" --include=\"*.md\" . 2>/dev/null | grep -v \"^\\./examples/agent_integration\" | head -80", "description": "Find a worked ticket_plan example"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '100,170p' \"specs/results/scorecards/score-drives-validation/GOAL-scored-at-goal-time/SV-06/validator-experiment/plan-with-scored-by.yaml\"", "description": "Read a worked ticket plan example"}
+---
+Bash {"command": "ls /private/tmp/e-y7meBl/home/cwd/.skill-manager/ 2>/dev/null | head -40; echo \"=== cli dirs ===\"; ls /private/tmp/e-y7meBl/home/cwd/.skill-manager/cli 2>/dev/null; echo \"=== find tla-spec-dev ===\"; ls /private/tmp/e-y7meBl/home/cwd/.skill-manager/bin 2>/dev/null", "description": "Look for tla-spec-dev in project skill-manager home"}
+---
+Bash {"command": "ls -la /private/tmp/e-y7meBl/home/cwd/.skill-manager/bin/cli 2>/dev/null | head -20", "description": "List CLI shims in skill-manager home"}
+---
+Write {"content": "version: 1\nname: cart-workflow\ntickets:\n  - id: T-1\n    title: \"Reject checkout of an empty cart\"\n    status: done\n  - id: T-2\n    title: \"Refund a completed order\"\n    status: done\n  - id: T-3\n    title: \"Refund an order that is only partially shipped\"\n    status: planned\n    depends_on: [T-2]\n    objective: >-\n      T-2 modeled refunds for an order that is wholly complete. An order whose\n      lines are partly shipped and partly unshipped has no refund behavior in\n      the model at all: the T-2 refund action's guard admits only the completed\n      state, so a partially-shipped order can neither be refunded nor be shown\n      to be correctly refused. Extend the program spec so partial shipment is a\n      representable order state and refund is defined over it, rather than\n      widening the T-2 guard until it silently accepts states whose refund\n      amount nothing in the model pins down.\n    open_question: >-\n      REFUND SCOPE IS A PRODUCT DECISION AND IS NOT SETTLED. Two candidate\n      semantics: (a) refund only the unshipped lines, leaving shipped lines\n      payable; (b) refund the whole order and require a return for the shipped\n      lines, which introduces a return/restock lifecycle this plan does not\n      model yet. The ticket below is written against (a), the smaller change,\n      as a stated assumption. If the owner chooses (b), this entry needs\n      rescoping before it is opened -- (b) is a second lifecycle, not a\n      variation on the refund amount.\n    desired_actions:\n      - RefundPartiallyShippedOrder\n    acceptance:\n      assertions:\n        - \"Order state distinguishes fully-shipped, partially-shipped, and unshipped lines; partial shipment is reachable in Init/Next, not only assertable as a Given.\"\n        - \"Refunding a partially-shipped order refunds exactly the unshipped lines under assumption (a), and the refunded amount is pinned by an invariant rather than by an adapter.\"\n        - \"T-2's completed-order refund behavior is unchanged: its cases still generate and still pass.\"\n        - \"Refunding the same order twice is refused, for partial shipment as it already is for completed orders.\"\n        - \"An External view case drives the refund through the public surface and asserts the observable projection, not only an internal transition.\"\n      commands:\n        - \"tla-spec-dev --spec-root specs run spec-unit-tests --ticket T-3\"\n    evidence: []\n", "file_path": "/private/tmp/e-y7meBl/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs/desired_program_model/ticket_plan.yaml"}
+---
+Bash {"command": "cd /private/tmp/e-y7meBl/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry/specs && cat desired_program_model/ticket_plan.yaml | head -20; echo \"=== exit: $? ===\"", "description": "Verify whether the plan edit landed on disk"}
+---
+Bash {"command": "cd /private/tmp/e-y7meBl/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry && python3 -c \"\nimport yaml,sys\nd=yaml.safe_load(open('specs/desired_program_model/ticket_plan.yaml'))\nfor i,t in enumerate(d['tickets']): print('ordinal',i,t['id'],t['status'])\n\"", "description": "Validate plan YAML parses and check ordinals"}
+---
+Bash {"command": "cd /private/tmp/e-y7meBl/home/cwd/cases/w-sdc-open-closed-ticket-adds-new-entry && /private/tmp/e-y7meBl/home/cwd/.skill-manager/bin/cli/tla-spec-dev --spec-root specs open ticket T-3 2>&1 | tail -30; echo \"=== exit: ${pipestatus[1]} ===\"", "description": "Open the ticket workspace for T-3"}

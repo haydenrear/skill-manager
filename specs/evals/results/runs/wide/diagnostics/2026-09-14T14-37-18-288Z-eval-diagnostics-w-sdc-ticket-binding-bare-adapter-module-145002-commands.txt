@@ -1,0 +1,21 @@
+Bash {"command": "ls -R /private/tmp/e-lS42lH/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module 2>/dev/null | head -50; echo \"---\"; pwd", "description": "List case directory contents"}
+---
+Bash {"command": "cd /private/tmp/e-lS42lH/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired && echo \"=== adapters.py ===\" && cat -n adapters.py && echo \"=== case_adapters.toml ===\" && cat -n case_adapters.toml", "description": "Read the desired-view adapter files"}
+---
+Bash {"command": "cd /private/tmp/e-lS42lH/home/cwd && ls -a && echo \"--- skill-manager? ---\" && ls -a .skill-manager 2>&1 | head -20", "description": "Check workspace root layout"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler && find . -name \"case_adapters.toml\" | head -20", "description": "Find case_adapters.toml examples in the skill"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/specs && echo \"=== program_model/case_adapters.toml ===\" && cat program_model/case_adapters.toml && echo && echo \"=== tickets/RD-06/desired/case_adapters.toml ===\" && cat tickets/RD-06/desired/case_adapters.toml && echo && echo \"=== ticket desired ls ===\" && ls tickets/RD-06/desired/", "description": "Compare baseline and ticket-local adapter bindings"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && ls scripts/ 2>/dev/null | head -30; echo \"---grep resolve---\"; grep -rn \"import_module\\|sys.path.insert\\|split(\\\":\\\")\" scripts/run_generated_case_adapters.py 2>/dev/null | head -40", "description": "Inspect adapter resolution logic"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '575,600p' scripts/run_generated_case_adapters.py && echo \"=== 1260,1290 ===\" && sed -n '1255,1295p' scripts/run_generated_case_adapters.py", "description": "Read module import and sys.path setup"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"\\\"kind\\\"\\|'kind'\" scripts/run_generated_case_adapters.py | head -20; echo \"=== AdapterMapping fields ===\"; grep -n \"class AdapterMapping\" -A 30 scripts/run_generated_case_adapters.py | head -40", "description": "Check AdapterMapping schema and kind field"}
+---
+Read {"file_path": "/private/tmp/e-lS42lH/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/case_adapters.toml"}
+---
+Edit {"file_path": "/private/tmp/e-lS42lH/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/case_adapters.toml", "new_string": "[adapters.Checkout]\nadapter = \"specs.program_model.adapters:CheckoutInternalAdapter\"\nkind = \"ecommerce-internal\"\n\n[adapters.Refund]\nadapter = \"adapters:RefundInternalAdapter\"\nkind = \"ecommerce-internal\"", "old_string": "[adapters.Checkout]\nadapter = \"specs.program_model.adapters:CheckoutInternalAdapter\"\nkind = \"ecommerce-internal\"", "replace_all": false}

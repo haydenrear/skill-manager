@@ -1,0 +1,9 @@
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "command -v skt; command -v skill-manager; echo \"---\"; ls -a . | head -40", "description": "Check for skt CLI and checkout contents"}
+---
+Bash {"command": "skt ticket new --help 2>&1 | head -60", "description": "Show help for ticket new"}
+---
+Bash {"command": "skt ticket new DOCS-3 --base release/2.0 2>&1", "description": "Provision DOCS-3 worktree from release/2.0"}
+---
+Bash {"command": "git -C /private/tmp/e-UkeCEb/home/cwd status --short 2>&1", "description": "Show short status per the fix line"}

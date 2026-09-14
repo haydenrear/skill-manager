@@ -1,0 +1,25 @@
+Bash {"command": "ls -a; ls cases/w-sdc-close-ticket-delivered-status/specs 2>/dev/null | head -50", "description": "List workspace and spec root"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "cd cases/w-sdc-close-ticket-delivered-status && find specs -maxdepth 3 | head -60", "description": "Inspect spec tree"}
+---
+Read {"file_path": "/private/tmp/e-TE2aMe/home/cwd/cases/w-sdc-close-ticket-delivered-status/specs/desired_program_model/ticket_plan.yaml"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"status: \\(done\\|closed\\|delivered\\|open\\|in_progress\\)\" --include=*.md --include=*.yaml --include=*.yml . | head -40", "description": "Grep skill for plan status values"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -rn \"allow-open\\|--allow-open\" --include=*.md . | head -20", "description": "Grep for allow-open flag"}
+---
+Grep {"head_limit": 40, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler", "pattern": "status:\\s*(done|closed|delivered|open|in_progress|retired)"}
+---
+Grep {"-C": 3, "head_limit": 60, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler", "pattern": "allow-open"}
+---
+Grep {"-C": 6, "head_limit": 80, "output_mode": "content", "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/scripts/spec_evolution.py", "pattern": "delivered"}
+---
+Bash {"command": "sed -n 620,680p /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/tests/test_ticket_retirement.py", "description": "Read retirement test around delivered status"}
+---
+Bash {"command": "tla-spec-dev --spec-root cases/w-sdc-close-ticket-delivered-status/specs close ticket T-1", "description": "Close ticket T-1 in the spec workflow"}
+---
+Bash {"command": "which tla-spec-dev; readlink -f \"$(which tla-spec-dev)\"", "description": "Locate the tla-spec-dev CLI"}
+---
+Grep {"-C": 3, "head_limit": 40, "output_mode": "content", "path": "/private/tmp/e-TE2aMe/home/cwd/.skill-manager", "pattern": "TICKET_CLOSED_STATUSES\\s*=|not closed in ticket_plan"}

@@ -1,0 +1,25 @@
+Bash {"command": "pwd && ls -a", "description": "List working directory contents"}
+---
+Bash {"command": "./.eval-bin/git worktree list; ./.eval-bin/git status --short --branch", "description": "List git worktrees and status"}
+---
+Bash {"command": "ls -a .skill-manager; echo ---; cat .git/config 2>/dev/null | head -50; echo ---; ls cases", "description": "Inspect skill-manager home and git config"}
+---
+Bash {"command": "ls -a /private/tmp/e-l69nPe/home; echo ---; ls -a /private/tmp/e-l69nPe/home/cwd/..", "description": "List home directory contents"}
+---
+Bash {"command": "ls -a /private/tmp/e-l69nPe/tmp | head -50; echo ---; find /private/tmp/e-l69nPe -maxdepth 4 -iname '*TICKET-9*' 2>/dev/null | head -20", "description": "Search for TICKET-9 paths"}
+---
+Bash {"command": "cat /private/tmp/e-l69nPe/home/cwd/cases/w-giw-wt-refusal-quotes-subject/* 2>/dev/null | head -80; ls /private/tmp/e-l69nPe/home/cwd/cases/w-giw-wt-refusal-quotes-subject", "description": "Read this eval case definition"}
+---
+Bash {"command": "find /private/tmp/e-l69nPe -maxdepth 6 -iname '*ticket*' 2>/dev/null | head -30; echo \"=== demo-epic ===\"; find /private/tmp/e-l69nPe -maxdepth 6 -iname '*demo-epic*' 2>/dev/null | head -30; echo \"=== worktrees ===\"; ls /private/tmp/e-l69nPe/home/cwd/.git/worktrees 2>/dev/null", "description": "Search filesystem for ticket worktrees"}
+---
+Bash {"command": "file /private/tmp/e-l69nPe/home/cwd/cases/w-giw-wt-refusal-quotes-subject; head -60 /private/tmp/e-l69nPe/home/cwd/cases/w-giw-wt-refusal-quotes-subject", "description": "Inspect case fixture file"}
+---
+Skill {"args": "tear down TICKET-9 worktree and its Skill Manager home", "skill": "skt:skt"}
+---
+Bash {"command": "command -v skt; command -v skill-manager; echo \"SKILL_MANAGER_HOME=$SKILL_MANAGER_HOME\"", "description": "Check for skt CLI on PATH"}
+---
+Bash {"command": "skt status 2>&1 | head -60", "description": "Run skt status"}
+---
+Bash {"command": "skt ticket list 2>&1 | head -40; echo \"EXIT=$?\"", "description": "List ticket worktrees"}
+---
+Bash {"command": "skt ticket close TICKET-9 2>&1; echo \"EXIT=$?\"", "description": "Run supported teardown for TICKET-9"}

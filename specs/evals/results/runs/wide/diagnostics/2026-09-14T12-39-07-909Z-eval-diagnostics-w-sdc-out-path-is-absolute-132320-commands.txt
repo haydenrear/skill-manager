@@ -1,0 +1,25 @@
+Bash {"command": "pwd && ls -la", "description": "List workspace root"}
+---
+Bash {"command": "ls -R /private/tmp/e-8VuPtt/home/cwd/cases/w-sdc-out-path-is-absolute 2>/dev/null | head -50", "description": "List case dir"}
+---
+Skill {"skill": "spec-double-compiler:spec-double-compiler"}
+---
+Bash {"command": "ls /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/ /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/scripts/ 2>/dev/null", "description": "List skill references and scripts"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/references/generation_modes.md"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -n \"out\\b\\|--out\\|spec_dir\\|resolve_out\\|is_absolute\" scripts/spec_paths.py | head -60", "description": "Inspect spec path resolution"}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && grep -n \"add_parser\\|set_defaults\" scripts/tla_spec_dev.py | head -60", "description": "List CLI subcommands"}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/scripts/tla_spec_dev.py", "limit": 45, "offset": 727}
+---
+Read {"file_path": "/private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler/scripts/spec_paths.py", "limit": 100, "offset": 100}
+---
+Bash {"command": "cd /private/tmp/skill-evals/wide/units/spec-double-compiler/skills/spec-double-compiler && sed -n '/^def add_arguments/,/^def /p' scripts/generate_cases_from_tlc_dump.py | grep -n \"add_argument\\|required\\|default=\\|help=\" | head -80", "description": "Inspect generate cases arguments"}
+---
+Bash {"command": "command -v tla-spec-dev; tla-spec-dev --help 2>&1 | head -30", "description": "Check CLI availability"}
+---
+Bash {"command": "tla-spec-dev generate cases --help 2>&1 | head -60", "description": "Show generate cases help"}
+---
+Bash {"command": "tla-spec-dev generate cases \\\n  cases/w-sdc-out-path-is-absolute/specs/program_model/Cart.tla \\\n  cases/w-sdc-out-path-is-absolute/specs/program_model/MC.cfg \\\n  --out /private/tmp/e-8VuPtt/home/cwd/cases/w-sdc-out-path-is-absolute/specs/generated/testgraph/run-1 2>&1 | tail -30", "description": "Generate spec-unit case package for Cart model"}

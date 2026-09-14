@@ -1,0 +1,23 @@
+Bash {"command": "ls -la /private/tmp/e-9iUrfT/home/cwd", "description": "List working directory"}
+---
+Bash {"command": "find /private/tmp/e-9iUrfT/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module -type f | head -100", "description": "List case files"}
+---
+Read {"file_path": "/private/tmp/e-9iUrfT/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/adapters.py"}
+---
+Read {"file_path": "/private/tmp/e-9iUrfT/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/case_adapters.toml"}
+---
+Bash {"command": "ls /private/tmp/e-9iUrfT/home/cwd/.skill-manager; echo ---; ls /private/tmp/e-9iUrfT/home/cwd/.skill-manager/skills 2>/dev/null", "description": "List skill manager home"}
+---
+Bash {"command": "ls /private/tmp/e-9iUrfT/home/cwd/cases/ | head -60", "description": "List cases"}
+---
+Bash {"command": "grep -rl \"case_adapters\" /private/tmp/e-9iUrfT/home/cwd/.skill-manager/skills/spec-double-compiler/ | head -20", "description": "Find case_adapters docs"}
+---
+Bash {"command": "cd /private/tmp/e-9iUrfT/home/cwd/.skill-manager/skills/spec-double-compiler && grep -rn \"bare\" --include=*.md references/ SKILL.md 2>/dev/null | head -40", "description": "Search for bare module docs"}
+---
+Bash {"command": "ls && ls references/ | head -60", "description": "List skill layout"}
+---
+Read {"file_path": "/private/tmp/e-9iUrfT/home/cwd/.skill-manager/skills/spec-double-compiler/references/case_modules.md"}
+---
+Bash {"command": "grep -n \"bare\" -A 30 references/testgraph_adapters.md | head -70", "description": "Read bare module guidance"}
+---
+Edit {"file_path": "/private/tmp/e-9iUrfT/home/cwd/cases/w-sdc-ticket-binding-bare-adapter-module/specs/tickets/T-4/desired/case_adapters.toml", "new_string": "[adapters.Checkout]\nadapter = \"specs.program_model.adapters:CheckoutInternalAdapter\"\nkind = \"ecommerce-internal\"\n\n[adapters.Refund]\nadapter = \"adapters:RefundInternalAdapter\"\nkind = \"ecommerce-internal\"", "old_string": "[adapters.Checkout]\nadapter = \"specs.program_model.adapters:CheckoutInternalAdapter\"\nkind = \"ecommerce-internal\"", "replace_all": false}
