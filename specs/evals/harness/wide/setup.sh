@@ -53,6 +53,24 @@ for f in "$ROOT"/evals/w-*/units-override.txt; do
       echo "setup: $unit overridden twice ($prior vs $checkout, from $f)" >&2; exit 1
     fi
     [ -n "$prior" ] && continue
+    # A PLUGIN checkout (skt) is its own shape: skills/<name>/ and a top-level
+    # references/, not a SKILL.md at the root. Each part goes where
+    # eval_build_case put the installed one, and the whole plugin replaces the
+    # homes' plugins/<unit>.
+    if [ -f "$checkout/.claude-plugin/plugin.json" ] && [ -d "$checkout/skills" ]; then
+      [ -d "$BUILD/units/$unit" ] \
+        || { echo "setup: override names plugin $unit, which the home does not have ($f)" >&2; exit 1; }
+      prior="$(awk -F= -v u="$unit" '$1==u{print $2}' "$BUILD/overrides.txt")"
+      [ -n "$prior" ] && continue
+      for c in "$checkout"/skills/*/; do
+        eval_place_skill "$c" "$BUILD/units/$unit/skills/$(basename "$c")" || exit 1
+      done
+      [ -d "$checkout/references" ] && { eval_place_skill "$checkout/references" "$BUILD/units/$unit/references" || exit 1; }
+      [ -d "$BUILD/home/plugins/$unit" ] && { eval_place_skill "$checkout" "$BUILD/home/plugins/$unit" || exit 1; }
+      echo "$unit=$checkout" >> "$BUILD/overrides.txt"
+      echo "override (plugin): $unit <- $checkout ($(git -C "$checkout" rev-parse --short HEAD 2>/dev/null || echo no-git))"
+      continue
+    fi
     [ -d "$BUILD/units/$unit/skills/$unit" ] || [ -L "$BUILD/units/$unit/skills/$unit" ] \
       || { echo "setup: override names $unit, which the home does not have ($f)" >&2; exit 1; }
     [ -f "$checkout/SKILL.md" ] \
@@ -80,7 +98,10 @@ branch_home "$SRC" "$WS/.skill-manager"
 # skills/<unit>/scripts/*. Branch code has to be there, not only in the wrapper.
 while IFS='=' read -r unit checkout; do
   [ -n "${unit// }" ] || continue
-  if [ -d "$WS/.skill-manager/skills/$unit" ]; then
+  if [ -f "$checkout/.claude-plugin/plugin.json" ] && [ -d "$WS/.skill-manager/plugins/$unit" ]; then
+    eval_place_skill "$checkout" "$WS/.skill-manager/plugins/$unit" || exit 1
+    echo "override (workspace home, plugin): $unit <- $checkout"
+  elif [ -d "$WS/.skill-manager/skills/$unit" ]; then
     eval_place_skill "$checkout" "$WS/.skill-manager/skills/$unit" || exit 1
     echo "override (workspace home): $unit <- $checkout"
   else

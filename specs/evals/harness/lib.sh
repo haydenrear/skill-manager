@@ -564,6 +564,12 @@ eval_build_case() {
     for c in "$p"skills/*/; do
       [ -d "$c" ] && { eval_place_skill "$c" "$build/units/$pn/skills/$(basename "$c")" || return 1; }
     done
+    # A PLUGIN'S OWN references/ SITS BESIDE ITS skills/, and its skills link to
+    # it relatively (skt: `../../references/harness-capabilities.md`). Placing
+    # only skills/ left every such link dangling inside a run, where a real
+    # session resolves it -- wide round 3b's migration case hunted 13+ calls for
+    # a manifest example that lives in skt's references/.
+    [ -d "${p}references" ] && { eval_place_skill "${p}references" "$build/units/$pn/references" || return 1; }
   done
   cp -R "$root/units-template/." "$build/units/"
 

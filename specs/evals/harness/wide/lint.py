@@ -128,8 +128,10 @@ def lint_case(case: pathlib.Path) -> list[str]:
     if override.is_file():
         for line in override.read_text().splitlines():
             unit, sep, checkout = line.partition("=")
-            if sep and not pathlib.Path(checkout.strip(), "SKILL.md").is_file():
-                problems.append("units-override.txt: %s has no SKILL.md" % checkout.strip())
+            root = pathlib.Path(checkout.strip())
+            is_plugin = (root / ".claude-plugin" / "plugin.json").is_file() and (root / "skills").is_dir()
+            if sep and not (root / "SKILL.md").is_file() and not is_plugin:
+                problems.append("units-override.txt: %s is neither a skill (SKILL.md) nor a plugin" % checkout.strip())
     return problems
 
 

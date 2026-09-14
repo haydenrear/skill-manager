@@ -1,0 +1,1 @@
+skt=/Users/hayde/IdeaProjects/skt-projects-plugin-example
