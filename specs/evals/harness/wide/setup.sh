@@ -60,6 +60,14 @@ for f in "$ROOT"/evals/w-*/units-override.txt; do
     # Placed INSIDE the wrapper, like every other unit (eval_place_skill says
     # why a symlink out of the plugin dir is unreadable from a run).
     eval_place_skill "$checkout" "$BUILD/units/$unit/skills/$unit" || exit 1
+    # AND into the homes whose shims a run executes. Round 3 overrode only the
+    # wrapper: agents read the branch's SKILL.md and then ran the INSTALLED
+    # tla-spec-dev / wt / validators from the workspace home, so four gate-case
+    # reds measured code the branch had already changed. Recorded here and
+    # applied to the workspace home below, once that home exists.
+    for home in "$BUILD/home" ; do
+      [ -d "$home/skills/$unit" ] && eval_place_skill "$checkout" "$home/skills/$unit"
+    done
     echo "$unit=$checkout" >> "$BUILD/overrides.txt"
     echo "override: $unit <- $checkout ($(git -C "$checkout" rev-parse --short HEAD 2>/dev/null || echo no-git)$(git -C "$checkout" diff --quiet 2>/dev/null || echo ', UNCOMMITTED changes'))"
   done < "$f"
@@ -68,6 +76,17 @@ done
 WS="$BUILD/fixture-workspace"
 eval_fixture_checkout "$BUILD" "$SRC" "$WS" main
 branch_home "$SRC" "$WS/.skill-manager"
+# The workspace home is the one a run EXECUTES: its bin/cli shims exec
+# skills/<unit>/scripts/*. Branch code has to be there, not only in the wrapper.
+while IFS='=' read -r unit checkout; do
+  [ -n "${unit// }" ] || continue
+  if [ -d "$WS/.skill-manager/skills/$unit" ]; then
+    eval_place_skill "$checkout" "$WS/.skill-manager/skills/$unit" || exit 1
+    echo "override (workspace home): $unit <- $checkout"
+  else
+    echo "setup: the workspace home has no skills/$unit to override" >&2; exit 1
+  fi
+done < "$BUILD/overrides.txt"
 
 # Each case's fixture, committed so the tree is clean: several front doors
 # refuse a dirty tree, and a case is not about that unless it says so.

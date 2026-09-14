@@ -712,5 +712,10 @@ eval_run_case() {
         --allow-tools Bash 'Bash(skt:*)' 'Bash(git:*)' 'Bash(skill-manager:*)' \
           'Bash(python3:*)' Read Write Edit Skill \
           'WebFetch(domain:github.com)' 'WebFetch(domain:codeload.github.com)' \
-          'WebFetch(domain:objects.githubusercontent.com)' "$@" )
+          'WebFetch(domain:objects.githubusercontent.com)' \
+          'WebFetch(domain:pypi.org)' 'WebFetch(domain:files.pythonhosted.org)' "$@" )
+  # pypi: skills ship `uv run --script` entry points (the epic validators among
+  # them) whose inline deps resolve at first run. Without these two domains
+  # every such run died on "deny network-outbound pypi.org:443" and the agent
+  # derived the validator's answer by hand -- wide round 3.
 }

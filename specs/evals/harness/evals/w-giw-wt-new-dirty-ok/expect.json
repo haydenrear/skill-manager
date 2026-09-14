@@ -3,7 +3,7 @@
     {
       "id": "provisions",
       "tool": "Bash",
-      "match": "(skt\\s+ticket|\\bwt)\\s+new\\b[^\\n]*TICKET-12"
+      "match": "(skt[\"']?\\s+ticket|\\bwt[\"']?)\\s+new\\b[^\\n]*TICKET-12"
     },
     {
       "id": "dirty-ok",
