@@ -1343,7 +1343,11 @@ public final class ChildHomeMaterializer {
         // measurement of the destination alone.
         if (!merge) {
             return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
-                    holdBackReason(record, baseline, destUntouched, recordIsAboutThisSource));
+                    disposal.destAhead() != null
+                            ? disposal.destAhead() + "; send anything only the source holds "
+                                    + "with `skill-manager unit publish " + name + "`"
+                            : holdBackReason(record, baseline, destUntouched,
+                                    recordIsAboutThisSource));
         }
         MergeBase base = mergeBase(record,
                 recordIsAboutThisSource
@@ -2357,6 +2361,10 @@ public final class ChildHomeMaterializer {
 
         if (destIsDir && baseline != null) {
             if (!disposal.disposable()) {
+                if (disposal.destAhead() != null) {
+                    return heldBack(name, kind, dest, disposal.destAhead()
+                            + "; this home is newer than the store, so it is left as it is");
+                }
                 // ONE test, three sentences. The conjunction is Disposal's, not
                 // this method's: `home sync` and `project resolve` read the same
                 // value or they eventually disagree about the units that matter,
@@ -2530,10 +2538,13 @@ public final class ChildHomeMaterializer {
      *                               own. See {@link #sourceHeldTheseBytes}.
      * @param sourceRecord           the source home's own record, carried so the
      *                               merge base is chosen from the same reading
+     * @param destAhead              both are git checkouts and the destination's
+     *                               HEAD strictly descends from the source's —
+     *                               see {@link #destinationAheadOf}; null when not
      */
     record Disposal(String baseline, boolean destUntouched, boolean recordIsAboutThisSource,
                     boolean mergeResult, boolean sourceHeldTheseBytes,
-                    MaterializationRecord sourceRecord) {
+                    MaterializationRecord sourceRecord, String destAhead) {
 
         /**
          * True only where the source can be shown to have passed through the
@@ -2551,8 +2562,15 @@ public final class ChildHomeMaterializer {
          *       source once held exactly the tree the destination is standing
          *       on now.</li>
          * </ol>
+         *
+         * <p>Neither showing licenses replacing a checkout that is AHEAD of the
+         * source (#390). A clone-time record stays "untouched" while the source
+         * is later rewound, and that pair used to fast-forward the destination
+         * backwards: measured on a real home, {@code b7a7d203} replaced by its
+         * ancestor {@code dd2d5176}, the revision the repository did not pin.
          */
         boolean disposable() {
+            if (destAhead != null) return false;
             return (destUntouched && recordIsAboutThisSource && !mergeResult)
                     || sourceHeldTheseBytes;
         }
@@ -2712,7 +2730,8 @@ public final class ChildHomeMaterializer {
                 describesSource(record, source, src, sourceRecord),
                 record != null && record.isMergeResult(),
                 sourceHeldTheseBytes(sourceRecord, destDigest),
-                sourceRecord);
+                sourceRecord,
+                dest == null ? null : destinationAheadOf(source, dest));
     }
 
     /**
