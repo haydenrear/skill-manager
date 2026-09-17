@@ -1,0 +1,125 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/closed-snapshot-SM-390B specs/results/skill_feedback.md",
+    "git_commit": "git commit -m 'close spec ticket workflow'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/closed-snapshot-SM-390B"
+  },
+  "complexity_delta": null,
+  "complexity_ledger": null,
+  "created_at_utc": "2026-09-17T16:44:08.272774+00:00",
+  "entry_name": "closed-snapshot-SM-390B",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "findings_ledger": {
+    "exists": false,
+    "role": "findings_ledger",
+    "source": "specs/desired_program_model/deferred_findings.yaml"
+  },
+  "git": {
+    "branch": "feature/390-spec-followups",
+    "commit": "407b69ff",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "workflow-close",
+  "refinement_record": null,
+  "results": [],
+  "retention_evidence": null,
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 15,
+    "close_out_entry": "Close-out workflow desired-ticket-workflow",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-SM-390B/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-SM-390B/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-SM-390B/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Promoted SM-390B (GitHistoryInternal record route) into program_model",
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "tickets": [
+    {
+      "acceptance": {
+        "assertions": [
+          "Healthy configuration has no error (115146 distinct states).",
+          "Every regression configuration violates exactly its target invariant.",
+          "The reach probe reports 4 violated invariants."
+        ],
+        "commands": [
+          "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal.cfg",
+          "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_recorddigest.cfg",
+          "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_recordrewind.cfg"
+        ],
+        "evidence": [
+          "specs/tickets/SM-390B/results/tlc.md"
+        ]
+      },
+      "current_increment": {
+        "adapters": [],
+        "graph_after_unit_pass": [
+          "home-sync",
+          "ticket-lifecycle"
+        ],
+        "model_actions": [
+          "GitHistoryInternal.CheckoutOlder"
+        ],
+        "model_state": [
+          "GitHistoryInternal.rec",
+          "GitHistoryInternal.dstClean"
+        ],
+        "unit_tests": [
+          "jbang RunTests.java (HomeSyncGitUnitTest)"
+        ]
+      },
+      "depends_on": [],
+      "desired_actions": [
+        "GitHistoryInternal.CheckoutOlder",
+        "GitHistoryInternal.PullTrunk",
+        "GitHistoryInternal.SyncApply"
+      ],
+      "id": "SM-390B",
+      "implementation_scope": [
+        "src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java"
+      ],
+      "objective": "A destination whose only history change is published refs is not local work, and no materialization record licenses replacing a checkout that is ahead of its source.",
+      "status": "done",
+      "title": "the record route exempts published refs and never replaces an ahead checkout"
+    }
+  ],
+  "workflow_name": "desired-ticket-workflow"
+}
