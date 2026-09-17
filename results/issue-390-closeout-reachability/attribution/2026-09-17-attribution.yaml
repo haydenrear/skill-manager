@@ -1,0 +1,494 @@
+# Bug attribution -- issue #390 (and #370) with their follow-ups, machine-readable rows.
+#
+# Prose, evidence and the TLC table are in 2026-09-17-attribution.md beside
+# this file. Schema: spec-double-compiler references/bug_attribution.md
+# (CATCH section 4, REACH 5, BLIND 6, the influence graph 7a).
+#
+# WHERE THESE ROWS BELONG. There is no `specs/deferred_findings.yaml` on main
+# (bug_attribution.md section 4), so, like the one-home-one-verdict record, the rows live
+# in this ticket's own results and move only if a cumulative ledger is created.
+#
+# `anchor` is a TLA+ action in specs/program_model/GitHistoryInternal.tla
+# (GHI.<Action>) or UNMODELED/<bin>. No action is stretched to cover a row.
+# `class` is the section 4.1 lookup (automated | hand | reading), with its
+# tie-break: did the instrument REPORT the defect, or did the operator notice
+# something it was silent about?
+#
+# `origin` traced read-only with `git log -S` on each repository's main and
+# `gh api repos/<r>/commits/<sha>/pulls` for PR numbers.
+
+meta:
+  issues: [390, 370]
+  written: "2026-09-17"
+  repositories:
+    skill-manager: {prs: [391, "this branch: feature/390-spec-followups"]}
+    skt: {prs: [50, 51]}
+    tla-spec-dev: {prs: [346], issues: [345, 347, 348]}
+    git-issue-workflow: {prs: [], note: "no code change; the project home's copy was synced"}
+  totals:
+    rows: 29
+  by_kind:
+    product: 16
+    instrument: 8
+    process: 5
+  by_class:
+    hand: 19
+    automated: 6
+    reading: 4
+  by_anchor:
+    UNMODELED/instrument: 9
+    GHI.CloseOut: 4
+    GHI.SyncApply: 3
+    UNMODELED/spec-tooling: 3
+    UNMODELED/process: 2
+    UNMODELED/skt-check-advice: 2
+    UNMODELED/skt-sweep-scoping: 2
+    UNMODELED/worktree-front-door: 2
+    GHI.Fetch: 1
+    GHI.PullTrunk: 1
+  conservation: >
+    First anchoring pass for these defects: 29 rows in, 29 out, 9 anchored to
+    GitHistoryInternal actions, 20 in 6 UNMODELED bins. GitHistoryInternal was
+    written for this record (spec tickets SM-390, SM-390B); every GHI anchor
+    names an action that existed before the row was anchored to it.
+    Counted from the per-row fields by script.
+
+findings:
+
+  # =============================================== skill-manager, product (7)
+  - id: DEF-390-01
+    title: "close-out required the destination to hold every ref the source had, remote-tracking and published branches included"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "epic #228 finalization: the gate printed `conflicted ... histories have diverged` for a source that `merge-base --is-ancestor` showed was strictly behind; the operator verified by hand that every ref was in origin/main"
+    area: "ChildHomeMaterializer.historyContainedIn (via gitSourceIsBehind / gitHistoryMerge)"
+    anchor: GHI.CloseOut
+    origin:
+      - {commit: 2286ce98, date: "2026-08-16", pr: 211, what: "historyContainedIn asks containsAll over the full ref listing"}
+    confidence: high
+    why_escaped: "no fixture in HomeSyncGitUnitTest or the home-sync graph had a remote at all, so a remote-tracking or published ref that only one home holds was never constructed"
+    fixed_by: {pr: 391, merge: 0fe2edcb}
+    pinned_by:
+      - "HomeCloseOutPublishedRefsTest: 'an inherited, published branch does not make an ancestor copy diverged', 'a remote ref fetched only in the worktree home is not divergence'"
+      - "specs/program_model/GitHistoryInternal_regression_allrefs.cfg"
+
+  - id: DEF-370
+    title: "close-out reported would-update for identical clean HEADs"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "epic #228, LIB-006 / LIB-008: both homes clean at dd2d5176, removal refused"
+    area: "same rule as DEF-390-01: the worktree copy held fetched refs the project copy did not"
+    anchor: GHI.CloseOut
+    origin:
+      - {commit: 2286ce98, date: "2026-08-16", pr: 211, what: "as DEF-390-01"}
+    confidence: medium
+    confidence_note: "the #370 homes were deleted; the shape was reproduced, not the homes. The same test fails on 87280939 with exactly 'would-update'"
+    why_escaped: "as DEF-390-01"
+    fixed_by: {pr: 391, merge: 0fe2edcb, note: "fixed by the DEF-390-01 change; pinned on this branch"}
+    pinned_by:
+      - "HomeCloseOutPublishedRefsTest: '#370: identical clean HEADs clear the gate whatever the remote refs say'"
+
+  - id: DEF-390-02
+    title: "close-out's remedy for a conflicted/held-back unit was a home sync from a copy the destination is ahead of"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "the operator ran the printed remedy and it still refused; reading it showed the sync ran from b5cfb09a toward dd2d5176, which contains it"
+    area: "HomeCloseOut.remedyFor"
+    anchor: GHI.CloseOut
+    origin:
+      - {commit: 7468b4f9, date: "2026-07-27", pr: 130, what: "CONFLICTED -> `home sync --merge (then resolve: ...)`, regardless of ancestry"}
+    confidence: high
+    why_escaped: "no test asserted a remedy against the ancestry of the pair; remedies were asserted as strings per status"
+    fixed_by: {pr: 391, merge: 0fe2edcb}
+    pinned_by:
+      - "HomeCloseOutPublishedRefsTest: 'an unpublished branch still blocks, and the fix is publish, not a backwards sync'"
+      - "specs/program_model/GitHistoryInternal_regression_syncremedy.cfg"
+
+  - id: DEF-390-03
+    title: "gitDestIsBehind accepted a destination whose HEAD was merely reachable in the source, so a 'fast-forward' rewound it"
+    kind: product
+    channel: the-suite
+    class: automated
+    channel_note: "the new HomeCloseOutPublishedRefsTest control came back UPDATED with a plain `home sync` remedy for a destination on B and a source on A whose origin/main named B"
+    area: "ChildHomeMaterializer.gitDestIsBehind / gitHistoryMerge"
+    anchor: GHI.SyncApply
+    origin:
+      - {commit: 2286ce98, date: "2026-08-16", pr: 211, what: "gitDestIsBehind = clean worktree + historyContainedIn(dest, source)"}
+    confidence: high
+    why_escaped: "fixtures without remotes make 'reachable from some source ref' and 'ancestor of the source HEAD' the same thing"
+    fixed_by: {pr: 391, merge: 0fe2edcb}
+    pinned_by:
+      - "specs/program_model/GitHistoryInternal_regression_anysourceref.cfg"
+      - "HomeCloseOutPublishedRefsTest (its unpublished case fails on 87280939 with this defect's UPDATED)"
+
+  - id: DEF-390-04
+    title: "a `git fetch` (or a push, or deleting a merged branch) made a home's copy 'locally modified'"
+    kind: product
+    channel: census
+    class: reading
+    channel_note: "found writing the REACH row for the DEF-390-01 rule: gitHistoryMovedOn still digests the whole ref listing; the javadoc had named and accepted the cost since #29"
+    area: "ChildHomeMaterializer.gitHistoryMovedOn (record route: isLocallyModified, gitCopyIsUntouched)"
+    anchor: GHI.Fetch
+    origin:
+      - {commit: 402e3aaa, date: "2026-07-29", pr: 130, what: "history digest over every ref; 'a git fetch ... reads as moved on' stated as an accepted cost"}
+    confidence: high
+    why_escaped: "accepted by design; no fixture had a remote to fetch from"
+    fixed_by: {branch: feature/390-spec-followups, commit: 339504a7}
+    pinned_by:
+      - "HomeSyncGitUnitTest: '#390: a fetch or a pushed branch is not local work' (and its annotated-tag control)"
+      - "specs/program_model/GitHistoryInternal_regression_recorddigest.cfg"
+
+  - id: DEF-390-05
+    title: "an untouched materialization record licensed replacing a checkout that is ahead of its source"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "manual test on two scratch clones of the project home: close-out on the NEW build said 'would-update -- the destination holds no local work'; the released 0.28.0's `home sync` moved spec-double-compiler b7a7d203 -> dd2d5176"
+    area: "ChildHomeMaterializer.Disposal (reconcile, copyUnit, linkUnit)"
+    anchor: GHI.SyncApply
+    origin:
+      - {commit: c2d535c1, date: "2026-07-29", pr: 130, what: "sourceHeldTheseBytes / the record showings, with no ancestry question"}
+    confidence: medium
+    confidence_note: "the second showing arrived in c2d535c1; the first (destUntouched) is older, and either alone licenses the rewind"
+    why_escaped: "no fixture reset a source to an ancestor after materializing it"
+    fixed_by: {branch: feature/390-spec-followups, commit: bafaebfb}
+    pinned_by:
+      - "HomeSyncGitUnitTest: '#390: a sync never rewinds a checkout that is ahead of the source'"
+      - "specs/program_model/GitHistoryInternal_regression_recordrewind.cfg"
+
+  - id: DEF-390-06
+    title: "a conflict over an ahead destination was described as 'the destination has uncommitted changes'"
+    kind: product
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "same manual run as DEF-390-05, after the rewind was fixed"
+    area: "ChildHomeMaterializer.gitHistoryMerge (DEST_BEHIND_BUT_EDITED chosen by reachability)"
+    anchor: GHI.CloseOut
+    origin:
+      - {commit: 2286ce98, date: "2026-08-16", pr: 211, what: "DEST_BEHIND_BUT_EDITED = historyContainedIn(dest, source)"}
+    confidence: high
+    why_escaped: "only the status was asserted, never the detail"
+    fixed_by: {branch: feature/390-spec-followups, commit: 407b69ff}
+    pinned_by:
+      - "HomeCloseOutPublishedRefsTest unpublished case: detail names 'ahead of this copy' and not 'uncommitted changes'"
+
+  # ============================================================ skt, product (5)
+  - id: DEF-390-07
+    title: "`skt ticket sweep --epic` excluded every merged ticket and selected the epic's own worktree"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "epic #228: `--epic library-sharing` -> 31 excluded, 1 would remove (the epic worktree); `--target origin/main` was right"
+    area: "skt sweep._matches_epic (fallback asked is-ancestor(epic tip, ticket tip))"
+    anchor: UNMODELED/skt-sweep-scoping
+    origin:
+      - {repo: skt, commit: 6d49d7f, date: "2026-08-17", pr: 32, what: "_matches_epic: plan, name, then epic-tip ancestry"}
+    confidence: high
+    why_escaped: "test_epic_scoping_limits_the_pass branches its ticket from the epic's CURRENT tip, the one case the wrong-direction probe gets right"
+    fixed_by: {repo: skt, pr: 50}
+    pinned_by:
+      - "skt tests/test_ticket_sweep.py::test_epic_scoping_selects_tickets_merged_into_a_finished_epic"
+
+  - id: DEF-390-08
+    title: "`skt ticket sweep --yes` with no epic/target removed worktrees without checking containment"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "handoff observation 3: every row said 'containment was not checked', and the sweep proceeded"
+    area: "skt sweep.sweep"
+    anchor: UNMODELED/skt-sweep-scoping
+    origin:
+      - {repo: skt, commit: 6d49d7f, date: "2026-08-17", pr: 32, what: "a missing target is a warning"}
+    confidence: high
+    why_escaped: "not an escape: test_no_target_branch_warns_that_containment_was_not_checked asserted the removal as intended. Changed at the owner's request"
+    fixed_by: {repo: skt, pr: 51}
+    pinned_by:
+      - "skt tests/test_ticket_sweep.py::test_no_target_branch_refuses_to_remove"
+
+  - id: DEF-390-09
+    title: "`skt check` offered `skt sync` for a unit the repository's manifest pins"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "handoff observation 2: taking the advice in a project home moved spec-double-compiler off the pinned revision and the repository could not collect its conformance tests"
+    area: "skt check.collect"
+    anchor: UNMODELED/skt-check-advice
+    origin:
+      - {repo: skt, commit: 5a11557, date: "2026-08-07", pr: null, what: "new-version notification for every change-managed unit, every tier"}
+    confidence: high
+    why_escaped: "the manifest's `revision` pin was never read by skt"
+    fixed_by: {repo: skt, pr: 51}
+    pinned_by:
+      - "skt tests/test_check.py::test_a_unit_at_its_manifest_pin_is_pinned_not_stale"
+      - "skt tests/test_check.py::test_a_unit_off_its_pin_says_restore_the_pin_not_sync"
+
+  - id: DEF-390-10
+    title: "a clean, published skt checkout was named an edited unit by `skt ticket close`"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "handoff observation 1 (wt-229); reproduced in a test after the worktree was gone"
+    area: "skt check._local_state: 'ahead' of a lagging branch upstream, cleared only by a live ls-remote in a 15 s budget"
+    anchor: UNMODELED/skt-check-advice
+    origin:
+      - {repo: skt, commit: 5a11557, date: "2026-08-07", pr: null, what: "`rev-list @{upstream}..HEAD > 0` -> ahead"}
+    confidence: medium
+    confidence_note: "the live case could not be re-examined; the reproduction is the only one of the plausible causes that yields exactly this note on a pristine tree"
+    why_escaped: "tests ran with the network probe available"
+    fixed_by: {repo: skt, pr: 51}
+    pinned_by:
+      - "skt tests/test_ticket_publish.py::test_a_clean_checkout_published_on_another_remote_ref_is_not_edited"
+
+  - id: DEF-390-11
+    title: "`skt ticket new --path` refused a dirty parent tree even with WT_DIRTY_OK=1"
+    kind: product
+    channel: census
+    class: reading
+    channel_note: "found reading ticket.py while tracing DEF-390-12"
+    area: "skt ticket.epic_new"
+    anchor: UNMODELED/worktree-front-door
+    origin:
+      - {repo: skt, commit: 1fb5c6c, date: "2026-08-08", pr: null, what: "unconditional clean-tree refusal"}
+    confidence: high
+    why_escaped: "WT_DIRTY_OK was added to git-issue-workflow later; nothing ties the two spellings"
+    fixed_by: {repo: skt, pr: 51}
+    pinned_by:
+      - "skt tests/test_epic_mode.py::test_dirty_tree_proceeds_when_the_environment_allows_it"
+
+  # ======================================= homes and the front door, product (1)
+  - id: DEF-390-12
+    title: "`WT_DIRTY_OK=1 skt ticket new` refused, because the project home's git-issue-workflow predated the override, and nothing said so"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "this session, creating the #390 worktree: 'error: working tree is not clean'; the project home's copy was fae9e9e, upstream 65d7f7b"
+    area: "skt ticket.run delegating to a stale home copy; skt check did list the unit as stale"
+    anchor: UNMODELED/worktree-front-door
+    origin: UNTRACED
+    origin_note: "not a code defect in one commit: the project home had not been synced since the override shipped (fix/drop-bs-gates, git-issue-workflow #32)"
+    why_escaped: "skt check reported the stale unit at session start; nothing connected that to the refusal"
+    fixed_by: {note: "project home synced to 65d7f7b; skt #51 adds a hint when a delegate ignores WT_DIRTY_OK"}
+    pinned_by:
+      - "skt tests/test_ticket_publish.py::test_ticket_new_names_a_stale_wrapper_that_ignored_wt_dirty_ok"
+
+  # ============================================= tla-spec-dev, product (3)
+  - id: SF-010
+    title: "tla-spec-dev does not import under Python < 3.12 (PEP 701 f-strings)"
+    kind: product
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "`scaffold workflow` died with SyntaxError under the shim's python3 (3.9.6)"
+    area: "tla-spec-dev scripts/onboard_program_model.py manifest()"
+    anchor: UNMODELED/spec-tooling
+    origin:
+      - {repo: tla-spec-dev, commit: 3922b16c, what: "nested triple-quoted strings in an f-string"}
+    confidence: high
+    why_escaped: "the suite runs on 3.12+ only"
+    fixed_by: {repo: tla-spec-dev, pr: 346}
+    pinned_by:
+      - "tla-spec-dev tests/test_scripts_parse_on_oldest_python.py::test_sources_parse_before_pep_701"
+
+  - id: SF-011
+    title: "scaffolded workflow views carry a template spec_manifest.yaml that promotion copies over the accepted one"
+    kind: product
+    channel: census
+    class: reading
+    channel_note: "noticed diffing desired/ against program_model before closing SM-390"
+    area: "tla-spec-dev new_ticket_workflow.copy_baseline_tree + close_tickets._promote_tree"
+    anchor: UNMODELED/spec-tooling
+    origin:
+      - {repo: tla-spec-dev, commit: c60be211, date: "2026-05-25", what: "README.md and spec_manifest.yaml skipped from the baseline copy and generated"}
+    confidence: medium
+    why_escaped: "skill-manager lost its manifest this way once (ARTI-02) and repaired it in the repository, not the tool"
+    fixed_by: null
+    pin_note: "not pinned: filed as tla-spec-dev#345; worked around here by restoring the three files before each close"
+
+  - id: SF-012
+    title: "a second workflow's close collides with the first's closed-snapshot, after --accept-new has written program_model"
+    kind: product
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "close_tickets.py refused on the existing entry; its message named the collision but not --history-entry"
+    area: "tla-spec-dev close_tickets.py"
+    anchor: UNMODELED/spec-tooling
+    origin:
+      - {repo: tla-spec-dev, commit: 632055e9, date: "2026-05-23", what: "fixed workflow name desired-ticket-workflow"}
+    confidence: medium
+    fixed_by: null
+    pin_note: "filed as tla-spec-dev#347"
+
+  # ======================================================== instrument (8)
+  - id: INS-390-01
+    title: "the regression fixture's single-branch clone still held the publish-branch tip (path clones hardlink objects)"
+    kind: instrument
+    channel: the-suite
+    class: automated
+    channel_note: "the fixture's own precondition assertion failed"
+    area: "HomeCloseOutPublishedRefsTest fixture"
+    anchor: UNMODELED/instrument
+    fixed_by: {note: "--no-local"}
+    pinned_by: ["the precondition assertion that caught it"]
+
+  - id: INS-390-02
+    title: "the first mutation check of the #390 tests compiled nothing, so it proved nothing"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "no output at all; the test referenced GitOps.isPublished, which the reverted tree lacked"
+    area: "the focused JBang runner used for mutation checks"
+    anchor: UNMODELED/instrument
+    fixed_by: {note: "reverted only the two behaviour files and kept the helper"}
+    pin_note: "not pinned: a one-off runner"
+
+  - id: INS-390-03
+    title: "the first Python-3.9 parse test passed against the broken file"
+    kind: instrument
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "the mutation check (revert the fix, re-run) stayed green"
+    area: "tla-spec-dev test using ast.parse(feature_version=...), which does not enforce f-string grammar"
+    anchor: UNMODELED/instrument
+    fixed_by: {repo: tla-spec-dev, pr: 346, note: "parse with a real pre-3.12 interpreter"}
+    pinned_by: ["the shipped test, which fails with the fix reverted"]
+
+  - id: INS-390-04
+    title: "a manifest equivalence check compared two empty files and printed IDENTICAL"
+    kind: instrument
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "the path of the driver script was wrong; both outputs were empty"
+    area: "an ad-hoc cmp in this session"
+    anchor: UNMODELED/instrument
+    fixed_by: {note: "re-run with line counts printed: 331 and 331"}
+    pin_note: "not pinned: ad hoc; the lesson is to print the sizes of what is compared"
+
+  - id: INS-390-05
+    title: "the first SM-390B model violated its healthy invariant: a sync re-recorded the destination's own unpublished branch as the source's"
+    kind: instrument
+    channel: tlc
+    class: automated
+    channel_note: "TLC counterexample in 5 states"
+    area: "GitHistoryInternal.PullTrunk (record provenance missing from the model)"
+    anchor: GHI.PullTrunk
+    fixed_by: {note: "rec.about added: a record written by a plain sync licenses nothing about the source"}
+    pinned_by: ["GitHistoryInternal.cfg"]
+
+  - id: INS-390-06
+    title: "w-skt-check-pinned-is-not-stale shipped without the manifest its check.txt describes"
+    kind: instrument
+    channel: blind-judges
+    class: reading
+    channel_note: "judge FAIL x3 on both runs; the traces show agents re-ran `skt check` live, found no skill-project.toml, and correctly distrusted the fixture"
+    area: "the eval case's fixture and prompt"
+    anchor: UNMODELED/instrument
+    fixed_by: {branch: feature/390-spec-followups, note: "fixture skill-project.toml added; prompt says the saved output is authoritative"}
+    pin_note: "not pinned: the round-2 run of the case is the check"
+
+  - id: INS-390-07
+    title: "15 units-override.txt files named deleted branch checkouts, so wide setup refused"
+    kind: instrument
+    channel: operator-running-a-shipped-instrument
+    class: automated
+    channel_note: "wide/lint.py: 13 cases with problems; every override named a checkout whose PR had merged"
+    area: "specs/evals/harness/evals/w-*/units-override.txt"
+    anchor: UNMODELED/instrument
+    fixed_by: {branch: feature/390-spec-followups, commit: a42fec61}
+    pinned_by: ["specs/evals/harness/wide/lint.py"]
+
+  - id: INS-390-08
+    title: "onboarding.wt.contract.lines expected wt close's keyed contract without --verbose"
+    kind: instrument
+    channel: test-graph
+    class: automated
+    channel_note: "full sweep 20260917-162140: 'wt close --force exit 0 missing [CLOSED, BRANCH, DELETE]'"
+    area: "test_graph onboarding node, against git-issue-workflow's one-line close summary"
+    anchor: UNMODELED/instrument
+    fixed_by: {branch: feature/390-spec-followups, commit: 29807434}
+    pinned_by: ["the node itself, green again on 20260917-170709"]
+
+  # =========================================================== process (4)
+  - id: PRC-390-01
+    title: "`git fetch` run inside the root home's copy of git-issue-workflow"
+    kind: process
+    channel: operator-doing-the-work
+    class: hand
+    channel_note: "this session wrote remote-tracking refs into /Users/hayde/.skill-manager, which the session rules forbid"
+    area: "the agent's own diagnosis step"
+    anchor: UNMODELED/process
+    fixed_by: null
+    pin_note: "not pinned: no files changed; the refs are ordinary fetched refs, and after DEF-390-04 they no longer read as local work"
+
+  - id: PRC-390-02
+    title: "zsh passed a whole command string as one argument, twice"
+    kind: process
+    channel: operator-doing-the-work
+    class: hand
+    area: "the agent's shell use (memory: zsh-no-word-split)"
+    anchor: UNMODELED/instrument
+    pin_note: "not pinned: already in memory; recurred anyway"
+
+  - id: PRC-390-03
+    title: "source changed while the full graph sweep was running, so the sweep measured a mix of commits"
+    kind: process
+    channel: operator-doing-the-work
+    class: hand
+    area: "validation ordering"
+    anchor: UNMODELED/instrument
+    pin_note: "not pinned: the home graphs were re-run on the final commit"
+
+  - id: PRC-390-04
+    title: "the first merge of #391 shipped with the record-route rewind (DEF-390-05) still live"
+    kind: process
+    channel: operator-running-own-instrument
+    class: hand
+    area: "validation scope: unit tests and graphs had no fixture for it; only a manual run on real homes showed it"
+    anchor: GHI.SyncApply
+    pin_note: "pinned through DEF-390-05's test"
+
+  - id: REC-390-01
+    title: "this record's header totals were written by hand and were wrong (22 rows declared, 25 present)"
+    kind: process
+    channel: operator-running-own-instrument
+    class: hand
+    channel_note: "a yaml count run before committing, as the one-home-one-verdict record prescribes"
+    area: "this record"
+    anchor: UNMODELED/process
+    fixed_by: {note: "meta block regenerated from the per-row fields"}
+    pin_note: "not pinned: the count is re-run whenever this file changes"
+
+reach:
+  - invariant: "a ref counts as local work only when it is not a published branch or a remote-tracking ref"
+    enforced_on:
+      - "ChildHomeMaterializer.historyContainedIn (gitSourceIsBehind, gitDestIsBehind, gitHistoryMerge)"
+      - "ChildHomeMaterializer.gitHistoryMovedOn (checkoutIsModified, gitCopyIsUntouched)"
+      - "skt check._local_state (HEAD only)"
+    unenforced_on:
+      - "ChildHomeMaterializer.gitTwinsDifferOnlyInBookkeeping (still asks for identical ref listings; it writes nothing, so it can only fail to settle)"
+      - "ChildHomeMaterializer.reportedDifferences (reports '.git (history)' whenever the listings differ)"
+      - "External.tla GitAgree / GitStateUnmoved (sets of refs, no publication)"
+    enumerated_by: "grep for refListing, gitHistoryDigest, historyContainedIn and gitHistoryMovedOn callers in src/main; 7 call sites, 5 covered"
+  - invariant: "no reconcile replaces a git checkout that is ahead of its source"
+    enforced_on:
+      - "gitDestIsBehind (HEAD ancestry)"
+      - "Disposal.disposable (destinationAheadOf), which reconcile, copyUnit and linkUnit all read"
+      - "HomeCloseOut.remedyFor (never prints a sync for UPDATED/CONFLICTED/HELD_BACK when ahead)"
+    unenforced_on: UNDECIDED
+    enumerated_by: "not enumerated beyond ChildHomeMaterializer and HomeCloseOut: other writers of a unit directory (install, sync from a remote, project resolve's fetch) replace trees by their own rules and were not read"
+
+blind:
+  - case: "HomeSyncGitUnitTest (all cases before this change)"
+    passes: true
+    could_not_have_caught: "any defect that needs a remote -- every fixture repository has no remote, so 'published' and 'reachable from some ref' never differ from 'on HEAD'"
+    why: "fixture construction"
+    note: "DEF-390-01, -03, -04 all live in that gap. The new cases fake remote-tracking refs with update-ref; HomeCloseOutPublishedRefsTest uses a real bare origin"
+  - case: "test_graph home-sync / ticket-lifecycle"
+    passes: true
+    could_not_have_caught: UNDECIDED
+    why: "not read node by node for remotes in this pass"
+  - case: "GitHistoryInternal (healthy)"
+    passes: true
+    could_not_have_caught: "branch deletion on the remote (published never shrinks), annotated tags and stashes (not modeled), and more than one source home"
+    why: "abstraction chosen to keep the state space under 120 s"
