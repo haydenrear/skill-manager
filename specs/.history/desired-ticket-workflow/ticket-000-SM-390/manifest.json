@@ -1,0 +1,1032 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/SM-390",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-000-SM-390 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json",
+    "git_commit": "git commit -m 'record spec history for SM-390'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-000-SM-390"
+  },
+  "complexity_delta": {
+    "direction": "zero",
+    "metrics": {
+      "actions": {
+        "after": 9,
+        "before": 9,
+        "delta": 0,
+        "percent": 0.0
+      },
+      "bound": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "depth": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "distinct_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "generated_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "variables": {
+        "after": 38,
+        "before": 38,
+        "delta": 0,
+        "percent": 0.0
+      }
+    },
+    "previous_scope_id": "HIS-6"
+  },
+  "complexity_ledger": {
+    "coverage_audit": {
+      "in_scope_gaps": null,
+      "passing": false,
+      "report": "",
+      "scope_source": "",
+      "status": "not_run"
+    },
+    "delta": {
+      "direction": "zero",
+      "metrics": {
+        "actions": {
+          "after": 9,
+          "before": 9,
+          "delta": 0,
+          "percent": 0.0
+        },
+        "bound": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "depth": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "distinct_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "generated_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "variables": {
+          "after": 38,
+          "before": 38,
+          "delta": 0,
+          "percent": 0.0
+        }
+      },
+      "previous_scope_id": "HIS-6"
+    },
+    "errors": [
+      "REJECTED -- no recursive refinement record. Every close carries either an approved recommendation with evidence, or an explicit 'searched, found none'. Set `refinement.searched: true` and record the outcome.",
+      "REJECTED -- no `narrative:` recorded. The ledger's machine-checked core is deliberately narrow; the narrative carries the reasoning, the measured alternatives, and any finding the core cannot express."
+    ],
+    "input_path": "specs/tickets/SM-390/results/complexity_ledger.yaml",
+    "justification": "",
+    "ledger_path": "specs/results/complexity_ledger.json",
+    "metrics": {
+      "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+      "actions": 9,
+      "actions_from_fallback_heuristic": false,
+      "bound": null,
+      "bound_complete": false,
+      "bound_resolved_variables": 0,
+      "bound_unresolved_variables": [
+        "cli_store_units",
+        "cli_doc_repos",
+        "cli_harness_templates",
+        "cli_harness_instances",
+        "cli_installed_records",
+        "cli_lock_units",
+        "cli_agent_projections",
+        "cli_bindings",
+        "cli_projection_rows",
+        "cli_managed_copies",
+        "cli_import_directives",
+        "cli_projection_conflicts",
+        "cli_tool_records",
+        "cli_cli_lock",
+        "cli_skill_scripts_run",
+        "cli_errors",
+        "cli_gateway_url_configured",
+        "cli_registry_url_configured",
+        "cli_gateway_mcp_snapshot",
+        "effect_status",
+        "effect_continuation",
+        "program_halted",
+        "always_after_ran",
+        "rollback_journal",
+        "gateway_catalog",
+        "gateway_dynamic_servers",
+        "gateway_global_deployments",
+        "gateway_session_deployments",
+        "gateway_tools",
+        "gateway_disclosures",
+        "gateway_errors",
+        "gateway_last_init",
+        "server_registry_units",
+        "server_versions",
+        "server_packages",
+        "server_authenticated_users",
+        "project_model",
+        "result"
+      ],
+      "budget_utilization": {},
+      "depth": null,
+      "distinct_states": null,
+      "gate_passed": false,
+      "gate_violations": [
+        "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+        "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      ],
+      "generated_states": null,
+      "modularity": 0.0,
+      "variables": 38
+    },
+    "narrative": "",
+    "notes": [
+      "NOTE: TLC reports incomplete; comparison skipped.",
+      "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+    ],
+    "recorded_at_utc": "2026-09-17T16:16:41.780058+00:00",
+    "refinement": {
+      "applied": false,
+      "approved_by": "",
+      "detail": "",
+      "measured": false,
+      "outcome": "",
+      "searched": false
+    },
+    "retention": {
+      "effect_conformance": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "external_coverage": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "kill_rate": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "retention_summary": [
+      "kill_rate=not_run (UNVERIFIED)",
+      "effect_conformance=not_run (UNVERIFIED)",
+      "external_coverage=not_run (UNVERIFIED)"
+    ],
+    "schema_version": 1,
+    "scope": "ticket",
+    "scope_id": "SM-390",
+    "tlc_findings": [
+      {
+        "level": "NOTE",
+        "message": "TLC reports incomplete; comparison skipped."
+      }
+    ],
+    "transition_diff": "",
+    "validated_refactor": {
+      "behavior_tests": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the behavior-test output",
+        "status": "",
+        "value": null
+      },
+      "descriptor_comparison": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the before/after descriptor comparison",
+        "status": "",
+        "value": null
+      },
+      "tlc_after": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the post-change TLC output",
+        "status": "",
+        "value": null
+      },
+      "tlc_before": {
+        "classification": "unverified",
+        "evidence": "TODO -- path to the pre-change TLC output",
+        "status": "",
+        "value": null
+      }
+    },
+    "validated_refactor_summary": [
+      "tlc_before=(absent) (UNVERIFIED)",
+      "tlc_after=(absent) (UNVERIFIED)",
+      "behavior_tests=(absent) (UNVERIFIED)",
+      "descriptor_comparison=(absent) (UNVERIFIED)"
+    ],
+    "verdict": "rejected",
+    "workflow": "desired-ticket-workflow"
+  },
+  "created_at_utc": "2026-09-17T16:16:41.888617+00:00",
+  "desired_only": true,
+  "entry_name": "ticket-000-SM-390",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "git": {
+    "branch": "feature/390-spec-followups",
+    "commit": "0fe2edcb",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": {
+    "bypassed": [],
+    "flags": [],
+    "force": false,
+    "model_action": "CloseTicket",
+    "note": "RC-01: a close taken under a guard-weakening flag is a different modeled state from one taken under the guard. Recorded, never refused.",
+    "weakened": false
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.cfg",
+            "relative": "ClaimantRefreshExternal.cfg",
+            "source": "specs/tickets/SM-390/desired/ClaimantRefreshExternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.tla",
+            "relative": "ClaimantRefreshExternal.tla",
+            "source": "specs/tickets/SM-390/desired/ClaimantRefreshExternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal_regression.cfg",
+            "relative": "ClaimantRefreshExternal_regression.cfg",
+            "source": "specs/tickets/SM-390/desired/ClaimantRefreshExternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.cfg",
+            "relative": "ClaimantRefreshInternal.cfg",
+            "source": "specs/tickets/SM-390/desired/ClaimantRefreshInternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.tla",
+            "relative": "ClaimantRefreshInternal.tla",
+            "source": "specs/tickets/SM-390/desired/ClaimantRefreshInternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal_regression.cfg",
+            "relative": "ClaimantRefreshInternal_regression.cfg",
+            "source": "specs/tickets/SM-390/desired/ClaimantRefreshInternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/Core.tla",
+            "relative": "Core.tla",
+            "source": "specs/tickets/SM-390/desired/Core.tla"
+          },
+          {
+            "destination": "specs/current/External.cfg",
+            "relative": "External.cfg",
+            "source": "specs/tickets/SM-390/desired/External.cfg"
+          },
+          {
+            "destination": "specs/current/External.tla",
+            "relative": "External.tla",
+            "source": "specs/tickets/SM-390/desired/External.tla"
+          },
+          {
+            "destination": "specs/current/External_home.cfg",
+            "relative": "External_home.cfg",
+            "source": "specs/tickets/SM-390/desired/External_home.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_abslink.cfg",
+            "relative": "External_regression_abslink.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_abslink.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_absstate.cfg",
+            "relative": "External_regression_absstate.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_absstate.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_blindadoption.cfg",
+            "relative": "External_regression_blindadoption.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_blindadoption.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_childrefresh.cfg",
+            "relative": "External_regression_childrefresh.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_childrefresh.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_ffprovenance.cfg",
+            "relative": "External_regression_ffprovenance.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_ffprovenance.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_headonlygit.cfg",
+            "relative": "External_regression_headonlygit.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_headonlygit.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_mergebase.cfg",
+            "relative": "External_regression_mergebase.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_mergebase.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_nomergekind.cfg",
+            "relative": "External_regression_nomergekind.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_nomergekind.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_nopm.cfg",
+            "relative": "External_regression_nopm.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_nopm.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_overwrite.cfg",
+            "relative": "External_regression_overwrite.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_overwrite.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_partialconflict.cfg",
+            "relative": "External_regression_partialconflict.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_partialconflict.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_prefersource.cfg",
+            "relative": "External_regression_prefersource.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_prefersource.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_rawdigest.cfg",
+            "relative": "External_regression_rawdigest.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_rawdigest.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_recordsourcetree.cfg",
+            "relative": "External_regression_recordsourcetree.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_recordsourcetree.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_rewritecontent.cfg",
+            "relative": "External_regression_rewritecontent.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_rewritecontent.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_rewritecontent_reportonly.cfg",
+            "relative": "External_regression_rewritecontent_reportonly.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_rewritecontent_reportonly.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_sharedtoolchain.cfg",
+            "relative": "External_regression_sharedtoolchain.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_sharedtoolchain.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_silentshims.cfg",
+            "relative": "External_regression_silentshims.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_silentshims.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_skipgit.cfg",
+            "relative": "External_regression_skipgit.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_skipgit.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_symlink.cfg",
+            "relative": "External_regression_symlink.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_symlink.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_syncoverwrite.cfg",
+            "relative": "External_regression_syncoverwrite.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_syncoverwrite.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_ungatedcloseout.cfg",
+            "relative": "External_regression_ungatedcloseout.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_ungatedcloseout.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_verbatimstate.cfg",
+            "relative": "External_regression_verbatimstate.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_verbatimstate.cfg"
+          },
+          {
+            "destination": "specs/current/External_regression_wholetreegit.cfg",
+            "relative": "External_regression_wholetreegit.cfg",
+            "source": "specs/tickets/SM-390/desired/External_regression_wholetreegit.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync.cfg",
+            "relative": "External_sync.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_git.cfg",
+            "relative": "External_sync_git.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_git.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_guard_conflict.cfg",
+            "relative": "External_sync_guard_conflict.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_guard_conflict.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_guard_ffprovenance.cfg",
+            "relative": "External_sync_guard_ffprovenance.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_guard_ffprovenance.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_guard_headonlygit.cfg",
+            "relative": "External_sync_guard_headonlygit.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_guard_headonlygit.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_guard_overwrite.cfg",
+            "relative": "External_sync_guard_overwrite.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_guard_overwrite.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_guard_skipgit.cfg",
+            "relative": "External_sync_guard_skipgit.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_guard_skipgit.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_guard_teardown.cfg",
+            "relative": "External_sync_guard_teardown.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_guard_teardown.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_merge.cfg",
+            "relative": "External_sync_merge.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_merge.cfg"
+          },
+          {
+            "destination": "specs/current/External_sync_roundtrip.cfg",
+            "relative": "External_sync_roundtrip.cfg",
+            "source": "specs/tickets/SM-390/desired/External_sync_roundtrip.cfg"
+          },
+          {
+            "destination": "specs/current/GitHistoryInternal.cfg",
+            "relative": "GitHistoryInternal.cfg",
+            "source": "specs/tickets/SM-390/desired/GitHistoryInternal.cfg"
+          },
+          {
+            "destination": "specs/current/GitHistoryInternal.tla",
+            "relative": "GitHistoryInternal.tla",
+            "source": "specs/tickets/SM-390/desired/GitHistoryInternal.tla"
+          },
+          {
+            "destination": "specs/current/GitHistoryInternal_probe_reach.cfg",
+            "relative": "GitHistoryInternal_probe_reach.cfg",
+            "source": "specs/tickets/SM-390/desired/GitHistoryInternal_probe_reach.cfg"
+          },
+          {
+            "destination": "specs/current/GitHistoryInternal_regression_allrefs.cfg",
+            "relative": "GitHistoryInternal_regression_allrefs.cfg",
+            "source": "specs/tickets/SM-390/desired/GitHistoryInternal_regression_allrefs.cfg"
+          },
+          {
+            "destination": "specs/current/GitHistoryInternal_regression_anysourceref.cfg",
+            "relative": "GitHistoryInternal_regression_anysourceref.cfg",
+            "source": "specs/tickets/SM-390/desired/GitHistoryInternal_regression_anysourceref.cfg"
+          },
+          {
+            "destination": "specs/current/GitHistoryInternal_regression_syncremedy.cfg",
+            "relative": "GitHistoryInternal_regression_syncremedy.cfg",
+            "source": "specs/tickets/SM-390/desired/GitHistoryInternal_regression_syncremedy.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.cfg",
+            "relative": "HomeIntegrityInternal.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal.tla",
+            "relative": "HomeIntegrityInternal.tla",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal.tla"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_guard_repairingobserver.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_guard_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_disposalreach.cfg",
+            "relative": "HomeIntegrityInternal_probe_disposalreach.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_probe_disposalreach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_probe_reach.cfg",
+            "relative": "HomeIntegrityInternal_probe_reach.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_probe_reach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_blindobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_blindobserver.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_blindobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "relative": "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_collapsedgateadmits.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "relative": "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_everythingdisposable.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_foreignprojection.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_foreignprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_gaterefires.cfg",
+            "relative": "HomeIntegrityInternal_regression_gaterefires.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_gaterefires.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "relative": "HomeIntegrityInternal_regression_halfboundhome.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_halfboundhome.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "relative": "HomeIntegrityInternal_regression_narrowprojection.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_narrowprojection.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "relative": "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "relative": "HomeIntegrityInternal_regression_repairingobserver.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_repairingobserver.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_selfcertifyingdescent.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_selfrepend.cfg",
+            "relative": "HomeIntegrityInternal_regression_selfrepend.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_selfrepend.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_silentdrift.cfg",
+            "relative": "HomeIntegrityInternal_regression_silentdrift.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_silentdrift.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleack.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleack.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_staleack.cfg"
+          },
+          {
+            "destination": "specs/current/HomeIntegrityInternal_regression_staleerror.cfg",
+            "relative": "HomeIntegrityInternal_regression_staleerror.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeIntegrityInternal_regression_staleerror.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal.cfg",
+            "relative": "HomeVerdictsInternal.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal.tla",
+            "relative": "HomeVerdictsInternal.tla",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal.tla"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_finding_outrightpath.cfg",
+            "relative": "HomeVerdictsInternal_finding_outrightpath.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_finding_outrightpath.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_finding_prunedresidue.cfg",
+            "relative": "HomeVerdictsInternal_finding_prunedresidue.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_finding_prunedresidue.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_probe_reach.cfg",
+            "relative": "HomeVerdictsInternal_probe_reach.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_probe_reach.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_aliasspelling.cfg",
+            "relative": "HomeVerdictsInternal_regression_aliasspelling.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_aliasspelling.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_blinddetectors.cfg",
+            "relative": "HomeVerdictsInternal_regression_blinddetectors.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_blinddetectors.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_foreignfixhalfrewrite.cfg",
+            "relative": "HomeVerdictsInternal_regression_foreignfixhalfrewrite.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_foreignfixhalfrewrite.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_hashonly.cfg",
+            "relative": "HomeVerdictsInternal_regression_hashonly.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_hashonly.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_launcherfollow.cfg",
+            "relative": "HomeVerdictsInternal_regression_launcherfollow.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_launcherfollow.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_leaverows.cfg",
+            "relative": "HomeVerdictsInternal_regression_leaverows.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_leaverows.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_noexemption.cfg",
+            "relative": "HomeVerdictsInternal_regression_noexemption.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_noexemption.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_nomarketplacerepair.cfg",
+            "relative": "HomeVerdictsInternal_regression_nomarketplacerepair.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_nomarketplacerepair.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_norestore.cfg",
+            "relative": "HomeVerdictsInternal_regression_norestore.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_norestore.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_nostatcheck.cfg",
+            "relative": "HomeVerdictsInternal_regression_nostatcheck.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_nostatcheck.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_reapunconditionally.cfg",
+            "relative": "HomeVerdictsInternal_regression_reapunconditionally.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_reapunconditionally.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_rebuildfromindex.cfg",
+            "relative": "HomeVerdictsInternal_regression_rebuildfromindex.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_rebuildfromindex.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_rewritegateddetector.cfg",
+            "relative": "HomeVerdictsInternal_regression_rewritegateddetector.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_rewritegateddetector.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_substring.cfg",
+            "relative": "HomeVerdictsInternal_regression_substring.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_substring.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_tokenmeansdone.cfg",
+            "relative": "HomeVerdictsInternal_regression_tokenmeansdone.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_tokenmeansdone.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_trustedmanifest.cfg",
+            "relative": "HomeVerdictsInternal_regression_trustedmanifest.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_trustedmanifest.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_unstamped.cfg",
+            "relative": "HomeVerdictsInternal_regression_unstamped.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_unstamped.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_verifyownwalk.cfg",
+            "relative": "HomeVerdictsInternal_regression_verifyownwalk.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_verifyownwalk.cfg"
+          },
+          {
+            "destination": "specs/current/HomeVerdictsInternal_regression_writethrough.cfg",
+            "relative": "HomeVerdictsInternal_regression_writethrough.cfg",
+            "source": "specs/tickets/SM-390/desired/HomeVerdictsInternal_regression_writethrough.cfg"
+          },
+          {
+            "destination": "specs/current/Internal.cfg",
+            "relative": "Internal.cfg",
+            "source": "specs/tickets/SM-390/desired/Internal.cfg"
+          },
+          {
+            "destination": "specs/current/Internal.tla",
+            "relative": "Internal.tla",
+            "source": "specs/tickets/SM-390/desired/Internal.tla"
+          },
+          {
+            "destination": "specs/current/Internal_clone.cfg",
+            "relative": "Internal_clone.cfg",
+            "source": "specs/tickets/SM-390/desired/Internal_clone.cfg"
+          },
+          {
+            "destination": "specs/current/Internal_regression_nonatomic.cfg",
+            "relative": "Internal_regression_nonatomic.cfg",
+            "source": "specs/tickets/SM-390/desired/Internal_regression_nonatomic.cfg"
+          },
+          {
+            "destination": "specs/current/Internal_regression_overwrite.cfg",
+            "relative": "Internal_regression_overwrite.cfg",
+            "source": "specs/tickets/SM-390/desired/Internal_regression_overwrite.cfg"
+          },
+          {
+            "destination": "specs/current/Internal_regression_partialclone.cfg",
+            "relative": "Internal_regression_partialclone.cfg",
+            "source": "specs/tickets/SM-390/desired/Internal_regression_partialclone.cfg"
+          },
+          {
+            "destination": "specs/current/Internal_regression_unreanchored.cfg",
+            "relative": "Internal_regression_unreanchored.cfg",
+            "source": "specs/tickets/SM-390/desired/Internal_regression_unreanchored.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/SM-390/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/SM-390/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/SM-390/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/SM-390/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/SM-390/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/claimant_refresh_actions.yml",
+            "relative": "claimant_refresh_actions.yml",
+            "source": "specs/tickets/SM-390/desired/claimant_refresh_actions.yml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/SM-390/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/SM-390/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/SM-390/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/SM-390/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/SM-390/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/SM-390/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/SM-390/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/SM-390/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/SM-390/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/SM-390/desired/tests/test_program_model_contract.py"
+          },
+          {
+            "destination": "specs/current/tests/test_spec_manifests_parse.py",
+            "relative": "tests/test_spec_manifests_parse.py",
+            "source": "specs/tickets/SM-390/desired/tests/test_spec_manifests_parse.py"
+          }
+        ],
+        "operation": "promote ticket desired onto project current, preserving unseeded current-only paths",
+        "preserved": [
+          "tests/test_current_ticket_workflow.py"
+        ],
+        "removed": [],
+        "role": "current",
+        "seed_basis": "seed manifest recorded at open; removing only seeded paths the ticket dropped",
+        "seed_recorded": true,
+        "source": "specs/tickets/SM-390/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/SM-390"
+  },
+  "refinement_record": {
+    "applied": false,
+    "approved_by": "",
+    "detail": "",
+    "measured": false,
+    "outcome": "",
+    "searched": false
+  },
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-SM-390/results/tlc.md",
+      "source": "specs/tickets/SM-390/results/tlc.md"
+    }
+  ],
+  "retention_evidence": {
+    "effect_conformance": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "external_coverage": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "kill_rate": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    }
+  },
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 12,
+    "close_out_entry": "Close-out ticket SM-390",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-SM-390/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-SM-390/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-SM-390/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "pruned": [],
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-SM-390/ticket",
+      "source": "specs/tickets/SM-390"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "GitHistoryInternal: close-out judges .git by ancestry and publication (#390, #370); 3 regression configs, reach probe",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Healthy configuration has no error (13271 distinct states).",
+        "Each regression configuration violates exactly its target invariant.",
+        "The reach probe reports 3 violated invariants."
+      ],
+      "commands": [
+        "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal.cfg",
+        "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_allrefs.cfg",
+        "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_anysourceref.cfg",
+        "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_syncremedy.cfg"
+      ],
+      "evidence": [
+        "specs/tickets/SM-390/results/tlc.md"
+      ]
+    },
+    "current_increment": {
+      "adapters": [],
+      "graph_after_unit_pass": [
+        "home-sync",
+        "ticket-lifecycle"
+      ],
+      "model_actions": [
+        "GitHistoryInternal.SyncApply",
+        "GitHistoryInternal.CloseOut"
+      ],
+      "model_state": [
+        "GitHistoryInternal.head",
+        "GitHistoryInternal.local",
+        "GitHistoryInternal.tracked",
+        "GitHistoryInternal.ttrunk",
+        "GitHistoryInternal.rtrunk",
+        "GitHistoryInternal.published"
+      ],
+      "unit_tests": [
+        "jbang RunTests.java (HomeCloseOutPublishedRefsTest, HomeSyncGitUnitTest)"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "GitHistoryInternal.CommitOnSide",
+      "GitHistoryInternal.Publish",
+      "GitHistoryInternal.AdvanceRemote",
+      "GitHistoryInternal.Fetch",
+      "GitHistoryInternal.PullTrunk",
+      "GitHistoryInternal.SyncApply",
+      "GitHistoryInternal.CloseOut"
+    ],
+    "id": "SM-390",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java",
+      "src/main/java/dev/skillmanager/source/GitOps.java",
+      "src/main/java/dev/skillmanager/store/HomeCloseOut.java"
+    ],
+    "objective": "A worktree home whose copy of a git-backed unit is at or behind the project home's, and holds nothing unpublished the project lacks, clears close-out; a sync never rewinds the destination; no remedy syncs toward a newer destination.",
+    "status": "done",
+    "title": "close-out judges git history by publication and ancestry"
+  },
+  "ticket_id": "SM-390",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "pruned": [],
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-SM-390/ticket",
+    "source": "specs/tickets/SM-390"
+  },
+  "workflow_name": "desired-ticket-workflow"
+}

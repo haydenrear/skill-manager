@@ -1,0 +1,137 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/closed-snapshot-SM-390 specs/results/skill_feedback.md",
+    "git_commit": "git commit -m 'close spec ticket workflow'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/closed-snapshot-SM-390"
+  },
+  "complexity_delta": null,
+  "complexity_ledger": null,
+  "created_at_utc": "2026-09-17T16:19:31.488296+00:00",
+  "entry_name": "closed-snapshot-SM-390",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "findings_ledger": {
+    "exists": false,
+    "role": "findings_ledger",
+    "source": "specs/desired_program_model/deferred_findings.yaml"
+  },
+  "git": {
+    "branch": "feature/390-spec-followups",
+    "commit": "0fe2edcb",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "workflow-close",
+  "refinement_record": null,
+  "results": [],
+  "retention_evidence": null,
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 13,
+    "close_out_entry": "Close-out workflow desired-ticket-workflow",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-SM-390/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-SM-390/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-SM-390/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Promoted SM-390 (GitHistoryInternal: close-out judges .git by ancestry and publication, #390/#370) into program_model",
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "tickets": [
+    {
+      "acceptance": {
+        "assertions": [
+          "Healthy configuration has no error (13271 distinct states).",
+          "Each regression configuration violates exactly its target invariant.",
+          "The reach probe reports 3 violated invariants."
+        ],
+        "commands": [
+          "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal.cfg",
+          "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_allrefs.cfg",
+          "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_anysourceref.cfg",
+          "specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_syncremedy.cfg"
+        ],
+        "evidence": [
+          "specs/tickets/SM-390/results/tlc.md"
+        ]
+      },
+      "current_increment": {
+        "adapters": [],
+        "graph_after_unit_pass": [
+          "home-sync",
+          "ticket-lifecycle"
+        ],
+        "model_actions": [
+          "GitHistoryInternal.SyncApply",
+          "GitHistoryInternal.CloseOut"
+        ],
+        "model_state": [
+          "GitHistoryInternal.head",
+          "GitHistoryInternal.local",
+          "GitHistoryInternal.tracked",
+          "GitHistoryInternal.ttrunk",
+          "GitHistoryInternal.rtrunk",
+          "GitHistoryInternal.published"
+        ],
+        "unit_tests": [
+          "jbang RunTests.java (HomeCloseOutPublishedRefsTest, HomeSyncGitUnitTest)"
+        ]
+      },
+      "depends_on": [],
+      "desired_actions": [
+        "GitHistoryInternal.CommitOnSide",
+        "GitHistoryInternal.Publish",
+        "GitHistoryInternal.AdvanceRemote",
+        "GitHistoryInternal.Fetch",
+        "GitHistoryInternal.PullTrunk",
+        "GitHistoryInternal.SyncApply",
+        "GitHistoryInternal.CloseOut"
+      ],
+      "id": "SM-390",
+      "implementation_scope": [
+        "src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java",
+        "src/main/java/dev/skillmanager/source/GitOps.java",
+        "src/main/java/dev/skillmanager/store/HomeCloseOut.java"
+      ],
+      "objective": "A worktree home whose copy of a git-backed unit is at or behind the project home's, and holds nothing unpublished the project lacks, clears close-out; a sync never rewinds the destination; no remedy syncs toward a newer destination.",
+      "status": "done",
+      "title": "close-out judges git history by publication and ancestry"
+    }
+  ],
+  "workflow_name": "desired-ticket-workflow"
+}

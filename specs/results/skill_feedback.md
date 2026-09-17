@@ -692,3 +692,73 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket SM-390
+
+- close_scope: ticket
+- close_id: SM-390
+- workflow: desired-ticket-workflow
+- closed_at: 2026-09-17T16:16:41+00:00
+- summary: GitHistoryInternal: close-out judges .git by ancestry and publication (#390, #370); 3 regression configs, reach probe
+- feedback_status: items-recorded
+
+### SF-010 — the CLI does not import under Python < 3.12 (PEP 701 f-strings)
+
+- root_cause: tool
+- surface: `tla-spec-dev --spec-root specs scaffold workflow SM-390 ...` (every subcommand)
+- detail: >
+    The home shim runs `exec python3 .../tla_spec_dev.py`; `python3` is 3.9.6
+    on this machine. `scripts/onboard_program_model.py` nested a triple-quoted
+    string inside an f-string twice (3922b16c), so the import failed with
+    "f-string: expecting '}'". Worked around for this ticket by invoking the
+    script with python3.14 directly.
+- recommendation: https://github.com/haydenrear/tla-spec-dev/pull/346
+- status: filed
+
+### SF-011 — scaffolded workflow views carry a TEMPLATE spec_manifest.yaml that promotion copies over the accepted one
+
+- root_cause: tool
+- surface: `scaffold workflow` + `open ticket`, then `close ticket` / `close_tickets.py`
+- detail: >
+    `copy_baseline_tree` skips README.md and spec_manifest.yaml and writes
+    generated ones (`package: current_program_cases`, none of the accepted
+    content). spec_manifest.yaml is a semantic file for `_promote_tree`, so an
+    unrestored template replaces program_model's manifest on promotion -- the
+    clobber ARTI-02 repaired. Worked around here by copying program_model's
+    spec_manifest.yaml, README.md and case_adapters.toml into desired/ before
+    closing. The README section for GitHistoryInternal is added to
+    program_model by hand, because README.md is a planning file and is not
+    promoted.
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/345
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out workflow desired-ticket-workflow
+
+- close_scope: workflow
+- close_id: desired-ticket-workflow
+- workflow: desired-ticket-workflow
+- closed_at: 2026-09-17T16:19:31+00:00
+- summary: Promoted SM-390 (GitHistoryInternal: close-out judges .git by ancestry and publication, #390/#370) into program_model
+- feedback_status: items-recorded
+
+SF-010 and SF-011 (recorded at the ticket close above) apply to this workflow too.
+
+### SF-012 — a second workflow's close collides with the first's closed-snapshot, after --accept-new has already written program_model
+
+- root_cause: tool
+- surface: `close_tickets.py --accept-new`
+- detail: >
+    Every scaffold names the workflow `desired-ticket-workflow`, and this repo
+    already has `.history/desired-ticket-workflow/closed-snapshot`. The close
+    refused on the existing entry only after promoting into program_model;
+    `--workflow-name` then refused for want of a receipt under the new name.
+    `--history-entry closed-snapshot-SM-390` closed it; neither refusal names
+    that flag.
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/347
+- status: filed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
