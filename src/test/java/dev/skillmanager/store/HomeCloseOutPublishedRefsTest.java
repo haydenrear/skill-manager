@@ -122,6 +122,13 @@ public final class HomeCloseOutPublishedRefsTest {
                             "and never proposes syncing an older copy onto a newer one: " + remedy);
                     assertContains(remedy, "ahead of this copy",
                             "and says why: " + remedy);
+                    UnitSync unit = only(verdict);
+                    assertEquals(SyncStatus.CONFLICTED, unit.status(),
+                            "a conflict, not a would-update over a newer copy: " + unit.detail());
+                    assertContains(unit.detail(), "ahead of this copy",
+                            "the verdict names the real reason: " + unit.detail());
+                    assertFalse(unit.detail().contains("uncommitted changes"),
+                            "and does not invent destination edits: " + unit.detail());
                 });
 
         return suite.runAll();

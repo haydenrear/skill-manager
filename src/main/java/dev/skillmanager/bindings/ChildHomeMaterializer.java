@@ -1355,11 +1355,16 @@ public final class ChildHomeMaterializer {
                 sourceRecord);
         boolean gitPair = carriesGitDirectory(source) && carriesGitDirectory(dest);
         if (base == null || base.entries().isEmpty()) {
+            String ahead = gitPair ? destinationAheadOf(source, dest) : null;
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
                     reportedDifferences(dst.entries(), src.entries(), gitPair, source, dest),
-                    "both sides differ and neither home recorded a per-file baseline they can be "
-                            + "shown to share, so there is no merge base; resolve it by hand or "
-                            + "publish the edit with `skill-manager unit publish " + name + "`");
+                    ahead != null
+                            ? ahead + "; nothing was written. Send anything only the source "
+                                    + "holds with `skill-manager unit publish " + name + "`"
+                            : "both sides differ and neither home recorded a per-file baseline "
+                                    + "they can be shown to share, so there is no merge base; "
+                                    + "resolve it by hand or publish the edit with "
+                                    + "`skill-manager unit publish " + name + "`");
         }
 
         // A git-backed pair is merged in two halves, like everything else that
@@ -1375,17 +1380,22 @@ public final class ChildHomeMaterializer {
         if (history != GitHistoryMerge.AGREE && history != GitHistoryMerge.KEEP_DEST) {
             List<String> conflicts = new ArrayList<>(plan.conflicts());
             conflicts.add(GIT_HISTORY_CONFLICT);
-            String why = history == GitHistoryMerge.DEST_BEHIND_BUT_EDITED
+            String ahead = destinationAheadOf(source, dest);
+            String why = ahead != null
+                    ? ahead + ", and the source holds refs that are neither published nor in "
+                            + "the destination; nothing was written. Send them with "
+                            + "`skill-manager unit publish " + name + "`"
+                    : history == GitHistoryMerge.DEST_BEHIND_BUT_EDITED
                     ? "the source's history contains commits the destination lacks, and the "
                             + "destination has uncommitted changes of its own, so its .git cannot "
                             + "be replaced without leaving its files and its HEAD disagreeing; "
                             + "nothing was written. Bring the destination up to date first "
                             + "(`skill-manager sync " + name + "` in the destination home, or "
                             + "commit its changes), then re-run"
-                    : "the two git histories have diverged -- neither contains every unpublished "
-                            + "ref of the other -- and nothing here may settle that; nothing was written. "
-                            + "Send the source's commits home with `skill-manager unit publish "
-                            + name + "`";
+                    : "the two git histories have diverged -- neither contains every "
+                            + "unpublished ref of the other -- and nothing here may settle that; "
+                            + "nothing was written. Send the source's commits home with "
+                            + "`skill-manager unit publish " + name + "`";
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(), conflicts,
                     why + (plan.conflicts().isEmpty() ? "" : ", and " + plan.conflicts().size()
                             + " file(s) changed on both sides"));
@@ -1726,6 +1736,15 @@ public final class ChildHomeMaterializer {
         if (!GitOps.isAvailable()) return false;
         if (!GitOps.isGitRepo(source) || !GitOps.isGitRepo(dest)) return false;
         if (!worktreeCleanModuloDerived(dest)) return false;
+        return destFastForwardsTo(source, dest);
+    }
+
+    /**
+     * The destination's HEAD is an ancestor of (or equal to) the source's, and
+     * everything else the destination would lose is in the source -- a real
+     * fast-forward, which reachability alone is not (#390).
+     */
+    private static boolean destFastForwardsTo(Path source, Path dest) {
         if (!GitOps.isAncestor(source, GitOps.headHash(dest), GitOps.headHash(source))) return false;
         return historyContainedIn(dest, source);
     }
@@ -1774,7 +1793,7 @@ public final class ChildHomeMaterializer {
         String dstHistory = gitHistoryDigest(dest);
         if (srcHistory != null && srcHistory.equals(dstHistory)) return GitHistoryMerge.AGREE;
         if (historyContainedIn(source, dest)) return GitHistoryMerge.KEEP_DEST;
-        if (historyContainedIn(dest, source)) return GitHistoryMerge.DEST_BEHIND_BUT_EDITED;
+        if (destFastForwardsTo(source, dest)) return GitHistoryMerge.DEST_BEHIND_BUT_EDITED;
         return GitHistoryMerge.CONFLICT;
     }
 
