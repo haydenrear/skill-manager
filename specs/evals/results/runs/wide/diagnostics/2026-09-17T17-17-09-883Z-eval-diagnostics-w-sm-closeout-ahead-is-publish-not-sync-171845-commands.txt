@@ -1,0 +1,11 @@
+Bash {"command": "ls && echo \"---\" && cat cases/w-sm-closeout-ahead-is-publish-not-sync/close.txt", "description": "Read close failure output"}
+---
+Bash {"command": "cat README.md && echo \"=== cases ===\" && ls -la cases/w-sm-closeout-ahead-is-publish-not-sync/ && echo \"=== cwd ===\" && pwd && ls -la", "description": "Inspect README and case dir"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt status 2>&1 | head -60; echo \"=== worktrees ===\"; git worktree list 2>&1; echo \"=== /work ===\"; ls -la /work 2>&1 | head", "description": "Check home status and worktrees"}
+---
+Bash {"command": "./.skill-manager/bin/cli/skill-manager unit publish --help 2>&1 | head -50; echo \"=== close-out help ===\"; ./.skill-manager/bin/cli/skill-manager home close-out --help 2>&1 | head -40", "description": "Read publish and close-out CLI help"}
+---
+Bash {"command": "/work/lib/wt-LIB-9/.skill-manager/bin/cli/skill-manager unit publish spec-double-compiler --home /work/lib/wt-LIB-9/.skill-manager", "description": "Publish worktree-only refs for spec-double-compiler"}

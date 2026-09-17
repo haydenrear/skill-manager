@@ -1,0 +1,11 @@
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt ticket sweep --help 2>&1 | head -60", "description": "Show sweep command help"}
+---
+Bash {"command": "skt ticket list 2>&1 | head -80", "description": "List standing ticket worktrees"}
+---
+Bash {"command": "skt ticket sweep --epic trim-docs 2>&1 | head -60", "description": "Dry-run sweep scoped to trim-docs epic"}
+---
+Bash {"command": "git branch -a 2>&1 | head -30; echo \"--- remotes ---\"; git remote -v", "description": "List branches and remotes"}
+---
+Bash {"command": "skt ticket sweep --epic trim-docs --yes 2>&1 | head -40; echo \"exit=$?\"", "description": "Run scoped sweep for trim-docs epic"}

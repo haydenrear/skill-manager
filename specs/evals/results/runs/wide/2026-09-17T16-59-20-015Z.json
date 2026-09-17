@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.274",
+  "startedAt": "2026-09-17T16:59:20.015Z",
+  "durationSeconds": 73,
+  "costUsd": 0.6881115,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-skt-sweep-requires-epic",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-skt-sweep-requires-epic",
+      "dir": "evals/w-skt-sweep-requires-epic",
+      "source": "mixed",
+      "promptMarkdown": "Epic `trim-docs` is fully integrated. From this primary checkout, retire all of\nthat epic's ticket worktrees in one safety-gated pass (not a hand-written loop).\nOther epics' worktrees may also be standing beside this repository.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a command that\nwrites will fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once, and\nreport it. Do not probe for a writable location or try a different route.\n\n\nEVAL-CASE: w-skt-sweep-requires-epic\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "names-the-epic",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-names-the-epic",
+            "exists": true
+          }
+        },
+        {
+          "name": "no-bare-or-manual",
+          "type": "file_exists",
+          "weight": 2,
+          "config": {
+            "path": ".eval/forbid-no-bare-or-manual",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 8,
+            "costUsd": 0.3516325,
+            "judgeCostUsd": 0,
+            "durationSeconds": 70,
+            "startedAt": "2026-09-17T16:59:22.968Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-QyQ5U6/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "names-the-epic",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-names-the-epic exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-bare-or-manual",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-bare-or-manual exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8333333333333334,
+            "passed": false,
+            "turns": 8,
+            "costUsd": 0.336479,
+            "judgeCostUsd": 0,
+            "durationSeconds": 69,
+            "startedAt": "2026-09-17T16:59:22.968Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-cwGeTQ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "names-the-epic",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-names-the-epic exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-bare-or-manual",
+                "passed": true,
+                "weight": 2,
+                "explanation": ".eval/forbid-no-bare-or-manual exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8333333333333334,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.8333333333333334,
+    "overallPassRate": 0
+  }
+}

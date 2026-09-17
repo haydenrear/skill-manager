@@ -1,0 +1,21 @@
+Bash {"command": "pwd; ls -a", "description": "List working directory contents"}
+---
+Bash {"command": "ls -d cases/w-giw-wt-close-no-force-on-unpublished 2>/dev/null; find / -name close.txt -path '*w-giw-wt-close-no-force-on-unpublished*' 2>/dev/null | head", "description": "Locate the eval case close.txt"}
+---
+Bash {"command": "ls -R cases | head -50", "description": "List cases directory"}
+---
+Read {"file_path": "/private/tmp/e-tnmcDm/home/cwd/cases/w-giw-wt-close-no-force-on-unpublished/close.txt"}
+---
+Bash {"command": "git worktree list; echo ---; git branch -a | head -30; echo ---; ls .skill-manager", "description": "Inspect worktrees, branches, and skill-manager home"}
+---
+Bash {"command": "which skt skill-manager; echo ---; skt --help 2>&1 | head -40", "description": "Check skt CLI availability and help"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt ticket --help 2>&1 | head -60; echo \"=== close ===\"; skt ticket close --help 2>&1 | head -40", "description": "Show skt ticket subcommand help"}
+---
+Bash {"command": "skt ticket info TICKET-7 2>&1 | head -40; echo \"=== list ===\"; skt ticket list 2>&1 | head -40", "description": "Inspect TICKET-7 worktree state"}
+---
+Bash {"command": "ls -d /work/demo /work/demo/wt-TICKET-7 2>&1", "description": "Check whether the demo worktree path exists here"}
+---
+Bash {"command": "/work/demo/wt-TICKET-7/.skill-manager/bin/cli/skill-manager unit publish demo-skill --home /work/demo/wt-TICKET-7/.skill-manager 2>&1 | head -20", "description": "Publish demo-skill out of the ticket home"}
