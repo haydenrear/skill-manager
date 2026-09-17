@@ -676,18 +676,56 @@ public final class ChildHomeMaterializer {
      * {@code gc} that repacks objects change no ref. So issue #41 stays fixed and
      * the protection the digest used to give for free is back.
      *
-     * <p>Two consequences, both named rather than discovered later: a
-     * {@code git fetch} that advances a remote-tracking ref, and a
-     * {@code git branch -d} of a merged branch, both read as "moved on" even
-     * though neither loses anything. Each costs a conflict a human resolves. That
-     * is the direction this whole mechanism errs in, and it is the opposite of
-     * what the HEAD-only reading cost.
+     * <p>A digest that moved is then asked ONE more question before it counts
+     * (#390): did only published refs move? A {@code git fetch} that advances a
+     * remote-tracking ref, a {@code git push} that adds one, and a
+     * {@code git branch -d} of a merged branch all move the digest and lose
+     * nothing, and each used to cost a hold-back no operator could settle
+     * locally. So when HEAD is still the recorded revision and every ref outside
+     * {@code refs/remotes/} is a branch whose tip a remote-tracking ref already
+     * contains ({@link #onlyPublishedRefsBesideHead}), the history has not moved
+     * in any way that matters. A stash, a tag, a note, or an unpublished branch
+     * still counts, whatever else moved.
      */
     private static boolean gitHistoryMovedOn(Path dest, MaterializationRecord record) {
         String recorded = record == null ? null : record.historyDigest();
         if (recorded == null || recorded.isBlank()) return true;
         String now = gitHistoryDigest(dest);
-        return now == null || !now.equals(recorded);
+        if (now == null) return true;
+        if (now.equals(recorded)) return false;
+        return !onlyPublishedRefsBesideHead(dest, record.sourceRevision());
+    }
+
+    /**
+     * HEAD is {@code recordedHead}, and every ref not under
+     * {@code refs/remotes/} is a local branch whose tip is already published
+     * ({@link #isPublishedBranch}). False on any doubt.
+     */
+    private static boolean onlyPublishedRefsBesideHead(Path tree, String recordedHead) {
+        if (recordedHead == null || recordedHead.isBlank()) return false;
+        String head = GitOps.headHash(tree);
+        if (head == null || !head.equals(recordedHead)) return false;
+        String listing = GitOps.refListing(tree);
+        if (listing == null) return false;
+        for (String line : listing.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+            String[] parts = trimmed.split("\\s+", 2);
+            if (parts.length != 2) return false;
+            if (parts[1].startsWith("refs/remotes/")) continue;
+            if (!isPublishedBranch(tree, parts[1], parts[0])) return false;
+        }
+        return true;
+    }
+
+    /**
+     * A local branch whose tip a remote-tracking ref of the same repository
+     * contains. Only {@code refs/heads/*} qualifies: an annotated tag or a note
+     * is an object of its own that no remote branch holds, and a stash is never
+     * pushed, so those always count as work.
+     */
+    private static boolean isPublishedBranch(Path tree, String refName, String object) {
+        return refName.startsWith("refs/heads/") && GitOps.isPublished(tree, object);
     }
 
     /**
@@ -1739,11 +1777,11 @@ public final class ChildHomeMaterializer {
     /**
      * Whether everything {@code holder} would lose names an object that
      * {@code container} reaches from some ref of its own: HEAD always, and
-     * every other ref -- heads, tags, stash -- <b>unless its commits are
-     * already published</b>. Not "an ancestor of the container's HEAD": a store
-     * copy carries feature branches that are not on {@code main} in either home
-     * while being identical in both, and against HEAD alone every one of them
-     * read as divergence.
+     * every other ref -- heads, tags, stash -- except a local branch whose
+     * commits are <b>already published</b> ({@link #isPublishedBranch}). Not "an
+     * ancestor of the container's HEAD": a store copy carries feature branches
+     * that are not on {@code main} in either home while being identical in both,
+     * and against HEAD alone every one of them read as divergence.
      *
      * <p>Published work is not at risk, so it is not asked about (#390).
      * Remote-tracking refs are copies of a remote's state by definition, and a
@@ -1774,7 +1812,7 @@ public final class ChildHomeMaterializer {
             String[] parts = trimmed.split("\\s+", 2);
             if (parts.length == 2 && parts[1].startsWith("refs/remotes/")) continue;
             if (objects.contains(parts[0])) continue;
-            if (GitOps.isPublished(holder, parts[0])) continue;
+            if (parts.length == 2 && isPublishedBranch(holder, parts[1], parts[0])) continue;
             objects.add(parts[0]);
         }
         return GitOps.containsAll(container, objects);

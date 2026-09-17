@@ -344,6 +344,57 @@ public final class HomeSyncGitUnitTest {
                     "with the working tree exactly as the stash left it");
         });
 
+        suite.test("#390: a fetch or a pushed branch is not local work", () -> {
+            // Measured shape: a worktree home's copy whose only change since
+            // materialization was `git fetch` held back every reconcile and its
+            // teardown, with nothing local that could settle it. A
+            // remote-tracking ref is published by definition, and so is a local
+            // branch whose tip one of them contains.
+            Homes homes = Homes.create("published");
+            sync(homes);
+            String materializedAt = head(homes.destUnit());
+
+            git(homes.destUnit(), "update-ref", "refs/remotes/origin/main", materializedAt);
+            git(homes.destUnit(), "checkout", "--quiet", "-b", "pushed");
+            Files.writeString(homes.destUnit().resolve("SKILL.md"),
+                    "---\nname: " + UNIT + "\ndescription: pushed work\n---\nPUSHED\n");
+            git(homes.destUnit(), "add", "SKILL.md");
+            commit(homes.destUnit(), "agent: work that was pushed");
+            git(homes.destUnit(), "update-ref", "refs/remotes/origin/pushed", "HEAD");
+            git(homes.destUnit(), "checkout", "--quiet", "main");
+            assertEquals(materializedAt, head(homes.destUnit()),
+                    "precondition: HEAD is the recorded revision");
+
+            Files.writeString(homes.sourceUnit().resolve("upstream.md"), "upstream v2\n");
+            git(homes.sourceUnit(), "add", "-A");
+            commit(homes.sourceUnit(), "upstream: a later commit");
+
+            UnitSync outcome = only(sync(homes));
+            assertEquals(SyncStatus.UPDATED, outcome.status(),
+                    "only published refs moved, so the copy is disposable: " + outcome.detail());
+            assertTrue(Files.exists(homes.destUnit().resolve("upstream.md")),
+                    "and the source's commit arrived");
+        });
+
+        suite.test("#390 control: an annotated tag on a published commit is still work", () -> {
+            Homes homes = Homes.create("tag");
+            sync(homes);
+            git(homes.destUnit(), "update-ref", "refs/remotes/origin/main", head(homes.destUnit()));
+            git(homes.destUnit(), "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
+                    "tag", "-a", "agent-note", "-m", "a tag object no remote holds");
+
+            Files.writeString(homes.sourceUnit().resolve("upstream.md"), "upstream v2\n");
+            git(homes.sourceUnit(), "add", "-A");
+            commit(homes.sourceUnit(), "upstream: a later commit");
+
+            UnitSync outcome = only(sync(homes));
+            assertEquals(SyncStatus.HELD_BACK, outcome.status(),
+                    "a tag object is not published by its commit being published: "
+                            + outcome.detail());
+            assertTrue(run(homes.destUnit(), List.of("git", "rev-parse", "--verify", "--quiet",
+                    "refs/tags/agent-note")).exit == 0, "and the tag is still there");
+        });
+
         suite.test("an uncommitted edit in a git-backed unit is still an edit", () -> {
             // The other conjunct. Routing a git-backed unit "through git" and
             // stopping there would let a plain uncommitted edit through: HEAD has
