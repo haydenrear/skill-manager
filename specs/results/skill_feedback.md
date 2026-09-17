@@ -762,3 +762,32 @@ SF-010 and SF-011 (recorded at the ticket close above) apply to this workflow to
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket SM-390B
+
+- close_scope: ticket
+- close_id: SM-390B
+- workflow: desired-ticket-workflow
+- closed_at: 2026-09-17T16:43:58+00:00
+- summary: GitHistoryInternal record route: published refs are not local work; no record replaces an ahead checkout; 2 regression configs
+- feedback_status: items-recorded
+
+SF-011 recurred exactly: the second scaffold again wrote template README.md,
+case_adapters.toml and spec_manifest.yaml into current/, desired_program_model/
+and the ticket's desired/, and they were restored from program_model before
+editing. No new finding; tracked at https://github.com/haydenrear/tla-spec-dev/issues/345.
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out workflow desired-ticket-workflow
+
+- close_scope: workflow
+- close_id: desired-ticket-workflow
+- workflow: desired-ticket-workflow
+- closed_at: 2026-09-17T16:44:08+00:00
+- summary: Promoted SM-390B (GitHistoryInternal record route) into program_model
+- feedback_status: none-found
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.

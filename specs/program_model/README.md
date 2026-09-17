@@ -57,12 +57,17 @@ are already PUBLISHED (reachable from the home's own remote-tracking refs).
   ref (#390 bug 2, reconcile); MUST FAIL `ASyncNeverMovesTheDestinationBackwards`.
 - `GitHistoryInternal_regression_syncremedy.cfg`: sync remedy toward a newer
   destination (#390 bug 2, remedy); MUST FAIL `NoRemedySyncsTowardANewerDestination`.
+- `GitHistoryInternal_regression_recorddigest.cfg`: the record route reads a
+  `git fetch` as local work (SM-390B); MUST FAIL `AFetchAloneNeverHoldsACopyBack`.
+- `GitHistoryInternal_regression_recordrewind.cfg`: an untouched record licenses
+  replacing a checkout that is ahead of its source (SM-390B); MUST FAIL
+  `ASyncNeverMovesTheDestinationBackwards`.
 - `GitHistoryInternal_probe_reach.cfg`: run with `tlc2 -continue`; MUST report
-  3 violated invariants.
+  4 violated invariants.
 
 No case adapters. The executable pins are `HomeCloseOutPublishedRefsTest` and
-`HomeSyncGitUnitTest`. Closed as spec ticket SM-390
-(`../.history/desired-ticket-workflow/closed-snapshot-SM-390/`).
+`HomeSyncGitUnitTest`. Closed as spec tickets SM-390 and SM-390B
+(`../.history/desired-ticket-workflow/closed-snapshot-SM-390{,B}/`).
 
 Workflow history is append-only under `../.history/desired-ticket-workflow/`.
 The closed progressive-disclosure workflow snapshot is recorded at
