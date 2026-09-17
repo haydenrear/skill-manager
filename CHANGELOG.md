@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.28.1](https://github.com/haydenrear/skill-manager/compare/v0.28.0...v0.28.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **home:** a conflict over an ahead destination says so, not "uncommitted changes" ([#390](https://github.com/haydenrear/skill-manager/issues/390)) ([3a3350b](https://github.com/haydenrear/skill-manager/commit/3a3350b3ec002ade6c1ea6e2821f76f6a6bed733))
+* **home:** a fetch or a pushed branch does not make a home's copy "locally modified" ([#390](https://github.com/haydenrear/skill-manager/issues/390)) ([c527b6d](https://github.com/haydenrear/skill-manager/commit/c527b6d1a42de49d5240a1b9b7f77eacca5be2a9))
+* **home:** close-out judges published refs and ancestry, never syncs backwards ([#390](https://github.com/haydenrear/skill-manager/issues/390)) ([0fe2edc](https://github.com/haydenrear/skill-manager/commit/0fe2edcb5780dacb4b75e9105e3ef60424544f14))
+* **home:** the record route never replaces a checkout that is ahead of its source ([#390](https://github.com/haydenrear/skill-manager/issues/390)) ([f28d5c0](https://github.com/haydenrear/skill-manager/commit/f28d5c0f4048eb330ae5c296d42a72fc4c603464))
+
 ## [0.28.0](https://github.com/haydenrear/skill-manager/compare/v0.27.2...v0.28.0) (2026-09-14)
 
 
