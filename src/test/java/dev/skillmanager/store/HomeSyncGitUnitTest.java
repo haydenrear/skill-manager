@@ -376,6 +376,35 @@ public final class HomeSyncGitUnitTest {
                     "and the source's commit arrived");
         });
 
+        suite.test("#390: a sync never rewinds a checkout that is ahead of the source", () -> {
+            // Measured on real homes: the destination was cloned at B and is
+            // untouched by its own record; the source was later reset to its
+            // ancestor A. The record route called the destination disposable
+            // and a plain `home sync` replaced B with A.
+            Homes homes = Homes.create("rewind");
+            Files.writeString(homes.sourceUnit().resolve("upstream.md"), "upstream v2\n");
+            git(homes.sourceUnit(), "add", "upstream.md");
+            commit(homes.sourceUnit(), "upstream: B");
+            String b = head(homes.sourceUnit());
+            sync(homes);
+            assertEquals(b, head(homes.destUnit()), "precondition: the destination is at B");
+
+            git(homes.sourceUnit(), "reset", "--quiet", "--hard", "HEAD~1");
+            String a = head(homes.sourceUnit());
+            assertTrue(GitOps.isAncestor(homes.destUnit(), a, b),
+                    "precondition: the source now stands on B's ancestor");
+
+            UnitSync outcome = only(sync(homes));
+
+            assertEquals(b, head(homes.destUnit()),
+                    "THE DESTINATION IS STILL AT B — the record route used to replace it with A");
+            assertTrue(Files.exists(homes.destUnit().resolve("upstream.md")),
+                    "and B's file is still there");
+            assertEquals(SyncStatus.HELD_BACK, outcome.status(),
+                    "reported as held back: " + outcome.detail());
+            assertContains(outcome.detail(), "ahead", "and it says why: " + outcome.detail());
+        });
+
         suite.test("#390 control: an annotated tag on a published commit is still work", () -> {
             Homes homes = Homes.create("tag");
             sync(homes);
