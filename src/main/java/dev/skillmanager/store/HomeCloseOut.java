@@ -194,7 +194,8 @@ public final class HomeCloseOut {
                 selfObtainable.add(obtainable);
                 continue;
             }
-            String remedy = remedyFor(unit, homeRoot, intoRoot);
+            String remedy = remedyFor(unit, homeRoot, intoRoot,
+                    home.unitDir(unit.unitName(), unit.unitKind()).toAbsolutePath().normalize());
             if (remedy != null) blockers.add(new Blocker(unit, remedy));
         }
         for (UnitSync unit : report.units()) {
@@ -316,8 +317,20 @@ public final class HomeCloseOut {
      * {@link ChildHomeMaterializer}'s baseline rule reads it — a later pass
      * from a home that never held those bytes holds back instead of
      * overwriting.
+     *
+     * <p>A sync is never proposed from a copy the destination is ahead of
+     * (#390). For {@code CONFLICTED} and {@code HELD_BACK} it used to print
+     * {@code home sync --merge} from a source whose HEAD was an ancestor of the
+     * destination's — a revision the repository pinned — so following the
+     * advice moved the project home backwards. What such a copy can hold that
+     * the destination lacks is refs, and {@code unit publish} is what carries
+     * those. {@code UPDATED} is guarded the same way: that status is a
+     * replacement of the destination, and replacing a newer checkout with an
+     * older one is the same step backwards.
+     *
+     * @param sourceUnit the worktree home's copy of the unit
      */
-    private static String remedyFor(UnitSync unit, Path home, Path into) {
+    private static String remedyFor(UnitSync unit, Path home, Path into, Path sourceUnit) {
         String cli = cliInvocation(home);
         // CLASS 1 (#161): `home sync --from <a> --to <b>` NAMES ITS OWN TARGET
         // in its arguments, so it binds nothing further. This is the remedy
@@ -331,6 +344,14 @@ public final class HomeCloseOut {
         // CLASS 2: `unit publish` names no home, and takes --home.
         String publish = (cli + " unit publish " + HomeDescriptor.shellQuote(unit.unitName())
                 + " " + HomeDescriptor.homeArg(home)).strip();
+        if (unit.status() == SyncStatus.UPDATED || unit.status() == SyncStatus.CONFLICTED
+                || unit.status() == SyncStatus.HELD_BACK) {
+            String ahead = ChildHomeMaterializer.destinationAheadOf(sourceUnit, unit.destPath());
+            if (ahead != null) {
+                return publish + "  (" + ahead + "; publish the refs only this copy holds "
+                        + "instead of syncing it)";
+            }
+        }
         return switch (unit.status()) {
             case NEW, UPDATED -> sync;
             case MERGED -> sync + " --merge";

@@ -246,6 +246,23 @@ public final class GitOps {
     }
 
     /**
+     * Whether {@code object} is reachable from some {@code refs/remotes/**} ref
+     * of {@code dir} — the same offline evidence of publication
+     * {@link #publishedRefContaining} asks for HEAD, asked of any object.
+     *
+     * <p>{@code for-each-ref --contains} peels an annotated tag to its commit.
+     * A stash is a commit that no remote ever contains, so it always reads as
+     * unpublished; an object that is not a commit-ish makes git exit non-zero,
+     * which reads the same way — the conservative answer.
+     */
+    public static boolean isPublished(Path dir, String object) {
+        if (object == null || object.isBlank()) return false;
+        Result r = run(dir, List.of("git", "for-each-ref", "--count=1",
+                "--contains", object.trim(), "--format=%(refname)", "refs/remotes/"));
+        return r.exit == 0 && r.stdout != null && !r.stdout.isBlank();
+    }
+
+    /**
      * Refresh every remote-tracking ref, quietly. False when any remote could
      * not be reached — the caller keeps whatever the refs said before.
      */
