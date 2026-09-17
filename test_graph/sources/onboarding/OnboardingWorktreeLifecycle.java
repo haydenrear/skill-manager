@@ -241,8 +241,12 @@ public class OnboardingWorktreeLifecycle {
                     OnboardingSupport.plusNamedLog(blockedLog).contains(blocker);
 
             // --- 6. the forced close --------------------------------------------------
+            // --verbose: since git-issue-workflow's one-line summaries, a
+            // successful `wt close` prints `closed worktree <path> ...` and the
+            // keyed contract (CLOSED/BRANCH/DELETE) only on --verbose, which is
+            // what onboarding.wt.contract.lines reads from this log.
             ProcessRecord forcedClose = OnboardingSupport.script(ctx, "wt-close-forced", proj,
-                    wt, ambient, "close", TICKET, "--force");
+                    wt, ambient, "close", TICKET, "--force", "--verbose");
             String forcedLog = OnboardingSupport.log(ctx, forcedClose);
             boolean theForcedCloseSucceeded = forcedClose.exitCode() == 0;
 
