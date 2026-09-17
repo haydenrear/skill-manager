@@ -78,6 +78,28 @@ public final class HomeCloseOutPublishedRefsTest {
                     + HomeCloseOut.render(verdict));
         });
 
+        suite.test("#370: identical clean HEADs clear the gate whatever the remote refs say", () -> {
+            // Measured: both homes clean at dd2d5176, the worktree copy
+            // carrying fetched refs the project copy (single-branch) did not,
+            // and close-out reported `would-update` and refused.
+            Fixture f = Fixture.create("samehead");
+            git(f.worktreeUnit(), "branch", "-D", PUBLISH_BRANCH);
+            git(f.worktreeUnit(), "reset", "--quiet", "--hard", f.b);
+            assertEquals(GitOps.headHash(f.projectUnit()), GitOps.headHash(f.worktreeUnit()),
+                    "precondition: both copies stand on the same commit");
+            assertTrue(refExists(f.worktreeUnit(), "refs/remotes/origin/" + PUBLISH_BRANCH),
+                    "precondition: the worktree copy holds a remote ref the project copy lacks");
+            assertFalse(refExists(f.projectUnit(), "refs/remotes/origin/" + PUBLISH_BRANCH),
+                    "precondition: the project copy is single-branch");
+
+            HomeCloseOut.Verdict verdict = HomeCloseOut.inspect(f.worktree, f.project);
+
+            assertTrue(verdict.safe(), "nothing here exists only in the worktree: "
+                    + HomeCloseOut.render(verdict));
+            assertEquals(SyncStatus.UNCHANGED, only(verdict).status(),
+                    "reported as unchanged, not would-update: " + only(verdict).detail());
+        });
+
         suite.test("an unpublished branch still blocks, and the fix is publish, not a backwards sync",
                 () -> {
                     Fixture f = Fixture.create("unpublished");

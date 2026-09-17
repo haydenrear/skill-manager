@@ -43,6 +43,27 @@ Like `HomeIntegrityInternal`, it has no case adapters. Its TLC results and the
 epic's bug attribution are in
 `results/epic-one-home-one-verdict/attribution/`.
 
+## Git history (#390, #370)
+
+`GitHistoryInternal.tla` models how `home close-out` and `home sync` judge the
+`.git` half of a git-backed unit, which `External.tla` decides by record
+baselines and cannot see: which side is AHEAD (trunk ancestry), and which refs
+are already PUBLISHED (reachable from the home's own remote-tracking refs).
+
+- `GitHistoryInternal.cfg`: healthy; no error.
+- `GitHistoryInternal_regression_allrefs.cfg`: containment over every ref (#390
+  bug 1, #370); MUST FAIL `AnAncestorCopyWithNothingUnpublishedIsNeverBlocked`.
+- `GitHistoryInternal_regression_anysourceref.cfg`: fast-forward by any source
+  ref (#390 bug 2, reconcile); MUST FAIL `ASyncNeverMovesTheDestinationBackwards`.
+- `GitHistoryInternal_regression_syncremedy.cfg`: sync remedy toward a newer
+  destination (#390 bug 2, remedy); MUST FAIL `NoRemedySyncsTowardANewerDestination`.
+- `GitHistoryInternal_probe_reach.cfg`: run with `tlc2 -continue`; MUST report
+  3 violated invariants.
+
+No case adapters. The executable pins are `HomeCloseOutPublishedRefsTest` and
+`HomeSyncGitUnitTest`. Closed as spec ticket SM-390
+(`../.history/desired-ticket-workflow/closed-snapshot-SM-390/`).
+
 Workflow history is append-only under `../.history/desired-ticket-workflow/`.
 The closed progressive-disclosure workflow snapshot is recorded at
 `../.history/desired-ticket-workflow/closed-snapshot/`.

@@ -1,0 +1,75 @@
+module: SkillManager
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  initial_ticket: SM-390
+  initial_ticket_title: "close-out judges git history by publication and ancestry"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  updated: null
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: pending
+  done: []
+  pending:
+    - Fill in desired state/actions/invariants for the ticket.
+    - Break the work into tickets in ticket_plan.yaml.
+    - Update specs/current as each ticket lands.
+    - Promote converged desired/current model back into specs/program_model.
+    - Propose the budgets below to the user, ask which to adjust for this program, and record a one-line rationale per changed value.
+
+# Per-program complexity and case budgets -- advisory thresholds read by
+# analyze complexity (which warns with facts and never blocks) and by the
+# EXPERIMENTAL fuzzing surface (case generation, the adapter runner, the
+# mutation kill test). Defaults come from references/modular_fuzzing.md;
+# doctrine: SKILL.md "Complexity Budgets Are Advisory".
+budgets:
+  tlc_seconds: 120                          # hard external timeout per TLC run
+  max_distinct_states: 50000                # reachable states TLC may find, per component model
+  max_state_space_bound: 1000000            # static declared-representation ceiling; see modular_fuzzing.md
+  max_internal_cases_per_component: 200     # spec-unit case cap per component
+  max_external_cases_per_action: 50         # Test Graph case cap per external action
+  kill_rate_floor: 0.8                      # minimum mutation kill rate (EXPERIMENTAL fuzzing surface; optional)
+  max_component_variables: 6                # component-size heuristic
+  max_component_actions: 8                  # component-size heuristic
+  max_symmetric_instances: 2                # component-size heuristic (EXPERIMENTAL fuzzing surface; optional)
+  source: defaults
+  rationale: {}
+
+# Optional dead-weight audit (advisory): add a justification: table linking
+# every declared variable to what depends on it. Schema: one mapping per
+# variable with at least one NON-EMPTY list among invariants/effects/
+# kill_tests. Prose strings are not linkage -- a prose-only entry leaves the
+# variable flagged DEAD WEIGHT. Example:
+#   justification:
+#     orders:
+#       invariants: [SafetyInv]
+#       effects: [order_submitted]
+#       kill_tests: [test_order_cap]
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_core: ../program_model/Core.tla
+  program_model_internal: ../program_model/Internal.tla
+  program_model_external: ../program_model/External.tla
+  baseline_package: skillmanager_program_cases
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+# Generated-case index stanzas: placeholders owned by case codegen, filled
+# only when case_codegen.generation_status reaches `generated`. Empty means
+# "no generated case index yet", NOT "the model has no state/actions/ports"
+# -- those live in the TLA+ module and the effects block. An empty stanza and
+# an inapplicable stanza are different claims (CD-11, audit run 4 ESC-R4-2).
+state_fields: []
+actions: []
+ports: {}
+notes:
+  direction: "This manifest records the target whole-program model and the ticket workflow status. Keep ticket_plan.yaml synchronized whenever scope, order, validation, or acceptance criteria change."

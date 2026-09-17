@@ -1,0 +1,8 @@
+# ISSUE-166-only action catalog. This intentionally does not claim that the
+# parked future CHM Internal action catalog is complete.
+actions:
+  ReconcileClaimingProjectFromSelectedParent:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit

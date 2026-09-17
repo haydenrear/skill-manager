@@ -1,0 +1,80 @@
+# This file is part of the desired program model.
+# It is intentionally general: use it for any model-backed ticket workflow,
+# not only migrations. Keep it synchronized with spec_manifest.yaml status.
+version: 1
+name: desired-ticket-workflow
+updated: null
+purpose: "Break the desired whole-program change into tickets that can be implemented, modeled in specs/current, unit-tested, and then validated with broader graph or integration checks."
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: SM-390
+  active_ticket_title: "close-out judges git history by publication and ancestry"
+  desired_module: SkillManager
+  phase: planning
+
+# Replace or extend these sections with project-specific domains. Service,
+# process, queue, database, file, API, model, permission, or UI boundaries can
+# all be listed here when they matter to correctness.
+service_catalog:
+  existing_boundaries: []
+  desired_boundaries: []
+  adapter_boundaries: []
+  known_gaps: []
+
+tickets:
+  - id: SM-390
+    title: "close-out judges git history by publication and ancestry"
+    status: done
+    depends_on: []
+    objective: "A worktree home whose copy of a git-backed unit is at or behind the project home's, and holds nothing unpublished the project lacks, clears close-out; a sync never rewinds the destination; no remedy syncs toward a newer destination."
+    desired_actions:
+      - GitHistoryInternal.CommitOnSide
+      - GitHistoryInternal.Publish
+      - GitHistoryInternal.AdvanceRemote
+      - GitHistoryInternal.Fetch
+      - GitHistoryInternal.PullTrunk
+      - GitHistoryInternal.SyncApply
+      - GitHistoryInternal.CloseOut
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+      - src/main/java/dev/skillmanager/source/GitOps.java
+      - src/main/java/dev/skillmanager/store/HomeCloseOut.java
+    current_increment:
+      model_state:
+        - GitHistoryInternal.head
+        - GitHistoryInternal.local
+        - GitHistoryInternal.tracked
+        - GitHistoryInternal.ttrunk
+        - GitHistoryInternal.rtrunk
+        - GitHistoryInternal.published
+      model_actions:
+        - GitHistoryInternal.SyncApply
+        - GitHistoryInternal.CloseOut
+      adapters: []
+      unit_tests:
+        - jbang RunTests.java (HomeCloseOutPublishedRefsTest, HomeSyncGitUnitTest)
+      graph_after_unit_pass:
+        - home-sync
+        - ticket-lifecycle
+    acceptance:
+      commands:
+        - specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal.cfg
+        - specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_allrefs.cfg
+        - specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_anysourceref.cfg
+        - specs/program_model/run_tlc.sh specs/program_model/GitHistoryInternal.tla specs/program_model/GitHistoryInternal_regression_syncremedy.cfg
+      assertions:
+        - Healthy configuration has no error (13271 distinct states).
+        - Each regression configuration violates exactly its target invariant.
+        - The reach probe reports 3 violated invariants.
+      evidence:
+        - specs/tickets/SM-390/results/tlc.md

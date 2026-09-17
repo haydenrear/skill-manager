@@ -1,0 +1,180 @@
+{
+  "current_dir": null,
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket SM-390",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "Core.tla",
+      "External.cfg",
+      "External.tla",
+      "External_home.cfg",
+      "External_regression_abslink.cfg",
+      "External_regression_absstate.cfg",
+      "External_regression_blindadoption.cfg",
+      "External_regression_childrefresh.cfg",
+      "External_regression_ffprovenance.cfg",
+      "External_regression_headonlygit.cfg",
+      "External_regression_mergebase.cfg",
+      "External_regression_nomergekind.cfg",
+      "External_regression_nopm.cfg",
+      "External_regression_overwrite.cfg",
+      "External_regression_partialconflict.cfg",
+      "External_regression_prefersource.cfg",
+      "External_regression_rawdigest.cfg",
+      "External_regression_recordsourcetree.cfg",
+      "External_regression_rewritecontent.cfg",
+      "External_regression_rewritecontent_reportonly.cfg",
+      "External_regression_sharedtoolchain.cfg",
+      "External_regression_silentshims.cfg",
+      "External_regression_skipgit.cfg",
+      "External_regression_symlink.cfg",
+      "External_regression_syncoverwrite.cfg",
+      "External_regression_ungatedcloseout.cfg",
+      "External_regression_verbatimstate.cfg",
+      "External_regression_wholetreegit.cfg",
+      "External_sync.cfg",
+      "External_sync_git.cfg",
+      "External_sync_guard_conflict.cfg",
+      "External_sync_guard_ffprovenance.cfg",
+      "External_sync_guard_headonlygit.cfg",
+      "External_sync_guard_overwrite.cfg",
+      "External_sync_guard_skipgit.cfg",
+      "External_sync_guard_teardown.cfg",
+      "External_sync_merge.cfg",
+      "External_sync_roundtrip.cfg",
+      "HomeIntegrityInternal.cfg",
+      "HomeIntegrityInternal.tla",
+      "HomeIntegrityInternal_guard_repairingobserver.cfg",
+      "HomeIntegrityInternal_probe_disposalreach.cfg",
+      "HomeIntegrityInternal_probe_reach.cfg",
+      "HomeIntegrityInternal_regression_blindobserver.cfg",
+      "HomeIntegrityInternal_regression_collapsedgateadmits.cfg",
+      "HomeIntegrityInternal_regression_everythingdisposable.cfg",
+      "HomeIntegrityInternal_regression_foreignprojection.cfg",
+      "HomeIntegrityInternal_regression_gaterefires.cfg",
+      "HomeIntegrityInternal_regression_halfboundhome.cfg",
+      "HomeIntegrityInternal_regression_narrowprojection.cfg",
+      "HomeIntegrityInternal_regression_recordvetoesidenticaltree.cfg",
+      "HomeIntegrityInternal_regression_repairingobserver.cfg",
+      "HomeIntegrityInternal_regression_selfcertifyingdescent.cfg",
+      "HomeIntegrityInternal_regression_selfrepend.cfg",
+      "HomeIntegrityInternal_regression_silentdrift.cfg",
+      "HomeIntegrityInternal_regression_staleack.cfg",
+      "HomeIntegrityInternal_regression_staleerror.cfg",
+      "HomeVerdictsInternal.cfg",
+      "HomeVerdictsInternal.tla",
+      "HomeVerdictsInternal_finding_outrightpath.cfg",
+      "HomeVerdictsInternal_finding_prunedresidue.cfg",
+      "HomeVerdictsInternal_probe_reach.cfg",
+      "HomeVerdictsInternal_regression_aliasspelling.cfg",
+      "HomeVerdictsInternal_regression_blinddetectors.cfg",
+      "HomeVerdictsInternal_regression_foreignfixhalfrewrite.cfg",
+      "HomeVerdictsInternal_regression_hashonly.cfg",
+      "HomeVerdictsInternal_regression_launcherfollow.cfg",
+      "HomeVerdictsInternal_regression_leaverows.cfg",
+      "HomeVerdictsInternal_regression_noexemption.cfg",
+      "HomeVerdictsInternal_regression_nomarketplacerepair.cfg",
+      "HomeVerdictsInternal_regression_norestore.cfg",
+      "HomeVerdictsInternal_regression_nostatcheck.cfg",
+      "HomeVerdictsInternal_regression_reapunconditionally.cfg",
+      "HomeVerdictsInternal_regression_rebuildfromindex.cfg",
+      "HomeVerdictsInternal_regression_rewritegateddetector.cfg",
+      "HomeVerdictsInternal_regression_substring.cfg",
+      "HomeVerdictsInternal_regression_tokenmeansdone.cfg",
+      "HomeVerdictsInternal_regression_trustedmanifest.cfg",
+      "HomeVerdictsInternal_regression_unstamped.cfg",
+      "HomeVerdictsInternal_regression_verifyownwalk.cfg",
+      "HomeVerdictsInternal_regression_writethrough.cfg",
+      "Internal.cfg",
+      "Internal.tla",
+      "Internal_clone.cfg",
+      "Internal_regression_nonatomic.cfg",
+      "Internal_regression_overwrite.cfg",
+      "Internal_regression_partialclone.cfg",
+      "Internal_regression_unreanchored.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py",
+      "tests/test_spec_manifests_parse.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The production slice refines to the current model.",
+        "The current model advances toward the desired model."
+      ],
+      "commands": [
+        "python scripts/run_tlc_or_project_specific_check.py"
+      ],
+      "evidence": []
+    },
+    "current_increment": {
+      "adapters": [
+        "ReplaceWithAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "replace.with.graph.node"
+      ],
+      "model_actions": [
+        "ReplaceWithDesiredAction"
+      ],
+      "model_state": [
+        "replace_with_state_field"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "ReplaceWithDesiredAction"
+    ],
+    "id": "SM-390",
+    "implementation_scope": [
+      "Replace with implementation surfaces"
+    ],
+    "objective": "Describe the behavior change in program terms. Name the resource or state boundary that must become true, not only the implementation file.",
+    "status": "next",
+    "title": "close-out judges git history by publication and ancestry"
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/tickets/SM-390",
+  "ticket_id": "SM-390",
+  "ticket_index": 0,
+  "ticket_plan": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/skill-manager-390-spec-followups/specs/tickets"
+}
