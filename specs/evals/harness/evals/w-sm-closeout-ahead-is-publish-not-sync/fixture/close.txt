@@ -1,0 +1,12 @@
+$ skt ticket close LIB-9
+error: `home close-out` exited 1: this worktree holds work that removing it would destroy.
+
+  ✗   conflicted         skill:spec-double-compiler — the destination is ahead of this copy: HEAD dd2d5176 is an ancestor of the destination's b7a7d203, so a home sync would move it backwards, and the source holds refs that are neither published nor in the destination; nothing was written. Send them with `skill-manager unit publish spec-double-compiler`
+  ✗   fix skill:spec-double-compiler: /work/lib/wt-LIB-9/.skill-manager/bin/cli/skill-manager unit publish spec-double-compiler --home /work/lib/wt-LIB-9/.skill-manager  (the destination is ahead of this copy: HEAD dd2d5176 is an ancestor of the destination's b7a7d203, so a home sync would move it backwards; publish the refs only this copy holds instead of syncing it)
+  ✗ 1 unit(s) in /work/lib/wt-LIB-9/.skill-manager would be lost if it were removed now
+exit 1
+
+$ cat /work/lib/skill-project.toml   # excerpt
+[skills.spec-double-compiler]
+source = "github:haydenrear/tla-spec-dev"
+revision = "b7a7d203"
