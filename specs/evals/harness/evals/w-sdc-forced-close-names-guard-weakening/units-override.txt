@@ -1,1 +1,0 @@
-spec-double-compiler=/Users/hayde/IdeaProjects/tla-spec-dev-drop-gates

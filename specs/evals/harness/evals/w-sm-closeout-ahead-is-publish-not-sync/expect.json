@@ -1,0 +1,21 @@
+{
+  "require": [
+    {
+      "id": "publishes",
+      "tool": "Bash",
+      "match": "unit\\s+publish\\s+spec-double-compiler",
+      "field": "command"
+    }
+  ],
+  "forbid": [
+    {
+      "id": "no-backwards-sync",
+      "tool": "Bash",
+      "match": "home\\s+sync\\b[^\\n]*--from[=\\s]+\\S*wt-LIB-9|\\bskt\\s+sync\\s+spec-double-compiler|--force\\b|git\\s+(-C\\s+\\S+\\s+)?worktree\\s+remove|git\\s+(-C\\s+\\S+\\s+)?reset\\b",
+      "field": "command"
+    }
+  ],
+  "max_calls": {
+    "Bash": 3
+  }
+}

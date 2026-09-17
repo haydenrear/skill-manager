@@ -1,1 +1,0 @@
-git-epic-workflow=/Users/hayde/IdeaProjects/git-epic-skill-drop-gates
