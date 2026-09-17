@@ -1340,8 +1340,8 @@ public final class ChildHomeMaterializer {
                             + "nothing was written. Bring the destination up to date first "
                             + "(`skill-manager sync " + name + "` in the destination home, or "
                             + "commit its changes), then re-run"
-                    : "the two git histories have diverged -- neither contains every ref of the "
-                            + "other -- and nothing here may settle that; nothing was written. "
+                    : "the two git histories have diverged -- neither contains every unpublished "
+                            + "ref of the other -- and nothing here may settle that; nothing was written. "
                             + "Send the source's commits home with `skill-manager unit publish "
                             + name + "`";
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(), conflicts,
@@ -1671,12 +1671,20 @@ public final class ChildHomeMaterializer {
      * a destination holds nothing of its own -- its files are exactly what its
      * history says, and its history is all in the source -- so replacing it
      * with the source copy loses nothing. False on any doubt.
+     *
+     * <p>The copy must also be a fast-forward: the destination's HEAD an
+     * ancestor of (or equal to) the source's. "Reachable from some source ref"
+     * is not that -- a source standing on an older {@code A} whose
+     * {@code origin/main} names the destination's newer {@code B} reaches
+     * {@code B}, and replacing the destination with that copy rewound it from
+     * {@code B} to {@code A} while reporting a fast-forward (#390).
      */
     private static boolean gitDestIsBehind(Path source, Path dest) {
         if (!carriesGitDirectory(source) || !carriesGitDirectory(dest)) return false;
         if (!GitOps.isAvailable()) return false;
         if (!GitOps.isGitRepo(source) || !GitOps.isGitRepo(dest)) return false;
         if (!worktreeCleanModuloDerived(dest)) return false;
+        if (!GitOps.isAncestor(source, GitOps.headHash(dest), GitOps.headHash(source))) return false;
         return historyContainedIn(dest, source);
     }
 
@@ -1729,13 +1737,27 @@ public final class ChildHomeMaterializer {
     }
 
     /**
-     * Whether every ref {@code holder} has -- heads, remotes, tags, stash, and
-     * HEAD -- names an object that {@code container} reaches from some ref of
-     * its own. Not "an ancestor of the container's HEAD": a store copy carries
-     * feature branches and remote-tracking refs that are not on {@code main} in
-     * either home while being identical in both, and against HEAD alone every
-     * one of them read as divergence. False on any doubt: git missing, either
-     * side not a repository, an object the container does not have.
+     * Whether everything {@code holder} would lose names an object that
+     * {@code container} reaches from some ref of its own: HEAD always, and
+     * every other ref -- heads, tags, stash -- <b>unless its commits are
+     * already published</b>. Not "an ancestor of the container's HEAD": a store
+     * copy carries feature branches that are not on {@code main} in either home
+     * while being identical in both, and against HEAD alone every one of them
+     * read as divergence.
+     *
+     * <p>Published work is not at risk, so it is not asked about (#390).
+     * Remote-tracking refs are copies of a remote's state by definition, and a
+     * local branch reachable from one of the holder's own remote-tracking refs
+     * holds nothing the remote lacks. Asking the container to hold those too
+     * turned an inherited {@code skill/<ticket>-<unit>} publish branch -- its PR
+     * rebase-merged, so its tip exists in no newer clone -- and a remote ref
+     * fetched in one home but not the other into a permanent "diverged" verdict
+     * on a source that was a strict ancestor of the destination. HEAD is NOT
+     * exempted: it decides which side is ahead, and a published HEAD the
+     * container lacks means the holder is newer, not behind.
+     *
+     * <p>False on any doubt: git missing, either side not a repository, an
+     * unpublished object the container does not have.
      */
     private static boolean historyContainedIn(Path holder, Path container) {
         if (!GitOps.isAvailable()) return false;
@@ -1749,9 +1771,36 @@ public final class ChildHomeMaterializer {
         for (String line : listing.split("\\R")) {
             String trimmed = line.trim();
             if (trimmed.isEmpty()) continue;
-            objects.add(trimmed.split("\\s+", 2)[0]);
+            String[] parts = trimmed.split("\\s+", 2);
+            if (parts.length == 2 && parts[1].startsWith("refs/remotes/")) continue;
+            if (objects.contains(parts[0])) continue;
+            if (GitOps.isPublished(holder, parts[0])) continue;
+            objects.add(parts[0]);
         }
         return GitOps.containsAll(container, objects);
+    }
+
+    /**
+     * The destination is strictly ahead of the source: both are git checkouts
+     * on different commits and the source's HEAD is an ancestor of the
+     * destination's. Returns a sentence saying so, or null.
+     *
+     * <p>{@code home close-out} asks this before proposing a {@code home sync}:
+     * a sync from a stale copy toward a newer destination is a step backwards,
+     * and when the destination is the revision a repository pins, one that
+     * breaks the repository (#390).
+     */
+    public static String destinationAheadOf(Path source, Path dest) {
+        if (!carriesGitDirectory(source) || !carriesGitDirectory(dest)) return null;
+        if (!GitOps.isAvailable()) return null;
+        if (!GitOps.isGitRepo(source) || !GitOps.isGitRepo(dest)) return null;
+        String sourceHead = GitOps.headHash(source);
+        String destHead = GitOps.headHash(dest);
+        if (sourceHead == null || destHead == null || sourceHead.equals(destHead)) return null;
+        if (!GitOps.isAncestor(dest, sourceHead, destHead)) return null;
+        return "the destination is ahead of this copy: HEAD " + shortHash(sourceHead)
+                + " is an ancestor of the destination's " + shortHash(destHead)
+                + ", so a home sync would move it backwards";
     }
 
     /**
