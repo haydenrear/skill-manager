@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.274",
+  "startedAt": "2026-09-17T16:55:11.782Z",
+  "durationSeconds": 135,
+  "costUsd": 1.019805,
+  "partial": false,
+  "suite": {
+    "root": "/private/tmp/skill-evals/wide",
+    "ablation": "none",
+    "caseFilter": "w-sm-closeout-ahead-is-publish-not-sync",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "deploy-helm",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/deploy-helm"
+      },
+      {
+        "name": "fixture",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/fixture"
+      },
+      {
+        "name": "git-epic-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-epic-workflow"
+      },
+      {
+        "name": "git-issue",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue"
+      },
+      {
+        "name": "git-issue-workflow",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/git-issue-workflow"
+      },
+      {
+        "name": "skt",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/skt"
+      },
+      {
+        "name": "spec-double-compiler",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/spec-double-compiler"
+      },
+      {
+        "name": "test-graph",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/test-graph"
+      },
+      {
+        "name": "toolchain",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/toolchain"
+      },
+      {
+        "name": "tracing-observability",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/tracing-observability"
+      },
+      {
+        "name": "wide-verify",
+        "version": "0.1.0",
+        "path": "/private/tmp/skill-evals/wide/units/wide-verify"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "w-sm-closeout-ahead-is-publish-not-sync",
+      "dir": "evals/w-sm-closeout-ahead-is-publish-not-sync",
+      "source": "mixed",
+      "promptMarkdown": "LIB-9 is merged. Closing its worktree failed -- the output is in\ncases/w-sm-closeout-ahead-is-publish-not-sync/close.txt. Get the project home\nand the worktree home reconciled so the close can go through.\n\nNOTE ON THIS ENVIRONMENT: Bash commands that write here are refused by the sandbox, so a command that\nwrites will fail with \"Operation not permitted\" however correct it is. That is\nexpected and is not yours to solve. Issue the command you would use, once, and\nreport it. Do not probe for a writable location or try a different route.\n\nEVAL-CASE: w-sm-closeout-ahead-is-publish-not-sync\n",
+      "runsPerCase": 1,
+      "timeoutSeconds": 600,
+      "maxTurns": 16,
+      "graders": [
+        {
+          "name": "explains-ahead",
+          "type": "llm",
+          "weight": 2,
+          "graderMarkdown": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response says the project home is AHEAD of (newer than) the\nworktree's copy of spec-double-compiler, that syncing the worktree copy into it\nwould move it backwards / off the pinned revision, and that the fix is to\npublish what only the worktree holds (then re-run the close). Score 0 if it\nrecommends a home sync from the worktree, `skt sync spec-double-compiler`, or\nforcing the close.",
+          "config": {
+            "criteria": "THIS GRADER READS THE FINAL RESPONSE ONLY -- not the workspace, not tool output.\n\nScore 1 if the response says the project home is AHEAD of (newer than) the\nworktree's copy of spec-double-compiler, that syncing the worktree copy into it\nwould move it backwards / off the pinned revision, and that the fix is to\npublish what only the worktree holds (then re-run the close). Score 0 if it\nrecommends a home sync from the worktree, `skt sync spec-double-compiler`, or\nforcing the close.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "no-backwards-sync",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/forbid-no-backwards-sync",
+            "exists": true
+          }
+        },
+        {
+          "name": "publishes",
+          "type": "file_exists",
+          "weight": 3,
+          "config": {
+            "path": ".eval/require-publishes",
+            "exists": true
+          }
+        },
+        {
+          "name": "within-budget",
+          "type": "file_exists",
+          "weight": 1,
+          "config": {
+            "path": ".eval/within-budget",
+            "exists": true
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.8888888888888888,
+            "passed": false,
+            "turns": 18,
+            "costUsd": 0.667816,
+            "judgeCostUsd": 0.0031529999999999996,
+            "durationSeconds": 132,
+            "startedAt": "2026-09-17T16:55:15.125Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-pv5WR4/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "explains-ahead",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "The command is issued and, as expected in this sandbox, the worktree path isn't present here (`exit 127` — `/work/lib/wt-LIB-9/...` does not exist in this environment).\n\n## What the reconciliation is\n\n```\n/work/lib/wt-LIB-9/.skill-manager/bin/cli/skill-manager unit publish spec-double-compiler \\\n    --home /work/lib/wt-LIB-9/.skill-manager --ticket LIB-9\n```\n\nThen re-run `skt ticket close LIB-9`.\n\n## Why publish and not sync\n\nThe blocker is not \"the worktree is stale\". Read the gate's sentence in two halves:\n\n- **`dd2d5176` is an ancestor of the destination's `b7a7d203`** — the project home is *ahead*. I confirmed the project home here sits at `spec-double-compiler … b7a7d203`, matching the `revision` pin in `/work/lib/skill-project.toml`. A `home sync` from the worktree would drag the project home backwards onto the ancestor.\n- **\"the source holds refs that are neither published nor in the destination\"** — and *that* is the actual loss. LIB-9 committed something of its own in that store, and the project home cannot receive it by fast-forward from a copy it already contains.\n\nSo the two questions come apart, which is the split path `references/projects.md:336` describes. `home sync` answers \"will teardown destroy this edit?\"; `unit publish` answers \"will anyone ever get it?\" Here only the second has a safe answer: the refs go up to the unit's own repo (`github:haydenrear/tla-spec-dev`) as `skill/LIB-9-spec-double-compiler`, nothing writes the project home, and the gate's remaining condition — a copy merely *behind* the destination — is explicitly not a blocker.\n\n**Do not use `skt publish` here.** It is `home sync` *then* `unit publish`, and its first leg is exactly the backwards write the gate refused. It would fail, or worse succeed, before reaching the leg you want. I added `--ticket LIB-9` to the gate's literal remedy so the branch name is deterministic rather than depending on `$SKILL_MANAGER_TICKET` being set in that home; everything else is verbatim, including invoking the worktree home's own `bin/cli` shim — a shim only serves the home it lives in, and pointing a different one at `--home` earns an exit 79 refusal.\n\n## What this deliberately leaves undone\n\nThe project home stays at `b7a7d203`. It is **pinned** by `skill-project.toml`, so `skt sync` there is the wrong instrument — it pulls trunk and breaks the pin. Once the publish PR merges into `tla-spec-dev`, adopting LIB-9's work into the project is a deliberate pin bump: update `revision` in `/work/lib/skill-project.toml`, then `skill-manager project resolve` against that home. That is a separate decision with an owner, and I have not made it.\n\nWorth saying out loud in the LIB-9 PR: the edit is *published, deliberately not synced into the project home* — an unreconciled worktree home is precisely what the close gate stops on, and whoever reads the teardown later needs that distinguished from \"forgotten\"."
+              },
+              {
+                "name": "no-backwards-sync",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-backwards-sync exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "publishes",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-publishes exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.8888888888888888,
+            "passed": false,
+            "turns": 8,
+            "costUsd": 0.35198900000000005,
+            "judgeCostUsd": 0.002661,
+            "durationSeconds": 82,
+            "startedAt": "2026-09-17T16:55:15.125Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-4zoUVU/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "explains-ahead",
+                "passed": true,
+                "weight": 2,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "Command issued: `skill-manager unit publish spec-double-compiler --home /work/lib/wt-LIB-9/.skill-manager` (via the worktree home's own `bin/cli` shim). It exits 127 here because `/work/lib` isn't present in this sandbox — that tree lives on the machine the close ran on.\n\n**Why publish and not sync**\n\nThe two homes aren't out of order in the direction the close-out gate normally repairs:\n\n- Project home (destination): `b7a7d203` — and `/work/lib/skill-project.toml` pins `spec-double-compiler` to exactly that revision.\n- Worktree home (source): `dd2d5176`, an **ancestor** of it.\n\nSo the worktree's HEAD is strictly behind the project home. `skill-manager home sync` — the usual close-out reconciliation, and also the *first leg* of `skt publish` — would carry `dd2d5176` up into the project home and move it backwards off its own pin. That is the one thing not to do here, which is why `skt publish spec-double-compiler` is the wrong front door for this case even though it's the right one for an ordinary home-edited skill.\n\nWhat the gate is actually protecting is the other half of its sentence: the worktree \"holds refs that are neither published nor in the destination.\" That's LIB-9's work sitting on refs other than HEAD. Those don't travel up a tier — `unit publish` is the only route to the skill's own repository (`github:haydenrear/tla-spec-dev`), and it's the leg that makes them durable without touching the destination's position.\n\n**Reconciled state after that command**\n\n- Project home stays at `b7a7d203`, still matching its pin. Nothing to change there, and nothing should be changed there.\n- The worktree's unique refs are in `tla-spec-dev`, so they're no longer unpublished.\n- The close-out gate's \"would be lost if it were removed now\" condition clears, and `skt ticket close LIB-9` goes through on a re-run.\n\nRe-run `skt ticket close LIB-9` after the publish succeeds; it re-measures the worktree rather than trusting the earlier verdict, so it'll confirm the gate is clean before removing anything.\n\nOne thing I did not do: verify the published result or the re-run, since neither the worktree nor a working `skill-manager` is reachable from here (the CLI in this checkout tries to download a JDK, which the sandbox's network policy denies at `api.foojay.io:443`). The direction of the fix is settled by the close output itself; the confirmation has to happen on the real host."
+              },
+              {
+                "name": "no-backwards-sync",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/forbid-no-backwards-sync exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "publishes",
+                "passed": true,
+                "weight": 3,
+                "explanation": ".eval/require-publishes exists as expected",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "within-budget",
+                "passed": false,
+                "weight": 1,
+                "explanation": ".eval/within-budget missing (expected present)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.8888888888888888,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.8888888888888888,
+    "overallPassRate": 0
+  }
+}

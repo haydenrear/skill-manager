@@ -1,0 +1,7 @@
+Read {"file_path": "/private/tmp/e-95fi3K/home/cwd/cases/w-skt-check-pinned-is-not-stale/check.txt"}
+---
+Read {"file_path": "/private/tmp/e-95fi3K/home/cwd/cases/w-skt-check-pinned-is-not-stale/skill-project.toml"}
+---
+Skill {"skill": "skt:skt"}
+---
+Bash {"command": "skt sync deploy-helm", "description": "Sync the deploy-helm unit"}
