@@ -82,22 +82,16 @@ source = "github:haydenrear/tla-spec-dev"
 [plugins.skt]
 source = "github:haydenrear/skill-publisher-skill"
 
-# --- required BY the skt plugin and by spec-double-compiler, not chosen here:
-#     both name `skill-manager` in their SKILL.md `skill-imports`, and
-#     `project resolve` refuses the whole resolve with "references missing
-#     unit" until the imported unit is declared. Unit `skill_references` are
-#     followed automatically; markdown `skill-imports` are not.
+# --- `skill-manager` is NOT declared here: the skt plugin ships it as a
+#     contained skill (plugins/skt/skills/skill-manager), so the
+#     `skill-imports` that skt and spec-double-compiler declare on it resolve
+#     through the plugin above. It had its own [skills.skill-manager] block
+#     until the skt migration, and `skt status` reported that block as the one
+#     thing to delete; a sync warned "served by the skt plugin now — nothing is
+#     installed for it" on every run.
 #
-#     Note the duplication this creates and do not be confused by it: the
-#     installed unit under .skill-manager/skills/skill-manager is a copy of the
-#     skill-manager-skill REPO, which this repository also snapshots at
-#     skill-manager-skill/. The home copy is a gitignored dependency; the
-#     snapshot is tracked content; the leaf repo is the source of truth. Edits
-#     go to the leaf repo (CLAUDE.md's leaf-first ordering), never to either
-#     copy here ---
-
-[skills.skill-manager]
-source = "github:haydenrear/skill-manager-skill"
+#     The tracked snapshot at skill-manager-skill/ is unaffected: it is
+#     content this repo carries, not a dependency it installs ---
 
 # --- REPO-SPECIFIC DECISION: test-graph is deliberately NOT declared, even
 #     though this repo has a test_graph/ project and runs graphs constantly.
