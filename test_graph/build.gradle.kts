@@ -3,19 +3,40 @@ plugins {
 }
 
 /**
- * Two integration test graphs for skill-manager.
+ * THIRTY integration test graphs for skill-manager, not two.
  *
- *   ./gradlew smoke       full registry + gateway + MCP flow
- *   ./gradlew sponsored   registry-only ad auction
+ * This comment said "Two integration test graphs" and named `smoke` and
+ * `sponsored` until 2026-09-19. It had been wrong for a long time and it is
+ * the first thing a reader of this file believes, so the count is now stated
+ * where it can be checked: thirty `testGraph(...)` registrations below, one
+ * of them (`hyper-experiments`) conditional on an opt-in env var and otherwise
+ * replaced by a same-named task that explains itself.
  *
- * Validate first:
+ * Run them — one command, which also names what it did NOT run and why:
+ *
+ *   python3 test_graph/run-graphs.py            # the 26 graphs meant to run here
+ *   python3 test_graph/run-graphs.py --list     # classification only, runs nothing
+ *
+ * Four are opt-in rather than dead: `browser-auth` and `password-reset` boot
+ * chromedriver and a real browser, `refresh-flow` is a known ~1-in-4 flake
+ * (skill-manager-integration-repository#53), and `hyper-experiments` reaches
+ * github, npm and the live RunPod API (#143). `run-graphs.py` prints each one
+ * with its reason and its opt-in command, because a graph excluded silently
+ * cannot be told apart from a graph that failed to run.
+ *
+ * `./gradlew <name>` still runs any single graph, and
+ * `./gradlew validationRunAll` still fans out over every registered graph —
+ * including the three that boot a browser, which is why `run-graphs.py`
+ * exists and `validationRunAll` is not the front door.
+ *
+ * Validate a plan first:
  *   ./gradlew validationPlanGraph --name=smoke
- *   ./gradlew validationPlanGraph --name=sponsored
  *
  * Layout:
  *   sources/common/      shared infra nodes (env, postgres, registry, auth)
- *   sources/smoke/       smoke-only nodes (gateway, MCP, agents)
- *   sources/sponsored/   sponsored-only nodes (ad auction assertions)
+ *   sources/lib/         shared helper classes, pulled in via //SOURCES —
+ *                        referenced by node files, never registered as nodes
+ *   sources/<graph>/     nodes belonging to one graph
  */
 validationGraph {
     sourcesDir("sources")
