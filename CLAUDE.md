@@ -2,12 +2,30 @@
 
 ## Running test_graph
 
-The integration tests live under `test_graph/` and run via:
+The integration tests live under `test_graph/`. **The front door is one
+command**, which runs the graphs meant to run here and prints the ones it did
+not run, each with its reason:
 
 ```
-python skills/test_graph/scripts/run.py --all      # every registered graph
-python skills/test_graph/scripts/run.py <graph>    # one graph (smoke / plugin-smoke / sponsored / source-tracking / ...)
+python3 test_graph/run-graphs.py           # the 26 graphs meant to run here
+python3 test_graph/run-graphs.py --list    # classification only; runs nothing
+```
+
+Thirty graphs are registered. Twenty-six run; four are OPT-IN and excluded by
+default — `browser-auth` and `password-reset` boot chromedriver and a real
+browser, `refresh-flow` is a known ~1-in-4 flake
+(skill-manager-integration-repository#53), and `hyper-experiments` reaches
+github, npm and the live RunPod API (#143). `run-graphs.py` names all four and
+prints each one's opt-in command, so "did not run" can be told apart from "is
+not run here". It reads its verdicts from the sweep ledger, and it always exits
+0: it reports, it does not gate.
+
+The underlying runner is still there for a single graph or an arbitrary set:
+
+```
+python skills/test_graph/scripts/run.py <graph>    # one graph (smoke / plugin-smoke / sponsored / ...)
 python skills/test_graph/scripts/run.py doc-smoke artifact-dag sync-settles   # several graphs
+python skills/test_graph/scripts/run.py --all      # EVERY registered graph, INCLUDING the three that boot a browser
 ```
 
 A full `--all` run is ~7 minutes. Each registered graph runs as a Gradle
