@@ -197,7 +197,16 @@ def _graph_nodes(repo_root: Path) -> dict[str, list[str]]:
             m = _TESTGRAPH_OPEN_RE.search(line)
             if m:
                 current = m.group(1)
-                depth = line.count("{") - line.count("}")
+                # Count braces from the match onwards, not over the whole line.
+                # `hyper-experiments` is registered as
+                # `} else testGraph("hyper-experiments") {`, and counting the
+                # whole line let that leading `}` cancel the block's own `{`:
+                # depth 0 on the first line, so the block closed immediately and
+                # the graph was recorded with ZERO nodes instead of its 24. Not
+                # cosmetic — this node list is what `gateway_graphs()` reads, so
+                # the graph was reported as booting no gateway when it boots one.
+                tail = line[m.start():]
+                depth = tail.count("{") - tail.count("}")
                 nodes = []
             continue
         nodes.extend(_NODE_RE.findall(line))
@@ -208,11 +217,57 @@ def _graph_nodes(repo_root: Path) -> dict[str, list[str]]:
     return out
 
 
+def _without_comments(text: str) -> str:
+    """Blank out `//` and `/* */` comments, preserving offsets and line count.
+
+    Discovery used to read the raw file, so a graph name written inside a
+    comment registered a PHANTOM graph: the matrix would carry a name no
+    Gradle task answers to, and the job for it fails on something that is only
+    prose. Measured on 2026-09-19, when a rewritten header comment in
+    build.gradle.kts took the registered count from 30 to 31 without a single
+    graph being added. Comments in that file discuss `testGraph` constantly —
+    that is the point of them — so discovery has to be able to tell the
+    difference.
+    """
+    out = list(text)
+    i, n = 0, len(text)
+    state = None  # None | "line" | "block" | "string"
+    while i < n:
+        ch = text[i]
+        if state is None:
+            if text.startswith("//", i):
+                state = "line"; out[i] = out[i + 1] = " "; i += 2; continue
+            if text.startswith("/*", i):
+                state = "block"; out[i] = out[i + 1] = " "; i += 2; continue
+            if ch == '"':
+                state = "string"
+            i += 1
+        elif state == "line":
+            if ch == "\n":
+                state = None
+            else:
+                out[i] = " "
+            i += 1
+        elif state == "block":
+            if text.startswith("*/", i):
+                out[i] = out[i + 1] = " "; state = None; i += 2; continue
+            if ch != "\n":
+                out[i] = " "
+            i += 1
+        else:  # inside a string literal
+            if ch == "\\":
+                i += 2; continue
+            if ch == '"':
+                state = None
+            i += 1
+    return "".join(out)
+
+
 def discover_all(repo_root: Path) -> list[str]:
     build_file = repo_root / "test_graph" / "build.gradle.kts"
     if not build_file.is_file():
         sys.exit(f"select-graph-set: no build file at {build_file}")
-    names = _TESTGRAPH_RE.findall(build_file.read_text(encoding="utf-8"))
+    names = _TESTGRAPH_RE.findall(_without_comments(build_file.read_text(encoding="utf-8")))
     if not names:
         sys.exit(f"select-graph-set: no testGraph(...) registrations in {build_file}")
     # Preserve declaration order, drop duplicates.
