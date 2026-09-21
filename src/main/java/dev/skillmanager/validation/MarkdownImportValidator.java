@@ -110,9 +110,24 @@ public final class MarkdownImportValidator {
      * <p>{@code libs/} is a project's development checkouts of OTHER
      * repositories, materialized by {@code project resolve --resolve-libs}.
      * Their markdown is not this project's to answer for.
+     *
+     * <p>{@code fixture}/{@code fixtures} are here for the same reason they
+     * are in {@link #NOT_THE_UNITS_OWN_MARKDOWN}, and finding that out twice
+     * is the point: SI-18 fixed the UNIT walk after installing a plugin
+     * reported its eval fixtures as violations, and the PROJECT walk has its
+     * own exclusion list, so the identical defect was still live one method
+     * away. It surfaced the moment this repository got a project home —
+     * {@code project resolve} exited 11 on
+     * {@code specs/evals/harness/evals/w-giw-exit6-is-unreadable-frontmatter/fixture/},
+     * a fixture whose frontmatter is deliberately unreadable because the eval
+     * asserts that unreadable frontmatter produces exit 6.
+     *
+     * <p>A fixture is input to a test. Nothing materializes its imports and no
+     * reader is routed to it, which is what makes an import worth validating.
      */
     private static final java.util.Set<String> NOT_THE_PROJECTS_OWN_MARKDOWN =
-            java.util.Set.of("node_modules", "libs", "target", "build", "venv");
+            java.util.Set.of("node_modules", "libs", "target", "build", "venv",
+                    "fixture", "fixtures");
 
     /**
      * Validate the markdown a <em>skill project checkout</em> owns —
