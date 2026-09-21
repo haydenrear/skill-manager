@@ -2,9 +2,11 @@
 #
 # This repo is not a skill unit. There is no skill-manager.toml at its root: it
 # is the CLI's own source tree, and it is itself an integration-repository
-# snapshot carrying two leaf units as ordinary directories —
-# skill-manager-skill/ and skills/test_graph/ — plus
-# infra/homebrew-skill-manager/. So "a repo does not declare its own unit" has
+# snapshot carrying ONE leaf unit as an ordinary directory —
+# skill-manager-skill/ — plus infra/homebrew-skill-manager/. skills/test_graph/
+# was the other until SI-18/#40 retired it; test-graph now arrives as a
+# contained skill of the tla-spec-dev plugin, and test_graph/{sdk,build-logic,
+# standard-nodes} are [[vendored]] links into it. So "a repo does not declare its own unit" has
 # nothing to bite on here, and what this manifest declares is simply what an
 # agent working in this checkout needs.
 #
@@ -96,9 +98,8 @@ description = "The Skill Manager CLI: unit resolution and installation, agent-ho
 [plugins.tla-spec-dev]
 source = "github:haydenrear/tla-spec-dev-plugin"
 
-# --- authoring: this repo carries two leaf skill units as tracked directories
-#     (skill-manager-skill/ and skills/test_graph/), and refreshing or merging
-#     either of them is unit work. The `unit-authoring` skill contained in the
+# --- authoring: this repo carries ONE leaf skill unit as a tracked directory
+#     (skill-manager-skill/), and refreshing or merging it is unit work. The `unit-authoring` skill contained in the
 #     tla-spec-dev plugin above is the authority on SKILL.md frontmatter,
 #     descriptions, skill-manager.toml, references/ pages and the
 #     install/bind/sync round trip.
@@ -127,32 +128,68 @@ source = "github:haydenrear/tla-spec-dev-plugin"
 #     The tracked snapshot at skill-manager-skill/ is unaffected: it is
 #     content this repo carries, not a dependency it installs ---
 
-# --- REPO-SPECIFIC DECISION: test-graph is deliberately NOT declared, even
-#     though this repo has a test_graph/ project and runs graphs constantly.
+# --- REVERSED at SI-18/#40. This block used to say "test-graph is deliberately
+#     NOT declared", on the grounds that declaring it would "add yet another
+#     copy of the same SDK". That reasoning held only while the vendored copies
+#     were believed to be the same as the skill's. They were not: measured at
+#     the switch, `skills/test_graph/` was 381 lines AND THREE WHOLE FILES
+#     ahead of the installed skill (the sweep ledger), and the SDK differed in
+#     both directions. Not declaring it did not avoid a second copy — it hid
+#     one, and the hidden copy was the one being edited.
 #
-#     The runner is the in-repo copy — `python3 skills/test_graph/scripts/run.py
-#     <graph>`, per CLAUDE.md — and test_graph/sdk and test_graph/build-logic
-#     are REAL vendored directories, committed in 56ca0f7 as a band-aid for
-#     issue #21. The graphs therefore run with no installed test-graph unit at
-#     all. Installing one would add yet another copy of the same SDK to a repo
-#     that issue #40 already describes as carrying a fifth idiom for one
-#     problem, and would let a build pick up whichever copy it found first.
+#     test-graph is not declared HERE either, and that part is unchanged: it
+#     arrives as a CONTAINED SKILL of the tla-spec-dev plugin declared above,
+#     which is the whole point. One declaration, one copy, and the graphs now
+#     exercise the same test-graph the evals install.
 #
-#     It is also the expensive choice: test-graph declares
-#     `github:haydenrear/deploy-cdc` as a hard `skill_reference`, so declaring
-#     it installs deploy-helm, whose three skill-script CLI dependencies each
-#     build a full 530 MB venv — measured, that is 1.6 GB of cache/ in a single
-#     home, and none of it is used by anything in this repository.
-#
-#     Retiring the vendored copy is issue #40's job and it is a decision about
-#     test_graph/, not a side effect of onboarding. Nothing here touches
-#     test_graph/ or src/.
+#     The cost objection was real and is now simply paid: test-graph declares
+#     `github:haydenrear/deploy-cdc` as a hard `skill_reference`, so deploy-helm
+#     and its ~1.6 GB of venvs land in this home. That is the price of the
+#     graphs and the evals measuring one artifact instead of two, and it is
+#     paid once per home rather than per run.
 
-# --- no [[vendored]] block, for the same reason. test_graph/sdk and
-#     test_graph/build-logic are real directories rather than symlinks —
-#     `git ls-files -s | grep ^120000` -> 0 entries — so there is no tracked
-#     link whose resolved physical path could point into a foreign home, and
-#     nothing for the validator to check. Declaring them with
-#     `from_unit = "test-graph"` would assert they OUGHT to be links into this
-#     home's installed unit, which is precisely the change #40 has to decide
-#     deliberately.
+# --- [[vendored]]: #40, decided. test_graph/sdk and test_graph/build-logic were
+#     REAL DIRECTORIES committed in 56ca0f7 as a band-aid for issue #21, and the
+#     comment that used to sit here said declaring them "is precisely the change
+#     #40 has to decide deliberately". This is that decision.
+#
+#     WHY NOW: the copies had drifted, and in both directions. Measured against
+#     the installed test-graph at the moment of the switch: 223 lines only in
+#     the plugin's copy (trace propagation) and 37 only in this one — including
+#     TESTGRAPH_CONTINUE_AFTER_FAILURE, a feature this repo's own
+#     build.gradle.kts documents twice as the way to sweep the `onboarding`
+#     graph, which the plugin did not have at all. The SDK that runs 26 graphs
+#     differed between the repo that owns it and the repo that uses it, and
+#     nothing could see that.
+#
+#     The 37 were reconciled UPSTREAM FIRST, in dependency order, because
+#     switching before that would have deleted them silently:
+#       test-graph 9c51b62      — ports continueAfterFailure
+#       tla-spec-dev f16523ec   — subtree pull of that commit
+#     The residue is superseded, not lost: the plugin wraps flush_observability
+#     in _flush_observability_before_exit, raises MAX_TRACKED_DESCENDANTS from
+#     4_096 to 1_048_576 with its reasoning, and adds traced_environment().
+#
+#     `from_unit` names the UNIT, not a location. test-graph is a CONTAINED
+#     skill of tla-spec-dev, so its bytes are at
+#     plugins/tla-spec-dev/skills/test-graph/project_sdk_sources/ — and
+#     resolving that rung is what SI-18 taught ProjectVendored to do. Declaring
+#     `from_unit = "tla-spec-dev"` with the plugin path baked into
+#     `from_subpath` is the half-migrated spelling other projects in this tree
+#     still carry; it does not resolve, and `skt status` now says so.
+#
+#     CONSEQUENCE, STATED PLAINLY: these are tracked symlinks into
+#     .skill-manager, which is gitignored. A FRESH CLONE CANNOT RUN GRAPHS UNTIL
+#     `project resolve` HAS RUN. That is the point — the graphs now exercise the
+#     same test-graph the evals install, so one run covers both — but it is a
+#     new precondition and CLAUDE.md states it.
+#
+#     standard-nodes is declared although this repo never had it: the plugin
+#     ships it, and repair materializes it.
+
+[[vendored]]
+name = "test-graph-sdk"
+paths = ["test_graph/sdk", "test_graph/build-logic", "test_graph/standard-nodes"]
+from_unit = "test-graph"
+from_subpath = "project_sdk_sources"
+on_invalid = "error"

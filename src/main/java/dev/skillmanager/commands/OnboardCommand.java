@@ -87,9 +87,23 @@ public final class OnboardCommand implements Callable<Integer> {
     // facts for the reconciler, and OUN-4 had to remove skill-dev-skill from
     // both — the compiler cannot relate them, and a retired unit left in
     // either one is still onboarded by whichever path reads that copy.
+    // OUN-6, delivered. `skill-manager` was the last vendored entry and it is
+    // gone, so NOTHING is seeded from this working tree any more.
+    //
+    // The entry survived this long for a measured reason, recorded in
+    // BundledSkills: deleting the COORD alone did not stop the unit being
+    // installed, because onboard seeded it from the local install dir either
+    // way — it only stripped the git provenance, leaving a unit `skt check`
+    // called unverifiable and `sync` had nothing to pull for
+    // (`managerRemote=false` on the onboard graph). The fix was never the map;
+    // it was to stop the SEEDING, which is what removing skill-manager-skill/
+    // from the tree finally does.
+    //
+    // UnitSupersession.TABLE has retired the standalone `skill-manager` into
+    // the carrier since OUN-5, and until now this list installed it again on
+    // every fresh onboard — two tables describing one fact and disagreeing.
+    // They agree now: the name resolves to the copy tla-spec-dev carries.
     private static final List<BundledSkill> BUNDLED_SKILLS = List.of(
-            new BundledSkill("skill-manager-skill", "skill-manager",
-                    "github:haydenrear/skill-manager-skill"),
             new BundledSkill(null, "tla-spec-dev",
                     "github:haydenrear/tla-spec-dev-plugin")
     );
@@ -309,6 +323,17 @@ public final class OnboardCommand implements Callable<Integer> {
      * that case onboard falls back to fetching the skills from github.
      */
     private Path resolveInstallRoot() {
+        // OUN-6: nothing is vendored here any more, so hasBundledSkills() can
+        // never be satisfied and this always returns null. Saying so is the
+        // point — an operator who passes --install-dir to exercise uncommitted
+        // edits would otherwise watch onboard silently fetch from github and
+        // test the wrong bytes.
+        if (installDir != null && BUNDLED_SKILLS.stream().allMatch(BundledSkill::githubOnly)) {
+            Log.warn("--install-dir is no longer used: no bundled unit is vendored in this tree "
+                    + "(OUN-6). Every bundled unit is installed from its own repository, so "
+                    + "there is nothing here to install from. Onboarding from github.");
+            return null;
+        }
         if (installDir != null) {
             Path p = installDir.toAbsolutePath();
             if (!hasBundledSkills(p)) {

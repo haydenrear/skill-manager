@@ -34,7 +34,12 @@ def test_program_model_skill_docs_cover_modeled_workflows() -> None:
     metadata = adapter.load_cli_metadata_source(ROOT)
     docs = adapter.load_cli_skill_docs_source(ROOT)
 
-    in_tree = {
+    # OUN-6: skill-manager-skill left this repository, so its surface is
+    # external too and NOTHING is readable here. in_tree is empty by
+    # construction, not by accident — assert that, or "coverage == in_tree"
+    # becomes two empty sets agreeing about nothing.
+    in_tree: set[tuple[str, str]] = set()
+    manager = {
         ("skill-manager-skill", workflow)
         for workflow in _tla_set(tla, "SkillManagerSkillWorkflows")
     }
@@ -54,14 +59,17 @@ def test_program_model_skill_docs_cover_modeled_workflows() -> None:
         for surface in surfaces
     }
 
-    # CliMetadata still claims every pair the model declares, in-tree or not.
-    assert metadata_expected == in_tree | external
-    # And what is actually READ is exactly the in-tree half.
-    assert docs.coverage == in_tree
-    assert docs.help_routes == in_tree
+    # CliMetadata still claims every pair the model declares.
+    assert metadata_expected == manager | external
+    # Nothing is readable here, so coverage is empty — and `missing` must be
+    # empty too: an unreadable surface is EXTERNAL, never "undocumented".
+    assert docs.coverage == in_tree == set()
+    assert docs.help_routes == set()
     assert not docs.missing_workflow_docs
     assert not docs.missing_help_routes
-    # The non-vacuity pin: the unreadable half is exactly the five authoring
-    # workflows and nothing else, so a sixth cannot leave coverage by having
-    # its surface renamed.
-    assert docs.external == external
+    # THE WHOLE ASSERTION, now that no bytes can be read: every pair the model
+    # declares is accounted for as external, exactly, and nothing has silently
+    # dropped out of the catalogue. A workflow whose surface were misspelled
+    # would land here and fail rather than vanish.
+    assert docs.external == manager | external
+    assert len(docs.external) == len(metadata_expected)

@@ -124,9 +124,11 @@ def load_cli_skill_docs_source(repo_root: str | Path) -> CliSkillDocsSnapshot:
     # Mirrors CliMetadata.inTreeDocSurfaces() on the Java side. Keep the two in
     # step: a surface listed there and not here reads as missing docs, and one
     # listed here and not there is read from a directory nothing publishes.
-    docs_by_surface = {
-        "skill-manager-skill": read_skill_doc_surface(root / "skill-manager-skill"),
-    }
+    # EMPTY after OUN-6: skill-manager-skill/ was the last in-tree surface and
+    # it is installed from its own repository now. Mirrors
+    # CliMetadata.inTreeDocSurfaces(), which is also empty — keep the two in
+    # step.
+    docs_by_surface: dict[str, str] = {}
 
     coverage: set[tuple[str, str]] = set()
     help_routes: set[tuple[str, str]] = set()

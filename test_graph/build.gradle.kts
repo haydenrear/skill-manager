@@ -1438,7 +1438,7 @@ validationGraph {
      * run therefore stops at it; for the whole sweep:
      *
      *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 \
-     *     python3 skills/test_graph/scripts/run.py artifact-dag
+     *     python3 test_graph/run-graphs.py --only artifact-dag
      *
      * Every node then executes against its own home, each reports its own
      * status, and the run still fails.
@@ -1537,7 +1537,7 @@ validationGraph {
      * single finding. For the whole sweep:
      *
      *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 \
-     *     python3 skills/test_graph/scripts/run.py onboarding
+     *     python3 test_graph/run-graphs.py --only onboarding
      *
      * Every node then executes in order against the disk state its predecessor
      * left, each reports its own status, and the run still fails. That flag is

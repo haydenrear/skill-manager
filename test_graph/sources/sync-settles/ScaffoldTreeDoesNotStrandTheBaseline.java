@@ -55,7 +55,8 @@ import java.util.List;
  *       into a consuming unit as symlinks into the test-graph store copy, and
  *       ALSO generates the {@code .gitignore} that declares all three
  *       not-content ({@code ensure_provider_binding_ignores},
- *       {@code skills/test_graph/scripts/_common.py:318-346}).
+ *       the installed test-graph skill's {@code scripts/_common.py}, in
+ *       {@code ensure_provider_binding_ignores})).
  *       {@code ChildHomeMaterializer} dereferences them into real directories
  *       so the child home is independent (CHM-5) — correct — and the unit's
  *       repository still tracks those paths at mode {@code 120000}.</li>

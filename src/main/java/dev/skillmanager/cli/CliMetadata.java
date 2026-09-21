@@ -249,14 +249,44 @@ public final class CliMetadata {
      * Doc surfaces this repository carries on disk, and can therefore check
      * the contents of.
      *
-     * <p>{@link #UNIT_AUTHORING_DOCS} is deliberately NOT here. Its bytes are
-     * in another repository, so no test in this one can read them, and a check
-     * that quietly skipped it would be a green result standing for nothing.
-     * What this repository CAN still own is which workflows delegate outward:
-     * see {@link #workflowsWithExternalDocs()}.
+     * <p>After OUN-6 this is EMPTY: every doc surface lives in another
+     * repository, so no test in this one can read any of them, and a check that
+     * quietly skipped them would be a green result standing for nothing. What
+     * this repository CAN still own is which workflows point where: see
+     * {@link #workflowsWithExternalDocs()}, which now pins all of them.
      */
+    /**
+     * Every doc surface a workflow is allowed to name.
+     *
+     * <p>With {@link #inTreeDocSurfaces()} empty, "is this surface known?"
+     * cannot be answered by "can we read it" any more — nothing is readable.
+     * Without an explicit roster a misspelled surface would land in the
+     * external bucket and look deliberate, which is the failure mode the
+     * readable-surface check used to catch for free.
+     *
+     * <p>{@code skill-manager-skill} is still spelled as the repository
+     * directory it was published from rather than as its unit name
+     * ({@code skill-manager}), because that is what the program model's
+     * {@code SkillDocSurfaces} says and the two are asserted equal. Renaming it
+     * is a model change, not a string change.
+     */
+    public static Set<String> knownDocSurfaces() {
+        return Set.of("skill-manager-skill", UNIT_AUTHORING_DOCS);
+    }
+
     public static Set<String> inTreeDocSurfaces() {
-        return Set.of("skill-manager-skill");
+        // EMPTY after OUN-6. skill-manager-skill/ was the last doc surface this
+        // repository carried, and it is installed from its own repository now
+        // — as a contained skill of tla-spec-dev, like every other unit.
+        //
+        // The consequence is stated rather than hidden: NO checker in this
+        // repository can read ANY workflow's docs. What it can still own is
+        // which workflows point where, and that is what
+        // workflowsWithExternalDocs() pins — every one of them, now, to a
+        // frozen list. A surface added here again would be readable and
+        // checked; until then the honest answer is that content coverage lives
+        // in the repositories that hold the content.
+        return Set.of();
     }
 
     /**

@@ -30,8 +30,9 @@ public final class BundledSkills {
     // ticket` and `sync --from --merge` (skt itself now arrives inside the
     // tla-spec-dev plugin); `deps --who-imports skill-dev-skill`
     // reported zero importers in the only home that still held it.
-    // `skill-manager` IS STILL HERE, AND DEF-OUN-017 EXPLAINS WHY REMOVING IT
-    // IS NOT A ONE-LINE CHANGE.
+    // `skill-manager` WAS STILL HERE, AND DEF-OUN-017 EXPLAINED WHY REMOVING IT
+    // WAS NOT A ONE-LINE CHANGE. OUN-6 removed it, and the note below is why it
+    // took removing a DIRECTORY rather than this entry.
     //
     // The complaint is real: UnitSupersession.TABLE retires the standalone
     // `skill-manager` into the carrier, and this map installs it again on every fresh
@@ -64,7 +65,6 @@ public final class BundledSkills {
     // existing installs, and resolving it here would install a skill under a
     // plugin's name.
     private static final Map<String, String> GITHUB_COORDS = Map.of(
-            "skill-manager", "github:haydenrear/skill-manager-skill",
             "tla-spec-dev", "github:haydenrear/tla-spec-dev-plugin"
     );
 

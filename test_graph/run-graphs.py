@@ -4,7 +4,7 @@
 WHY THIS EXISTS
 ---------------
 `test_graph/build.gradle.kts` registers thirty graphs. The documented way to
-run them all is `skills/test_graph/scripts/run.py --all`, which invokes Gradle's
+run them all is the installed test-graph skill's `scripts/run.py --all`, which invokes Gradle's
 `validationRunAll`; that task fans out over `ext.graphs`, i.e. every graph
 registered with `testGraph(...)`. Three of those boot Selenium and chromedriver
 (`browser-auth`, `password-reset`, `refresh-flow`), so `--all` on a laptop
@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import time
@@ -50,7 +51,42 @@ from pathlib import Path
 TEST_GRAPH_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TEST_GRAPH_ROOT.parent
 SELECTOR = REPO_ROOT / ".github" / "scripts" / "select-graph-set.py"
-RUNNER = REPO_ROOT / "skills" / "test_graph" / "scripts" / "run.py"
+
+
+def _resolve_runner() -> Path:
+    """`run.py` from the installed test-graph skill, on either rung.
+
+    SI-18/#40: this repository no longer vendors `skills/test_graph/`. The
+    runner comes from whatever `project resolve` installed into
+    `.skill-manager`, which means the graphs now exercise the SAME test-graph
+    the evals install instead of a private copy that had drifted 381 lines and
+    three whole files ahead of it.
+
+    Both rungs, in the order everything else in this repo uses them: a
+    standalone `skills/test-graph/` first, then `plugins/*/skills/test-graph/`,
+    because test-graph is a CONTAINED skill of the tla-spec-dev plugin and that
+    is where its bytes actually land. The project home is preferred over the
+    operator's root home so a checkout measures what it resolved, not what
+    happens to be installed globally.
+    """
+    homes = [REPO_ROOT / ".skill-manager"]
+    env_home = os.environ.get("SKILL_MANAGER_HOME")
+    if env_home:
+        homes.append(Path(env_home))
+    homes.append(Path.home() / ".skill-manager")
+    for home in homes:
+        standalone = home / "skills" / "test-graph" / "scripts" / "run.py"
+        if standalone.is_file():
+            return standalone
+        for contained in sorted(home.glob("plugins/*/skills/test-graph/scripts/run.py")):
+            if contained.is_file():
+                return contained
+    # Return the preferred spelling so the caller has a path to name in an
+    # error rather than None; run() reports the miss with the remedy.
+    return homes[0] / "plugins" / "tla-spec-dev" / "skills" / "test-graph" / "scripts" / "run.py"
+
+
+RUNNER = _resolve_runner()
 
 # Graphs registered but known not to work: none today. Kept as an explicit
 # empty table because "no dead graphs" is a claim somebody checked, and an
@@ -136,7 +172,7 @@ def main() -> int:
         if graph == "hyper-experiments":
             print("      opt in: HYPER_EXPERIMENTS=1 ./gradlew hyper-experiments")
         elif graph in selector.BROWSER:
-            print(f"      opt in: python3 skills/test_graph/scripts/run.py {graph}")
+            print(f"      opt in: python3 {RUNNER} {graph}")
     print(f"\nDEAD ({len(DEAD)}):")
     for graph, reason in DEAD.items():
         print(f"  {graph}  {reason}")

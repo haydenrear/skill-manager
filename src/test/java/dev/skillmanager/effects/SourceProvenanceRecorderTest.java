@@ -84,11 +84,20 @@ public final class SourceProvenanceRecorderTest {
                 })
                 .test("registered onboard local bundled source records bundled github provenance", () -> {
                     try (TestHarness h = TestHarness.create()) {
+                        // OUN-6 moved the example, not the mechanism. This used
+                        // `skill-manager`, which was bundled AND vendored in this
+                        // tree; it is installed from its own repository now and
+                        // has no row in BundledSkills.GITHUB_COORDS, so the
+                        // conversion correctly no longer applies to it. The
+                        // property under test — a registered bundled local source
+                        // records its GITHUB provenance rather than the path it
+                        // was seeded from — is asserted against the unit that is
+                        // still bundled.
                         Path sourceRoot = Files.createTempDirectory("registered-bundled-root-");
                         Skill skill = scaffoldSkillAt(
-                                sourceRoot.resolve("skill-manager-skill"),
-                                "skill-manager");
-                        h.context().registerBundledLocalSource("skill-manager", skill.sourcePath());
+                                sourceRoot.resolve("tla-spec-dev-plugin"),
+                                "tla-spec-dev");
+                        h.context().registerBundledLocalSource("tla-spec-dev", skill.sourcePath());
 
                         ResolvedGraph graph = graphFor(skill);
                         new Executor(h.store(), null).runWithContext(new Program<>(
@@ -98,10 +107,10 @@ public final class SourceProvenanceRecorderTest {
                                         new SkillEffect.RecordSourceProvenance(graph)),
                                 receipts -> null), h.context());
 
-                        InstalledUnit installed = h.sourceOf("skill-manager").orElseThrow();
+                        InstalledUnit installed = h.sourceOf("tla-spec-dev").orElseThrow();
                         assertEquals(InstalledUnit.Kind.GIT, installed.kind(),
                                 "registered onboard local source is converted to git provenance");
-                        assertEquals("https://github.com/haydenrear/skill-manager-skill.git",
+                        assertEquals("https://github.com/haydenrear/tla-spec-dev-plugin.git",
                                 installed.origin(),
                                 "origin is the bundled upstream");
                     }

@@ -20,12 +20,34 @@ prints each one's opt-in command, so "did not run" can be told apart from "is
 not run here". It reads its verdicts from the sweep ledger, and it always exits
 0: it reports, it does not gate.
 
-The underlying runner is still there for a single graph or an arbitrary set:
+## Before any of this: resolve the project home
+
+**SI-18/#40 stopped vendoring the test-graph skill and its SDK.** `test_graph/sdk`,
+`test_graph/build-logic` and `test_graph/standard-nodes` are now tracked
+SYMLINKS into `.skill-manager/plugins/tla-spec-dev/skills/test-graph/`, and
+`.skill-manager` is gitignored. **A fresh clone cannot run graphs until the home
+exists:**
 
 ```
-python skills/test_graph/scripts/run.py <graph>    # one graph (smoke / plugin-smoke / sponsored / ...)
-python skills/test_graph/scripts/run.py doc-smoke artifact-dag sync-settles   # several graphs
-python skills/test_graph/scripts/run.py --all      # EVERY registered graph, INCLUDING the three that boot a browser
+mkdir -p .skill-manager/skills
+SKILL_MANAGER_HOME="$PWD/.skill-manager" ./skill-manager project resolve \
+    --project-dir "$PWD" --skip-gateway --repair-vendored
+```
+
+That installs the `tla-spec-dev` plugin, whose contained `test-graph` skill
+supplies both the SDK and the runner. The point is that the graphs and the evals
+now exercise the SAME copy: the vendored one had drifted 381 lines and three
+whole files ahead of the skill it copied, and nothing could see it.
+
+The underlying runner is the installed skill's, for a single graph or an
+arbitrary set. `run-graphs.py` resolves it (standalone rung first, then
+`plugins/*/skills/test-graph`), so prefer the front door; the direct form is:
+
+```
+R=.skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py
+python3 $R <graph>                             # one graph (smoke / plugin-smoke / ...)
+python3 $R doc-smoke artifact-dag sync-settles # several graphs
+python3 $R --all                               # EVERY registered graph, INCLUDING the browser ones
 ```
 
 A full `--all` run is ~7 minutes. Each registered graph runs as a Gradle
@@ -55,14 +77,14 @@ summary; add `--continue` if you want one.
    the upstream context. Use:
 
    ```
-   python skills/test_graph/scripts/run.py --all 2>&1 | tail -40
+   python3 test_graph/run-graphs.py 2>&1 | tail -40
    ```
 
 2. **Run the failing graph in isolation** before re-running `--all`.
    Iterating against the full sweep wastes ~7 minutes per attempt:
 
    ```
-   python skills/test_graph/scripts/run.py plugin-smoke 2>&1 | tail -40
+   python3 test_graph/run-graphs.py --only plugin-smoke 2>&1 | tail -40
    ```
 
    Faster iteration loop and the failing node's logs land in the same
@@ -116,7 +138,7 @@ runs produce no `graphs-executed` artifact at all. `unit-tests` and the
 **So run them locally** — that is now the only pre-merge graph signal:
 
 ```
-python skills/test_graph/scripts/run.py <graph>
+python3 test_graph/run-graphs.py --only <graph>
 python3 .github/scripts/select-graph-set.py --scope core --print   # what the core set is
 ```
 

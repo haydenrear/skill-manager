@@ -77,10 +77,17 @@ public final class SkillBootstrapper {
     // there, so a stale entry contributes nothing and `hasBundledSkills`
     // succeeds on any ONE entry that resolves. The OUN-4 row is left where it
     // is rather than swept into this commit.
-    private static final List<String> BUNDLED_SKILLS = List.of(
-            "skill-manager-skill",
-            "skill-dev-skill"
-    );
+    // EMPTY, and that is the end state rather than an oversight. This seeder
+    // reads directories in THIS tree, and after OUN-6 the tree carries no skill
+    // unit at all: skill-publisher-skill/ went at SI-18, skill-manager-skill/
+    // and skills/test_graph/ at OUN-6/#40, and skill-dev-skill at OUN-4. Every
+    // unit is installed from its own repository now.
+    //
+    // resolveInstallRoot() therefore finds no root and seedBundledSkills()
+    // logs a warning and skips, which is the documented behaviour for "the
+    // skill source dirs can't be found" — the registry is still fully
+    // functional, just without pre-seeded skills.
+    private static final List<String> BUNDLED_SKILLS = List.of();
 
     private final SkillPublishService publishService;
     private final ServerObservability observability;
