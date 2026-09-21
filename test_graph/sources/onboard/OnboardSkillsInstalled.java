@@ -68,8 +68,14 @@ public class OnboardSkillsInstalled {
             Path standaloneSkt = Path.of(home).resolve("plugins").resolve("skt");
             Path installedDir = Path.of(home).resolve("installed");
 
-            boolean managerDirOk = Files.isDirectory(manager);
-            boolean managerMdOk = Files.isRegularFile(manager.resolve("SKILL.md"));
+            // INVERTED at OUN-6, the fifth and last. Onboarding installed a
+            // STANDALONE skill-manager from the vendored skill-manager-skill/
+            // tree; that tree is gone and the carrier ships the skill, so a
+            // standalone copy reappearing means the seeding came back and the
+            // home holds two copies of one name again.
+            boolean standaloneManagerAbsent = !Files.exists(manager);
+            boolean containedManagerOk = Files.isRegularFile(
+                    carrier.resolve("skills").resolve("skill-manager").resolve("SKILL.md"));
             boolean retiredAbsent = !Files.exists(retired);
             boolean retiredRecordAbsent =
                     !Files.exists(installedDir.resolve("skill-dev-skill.json"));
@@ -86,32 +92,38 @@ public class OnboardSkillsInstalled {
             // coming back — the unit installs perfectly cleanly, it is simply
             // not wanted.
             boolean standaloneSktAbsent = !Files.exists(standaloneSkt);
-            boolean managerGitOk = Files.exists(manager.resolve(".git"));
-            String managerRecord = read(installedDir.resolve("skill-manager.json"));
-            String managerGithub = "https://github.com/haydenrear/skill-manager-skill.git";
-            boolean managerRemoteOk = managerRecord.contains(managerGithub)
-                    && managerGithub.equals(gitRemote(manager));
+            // Provenance moved with the unit: the CARRIER is what carries a
+            // git remote now, and it is the record `skt check` and `sync` read.
+            boolean carrierGitOk = Files.exists(carrier.resolve(".git"));
+            String carrierRecord = read(installedDir.resolve("tla-spec-dev.json"));
+            String carrierGithub = "https://github.com/haydenrear/tla-spec-dev-plugin";
+            boolean carrierRemoteOk = carrierRecord.contains(carrierGithub);
+            // And no installed record is written for the standalone.
+            boolean managerRecordAbsent = !Files.exists(installedDir.resolve("skill-manager.json"));
 
-            boolean pass = managerDirOk && managerMdOk
+            boolean pass = standaloneManagerAbsent && containedManagerOk
                     && retiredAbsent && retiredRecordAbsent
                     && carrierDirOk && carrierManifestOk && sktContainedOk
-                    && standaloneSktAbsent
-                    && managerGitOk
-                    && managerRemoteOk;
+                    && standaloneSktAbsent && managerRecordAbsent
+                    && carrierGitOk
+                    && carrierRemoteOk;
             return (pass
                     ? NodeResult.pass("onboard.skills.installed")
                     : NodeResult.fail("onboard.skills.installed",
-                            "managerDir=" + managerDirOk + " managerMd=" + managerMdOk
+                            "standaloneManagerAbsent=" + standaloneManagerAbsent
+                                    + " containedManager=" + containedManagerOk
+                                    + " managerRecordAbsent=" + managerRecordAbsent
                                     + " retiredAbsent=" + retiredAbsent
                                     + " retiredRecordAbsent=" + retiredRecordAbsent
                                     + " carrierDir=" + carrierDirOk
                                     + " carrierManifest=" + carrierManifestOk
                                     + " sktContained=" + sktContainedOk
                                     + " standaloneSktAbsent=" + standaloneSktAbsent
-                                    + " managerGit=" + managerGitOk
-                                    + " managerRemote=" + managerRemoteOk))
-                    .assertion("skill_manager_dir_present", managerDirOk)
-                    .assertion("skill_manager_md_present", managerMdOk)
+                                    + " carrierGit=" + carrierGitOk
+                                    + " carrierRemote=" + carrierRemoteOk))
+                    .assertion("standalone_skill_manager_is_NOT_installed", standaloneManagerAbsent)
+                    .assertion("and_no_installed_record_is_written_for_it_either", managerRecordAbsent)
+                    .assertion("the_carrier_contains_skill_manager", containedManagerOk)
                     .assertion("retired_skill_dev_is_NOT_seeded", retiredAbsent)
                     .assertion("and_no_installed_record_is_written_for_it",
                             retiredRecordAbsent)
@@ -119,8 +131,8 @@ public class OnboardSkillsInstalled {
                     .assertion("carrier_plugin_manifest_present", carrierManifestOk)
                     .assertion("skt_contained_skill_present", sktContainedOk)
                     .assertion("standalone_skt_plugin_is_NOT_installed", standaloneSktAbsent)
-                    .assertion("skill_manager_git_metadata_present", managerGitOk)
-                    .assertion("skill_manager_origin_points_to_github", managerRemoteOk);
+                    .assertion("carrier_git_metadata_present", carrierGitOk)
+                    .assertion("carrier_origin_points_to_the_plugin_repo", carrierRemoteOk);
         });
     }
 
