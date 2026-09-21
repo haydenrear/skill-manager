@@ -662,11 +662,56 @@ jobs:
         if: matrix.graph == 'home-tripwire' || matrix.graph == 'ticket-lifecycle' || matrix.graph == 'onboarding'
         run: bash .github/scripts/seed-agent-home.sh
 
+      # PROVISIONING, NOT EXCLUSION (#40). SI-18 stopped vendoring
+      # skills/test_graph/ and test_graph/{sdk,build-logic,standard-nodes}:
+      # those copies had drifted 381 lines and three whole files ahead of the
+      # skill they copy, and nothing could see it. The runner and the SDK now
+      # come from the installed test-graph skill, so the graphs exercise the
+      # same copy the evals do.
+      #
+      # On a laptop that is `project resolve` into .skill-manager. A runner has
+      # no home, and .skill-manager is gitignored, so the three vendored paths
+      # arrive as DANGLING SYMLINKS and every graph would fail on its first
+      # jbang //SOURCES. This step is what makes the checkout buildable.
+      #
+      # NO TOKEN, DELIBERATELY. The tla-spec-dev PLUGIN is private, but
+      # test-graph is a constituent of it and its own repository is PUBLIC —
+      # and the runner needs only that skill, never the whole bundle. Cloning
+      # the constituent keeps this matrix credential-free.
+      #
+      # PINNED BY SHA, like the git-issue-workflow step above, so a green run
+      # names the SDK it measured and a push to that repository cannot turn the
+      # matrix red or green overnight. Bump it deliberately.
+      - name: Provision the test-graph skill (runner + SDK)
+        env:
+          TG_REPO: https://github.com/haydenrear/test-graph
+          TG_SHA: b0e35fdfdbccffd6ac311e5b564aaba4925ec221
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/test-graph"
+          git init -q "$dest"
+          if ! git -C "$dest" fetch -q --depth 1 "$TG_REPO" "$TG_SHA"; then
+            echo "::error::test-graph@$TG_SHA is not fetchable — bump TG_SHA"; exit 1
+          fi
+          git -C "$dest" checkout -q FETCH_HEAD
+          for f in scripts/run.py scripts/discover.py project_sdk_sources/sdk; do
+            test -e "$dest/$f" || { echo "::error::test-graph@$TG_SHA has no $f"; exit 1; }
+          done
+          # Replace the vendored symlinks (dangling here) with links into the
+          # pinned checkout. Same shape `project resolve --repair-vendored`
+          # produces on a laptop, same source skill, different rung.
+          for leaf in sdk build-logic standard-nodes; do
+            rm -f "test_graph/$leaf"
+            ln -s "$dest/project_sdk_sources/$leaf" "test_graph/$leaf"
+          done
+          echo "TG_SCRIPTS=$dest/scripts" >> "$GITHUB_ENV"
+          echo "test-graph@$(git -C "$dest" rev-parse HEAD) -> $dest"
+
       - name: Plan graph
         run: |
           mkdir -p ci-logs
           set -o pipefail
-          python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph \
+          python "$TG_SCRIPTS/discover.py" "${{ matrix.graph }}" --test-graph-root test_graph \
             2>&1 | tee ci-logs/plan.log
 
       # CiLoggedIn (and several other nodes) use ProcessBuilder.inheritIO(),
@@ -678,7 +723,7 @@ jobs:
         run: |
           mkdir -p ci-logs
           set -o pipefail
-          python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph \
+          python "$TG_SCRIPTS/run.py" "${{ matrix.graph }}" --test-graph-root test_graph \
             2>&1 | tee ci-logs/run.log
 
       # `if: always()` is the whole point: a graph that ran and failed must be
@@ -874,11 +919,56 @@ jobs:
         run: uv sync --all-extras
         working-directory: virtual-mcp-gateway
 
+      # PROVISIONING, NOT EXCLUSION (#40). SI-18 stopped vendoring
+      # skills/test_graph/ and test_graph/{sdk,build-logic,standard-nodes}:
+      # those copies had drifted 381 lines and three whole files ahead of the
+      # skill they copy, and nothing could see it. The runner and the SDK now
+      # come from the installed test-graph skill, so the graphs exercise the
+      # same copy the evals do.
+      #
+      # On a laptop that is `project resolve` into .skill-manager. A runner has
+      # no home, and .skill-manager is gitignored, so the three vendored paths
+      # arrive as DANGLING SYMLINKS and every graph would fail on its first
+      # jbang //SOURCES. This step is what makes the checkout buildable.
+      #
+      # NO TOKEN, DELIBERATELY. The tla-spec-dev PLUGIN is private, but
+      # test-graph is a constituent of it and its own repository is PUBLIC —
+      # and the runner needs only that skill, never the whole bundle. Cloning
+      # the constituent keeps this matrix credential-free.
+      #
+      # PINNED BY SHA, like the git-issue-workflow step above, so a green run
+      # names the SDK it measured and a push to that repository cannot turn the
+      # matrix red or green overnight. Bump it deliberately.
+      - name: Provision the test-graph skill (runner + SDK)
+        env:
+          TG_REPO: https://github.com/haydenrear/test-graph
+          TG_SHA: b0e35fdfdbccffd6ac311e5b564aaba4925ec221
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/test-graph"
+          git init -q "$dest"
+          if ! git -C "$dest" fetch -q --depth 1 "$TG_REPO" "$TG_SHA"; then
+            echo "::error::test-graph@$TG_SHA is not fetchable — bump TG_SHA"; exit 1
+          fi
+          git -C "$dest" checkout -q FETCH_HEAD
+          for f in scripts/run.py scripts/discover.py project_sdk_sources/sdk; do
+            test -e "$dest/$f" || { echo "::error::test-graph@$TG_SHA has no $f"; exit 1; }
+          done
+          # Replace the vendored symlinks (dangling here) with links into the
+          # pinned checkout. Same shape `project resolve --repair-vendored`
+          # produces on a laptop, same source skill, different rung.
+          for leaf in sdk build-logic standard-nodes; do
+            rm -f "test_graph/$leaf"
+            ln -s "$dest/project_sdk_sources/$leaf" "test_graph/$leaf"
+          done
+          echo "TG_SCRIPTS=$dest/scripts" >> "$GITHUB_ENV"
+          echo "test-graph@$(git -C "$dest" rev-parse HEAD) -> $dest"
+
       - name: Plan graph
         run: |
           mkdir -p ci-logs
           set -o pipefail
-          python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph \
+          python "$TG_SCRIPTS/discover.py" "${{ matrix.graph }}" --test-graph-root test_graph \
             2>&1 | tee ci-logs/plan.log
 
       # CiLoggedIn (and several other nodes) use ProcessBuilder.inheritIO(),
@@ -889,7 +979,7 @@ jobs:
         run: |
           mkdir -p ci-logs
           set -o pipefail
-          python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph \
+          python "$TG_SCRIPTS/run.py" "${{ matrix.graph }}" --test-graph-root test_graph \
             2>&1 | tee ci-logs/run.log
 
       - name: Collect diagnostics

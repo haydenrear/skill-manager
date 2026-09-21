@@ -216,6 +216,11 @@ CliWorkflowCommandLinks ==
 \* model names the UNIT that holds the surface, which is the spelling that
 \* survives the unit moving repositories again. The workflow SET is unchanged:
 \* all five are still documented there, verified at SI-18.
+\* OUN-6: BOTH surfaces are external to this repository now. skill-manager-skill
+\* was the last one it carried, and it is installed from its own repository —
+\* so the model still names what documents what, and no checker here can read
+\* either. That is asserted as an EXTERNAL set rather than as coverage; see
+\* tests/test_cli_skill_docs_program_model.py.
 SkillDocSurfaces ==
   {"skill-manager-skill", "unit-authoring"}
 

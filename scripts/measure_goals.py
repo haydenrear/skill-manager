@@ -87,7 +87,7 @@ EPICS = {
         ],
         "graphs": [
             {"goal": "GOAL-an-agent-in-its-own-home-can-work",
-             "cmd": [sys.executable, "skills/test_graph/scripts/run.py", "checkout-home"],
+             "cmd": [sys.executable, "test_graph/run-graphs.py", "--only", "checkout-home"],
              "metric": "does the shim launch in a fresh worktree home return a result",
              "target": "succeeds"},
         ],
@@ -107,7 +107,7 @@ EPICS = {
         ],
         "graphs": [
             {"goal": "GOAL-one-verdict",
-             "cmd": [sys.executable, "skills/test_graph/scripts/run.py", "home-verdicts"],
+             "cmd": [sys.executable, "test_graph/run-graphs.py", "--only", "home-verdicts"],
              "metric": "home-verdicts: every planted shape's verdicts are as pinned "
                        "(clause 1 is met when every shape node asserts verify exits 1)",
              "target": "succeeds"},

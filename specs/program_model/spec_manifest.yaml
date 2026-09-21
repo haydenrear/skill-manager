@@ -133,9 +133,11 @@ source_surfaces:
   # one for the authoring pages. What the model still asserts about
   # `unit-authoring` is asserted against CliMetadata, which this repo does own;
   # the pages themselves are the plugin repository's to verify.
-  skill_docs:
-    - skill-manager-skill/SKILL.md
-    - skill-manager-skill/references
+  # EMPTY after OUN-6. Both surfaces ExpectedSkillDocCoverage abstracts are in
+  # other repositories now, and a source surface has to be a path in THIS
+  # repository for the manifest to mean anything. What the model asserts about
+  # them is asserted against CliMetadata, which this repo does own.
+  skill_docs: []
 
 # Whole-program state: the 38 names in SkillManager.tla's VARIABLES block
 # (declared on line 18, names on lines 19-56); `vars` is their tuple.
