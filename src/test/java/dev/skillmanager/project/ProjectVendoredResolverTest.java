@@ -456,6 +456,88 @@ public final class ProjectVendoredResolverTest {
                     }
                 })
 
+                // --------------------------------------------- SI-18: both rungs
+
+                .test("a vendored source CONTAINED in a plugin resolves, and is not MISPOINTED", () -> {
+                    // The single-rung defect. `from_unit = "test-graph"` names a
+                    // UNIT, and the unit's bytes are at skills/test-graph/ when
+                    // it is installed standalone or at
+                    // plugins/<plugin>/skills/test-graph/ when a plugin carries
+                    // it. Reading only the first rung, this exact home — which
+                    // has the content, one rung over — reported all three paths
+                    // MISPOINTED with a remedy telling the operator to install
+                    // the standalone unit: that is, to undo the bundling.
+                    Path root = tempProject("vendored-contained-");
+                    seedContainedHome(root.resolve(".skill-manager"), "tla-spec-dev");
+                    String target = "../.skill-manager/plugins/tla-spec-dev/skills/test-graph"
+                            + "/project_sdk_sources/";
+                    linkVendored(root, "sdk", target + "sdk");
+                    linkVendored(root, "build-logic", target + "build-logic");
+                    linkVendored(root, "standard-nodes", target + "standard-nodes");
+
+                    ProjectVendoredResolver.Report report = check(root, "error", false);
+                    assertTrue(report.clean(),
+                            "a home that bundled the unit is the CORRECT shape: " + report.render());
+                    assertEquals(ProjectVendoredResolver.Status.OK, statusOf(report, "test_graph/sdk"),
+                            "relative link into the plugin rung of the project's own home");
+                })
+
+                .test("the standalone rung still wins when a home holds both", () -> {
+                    // Precedence is unchanged where both exist, which is what
+                    // makes the second rung safe to add: no home that resolves
+                    // today resolves anywhere else tomorrow.
+                    Path root = tempProject("vendored-both-rungs-");
+                    Path home = root.resolve(".skill-manager");
+                    seedHome(home);
+                    seedContainedHome(home, "tla-spec-dev");
+                    linkVendored(root, "sdk",
+                            "../.skill-manager/skills/test-graph/project_sdk_sources/sdk");
+                    linkVendored(root, "build-logic",
+                            "../.skill-manager/skills/test-graph/project_sdk_sources/build-logic");
+                    linkVendored(root, "standard-nodes",
+                            "../.skill-manager/skills/test-graph/project_sdk_sources/standard-nodes");
+
+                    ProjectVendoredResolver.Report report = check(root, "error", false);
+                    assertTrue(report.clean(),
+                            "standalone is still the expected target: " + report.render());
+                })
+
+                .test("a finding names the plugin rung as a candidate, not only the standalone one", () -> {
+                    // The misleading half of the defect. A candidate list that
+                    // printed only `skills/test-graph  (absent)` for a home
+                    // holding the content in a plugin told the operator the
+                    // content was not there — and nothing in the output hinted
+                    // a second rung existed to look on.
+                    Path root = tempProject("vendored-candidates-rungs-");
+                    seedContainedHome(root.resolve(".skill-manager"), "tla-spec-dev");
+                    linkVendored(root, "sdk", "../nowhere/sdk");
+
+                    ProjectVendoredResolver.Report report = check(root, "warn", false);
+                    List<String> candidates = entryOf(report, "test_graph/sdk").candidates();
+                    assertTrue(candidates.stream().anyMatch(c -> c.contains("plugins/tla-spec-dev")
+                                    && c.contains("(present)")),
+                            "the plugin rung is named AND reported present: " + candidates);
+                    assertTrue(candidates.stream().anyMatch(c -> c.contains("skills/test-graph")
+                                    && c.contains("(absent)")),
+                            "the standalone rung is still named, and honestly absent: " + candidates);
+                })
+
+                .test("repair re-points a broken link at the plugin rung when that is where the bytes are", () -> {
+                    Path root = tempProject("vendored-repair-contained-");
+                    seedContainedHome(root.resolve(".skill-manager"), "tla-spec-dev");
+                    linkVendored(root, "sdk", "/nonexistent/absolute/sdk");
+                    linkVendored(root, "build-logic", "/nonexistent/absolute/build-logic");
+                    linkVendored(root, "standard-nodes", "/nonexistent/absolute/standard-nodes");
+
+                    ProjectVendoredResolver.Report report = check(root, "error", true);
+                    assertTrue(report.clean(), "repaired against the rung that holds the content: "
+                            + report.render());
+                    String text = Files.readSymbolicLink(root.resolve("test_graph/sdk")).toString();
+                    assertTrue(text.contains("plugins/tla-spec-dev/skills/test-graph"),
+                            "the repaired link text names the plugin rung: " + text);
+                    assertTrue(!text.startsWith("/"), "and it is relative: " + text);
+                })
+
                 .test("a project that declares nothing vendored is unaffected", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path root = tempProject("vendored-none-");
@@ -497,6 +579,22 @@ public final class ProjectVendoredResolverTest {
     /** A skill-manager home holding test-graph's three vendored source trees. */
     private static Path seedHome(Path home) throws IOException {
         Path sources = home.resolve("skills/test-graph/project_sdk_sources");
+        for (String leaf : List.of("sdk", "build-logic", "standard-nodes")) {
+            Files.createDirectories(sources.resolve(leaf));
+            Files.writeString(sources.resolve(leaf).resolve("marker.txt"), leaf);
+        }
+        return home;
+    }
+
+    /**
+     * The same three vendored source trees, but CONTAINED in a plugin:
+     * {@code plugins/<plugin>/skills/test-graph/project_sdk_sources/}. This is
+     * the rung a home reaches by bundling the unit, which is the state a home
+     * is supposed to reach.
+     */
+    private static Path seedContainedHome(Path home, String plugin) throws IOException {
+        Path sources = home.resolve("plugins").resolve(plugin)
+                .resolve("skills/test-graph/project_sdk_sources");
         for (String leaf : List.of("sdk", "build-logic", "standard-nodes")) {
             Files.createDirectories(sources.resolve(leaf));
             Files.writeString(sources.resolve(leaf).resolve("marker.txt"), leaf);

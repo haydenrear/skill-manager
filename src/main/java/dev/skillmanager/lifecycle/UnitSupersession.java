@@ -229,11 +229,22 @@ public final class UnitSupersession {
     private static final java.util.Map<String, Set<String>> FORMER_CARRIERS =
             java.util.Map.of("tla-spec-dev", Set.of("skt"));
 
-    /** Every carrier name that serves {@code retirement}'s unit — current first. */
+    /**
+     * Every carrier name that serves {@code retirement}'s unit — current
+     * first.
+     *
+     * <p>The unit itself is excluded, and that is not hypothetical bookkeeping:
+     * {@code skt}'s own row has carrier {@code tla-spec-dev}, whose former
+     * carrier is {@code skt}, so without this the row would name skt as a
+     * carrier of skt. Present-skt would then read as "the standalone is served
+     * by a carrier", which is the opposite of what it means — the standalone
+     * being present is the condition the retirement exists to clear.
+     */
     public static Set<String> servingCarriers(Retirement retirement) {
         Set<String> out = new LinkedHashSet<>();
         out.add(retirement.carrier());
         out.addAll(FORMER_CARRIERS.getOrDefault(retirement.carrier(), Set.of()));
+        out.remove(retirement.unit());
         return out;
     }
 
