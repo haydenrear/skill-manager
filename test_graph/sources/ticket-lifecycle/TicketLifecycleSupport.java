@@ -111,6 +111,12 @@ final class TicketLifecycleSupport {
         boolean has(String name) { return Files.isRegularFile(locate(name)); }
     }
 
+    /** {@code path}'s last segment, or "" for a filesystem root (getFileName() is null there). */
+    private static String fileName(Path path) {
+        Path name = path.getFileName();
+        return name == null ? "" : name.toString();
+    }
+
     /**
      * {@code name} under {@code scriptsDir}, or under a sibling contained
      * skill's {@code scripts/} when the bundle keeps it there. Falls back to
@@ -129,7 +135,59 @@ final class TicketLifecycleSupport {
             Path candidate = sibling.resolve(name);
             if (Files.isRegularFile(candidate)) return candidate;
         }
+        // LAST RESORT: any contained skill of any plugin in the same home.
+        //
+        // For the TWO-COPIES home — a leftover standalone
+        // <home>/skills/git-issue-workflow/ beside
+        // <home>/plugins/tla-spec-dev/skills/git-issue-workflow/, which is the
+        // state SI-18 migrates FROM and therefore the state a home is in while
+        // being migrated. `scripts()` picks the standalone rung (it satisfies
+        // isScriptsDir: new-change.sh, close-change.sh and bootstrap-home.sh
+        // are all there), but `wt` is not in EITHER git-issue-workflow copy —
+        // it is in skt's — and a standalone rung correctly has no siblings. So
+        // `wt` resolved to nothing and every step of the worktree lifecycle
+        // exited 127.
+        //
+        // Safe because it is driven by a NAME and only runs when that name is
+        // absent from both rungs above. A name the anchor skill ships, such as
+        // selftest.sh — which four contained skills also ship — is found on the
+        // first line of this method and never reaches here, so this cannot
+        // reintroduce the cross-skill contamination the sibling guard exists to
+        // prevent.
+        Path home = homeAbove(scriptsDir);
+        if (home != null) {
+            List<Path> found = new ArrayList<>();
+            try (java.util.stream.Stream<Path> walk =
+                         Files.walk(home.resolve("plugins"), 4)) {
+                walk.filter(p -> p.getFileName() != null
+                                && name.equals(p.getFileName().toString()))
+                        .filter(p -> "scripts".equals(fileName(p.getParent())))
+                        .filter(Files::isRegularFile)
+                        .sorted()
+                        .forEach(found::add);
+            } catch (IOException | RuntimeException noPlugins) {
+                // no plugins/ in this home; nothing more to try
+            }
+            if (!found.isEmpty()) return found.get(0);
+        }
         return own;
+    }
+
+    /**
+     * The skill-manager home above a {@code .../skills/<unit>/scripts} or
+     * {@code .../plugins/<plugin>/skills/<unit>/scripts} path, or null when
+     * {@code scriptsDir} is neither shape (an integration checkout, say).
+     */
+    private static Path homeAbove(Path scriptsDir) {
+        Path skillRoot = scriptsDir == null ? null : scriptsDir.getParent();
+        Path skillsDir = skillRoot == null ? null : skillRoot.getParent();
+        if (skillsDir == null || !"skills".equals(fileName(skillsDir))) return null;
+        Path above = skillsDir.getParent();
+        if (above == null) return null;
+        // <home>/skills/<unit>/scripts, or <home>/plugins/<plugin>/skills/<unit>/scripts
+        Path plugins = above.getParent();
+        if (plugins != null && "plugins".equals(fileName(plugins))) return plugins.getParent();
+        return above;
     }
 
     /**
@@ -140,12 +198,6 @@ final class TicketLifecycleSupport {
      * <home>/plugins/<plugin>/skills/<skill>/scripts} — an integration
      * checkout or a standalone install has no siblings, and gets none.
      */
-    /** {@code path}'s last segment, or "" for a filesystem root (getFileName() is null there). */
-    private static String fileName(Path path) {
-        Path name = path.getFileName();
-        return name == null ? "" : name.toString();
-    }
-
     static List<Path> siblingScriptDirs(Path scriptsDir) {
         if (scriptsDir == null) return List.of();
         Path skillRoot = scriptsDir.getParent();
