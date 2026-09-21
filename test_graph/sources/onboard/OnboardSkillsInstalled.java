@@ -97,7 +97,15 @@ public class OnboardSkillsInstalled {
             boolean carrierGitOk = Files.exists(carrier.resolve(".git"));
             String carrierRecord = read(installedDir.resolve("tla-spec-dev.json"));
             String carrierGithub = "https://github.com/haydenrear/tla-spec-dev-plugin";
-            boolean carrierRemoteOk = carrierRecord.contains(carrierGithub);
+            // RECORD *AND* REAL REMOTE, as the manager check did before OUN-6.
+            // A substring of the installed record alone would pass for a
+            // carrier cloned from a fork or mirror whose record still names
+            // the upstream — which is the provenance regression this node
+            // exists to catch. gitRemote() is the half that reads the clone.
+            String carrierRemote = gitRemote(carrier);
+            boolean carrierRemoteOk = carrierRecord.contains(carrierGithub)
+                    && carrierRemote != null
+                    && carrierRemote.startsWith(carrierGithub);
             // And no installed record is written for the standalone.
             boolean managerRecordAbsent = !Files.exists(installedDir.resolve("skill-manager.json"));
 
@@ -120,7 +128,7 @@ public class OnboardSkillsInstalled {
                                     + " sktContained=" + sktContainedOk
                                     + " standaloneSktAbsent=" + standaloneSktAbsent
                                     + " carrierGit=" + carrierGitOk
-                                    + " carrierRemote=" + carrierRemoteOk))
+                                    + " carrierRemote=" + carrierRemoteOk + " (" + carrierRemote + ")"))
                     .assertion("standalone_skill_manager_is_NOT_installed", standaloneManagerAbsent)
                     .assertion("and_no_installed_record_is_written_for_it_either", managerRecordAbsent)
                     .assertion("the_carrier_contains_skill_manager", containedManagerOk)

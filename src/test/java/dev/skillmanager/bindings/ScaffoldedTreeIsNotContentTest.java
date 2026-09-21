@@ -68,7 +68,27 @@ public final class ScaffoldedTreeIsNotContentTest {
     private static final String PROVIDER = "graph-provider";
 
     public static int run() throws Exception {
-        List<String> scaffolded = scaffoldedIgnorePaths();
+        // NOT AT THE TOP LEVEL. This used to call scaffoldedIgnorePaths()
+        // bare, and after OUN-6 that reads an INSTALLED unit — so on a runner
+        // or a fresh clone it threw before Tests.suite() existed, the error
+        // escaped run() and main(), System.exit was never reached and the JVM
+        // died on an uncaught throwable. The whole suite disappeared because
+        // one fixture could not find its input, and the exit status said
+        // nothing about the other 300 cases.
+        //
+        // A missing unit is now a reported FAILURE of this suite, with the
+        // remedy, which is both survivable and honest: the cases below cannot
+        // run, and saying so is not the same as passing.
+        List<String> scaffolded;
+        try {
+            scaffolded = scaffoldedIgnorePaths();
+        } catch (AssertionError notInstalled) {
+            return Tests.suite("ScaffoldedTreeIsNotContentTest")
+                    .test("the scaffolder this fixture mirrors is reachable", () -> {
+                        throw new AssertionError(notInstalled.getMessage());
+                    })
+                    .runAll();
+        }
         return Tests.suite("ScaffoldedTreeIsNotContentTest")
 
                 // Vacuity mechanism B: assert the fixture's own inputs. If the
@@ -723,6 +743,15 @@ public final class ScaffoldedTreeIsNotContentTest {
      * as "the unit is not installed", not as "the scaffolder changed".
      */
     private static Path locateScaffolder() {
+        // PROVISIONED FIRST. CI's `unit-tests` job runs on every push and PR
+        // and installs nothing, and .skill-manager is gitignored — so without
+        // this the whole suite died on a runner and on any fresh clone, while
+        // passing on a laptop whose operator had the unit installed.
+        String provisioned = System.getenv("TEST_GRAPH_SCRIPTS");
+        if (provisioned != null && !provisioned.isBlank()) {
+            Path candidate = Path.of(provisioned).resolve("_common.py");
+            if (Files.isRegularFile(candidate)) return candidate;
+        }
         Path here = Path.of("").toAbsolutePath();
         List<Path> homes = new ArrayList<>();
         for (Path dir = here; dir != null; dir = dir.getParent()) {

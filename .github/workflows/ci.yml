@@ -251,6 +251,32 @@ jobs:
       # On `unit-tests` and NOT on the schedule, deliberately: a manifest is
       # broken by a commit, and a nightly check reports it to whoever pushes
       # next instead of to whoever broke it.
+      # PROVISIONING, NOT EXCLUSION (#40). OUN-6 stopped vendoring
+      # skills/test_graph/, and ScaffoldedTreeIsNotContentTest reads the
+      # SCAFFOLDER'S OWN SOURCE rather than restating its paths — deliberately:
+      # "typing them here would make the fixture agree with itself". That
+      # source is an installed unit now, and this job installs nothing, so
+      # without this the fixture found nothing and the WHOLE suite died: the
+      # throw escaped run() and main(), System.exit was never reached, and the
+      # JVM went down on an uncaught throwable with 300 other cases unreported.
+      #
+      # Public repository, pinned by SHA, anonymous clone — the same shape as
+      # the git-issue-workflow and test-graph steps in the graph jobs.
+      - name: Provision the test-graph scaffolder (ScaffoldedTreeIsNotContentTest)
+        env:
+          TG_REPO: https://github.com/haydenrear/test-graph
+          TG_SHA: b0e35fdfdbccffd6ac311e5b564aaba4925ec221
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/test-graph"
+          git init -q "$dest"
+          git -C "$dest" fetch -q --depth 1 "$TG_REPO" "$TG_SHA"
+          git -C "$dest" checkout -q FETCH_HEAD
+          test -f "$dest/scripts/_common.py" || {
+            echo "::error::test-graph@$TG_SHA has no scripts/_common.py"; exit 1; }
+          echo "TEST_GRAPH_SCRIPTS=$dest/scripts" >> "$GITHUB_ENV"
+          echo "test-graph@$(git -C "$dest" rev-parse HEAD) -> $dest/scripts"
+
       - name: Check hand-authored YAML and spec manifests
         run: uv run .github/scripts/check_yaml.py
 
@@ -694,7 +720,12 @@ jobs:
             echo "::error::test-graph@$TG_SHA is not fetchable — bump TG_SHA"; exit 1
           fi
           git -C "$dest" checkout -q FETCH_HEAD
-          for f in scripts/run.py scripts/discover.py project_sdk_sources/sdk; do
+          # F4: every path this step goes on to symlink, not a subset —
+          # `ln -s` happily creates a dangling link for a missing target, and
+          # the failure would surface much later inside Gradle or jbang.
+          for f in scripts/run.py scripts/discover.py \
+                   project_sdk_sources/sdk project_sdk_sources/build-logic \
+                   project_sdk_sources/standard-nodes; do
             test -e "$dest/$f" || { echo "::error::test-graph@$TG_SHA has no $f"; exit 1; }
           done
           # Replace the vendored symlinks (dangling here) with links into the
@@ -706,6 +737,35 @@ jobs:
           done
           echo "TG_SCRIPTS=$dest/scripts" >> "$GITHUB_ENV"
           echo "test-graph@$(git -C "$dest" rev-parse HEAD) -> $dest"
+
+      # PROVISIONING, NOT EXCLUSION (#40). OUN-6 removed skill-manager-skill/
+      # too, and three nodes read that skill's own files — env.script.reports
+      # in `smoke` (a CORE graph), and two docs nodes in `doc-smoke`. A runner
+      # has no home: .skill-manager is gitignored, EnvPrepared's scratch home
+      # is empty, and ~/.skill-manager is seeded only for three other graphs.
+      # Without this those nodes fail on every runner while passing on any
+      # laptop whose operator has the unit installed, which is the asymmetry
+      # worth avoiding rather than the failure.
+      #
+      # The skill's own repository is PUBLIC, so this needs no token either —
+      # the plugin that now carries it is private, but the runner needs only
+      # the skill.
+      - name: Provision the skill-manager skill (smoke, doc-smoke)
+        env:
+          SMS_REPO: https://github.com/haydenrear/skill-manager-skill
+          SMS_SHA: 043a0d333586d0f825ec6ffc9e0cc75aad6a3f57
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/skill-manager-skill"
+          git init -q "$dest"
+          git -C "$dest" fetch -q --depth 1 "$SMS_REPO" "$SMS_SHA"
+          git -C "$dest" checkout -q FETCH_HEAD
+          for f in scripts/env.sh SKILL.md skill-manager.toml references/projects.md; do
+            test -e "$dest/$f" || {
+              echo "::error::skill-manager-skill@$SMS_SHA has no $f"; exit 1; }
+          done
+          echo "SKILL_MANAGER_SKILL_DIR=$dest" >> "$GITHUB_ENV"
+          echo "skill-manager-skill@$(git -C "$dest" rev-parse HEAD) -> $dest"
 
       - name: Plan graph
         run: |
@@ -951,7 +1011,12 @@ jobs:
             echo "::error::test-graph@$TG_SHA is not fetchable — bump TG_SHA"; exit 1
           fi
           git -C "$dest" checkout -q FETCH_HEAD
-          for f in scripts/run.py scripts/discover.py project_sdk_sources/sdk; do
+          # F4: every path this step goes on to symlink, not a subset —
+          # `ln -s` happily creates a dangling link for a missing target, and
+          # the failure would surface much later inside Gradle or jbang.
+          for f in scripts/run.py scripts/discover.py \
+                   project_sdk_sources/sdk project_sdk_sources/build-logic \
+                   project_sdk_sources/standard-nodes; do
             test -e "$dest/$f" || { echo "::error::test-graph@$TG_SHA has no $f"; exit 1; }
           done
           # Replace the vendored symlinks (dangling here) with links into the
@@ -963,6 +1028,35 @@ jobs:
           done
           echo "TG_SCRIPTS=$dest/scripts" >> "$GITHUB_ENV"
           echo "test-graph@$(git -C "$dest" rev-parse HEAD) -> $dest"
+
+      # PROVISIONING, NOT EXCLUSION (#40). OUN-6 removed skill-manager-skill/
+      # too, and three nodes read that skill's own files — env.script.reports
+      # in `smoke` (a CORE graph), and two docs nodes in `doc-smoke`. A runner
+      # has no home: .skill-manager is gitignored, EnvPrepared's scratch home
+      # is empty, and ~/.skill-manager is seeded only for three other graphs.
+      # Without this those nodes fail on every runner while passing on any
+      # laptop whose operator has the unit installed, which is the asymmetry
+      # worth avoiding rather than the failure.
+      #
+      # The skill's own repository is PUBLIC, so this needs no token either —
+      # the plugin that now carries it is private, but the runner needs only
+      # the skill.
+      - name: Provision the skill-manager skill (smoke, doc-smoke)
+        env:
+          SMS_REPO: https://github.com/haydenrear/skill-manager-skill
+          SMS_SHA: 043a0d333586d0f825ec6ffc9e0cc75aad6a3f57
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/skill-manager-skill"
+          git init -q "$dest"
+          git -C "$dest" fetch -q --depth 1 "$SMS_REPO" "$SMS_SHA"
+          git -C "$dest" checkout -q FETCH_HEAD
+          for f in scripts/env.sh SKILL.md skill-manager.toml references/projects.md; do
+            test -e "$dest/$f" || {
+              echo "::error::skill-manager-skill@$SMS_SHA has no $f"; exit 1; }
+          done
+          echo "SKILL_MANAGER_SKILL_DIR=$dest" >> "$GITHUB_ENV"
+          echo "skill-manager-skill@$(git -C "$dest" rev-parse HEAD) -> $dest"
 
       - name: Plan graph
         run: |

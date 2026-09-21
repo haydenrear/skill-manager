@@ -27,6 +27,7 @@ stopped being runnable the moment it was. Both stay runnable now.
 """
 import json
 import shutil
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -87,7 +88,7 @@ EPICS = {
         ],
         "graphs": [
             {"goal": "GOAL-an-agent-in-its-own-home-can-work",
-             "cmd": [sys.executable, "test_graph/run-graphs.py", "--only", "checkout-home"],
+             "graph": "checkout-home",
              "metric": "does the shim launch in a fresh worktree home return a result",
              "target": "succeeds"},
         ],
@@ -107,7 +108,7 @@ EPICS = {
         ],
         "graphs": [
             {"goal": "GOAL-one-verdict",
-             "cmd": [sys.executable, "test_graph/run-graphs.py", "--only", "home-verdicts"],
+             "graph": "home-verdicts",
              "metric": "home-verdicts: every planted shape's verdicts are as pinned "
                        "(clause 1 is met when every shape node asserts verify exits 1)",
              "target": "succeeds"},
@@ -137,8 +138,41 @@ def run_json(entry) -> dict:
     return data
 
 
+def _graph_runner() -> "Path | None":
+    """The installed test-graph skill's run.py, on either rung.
+
+    NOT `test_graph/run-graphs.py`. That is the reporting front door and it
+    documents itself as never refusing — it always exits 0, including when it
+    ran nothing at all. Deciding `met` from its exit status marks every graph
+    goal MET unconditionally, which is precisely the DEF-OUN-023 shape this
+    repository added a sweep ledger to stop: a green that means "nothing ran".
+    """
+    homes = [REPO / ".skill-manager"]
+    env_home = os.environ.get("SKILL_MANAGER_HOME")
+    if env_home:
+        homes.append(Path(env_home))
+    homes.append(Path.home() / ".skill-manager")
+    for home in homes:
+        standalone = home / "skills" / "test-graph" / "scripts" / "run.py"
+        if standalone.is_file():
+            return standalone
+        for contained in sorted(home.glob("plugins/*/skills/test-graph/scripts/run.py")):
+            if contained.is_file():
+                return contained
+    return None
+
+
 def run_graph(entry) -> dict:
-    proc = subprocess.run(entry["cmd"], cwd=REPO, capture_output=True,
+    runner = _graph_runner()
+    if runner is None:
+        # UNDECIDED, never MET. The unit is not installed, so nothing was
+        # measured — and a goal whose instrument did not run has no value.
+        return {"goal": entry["goal"], "metric": entry.get("metric"),
+                "value": "not measured", "target": entry["target"], "met": None,
+                "why": "the test-graph skill is not installed in any home — "
+                       "run `skill-manager project resolve` first"}
+    cmd = [sys.executable, str(runner), entry["graph"]]
+    proc = subprocess.run(cmd, cwd=REPO, capture_output=True,
                           text=True, timeout=3600)
     ok = proc.returncode == 0
     return {"goal": entry["goal"], "metric": entry.get("metric"),

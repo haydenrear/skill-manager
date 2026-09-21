@@ -2,11 +2,12 @@
 #
 # This repo is not a skill unit. There is no skill-manager.toml at its root: it
 # is the CLI's own source tree, and it is itself an integration-repository
-# snapshot carrying ONE leaf unit as an ordinary directory —
-# skill-manager-skill/ — plus infra/homebrew-skill-manager/. skills/test_graph/
-# was the other until SI-18/#40 retired it; test-graph now arrives as a
-# contained skill of the tla-spec-dev plugin, and test_graph/{sdk,build-logic,
-# standard-nodes} are [[vendored]] links into it. So "a repo does not declare its own unit" has
+# snapshot carrying NO leaf units at all any more — just
+# infra/homebrew-skill-manager/. It carried three: skill-publisher-skill/ went
+# at SI-18, and skills/test_graph/ and skill-manager-skill/ at #40/OUN-6. Every
+# one of them is installed from its own repository now, as contained skills of
+# the tla-spec-dev plugin, and test_graph/{sdk,build-logic,standard-nodes} are
+# [[vendored]] links into the installed test-graph. So "a repo does not declare its own unit" has
 # nothing to bite on here, and what this manifest declares is simply what an
 # agent working in this checkout needs.
 #
@@ -98,8 +99,9 @@ description = "The Skill Manager CLI: unit resolution and installation, agent-ho
 [plugins.tla-spec-dev]
 source = "github:haydenrear/tla-spec-dev-plugin"
 
-# --- authoring: this repo carries ONE leaf skill unit as a tracked directory
-#     (skill-manager-skill/), and refreshing or merging it is unit work. The `unit-authoring` skill contained in the
+# --- authoring: this repo carries NO leaf skill units as tracked directories
+#     any more. Unit work happens in each unit's own repository, or in the
+#     plugin that contains it. The `unit-authoring` skill contained in the
 #     tla-spec-dev plugin above is the authority on SKILL.md frontmatter,
 #     descriptions, skill-manager.toml, references/ pages and the
 #     install/bind/sync round trip.
@@ -125,8 +127,10 @@ source = "github:haydenrear/tla-spec-dev-plugin"
 #     it: skt and skill-manager are now contained skills of the same bundle,
 #     so one declaration serves both.
 #
-#     The tracked snapshot at skill-manager-skill/ is unaffected: it is
-#     content this repo carries, not a dependency it installs ---
+#     The tracked snapshot at skill-manager-skill/ is GONE as of OUN-6 — it
+#     had become a second, drifting copy of what the plugin carries (0.1.1 here
+#     against 0.1.2 there, with content differences nobody had made
+#     deliberately) ---
 
 # --- REVERSED at SI-18/#40. This block used to say "test-graph is deliberately
 #     NOT declared", on the grounds that declaring it would "add yet another

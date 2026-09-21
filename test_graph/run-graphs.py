@@ -187,6 +187,16 @@ def main() -> int:
     if args.list:
         return 0
 
+    if args.only:
+        # Validate against the register. A typo used to be forwarded to the
+        # runner and came back only as "UNDECIDED: no ledger row", which reads
+        # as a broken graph rather than a misspelled name.
+        known = set(run) | set(opt_in) | set(DEAD)
+        unknown = [g for g in args.only if g not in known]
+        if unknown:
+            print(f"unknown graph(s): {', '.join(unknown)}")
+            print(f"registered: {', '.join(sorted(known))}")
+            return 2
     wanted = args.only or run
     if not RUNNER.is_file():
         print(f"\nUNDECIDED: no runner at {RUNNER}; nothing was run, no graph is green.")
@@ -219,6 +229,12 @@ def main() -> int:
             if graph not in seen:
                 print(f"  {'UNDECIDED':9} {graph:28} no ledger row — it did not execute")
     for graph, reason in opt_in.items():
+        # `--only refresh-flow` runs an opt-in graph deliberately. Printing
+        # "NOT RUN ... opt-in" for it in the same block that just reported its
+        # ledger row contradicts the report, and the contradiction is worse
+        # than the omission: a reader cannot tell which line is true.
+        if graph in wanted:
+            continue
         print(f"  {'NOT RUN':9} {graph:28} opt-in: {reason[:80]}")
 
     print("\nThis command always exits 0. A red or undecided graph is a report, "
