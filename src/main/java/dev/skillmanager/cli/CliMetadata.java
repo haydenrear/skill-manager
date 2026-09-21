@@ -246,16 +246,6 @@ public final class CliMetadata {
 
 
     /**
-     * Doc surfaces this repository carries on disk, and can therefore check
-     * the contents of.
-     *
-     * <p>After OUN-6 this is EMPTY: every doc surface lives in another
-     * repository, so no test in this one can read any of them, and a check that
-     * quietly skipped them would be a green result standing for nothing. What
-     * this repository CAN still own is which workflows point where: see
-     * {@link #workflowsWithExternalDocs()}, which now pins all of them.
-     */
-    /**
      * Every doc surface a workflow is allowed to name.
      *
      * <p>With {@link #inTreeDocSurfaces()} empty, "is this surface known?"
@@ -274,6 +264,16 @@ public final class CliMetadata {
         return Set.of("skill-manager-skill", UNIT_AUTHORING_DOCS);
     }
 
+    /**
+     * Doc surfaces this repository carries on disk, and can therefore check
+     * the contents of.
+     *
+     * <p>After OUN-6 this is EMPTY: every doc surface lives in another
+     * repository, so no test in this one can read any of them, and a check that
+     * quietly skipped them would be a green result standing for nothing. What
+     * this repository CAN still own is which workflows point where: see
+     * {@link #workflowsWithExternalDocs()}, which now pins all of them.
+     */
     public static Set<String> inTreeDocSurfaces() {
         // EMPTY after OUN-6. skill-manager-skill/ was the last doc surface this
         // repository carried, and it is installed from its own repository now

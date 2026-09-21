@@ -99,6 +99,17 @@ final class SmEnv {
      * and callers say so with the remedy rather than reporting a missing file.
      */
     static java.nio.file.Path skillManagerSkillFile(java.nio.file.Path repoRoot, String rel) {
+        // PROVISIONED FIRST, the same shape TicketLifecycleSupport.scripts()
+        // uses for $TICKET_LIFECYCLE_SCRIPTS. A CI runner has no home at all —
+        // .skill-manager is gitignored and EnvPrepared's scratch home is empty
+        // — so without this the nodes that read this skill fail on every
+        // runner while passing on any laptop whose operator happens to have it
+        // installed. That asymmetry is the thing to avoid, not the failure.
+        String provisioned = System.getenv("SKILL_MANAGER_SKILL_DIR");
+        if (provisioned != null && !provisioned.isBlank()) {
+            java.nio.file.Path candidate = java.nio.file.Path.of(provisioned).resolve(rel);
+            if (java.nio.file.Files.exists(candidate)) return candidate;
+        }
         java.util.List<java.nio.file.Path> homes = new java.util.ArrayList<>();
         homes.add(repoRoot.resolve(".skill-manager"));
         String env = System.getenv(SKILL_MANAGER_HOME);
