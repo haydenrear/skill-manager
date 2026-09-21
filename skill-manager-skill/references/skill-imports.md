@@ -117,8 +117,10 @@ two different readers and they do not agree.
 
 **The name and the coordinate are not the same key, and the mapping between
 them is not obvious.** `github:haydenrear/skill-manager-skill` installs a
-unit named `skill-manager`; `github:haydenrear/skill-publisher-skill`
-installs one named `skt`. The repository name is not the unit name. The only
+unit named `skill-manager`; `github:haydenrear/tla-spec-dev-plugin` installs
+one named `tla-spec-dev`, which in turn carries `skt`, `unit-authoring` and
+nine more as contained skills. The repository name is not the unit name, and
+a contained skill's name is not any repository's. The only
 place the two are joined is each unit's `installed/<name>.json`, whose
 `origin` field records the coordinate it came from — and nothing in the
 product performs that join.

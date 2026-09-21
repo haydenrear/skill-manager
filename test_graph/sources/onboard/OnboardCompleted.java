@@ -13,9 +13,16 @@ import java.nio.file.Path;
 
 /**
  * Drives {@code skill-manager onboard} against the per-run registry. The
- * onboard CLI installs the bundled skills (skill-manager-skill,
- * skill-publisher-skill) from local paths and ensures
- * the gateway is up.
+ * onboard CLI installs {@code skill-manager-skill} from a local path and
+ * fetches the {@code tla-spec-dev} plugin from github, then ensures the
+ * gateway is up.
+ *
+ * <p>SI-18 made that second half a NETWORK fetch, and it is deliberate. The
+ * bundled plugin is not vendored in this repository — a vendored copy of it
+ * was exactly what this epic deleted — so there is no local path to install it
+ * from, and an onboard that skipped it would not be the onboard being tested.
+ * Budget accordingly: the node's timeout covers a shallow clone of
+ * {@code haydenrear/tla-spec-dev-plugin} plus its CLI installers.
  *
  * <p>We pass {@code --install-dir} explicitly so the command doesn't
  * depend on cwd-walking from inside the test_graph subdirectory and so

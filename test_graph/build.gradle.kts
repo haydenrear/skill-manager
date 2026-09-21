@@ -268,7 +268,7 @@ validationGraph {
      * hyper.checkout copies that tree instead of cloning.
      *
      * Documented as a case study in
-     * skill-publisher-skill/references/runpod-mcp-onboarding.md.
+     * the tla-spec-dev plugin's unit-authoring/references/runpod-mcp-onboarding.md.
      */
     val hyperOptIn = !System.getenv("HYPER_LOCAL_DIR").isNullOrBlank()
             || System.getenv("HYPER_EXPERIMENTS") == "1"
@@ -359,7 +359,7 @@ validationGraph {
      * `skill-manager onboard`. Two halves:
      *
      *   1. The Spring `SkillBootstrapper` bean has seeded
-     *      `skill-manager` and `skill-publisher`
+     *      `skill-manager` and the `tla-spec-dev` plugin
      *      into the registry by
      *      the time `registry.up` reports healthy
      *      (`onboard.seeded.by.server`).
