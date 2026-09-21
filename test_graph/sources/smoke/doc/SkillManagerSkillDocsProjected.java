@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -24,7 +25,14 @@ public class SkillManagerSkillDocsProjected {
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
-            Path root = repoRoot.resolve("skill-manager-skill");
+            // OUN-6: the INSTALLED skill, on either rung.
+            Path skillMd = SmEnv.skillManagerSkillFile(repoRoot, "SKILL.md");
+            if (skillMd == null) {
+                return NodeResult.fail("docs.skill-manager.projected",
+                        "the skill-manager skill is not in any home above " + repoRoot
+                                + " — run `skill-manager project resolve` first");
+            }
+            Path root = skillMd.getParent();
             List<String> errors = new ArrayList<>();
 
             String skill = read(root.resolve("SKILL.md"));

@@ -64,7 +64,14 @@ public class OnboardSeededByServer {
             // gated on `body != null` INCLUDING the inverted ones — an empty
             // result is not a passing result.
             boolean answered = body != null;
-            boolean managerSeen = answered && body.contains("\"skill-manager\"");
+            // INVERTED at OUN-6, the last of the four. SkillBootstrapper seeds
+            // from directories in THIS tree and the tree now carries no skill
+            // unit at all — skill-publisher-skill/ went at SI-18,
+            // skill-manager-skill/ and skills/test_graph/ at OUN-6/#40,
+            // skill-dev-skill at OUN-4. Every unit is installed from its own
+            // repository, so a seeded skill-manager would mean a vendored copy
+            // had come back.
+            boolean managerAbsent = answered && !body.contains("\"skill-manager\"");
             // INVERTED by SI-18, not deleted. skill-publisher-skill/ was a
             // vendored snapshot of the skt plugin and the server seeded skt and
             // unit-authoring out of it. The snapshot is gone and the canonical
@@ -78,15 +85,15 @@ public class OnboardSeededByServer {
             // until the unit was retired; asserting it is ABSENT is what
             // catches a seed list that quietly grows the unit back.
             boolean retiredAbsent = answered && !body.contains("\"skill-dev-skill\"");
-            return (managerSeen && sktAbsent && authoringAbsent && retiredAbsent
+            return (managerAbsent && sktAbsent && authoringAbsent && retiredAbsent
                     ? NodeResult.pass("onboard.seeded.by.server")
                     : NodeResult.fail("onboard.seeded.by.server",
                             "seeded skills wrong — registryAnswered=" + answered
-                                    + " manager=" + managerSeen
+                                    + " managerAbsent=" + managerAbsent
                                     + " sktAbsent=" + sktAbsent
                                     + " unitAuthoringAbsent=" + authoringAbsent
                                     + " retiredSkillDevAbsent=" + retiredAbsent))
-                    .assertion("skill_manager_seeded", managerSeen)
+                    .assertion("vendored_skill_manager_is_NOT_seeded", managerAbsent)
                     .assertion("vendored_skt_is_NOT_seeded", sktAbsent)
                     .assertion("vendored_unit_authoring_is_NOT_seeded", authoringAbsent)
                     .assertion("retired_skill_dev_is_NOT_seeded", retiredAbsent);
