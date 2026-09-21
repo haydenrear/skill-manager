@@ -124,15 +124,18 @@ source_surfaces:
     - src/main/java/dev/skillmanager/cli/SkillManagerCli.java
     - src/main/java/dev/skillmanager/commands
   # The bundled documentation surfaces ExpectedSkillDocCoverage abstracts.
-  # skill-publisher-skill became a plugin layout after the accepted manifest
-  # last named it, so its single SKILL.md is now two skill directories; the
-  # stale `skill-publisher-skill/SKILL.md` entry is corrected here.
+  #
+  # SI-18 deleted skill-publisher-skill/ — it was a vendored snapshot of the
+  # skt plugin, and skt and unit-authoring are contained skills of
+  # tla-spec-dev now, in another repository. The three entries that named that
+  # tree are gone rather than repointed: a source surface has to be a path in
+  # THIS repository for the manifest to mean anything, and there is no longer
+  # one for the authoring pages. What the model still asserts about
+  # `unit-authoring` is asserted against CliMetadata, which this repo does own;
+  # the pages themselves are the plugin repository's to verify.
   skill_docs:
     - skill-manager-skill/SKILL.md
     - skill-manager-skill/references
-    - skill-publisher-skill/skills/skt/SKILL.md
-    - skill-publisher-skill/skills/unit-authoring/SKILL.md
-    - skill-publisher-skill/references
 
 # Whole-program state: the 38 names in SkillManager.tla's VARIABLES block
 # (declared on line 18, names on lines 19-56); `vars` is their tuple.

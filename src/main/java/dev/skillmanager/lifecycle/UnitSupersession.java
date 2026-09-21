@@ -407,16 +407,27 @@ public final class UnitSupersession {
         List<dev.skillmanager.project.SkillProjectLock> lockReleases = new ArrayList<>();
         List<dev.skillmanager.bindings.ChildHomeRegistry.ChildHomeRecord> homeReleases = new ArrayList<>();
         List<String> unsatisfied = new ArrayList<>();
+        // ANY serving carrier, for the same reason ProjectDependencyResolver
+        // and SyncCommand take one. A lock written before SI-18 resolves `skt`,
+        // not `tla-spec-dev`; matching only the current carrier made the claim
+        // read as UNSATISFIED the moment the rename landed, so the retirement
+        // was reported and skipped and the home stayed in the two-copies state
+        // — the carrier rename blocking the migration it exists to enable, for
+        // every project whose lock predates it.
+        Set<String> carriers = servingCarriers(retirement);
         for (var lock : locks.list()) {
             var names = lock.resolvedUnits().stream().map(u -> u.name()).toList();
             if (!names.contains(retirement.unit())) continue;
-            if (moved && names.contains(retirement.carrier())) lockReleases.add(lock);
+            if (moved && names.stream().anyMatch(carriers::contains)) lockReleases.add(lock);
             else unsatisfied.add(lock.projectName());
         }
         for (var record : childHomes.list()) {
             if (!record.units().contains(retirement.unit())) continue;
-            if (moved && record.units().contains(retirement.carrier())) homeReleases.add(record);
-            else unsatisfied.add(record.id());
+            if (moved && record.units().stream().anyMatch(carriers::contains)) {
+                homeReleases.add(record);
+            } else {
+                unsatisfied.add(record.id());
+            }
         }
         // A child home whose record lists the unit but cannot be decoded still
         // claims it as far as RemoveUseCase is concerned; name it.

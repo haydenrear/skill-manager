@@ -502,6 +502,48 @@ public final class ProjectVendoredResolverTest {
                             "standalone is still the expected target: " + report.render());
                 })
 
+                .test("a home holding BOTH rungs accepts a link on either one", () -> {
+                    // The false MISPOINTED. `expectedTarget` names the rung a
+                    // repair would WRITE — the first whose directory exists,
+                    // i.e. the standalone — but a link already pointing at the
+                    // other valid rung is correct. Judging against one rung
+                    // called this damage and printed a remedy telling the
+                    // operator to re-point at the standalone: undoing the
+                    // bundling, which is what the two-rung change exists to stop.
+                    Path root = tempProject("vendored-either-rung-");
+                    Path home = root.resolve(".skill-manager");
+                    seedHome(home);
+                    seedContainedHome(home, "tla-spec-dev");
+                    String plugin = "../.skill-manager/plugins/tla-spec-dev/skills/test-graph"
+                            + "/project_sdk_sources/";
+                    linkVendored(root, "sdk", plugin + "sdk");
+                    linkVendored(root, "build-logic", plugin + "build-logic");
+                    linkVendored(root, "standard-nodes", plugin + "standard-nodes");
+
+                    ProjectVendoredResolver.Report report = check(root, "error", false);
+                    assertTrue(report.clean(),
+                            "a link on the plugin rung is correct even when the standalone "
+                                    + "rung also exists: " + report.render());
+                })
+
+                .test("a link resolving to NEITHER rung is still MISPOINTED", () -> {
+                    // The companion. Accepting any rung must not become
+                    // accepting anything — a predicate that cannot fail is not
+                    // a check, and this one is one clause away from that.
+                    Path root = tempProject("vendored-neither-rung-");
+                    Path home = root.resolve(".skill-manager");
+                    seedHome(home);
+                    seedContainedHome(home, "tla-spec-dev");
+                    Path elsewhere = root.resolve("somewhere-else");
+                    Files.createDirectories(elsewhere);
+                    linkVendored(root, "sdk", "../somewhere-else");
+
+                    ProjectVendoredResolver.Report report = check(root, "warn", false);
+                    assertEquals(ProjectVendoredResolver.Status.MISPOINTED,
+                            statusOf(report, "test_graph/sdk"),
+                            "inside the project, but on no rung of the home");
+                })
+
                 .test("a finding names the plugin rung as a candidate, not only the standalone one", () -> {
                     // The misleading half of the defect. A candidate list that
                     // printed only `skills/test-graph  (absent)` for a home

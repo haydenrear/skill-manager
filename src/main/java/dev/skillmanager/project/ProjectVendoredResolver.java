@@ -354,13 +354,23 @@ public final class ProjectVendoredResolver {
                         "absolute symlink into this project's own tree: it resolves today but does "
                                 + "not survive a move, a clone, or a worktree", false);
             }
-            if (expectedTarget == null || !resolved.equals(realOrSame(expectedTarget))) {
+            // Accept ANY rung's leaf, not just the preferred one. `expectedTarget`
+            // names the rung a repair would WRITE — the first whose directory
+            // exists — but a link that already points at the other valid rung is
+            // correct, not mispointed. Judging against one rung produced a false
+            // MISPOINTED in two real shapes: a home holding a leftover standalone
+            // `skills/<unit>/` beside the plugin copy with the link correctly on
+            // the plugin copy, and a home where the declared LEAF exists only
+            // under the plugin rung. Both then printed a remedy telling the
+            // operator to re-point at the standalone — undoing the bundling,
+            // which is the very outcome the two-rung change exists to stop.
+            if (expectedTarget == null || !resolvesToSomeRung(declaration, home, path, resolved)) {
                 return new Entry(declaration.name(), declaredPath, path, Status.MISPOINTED, fatal,
                         linkText, resolved, expectedTarget, expectedText, candidates,
                         "resolves inside the project but not at the declared source"
                                 + (expectedTarget == null
                                 ? "; no enclosing " + HOME_DIR + " home was found"
-                                : ""), false);
+                                : " on any rung"), false);
             }
             return new Entry(declaration.name(), declaredPath, path, Status.OK, fatal,
                     linkText, resolved, expectedTarget, expectedText, candidates,
@@ -382,6 +392,26 @@ public final class ProjectVendoredResolver {
         return new Entry(declaration.name(), declaredPath, path, Status.MISPOINTED, fatal,
                 null, realOrSame(path), expectedTarget, expectedText, candidates,
                 "vendored path is a regular file where a vendored tree was declared", false);
+    }
+
+    /**
+     * Whether {@code resolved} is the declared leaf on ANY rung of {@code home}
+     * — the standalone {@code skills/<unit>/…} or any
+     * {@code plugins/<plugin>/skills/<unit>/…}.
+     *
+     * <p>Every rung is compared on {@link Path#toRealPath} output, for the same
+     * reason the rest of this class is: two spellings of one directory must not
+     * read as two directories.
+     */
+    private static boolean resolvesToSomeRung(
+            ProjectVendored declaration, Path home, Path path, Path resolved) {
+        if (home == null) return false;
+        for (Path rung : declaration.sourceDirsIn(home)) {
+            Path leaf = rung.resolve(path.getFileName());
+            if (!Files.isDirectory(leaf)) continue;
+            if (resolved.equals(realOrSame(leaf))) return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------- repair

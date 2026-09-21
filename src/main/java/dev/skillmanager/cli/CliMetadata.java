@@ -148,6 +148,19 @@ public final class CliMetadata {
      * that survives the unit moving between repositories again. Verified at
      * SI-18: all five workflows below, and their {@code --help} routes, are
      * documented in that skill upstream.
+     *
+     * <h2>Why the calls below spell the literal instead of using this</h2>
+     *
+     * <p>{@code specs/program_model/production_adapters.py} reads this file as
+     * TEXT, and extracts each workflow's doc surfaces with
+     * {@code re.findall(r'"([^"]+)"', …)} over the {@code docs(...)} argument.
+     * A constant has no quotes, so {@code docs(UNIT_AUTHORING_DOCS)} yielded an
+     * EMPTY surface set and {@code docs("skill-manager-skill", CONST)} silently
+     * lost its second — which took
+     * {@code test_cli_skill_docs_program_model.py} red. The constant stays for
+     * the Java side to refer to; the call sites stay literal so the model can
+     * still read them, and the docs test asserts every surface is either
+     * in-tree or exactly this value, so the two cannot drift apart.
      */
     public static final String UNIT_AUTHORING_DOCS = "unit-authoring";
 
@@ -156,9 +169,9 @@ public final class CliMetadata {
                     "skill-manager login"),
             workflow("ads-manage", "ads", docs("skill-manager-skill"),
                     "skill-manager ads list"),
-            workflow("author-dependencies", "create", docs(UNIT_AUTHORING_DOCS),
+            workflow("author-dependencies", "create", docs("unit-authoring"),
                     "skill-manager create my-plugin --kind plugin"),
-            workflow("author-unit", "create", docs(UNIT_AUTHORING_DOCS),
+            workflow("author-unit", "create", docs("unit-authoring"),
                     "skill-manager create my-skill"),
             workflow("bind-projection", "bind", docs("skill-manager-skill"),
                     "skill-manager bind docs-team --to ./project"),
@@ -187,7 +200,7 @@ public final class CliMetadata {
             workflow("install-git-unit", "install", docs("skill-manager-skill"),
                     "skill-manager install github:owner/repo"),
             workflow("install-local-unit", "install",
-                    docs("skill-manager-skill", UNIT_AUTHORING_DOCS),
+                    docs("skill-manager-skill", "unit-authoring"),
                     "skill-manager install file:./my-skill"),
             workflow("install-registry-unit", "install", docs("skill-manager-skill"),
                     "skill-manager install acme-skill"),
@@ -205,7 +218,7 @@ public final class CliMetadata {
                     "skill-manager project register"),
             workflow("project-resolve", "project resolve", docs("skill-manager-skill"),
                     "skill-manager project resolve"),
-            workflow("publish-unit", "publish", docs("skill-manager-skill", UNIT_AUTHORING_DOCS),
+            workflow("publish-unit", "publish", docs("skill-manager-skill", "unit-authoring"),
                     "skill-manager publish ./my-skill"),
             workflow("rebind-projection", "rebind", docs("skill-manager-skill"),
                     "skill-manager rebind binding-id --to ./new-project"),
@@ -215,7 +228,7 @@ public final class CliMetadata {
                     "skill-manager registry status"),
             workflow("remove-installed-unit", "remove", docs("skill-manager-skill"),
                     "skill-manager remove acme-skill"),
-            workflow("skill-scripts", "install", docs(UNIT_AUTHORING_DOCS),
+            workflow("skill-scripts", "install", docs("unit-authoring"),
                     "skill-manager install file:./skill-with-scripts"),
             workflow("sync-all-units", "sync", docs("skill-manager-skill"),
                     "skill-manager sync"),
