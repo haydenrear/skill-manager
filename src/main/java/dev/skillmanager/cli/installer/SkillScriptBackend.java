@@ -488,14 +488,56 @@ public final class SkillScriptBackend implements InstallerBackend {
      * path relative to the {@code skill-scripts/} dir — {@code "install.sh"}
      * or {@code "subdir/install.sh"} — and may not contain {@code ..}
      * segments that escape that dir.
+     *
+     * <h2>SI-11-DF-01: the rung a contained skill's installer lives on</h2>
+     *
+     * <p>A {@code skill-script:} installer is resolved by the INSTALLED
+     * UNIT's name, never by the declaring skill's. {@code PluginUnit.unionCli}
+     * flattens every contained skill's {@code cli_dependencies} onto the
+     * plugin, and {@code CliDependency} carries no field saying which skill
+     * declared it, so by the time this runs {@code spec-double-2} is not a
+     * name anybody still has — only {@code tla-spec-dev} is.
+     *
+     * <p>With two rungs that made a dep on a contained skill UNSPELLABLE.
+     * Installing the tla-spec-dev plugin from git reported, on every fresh
+     * home:
+     *
+     * <pre>
+     *   ✓ cli: 15 installed, 2 failed
+     *   ✗ cli: tlc2 install failed for tla-spec-dev — skill-script not found:
+     *         &lt;home&gt;/skills/tla-spec-dev/skill-scripts/install-tlc2.sh
+     * </pre>
+     *
+     * <p>and the error named the STANDALONE rung it probed first, which is why
+     * this read as a migration leftover rather than as an unsupported shape.
+     * {@code references/dependencies.md} tells authors to declare deps as close
+     * as possible to the capability that uses them, with no carve-out saying
+     * {@code skill-script:} is the one backend that cannot be.
+     *
+     * <p>So a third rung: {@code plugins/<unit>/skills/<contained>/skill-scripts/}.
+     * It is probed LAST, after both existing rungs, so nothing that resolves
+     * today resolves anywhere else — a plugin that keeps its installers at its
+     * own root (which is what tla-spec-dev now does, and what the docs
+     * prescribe) never reaches this code. Contained skills are probed in sorted
+     * order so a plugin carrying the same script name in two skills resolves
+     * the same way twice.
+     *
+     * <p>{@code SKILL_DIR} for a hit here is the CONTAINED SKILL's root, not
+     * the plugin's. That is the whole point: the script sits in that skill's
+     * {@code skill-scripts/} and its relative content is that skill's. It also
+     * means the two shapes are not interchangeable — a script written for the
+     * plugin rung spells {@code $SKILL_DIR/skills/<skill>/…} and one written
+     * for this rung spells {@code $SKILL_DIR/…}.
      */
     private static ResolvedScript resolveScript(SkillStore store, String unitName, String script)
             throws IOException {
         IOException firstError = null;
-        for (dev.skillmanager.model.UnitKind kind : new dev.skillmanager.model.UnitKind[]{
-                dev.skillmanager.model.UnitKind.SKILL,
-                dev.skillmanager.model.UnitKind.PLUGIN}) {
-            Path root = store.unitDir(unitName, kind);
+        List<Path> roots = new ArrayList<>();
+        roots.add(store.unitDir(unitName, dev.skillmanager.model.UnitKind.SKILL));
+        Path pluginRoot = store.unitDir(unitName, dev.skillmanager.model.UnitKind.PLUGIN);
+        roots.add(pluginRoot);
+        roots.addAll(containedSkillRoots(pluginRoot));
+        for (Path root : roots) {
             Path scriptsDir = root.resolve(SCRIPTS_DIRNAME);
             // Reject paths that leave the scripts dir via `..` even
             // before checking existence — a malicious manifest with
@@ -516,6 +558,21 @@ public final class SkillScriptBackend implements InstallerBackend {
             }
         }
         throw firstError;
+    }
+
+    /**
+     * Every contained skill root under an installed plugin, sorted. Empty
+     * when {@code pluginRoot} is not an installed plugin, which is the common
+     * case and not a problem: the caller already has the two unit rungs.
+     */
+    private static List<Path> containedSkillRoots(Path pluginRoot) {
+        Path skillsDir = pluginRoot.resolve("skills");
+        if (!Files.isDirectory(skillsDir)) return List.of();
+        try (var entries = Files.list(skillsDir)) {
+            return entries.filter(Files::isDirectory).sorted().toList();
+        } catch (IOException unreadable) {
+            return List.of();
+        }
     }
 
     private static Path skillScriptLogPath(SkillStore store, String skillName, String depName) {

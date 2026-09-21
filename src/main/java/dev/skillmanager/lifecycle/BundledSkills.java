@@ -14,11 +14,12 @@ import java.util.Set;
  * is {@code skill-manager-skill/}, but the published name is
  * {@code skill-manager}).
  *
- * <p>{@code skill-publisher} was replaced by the {@code skt} PLUGIN, which
- * its repo now ships (skill-manager-plugin.toml + contained skills). The
- * bundled entry is the plugin unit itself — the repo-root remote is the
- * correct upstream for a plugin, while a contained skill must never carry
- * it (a later sync would pull plugin-root content into a skill dir).
+ * <p>The second bundled entry is a PLUGIN, not a skill: {@code skt} became
+ * a contained skill of {@code tla-spec-dev} at SI-18, and the bundled unit
+ * is the carrier. The repo-root remote is the correct upstream for a plugin,
+ * while a contained skill must never carry it (a later sync would pull
+ * plugin-root content into a skill dir) — which is exactly why {@code skt}
+ * has no row here any more.
  */
 public final class BundledSkills {
 
@@ -26,13 +27,14 @@ public final class BundledSkills {
 
     // skill-dev-skill was here until OUN-4. It installed a `skill-dev` CLI
     // whose open/status/sync/git/close is now covered by `skt publish`, `skt
-    // ticket` and `sync --from --merge`; `deps --who-imports skill-dev-skill`
+    // ticket` and `sync --from --merge` (skt itself now arrives inside the
+    // tla-spec-dev plugin); `deps --who-imports skill-dev-skill`
     // reported zero importers in the only home that still held it.
     // `skill-manager` IS STILL HERE, AND DEF-OUN-017 EXPLAINS WHY REMOVING IT
     // IS NOT A ONE-LINE CHANGE.
     //
     // The complaint is real: UnitSupersession.TABLE retires the standalone
-    // `skill-manager` into skt, and this map installs it again on every fresh
+    // `skill-manager` into the carrier, and this map installs it again on every fresh
     // onboard, so the install path retires it on the way through. Two tables
     // describing one fact and disagreeing.
     //
@@ -50,9 +52,20 @@ public final class BundledSkills {
     // the standalone must not be seeded at all, which is OUN-6's end state
     // and a change to what onboarding installs rather than to what provenance
     // it records.
+    // SI-18: `skt` was here, at github:haydenrear/skill-publisher-skill.
+    // It is now a contained skill of the tla-spec-dev plugin, so the
+    // BUNDLED unit is the carrier and skt has no standalone coord to
+    // record. Recording one would hand a fresh install the provenance of a
+    // repository that no longer publishes the unit, and the next `sync skt`
+    // would pull the retired standalone back on top of the contained copy.
+    //
+    // The coord is the PLUGIN repository (tla-spec-dev-plugin), not
+    // tla-spec-dev — that one still ships the spec-double-compiler skill for
+    // existing installs, and resolving it here would install a skill under a
+    // plugin's name.
     private static final Map<String, String> GITHUB_COORDS = Map.of(
             "skill-manager", "github:haydenrear/skill-manager-skill",
-            "skt", "github:haydenrear/skill-publisher-skill"
+            "tla-spec-dev", "github:haydenrear/tla-spec-dev-plugin"
     );
 
     private static final Set<String> NAMES = GITHUB_COORDS.keySet();

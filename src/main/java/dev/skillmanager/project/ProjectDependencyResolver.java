@@ -690,13 +690,26 @@ public final class ProjectDependencyResolver {
             if (!r.install()) continue;
             var retired = dev.skillmanager.lifecycle.UnitSupersession.retirementNamedBy(r.reference())
                     .or(() -> dev.skillmanager.lifecycle.UnitSupersession.retirementFor(r.alias()));
-            if (retired.isPresent() && declared.contains(retired.get().carrier())) {
+            // ANY serving carrier, not just the current one. SI-18 renamed the
+            // carrier from `skt` to `tla-spec-dev`, and a manifest written
+            // before that rename declares the old name — which is exactly the
+            // manifest this branch exists for. Matching only the current name
+            // would reinstall the standalone and re-plant the claim that
+            // blocked the 0.27.0 migration from retiring it (#175), for every
+            // project that had not been edited yet.
+            String servedBy = retired.isPresent()
+                    ? dev.skillmanager.lifecycle.UnitSupersession.servingCarriers(retired.get())
+                            .stream().filter(declared::contains).findFirst().orElse(null)
+                    : null;
+            if (servedBy != null) {
                 // installableRefs runs once for install and once for the lock;
-                // the operator is told once.
+                // the operator is told once. The message names the carrier the
+                // MANIFEST declares, not the current one, so it matches what
+                // the reader is looking at.
                 if (warnedServedByCarrier.add(project.name() + "\u0000" + r.alias())) dev.skillmanager.util.Log.warn(
                         "%s: [skills.%s] is served by the %s plugin now — nothing is installed for it. "
                                 + "Delete that block from skill-project.toml; references to %s need no edits.",
-                        project.name(), r.alias(), retired.get().carrier(), retired.get().unit());
+                        project.name(), r.alias(), servedBy, retired.get().unit());
                 continue;
             }
             refs.add(r);

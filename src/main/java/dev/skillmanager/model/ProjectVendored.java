@@ -122,11 +122,73 @@ public record ProjectVendored(
     public boolean fatal() { return onInvalid == OnInvalid.ERROR; }
 
     /**
-     * Where this group's content sits below a skill-manager home:
+     * Where this group's content sits below a skill-manager home if
+     * {@code from_unit} is installed STANDALONE:
      * {@code skills/<from_unit>[/<from_subpath>]}.
+     *
+     * <p>This is one rung of two. Prefer {@link #resolveSourceDirIn} unless
+     * you specifically want the standalone spelling to report.
      */
     public Path sourceDirIn(Path homeRoot) {
         Path unitDir = homeRoot.resolve("skills").resolve(fromUnit);
         return fromSubpath == null ? unitDir : unitDir.resolve(fromSubpath);
+    }
+
+    /**
+     * Every rung this group's content could sit on below a home, in
+     * precedence order: the standalone {@code skills/<from_unit>} first,
+     * then {@code plugins/<plugin>/skills/<from_unit>} for each installed
+     * plugin, sorted.
+     *
+     * <h2>Why the second rung is not optional</h2>
+     *
+     * <p>SI-18. A unit's bytes live at ONE of two addresses and the
+     * declaration cannot say which, because it names a unit and not a
+     * location: {@code from_unit = "test-graph"} is true whether test-graph
+     * is installed on its own or carried inside the {@code tla-spec-dev}
+     * plugin. Asking only about {@code skills/} reports a home that has the
+     * content all along — one rung over — as not having it, and the finding
+     * it produces is {@code MISPOINTED} with a remedy telling the operator to
+     * install the standalone unit: that is, to undo the bundling.
+     *
+     * <p>A home is SUPPOSED to reach the contained state; bundling a skill
+     * into a plugin and dropping the standalone duplicate is what stops two
+     * copies of one unit drifting apart. Resolving one rung punished exactly
+     * the homes that had done the right thing. This is the same single-rung
+     * defect skt fixed in {@code wt.py} and {@code ticket.py::_bootstrap_script},
+     * and the idiom here is deliberately theirs.
+     *
+     * <p>Standalone stays FIRST so precedence is unchanged where both exist;
+     * the plugin rungs are sorted so a home with several plugins resolves the
+     * same way twice.
+     */
+    public List<Path> sourceDirsIn(Path homeRoot) {
+        List<Path> rungs = new java.util.ArrayList<>();
+        rungs.add(sourceDirIn(homeRoot));
+        Path pluginsDir = homeRoot.resolve("plugins");
+        try (var plugins = java.nio.file.Files.list(pluginsDir)) {
+            plugins.filter(java.nio.file.Files::isDirectory)
+                    .map(plugin -> plugin.resolve("skills").resolve(fromUnit))
+                    .map(unitDir -> fromSubpath == null ? unitDir : unitDir.resolve(fromSubpath))
+                    .sorted()
+                    .forEach(rungs::add);
+        } catch (java.io.IOException | RuntimeException noPluginsDir) {
+            // A home with no plugins/ directory has no contained rung. That is
+            // an ordinary shape, not a problem to report: the standalone rung
+            // is still in the list and still answers.
+        }
+        return List.copyOf(rungs);
+    }
+
+    /**
+     * The rung that actually holds this group's content in {@code homeRoot},
+     * or — when none does — the standalone rung, so a caller has a concrete
+     * path to name in a finding rather than nothing.
+     */
+    public Path resolveSourceDirIn(Path homeRoot) {
+        for (Path rung : sourceDirsIn(homeRoot)) {
+            if (java.nio.file.Files.isDirectory(rung)) return rung;
+        }
+        return sourceDirIn(homeRoot);
     }
 }

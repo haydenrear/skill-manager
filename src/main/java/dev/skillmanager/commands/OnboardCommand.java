@@ -55,12 +55,33 @@ public final class OnboardCommand implements Callable<Integer> {
      * published skill name (matches {@code [skill].name} in the
      * manifest, also the SkillStore directory), and the github coord
      * for the default remote-fetch path.
+     *
+     * <p>{@code dirName} is null for a unit this repository does not
+     * vendor; see {@link #BUNDLED_SKILLS}.
      */
-    private record BundledSkill(String dirName, String skillName, String githubCoord) {}
+    private record BundledSkill(String dirName, String skillName, String githubCoord) {
+        boolean githubOnly() { return dirName == null; }
+    }
 
-    // skill-publisher-skill ships the skt PLUGIN now; the resolver
-    // auto-detects the plugin shape and the install pipeline routes it to
-    // plugins/<name> with its CLI deps and marketplace registration.
+    // SI-18. The skt entry is GONE and tla-spec-dev stands in its place.
+    //
+    // skt is not a plugin any more: it is a contained skill of the
+    // tla-spec-dev plugin, at plugins/tla-spec-dev/skills/skt. Onboarding a
+    // STANDALONE skt would re-materialise on every fresh home exactly the
+    // duplicate the unification removed — two copies answering to one name,
+    // which is the state RejectContainedNameCollision exists to refuse. So
+    // onboarding installs the carrier and skt arrives inside it, along with
+    // unit-authoring and the workflow skills.
+    //
+    // The coord is `tla-spec-dev-plugin`, NOT `tla-spec-dev`. Two
+    // repositories, two surfaces: `tla-spec-dev` keeps shipping the
+    // spec-double-compiler SKILL so existing installs keep syncing, and
+    // installing that coord gets the skill, not the plugin.
+    //
+    // dirName is null because this repository carries no copy of the plugin
+    // and is not going to: it is a leaf unit of its own, not a constituent of
+    // this integration snapshot the way skill-manager-skill is. A null
+    // dirName resolves from github in EVERY mode, including --install-dir.
     //
     // THE SECOND LIST. BundledSkills.GITHUB_COORDS holds the same three
     // facts for the reconciler, and OUN-4 had to remove skill-dev-skill from
@@ -69,8 +90,8 @@ public final class OnboardCommand implements Callable<Integer> {
     private static final List<BundledSkill> BUNDLED_SKILLS = List.of(
             new BundledSkill("skill-manager-skill", "skill-manager",
                     "github:haydenrear/skill-manager-skill"),
-            new BundledSkill("skill-publisher-skill", "skt",
-                    "github:haydenrear/skill-publisher-skill")
+            new BundledSkill(null, "tla-spec-dev",
+                    "github:haydenrear/tla-spec-dev-plugin")
     );
 
     @Option(names = "--install-dir",
@@ -115,7 +136,7 @@ public final class OnboardCommand implements Callable<Integer> {
         // the per-spec discovery facts + resolve.
         List<SkillEffect.BuildResolveGraphFromBundledSkills.BundledSkillSpec> specs = new ArrayList<>();
         for (BundledSkill bundled : BUNDLED_SKILLS) {
-            if (root != null) {
+            if (root != null && !bundled.githubOnly()) {
                 Path skillDir = root.resolve(bundled.dirName());
                 if (!Files.isDirectory(skillDir) || !hasUnitShape(skillDir)) {
                     Log.error("bundled unit %s not found at %s", bundled.dirName(), skillDir);
@@ -310,8 +331,19 @@ public final class OnboardCommand implements Callable<Integer> {
         return null;
     }
 
+    /**
+     * True when {@code candidate} is a working tree holding every bundled
+     * unit this repository actually vendors.
+     *
+     * <p>github-only entries are skipped: they have no in-tree copy, so
+     * requiring one would make this return false for THIS repository's own
+     * root and silently send the local dev / test path back to github —
+     * losing the uncommitted-edit install that {@code --install-dir} exists
+     * to provide.
+     */
     private static boolean hasBundledSkills(Path candidate) {
         for (BundledSkill bundled : BUNDLED_SKILLS) {
+            if (bundled.githubOnly()) continue;
             if (!hasUnitShape(candidate.resolve(bundled.dirName()))) {
                 return false;
             }
@@ -321,8 +353,8 @@ public final class OnboardCommand implements Callable<Integer> {
 
     /**
      * A bundled entry is either a skill (top-level SKILL.md) or a plugin
-     * (skill-manager-plugin.toml) — skill-publisher-skill became the skt
-     * plugin, so a SKILL.md-only probe would reject every install root.
+     * (skill-manager-plugin.toml), so a SKILL.md-only probe would reject
+     * an install root carrying a plugin.
      */
     private static boolean hasUnitShape(Path unitDir) {
         return Files.isRegularFile(unitDir.resolve("SKILL.md"))
