@@ -342,13 +342,21 @@ public final class OnboardCommand implements Callable<Integer> {
      * to provide.
      */
     private static boolean hasBundledSkills(Path candidate) {
+        boolean sawVendored = false;
         for (BundledSkill bundled : BUNDLED_SKILLS) {
             if (bundled.githubOnly()) continue;
+            sawVendored = true;
             if (!hasUnitShape(candidate.resolve(bundled.dirName()))) {
                 return false;
             }
         }
-        return true;
+        // No vendored entry means no directory can identify an install root, so
+        // "does this directory look like one" has no true answer and must not
+        // be yes. Without this the loop body never runs, every candidate is
+        // accepted, and resolveInstallRoot()'s upward walk stops at the first
+        // ancestor it tries. Latent while skill-manager-skill remains, and
+        // silent if it ever goes.
+        return sawVendored;
     }
 
     /**

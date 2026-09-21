@@ -140,13 +140,33 @@ final class TicketLifecycleSupport {
      * <home>/plugins/<plugin>/skills/<skill>/scripts} — an integration
      * checkout or a standalone install has no siblings, and gets none.
      */
+    /** {@code path}'s last segment, or "" for a filesystem root (getFileName() is null there). */
+    private static String fileName(Path path) {
+        Path name = path.getFileName();
+        return name == null ? "" : name.toString();
+    }
+
     static List<Path> siblingScriptDirs(Path scriptsDir) {
         if (scriptsDir == null) return List.of();
         Path skillRoot = scriptsDir.getParent();
         Path skillsDir = skillRoot == null ? null : skillRoot.getParent();
         Path pluginRoot = skillsDir == null ? null : skillsDir.getParent();
-        if (skillsDir == null || !"skills".equals(skillsDir.getFileName().toString())
-                || pluginRoot == null || !Files.isDirectory(pluginRoot.resolve("skills"))) {
+        Path pluginsDir = pluginRoot == null ? null : pluginRoot.getParent();
+        // The shape must be <home>/plugins/<plugin>/skills/<skill>/scripts, and
+        // BOTH names have to be checked.
+        //
+        // The first version of this tested `Files.isDirectory(pluginRoot.resolve("skills"))`,
+        // which is `skillsDir` — always a directory by construction, so the
+        // guard could never fail. A plain standalone install at
+        // <home>/skills/<unit>/scripts passed it (that skillsDir IS named
+        // "skills"), and every OTHER standalone skill in the home became a
+        // "sibling". Four contained skills ship a selftest.sh of their own, so
+        // that was the exact cross-skill contamination this method's caller
+        // documents itself as avoiding — reintroduced by the guard meant to
+        // prevent it. Requiring the grandparent to be `plugins` is what
+        // actually distinguishes the two layouts.
+        if (skillsDir == null || pluginsDir == null) return List.of();
+        if (!"skills".equals(fileName(skillsDir)) || !"plugins".equals(fileName(pluginsDir))) {
             return List.of();
         }
         List<Path> out = new ArrayList<>();

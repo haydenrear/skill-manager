@@ -329,7 +329,10 @@ public class OnboardingDocsAndScriptsStatic {
         // and dropped. The docs were correct; this reader was a rung short,
         // and the symptom was `the extractor itself is broken` — which was
         // true.
-        if (text.charAt(end - 1) == ')') {
+        // `end > 0` or this reads charAt(-1): collect() runs per STRIPPED
+        // line, so a remedy line beginning `/scripts/<name>` puts the match
+        // at index 1 and crashed the node.
+        if (end > 0 && text.charAt(end - 1) == ')') {
             String probe = commandSubstitutionBefore(text, end - 1);
             if (probe != null) return probeNames(probe, ownName);
         }
