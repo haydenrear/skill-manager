@@ -1,10 +1,10 @@
 ---
 skill-imports:
-  - unit: skt
+  - unit: unit-authoring
     path: references/coords-and-distribution.md
     reason: Install-source and reference coords follow one rule (git coords only, no registry configured); stated once there.
     section: coord-forms
-  - unit: skt
+  - unit: unit-authoring
     path: references/coords-and-distribution.md
     reason: Canonical distribution default — push to a GitHub repo with a license and install from the git source, not from a file.
     section: source-of-truth
@@ -47,7 +47,8 @@ re-derive it. `git-issue-workflow`'s `references/skill-homes.md` carries
 the deeper account of the *scripts* around it (`bootstrap-home.sh`, the
 CLI pin, the exclusion rules); prefer it when you have it, but note it is
 a different unit and a project or worktree home may not have it installed.
-`skt status` summarizes the model live, in homes carrying the skt plugin.
+`skt status` summarizes the model live, in homes carrying the tla-spec-dev
+plugin (skt is one of its contained skills).
 
 - Install only when the user wants bytes in the skill-manager store and
   default agent exposure is enough.
@@ -260,13 +261,14 @@ Favor a durable git-backed install: create a GitHub repo with a
 `LICENSE`, push the unit, and install from `github:owner/repo`. A
 `file://` install is for local validation only; do not leave it as the
 published result unless the user explicitly asks for a local-only
-install. The default publishing model is authoritative in the skt plugin's
-`references/coords-and-distribution.md`.
+install. The default publishing model is authoritative in the `unit-authoring`
+skill's `references/coords-and-distribution.md`, inside the tla-spec-dev
+plugin.
 
 Before publishing:
 
-1. Use the skt plugin's `unit-authoring` skill for manifest anatomy
-   and examples.
+1. Use the tla-spec-dev plugin's `unit-authoring` skill for manifest
+   anatomy and examples.
 2. Ensure the unit root is a git repo and contains the correct marker
    file for exactly one top-level unit.
 3. Run the publish dry run.

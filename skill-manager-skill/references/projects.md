@@ -1,6 +1,6 @@
 ---
 skill-imports:
-  - unit: skt
+  - unit: unit-authoring
     path: references/coords-and-distribution.md
     reason: Project-manifest unit refs use the same coord grammar as skill_references; the git-coord-only rule (no registry configured) is stated once there.
     section: coord-forms
@@ -25,7 +25,7 @@ are resolved transitively at `project resolve` time, exactly like
 `git+…`, `file:…`); registry-name coords such as `skill:name` cannot
 resolve because no registry is configured, and the coord names the repo,
 not the installed unit — find it with `gh repo list <owner>`. The rule
-and rationale live once in the skt plugin's
+and rationale live once in the tla-spec-dev plugin's `unit-authoring`
 `references/coords-and-distribution.md` (imported above); do not restate
 it here.
 
@@ -308,9 +308,12 @@ resolve` had installed. Prefer the per-unit record; treat a lock entry with no
 `origin` as a gap in the lock, not as a unit with no repository.
 
 Worked examples of the mismatch, **including this unit's own**: `skill-manager`
-is published from `skill-manager-skill`; `spec-double-compiler` from
-`tla-spec-dev`; `test-graph` from `test_graph_skill`; `deploy-helm` from
-`deploy-cdc`; the `skt` plugin from `skill-publisher-skill`. That list is
+is published from `skill-manager-skill`; `test-graph` from `test_graph_skill`;
+`deploy-helm` from `deploy-cdc`; the `tla-spec-dev` plugin from
+`tla-spec-dev-plugin` — note the suffix, because `tla-spec-dev` is also a
+repository and it publishes the `spec-double-compiler` SKILL, a different unit.
+`skt` and `unit-authoring` are published from no repository at all: they are
+contained skills of that plugin and are updated by updating it. That list is
 **illustration, not a registry** — which units a home holds differs per home, so
 enumerating one home's inventory here would be a copy that goes stale the first
 time a home differs. The lookup above is the answer; these are only enough
