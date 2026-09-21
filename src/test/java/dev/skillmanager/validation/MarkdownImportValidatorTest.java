@@ -445,6 +445,77 @@ public final class MarkdownImportValidatorTest {
                             + "which is OUN-2's gate to refuse at install time");
         });
 
+        suite.test("a unit's fixture markdown is not the unit's markdown (SI-18)", () -> {
+            // Installing the tla-spec-dev plugin reported two violations and
+            // both were correct readings of deliberately broken files. One sat
+            // under evals/git-issue-workflow/w-giw-exit6-is-unreadable-
+            // frontmatter/fixture/ — an eval NAMED for the defect being
+            // reported, whose fixture must have unreadable frontmatter or the
+            // eval asserts nothing. The violation could not be fixed without
+            // destroying what it was fixture for; its only effect was to make
+            // `skill-manager onboard` exit non-zero on a well-formed plugin.
+            SkillStore store = store();
+            Path plugin = Files.createTempDirectory("md-import-fixtures-");
+
+            // Surface the unit publishes: an import of a unit that is NOT
+            // installed. This is the control — it must still be reported, or
+            // the test would pass because nothing is validated at all.
+            Files.createDirectories(plugin.resolve("references"));
+            Files.writeString(plugin.resolve("references/real.md"),
+                    mdImport("not-installed-anywhere", "reference.md"));
+
+            // Fixture data, two levels down, in both spellings. Broken in
+            // exactly the two ways the plugin's fixtures are broken.
+            Path evalFixture = plugin.resolve("evals/w-some-eval/fixture/demo-skill");
+            Files.createDirectories(evalFixture);
+            Files.writeString(evalFixture.resolve("SKILL.md"), """
+                    ---
+                    skill-imports:
+                      - skill: also-not-installed
+                        path: reference.md
+                    ---
+                    an import with no `reason`, on purpose
+                    """);
+            Path plural = plugin.resolve("tests/fixtures/other-skill");
+            Files.createDirectories(plural);
+            Files.writeString(plural.resolve("SKILL.md"), """
+                    ---
+                    description: Use when tidying demo docs: the README and the changelog
+                    ---
+                    unreadable frontmatter, on purpose
+                    """);
+
+            List<MarkdownImportValidator.Violation> violations = MarkdownImportValidator.validate(
+                    store,
+                    List.of(new MarkdownImportValidator.UnitRoot(
+                            "fixture-carrier", UnitKind.PLUGIN, plugin)));
+
+            assertSize(1, violations,
+                    "only the unit's own markdown is answered for: " + violations);
+            assertContains(violations.get(0).render(), "references/real.md",
+                    "and it is the real page, not a fixture");
+        });
+
+        suite.test("evals/ itself is still the unit's markdown — only fixtures are skipped", () -> {
+            // The exclusion is narrow on purpose. An eval's README is
+            // documentation the unit publishes and a reader is routed to it, so
+            // a broken import there is still the unit's problem. Skipping
+            // evals/ wholesale would have been the easy fix and would have
+            // taken this with it.
+            SkillStore store = store();
+            Path unit = Files.createTempDirectory("md-import-evals-readme-");
+            Files.createDirectories(unit.resolve("evals/w-some-eval"));
+            Files.writeString(unit.resolve("evals/w-some-eval/README.md"),
+                    mdImport("not-installed-anywhere", "reference.md"));
+
+            List<MarkdownImportValidator.Violation> violations = MarkdownImportValidator.validate(
+                    store,
+                    List.of(new MarkdownImportValidator.UnitRoot(
+                            "evals-carrier", UnitKind.PLUGIN, unit)));
+
+            assertSize(1, violations, "an eval's own README is still validated: " + violations);
+        });
+
         return suite.runAll();
     }
 

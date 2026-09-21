@@ -203,6 +203,91 @@ public final class SkillScriptBackendTest {
             });
         }
 
+        suite.test("SI-11-DF-01: a skill-script dep declared on a CONTAINED skill resolves", () -> {
+            // A skill-script: installer is resolved by the INSTALLED UNIT's
+            // name, never by the declaring skill's — PluginUnit.unionCli
+            // flattens every contained skill's cli_dependencies onto the
+            // plugin, and CliDependency carries no field saying which skill
+            // declared it. With two rungs that made a dep on a contained skill
+            // UNSPELLABLE: installing the tla-spec-dev plugin from git reported
+            //
+            //   ✗ cli: tlc2 install failed for tla-spec-dev — skill-script not
+            //     found: <home>/skills/tla-spec-dev/skill-scripts/install-tlc2.sh
+            //
+            // on every fresh home, naming the STANDALONE rung it probed first,
+            // which is why this read as a migration leftover rather than as an
+            // unsupported shape.
+            SkillStore store = new SkillStore(Files.createTempDirectory("skill-script-contained-"));
+            store.init();
+            String pluginName = "carrier-plugin";
+            CliDependency dep = skillScriptDep("contained-script-bin");
+
+            // The installer lives in the CONTAINED skill's skill-scripts/, and
+            // nowhere else: neither unit rung holds it.
+            Path contained = store.pluginsDir().resolve(pluginName)
+                    .resolve("skills").resolve("declaring-skill");
+            Path scripts = contained.resolve(SkillScriptBackend.SCRIPTS_DIRNAME);
+            Files.createDirectories(scripts);
+            Files.writeString(scripts.resolve("install.sh"), """
+                    #!/usr/bin/env bash
+                    set -euo pipefail
+                    echo "SKILL_DIR=$SKILL_DIR"
+                    touch "$SKILL_MANAGER_BIN_DIR/contained-script-bin"
+                    chmod +x "$SKILL_MANAGER_BIN_DIR/contained-script-bin"
+                    """);
+
+            new InstallerRegistry().installOne(dep, store, pluginName, true);
+
+            assertTrue(Files.exists(store.cliBinDir().resolve("contained-script-bin")),
+                    "the installer on the contained rung actually ran");
+            // SKILL_DIR is the CONTAINED SKILL's root, not the plugin's. That
+            // is the point: the script sits in that skill's skill-scripts/ and
+            // its relative content is that skill's. It also means the two
+            // shapes are not interchangeable — a script written for the plugin
+            // rung spells $SKILL_DIR/skills/<skill>/… and one written for this
+            // rung spells $SKILL_DIR/….
+            assertContains(readSkillScriptLogs(store), "SKILL_DIR=" + contained,
+                    "SKILL_DIR is the declaring skill's root");
+        });
+
+        suite.test("SI-11-DF-01: the plugin's own rung still wins over a contained one", () -> {
+            // The contained rung is probed LAST, after both unit rungs, so
+            // nothing that resolves today resolves anywhere else. A plugin that
+            // keeps its installers at its own root — which is what tla-spec-dev
+            // does, and what the docs prescribe — never reaches the new code.
+            SkillStore store = new SkillStore(Files.createTempDirectory("skill-script-precedence-"));
+            store.init();
+            String pluginName = "both-rungs-plugin";
+            CliDependency dep = skillScriptDep("both-rungs-bin");
+
+            Path pluginRoot = store.pluginsDir().resolve(pluginName);
+            Path pluginScripts = pluginRoot.resolve(SkillScriptBackend.SCRIPTS_DIRNAME);
+            Files.createDirectories(pluginScripts);
+            Files.writeString(pluginScripts.resolve("install.sh"), """
+                    #!/usr/bin/env bash
+                    set -euo pipefail
+                    echo "ran=plugin-root"
+                    touch "$SKILL_MANAGER_BIN_DIR/both-rungs-bin"
+                    chmod +x "$SKILL_MANAGER_BIN_DIR/both-rungs-bin"
+                    """);
+            Path containedScripts = pluginRoot.resolve("skills/inner")
+                    .resolve(SkillScriptBackend.SCRIPTS_DIRNAME);
+            Files.createDirectories(containedScripts);
+            Files.writeString(containedScripts.resolve("install.sh"), """
+                    #!/usr/bin/env bash
+                    set -euo pipefail
+                    echo "ran=contained"
+                    touch "$SKILL_MANAGER_BIN_DIR/both-rungs-bin"
+                    chmod +x "$SKILL_MANAGER_BIN_DIR/both-rungs-bin"
+                    """);
+
+            new InstallerRegistry().installOne(dep, store, pluginName, true);
+
+            String logs = readSkillScriptLogs(store);
+            assertContains(logs, "ran=plugin-root", "the plugin's own rung ran");
+            assertFalse(logs.contains("ran=contained"), "and the contained rung did not: " + logs);
+        });
+
         return suite.runAll();
     }
 

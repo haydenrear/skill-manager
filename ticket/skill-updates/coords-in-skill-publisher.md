@@ -11,3 +11,12 @@ skill-manager list
 and get the exact coordinate to put in the skill references.
 
 So the skill-publisher-skill should also include this information.
+
+---
+
+**SI-18 (2026-09-21):** this note predates the plugin merge. `skill-publisher-skill`
+no longer exists as a repository this project tracks — the skill it means is
+`unit-authoring`, a contained skill of the `tla-spec-dev` plugin
+(`github:haydenrear/tla-spec-dev-plugin`), and its coords page is
+`skills/unit-authoring/references/coords-and-distribution.md`. The ask itself is
+unchanged and still open; only where it lands has moved.

@@ -133,17 +133,18 @@ final class TicketLifecycleSupport {
                 System.getProperty("user.home", "") + "/.skill-manager")) {
             if (homeRaw == null || homeRaw.isBlank()) continue;
             for (String unit : SCRIPT_UNITS) {
-                Path candidate = Path.of(homeRaw).resolve("skills")
-                        .resolve(unit).resolve("scripts");
-                if (isScriptsDir(candidate)) {
-                    return new Scripts(candidate, "the " + unit + " skill installed in "
-                            + homeRaw);
+                for (Path candidate : unitScriptRungs(Path.of(homeRaw), unit)) {
+                    if (isScriptsDir(candidate)) {
+                        return new Scripts(candidate, "the " + unit + " skill installed in "
+                                + homeRaw + " (" + candidate + ")");
+                    }
                 }
             }
         }
         return new Scripts(null, "no integration.toml above " + repo + " (or its git common dir)"
                 + " and no " + String.join("/", SCRIPT_UNITS)
-                + " skill in any home on this machine");
+                + " skill in any home on this machine, on either rung"
+                + " (skills/<unit>/scripts or plugins/*/skills/<unit>/scripts)");
     }
 
     /**
@@ -155,6 +156,50 @@ final class TicketLifecycleSupport {
      */
     private static final List<String> SCRIPT_UNITS =
             List.of("git-issue-workflow", "git-integration-repo");
+
+    /**
+     * Every place {@code unit}'s {@code scripts/} can sit in a home, in
+     * precedence order.
+     *
+     * <h2>SI-18: the second rung is not optional</h2>
+     *
+     * <p>This resolved {@code <home>/skills/<unit>/scripts} and stopped, and
+     * the day the root home bundled {@code git-issue-workflow} into the
+     * tla-spec-dev plugin the whole graph failed with
+     *
+     * <pre>
+     *   could not locate git-integration-repo's scripts — ... and no
+     *   git-issue-workflow/git-integration-repo skill in any home on this machine
+     * </pre>
+     *
+     * <p>on a machine whose home HAD the scripts, one rung over. Worse, the
+     * message named the state as "no skill in any home", which reads as the
+     * operator's home being wrong rather than as this locator being
+     * single-rung, and the remedy it printed — set $TICKET_LIFECYCLE_SCRIPTS
+     * by hand — papers over it.
+     *
+     * <p>A home is SUPPOSED to reach the contained state. This is the same
+     * defect skt fixed in {@code wt.py} and {@code ticket.py::_bootstrap_script},
+     * and the third place in this change where it had to be fixed; the idiom is
+     * deliberately theirs. Standalone stays FIRST so precedence is unchanged
+     * where both exist, and the plugin rungs are sorted so a home with several
+     * plugins resolves the same way twice.
+     */
+    private static List<Path> unitScriptRungs(Path home, String unit) {
+        List<Path> rungs = new java.util.ArrayList<>();
+        rungs.add(home.resolve("skills").resolve(unit).resolve("scripts"));
+        Path pluginsDir = home.resolve("plugins");
+        try (java.util.stream.Stream<Path> plugins = Files.list(pluginsDir)) {
+            plugins.filter(Files::isDirectory)
+                    .map(plugin -> plugin.resolve("skills").resolve(unit).resolve("scripts"))
+                    .sorted()
+                    .forEach(rungs::add);
+        } catch (java.io.IOException | RuntimeException noPluginsDir) {
+            // A home with no plugins/ is an ordinary shape, not a problem to
+            // report: the standalone rung is still in the list.
+        }
+        return rungs;
+    }
 
     private static Scripts fromIntegrationAbove(Path start, String how) {
         Path dir = start.toAbsolutePath().normalize();
