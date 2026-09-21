@@ -24,12 +24,6 @@ public final class SkillManagerSkillDocsTest {
                     String projects = Files.readString(root.resolve("references/projects.md"));
                     String cli = Files.readString(root.resolve("references/cli.md"));
                     String toml = Files.readString(root.resolve("skill-manager.toml"));
-                    String publisher = Files.readString(
-                            Path.of("skill-publisher-skill/skills/unit-authoring/SKILL.md"));
-                    String skillScripts = Files.readString(
-                            Path.of("skill-publisher-skill/references/skill-scripts.md"));
-                    String pluginDocs = Files.readString(
-                            Path.of("skill-publisher-skill/references/plugins.md"));
 
                     assertContains(skill, "skill projects", "front matter and body name skill projects");
                     assertContains(skill, "project child homes", "front matter names project child homes");
@@ -58,29 +52,68 @@ public final class SkillManagerSkillDocsTest {
                     assertContains(toml, "skill projects", "published description includes projects");
                     assertContains(toml, "project child homes", "published description includes child homes");
 
-                    assertContains(publisher, "skill-script:", "publisher points to skill-script validation");
-                    assertContains(skillScripts, "install --force-scripts", "skill-script docs document force install");
-                    assertContains(skillScripts, "sync --force-scripts", "skill-script docs document force sync");
-                    assertContains(skillScripts, "surviving installed",
-                            "skill-script docs document shared ownership cleanup");
-                    assertContains(pluginDocs, "plugin-level `skill-script:` CLI dep",
-                            "plugin docs route plugin private script setup correctly");
-
+                    // The three authoring-doc assertions that used to sit here
+                    // read skill-publisher-skill/{skills/unit-authoring/SKILL.md,
+                    // references/skill-scripts.md, references/plugins.md}. SI-18
+                    // deleted that tree — it was a vendored snapshot of the skt
+                    // plugin — and those pages live in the tla-spec-dev plugin
+                    // now, in another repository this one does not vendor. There
+                    // is nothing here to read, so the assertions are gone rather
+                    // than pointed at a path that would always be absent.
+                    //
+                    // They are not simply dropped: what this repository still
+                    // owns is WHICH workflows delegate their docs outward, and
+                    // the next test pins that set exactly.
                 })
                 .test("bundled skill docs cover modeled CLI workflows", () -> {
                     Map<String, String> docsBySurface = new LinkedHashMap<>();
-                    docsBySurface.put("skill-manager-skill", markdownUnder(Path.of("skill-manager-skill")));
-                    docsBySurface.put("skill-publisher-skill", markdownUnder(Path.of("skill-publisher-skill")));
+                    for (String surface : CliMetadata.inTreeDocSurfaces()) {
+                        docsBySurface.put(surface, markdownUnder(Path.of(surface)));
+                    }
 
                     for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
                         String helpCommand = helpCommand(workflow.commandPath());
                         for (String surface : workflow.relatedSkillDocs()) {
                             String docs = docsBySurface.get(surface);
-                            assertTrue(docs != null, "known skill doc surface: " + surface);
+                            // An external surface's bytes are in another
+                            // repository. Skipping it silently would be a green
+                            // result standing for nothing, so the skip is not
+                            // silent: the next test names every workflow that
+                            // takes this branch and fails if the list changes.
+                            if (docs == null) continue;
                             assertContains(docs, workflow.id(),
                                     surface + " documents workflow id " + workflow.id());
                             assertContains(docs, helpCommand,
                                     surface + " routes " + workflow.id() + " to command help");
+                        }
+                    }
+                })
+                .test("exactly the authoring workflows delegate docs outside this repo", () -> {
+                    // SI-18. `unit-authoring` moved into the tla-spec-dev plugin
+                    // and out of this repository, taking five workflows' docs
+                    // with it. No test here can read those pages; this one pins
+                    // WHICH workflows are allowed to point at them, so a sixth
+                    // cannot join them by editing one string in CliMetadata and
+                    // quietly leaving coverage.
+                    java.util.Set<String> expected = new java.util.TreeSet<>(java.util.List.of(
+                            "author-dependencies",
+                            "author-unit",
+                            "install-local-unit",
+                            "publish-unit",
+                            "skill-scripts"));
+                    java.util.Set<String> actual = CliMetadata.workflowsWithExternalDocs();
+                    assertTrue(expected.equals(actual),
+                            "workflows delegating docs outside this repo: expected " + expected
+                                    + " but was " + actual);
+
+                    // Every surface is either in-tree or the one external unit.
+                    // A typo'd surface name would otherwise land in the external
+                    // bucket and look deliberate.
+                    for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
+                        for (String surface : workflow.relatedSkillDocs()) {
+                            assertTrue(CliMetadata.inTreeDocSurfaces().contains(surface)
+                                            || CliMetadata.UNIT_AUTHORING_DOCS.equals(surface),
+                                    "known doc surface for " + workflow.id() + ": " + surface);
                         }
                     }
                 })

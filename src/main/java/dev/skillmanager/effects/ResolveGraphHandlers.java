@@ -82,10 +82,16 @@ final class ResolveGraphHandlers {
         for (var spec : e.bundledSkills()) {
             String publishedName;
             String coord;
-            if (e.installRoot() != null) {
+            // A github-only spec (dirName == null) has no in-tree copy to
+            // probe, so it takes the github branch even in local
+            // install-root mode. That is the whole point of the flag: the
+            // tla-spec-dev plugin is bundled but lives in its own
+            // repository, and probing installRoot for it would report a
+            // BundledSkillMissing for a directory that is not supposed to
+            // exist.
+            if (e.installRoot() != null && !spec.githubOnly()) {
                 Path skillDir = e.installRoot().resolve(spec.dirName());
-                // A bundled entry is a skill (SKILL.md) or a plugin —
-                // skill-publisher-skill ships the skt plugin, and the
+                // A bundled entry is a skill (SKILL.md) or a plugin — the
                 // resolver auto-detects the plugin shape from the dir.
                 if (!Files.isDirectory(skillDir)
                         || !(Files.isRegularFile(skillDir.resolve("SKILL.md"))

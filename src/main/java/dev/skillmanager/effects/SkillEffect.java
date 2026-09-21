@@ -216,8 +216,21 @@ public sealed interface SkillEffect permits
          * {@code installRoot}), its published name (for the
          * already-installed skip), and its github fallback coord
          * (used when {@code installRoot} is null).
+         *
+         * <p>{@code dirName} is NULL for a bundled unit this repository
+         * does not carry a copy of — SI-18's {@code tla-spec-dev}, which
+         * lives in its own repository and is never vendored here. Such an
+         * entry resolves from {@code githubCoord} in every mode, including
+         * local install-root mode; there is no directory to probe and its
+         * absence is not a discovery failure. Before this, every entry had
+         * to exist under {@code installRoot} or onboard reported it missing
+         * and exited 2, so "bundled" and "vendored in-tree" could not be
+         * told apart.
          */
-        public record BundledSkillSpec(String dirName, String publishedName, String githubCoord) {}
+        public record BundledSkillSpec(String dirName, String publishedName, String githubCoord) {
+            /** True when this entry has no in-tree copy and must come from github. */
+            public boolean githubOnly() { return dirName == null; }
+        }
 
         // Onboard's pre-Program path halted on any failure; preserve.
         @Override public Continuation continuationOnFail() { return Continuation.HALT; }

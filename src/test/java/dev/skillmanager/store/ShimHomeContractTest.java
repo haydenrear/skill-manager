@@ -66,6 +66,15 @@ import java.util.stream.Stream;
  * reproducing them needs uv and a network. It is a real fourth generator and
  * it is recorded in the epic's deferred backlog rather than pretended about
  * here.
+ *
+ * <p>{@code install-skt.sh} was a case here until SI-18, read out of
+ * {@code skill-publisher-skill/skill-scripts/}. That tree is gone: it was a
+ * vendored snapshot of the skt plugin, and the installer now lives at the
+ * ROOT of the tla-spec-dev plugin, in another repository. The heading above
+ * says "in this tree" and means it — this test runs the installer file to
+ * capture its bytes, so it can only cover generators whose source is checked
+ * in here. The skt installer is covered by its own repository's suite, and
+ * this is a genuine narrowing of what this case sweeps, not a silent one.
  */
 public final class ShimHomeContractTest {
 
@@ -91,12 +100,6 @@ public final class ShimHomeContractTest {
             Files.writeString(pin, "#!/bin/sh\nexit 0\n");
             pin.toFile().setExecutable(true);
 
-            // Stands in for the interpreter an installer probes for. Outside
-            // every home, like the real one.
-            Path fakePython = originRoot.resolve("fake-python3");
-            Files.writeString(fakePython, "#!/bin/sh\nexit 0\n");
-            fakePython.toFile().setExecutable(true);
-
             List<Generator> generators = List.of(
                     new Generator("LauncherShims.script (bin/launch template)", null,
                             () -> write(origin.resolve("bin/launch/claude"),
@@ -108,16 +111,6 @@ public final class ShimHomeContractTest {
                             () -> ColdArtifactShim.write(origin.resolve("bin/cli/cold-tool"),
                                     "hayden/cold-tool",
                                     "its unit declares an artifact that is not built")),
-                    new Generator("skill-publisher-skill/skill-scripts/install-skt.sh", "skt",
-                            () -> {
-                                Path src = origin.resolve("skills/skt/src/skt/cli.py");
-                                Fs.ensureDir(src.getParent());
-                                Files.writeString(src, "# skt entrypoint\n");
-                                runInstaller(repo.resolve(
-                                                "skill-publisher-skill/skill-scripts/install-skt.sh"),
-                                        origin, "skt",
-                                        Map.of("SKT_PYTHON", fakePython.toString()));
-                            }),
                     new Generator("test_graph/fixtures/skill-script-skill/skill-scripts/install.sh",
                             "skill-script-skill",
                             () -> runInstaller(repo.resolve("test_graph/fixtures/"
@@ -382,8 +375,15 @@ public final class ShimHomeContractTest {
     private static Path repoRoot() {
         Path here = Path.of("").toAbsolutePath().normalize();
         for (Path p = here; p != null; p = p.getParent()) {
+            // SI-18: the marker was skill-publisher-skill/skill-scripts, which
+            // no longer exists — the walk then ran out of parents and this test
+            // failed with "cannot find the repository root", which reads as a
+            // harness problem rather than as the deleted directory it was. The
+            // marker is now a fixture that a surviving generator actually
+            // reads, so it cannot rot without taking a generator with it.
             if (Files.isRegularFile(p.resolve("RunTests.java"))
-                    && Files.isDirectory(p.resolve("skill-publisher-skill/skill-scripts"))) {
+                    && Files.isDirectory(p.resolve(
+                            "test_graph/fixtures/skill-script-skill/skill-scripts"))) {
                 return p;
             }
         }
