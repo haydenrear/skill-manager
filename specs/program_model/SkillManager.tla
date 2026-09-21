@@ -1502,7 +1502,7 @@ ExposeInstallLocalUnitWorkflowDocs ==
 \* @port SkillManagerCli.expose_skill_workflow_docs
 ExposeSkillScriptsWorkflowDocs ==
   /\ "skill-scripts" \in project_model.cli_workflow_catalog
-  /\ <<"skill-publisher-skill", "skill-scripts">> \in project_model.cli_skill_doc_topics
+  /\ <<"unit-authoring", "skill-scripts">> \in project_model.cli_skill_doc_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
