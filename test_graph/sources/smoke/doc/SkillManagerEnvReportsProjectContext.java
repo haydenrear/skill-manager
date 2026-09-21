@@ -42,7 +42,15 @@ public class SkillManagerEnvReportsProjectContext {
             }
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
-            Path envScript = repoRoot.resolve("skill-manager-skill/scripts/env.sh");
+            // OUN-6: read the INSTALLED skill, on either rung — this repo
+            // stopped vendoring skill-manager-skill/ because it had become a
+            // second, drifting copy of what the plugin carries.
+            Path envScript = SmEnv.skillManagerSkillFile(repoRoot, "scripts/env.sh");
+            if (envScript == null) {
+                return NodeResult.fail("docs.skill-manager.env.project",
+                        "env.sh is not in any home above " + repoRoot
+                                + " — run `skill-manager project resolve` first");
+            }
             Path project;
             try {
                 project = Files.createTempDirectory("sm-env-project-context-").toRealPath();

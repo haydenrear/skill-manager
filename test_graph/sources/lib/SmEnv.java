@@ -83,6 +83,45 @@ import java.util.Map;
  */
 final class SmEnv {
 
+    /**
+     * A file inside the installed {@code skill-manager} SKILL, on either rung.
+     *
+     * <p>OUN-6 removed {@code skill-manager-skill/} from this repository: it
+     * had become a second copy of a unit the tla-spec-dev plugin already
+     * carries, and the two had drifted. Nodes that read that skill's own files
+     * — {@code scripts/env.sh}, its references — now read the INSTALLED copy,
+     * which is the same one an operator's agents load.
+     *
+     * <p>Both rungs, standalone first, because {@code skill-manager} is a
+     * CONTAINED skill of the plugin and that is where its bytes land. The
+     * project home is preferred over the operator's root home so a checkout
+     * measures what it resolved. Returns null when the unit is not installed,
+     * and callers say so with the remedy rather than reporting a missing file.
+     */
+    static java.nio.file.Path skillManagerSkillFile(java.nio.file.Path repoRoot, String rel) {
+        java.util.List<java.nio.file.Path> homes = new java.util.ArrayList<>();
+        homes.add(repoRoot.resolve(".skill-manager"));
+        String env = System.getenv(SKILL_MANAGER_HOME);
+        if (env != null && !env.isBlank()) homes.add(java.nio.file.Path.of(env));
+        homes.add(java.nio.file.Path.of(System.getProperty("user.home", "")).resolve(".skill-manager"));
+        for (java.nio.file.Path home : homes) {
+            java.nio.file.Path standalone = home.resolve("skills/skill-manager").resolve(rel);
+            if (java.nio.file.Files.exists(standalone)) return standalone;
+            java.nio.file.Path plugins = home.resolve("plugins");
+            if (!java.nio.file.Files.isDirectory(plugins)) continue;
+            try (var entries = java.nio.file.Files.list(plugins)) {
+                for (java.nio.file.Path plugin : entries.sorted().toList()) {
+                    java.nio.file.Path contained =
+                            plugin.resolve("skills/skill-manager").resolve(rel);
+                    if (java.nio.file.Files.exists(contained)) return contained;
+                }
+            } catch (java.io.IOException unreadable) {
+                // a home with no readable plugins/ contributes no rung
+            }
+        }
+        return null;
+    }
+
     static final String SKILL_MANAGER_HOME = "SKILL_MANAGER_HOME";
     static final String SKILL_MANAGER_INSTALL_DIR = "SKILL_MANAGER_INSTALL_DIR";
     static final String CLAUDE_HOME = "CLAUDE_HOME";

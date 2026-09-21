@@ -55,10 +55,15 @@ public class EnvScriptReports {
             }
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
-            Path envScript = repoRoot.resolve("skill-manager-skill/scripts/env.sh");
-            if (!Files.isRegularFile(envScript)) {
+            // OUN-6: read the INSTALLED skill, on either rung — this
+            // repository stopped vendoring skill-manager-skill/ because it had
+            // become a second, drifting copy of what the plugin carries.
+            Path envScript = SmEnv.skillManagerSkillFile(repoRoot, "scripts/env.sh");
+            if (envScript == null || !Files.isRegularFile(envScript)) {
                 return NodeResult.fail("env.script.reports",
-                        "env.sh not found at " + envScript);
+                        "env.sh is not in any home above " + repoRoot
+                                + " — run `skill-manager project resolve` first "
+                                + "(OUN-6: skill-manager-skill/ is installed, not vendored)");
             }
 
             ObjectMapper om = new ObjectMapper();

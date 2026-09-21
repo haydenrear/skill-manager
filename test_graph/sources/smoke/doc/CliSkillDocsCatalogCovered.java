@@ -69,7 +69,10 @@ public class CliSkillDocsCatalogCovered {
                     if (docs == null) {
                         // External, and checked by the assertion below instead
                         // of by reading bytes this repository does not have.
-                        if (!CliMetadata.UNIT_AUTHORING_DOCS.equals(surface)) {
+                        // OUN-6 emptied inTreeDocSurfaces(), so EVERY surface
+                        // takes this branch and the roster is the only thing
+                        // left that can catch a typo.
+                        if (!CliMetadata.knownDocSurfaces().contains(surface)) {
                             unknownSurfaces.add(key);
                         }
                         continue;
@@ -87,18 +90,32 @@ public class CliSkillDocsCatalogCovered {
             // so something has to pin WHICH workflows get skipped — otherwise
             // pointing a workflow at the external surface silently removes it
             // from coverage and this node still goes green.
+            // OUN-6: every workflow's docs are external, so "which delegate
+            // outward" no longer discriminates. The durable pin is which ones
+            // name the AUTHORING surface — that is the claim this was really
+            // making — plus the fact that nothing dropped out of the catalogue.
             List<String> expectedExternal = List.of(
                     "author-dependencies", "author-unit", "install-local-unit",
                     "publish-unit", "skill-scripts");
-            List<String> actualExternal =
-                    new ArrayList<>(CliMetadata.workflowsWithExternalDocs());
+            List<String> actualExternal = new ArrayList<>();
+            for (CliMetadata.WorkflowMetadata w : CliMetadata.workflows()) {
+                if (w.relatedSkillDocs().contains(CliMetadata.UNIT_AUTHORING_DOCS)) {
+                    actualExternal.add(w.id());
+                }
+            }
+            java.util.Collections.sort(actualExternal);
             boolean externalSetPinned = actualExternal.equals(expectedExternal);
             boolean surfacesKnown = unknownSurfaces.isEmpty();
+            // Non-vacuity: with nothing readable, an EMPTY catalogue would
+            // satisfy every check above.
+            boolean catalogueNonEmpty = !CliMetadata.workflows().isEmpty()
+                    && CliMetadata.workflows().stream()
+                            .allMatch(w -> !w.relatedSkillDocs().isEmpty());
 
             boolean workflowDocsCovered = missingWorkflowDocs.isEmpty();
             boolean helpRoutesCovered = missingHelpRoutes.isEmpty();
             boolean pass = workflowDocsCovered && helpRoutesCovered
-                    && externalSetPinned && surfacesKnown;
+                    && externalSetPinned && surfacesKnown && catalogueNonEmpty;
             return (pass
                     ? NodeResult.pass("cli.skill-docs.catalog.covered")
                     : NodeResult.fail("cli.skill-docs.catalog.covered",
@@ -111,6 +128,7 @@ public class CliSkillDocsCatalogCovered {
                     .assertion("workflow_help_routes_documented", helpRoutesCovered)
                     .assertion("doc_surfaces_known", surfacesKnown)
                     .assertion("external_doc_workflows_pinned", externalSetPinned)
+                    .assertion("the_workflow_catalogue_is_not_empty", catalogueNonEmpty)
                     .metric("workflowIds", CliMetadata.workflowIds().size())
                     .metric("externalDocWorkflows", actualExternal.size());
         });
