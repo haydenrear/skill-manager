@@ -87,6 +87,80 @@ final class TicketLifecycleSupport {
         boolean found() { return dir != null; }
 
         Path of(String name) { return dir.resolve(name); }
+
+        /**
+         * Where {@code name} actually is — this scripts dir, or a SIBLING
+         * contained skill's.
+         *
+         * <p>SI-18 split the lifecycle scripts across two contained skills of
+         * one plugin. {@code wt} is at
+         * {@code plugins/tla-spec-dev/skills/skt/scripts/wt}; everything else —
+         * {@code bootstrap-home.sh}, {@code new-change.sh},
+         * {@code close-change.sh}, {@code lib.sh}, {@code agent-home.sh},
+         * {@code selftest.sh} — stayed under
+         * {@code .../skills/git-issue-workflow/scripts/}. Resolving every name
+         * against ONE directory reported {@code missing=[wt]} for a home that
+         * has wt, and the docs that reference it were correct all along.
+         *
+         * <p>This dir stays FIRST, so a standalone install or an integration
+         * checkout — where all the scripts really are in one place — resolves
+         * exactly as before and never consults a sibling.
+         */
+        Path locate(String name) { return locateScript(dir, name); }
+
+        boolean has(String name) { return Files.isRegularFile(locate(name)); }
+    }
+
+    /**
+     * {@code name} under {@code scriptsDir}, or under a sibling contained
+     * skill's {@code scripts/} when the bundle keeps it there. Falls back to
+     * the {@code scriptsDir} spelling so a caller always has a path to report.
+     *
+     * <p>Static as well as a {@link Scripts} method because several nodes carry
+     * the scripts directory through graph context as a bare path rather than as
+     * a {@code Scripts}, and resolving {@code wt} one rung short there produced
+     * exit 127 from every step of the worktree lifecycle — "command not found"
+     * for a script the home has.
+     */
+    static Path locateScript(Path scriptsDir, String name) {
+        Path own = scriptsDir.resolve(name);
+        if (Files.isRegularFile(own)) return own;
+        for (Path sibling : siblingScriptDirs(scriptsDir)) {
+            Path candidate = sibling.resolve(name);
+            if (Files.isRegularFile(candidate)) return candidate;
+        }
+        return own;
+    }
+
+    /**
+     * The {@code scripts/} directories of the other skills contained in the
+     * same plugin as {@code scriptsDir}, sorted.
+     *
+     * <p>Empty unless {@code scriptsDir} is {@code
+     * <home>/plugins/<plugin>/skills/<skill>/scripts} — an integration
+     * checkout or a standalone install has no siblings, and gets none.
+     */
+    static List<Path> siblingScriptDirs(Path scriptsDir) {
+        if (scriptsDir == null) return List.of();
+        Path skillRoot = scriptsDir.getParent();
+        Path skillsDir = skillRoot == null ? null : skillRoot.getParent();
+        Path pluginRoot = skillsDir == null ? null : skillsDir.getParent();
+        if (skillsDir == null || !"skills".equals(skillsDir.getFileName().toString())
+                || pluginRoot == null || !Files.isDirectory(pluginRoot.resolve("skills"))) {
+            return List.of();
+        }
+        List<Path> out = new ArrayList<>();
+        try (java.util.stream.Stream<Path> skills = Files.list(skillsDir)) {
+            skills.filter(Files::isDirectory)
+                    .filter(skill -> !skill.equals(skillRoot))
+                    .map(skill -> skill.resolve("scripts"))
+                    .filter(Files::isDirectory)
+                    .sorted()
+                    .forEach(out::add);
+        } catch (IOException | RuntimeException unreadable) {
+            return List.of();
+        }
+        return out;
     }
 
     /**

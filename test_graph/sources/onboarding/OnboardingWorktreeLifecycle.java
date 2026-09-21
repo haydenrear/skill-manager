@@ -110,7 +110,12 @@ public class OnboardingWorktreeLifecycle {
                 return NodeResult.fail("onboarding.worktree.lifecycle",
                         "missing upstream context");
             }
-            Path wt = scriptsDir.resolve("wt");
+            // SI-18: `wt` moved to skt's scripts/ when the bundle merged, while
+            // the rest of the lifecycle stayed in git-issue-workflow's. The
+            // one-rung spelling made every step of this node exit 127 —
+            // "command not found" for a script the home has, one contained
+            // skill over.
+            Path wt = TicketLifecycleSupport.locateScript(scriptsDir, "wt");
 
             // --- 1. wt new against whatever state the walk left the tree in ------
             String statusBefore = HomeSyncSupport.git(proj, "status", "--porcelain").trimmed();
