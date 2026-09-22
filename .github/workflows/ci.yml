@@ -777,13 +777,31 @@ jobs:
       # and the registry are up, and reads as a graph defect. This step names
       # the missing secret before anything starts.
       #
-      # The token needs READ access to haydenrear/tla-spec-dev-plugin and
-      # nothing else. It is deliberately NOT the homebrew-tap PAT: that one
-      # exists to push to a different repository, and widening its blast radius
-      # to cover an unrelated private read is how a credential quietly becomes
-      # the credential for everything.
+      # The token needs READ access to TWO private repositories and nothing
+      # else. It is deliberately NOT the homebrew-tap PAT: that one exists to
+      # push to a different repository, and widening its blast radius to cover
+      # an unrelated private read is how a credential quietly becomes the
+      # credential for everything.
       #
-      # Delete this step once the plugin is public — `git config insteadOf` is
+      #   haydenrear/tla-spec-dev-plugin  — the bundled unit onboard installs
+      #   haydenrear/deploy-cdc           — pulled in TRANSITIVELY: three of the
+      #                                     plugin's contained skills (test-graph,
+      #                                     git-issue, git-issue-workflow) declare
+      #                                     it in skill-manager.toml to get the
+      #                                     deploy-helm skill and its monitoring CLI
+      #
+      # THE SECOND REWRITE MUST SAY `deploy-cdc`, NOT `deploy-helm`. The
+      # repository was renamed; GitHub redirects the clone, so the old spelling
+      # still works and is what the manifests contain and what skill-manager
+      # therefore asks git for. `insteadOf` matches the URL as REQUESTED, before
+      # any redirect, so a rule written against the current name never fires and
+      # the clone falls through to an anonymous attempt and exit 9. A
+      # fine-grained PAT, by contrast, selects repositories by their CURRENT
+      # name, so the token is granted on `deploy-helm` while the rewrite is
+      # keyed on `deploy-cdc`. Both spellings are correct in their own place;
+      # that is not a mistake to tidy up.
+      #
+      # Delete this step once both are public — `git config insteadOf` is
       # a rewrite rule that outlives its reason very quietly.
       - name: Configure git access to the private plugin coord
         env:
@@ -791,13 +809,15 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${PLUGIN_TOKEN:-}" ]; then
-            echo "::error title=TLA_SPEC_DEV_PLUGIN_TOKEN is not set::skill-manager onboard installs github:haydenrear/tla-spec-dev-plugin, which is private. A runner's GITHUB_TOKEN cannot read another repository, so the clone fails with exit 9 (GitCloneAuthException) partway through the onboard graph. Add a repo secret TLA_SPEC_DEV_PLUGIN_TOKEN with READ access to that repository, or make it public and delete this step."
+            echo "::error title=TLA_SPEC_DEV_PLUGIN_TOKEN is not set::skill-manager onboard installs github:haydenrear/tla-spec-dev-plugin, which is private, and that plugin transitively pulls github:haydenrear/deploy-cdc (renamed to deploy-helm, also private). A runner's GITHUB_TOKEN cannot read another repository, so the clone fails with exit 9 (GitCloneAuthException) partway through the onboard graph. Add a repo secret TLA_SPEC_DEV_PLUGIN_TOKEN with READ access to BOTH repositories, or make them public and delete this step."
             exit 1
           fi
-          git config --global \
-            url."https://x-access-token:${PLUGIN_TOKEN}@github.com/haydenrear/tla-spec-dev-plugin".insteadOf \
-            "https://github.com/haydenrear/tla-spec-dev-plugin"
-          echo "git access configured for haydenrear/tla-spec-dev-plugin (read)"
+          for coord in tla-spec-dev-plugin deploy-cdc; do
+            git config --global \
+              url."https://x-access-token:${PLUGIN_TOKEN}@github.com/haydenrear/${coord}".insteadOf \
+              "https://github.com/haydenrear/${coord}"
+          done
+          echo "git access configured for haydenrear/tla-spec-dev-plugin and haydenrear/deploy-cdc (read)"
 
       - name: Plan graph
         run: |
@@ -1100,13 +1120,31 @@ jobs:
       # and the registry are up, and reads as a graph defect. This step names
       # the missing secret before anything starts.
       #
-      # The token needs READ access to haydenrear/tla-spec-dev-plugin and
-      # nothing else. It is deliberately NOT the homebrew-tap PAT: that one
-      # exists to push to a different repository, and widening its blast radius
-      # to cover an unrelated private read is how a credential quietly becomes
-      # the credential for everything.
+      # The token needs READ access to TWO private repositories and nothing
+      # else. It is deliberately NOT the homebrew-tap PAT: that one exists to
+      # push to a different repository, and widening its blast radius to cover
+      # an unrelated private read is how a credential quietly becomes the
+      # credential for everything.
       #
-      # Delete this step once the plugin is public — `git config insteadOf` is
+      #   haydenrear/tla-spec-dev-plugin  — the bundled unit onboard installs
+      #   haydenrear/deploy-cdc           — pulled in TRANSITIVELY: three of the
+      #                                     plugin's contained skills (test-graph,
+      #                                     git-issue, git-issue-workflow) declare
+      #                                     it in skill-manager.toml to get the
+      #                                     deploy-helm skill and its monitoring CLI
+      #
+      # THE SECOND REWRITE MUST SAY `deploy-cdc`, NOT `deploy-helm`. The
+      # repository was renamed; GitHub redirects the clone, so the old spelling
+      # still works and is what the manifests contain and what skill-manager
+      # therefore asks git for. `insteadOf` matches the URL as REQUESTED, before
+      # any redirect, so a rule written against the current name never fires and
+      # the clone falls through to an anonymous attempt and exit 9. A
+      # fine-grained PAT, by contrast, selects repositories by their CURRENT
+      # name, so the token is granted on `deploy-helm` while the rewrite is
+      # keyed on `deploy-cdc`. Both spellings are correct in their own place;
+      # that is not a mistake to tidy up.
+      #
+      # Delete this step once both are public — `git config insteadOf` is
       # a rewrite rule that outlives its reason very quietly.
       - name: Configure git access to the private plugin coord
         env:
@@ -1114,13 +1152,15 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${PLUGIN_TOKEN:-}" ]; then
-            echo "::error title=TLA_SPEC_DEV_PLUGIN_TOKEN is not set::skill-manager onboard installs github:haydenrear/tla-spec-dev-plugin, which is private. A runner's GITHUB_TOKEN cannot read another repository, so the clone fails with exit 9 (GitCloneAuthException) partway through the onboard graph. Add a repo secret TLA_SPEC_DEV_PLUGIN_TOKEN with READ access to that repository, or make it public and delete this step."
+            echo "::error title=TLA_SPEC_DEV_PLUGIN_TOKEN is not set::skill-manager onboard installs github:haydenrear/tla-spec-dev-plugin, which is private, and that plugin transitively pulls github:haydenrear/deploy-cdc (renamed to deploy-helm, also private). A runner's GITHUB_TOKEN cannot read another repository, so the clone fails with exit 9 (GitCloneAuthException) partway through the onboard graph. Add a repo secret TLA_SPEC_DEV_PLUGIN_TOKEN with READ access to BOTH repositories, or make them public and delete this step."
             exit 1
           fi
-          git config --global \
-            url."https://x-access-token:${PLUGIN_TOKEN}@github.com/haydenrear/tla-spec-dev-plugin".insteadOf \
-            "https://github.com/haydenrear/tla-spec-dev-plugin"
-          echo "git access configured for haydenrear/tla-spec-dev-plugin (read)"
+          for coord in tla-spec-dev-plugin deploy-cdc; do
+            git config --global \
+              url."https://x-access-token:${PLUGIN_TOKEN}@github.com/haydenrear/${coord}".insteadOf \
+              "https://github.com/haydenrear/${coord}"
+          done
+          echo "git access configured for haydenrear/tla-spec-dev-plugin and haydenrear/deploy-cdc (read)"
 
       - name: Plan graph
         run: |
