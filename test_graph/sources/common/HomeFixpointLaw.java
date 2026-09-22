@@ -150,26 +150,37 @@ public final class HomeFixpointLaw {
                     continue;
                 }
 
-                String remedy = remedyFrom(first.out + "\n" + first.err);
-                if (remedy == null) {
+                List<String> remedies = remediesFrom(first.out + "\n" + first.err);
+                if (remedies.isEmpty()) {
                     violations.add(candidate + ": verify exit " + first.exit
                             + " and printed no runnable remedy");
                     log.add("FAIL  " + candidate + " — refused with no remedy\n" + first.tail());
                     continue;
                 }
-                log.add("REFUSED " + candidate + "\n  remedy as printed: " + remedy);
+                log.add("REFUSED " + candidate + "\n  remedies as printed: " + remedies.size());
+                for (String remedy : remedies) log.add("    " + remedy);
 
-                Run fix = shell(cli, remedy, candidate);
+                // ALL of them, in order. verify prints one per damage class and
+                // no single command clears two classes; running only the first
+                // blamed it for not fixing damage it was never printed for.
+                Run fix = null;
+                StringBuilder fixExits = new StringBuilder();
+                for (String remedy : remedies) {
+                    fix = shell(cli, remedy, candidate);
+                    if (fixExits.length() > 0) fixExits.append(',');
+                    fixExits.append(fix.exit);
+                }
                 Run second = verify(cli, candidate);
                 boolean onlyDeclaredRemains = declared != null
                         && IntentionalDamage.unexplained(second.out + "\n" + second.err,
                                 declared.entries()).isEmpty();
                 if (second.exit == 0 || onlyDeclaredRemains) {
                     repaired.add(candidate.toString());
-                    log.add("REPAIRED " + candidate + " (remedy exit " + fix.exit + ")");
+                    log.add("REPAIRED " + candidate + " (remedy exits " + fixExits + ")");
                 } else {
-                    violations.add(candidate + ": the remedy it printed did not clear it"
-                            + " (remedy exit " + fix.exit + ", re-verify exit " + second.exit + ")");
+                    violations.add(candidate + ": the " + remedies.size()
+                            + " remedy/remedies it printed did not clear it"
+                            + " (remedy exits " + fixExits + ", re-verify exit " + second.exit + ")");
                     log.add("FAIL  " + candidate + " — remedy ran and verify still refuses\n"
                             + second.tail());
                 }
@@ -284,6 +295,37 @@ public final class HomeFixpointLaw {
      * marker and the trailing clause is taken; nothing is added.
      */
     static String remedyFrom(String output) {
+        List<String> all = remediesFrom(output);
+        return all.isEmpty() ? null : all.get(0);
+    }
+
+    /**
+     * EVERY remedy the output printed, in order, without duplicates.
+     *
+     * <h2>Why one was not enough, and why taking one was a wrong answer</h2>
+     *
+     * <p>{@code home verify} reports independent classes of damage and prints a
+     * remedy for each. A cloned home hits two at once: an unresolved toolchain
+     * reference, whose remedy is {@code build --stale}, and frozen shims plus a
+     * marketplace registered under the source home's identity, whose remedy is
+     * {@code home repair --fix}. There is no single command that clears both,
+     * and neither is a superset of the other.
+     *
+     * <p>Taking the FIRST match therefore tested something weaker than the law
+     * states. `home-clone` had been red on exactly this: the law ran
+     * {@code build --stale}, the three MARKETPLACE_REGISTERED_UNDER_ANOTHER_NAME
+     * findings were untouched because nothing had addressed them, and the law
+     * reported "the remedy it printed did not clear it" — blaming the remedy for
+     * not fixing damage it was never printed for. Measured: running both, in
+     * order, leaves only the damage the fixture DECLARES.
+     *
+     * <p>So the law now runs all of them. That is the honest reading of "or its
+     * own remedy repairs it": the home's own output is the instruction set, and
+     * a home that prints two instructions has not been given a fair run until
+     * both have been followed.
+     */
+    static List<String> remediesFrom(String output) {
+        List<String> found = new ArrayList<>();
         for (String raw : output.split("\n")) {
             int at = raw.indexOf("complete it with: ");
             if (at < 0) continue;
@@ -291,9 +333,9 @@ public final class HomeFixpointLaw {
             int tail = rest.indexOf(", then re-run this check");
             if (tail >= 0) rest = rest.substring(0, tail);
             rest = rest.trim();
-            if (!rest.isEmpty()) return rest;
+            if (!rest.isEmpty() && !found.contains(rest)) found.add(rest);
         }
-        return null;
+        return found;
     }
 
     // -------------------------------------------------------------- process
