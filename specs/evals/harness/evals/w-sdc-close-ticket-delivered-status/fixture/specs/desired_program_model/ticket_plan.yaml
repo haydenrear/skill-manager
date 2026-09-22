@@ -1,6 +1,0 @@
-version: 1
-name: cart-workflow
-tickets:
-  - id: T-1
-    title: "Reject checkout of an empty cart"
-    status: delivered

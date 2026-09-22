@@ -1,4 +1,0 @@
-$ SKILL_MANAGER_HOME=/work/proj/.skill-manager skill-manager list
-skills:   discovery, git-issue, spec-double-compiler, test-graph
-plugins:  skt
-(skill-project.toml at /work/proj declares: discovery, git-issue, spec-double-compiler, test-graph, [plugins.skt])

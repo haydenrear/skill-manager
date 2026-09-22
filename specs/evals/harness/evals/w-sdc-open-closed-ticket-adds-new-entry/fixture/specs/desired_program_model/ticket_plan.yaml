@@ -1,9 +1,0 @@
-version: 1
-name: cart-workflow
-tickets:
-  - id: T-1
-    title: "Reject checkout of an empty cart"
-    status: done
-  - id: T-2
-    title: "Refund a completed order"
-    status: done

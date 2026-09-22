@@ -118,7 +118,9 @@ public final class MarkdownImportValidator {
      * own exclusion list, so the identical defect was still live one method
      * away. It surfaced the moment this repository got a project home —
      * {@code project resolve} exited 11 on
-     * {@code specs/evals/harness/evals/w-giw-exit6-is-unreadable-frontmatter/fixture/},
+     * {@code w-giw-exit6-is-unreadable-frontmatter/fixture/} (that case lived at
+     * {@code specs/evals/harness/evals/} until the eval suite moved wholesale to
+     * the tla-spec-dev plugin; the defect it found is this repository's),
      * a fixture whose frontmatter is deliberately unreadable because the eval
      * asserts that unreadable frontmatter produces exit 6.
      *

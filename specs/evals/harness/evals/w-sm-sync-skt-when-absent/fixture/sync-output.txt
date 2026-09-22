@@ -1,4 +1,0 @@
-$ skill-manager sync skt
-skt is not in this home yet — install it: skill-manager install github:haydenrear/skt (that retires the standalone skill-manager automatically)
-error: not installed: skt
-[exit 3]

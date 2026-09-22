@@ -1,7 +1,0 @@
-{
-  "require": [
-    {"id": "consulted-attribution", "tool": "Read|Grep|Bash|Glob", "match": "bug_attribution"},
-    {"id": "wrote-attribution", "tool": "Write|Edit|Bash", "match": "attribution\\.yaml"},
-    {"id": "closed-ticket", "tool": "Bash", "match": "close\\s+ticket\\s+T-7\\b"}
-  ]
-}

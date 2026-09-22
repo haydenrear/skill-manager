@@ -1,7 +1,0 @@
-$ wt new TICKET-12
- M notes/draft.md
-?? scratch/todo.txt
-FAILED: wt new TICKET-12
-fix: git -C /work/demo status --short
-error: working tree is not clean: /work/demo (commit or revert the files listed above)
-exit 1

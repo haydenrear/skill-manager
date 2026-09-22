@@ -1,8 +1,0 @@
-$ skt check
-skt check: all current (20 change-managed unit(s), tier worktree)
-$ skill-manager artifacts stale
-39 artifact(s) recorded in this home
-  13 stale      (inputs moved since the record was written)
-   0 rebuildable (a local producer could rebuild them)
-  26 current
-declared-only: 13 — this clone inherited the ledger rows, not the built trees
