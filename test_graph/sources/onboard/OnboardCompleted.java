@@ -34,7 +34,21 @@ public class OnboardCompleted {
             .kind(NodeSpec.Kind.ACTION)
             .dependsOn("registry.up", "ci.logged.in", "gateway.python.venv.ready")
             .tags("onboard", "cli")
-            .timeout("180s")
+            // RAISED from 180s at #40. That budget predates SI-18, when onboard
+            // installed both bundled units from LOCAL paths and never touched
+            // the network. It now shallow-clones haydenrear/tla-spec-dev-plugin
+            // and runs 17 CLI installers behind it, three of which build venvs.
+            //
+            // Measured on this machine: 125s, 147s, 149s, 150s — passing, but
+            // every one of them within 30s of the old ceiling, so the node was
+            // one slow clone away from a red that says "timed out" rather than
+            // "the network was slow". It duly went red the first time a sweep
+            // ran alongside anything else.
+            //
+            // 420s is headroom over a network fetch, not a measurement of the
+            // node: nothing here takes seven minutes. If it ever approaches
+            // this, the fetch is the thing to look at, not this number.
+            .timeout("420s")
             .output("home", "string")
             .output("agentHome", "string");
 
