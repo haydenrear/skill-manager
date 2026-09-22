@@ -1,6 +1,0 @@
-skt status — /work/demo
-checkout   standalone repo, branch main
-home       /work/demo/.skill-manager — tier: project, policy: live
-migrate    skill-manager now ships inside the skt plugin; skill-dev-skill is gone. Do NOT edit imports or references — they resolve to skt's copy.
-           this home still holds skill-manager — run once: skill-manager sync skt   (retires it automatically)
-units      9 installed (7 change-managed)

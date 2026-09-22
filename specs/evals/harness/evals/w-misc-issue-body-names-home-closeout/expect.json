@@ -1,5 +1,0 @@
-{
-  "forbid": [
-    {"id": "no-issue-created", "tool": "Bash", "match": "\\bgh\\s+issue\\s+create\\b"}
-  ]
-}

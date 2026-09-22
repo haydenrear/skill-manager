@@ -1,7 +1,0 @@
-[adapters.CreateAccount]
-adapter = "specs.program_model.adapters:CreateAccountInternalAdapter"
-kind = "ecommerce-internal"
-
-[adapters.Checkout]
-adapter = "specs.program_model.adapters:CheckoutInternalAdapter"
-kind = "ecommerce-internal"

@@ -1,3 +1,0 @@
-skt status — /work/demo
-migrate    skill-manager now ships inside the skt plugin; skill-dev-skill is gone. Do NOT edit imports or references — they resolve to skt's copy.
-           skill-project.toml declares [skills.skill-manager] — delete that block; skt provides it (declare [plugins.skt] source = "github:haydenrear/skt" if the manifest has no skt entry)

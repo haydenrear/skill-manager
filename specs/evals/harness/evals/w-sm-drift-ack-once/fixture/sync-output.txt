@@ -1,4 +1,0 @@
-$ skill-manager sync
-synced 15 unit(s)
-! 15 unit(s) changed in ./.skill-manager (622 file(s)) — a launch will refuse until this is read (`skill-manager home drift --home '/work/demo/.skill-manager'`, then `skill-manager home drift --ack --home '/work/demo/.skill-manager'`)
-[exit 0]

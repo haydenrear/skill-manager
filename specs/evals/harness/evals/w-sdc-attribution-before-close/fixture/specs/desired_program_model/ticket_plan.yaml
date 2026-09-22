@@ -1,6 +1,0 @@
-version: 1
-name: cart-workflow
-tickets:
-  - id: T-7
-    title: "Reject non-positive item quantities at checkout"
-    status: done
