@@ -767,6 +767,38 @@ jobs:
           echo "SKILL_MANAGER_SKILL_DIR=$dest" >> "$GITHUB_ENV"
           echo "skill-manager-skill@$(git -C "$dest" rev-parse HEAD) -> $dest"
 
+      # THE PRIVATE COORD. SI-18 made `skill-manager onboard` install the
+      # tla-spec-dev PLUGIN, and that repository is private while the epic
+      # finishes. A runner's GITHUB_TOKEN is scoped to THIS repository, so the
+      # clone fails with GitCloneAuthException — `onboard exited 9`, measured on
+      # run 35712895588, eight of nine core graphs green and this the only red.
+      #
+      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after postgres
+      # and the registry are up, and reads as a graph defect. This step names
+      # the missing secret before anything starts.
+      #
+      # The token needs READ access to haydenrear/tla-spec-dev-plugin and
+      # nothing else. It is deliberately NOT the homebrew-tap PAT: that one
+      # exists to push to a different repository, and widening its blast radius
+      # to cover an unrelated private read is how a credential quietly becomes
+      # the credential for everything.
+      #
+      # Delete this step once the plugin is public — `git config insteadOf` is
+      # a rewrite rule that outlives its reason very quietly.
+      - name: Configure git access to the private plugin coord
+        env:
+          PLUGIN_TOKEN: ${{ secrets.TLA_SPEC_DEV_PLUGIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLUGIN_TOKEN:-}" ]; then
+            echo "::error title=TLA_SPEC_DEV_PLUGIN_TOKEN is not set::skill-manager onboard installs github:haydenrear/tla-spec-dev-plugin, which is private. A runner's GITHUB_TOKEN cannot read another repository, so the clone fails with exit 9 (GitCloneAuthException) partway through the onboard graph. Add a repo secret TLA_SPEC_DEV_PLUGIN_TOKEN with READ access to that repository, or make it public and delete this step."
+            exit 1
+          fi
+          git config --global \
+            url."https://x-access-token:${PLUGIN_TOKEN}@github.com/haydenrear/tla-spec-dev-plugin".insteadOf \
+            "https://github.com/haydenrear/tla-spec-dev-plugin"
+          echo "git access configured for haydenrear/tla-spec-dev-plugin (read)"
+
       - name: Plan graph
         run: |
           mkdir -p ci-logs
@@ -1057,6 +1089,38 @@ jobs:
           done
           echo "SKILL_MANAGER_SKILL_DIR=$dest" >> "$GITHUB_ENV"
           echo "skill-manager-skill@$(git -C "$dest" rev-parse HEAD) -> $dest"
+
+      # THE PRIVATE COORD. SI-18 made `skill-manager onboard` install the
+      # tla-spec-dev PLUGIN, and that repository is private while the epic
+      # finishes. A runner's GITHUB_TOKEN is scoped to THIS repository, so the
+      # clone fails with GitCloneAuthException — `onboard exited 9`, measured on
+      # run 35712895588, eight of nine core graphs green and this the only red.
+      #
+      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after postgres
+      # and the registry are up, and reads as a graph defect. This step names
+      # the missing secret before anything starts.
+      #
+      # The token needs READ access to haydenrear/tla-spec-dev-plugin and
+      # nothing else. It is deliberately NOT the homebrew-tap PAT: that one
+      # exists to push to a different repository, and widening its blast radius
+      # to cover an unrelated private read is how a credential quietly becomes
+      # the credential for everything.
+      #
+      # Delete this step once the plugin is public — `git config insteadOf` is
+      # a rewrite rule that outlives its reason very quietly.
+      - name: Configure git access to the private plugin coord
+        env:
+          PLUGIN_TOKEN: ${{ secrets.TLA_SPEC_DEV_PLUGIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLUGIN_TOKEN:-}" ]; then
+            echo "::error title=TLA_SPEC_DEV_PLUGIN_TOKEN is not set::skill-manager onboard installs github:haydenrear/tla-spec-dev-plugin, which is private. A runner's GITHUB_TOKEN cannot read another repository, so the clone fails with exit 9 (GitCloneAuthException) partway through the onboard graph. Add a repo secret TLA_SPEC_DEV_PLUGIN_TOKEN with READ access to that repository, or make it public and delete this step."
+            exit 1
+          fi
+          git config --global \
+            url."https://x-access-token:${PLUGIN_TOKEN}@github.com/haydenrear/tla-spec-dev-plugin".insteadOf \
+            "https://github.com/haydenrear/tla-spec-dev-plugin"
+          echo "git access configured for haydenrear/tla-spec-dev-plugin (read)"
 
       - name: Plan graph
         run: |
