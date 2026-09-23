@@ -1,3 +1,0 @@
-$ skt check
-skt check: all current (18 change-managed unit(s), tier project)
-  ahead of the remote tip (nothing to pull): git-issue-workflow

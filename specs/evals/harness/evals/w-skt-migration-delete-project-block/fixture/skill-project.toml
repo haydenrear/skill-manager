@@ -1,8 +1,0 @@
-[project]
-name = "demo"
-
-[skills.skill-manager]
-source = "github:haydenrear/skill-manager"
-
-[skills.git-issue]
-source = "github:haydenrear/git-issue-skill"

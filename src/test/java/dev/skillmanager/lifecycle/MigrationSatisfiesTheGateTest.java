@@ -26,8 +26,13 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  * OUN-2 installing a plugin whose contained name is already claimed is
  * refused outright, with no flag past it. A home holding the standalone
  * {@code skill-manager} skill is in exactly that state with respect to the
- * {@code skt} that carries it now — so the upgrade that would fix the home is
+ * carrier that ships it now — so the upgrade that would fix the home is
  * the upgrade the home rejects, and every existing home is stuck.
+ *
+ * <p>SI-18 renamed that carrier. It was {@code skt}, a plugin; skt is a
+ * contained skill of {@code tla-spec-dev} now, and the table's rows moved with
+ * it. These cases are written against {@link #CARRIER} rather than a literal
+ * so the rename is one edit here and the behaviour under test is unchanged.
  *
  * <h2>What must NOT be the fix</h2>
  *
@@ -39,7 +44,12 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  */
 public final class MigrationSatisfiesTheGateTest {
 
-    private static final String CARRIER = "skt";
+    /**
+     * The unit whose arrival performs a retirement. SI-18: {@code tla-spec-dev},
+     * the plugin that now contains skt, skill-manager and the workflow skills.
+     * It was {@code skt} until skt itself stopped being a plugin.
+     */
+    private static final String CARRIER = "tla-spec-dev";
     private static final String MOVED = "skill-manager";
     private static final String OBSOLETE = "skill-dev-skill";
 
@@ -430,12 +440,33 @@ public final class MigrationSatisfiesTheGateTest {
         });
 
         suite.test("the carrier is recognised under every repository it has been published from", () -> {
-            assertEquals("skt", UnitSupersession.carrierForSource("https://github.com/haydenrear/skt.git").orElse(null),
+            // Three repositories, one carrier. SI-18 moved the carrier's
+            // identity from skt to tla-spec-dev, and every coordinate that used
+            // to install skt still has to land on the unit that answers today —
+            // an old manifest naming skill-publisher-skill must not resolve to
+            // nothing just because the name above it changed.
+            assertEquals(CARRIER,
+                    UnitSupersession.carrierForSource(
+                            "https://github.com/haydenrear/tla-spec-dev-plugin").orElse(null),
                     "its current repository");
-            assertEquals("skt", UnitSupersession.carrierForSource("https://github.com/haydenrear/skill-publisher-skill").orElse(null),
+            assertEquals(CARRIER,
+                    UnitSupersession.carrierForSource("https://github.com/haydenrear/skt.git").orElse(null),
+                    "a former repository — skt's own");
+            assertEquals(CARRIER,
+                    UnitSupersession.carrierForSource(
+                            "https://github.com/haydenrear/skill-publisher-skill").orElse(null),
                     "its former repository — the one old manifests declare as [skills.skill-publisher]");
-            assertTrue(UnitSupersession.carrierForSource("https://github.com/haydenrear/skill-manager-skill").isEmpty(),
+            assertTrue(UnitSupersession.carrierForSource(
+                            "https://github.com/haydenrear/skill-manager-skill").isEmpty(),
                     "CONTROL: the retired unit's own repository is not the carrier");
+            // SI-18's sharp edge: tla-spec-dev and tla-spec-dev-plugin are two
+            // repositories one hyphen apart, and only one of them is the
+            // carrier. The other still publishes the spec-double-compiler
+            // SKILL, so treating it as a carrier source would make a skill
+            // coordinate resolve to a plugin.
+            assertTrue(UnitSupersession.carrierForSource(
+                            "https://github.com/haydenrear/tla-spec-dev").isEmpty(),
+                    "CONTROL: the skill repository one hyphen away is NOT the carrier");
         });
 
         suite.test("served-by-carrier is narrow: standalone present, or carrier absent, is not served", () -> {

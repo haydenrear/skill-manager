@@ -87,6 +87,152 @@ final class TicketLifecycleSupport {
         boolean found() { return dir != null; }
 
         Path of(String name) { return dir.resolve(name); }
+
+        /**
+         * Where {@code name} actually is — this scripts dir, or a SIBLING
+         * contained skill's.
+         *
+         * <p>SI-18 split the lifecycle scripts across two contained skills of
+         * one plugin. {@code wt} is at
+         * {@code plugins/tla-spec-dev/skills/skt/scripts/wt}; everything else —
+         * {@code bootstrap-home.sh}, {@code new-change.sh},
+         * {@code close-change.sh}, {@code lib.sh}, {@code agent-home.sh},
+         * {@code selftest.sh} — stayed under
+         * {@code .../skills/git-issue-workflow/scripts/}. Resolving every name
+         * against ONE directory reported {@code missing=[wt]} for a home that
+         * has wt, and the docs that reference it were correct all along.
+         *
+         * <p>This dir stays FIRST, so a standalone install or an integration
+         * checkout — where all the scripts really are in one place — resolves
+         * exactly as before and never consults a sibling.
+         */
+        Path locate(String name) { return locateScript(dir, name); }
+
+        boolean has(String name) { return Files.isRegularFile(locate(name)); }
+    }
+
+    /** {@code path}'s last segment, or "" for a filesystem root (getFileName() is null there). */
+    private static String fileName(Path path) {
+        Path name = path.getFileName();
+        return name == null ? "" : name.toString();
+    }
+
+    /**
+     * {@code name} under {@code scriptsDir}, or under a sibling contained
+     * skill's {@code scripts/} when the bundle keeps it there. Falls back to
+     * the {@code scriptsDir} spelling so a caller always has a path to report.
+     *
+     * <p>Static as well as a {@link Scripts} method because several nodes carry
+     * the scripts directory through graph context as a bare path rather than as
+     * a {@code Scripts}, and resolving {@code wt} one rung short there produced
+     * exit 127 from every step of the worktree lifecycle — "command not found"
+     * for a script the home has.
+     */
+    static Path locateScript(Path scriptsDir, String name) {
+        Path own = scriptsDir.resolve(name);
+        if (Files.isRegularFile(own)) return own;
+        for (Path sibling : siblingScriptDirs(scriptsDir)) {
+            Path candidate = sibling.resolve(name);
+            if (Files.isRegularFile(candidate)) return candidate;
+        }
+        // LAST RESORT: any contained skill of any plugin in the same home.
+        //
+        // For the TWO-COPIES home — a leftover standalone
+        // <home>/skills/git-issue-workflow/ beside
+        // <home>/plugins/tla-spec-dev/skills/git-issue-workflow/, which is the
+        // state SI-18 migrates FROM and therefore the state a home is in while
+        // being migrated. `scripts()` picks the standalone rung (it satisfies
+        // isScriptsDir: new-change.sh, close-change.sh and bootstrap-home.sh
+        // are all there), but `wt` is not in EITHER git-issue-workflow copy —
+        // it is in skt's — and a standalone rung correctly has no siblings. So
+        // `wt` resolved to nothing and every step of the worktree lifecycle
+        // exited 127.
+        //
+        // Safe because it is driven by a NAME and only runs when that name is
+        // absent from both rungs above. A name the anchor skill ships, such as
+        // selftest.sh — which four contained skills also ship — is found on the
+        // first line of this method and never reaches here, so this cannot
+        // reintroduce the cross-skill contamination the sibling guard exists to
+        // prevent.
+        Path home = homeAbove(scriptsDir);
+        if (home != null) {
+            List<Path> found = new ArrayList<>();
+            try (java.util.stream.Stream<Path> walk =
+                         Files.walk(home.resolve("plugins"), 4)) {
+                walk.filter(p -> p.getFileName() != null
+                                && name.equals(p.getFileName().toString()))
+                        .filter(p -> "scripts".equals(fileName(p.getParent())))
+                        .filter(Files::isRegularFile)
+                        .sorted()
+                        .forEach(found::add);
+            } catch (IOException | RuntimeException noPlugins) {
+                // no plugins/ in this home; nothing more to try
+            }
+            if (!found.isEmpty()) return found.get(0);
+        }
+        return own;
+    }
+
+    /**
+     * The skill-manager home above a {@code .../skills/<unit>/scripts} or
+     * {@code .../plugins/<plugin>/skills/<unit>/scripts} path, or null when
+     * {@code scriptsDir} is neither shape (an integration checkout, say).
+     */
+    private static Path homeAbove(Path scriptsDir) {
+        Path skillRoot = scriptsDir == null ? null : scriptsDir.getParent();
+        Path skillsDir = skillRoot == null ? null : skillRoot.getParent();
+        if (skillsDir == null || !"skills".equals(fileName(skillsDir))) return null;
+        Path above = skillsDir.getParent();
+        if (above == null) return null;
+        // <home>/skills/<unit>/scripts, or <home>/plugins/<plugin>/skills/<unit>/scripts
+        Path plugins = above.getParent();
+        if (plugins != null && "plugins".equals(fileName(plugins))) return plugins.getParent();
+        return above;
+    }
+
+    /**
+     * The {@code scripts/} directories of the other skills contained in the
+     * same plugin as {@code scriptsDir}, sorted.
+     *
+     * <p>Empty unless {@code scriptsDir} is {@code
+     * <home>/plugins/<plugin>/skills/<skill>/scripts} — an integration
+     * checkout or a standalone install has no siblings, and gets none.
+     */
+    static List<Path> siblingScriptDirs(Path scriptsDir) {
+        if (scriptsDir == null) return List.of();
+        Path skillRoot = scriptsDir.getParent();
+        Path skillsDir = skillRoot == null ? null : skillRoot.getParent();
+        Path pluginRoot = skillsDir == null ? null : skillsDir.getParent();
+        Path pluginsDir = pluginRoot == null ? null : pluginRoot.getParent();
+        // The shape must be <home>/plugins/<plugin>/skills/<skill>/scripts, and
+        // BOTH names have to be checked.
+        //
+        // The first version of this tested `Files.isDirectory(pluginRoot.resolve("skills"))`,
+        // which is `skillsDir` — always a directory by construction, so the
+        // guard could never fail. A plain standalone install at
+        // <home>/skills/<unit>/scripts passed it (that skillsDir IS named
+        // "skills"), and every OTHER standalone skill in the home became a
+        // "sibling". Four contained skills ship a selftest.sh of their own, so
+        // that was the exact cross-skill contamination this method's caller
+        // documents itself as avoiding — reintroduced by the guard meant to
+        // prevent it. Requiring the grandparent to be `plugins` is what
+        // actually distinguishes the two layouts.
+        if (skillsDir == null || pluginsDir == null) return List.of();
+        if (!"skills".equals(fileName(skillsDir)) || !"plugins".equals(fileName(pluginsDir))) {
+            return List.of();
+        }
+        List<Path> out = new ArrayList<>();
+        try (java.util.stream.Stream<Path> skills = Files.list(skillsDir)) {
+            skills.filter(Files::isDirectory)
+                    .filter(skill -> !skill.equals(skillRoot))
+                    .map(skill -> skill.resolve("scripts"))
+                    .filter(Files::isDirectory)
+                    .sorted()
+                    .forEach(out::add);
+        } catch (IOException | RuntimeException unreadable) {
+            return List.of();
+        }
+        return out;
     }
 
     /**
@@ -133,17 +279,18 @@ final class TicketLifecycleSupport {
                 System.getProperty("user.home", "") + "/.skill-manager")) {
             if (homeRaw == null || homeRaw.isBlank()) continue;
             for (String unit : SCRIPT_UNITS) {
-                Path candidate = Path.of(homeRaw).resolve("skills")
-                        .resolve(unit).resolve("scripts");
-                if (isScriptsDir(candidate)) {
-                    return new Scripts(candidate, "the " + unit + " skill installed in "
-                            + homeRaw);
+                for (Path candidate : unitScriptRungs(Path.of(homeRaw), unit)) {
+                    if (isScriptsDir(candidate)) {
+                        return new Scripts(candidate, "the " + unit + " skill installed in "
+                                + homeRaw + " (" + candidate + ")");
+                    }
                 }
             }
         }
         return new Scripts(null, "no integration.toml above " + repo + " (or its git common dir)"
                 + " and no " + String.join("/", SCRIPT_UNITS)
-                + " skill in any home on this machine");
+                + " skill in any home on this machine, on either rung"
+                + " (skills/<unit>/scripts or plugins/*/skills/<unit>/scripts)");
     }
 
     /**
@@ -155,6 +302,50 @@ final class TicketLifecycleSupport {
      */
     private static final List<String> SCRIPT_UNITS =
             List.of("git-issue-workflow", "git-integration-repo");
+
+    /**
+     * Every place {@code unit}'s {@code scripts/} can sit in a home, in
+     * precedence order.
+     *
+     * <h2>SI-18: the second rung is not optional</h2>
+     *
+     * <p>This resolved {@code <home>/skills/<unit>/scripts} and stopped, and
+     * the day the root home bundled {@code git-issue-workflow} into the
+     * tla-spec-dev plugin the whole graph failed with
+     *
+     * <pre>
+     *   could not locate git-integration-repo's scripts — ... and no
+     *   git-issue-workflow/git-integration-repo skill in any home on this machine
+     * </pre>
+     *
+     * <p>on a machine whose home HAD the scripts, one rung over. Worse, the
+     * message named the state as "no skill in any home", which reads as the
+     * operator's home being wrong rather than as this locator being
+     * single-rung, and the remedy it printed — set $TICKET_LIFECYCLE_SCRIPTS
+     * by hand — papers over it.
+     *
+     * <p>A home is SUPPOSED to reach the contained state. This is the same
+     * defect skt fixed in {@code wt.py} and {@code ticket.py::_bootstrap_script},
+     * and the third place in this change where it had to be fixed; the idiom is
+     * deliberately theirs. Standalone stays FIRST so precedence is unchanged
+     * where both exist, and the plugin rungs are sorted so a home with several
+     * plugins resolves the same way twice.
+     */
+    private static List<Path> unitScriptRungs(Path home, String unit) {
+        List<Path> rungs = new java.util.ArrayList<>();
+        rungs.add(home.resolve("skills").resolve(unit).resolve("scripts"));
+        Path pluginsDir = home.resolve("plugins");
+        try (java.util.stream.Stream<Path> plugins = Files.list(pluginsDir)) {
+            plugins.filter(Files::isDirectory)
+                    .map(plugin -> plugin.resolve("skills").resolve(unit).resolve("scripts"))
+                    .sorted()
+                    .forEach(rungs::add);
+        } catch (java.io.IOException | RuntimeException noPluginsDir) {
+            // A home with no plugins/ is an ordinary shape, not a problem to
+            // report: the standalone rung is still in the list.
+        }
+        return rungs;
+    }
 
     private static Scripts fromIntegrationAbove(Path start, String how) {
         Path dir = start.toAbsolutePath().normalize();

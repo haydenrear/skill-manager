@@ -18,7 +18,8 @@ import java.util.Map;
  * <p>Registration alone, not deployment — the runpod docker container is
  * not actually started here. Deploying would require docker-in-docker plus
  * a real {@code RUNPOD_API_KEY}; see
- * {@code skill-publisher-skill/references/runpod-mcp-onboarding.md} for the
+ * {@code unit-authoring/references/runpod-mcp-onboarding.md}, in the
+ * tla-spec-dev plugin, for the
  * delta needed to extend this graph to full deployment.
  */
 public class HyperRunpodRegistered {

@@ -1,6 +1,0 @@
-version: 1
-name: cart-workflow
-tickets:
-  - id: T-3
-    title: "Cap cart quantity per item"
-    status: done

@@ -104,27 +104,51 @@ class CliSkillDocsSnapshot:
     help_routes: frozenset[tuple[str, str]]
     missing_workflow_docs: tuple[str, ...]
     missing_help_routes: tuple[str, ...]
+    #: (surface, workflow) pairs whose docs live outside this repository and
+    #: therefore cannot be read here. Never counted as missing — see
+    #: `load_cli_skill_docs_source` — but enumerated so a caller can assert
+    #: exactly which workflows delegate outward.
+    external: frozenset[tuple[str, str]] = frozenset()
 
 
 def load_cli_skill_docs_source(repo_root: str | Path) -> CliSkillDocsSnapshot:
     root = Path(repo_root)
     metadata = load_cli_metadata_source(root)
-    docs_by_surface = {
-        "skill-manager-skill": read_skill_doc_surface(root / "skill-manager-skill"),
-        "skill-publisher-skill": read_skill_doc_surface(root / "skill-publisher-skill"),
-    }
+    # SI-18: only the surfaces this repository carries on disk are readable.
+    # `unit-authoring` moved into the tla-spec-dev plugin, in another
+    # repository, and the `skill-publisher-skill/` tree it used to be read from
+    # is deleted. `read_skill_doc_surface` returns "" for a missing root, so
+    # keeping it here reported every one of its workflows as undocumented —
+    # a failure that says the docs are wrong when they are simply elsewhere.
+    #
+    # Mirrors CliMetadata.inTreeDocSurfaces() on the Java side. Keep the two in
+    # step: a surface listed there and not here reads as missing docs, and one
+    # listed here and not there is read from a directory nothing publishes.
+    # EMPTY after OUN-6: skill-manager-skill/ was the last in-tree surface and
+    # it is installed from its own repository now. Mirrors
+    # CliMetadata.inTreeDocSurfaces(), which is also empty — keep the two in
+    # step.
+    docs_by_surface: dict[str, str] = {}
 
     coverage: set[tuple[str, str]] = set()
     help_routes: set[tuple[str, str]] = set()
     missing_workflow_docs: list[str] = []
     missing_help_routes: list[str] = []
+    external: set[tuple[str, str]] = set()
 
     for workflow_id, surfaces in sorted(metadata.workflow_docs.items()):
         command_path = metadata.workflow_links[workflow_id]
         help_command = cli_help_command(command_path)
         for surface in sorted(surfaces):
-            text = docs_by_surface.get(surface, "")
             key = (surface, workflow_id)
+            if surface not in docs_by_surface:
+                # Not readable here, and NOT silently dropped: the caller gets
+                # the set so it can pin exactly which workflows delegate
+                # outward. An unchecked surface that nothing enumerates is how
+                # coverage leaves without anyone noticing.
+                external.add(key)
+                continue
+            text = docs_by_surface[surface]
             if workflow_id in text:
                 coverage.add(key)
             else:
@@ -139,6 +163,7 @@ def load_cli_skill_docs_source(repo_root: str | Path) -> CliSkillDocsSnapshot:
         help_routes=frozenset(help_routes),
         missing_workflow_docs=tuple(missing_workflow_docs),
         missing_help_routes=tuple(missing_help_routes),
+        external=frozenset(external),
     )
 
 

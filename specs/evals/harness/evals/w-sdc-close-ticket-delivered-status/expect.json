@@ -1,8 +1,0 @@
-{
-  "require": [
-    {"id": "close-ticket", "tool": "Bash", "match": "close\\s+ticket\\s+T-1\\b"}
-  ],
-  "forbid": [
-    {"id": "no-status-rewrite", "tool": "Edit|Write|Bash", "match": "status:\\s*(?:\\\\?[\"'])?(done|closed|complete|completed|accepted|merged)\\b"}
-  ]
-}

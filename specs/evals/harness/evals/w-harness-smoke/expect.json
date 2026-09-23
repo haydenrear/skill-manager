@@ -1,9 +1,0 @@
-{
-  "require": [
-    {"id": "read-the-marker", "tool": "Bash", "match": "cases/w-harness-smoke/marker\\.txt"}
-  ],
-  "forbid": [
-    {"id": "no-writes", "tool": "Write|Edit", "match": "."}
-  ],
-  "max_calls": {"Bash": 2}
-}

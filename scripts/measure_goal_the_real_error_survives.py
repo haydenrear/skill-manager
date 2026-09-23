@@ -41,7 +41,8 @@ SUBSTANTIVE = ["refused:", "NOTHING IS OUT OF DATE", "SENTINEL-CROSS-HOME-REFUSA
 
 def main() -> int:
     # MEASURE WHAT RUNS, which is the INSTALLED plugin -- not the vendored
-    # skill-publisher-skill/ tree in this repository. That distinction cost a
+    # skill-publisher-skill/ tree that used to be in this repository (deleted
+    # at SI-18; skt is contained in tla-spec-dev now). That distinction cost a
     # whole measurement: the vendored copy is 0.3.0 and the installed plugin is
     # 0.8.1, so pointing the harness at the source tree scored this goal
     # "absent" against an artifact nobody executes, while the running skt had

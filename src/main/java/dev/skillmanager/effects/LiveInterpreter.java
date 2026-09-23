@@ -1964,9 +1964,40 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 if (onPath != null) {
                     facts.add(new ContextFact.PackageManagerReady(tool.id(), "external", false));
                 } else {
+                    // ABSENT, REPORTED, AND NOT A FAILURE.
+                    //
+                    // An EXTERNAL tool is one this program does not install --
+                    // `brew` is the example -- so "not on PATH" is a fact about
+                    // the host, not an error this run committed. The fact stays
+                    // (the console still prints `! pm: <id> unavailable` with
+                    // the install hint) but it no longer counts toward the
+                    // receipt's failure tally.
+                    //
+                    // Counting it made the same run contradict itself about one
+                    // binary. On a host without brew, the identical absence
+                    // produced BOTH `! pm: brew unavailable` -> failed++ ->
+                    // PARTIAL -> `onboard` exit 1, AND `ToolEnsured
+                    // (missingOnPath=true)` -> `OK tool: brew ready (missing)`
+                    // counted as InstallOutcome.INSTALLED. A log that is green
+                    // line by line, and an exit code that says the opposite.
+                    //
+                    // Nothing goes quiet: every CLI dep that needed the missing
+                    // backend already warns for itself
+                    // (`cli: backend brew not available on this host; skipping
+                    // <dep>`, InstallerRegistry), so the consequence is reported
+                    // per dependency where it can be acted on, rather than once
+                    // as an exit code that names nothing.
+                    //
+                    // Measured on the onboard graph with `brew` as the only
+                    // variable: present -> PASSED, absent -> `onboard exited 1`
+                    // with a log identical in every other line. That is the
+                    // whole of what this counted.
+                    //
+                    // A BUNDLED package manager that fails to install is
+                    // untouched above and still fails: this home was supposed to
+                    // produce that one, and did not.
                     facts.add(new ContextFact.PackageManagerUnavailable(tool.id(),
                             ext.installHint() == null ? "not on PATH" : ext.installHint()));
-                    failed++;
                 }
             }
         }

@@ -94,12 +94,36 @@ public final class UnitSupersession {
      * a migration, it only strands the homes that never ran it.
      */
     public static final List<Retirement> TABLE = List.of(
-            new Retirement("skill-dev-skill", "skt", Kind.OBSOLETE,
+            new Retirement("skill-dev-skill", "tla-spec-dev", Kind.OBSOLETE,
                     "skill-dev-skill was deleted at OUN-4 (2026-09-06); skill development "
                             + "lives in skt now, and nothing publishes the old unit any more"),
-            new Retirement("skill-manager", "skt", Kind.MOVED_INTO_CARRIER,
-                    "the skill-manager skill now ships inside the skt plugin; the name still "
-                            + "resolves, to the copy skt carries"));
+            new Retirement("skill-manager", "tla-spec-dev", Kind.MOVED_INTO_CARRIER,
+                    "the skill-manager skill now ships inside the tla-spec-dev plugin; the "
+                            + "name still resolves, to the copy that plugin carries"),
+            // SI-18 (2026-09-21). The carrier BECAME a passenger: skt was a
+            // plugin of its own and is now a contained skill of tla-spec-dev,
+            // at plugins/tla-spec-dev/skills/skt.
+            //
+            // Its row is not optional. Since OUN-13 a contained name that
+            // collides with an installed standalone is a NOTICE, not a
+            // refusal, so installing tla-spec-dev over a home that still holds
+            // the skt plugin succeeds and leaves TWO copies of skt — one
+            // updatable from a repository that no longer publishes it. That is
+            // precisely the duplication this migration removes, arriving by
+            // the migration itself.
+            //
+            // The two rows above changed carrier in the same commit, for the
+            // same reason: `due()` only fires a row when its carrier is the
+            // unit arriving, and skt is never the unit arriving any more.
+            // Homes that already ran those rows against skt are unaffected —
+            // a retirement of something no longer installed is a no-op — and
+            // homes that never ran them get them now, from the carrier that
+            // actually shows up. See FORMER_CARRIERS for the un-migrated home
+            // that holds skt and nothing else.
+            new Retirement("skt", "tla-spec-dev", Kind.MOVED_INTO_CARRIER,
+                    "skt is a contained skill of the tla-spec-dev plugin now, not a plugin "
+                            + "of its own; the name still resolves, to the copy that plugin "
+                            + "carries, and the skt CLI is installed from the plugin root"));
 
     private UnitSupersession() {}
 
@@ -164,8 +188,101 @@ public final class UnitSupersession {
 
     /** Every repository a carrier has been published from, under any name. */
     private static final java.util.Map<String, List<String>> CARRIER_SOURCES = java.util.Map.of(
-            "skt", List.of("https://github.com/haydenrear/skt",
+            "tla-spec-dev", List.of("https://github.com/haydenrear/tla-spec-dev-plugin",
+                    // skt's own repositories. The carrier changed NAME at
+                    // SI-18, not just version: a home installed from either of
+                    // these holds the unit that now answers to tla-spec-dev,
+                    // and a coordinate pointing at them still has to resolve to
+                    // the current carrier rather than to nothing.
+                    //
+                    // github.com/haydenrear/tla-spec-dev is deliberately ABSENT.
+                    // That repository still publishes the spec-double-compiler
+                    // SKILL so existing installs keep syncing; treating it as a
+                    // carrier source would make a skill coordinate resolve to a
+                    // plugin.
+                    "https://github.com/haydenrear/skt",
                     "https://github.com/haydenrear/skill-publisher-skill"));
+
+    /**
+     * Carriers that used to serve a retirement's unit and may still be the
+     * only one a home holds.
+     *
+     * <h2>The regression this exists to stop</h2>
+     *
+     * <p>SI-18 repointed every row's carrier from {@code skt} to
+     * {@code tla-spec-dev}. That is right for PERFORMING a retirement — only
+     * the carrier that actually arrives should retire anything — but the
+     * "is this reference already served?" predicates ask a different question,
+     * and for them the rename is a regression with a real victim: a home that
+     * migrated under the old rows holds the {@code skt} plugin, holds no
+     * standalone {@code skill-manager}, and has not yet seen
+     * {@code tla-spec-dev}. Read through {@code carrier()} alone, that home
+     * answers "not served", and the very next resolve installs the standalone
+     * back — recreating the duplicate the old rows removed, in a home that was
+     * already correct.
+     *
+     * <p>So the predicates accept any carrier in this set. Only they do:
+     * {@link #due}, {@link #isDue}, {@link #isMandatory} and the removal path
+     * keep asking about {@link Retirement#carrier()}, the current one, because
+     * a retired carrier must never perform a retirement.
+     */
+    private static final java.util.Map<String, Set<String>> FORMER_CARRIERS =
+            java.util.Map.of("tla-spec-dev", Set.of("skt"));
+
+    /**
+     * Every carrier name that serves {@code retirement}'s unit — current
+     * first.
+     *
+     * <p>The unit itself is excluded, and that is not hypothetical bookkeeping:
+     * {@code skt}'s own row has carrier {@code tla-spec-dev}, whose former
+     * carrier is {@code skt}, so without this the row would name skt as a
+     * carrier of skt. Present-skt would then read as "the standalone is served
+     * by a carrier", which is the opposite of what it means — the standalone
+     * being present is the condition the retirement exists to clear.
+     */
+    public static Set<String> servingCarriers(Retirement retirement) {
+        Set<String> out = new LinkedHashSet<>();
+        out.add(retirement.carrier());
+        out.addAll(FORMER_CARRIERS.getOrDefault(retirement.carrier(), Set.of()));
+        out.remove(retirement.unit());
+        return out;
+    }
+
+    /**
+     * The coordinate that installs {@code carrier} today, as an operator would
+     * type it.
+     *
+     * <h2>Why this is not {@code github:haydenrear/<carrier>}</h2>
+     *
+     * <p>That is what the remedy used to interpolate, and it was right for as
+     * long as the carrier's name matched its repository's — {@code skt} lived
+     * in {@code haydenrear/skt}. SI-18 broke that: the carrier is
+     * {@code tla-spec-dev} and its repository is
+     * {@code tla-spec-dev-plugin}. The name-shaped guess would have printed
+     * {@code github:haydenrear/tla-spec-dev}, which is a REAL repository that
+     * resolves — to the spec-double-compiler SKILL, not to this plugin. A
+     * remedy that installs the wrong unit is worse than no remedy, because the
+     * operator has no reason to doubt it.
+     *
+     * <p>So the coordinate comes from {@link #CARRIER_SOURCES}, whose first
+     * entry per carrier is its current repository, and the name-shaped guess
+     * survives only as the fallback for a carrier with no row.
+     */
+    public static String installCoordFor(String carrier) {
+        List<String> sources = CARRIER_SOURCES.get(carrier);
+        if (sources != null && !sources.isEmpty()) {
+            String url = sources.get(0);
+            String marker = "github.com/";
+            int at = url.indexOf(marker);
+            if (at >= 0) {
+                String path = url.substring(at + marker.length());
+                if (path.endsWith(".git")) path = path.substring(0, path.length() - 4);
+                return "github:" + path;
+            }
+            return url;
+        }
+        return "github:haydenrear/" + carrier;
+    }
 
     /** The retired unit a git coordinate used to install, if it names one. */
     public static java.util.Optional<String> movedUnitForSource(String url) {
@@ -211,7 +328,9 @@ public final class UnitSupersession {
     /** True when {@code ref} names a retired unit whose carrier is in {@code present}. */
     public static boolean referenceServedByCarrier(dev.skillmanager.model.UnitReference ref,
                                                    java.util.Collection<String> present) {
-        return retirementNamedBy(ref).map(r -> present.contains(r.carrier())).orElse(false);
+        return retirementNamedBy(ref)
+                .map(r -> servingCarriers(r).stream().anyMatch(present::contains))
+                .orElse(false);
     }
 
     /**
@@ -227,10 +346,16 @@ public final class UnitSupersession {
         if (retirement.isEmpty()) return false;
         Retirement r = retirement.get();
         if (store.containsUnit(r.unit())) return false;
-        if (!store.containsPlugin(r.carrier())) return false;
+        // Any serving carrier, not just the current one: a home that has not
+        // yet seen tla-spec-dev but holds skt is already served.
+        String installed = null;
+        for (String carrier : servingCarriers(r)) {
+            if (store.containsPlugin(carrier)) { installed = carrier; break; }
+        }
+        if (installed == null) return false;
         if (r.kind() == Kind.OBSOLETE) return true;
         return java.nio.file.Files.isDirectory(
-                store.pluginsDir().resolve(r.carrier()).resolve("skills").resolve(r.unit()));
+                store.pluginsDir().resolve(installed).resolve("skills").resolve(r.unit()));
     }
 
     /** The table's row for {@code unit} when it has been moved into a carrier. */
@@ -282,16 +407,27 @@ public final class UnitSupersession {
         List<dev.skillmanager.project.SkillProjectLock> lockReleases = new ArrayList<>();
         List<dev.skillmanager.bindings.ChildHomeRegistry.ChildHomeRecord> homeReleases = new ArrayList<>();
         List<String> unsatisfied = new ArrayList<>();
+        // ANY serving carrier, for the same reason ProjectDependencyResolver
+        // and SyncCommand take one. A lock written before SI-18 resolves `skt`,
+        // not `tla-spec-dev`; matching only the current carrier made the claim
+        // read as UNSATISFIED the moment the rename landed, so the retirement
+        // was reported and skipped and the home stayed in the two-copies state
+        // — the carrier rename blocking the migration it exists to enable, for
+        // every project whose lock predates it.
+        Set<String> carriers = servingCarriers(retirement);
         for (var lock : locks.list()) {
             var names = lock.resolvedUnits().stream().map(u -> u.name()).toList();
             if (!names.contains(retirement.unit())) continue;
-            if (moved && names.contains(retirement.carrier())) lockReleases.add(lock);
+            if (moved && names.stream().anyMatch(carriers::contains)) lockReleases.add(lock);
             else unsatisfied.add(lock.projectName());
         }
         for (var record : childHomes.list()) {
             if (!record.units().contains(retirement.unit())) continue;
-            if (moved && record.units().contains(retirement.carrier())) homeReleases.add(record);
-            else unsatisfied.add(record.id());
+            if (moved && record.units().stream().anyMatch(carriers::contains)) {
+                homeReleases.add(record);
+            } else {
+                unsatisfied.add(record.id());
+            }
         }
         // A child home whose record lists the unit but cannot be decoded still
         // claims it as far as RemoveUseCase is concerned; name it.
@@ -327,7 +463,9 @@ public final class UnitSupersession {
      * carrier, so the carrier's contained copy satisfies the reference.
      */
     public static boolean servedByCarrier(String name, java.util.Collection<String> present) {
-        return retirementFor(name).map(r -> present.contains(r.carrier())).orElse(false);
+        return retirementFor(name)
+                .map(r -> servingCarriers(r).stream().anyMatch(present::contains))
+                .orElse(false);
     }
 
     public static List<Retirement> dueInThisHome(SkillStore store) {

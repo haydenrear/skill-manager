@@ -68,7 +68,27 @@ public final class ScaffoldedTreeIsNotContentTest {
     private static final String PROVIDER = "graph-provider";
 
     public static int run() throws Exception {
-        List<String> scaffolded = scaffoldedIgnorePaths();
+        // NOT AT THE TOP LEVEL. This used to call scaffoldedIgnorePaths()
+        // bare, and after OUN-6 that reads an INSTALLED unit — so on a runner
+        // or a fresh clone it threw before Tests.suite() existed, the error
+        // escaped run() and main(), System.exit was never reached and the JVM
+        // died on an uncaught throwable. The whole suite disappeared because
+        // one fixture could not find its input, and the exit status said
+        // nothing about the other 300 cases.
+        //
+        // A missing unit is now a reported FAILURE of this suite, with the
+        // remedy, which is both survivable and honest: the cases below cannot
+        // run, and saying so is not the same as passing.
+        List<String> scaffolded;
+        try {
+            scaffolded = scaffoldedIgnorePaths();
+        } catch (AssertionError notInstalled) {
+            return Tests.suite("ScaffoldedTreeIsNotContentTest")
+                    .test("the scaffolder this fixture mirrors is reachable", () -> {
+                        throw new AssertionError(notInstalled.getMessage());
+                    })
+                    .runAll();
+        }
         return Tests.suite("ScaffoldedTreeIsNotContentTest")
 
                 // Vacuity mechanism B: assert the fixture's own inputs. If the
@@ -688,7 +708,7 @@ public final class ScaffoldedTreeIsNotContentTest {
      * fixture agree with itself for as long as nobody changed the scaffolder.
      */
     private static List<String> scaffoldedIgnorePaths() throws IOException {
-        Path common = locate("skills/test_graph/scripts/_common.py");
+        Path common = locateScaffolder();
         String source = Files.readString(common);
         int at = source.indexOf("def ensure_provider_binding_ignores");
         if (at < 0) {
@@ -705,6 +725,60 @@ public final class ScaffoldedTreeIsNotContentTest {
             if (close > 1) paths.add(trimmed.substring(1, close));
         }
         return List.copyOf(paths);
+    }
+
+    /**
+     * The scaffolder's own {@code _common.py}, wherever test-graph is installed.
+     *
+     * <p>SI-18/#40: this repository stopped vendoring {@code skills/test_graph/}
+     * — it had drifted 381 lines and three files ahead of the skill it copies —
+     * so the source this fixture mirrors now lives in the installed unit. Both
+     * rungs are probed, standalone first and then
+     * {@code plugins/*}{@code /skills/test-graph}, because test-graph is a
+     * CONTAINED skill of the tla-spec-dev plugin.
+     *
+     * <p>The refusal names the rungs it searched. This fixture deliberately
+     * reads the scaffolder rather than restating its paths — "typing them here
+     * would make the fixture agree with itself" — so a miss has to be legible
+     * as "the unit is not installed", not as "the scaffolder changed".
+     */
+    private static Path locateScaffolder() {
+        // PROVISIONED FIRST. CI's `unit-tests` job runs on every push and PR
+        // and installs nothing, and .skill-manager is gitignored — so without
+        // this the whole suite died on a runner and on any fresh clone, while
+        // passing on a laptop whose operator had the unit installed.
+        String provisioned = System.getenv("TEST_GRAPH_SCRIPTS");
+        if (provisioned != null && !provisioned.isBlank()) {
+            Path candidate = Path.of(provisioned).resolve("_common.py");
+            if (Files.isRegularFile(candidate)) return candidate;
+        }
+        Path here = Path.of("").toAbsolutePath();
+        List<Path> homes = new ArrayList<>();
+        for (Path dir = here; dir != null; dir = dir.getParent()) {
+            homes.add(dir.resolve(".skill-manager"));
+        }
+        String env = System.getenv("SKILL_MANAGER_HOME");
+        if (env != null && !env.isBlank()) homes.add(Path.of(env));
+        homes.add(Path.of(System.getProperty("user.home", "")).resolve(".skill-manager"));
+        List<String> searched = new ArrayList<>();
+        for (Path home : homes) {
+            Path standalone = home.resolve("skills/test-graph/scripts/_common.py");
+            searched.add(standalone.toString());
+            if (Files.isRegularFile(standalone)) return standalone;
+            Path plugins = home.resolve("plugins");
+            if (!Files.isDirectory(plugins)) continue;
+            try (var entries = Files.list(plugins)) {
+                for (Path plugin : entries.sorted().toList()) {
+                    Path contained = plugin.resolve("skills/test-graph/scripts/_common.py");
+                    searched.add(contained.toString());
+                    if (Files.isRegularFile(contained)) return contained;
+                }
+            } catch (IOException unreadable) {
+                // a home with no readable plugins/ simply contributes no rung
+            }
+        }
+        throw new AssertionError("test-graph is not installed in any home above " + here
+                + " — run `skill-manager project resolve` first. searched: " + searched);
     }
 
     /** {@code rel} under the repository root, found by walking up from the cwd. */

@@ -59,8 +59,12 @@ import java.util.stream.Stream;
  * <h2>The coordinate/name join</h2>
  *
  * <p>{@code github:haydenrear/skill-manager-skill} installs a unit named
- * {@code skill-manager}; {@code github:haydenrear/skill-publisher-skill}
- * installs {@code skt}. The repository name is not the unit name, so a
+ * {@code skill-manager}; {@code github:haydenrear/tla-spec-dev-plugin}
+ * installs {@code tla-spec-dev}, which carries {@code skt} and ten more as
+ * contained skills that no coordinate names at all. The repository name is
+ * not the unit name — nor is the suffix decoration:
+ * {@code github:haydenrear/tla-spec-dev} is a DIFFERENT repository installing
+ * a DIFFERENT unit, the {@code spec-double-compiler} skill. So a
  * coordinate cannot be turned into a name by taking its last path segment —
  * that yields units no home contains. The join is each unit's own
  * {@code installed/<name>.json} {@code origin} field, via

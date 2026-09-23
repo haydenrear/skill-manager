@@ -206,10 +206,23 @@ CliWorkflowCommandLinks ==
 \* skill-dev-skill was a third surface until OUN-4 retired the unit. Its four
 \* workflows were all covered elsewhere -- force-skill-scripts,
 \* install-local-unit, project-env and sync-from-local-source are every one of
-\* them, and each is already claimed by skill-manager-skill or
-\* skill-publisher-skill -- so removing the surface removes no coverage.
+\* them, and each is already claimed by skill-manager-skill or the authoring
+\* surface -- so removing the surface removes no coverage.
+\*
+\* SI-18 RENAMED the second surface, and the rename is the point rather than a
+\* spelling change. It was "skill-publisher-skill", a REPOSITORY DIRECTORY this
+\* repo vendored; that tree is deleted and the pages live in "unit-authoring",
+\* a contained skill of the tla-spec-dev plugin, in another repository. The
+\* model names the UNIT that holds the surface, which is the spelling that
+\* survives the unit moving repositories again. The workflow SET is unchanged:
+\* all five are still documented there, verified at SI-18.
+\* OUN-6: BOTH surfaces are external to this repository now. skill-manager-skill
+\* was the last one it carried, and it is installed from its own repository —
+\* so the model still names what documents what, and no checker here can read
+\* either. That is asserted as an EXTERNAL set rather than as coverage; see
+\* tests/test_cli_skill_docs_program_model.py.
 SkillDocSurfaces ==
-  {"skill-manager-skill", "skill-publisher-skill"}
+  {"skill-manager-skill", "unit-authoring"}
 
 SkillManagerSkillWorkflows ==
   {"account-auth", "ads-manage", "bind-projection", "cli-lock-inspect",
@@ -223,13 +236,13 @@ SkillManagerSkillWorkflows ==
    "sync-all-units", "sync-from-local-source", "sync-lockfile",
    "sync-one-unit", "unbind-projection", "upgrade-units"}
 
-SkillPublisherSkillWorkflows ==
+UnitAuthoringWorkflows ==
   {"author-dependencies", "author-unit", "install-local-unit",
    "publish-unit", "skill-scripts"}
 
 ExpectedSkillDocCoverage ==
   ({"skill-manager-skill"} \X SkillManagerSkillWorkflows)
-    \cup ({"skill-publisher-skill"} \X SkillPublisherSkillWorkflows)
+    \cup ({"unit-authoring"} \X UnitAuthoringWorkflows)
 
 RefsFor(units) ==
   {ref \in Units : \E u \in units: <<u, ref>> \in ReferenceEdges}
@@ -1494,7 +1507,7 @@ ExposeInstallLocalUnitWorkflowDocs ==
 \* @port SkillManagerCli.expose_skill_workflow_docs
 ExposeSkillScriptsWorkflowDocs ==
   /\ "skill-scripts" \in project_model.cli_workflow_catalog
-  /\ <<"skill-publisher-skill", "skill-scripts">> \in project_model.cli_skill_doc_topics
+  /\ <<"unit-authoring", "skill-scripts">> \in project_model.cli_skill_doc_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars

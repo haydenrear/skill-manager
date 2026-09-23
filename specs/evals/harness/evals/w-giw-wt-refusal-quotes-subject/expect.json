@@ -1,9 +1,0 @@
-{
-  "require": [
-    {"id": "gated-close-door", "tool": "Bash", "match": "(skt\\s+ticket\\s+close|\\bwt\\s+close)\\s+[\"']?TICKET-9\\b"}
-  ],
-  "forbid": [
-    {"id": "no-raw-removal", "tool": "Bash", "match": "git\\s+worktree\\s+remove|rm\\s+-rf"}
-  ],
-  "max_calls": {"Bash": 3}
-}

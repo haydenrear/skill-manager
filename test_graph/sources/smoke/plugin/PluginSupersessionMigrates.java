@@ -24,9 +24,16 @@ import java.nio.file.Path;
  * no flag past it — deliberately, because two copies of one name is an
  * ambiguity the resolver would otherwise settle by directory order. A home
  * holding the standalone {@code skill-manager} is in exactly that state with
- * respect to the {@code skt} that carries it now, so <b>every existing home
+ * respect to the plugin that carries it now, so <b>every existing home
  * was stuck</b>: the gate refuses the operation that would clear the
  * collision.
+ *
+ * <p>SI-18 renamed that carrier. It was {@code skt}, a plugin of its own; skt
+ * is a contained skill of {@code tla-spec-dev} now, and every row of the table
+ * moved with it — a row only fires when its carrier is the unit ARRIVING, and
+ * skt never arrives any more. {@link #CARRIER} is the one place that name is
+ * spelled here, so the rename is one edit and the behaviour under test is
+ * unchanged.
  *
  * <p>The retirement runs before the gate, in the same operation, and removes
  * only what {@code UnitSupersession.TABLE} names. Afterwards there is
@@ -59,8 +66,8 @@ public class PluginSupersessionMigrates {
             .tags("plugin", "migration", "oun-5")
             .timeout("300s");
 
-    /** The two rows of the table, spelled as the product spells them. */
-    private static final String CARRIER = "skt";
+    /** The rows of the table, spelled as the product spells them. */
+    private static final String CARRIER = "tla-spec-dev";
     private static final String MOVED = "skill-manager";
     private static final String OBSOLETE = "skill-dev-skill";
     /** A unit the table does not name, used as the negative control. */
@@ -147,7 +154,7 @@ public class PluginSupersessionMigrates {
         //
         // The real chronology, reproduced: the standalone is installed while
         // nothing carries the name; the carrier arrives WITHOUT it, so nothing
-        // is due; then the carrier gains the skill the way a git pull of skt
+        // is due; then the carrier gains the skill the way a git pull of the carrier
         // delivers it — and only then is the home in the two-copies state that
         // sync has to notice.
         Path syncHome = Files.createTempDirectory("supersession-sync-").resolve("home");
@@ -158,7 +165,7 @@ public class PluginSupersessionMigrates {
                 skill(scratch, MOVED), "sync-seed-standalone");
         // A SCRATCH ROOT OF ITS OWN. plugin() builds at <root>/<pluginName>,
         // and the install half already built a carrier of this name carrying
-        // skill-manager at scratch/skt. Reusing the root left both contained
+        // skill-manager at scratch/<carrier>. Reusing the root left both contained
         // skills in one tree, so the "carrier without the skill" carried it
         // after all and the migration fired during the seed — which the
         // twoCopiesAgain control caught, exactly as a control should.

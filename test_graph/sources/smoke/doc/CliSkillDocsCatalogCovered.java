@@ -46,17 +46,37 @@ public class CliSkillDocsCatalogCovered {
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
+            // SI-18: only the surfaces this repository carries on disk are
+            // readable here. `unit-authoring` moved into the tla-spec-dev
+            // plugin, in another repository, and the skill-publisher-skill/
+            // tree this node used to read it from is gone. Resolving it to an
+            // empty string — which `getOrDefault(surface, "")` used to do the
+            // moment the directory vanished — would have reported every one of
+            // its workflows as undocumented, so the branch is explicit now.
             Map<String, String> docsBySurface = new LinkedHashMap<>();
-            docsBySurface.put("skill-manager-skill", markdownUnder(repoRoot.resolve("skill-manager-skill")));
-            docsBySurface.put("skill-publisher-skill", markdownUnder(repoRoot.resolve("skill-publisher-skill")));
+            for (String surface : CliMetadata.inTreeDocSurfaces()) {
+                docsBySurface.put(surface, markdownUnder(repoRoot.resolve(surface)));
+            }
 
             List<String> missingWorkflowDocs = new ArrayList<>();
             List<String> missingHelpRoutes = new ArrayList<>();
+            List<String> unknownSurfaces = new ArrayList<>();
             for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
                 String helpCommand = helpCommand(workflow.commandPath());
                 for (String surface : workflow.relatedSkillDocs()) {
-                    String docs = docsBySurface.getOrDefault(surface, "");
                     String key = surface + ":" + workflow.id();
+                    String docs = docsBySurface.get(surface);
+                    if (docs == null) {
+                        // External, and checked by the assertion below instead
+                        // of by reading bytes this repository does not have.
+                        // OUN-6 emptied inTreeDocSurfaces(), so EVERY surface
+                        // takes this branch and the roster is the only thing
+                        // left that can catch a typo.
+                        if (!CliMetadata.knownDocSurfaces().contains(surface)) {
+                            unknownSurfaces.add(key);
+                        }
+                        continue;
+                    }
                     if (!docs.contains(workflow.id())) {
                         missingWorkflowDocs.add(key);
                     }
@@ -66,17 +86,51 @@ public class CliSkillDocsCatalogCovered {
                 }
             }
 
+            // The non-vacuity guard. A surface that cannot be read is skipped,
+            // so something has to pin WHICH workflows get skipped — otherwise
+            // pointing a workflow at the external surface silently removes it
+            // from coverage and this node still goes green.
+            // OUN-6: every workflow's docs are external, so "which delegate
+            // outward" no longer discriminates. The durable pin is which ones
+            // name the AUTHORING surface — that is the claim this was really
+            // making — plus the fact that nothing dropped out of the catalogue.
+            List<String> expectedExternal = List.of(
+                    "author-dependencies", "author-unit", "install-local-unit",
+                    "publish-unit", "skill-scripts");
+            List<String> actualExternal = new ArrayList<>();
+            for (CliMetadata.WorkflowMetadata w : CliMetadata.workflows()) {
+                if (w.relatedSkillDocs().contains(CliMetadata.UNIT_AUTHORING_DOCS)) {
+                    actualExternal.add(w.id());
+                }
+            }
+            java.util.Collections.sort(actualExternal);
+            boolean externalSetPinned = actualExternal.equals(expectedExternal);
+            boolean surfacesKnown = unknownSurfaces.isEmpty();
+            // Non-vacuity: with nothing readable, an EMPTY catalogue would
+            // satisfy every check above.
+            boolean catalogueNonEmpty = !CliMetadata.workflows().isEmpty()
+                    && CliMetadata.workflows().stream()
+                            .allMatch(w -> !w.relatedSkillDocs().isEmpty());
+
             boolean workflowDocsCovered = missingWorkflowDocs.isEmpty();
             boolean helpRoutesCovered = missingHelpRoutes.isEmpty();
-            boolean pass = workflowDocsCovered && helpRoutesCovered;
+            boolean pass = workflowDocsCovered && helpRoutesCovered
+                    && externalSetPinned && surfacesKnown && catalogueNonEmpty;
             return (pass
                     ? NodeResult.pass("cli.skill-docs.catalog.covered")
                     : NodeResult.fail("cli.skill-docs.catalog.covered",
                             "missingWorkflowDocs=" + missingWorkflowDocs
-                                    + " missingHelpRoutes=" + missingHelpRoutes))
+                                    + " missingHelpRoutes=" + missingHelpRoutes
+                                    + " unknownSurfaces=" + unknownSurfaces
+                                    + " externalWorkflows=" + actualExternal
+                                    + " expected=" + expectedExternal))
                     .assertion("workflow_ids_documented", workflowDocsCovered)
                     .assertion("workflow_help_routes_documented", helpRoutesCovered)
-                    .metric("workflowIds", CliMetadata.workflowIds().size());
+                    .assertion("doc_surfaces_known", surfacesKnown)
+                    .assertion("external_doc_workflows_pinned", externalSetPinned)
+                    .assertion("the_workflow_catalogue_is_not_empty", catalogueNonEmpty)
+                    .metric("workflowIds", CliMetadata.workflowIds().size())
+                    .metric("externalDocWorkflows", actualExternal.size());
         });
     }
 

@@ -21,9 +21,11 @@ import java.util.Set;
  *
  * <p>A declared vendored path must be a <em>relative</em> symlink into the
  * <em>project's own</em> skill-manager home, at
- * {@code skills/<from_unit>[/<from_subpath>]/<leaf>}; or a real directory
- * holding content, which is what {@code scaffold.py --copy-sdk} produces.
- * Anything else is a finding.
+ * {@code skills/<from_unit>[/<from_subpath>]/<leaf>} when the unit is
+ * installed standalone, or at
+ * {@code plugins/<plugin>/skills/<from_unit>[/<from_subpath>]/<leaf>} when a
+ * plugin carries it; or a real directory holding content, which is what
+ * {@code scaffold.py --copy-sdk} produces. Anything else is a finding.
  *
  * <h2>Why the check resolves rather than reads</h2>
  *
@@ -295,9 +297,15 @@ public final class ProjectVendoredResolver {
         Path path = projectRoot.resolve(declaredPath);
         Path linkDir = path.getParent();
         Path home = nearestHome(linkDir);
+        // BOTH RUNGS. `from_unit` names a unit, not a location, and the unit's
+        // bytes are at `skills/<unit>/` when it is installed standalone or at
+        // `plugins/<plugin>/skills/<unit>/` when a plugin carries it. Reading
+        // only the first reported every correctly-bundled home as MISPOINTED
+        // and told the operator to reinstall the standalone — undoing the
+        // bundling. See ProjectVendored.sourceDirsIn.
         Path expectedTarget = home == null
                 ? null
-                : declaration.sourceDirIn(home).resolve(path.getFileName());
+                : declaration.resolveSourceDirIn(home).resolve(path.getFileName());
         Path expectedText = expectedTarget == null || linkDir == null
                 ? null
                 : linkDir.relativize(expectedTarget);
@@ -346,13 +354,23 @@ public final class ProjectVendoredResolver {
                         "absolute symlink into this project's own tree: it resolves today but does "
                                 + "not survive a move, a clone, or a worktree", false);
             }
-            if (expectedTarget == null || !resolved.equals(realOrSame(expectedTarget))) {
+            // Accept ANY rung's leaf, not just the preferred one. `expectedTarget`
+            // names the rung a repair would WRITE — the first whose directory
+            // exists — but a link that already points at the other valid rung is
+            // correct, not mispointed. Judging against one rung produced a false
+            // MISPOINTED in two real shapes: a home holding a leftover standalone
+            // `skills/<unit>/` beside the plugin copy with the link correctly on
+            // the plugin copy, and a home where the declared LEAF exists only
+            // under the plugin rung. Both then printed a remedy telling the
+            // operator to re-point at the standalone — undoing the bundling,
+            // which is the very outcome the two-rung change exists to stop.
+            if (expectedTarget == null || !resolvesToSomeRung(declaration, home, path, resolved)) {
                 return new Entry(declaration.name(), declaredPath, path, Status.MISPOINTED, fatal,
                         linkText, resolved, expectedTarget, expectedText, candidates,
                         "resolves inside the project but not at the declared source"
                                 + (expectedTarget == null
                                 ? "; no enclosing " + HOME_DIR + " home was found"
-                                : ""), false);
+                                : " on any rung"), false);
             }
             return new Entry(declaration.name(), declaredPath, path, Status.OK, fatal,
                     linkText, resolved, expectedTarget, expectedText, candidates,
@@ -374,6 +392,26 @@ public final class ProjectVendoredResolver {
         return new Entry(declaration.name(), declaredPath, path, Status.MISPOINTED, fatal,
                 null, realOrSame(path), expectedTarget, expectedText, candidates,
                 "vendored path is a regular file where a vendored tree was declared", false);
+    }
+
+    /**
+     * Whether {@code resolved} is the declared leaf on ANY rung of {@code home}
+     * — the standalone {@code skills/<unit>/…} or any
+     * {@code plugins/<plugin>/skills/<unit>/…}.
+     *
+     * <p>Every rung is compared on {@link Path#toRealPath} output, for the same
+     * reason the rest of this class is: two spellings of one directory must not
+     * read as two directories.
+     */
+    private static boolean resolvesToSomeRung(
+            ProjectVendored declaration, Path home, Path path, Path resolved) {
+        if (home == null) return false;
+        for (Path rung : declaration.sourceDirsIn(home)) {
+            Path leaf = rung.resolve(path.getFileName());
+            if (!Files.isDirectory(leaf)) continue;
+            if (resolved.equals(realOrSame(leaf))) return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------- repair
@@ -444,8 +482,15 @@ public final class ProjectVendoredResolver {
     private static List<String> candidates(ProjectVendored declaration, Path path, Path linkDir) {
         List<String> out = new ArrayList<>();
         for (Path home : enclosingHomes(linkDir)) {
-            Path candidate = declaration.sourceDirIn(home).resolve(path.getFileName());
-            out.add(candidate + (Files.isDirectory(candidate) ? "  (present)" : "  (absent)"));
+            // Every rung of every enclosing home, so a finding says where it
+            // actually looked. A candidate list naming only the standalone
+            // rung was itself the misleading half of the single-rung defect:
+            // it reported "(absent)" for a home holding the content in a
+            // plugin, and nothing in the output hinted a second rung existed.
+            for (Path rung : declaration.sourceDirsIn(home)) {
+                Path candidate = rung.resolve(path.getFileName());
+                out.add(candidate + (Files.isDirectory(candidate) ? "  (present)" : "  (absent)"));
+            }
         }
         if (out.isEmpty()) {
             out.add("no " + HOME_DIR + " home exists at or above " + linkDir);

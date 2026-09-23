@@ -24,13 +24,17 @@ import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Seeds the registry with the bundled skill surfaces:
- * {@code skill-manager-skill} (CLI wrapper), {@code skill-dev-skill}
- * (development worktree CLI), and the contained skills of the skt plugin
- * shipped by {@code skill-publisher-skill} ({@code skt},
- * {@code unit-authoring}). Runs once at server startup so a
- * freshly-provisioned registry has them available without any manual
- * publish step.
+ * Seeds the registry with the bundled skill surfaces this repository
+ * actually carries on disk — today that is {@code skill-manager-skill}
+ * (CLI wrapper). Runs once at server startup so a freshly-provisioned
+ * registry has them available without any manual publish step.
+ *
+ * <p>SI-18: {@code skill-publisher-skill} is no longer one of them. It was a
+ * vendored snapshot of the skt plugin; skt is a contained skill of the
+ * tla-spec-dev plugin now, which this repository does not vendor and will not
+ * — so there is nothing here to seed it FROM. It is installed from its own
+ * repository ({@code github:haydenrear/tla-spec-dev-plugin}) like any other
+ * unit, which is what {@code OnboardCommand} does.
  *
  * <p>Source-of-truth is the on-disk skill directories under the install
  * root — typically the repo checkout the JBang launcher was started from.
@@ -67,11 +71,23 @@ public final class SkillBootstrapper {
      * Subdirectory names under the install root that ship as bundled skills.
      * Order matters only for log readability.
      */
-    private static final List<String> BUNDLED_SKILLS = List.of(
-            "skill-manager-skill",
-            "skill-publisher-skill",
-            "skill-dev-skill"
-    );
+    // `skill-dev-skill` is also listed and also does not exist in this tree —
+    // it was deleted at OUN-4, before SI-18 removed skill-publisher-skill. Both
+    // are harmless: `seedableDirsOf` returns empty for a directory that is not
+    // there, so a stale entry contributes nothing and `hasBundledSkills`
+    // succeeds on any ONE entry that resolves. The OUN-4 row is left where it
+    // is rather than swept into this commit.
+    // EMPTY, and that is the end state rather than an oversight. This seeder
+    // reads directories in THIS tree, and after OUN-6 the tree carries no skill
+    // unit at all: skill-publisher-skill/ went at SI-18, skill-manager-skill/
+    // and skills/test_graph/ at OUN-6/#40, and skill-dev-skill at OUN-4. Every
+    // unit is installed from its own repository now.
+    //
+    // resolveInstallRoot() therefore finds no root and seedBundledSkills()
+    // logs a warning and skips, which is the documented behaviour for "the
+    // skill source dirs can't be found" — the registry is still fully
+    // functional, just without pre-seeded skills.
+    private static final List<String> BUNDLED_SKILLS = List.of();
 
     private final SkillPublishService publishService;
     private final ServerObservability observability;
@@ -176,9 +192,9 @@ public final class SkillBootstrapper {
      * A bundled entry contributes either itself (skill shape: top-level
      * {@code skill-manager.toml}) or its contained skills (plugin shape:
      * top-level {@code skill-manager-plugin.toml} with
-     * {@code skills/<name>/skill-manager.toml}). skill-publisher-skill
-     * became the skt plugin, so requiring a top-level skill manifest in
-     * every entry would fail root detection wholesale and seed nothing.
+     * {@code skills/<name>/skill-manager.toml}). A bundled entry may be a
+     * plugin, so requiring a top-level skill manifest in every entry would
+     * fail root detection wholesale and seed nothing.
      */
     private static boolean hasBundledSkills(Path candidate) {
         for (String name : BUNDLED_SKILLS) {

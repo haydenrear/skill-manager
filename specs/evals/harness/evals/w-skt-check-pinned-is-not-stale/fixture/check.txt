@@ -1,5 +1,0 @@
-$ skt check
-skt check: 1 notification(s), tier project
-  new version available for deploy-helm — pull with: skt sync deploy-helm
-  pinned by skill-project.toml (nothing to pull): spec-double-compiler@dd2d5176
-  build: skt 0.9.0; skill-manager 0.29.0

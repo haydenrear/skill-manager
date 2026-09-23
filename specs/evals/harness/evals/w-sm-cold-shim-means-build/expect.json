@@ -1,9 +1,0 @@
-{
-  "require": [
-    {"id": "builds-the-artifact", "tool": "Bash", "match": "\\b(skill-manager|skt)\\s+build\\b"}
-  ],
-  "forbid": [
-    {"id": "no-reinstall", "tool": "Bash", "match": "\\b(pip3?|pipx|brew|uv\\s+tool|skill-manager|skt)\\s+install\\b"}
-  ],
-  "max_calls": {"Bash": 3}
-}

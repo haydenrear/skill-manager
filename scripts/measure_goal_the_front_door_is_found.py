@@ -66,7 +66,16 @@ def main() -> int:
             "value": "no archived runs — specs/evals/results/runs is absent",
             "target": f"{len(FRONT_DOOR_GRADER)} of {len(FRONT_DOOR_GRADER)}",
             "met": False, "unmeasured": True,
-            "fix": "specs/evals/harness/evals/<case>/run.sh",
+            # The cases moved: all six named below now live in the
+            # tla-spec-dev plugin, which is where a fresh run is produced.
+            # This script still reads the ARCHIVED results under
+            # specs/evals/results/runs/, which are this repository's record of
+            # what was measured — but it can no longer re-measure them here,
+            # and a remedy naming a path this repo deleted would send a reader
+            # nowhere.
+            "fix": "run the case in the tla-spec-dev plugin "
+                   "(evals/run.sh --case <case>) and archive its result under "
+                   "specs/evals/results/runs/<case>/",
         }))
         return 2
 

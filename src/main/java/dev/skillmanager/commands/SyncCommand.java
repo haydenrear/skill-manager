@@ -214,22 +214,41 @@ public final class SyncCommand implements Callable<Integer> {
             // told to sync it: its carrier serves the name now. Saying "not
             // installed: skill-manager" sent agents off to reinstall it.
             var retired = dev.skillmanager.lifecycle.UnitSupersession.retirementFor(name);
-            if (retired.isPresent() && store.containsPlugin(retired.get().carrier())) {
+            // Whichever serving carrier this home actually holds. SI-18 renamed
+            // the carrier to tla-spec-dev, and a home that migrated under the
+            // old rows holds `skt` and nothing else; reading only the current
+            // name would answer "not installed: skill-manager" for a home where
+            // the name resolves perfectly well, which is the exact message this
+            // branch was added to stop printing.
+            String installedCarrier = retired
+                    .map(dev.skillmanager.lifecycle.UnitSupersession::servingCarriers)
+                    .orElse(java.util.Set.of())
+                    .stream().filter(store::containsPlugin).findFirst().orElse(null);
+            if (installedCarrier != null) {
                 Log.info("%s ships inside the %s plugin now — syncing %s", name,
-                        retired.get().carrier(), retired.get().carrier());
-                name = retired.get().carrier();
+                        installedCarrier, installedCarrier);
+                name = installedCarrier;
             } else {
                 Log.error("not installed: %s", name);
                 // A carrier named before it has ever been installed: the one
                 // thing an operator told "sync skt" needs is how to get it.
-                boolean isCarrier = dev.skillmanager.lifecycle.UnitSupersession.TABLE.stream()
-                        .anyMatch(r -> r.carrier().equals(name));
-                if (isCarrier) {
-                    var standalone = dev.skillmanager.lifecycle.UnitSupersession.TABLE.stream()
-                            .filter(r -> r.carrier().equals(name) && store.containsUnit(r.unit()))
+                // Former carrier names count — "sync skt" is still the command
+                // somebody types, and it should route to the bundle that
+                // carries skt rather than dead-end.
+                final String named = name;
+                var rowsForName = dev.skillmanager.lifecycle.UnitSupersession.TABLE.stream()
+                        .filter(r -> dev.skillmanager.lifecycle.UnitSupersession
+                                .servingCarriers(r).contains(named))
+                        .toList();
+                if (!rowsForName.isEmpty()) {
+                    String carrier = rowsForName.get(0).carrier();
+                    var standalone = rowsForName.stream()
+                            .filter(r -> store.containsUnit(r.unit()))
                             .map(dev.skillmanager.lifecycle.UnitSupersession.Retirement::unit).toList();
-                    Log.info("%s is not in this home yet — install it: skill-manager install github:haydenrear/%s%s",
-                            name, name, standalone.isEmpty() ? ""
+                    Log.info("%s is not in this home yet — install it: skill-manager install %s%s",
+                            named,
+                            dev.skillmanager.lifecycle.UnitSupersession.installCoordFor(carrier),
+                            standalone.isEmpty() ? ""
                                     : " (that retires the standalone " + String.join(", ", standalone)
                                             + " automatically)");
                 }

@@ -268,7 +268,7 @@ validationGraph {
      * hyper.checkout copies that tree instead of cloning.
      *
      * Documented as a case study in
-     * skill-publisher-skill/references/runpod-mcp-onboarding.md.
+     * the tla-spec-dev plugin's unit-authoring/references/runpod-mcp-onboarding.md.
      */
     val hyperOptIn = !System.getenv("HYPER_LOCAL_DIR").isNullOrBlank()
             || System.getenv("HYPER_EXPERIMENTS") == "1"
@@ -359,7 +359,7 @@ validationGraph {
      * `skill-manager onboard`. Two halves:
      *
      *   1. The Spring `SkillBootstrapper` bean has seeded
-     *      `skill-manager` and `skill-publisher`
+     *      `skill-manager` and the `tla-spec-dev` plugin
      *      into the registry by
      *      the time `registry.up` reports healthy
      *      (`onboard.seeded.by.server`).
@@ -1438,7 +1438,7 @@ validationGraph {
      * run therefore stops at it; for the whole sweep:
      *
      *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 \
-     *     python3 skills/test_graph/scripts/run.py artifact-dag
+     *     python3 test_graph/run-graphs.py --only artifact-dag
      *
      * Every node then executes against its own home, each reports its own
      * status, and the run still fails.
@@ -1537,7 +1537,7 @@ validationGraph {
      * single finding. For the whole sweep:
      *
      *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 \
-     *     python3 skills/test_graph/scripts/run.py onboarding
+     *     python3 test_graph/run-graphs.py --only onboarding
      *
      * Every node then executes in order against the disk state its predecessor
      * left, each reports its own status, and the run still fails. That flag is

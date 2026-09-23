@@ -7,8 +7,8 @@ skill-imports: []
 For this repo:
 
 - `jbang RunTests.java` — full Layer-2 test suite.
-- `python skills/test_graph/scripts/run.py --all` — integration suite (~7-10 min).
-- `python skills/test_graph/scripts/run.py <graph>` — single graph in isolation.
+- `python3 test_graph/run-graphs.py` — integration suite (~7-10 min).
+- `python3 test_graph/run-graphs.py --only <graph>` — single graph in isolation.
 
 For new features:
 

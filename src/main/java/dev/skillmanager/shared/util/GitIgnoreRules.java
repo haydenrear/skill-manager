@@ -31,7 +31,7 @@ import java.util.TreeSet;
  * provider's store copy, and in the same pass writes the {@code .gitignore}
  * block that declares all three generated
  * ({@code ensure_provider_binding_ignores},
- * {@code skills/test_graph/scripts/_common.py}). {@code sdk} and
+ * the test-graph skill's {@code scripts/_common.py}). {@code sdk} and
  * {@code standard-nodes} are ordinary words: a unit that genuinely authors a
  * directory called {@code sdk} must keep it, so a global name list is the wrong
  * instrument and adding those names to {@link Rederivable} would be wrong for

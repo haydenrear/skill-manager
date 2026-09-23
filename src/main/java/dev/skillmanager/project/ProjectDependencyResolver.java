@@ -658,6 +658,8 @@ public final class ProjectDependencyResolver {
         return new ArrayList<>(rows.values());
     }
 
+    private final java.util.Set<String> warnedRetiredCarrier = new java.util.HashSet<>();
+
     private final java.util.Set<String> warnedServedByCarrier = new java.util.HashSet<>();
 
     private static List<SkillProject.ProjectUnitRef> allInstallRefs(SkillProject project) {
@@ -690,21 +692,88 @@ public final class ProjectDependencyResolver {
             if (!r.install()) continue;
             var retired = dev.skillmanager.lifecycle.UnitSupersession.retirementNamedBy(r.reference())
                     .or(() -> dev.skillmanager.lifecycle.UnitSupersession.retirementFor(r.alias()));
-            if (retired.isPresent() && declared.contains(retired.get().carrier())) {
+            // ANY serving carrier, not just the current one. SI-18 renamed the
+            // carrier from `skt` to `tla-spec-dev`, and a manifest written
+            // before that rename declares the old name — which is exactly the
+            // manifest this branch exists for. Matching only the current name
+            // would reinstall the standalone and re-plant the claim that
+            // blocked the 0.27.0 migration from retiring it (#175), for every
+            // project that had not been edited yet.
+            String servedBy = retired.isPresent()
+                    ? dev.skillmanager.lifecycle.UnitSupersession.servingCarriers(retired.get())
+                            .stream().filter(declared::contains).findFirst().orElse(null)
+                    : null;
+            if (servedBy != null) {
                 // installableRefs runs once for install and once for the lock;
-                // the operator is told once.
+                // the operator is told once. The message names the carrier the
+                // MANIFEST declares, not the current one, so it matches what
+                // the reader is looking at.
                 if (warnedServedByCarrier.add(project.name() + "\u0000" + r.alias())) dev.skillmanager.util.Log.warn(
                         "%s: [skills.%s] is served by the %s plugin now — nothing is installed for it. "
                                 + "Delete that block from skill-project.toml; references to %s need no edits.",
-                        project.name(), r.alias(), retired.get().carrier(), retired.get().unit());
+                        project.name(), r.alias(), servedBy, retired.get().unit());
                 continue;
             }
             refs.add(r);
         }
-        for (var r : project.plugins()) if (r.install()) refs.add(r);
+        for (var r : project.plugins()) {
+            if (!r.install()) continue;
+            warnIfRetiredCarrier(project, r);
+            refs.add(r);
+        }
         for (var r : project.docs()) if (r.install()) refs.add(r);
         for (var r : project.harnesses()) if (r.install()) refs.add(r);
         return refs;
+    }
+
+    /**
+     * Tell the operator when a declared plugin block IS a retired carrier, and
+     * name the block that replaces it.
+     *
+     * <h2>The silence this ends</h2>
+     *
+     * <p>Measured across 86 skill projects on one machine: 14 declare
+     * {@code [plugins.skt]}, the single most common shape, and resolving one
+     * INSTALLS THE STANDALONE skt beside {@code tla-spec-dev} — the coordinate
+     * still ships skt 0.8.2 — recreating the exact duplicate the migration
+     * removes. Nothing refused it, nothing warned, and no retirement fires,
+     * because retirement keys on the CARRIER arriving and skt is a passenger
+     * now. {@code skt status} is silent too: its migration block detects
+     * retired SKILL declarations and a carrier-declared-as-a-skill, and
+     * {@code [plugins.skt]} is neither.
+     *
+     * <p>So the one command an operator runs to migrate a project quietly did
+     * the opposite, in the most common case, without saying anything.
+     *
+     * <h2>Why a warning and not a refusal</h2>
+     *
+     * <p>The block still resolves — that is the whole problem — and refusing
+     * would break every unmigrated project at once rather than migrate it. The
+     * operator is told exactly what to write, the resolve proceeds, and
+     * installing the carrier retires the standalone on the way past.
+     */
+    private void warnIfRetiredCarrier(SkillProject project, SkillProject.ProjectUnitRef ref) {
+        var retired = dev.skillmanager.lifecycle.UnitSupersession.retirementFor(ref.alias());
+        Coord c = ref.reference().coord();
+        if (c instanceof Coord.SubElement sub) c = sub.unitCoord();
+        String bySource = c instanceof Coord.DirectGit g
+                ? dev.skillmanager.lifecycle.UnitSupersession.carrierForSource(g.url()).orElse(null)
+                : null;
+        // Either the block's NAME is a retired unit (`[plugins.skt]`), or its
+        // COORD is a repository the current carrier used to be published from
+        // (`github:haydenrear/skill-publisher-skill`). A block already naming
+        // the current carrier matches neither and stays silent.
+        String carrier = retired.map(dev.skillmanager.lifecycle.UnitSupersession.Retirement::carrier)
+                .orElse(bySource);
+        if (carrier == null || carrier.equals(ref.alias())) return;
+        if (!warnedRetiredCarrier.add(project.name() + "\u0000" + ref.alias())) return;
+        dev.skillmanager.util.Log.warn(
+                "%s: [plugins.%s] names a unit that is not published any more — it installs a second, "
+                        + "separately updatable copy of what %s already carries. Replace that block with "
+                        + "[plugins.%s] source = \"%s\". References and imports naming %s need no edits; "
+                        + "they resolve to the carrier's copy.",
+                project.name(), ref.alias(), carrier, carrier,
+                dev.skillmanager.lifecycle.UnitSupersession.installCoordFor(carrier), ref.alias());
     }
 
     private void validateExpectedKind(SkillProject.ProjectUnitRef ref, String expectedName) throws IOException {

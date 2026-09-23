@@ -13,9 +13,16 @@ import java.nio.file.Path;
 
 /**
  * Drives {@code skill-manager onboard} against the per-run registry. The
- * onboard CLI installs the bundled skills (skill-manager-skill,
- * skill-publisher-skill) from local paths and ensures
- * the gateway is up.
+ * onboard CLI installs {@code skill-manager-skill} from a local path and
+ * fetches the {@code tla-spec-dev} plugin from github, then ensures the
+ * gateway is up.
+ *
+ * <p>SI-18 made that second half a NETWORK fetch, and it is deliberate. The
+ * bundled plugin is not vendored in this repository — a vendored copy of it
+ * was exactly what this epic deleted — so there is no local path to install it
+ * from, and an onboard that skipped it would not be the onboard being tested.
+ * Budget accordingly: the node's timeout covers a shallow clone of
+ * {@code haydenrear/tla-spec-dev-plugin} plus its CLI installers.
  *
  * <p>We pass {@code --install-dir} explicitly so the command doesn't
  * depend on cwd-walking from inside the test_graph subdirectory and so
@@ -27,7 +34,21 @@ public class OnboardCompleted {
             .kind(NodeSpec.Kind.ACTION)
             .dependsOn("registry.up", "ci.logged.in", "gateway.python.venv.ready")
             .tags("onboard", "cli")
-            .timeout("180s")
+            // RAISED from 180s at #40. That budget predates SI-18, when onboard
+            // installed both bundled units from LOCAL paths and never touched
+            // the network. It now shallow-clones haydenrear/tla-spec-dev-plugin
+            // and runs 17 CLI installers behind it, three of which build venvs.
+            //
+            // Measured on this machine: 125s, 147s, 149s, 150s — passing, but
+            // every one of them within 30s of the old ceiling, so the node was
+            // one slow clone away from a red that says "timed out" rather than
+            // "the network was slow". It duly went red the first time a sweep
+            // ran alongside anything else.
+            //
+            // 420s is headroom over a network fetch, not a measurement of the
+            // node: nothing here takes seven minutes. If it ever approaches
+            // this, the fetch is the thing to look at, not this number.
+            .timeout("420s")
             .output("home", "string")
             .output("agentHome", "string");
 

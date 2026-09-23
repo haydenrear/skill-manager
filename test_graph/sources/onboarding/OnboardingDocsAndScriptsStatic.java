@@ -84,12 +84,33 @@ public class OnboardingDocsAndScriptsStatic {
     /**
      * Scripts the extractor must find, or the extractor itself is broken.
      *
-     * <p>These four are named by name in the documented procedure and by the
-     * scripts' own remedies, and all four ship. They are the floor under
-     * "the referenced set is non-empty".
+     * <p>Each is named as a PATH in the documented procedure, each ships, and
+     * between them they cover all three spellings the docs use — so an
+     * extractor that goes blind to any one of them fails here rather than
+     * silently reporting a smaller set:
+     *
+     * <ul>
+     *   <li>{@code bootstrap-home.sh} — inside a {@code $(...)} rung probe;</li>
+     *   <li>{@code close-change.sh} — same, and it is the one the probe idiom
+     *       took out (see {@code claimsOwnScriptsDir});</li>
+     *   <li>{@code wt} — in prose, as {@code `skt`'s `scripts/wt`}, with no
+     *       path qualifier at all.</li>
+     * </ul>
+     *
+     * <p>SI-18 removed {@code new-change.sh} from this floor, and the reason is
+     * upstream's, not this node's: the git-issue-workflow docs mention it nine
+     * times and never once as {@code scripts/new-change.sh}. {@code wt new} is
+     * the documented front door now and new-change.sh is named as the mechanism
+     * behind it, which is a legitimate way to write a document and not
+     * something this repository can hold another repository to. Keeping it here
+     * asserted a prose style, and the failure it produced —
+     * "the extractor itself is broken" — pointed at the wrong thing.
+     *
+     * <p>The floor lost an entry, not its coverage: all three spellings are
+     * still pinned, which is what it is for.
      */
     static final List<String> KNOWN_GOOD =
-            List.of("bootstrap-home.sh", "new-change.sh", "close-change.sh", "wt");
+            List.of("bootstrap-home.sh", "close-change.sh", "wt");
 
     /** The relative-path CLI resolution that is waived, and where. */
     static final Pattern RELATIVE_CLI = Pattern.compile(
@@ -132,13 +153,40 @@ public class OnboardingDocsAndScriptsStatic {
                     collectFromRemedies(referenced, Files.readString(p), ownName);
                 }
             }
+            // SI-18: and the scripts this skill's docs name that the bundle
+            // keeps in a SIBLING contained skill. `wt` is the one — it moved to
+            // skt/scripts/wt while bootstrap-home.sh, new-change.sh,
+            // close-change.sh, lib.sh, agent-home.sh and selftest.sh stayed
+            // here — and its remedies are as much this skill's surface as any
+            // other referenced script's.
+            //
+            // Driven by `referenced`, NOT by sweeping the sibling dirs. Four
+            // other contained skills ship a selftest.sh of their own; sweeping
+            // pulled those in and attributed their relative-CLI spellings to
+            // this skill, which is a different node's subject entirely. A name
+            // this skill's docs do not mention is not this skill's business,
+            // and a name they do mention resolves HERE first, so a sibling is
+            // consulted only for something genuinely absent.
+            for (String name : new TreeSet<>(referenced)) {
+                if (Files.isRegularFile(scriptsDir.resolve(name))) continue;
+                Path elsewhere = scripts.locate(name);
+                if (!Files.isRegularFile(elsewhere)) continue;
+                if (!name.endsWith(".sh") && !name.equals("wt")) continue;
+                shellFiles.add(elsewhere);
+                collectFromRemedies(referenced, Files.readString(elsewhere), ownName);
+            }
 
             boolean theExtractorFoundSomething = !referenced.isEmpty();
             boolean theExtractorFoundTheKnownGoodScripts = referenced.containsAll(KNOWN_GOOD);
 
+            // Resolved across the anchor dir and its siblings, for the same
+            // reason. A documented script that exists one contained skill over
+            // is present; reporting it missing accused the DOCS of naming a
+            // script that is not there, when the docs were right and this
+            // lookup was a rung short.
             Set<String> missing = new TreeSet<>();
             for (String name : referenced) {
-                if (!Files.isRegularFile(scriptsDir.resolve(name))) missing.add(name);
+                if (!scripts.has(name)) missing.add(name);
             }
             boolean everyDocumentedScriptExists = missing.isEmpty();
 
@@ -163,10 +211,10 @@ public class OnboardingDocsAndScriptsStatic {
             // must not.
             Path parentCopy = outside == null ? null : outside.resolve("scripts/agent-home.sh");
             String impossible = "ob-no-such-script-" + Math.abs("ob".hashCode()) + ".sh";
-            boolean theExistenceCheckReportsAnAbsentScript =
-                    !Files.isRegularFile(scriptsDir.resolve(impossible));
-            boolean theExistenceCheckAcceptsAPresentScript =
-                    Files.isRegularFile(scriptsDir.resolve("bootstrap-home.sh"));
+            // Both halves go through the SAME predicate `missing` uses, or the
+            // companion stops demonstrating anything about it.
+            boolean theExistenceCheckReportsAnAbsentScript = !scripts.has(impossible);
+            boolean theExistenceCheckAcceptsAPresentScript = scripts.has("bootstrap-home.sh");
             boolean theExistencePredicateDiscriminates =
                     theExistenceCheckReportsAnAbsentScript
                             && theExistenceCheckAcceptsAPresentScript;
@@ -265,6 +313,29 @@ public class OnboardingDocsAndScriptsStatic {
     static boolean claimsOwnScriptsDir(String text, int start, String ownName) {
         if (start == 0 || text.charAt(start - 1) != '/') return true;
         int end = start - 1;
+        // SI-18: the qualifier may be a TWO-RUNG PROBE rather than a path
+        // segment. Upstream rewrote every documented path from
+        //
+        //   <home>/skills/git-issue-workflow/scripts/close-change.sh
+        // to
+        //   "$(for d in "$H"/skills/git-issue-workflow \
+        //              "$H"/plugins/*/skills/git-issue-workflow; \
+        //      do [ -d "$d" ] && { printf %s "$d"; break; }; done)/scripts/close-change.sh"
+        //
+        // because a contained skill's bytes are one rung over — the same
+        // change this ticket makes in the product. The segment before
+        // `/scripts/` is then `done)`, which is shell syntax and matches no
+        // unit name, so every such path was read as ANOTHER unit's scripts dir
+        // and dropped. The docs were correct; this reader was a rung short,
+        // and the symptom was `the extractor itself is broken` — which was
+        // true.
+        // `end > 0` or this reads charAt(-1): collect() runs per STRIPPED
+        // line, so a remedy line beginning `/scripts/<name>` puts the match
+        // at index 1 and crashed the node.
+        if (end > 0 && text.charAt(end - 1) == ')') {
+            String probe = commandSubstitutionBefore(text, end - 1);
+            if (probe != null) return probeNames(probe, ownName);
+        }
         int i = end;
         while (i > 0 && "`'\" \t\n(|=".indexOf(text.charAt(i - 1)) < 0
                 && text.charAt(i - 1) != '/') {
@@ -278,6 +349,52 @@ public class OnboardingDocsAndScriptsStatic {
             return true;
         }
         return OWN_QUALIFIERS.contains(qualifier.toLowerCase());
+    }
+
+    /**
+     * The body of the {@code $(...)} command substitution whose closing paren
+     * is at {@code closeAt}, or null when that paren closes nothing.
+     */
+    static String commandSubstitutionBefore(String text, int closeAt) {
+        int depth = 0;
+        for (int i = closeAt; i >= 0; i--) {
+            char c = text.charAt(i);
+            if (c == ')') depth++;
+            else if (c == '(') {
+                depth--;
+                if (depth == 0) {
+                    if (i > 0 && text.charAt(i - 1) == '$') {
+                        return text.substring(i + 1, closeAt);
+                    }
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether a rung probe resolves THIS unit's directory.
+     *
+     * <p>A probe names the unit it is looking for, once per rung:
+     * {@code .../skills/<unit>} and {@code .../plugins/*}{@code /skills/<unit>}.
+     * So the question is simply which unit names appear in it. Naming this one
+     * makes the path that follows this unit's own; naming only another unit
+     * makes it a cross-unit reference, exactly as a plain
+     * {@code <other-unit>/scripts/x} would be — which is what keeps
+     * {@code skt}'s {@code scripts/wt} probes from being claimed here.
+     *
+     * <p>A probe that names no unit at all is unqualified, and treated as own,
+     * matching the plain-path branch's treatment of an empty qualifier.
+     */
+    static boolean probeNames(String probe, String ownName) {
+        Matcher m = Pattern.compile("skills/([A-Za-z0-9_.-]+)").matcher(probe);
+        boolean sawAny = false;
+        while (m.find()) {
+            sawAny = true;
+            if (m.group(1).equals(ownName)) return true;
+        }
+        return !sawAny;
     }
 
     /**

@@ -1,5 +1,0 @@
-$ wt new TICKET-12 epic/demo-epic
-FAILED: wt new TICKET-12 epic/demo-epic
-fix: wt new TICKET-12 origin/epic/demo-epic
-error: base epic/demo-epic is 21 commit(s) behind origin/epic/demo-epic — branching it would start from a superseded tree (--stale-base-ok to do it anyway)
-exit 7

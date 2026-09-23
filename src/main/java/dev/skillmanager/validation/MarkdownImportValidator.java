@@ -110,9 +110,26 @@ public final class MarkdownImportValidator {
      * <p>{@code libs/} is a project's development checkouts of OTHER
      * repositories, materialized by {@code project resolve --resolve-libs}.
      * Their markdown is not this project's to answer for.
+     *
+     * <p>{@code fixture}/{@code fixtures} are here for the same reason they
+     * are in {@link #NOT_THE_UNITS_OWN_MARKDOWN}, and finding that out twice
+     * is the point: SI-18 fixed the UNIT walk after installing a plugin
+     * reported its eval fixtures as violations, and the PROJECT walk has its
+     * own exclusion list, so the identical defect was still live one method
+     * away. It surfaced the moment this repository got a project home —
+     * {@code project resolve} exited 11 on
+     * {@code w-giw-exit6-is-unreadable-frontmatter/fixture/} (that case lived at
+     * {@code specs/evals/harness/evals/} until the eval suite moved wholesale to
+     * the tla-spec-dev plugin; the defect it found is this repository's),
+     * a fixture whose frontmatter is deliberately unreadable because the eval
+     * asserts that unreadable frontmatter produces exit 6.
+     *
+     * <p>A fixture is input to a test. Nothing materializes its imports and no
+     * reader is routed to it, which is what makes an import worth validating.
      */
     private static final java.util.Set<String> NOT_THE_PROJECTS_OWN_MARKDOWN =
-            java.util.Set.of("node_modules", "libs", "target", "build", "venv");
+            java.util.Set.of("node_modules", "libs", "target", "build", "venv",
+                    "fixture", "fixtures");
 
     /**
      * Validate the markdown a <em>skill project checkout</em> owns —
@@ -222,12 +239,72 @@ public final class MarkdownImportValidator {
             try (Stream<Path> files = Files.walk(root.root())) {
                 for (Path file : (Iterable<Path>) files
                         .filter(Files::isRegularFile)
-                        .filter(MarkdownImportValidator::isMarkdown)::iterator) {
+                        .filter(MarkdownImportValidator::isMarkdown)
+                        .filter(file -> isUnitsOwnMarkdown(root.root(), file))::iterator) {
                     violations.addAll(validateFile(store, candidateRoots, root, file));
                 }
             }
         }
         return violations;
+    }
+
+    /**
+     * Directory names whose markdown a unit does not answer for, because it is
+     * INPUT to something rather than surface the unit publishes.
+     *
+     * <h2>SI-18: validating fixtures inverts the evals that own them</h2>
+     *
+     * <p>Installing the tla-spec-dev plugin from git reported two violations on
+     * every fresh home, and both were correct readings of deliberately broken
+     * files:
+     *
+     * <pre>
+     *   ✗ tla-spec-dev (plugin): evals/skt/w-skt-migration-no-import-edits/
+     *         fixture/my-skill/SKILL.md
+     *     skill-imports[0] is missing required `reason`
+     *   ✗ tla-spec-dev (plugin): evals/git-issue-workflow/
+     *         w-giw-exit6-is-unreadable-frontmatter/fixture/demo-skill/SKILL.md
+     *     invalid YAML frontmatter: mapping values are not allowed here
+     * </pre>
+     *
+     * <p>The second eval is NAMED for the defect the validator reported. Its
+     * fixture has unreadable frontmatter on purpose, because the eval asserts
+     * that unreadable frontmatter produces exit 6; a fixture that parsed would
+     * be a broken eval. So the violation could not be fixed without destroying
+     * what it was fixture FOR, and its only effect was to make
+     * {@code skill-manager onboard} exit non-zero on a plugin that is
+     * perfectly well-formed.
+     *
+     * <p>A fixture is test data. It is not markdown the unit publishes, nothing
+     * materializes its imports, and no reader is ever routed to it — the three
+     * things that make an import worth validating. The exclusion is narrow on
+     * purpose: {@code evals/} itself is still walked, so an eval's own README
+     * is still the unit's to answer for, and only the fixture trees under it
+     * are skipped.
+     *
+     * <p>This is the same shape as {@link #NOT_THE_PROJECTS_OWN_MARKDOWN} on
+     * the project side, which already existed for the same reason: a walk that
+     * reaches content the walked thing does not own reports somebody else's
+     * problem under its name.
+     */
+    private static final java.util.Set<String> NOT_THE_UNITS_OWN_MARKDOWN =
+            java.util.Set.of("fixture", "fixtures");
+
+    /**
+     * True when {@code file} is markdown the unit at {@code unitRoot} actually
+     * publishes, rather than fixture data underneath it.
+     */
+    static boolean isUnitsOwnMarkdown(Path unitRoot, Path file) {
+        Path relative;
+        try {
+            relative = unitRoot.relativize(file);
+        } catch (IllegalArgumentException notUnderRoot) {
+            return true;
+        }
+        for (Path segment : relative) {
+            if (NOT_THE_UNITS_OWN_MARKDOWN.contains(segment.toString())) return false;
+        }
+        return true;
     }
 
     public static String format(List<Violation> violations) {
