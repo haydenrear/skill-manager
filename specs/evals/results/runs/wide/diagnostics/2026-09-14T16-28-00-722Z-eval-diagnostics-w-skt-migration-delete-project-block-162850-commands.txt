@@ -1,3 +1,0 @@
-Read {"file_path": "/private/tmp/e-Mrc1Id/home/cwd/cases/w-skt-migration-delete-project-block/status-output.txt"}
----
-Read {"file_path": "/private/tmp/e-Mrc1Id/home/cwd/cases/w-skt-migration-delete-project-block/skill-project.toml"}

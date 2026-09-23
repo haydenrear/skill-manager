@@ -1,3 +1,0 @@
-Skill {"skill": "debugging:debugging"}
----
-Bash {"command": "ls -a /private/tmp/e-fRPfP4/home/cwd | head -40", "description": "List files in working directory"}

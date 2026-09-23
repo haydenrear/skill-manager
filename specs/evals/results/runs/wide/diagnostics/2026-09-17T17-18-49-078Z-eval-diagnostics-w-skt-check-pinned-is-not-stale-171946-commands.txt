@@ -1,9 +1,0 @@
-Bash {"command": "ls cases/w-skt-check-pinned-is-not-stale/", "description": "List case directory"}
----
-Read {"file_path": "/private/tmp/e-Ap24pE/home/cwd/cases/w-skt-check-pinned-is-not-stale/check.txt"}
----
-Read {"file_path": "/private/tmp/e-Ap24pE/home/cwd/cases/w-skt-check-pinned-is-not-stale/skill-project.toml"}
----
-Skill {"skill": "skt:skt"}
----
-Bash {"command": "skt sync deploy-helm", "description": "Pull deploy-helm to its latest source"}

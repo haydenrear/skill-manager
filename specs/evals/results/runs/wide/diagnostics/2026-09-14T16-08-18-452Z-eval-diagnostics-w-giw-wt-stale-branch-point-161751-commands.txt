@@ -1,9 +1,0 @@
-Read {"file_path": "/private/tmp/e-FZdyHf/home/cwd/cases/w-giw-wt-stale-branch-point/refusal.txt"}
----
-Bash {"command": "git -C /private/tmp/e-FZdyHf/home/cwd status --short --branch && git -C /private/tmp/e-FZdyHf/home/cwd branch -a && git -C /private/tmp/e-FZdyHf/home/cwd worktree list", "description": "Inspect branches and worktrees"}
----
-Skill {"args": "create worktree for TICKET-12 on epic/demo-epic; wt new refused with exit 7 stale base (21 commits behind origin/epic/demo-epic)", "skill": "git-issue-workflow:git-issue-workflow"}
----
-Bash {"command": "command -v skt; echo \"---\"; skt ticket new --help 2>&1 | head -40", "description": "Check skt availability and ticket new usage"}
----
-Bash {"command": "skt ticket new TICKET-12 origin/epic/demo-epic", "description": "Create TICKET-12 worktree from published epic tip"}

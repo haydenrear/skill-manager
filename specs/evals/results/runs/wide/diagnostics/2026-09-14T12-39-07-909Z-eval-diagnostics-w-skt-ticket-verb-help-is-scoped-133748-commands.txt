@@ -1,5 +1,0 @@
-Bash {"command": "command -v skt; echo \"---\"; ls -a /private/tmp/e-9nAIWo/home/cwd", "description": "Check for skt CLI and list working directory"}
----
-Bash {"command": "ls -a /private/tmp/e-9nAIWo/home/.skill-manager 2>/dev/null || echo \"no root home\"", "description": "Check root skill manager home"}
----
-Bash {"command": "skt ticket new --help 2>&1", "description": "Show help for the ticket-creating command"}

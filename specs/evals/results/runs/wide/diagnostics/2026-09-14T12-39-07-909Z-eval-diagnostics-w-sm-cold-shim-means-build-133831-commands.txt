@@ -1,9 +1,0 @@
-Bash {"command": "ls -la; echo ---; cat cases/w-sm-cold-shim-means-build/jinja2-output.txt 2>/dev/null || find . -name 'jinja2-output.txt' -maxdepth 4 2>/dev/null", "description": "List workspace and read the recorded jinja2 output"}
----
-Skill {"skill": "skt:skt"}
----
-Read {"file_path": "/private/tmp/skill-evals/wide/units/skt/skills/skt/references/derived-artifacts.md"}
----
-Bash {"command": "./.skill-manager/bin/cli/skill-manager build 'cli-shim:pip/jinja2-cli[yaml]' --yes", "description": "Build the declared jinja2 CLI shim in the project home"}
----
-Bash {"command": "./.skill-manager/bin/cli/jinja2 --version; echo \"[exit $?]\"", "description": "Re-run the jinja2 entry point to verify"}

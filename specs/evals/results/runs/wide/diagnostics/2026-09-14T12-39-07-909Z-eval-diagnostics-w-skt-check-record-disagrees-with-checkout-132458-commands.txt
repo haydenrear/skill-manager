@@ -1,9 +1,0 @@
-Bash {"command": "ls /private/tmp/e-6OcCxX/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/", "description": "List case files"}
----
-Read {"file_path": "/private/tmp/e-6OcCxX/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/check-output.txt"}
----
-Read {"file_path": "/private/tmp/e-6OcCxX/home/cwd/cases/w-skt-check-record-disagrees-with-checkout/record-vs-checkout.txt"}
----
-Skill {"skill": "skt:skt"}
----
-Bash {"command": "skt publish git-issue-workflow", "description": "Publish the locally-committed unit edits"}
