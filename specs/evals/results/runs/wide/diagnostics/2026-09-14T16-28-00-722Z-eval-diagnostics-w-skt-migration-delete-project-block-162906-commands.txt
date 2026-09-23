@@ -1,9 +1,0 @@
-Read {"file_path": "/private/tmp/e-LMpXHb/home/cwd/cases/w-skt-migration-delete-project-block/status-output.txt"}
----
-Read {"file_path": "/private/tmp/e-LMpXHb/home/cwd/cases/w-skt-migration-delete-project-block/skill-project.toml"}
----
-Bash {"command": "ls .skill-manager 2>/dev/null && find . -name \"skill-project.toml\" -not -path \"./cases/*\" 2>/dev/null | head -20", "description": "Look for real project manifests in the checkout"}
----
-Bash {"command": "cat ./.skill-manager/plugins/skt/skill-project.toml; echo \"-----\"; grep -rl \"^\\[plugins\\.\" ./.skill-manager --include=skill-project.toml | head -5", "description": "Inspect a real skill-project manifest"}
----
-Bash {"command": "grep -A4 \"^\\[plugins\\.\" ./.skill-manager/skills/deploy-helm/skill-project.toml ./.skill-manager/skills/git-epic-workflow/skill-project.toml", "description": "Check plugins block format in real manifests"}

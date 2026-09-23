@@ -1,7 +1,0 @@
-Bash {"command": "ls -la /private/tmp/e-vaVafW/home/cwd; find /private/tmp/e-vaVafW/home/cwd -name artifact-report.txt -maxdepth 5 2>/dev/null", "description": "Locate the artifact report file"}
----
-Bash {"command": "ls -la /private/tmp/e-vaVafW/home/cwd/cases/w-skt-stale-artifacts-are-not-stale-home/; cat /private/tmp/e-vaVafW/home/cwd/cases/w-skt-stale-artifacts-are-not-stale-home/artifact-report.txt", "description": "Read the artifact report"}
----
-Skill {"skill": "skt:skt"}
----
-Read {"file_path": "/private/tmp/skill-evals/wide/units/skt/skills/skt/references/derived-artifacts.md"}

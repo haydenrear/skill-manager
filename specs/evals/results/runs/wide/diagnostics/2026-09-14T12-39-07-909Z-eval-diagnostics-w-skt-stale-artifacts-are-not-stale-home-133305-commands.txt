@@ -1,9 +1,0 @@
-Bash {"command": "ls /private/tmp/e-RWVpwP/home/cwd; echo ---; ls /private/tmp/e-RWVpwP/home/cwd/cases 2>/dev/null | head -50", "description": "List working directory and cases"}
----
-Bash {"command": "ls -la /private/tmp/e-RWVpwP/home/cwd/cases/w-skt-stale-artifacts-are-not-stale-home/; echo ===; cat /private/tmp/e-RWVpwP/home/cwd/cases/w-skt-stale-artifacts-are-not-stale-home/artifact-report.txt", "description": "Read the artifact report"}
----
-Read {"file_path": "/private/tmp/e-RWVpwP/home/cwd/cases/w-skt-stale-artifacts-are-not-stale-home/artifact-report.txt"}
----
-Skill {"skill": "skt:skt"}
----
-Read {"file_path": "/private/tmp/skill-evals/wide/units/skt/skills/skt/references/derived-artifacts.md"}

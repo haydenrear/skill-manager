@@ -1,9 +1,0 @@
-Read {"file_path": "/private/tmp/e-JDdJ4v/home/cwd/cases/w-giw-epic-ticket-stops-on-wrong-pr-base/issue-141.md"}
----
-Bash {"command": "git status && git branch -a && git log --oneline -5", "description": "Show repo state"}
----
-Skill {"skill": "git-issue-workflow:git-issue-workflow"}
----
-Read {"file_path": "/private/tmp/skill-evals/wide/units/git-issue-workflow/skills/git-issue-workflow/references/epic-ticket.md"}
----
-Bash {"command": "git remote -v; echo \"---refs---\"; git show-ref | head -20", "description": "Show remotes and refs"}

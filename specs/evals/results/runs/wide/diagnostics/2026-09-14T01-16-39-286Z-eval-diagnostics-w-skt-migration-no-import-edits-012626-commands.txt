@@ -1,7 +1,0 @@
-Read {"file_path": "/private/tmp/e-UR4HLI/home/cwd/cases/w-skt-migration-no-import-edits/status-output.txt"}
----
-Read {"file_path": "/private/tmp/e-UR4HLI/home/cwd/cases/w-skt-migration-no-import-edits/my-skill/SKILL.md"}
----
-Skill {"args": "migration: home still holds skill-manager, report says run `skill-manager sync skt`", "skill": "skt:skt"}
----
-Bash {"command": "skill-manager sync skt", "description": "Run the migration sync command from the status report"}

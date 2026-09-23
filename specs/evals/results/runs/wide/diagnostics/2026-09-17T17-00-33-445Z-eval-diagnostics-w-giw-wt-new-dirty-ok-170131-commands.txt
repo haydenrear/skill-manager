@@ -1,9 +1,0 @@
-Bash {"command": "ls /private/tmp/e-HHbyZ1/home/cwd && echo \"---\" && find /private/tmp/e-HHbyZ1/home/cwd/cases -maxdepth 3 2>/dev/null | head -50", "description": "List working directory and cases"}
----
-Read {"file_path": "/private/tmp/e-HHbyZ1/home/cwd/cases/w-giw-wt-new-dirty-ok/refusal.txt"}
----
-Skill {"args": "start worktree for TICKET-12, working tree is dirty with unrelated in-progress edits", "skill": "git-issue-workflow:git-issue-workflow"}
----
-Bash {"command": "command -v skt", "description": "Check whether skt is on PATH"}
----
-Bash {"command": "WT_DIRTY_OK=1 skt ticket new TICKET-12", "description": "Create TICKET-12 worktree allowing the dirty parent tree"}
