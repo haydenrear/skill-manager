@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.2](https://github.com/haydenrear/skill-manager/compare/v0.28.1...v0.28.2) (2026-09-26)
+
+
+### Bug Fixes
+
+* **onboard:** an absent EXTERNAL package manager is a fact about the host, not a failure ([93b8d7a](https://github.com/haydenrear/skill-manager/commit/93b8d7a058ef0c4baeb466e65deb36a2a29c7604))
+
 ## [0.28.1](https://github.com/haydenrear/skill-manager/compare/v0.28.0...v0.28.1) (2026-09-17)
 
 
