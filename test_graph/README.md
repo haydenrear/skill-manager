@@ -12,7 +12,7 @@ python3 test_graph/run-graphs.py            # the graphs meant to run here
 python3 test_graph/run-graphs.py --list     # classification only; runs nothing
 ```
 
-Thirty graphs are registered; four are opt-in (two boot a real browser, one is
+Thirty-one graphs are registered; four are opt-in (two boot a real browser, one is
 a known flake, one reaches github/npm/RunPod). `run-graphs.py` prints each with
 its reason and its opt-in command, and always exits 0.
 

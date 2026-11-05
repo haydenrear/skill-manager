@@ -791,3 +791,40 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 
 Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
 Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+## Close-out ticket 404-cli-version-pin
+
+- close_scope: ticket
+- close_id: 404-cli-version-pin
+- workflow: desired-ticket-workflow
+- closed_at: 2026-11-05T02:20:43+00:00
+- summary: CliPinInternal: a governed CLI dep's bumped pin reinstalls or refuses; never silently kept (#404)
+- feedback_status: items-recorded
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
+
+### SF-013 — SF-011 still reproduces: scaffold/open still write a TEMPLATE spec_manifest.yaml
+
+- root_cause: tool
+- surface: `scaffold workflow` / `open ticket` (tla-spec-dev at plugin 350b9ab4)
+- detail: >
+    The 404-cli-version-pin views again carried `package: current_program_cases`
+    template manifests. Avoided only by copying program_model's README.md,
+    case_adapters.toml and spec_manifest.yaml over ticket desired/, current/ and
+    desired_program_model/ before the close, by hand. Same defect as SF-011.
+- recommendation: https://github.com/haydenrear/tla-spec-dev/issues/345
+- status: filed
+
+## Close-out workflow desired-ticket-workflow
+
+- close_scope: workflow
+- close_id: desired-ticket-workflow
+- workflow: desired-ticket-workflow
+- closed_at: 2026-11-05T02:21:34+00:00
+- summary: #404: CliPinInternal promoted
+- feedback_status: none-found
+- note: the one finding this workflow met is SF-013, recorded on the ticket close above
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.

@@ -1,0 +1,72 @@
+# This file is part of the desired program model.
+# It is intentionally general: use it for any model-backed ticket workflow,
+# not only migrations. Keep it synchronized with spec_manifest.yaml status.
+version: 1
+name: desired-ticket-workflow
+updated: null
+purpose: "Break the desired whole-program change into tickets that can be implemented, modeled in specs/current, unit-tested, and then validated with broader graph or integration checks."
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: 404-cli-version-pin
+  active_ticket_title: "A declared CLI version is never enforced"
+  desired_module: SkillManager
+  phase: planning
+
+# Replace or extend these sections with project-specific domains. Service,
+# process, queue, database, file, API, model, permission, or UI boundaries can
+# all be listed here when they matter to correctness.
+service_catalog:
+  existing_boundaries: []
+  desired_boundaries: []
+  adapter_boundaries: []
+  known_gaps: []
+
+tickets:
+  - id: 404-cli-version-pin
+    title: "A declared CLI version is never enforced"
+    status: done
+    depends_on: []
+    objective: "After an install/sync pass that returns normally, the binary at bin/cli/<name> for a governed (pip/npm/tar) CLI dep is the version the declaring unit declares now; a pin the backend cannot reinstall is refused and leaves cli-lock.toml describing the old binary."
+    desired_actions:
+      - CliPinInternal.InstallCliDep
+      - CliPinInternal.BumpDeclaredPin
+    implementation_scope:
+      - src/main/java/dev/skillmanager/lock/CliPin.java
+      - src/main/java/dev/skillmanager/lock/CliLock.java
+      - src/main/java/dev/skillmanager/lock/CliInstallRecorder.java
+      - src/main/java/dev/skillmanager/cli/installer/InstallerRegistry.java
+      - src/main/java/dev/skillmanager/cli/installer/{Pip,Npm,Tar}Backend.java
+    current_increment:
+      model_state:
+        - CliPinInternal.declared
+        - CliPinInternal.installed
+        - CliPinInternal.recorded
+      model_actions:
+        - CliPinInternal.InstallCliDep
+      adapters: []
+      unit_tests:
+        - CliPinTest (RunTests.java)
+      graph_after_unit_pass:
+        - cli-pin-bump
+    acceptance:
+      commands:
+        - run_tlc.sh CliPinInternal.tla CliPinInternal.cfg
+        - run_tlc.sh CliPinInternal.tla CliPinInternal_regression_presence.cfg
+        - run_tlc.sh CliPinInternal.tla CliPinInternal_regression_skiprecord.cfg
+      assertions:
+        - Healthy config reports No error.
+        - Each regression config (one pre-#404 policy each) violates NoSilentlyKeptPin.
+      evidence:
+        - "healthy: 102 states generated, 32 distinct, No error"
+        - "regression_presence: NoSilentlyKeptPin violated"
+        - "regression_skiprecord: NoSilentlyKeptPin violated"

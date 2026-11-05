@@ -1888,4 +1888,20 @@ validationGraph {
         // reproduces the drag. See the class comment for the chain.
         node("sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java")
     }
+
+    /**
+     * cli-pin — #404: bumping a unit's OWN declared CLI pin changes the
+     * installed binary on the next sync.
+     *
+     * Its own graph because it needs nothing but a private home: no registry,
+     * no postgres, no gateway. The node serves both tar builds from a loopback
+     * server it starts itself, so it runs offline in well under a minute and
+     * is the issue's local signal run alone. Before #404 it was red: the sync
+     * after the bump left bin/cli/pin-probe printing 1.0 while cli-lock.toml
+     * recorded 2.0.
+     */
+    testGraph("cli-pin") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/cli-pin/CliPinBumpReinstalls.java")
+    }
 }

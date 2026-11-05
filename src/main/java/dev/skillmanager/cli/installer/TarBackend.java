@@ -34,12 +34,25 @@ public final class TarBackend implements InstallerBackend {
     @Override
     public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
             throws IOException {
+        return install(dep, store, skillName, false);
+    }
+
+    /**
+     * {@code force} skips the presence check, so a binary already in
+     * {@code bin/cli} is replaced rather than kept. {@code InstallerRegistry}
+     * sets it when the unit's declared pin moved since this home installed it
+     * (#404, {@link dev.skillmanager.lock.CliPin}); without it a bumped pin kept
+     * the old binary for as long as the file stayed executable.
+     */
+    @Override
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName,
+                                  boolean force) throws IOException {
         // One question, not two. The second check here was already home-scoped
         // — `Files.exists(bin/cli/<name>)` — and it was the correct half; the
         // PATH check above it was not, and being first it decided. Both are now
         // CliPresence, which asks the home-scoped question first and PATH only
         // about directories no home owns.
-        if (alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
+        if (!force && alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
         Fs.ensureDir(store.cliBinDir());
         Path link = store.cliBinDir().resolve(dep.name());
         CliDependency.InstallTarget target = pickTarget(dep);

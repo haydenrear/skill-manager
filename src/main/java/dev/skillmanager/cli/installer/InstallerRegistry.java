@@ -1,6 +1,9 @@
 package dev.skillmanager.cli.installer;
 
+import dev.skillmanager.lock.CliLock;
+import dev.skillmanager.lock.CliPin;
 import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.lock.RequestedVersion;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.store.HomeLinks;
@@ -158,6 +161,16 @@ public final class InstallerRegistry {
             Log.warn("cli: backend %s not available on this host; skipping %s", id, dep.name());
             return InstallOutcome.SKIPPED;
         }
+        // #404: a pin this home installed from an OLDER declaration is not
+        // "already present", whatever bin/cli holds. Folded into `force`, which
+        // already means "this home has a reason to (re)produce the artifact":
+        // it takes ownership of an inherited mirror rather than writing through
+        // it, and pip/npm/tar skip their presence check under it.
+        String pinMoved = force ? null : pinMovedSince(dep, store);
+        if (pinMoved != null) {
+            Log.step("cli: %s pin moved (%s) — reinstalling", dep.name(), pinMoved);
+            force = true;
+        }
         WriteConfinement.Scope outer = WriteConfinement.declared();
         WriteConfinement.Scope scope = outer.unconfined()
                 ? WriteConfinement.forHome(store.root(), "cli install of " + dep.name())
@@ -188,7 +201,35 @@ public final class InstallerRegistry {
         } finally {
             WriteConfinement.restore(previous);
         }
+        if (pinMoved != null && outcome != InstallOutcome.INSTALLED && outcome != null) {
+            // Refused, not recorded. Returning normally would let the caller
+            // write the NEW pin into cli-lock.toml over the OLD binary — the
+            // exact silent state this check exists to end.
+            throw new IOException("cli: " + dep.name() + "'s declared pin moved (" + pinMoved
+                    + ") and the " + id + " backend did not reinstall it (" + outcome
+                    + "); bin/cli/" + dep.name() + " still holds the old install");
+        }
         return outcome == null ? InstallOutcome.INSTALLED : outcome;
+    }
+
+    /**
+     * Why {@code dep}'s declaration differs from the one this home's
+     * {@code cli-lock.toml} row was installed from, or null. See {@link CliPin}.
+     *
+     * <p>An unreadable lock is null with a warning, not a failure: it is the
+     * same state as a first install, and presence decides it as it always did.
+     */
+    private static String pinMovedSince(CliDependency dep, SkillStore store) {
+        if (!CliPin.governs(dep)) return null;
+        try {
+            CliLock.Entry row = CliLock.load(store)
+                    .get(dep.backend(), RequestedVersion.of(dep).tool());
+            return CliPin.moved(row, dep);
+        } catch (IOException | RuntimeException unreadable) {
+            Log.warn("cli: could not read %s to compare %s's pin (%s); presence decides",
+                    CliLock.FILENAME, dep.name(), unreadable.getMessage());
+            return null;
+        }
     }
 
     /**

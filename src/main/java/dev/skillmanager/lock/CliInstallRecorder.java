@@ -91,10 +91,18 @@ public final class CliInstallRecorder {
     public static CliLock.Entry record(CliLock lock, InstallerRegistry registry,
                                        CliDependency dep, SkillStore store, String unitName) {
         RequestedVersion.Requested req = RequestedVersion.of(dep);
-        return lock.recordInstall(dep.backend(), req.tool(), req.version(), dep.spec(),
+        CliLock.Entry row = lock.recordInstall(dep.backend(), req.tool(), req.version(), dep.spec(),
                 declaredHash(dep), unitName,
                 registry.fingerprintFor(dep, store, unitName),
                 producedBinary(dep));
+        // #404: the declaration this install was made FROM, so the next pass can
+        // tell a bumped pin from an unchanged one (CliPin.moved). Written after
+        // recordInstall because that method keeps an existing row whole when the
+        // version is unchanged -- including its old spec -- and a tar url bump at
+        // the same min_version is exactly that case.
+        CliLock.Entry declared = row.withDeclaration(dep.spec(), CliPin.of(dep));
+        lock.put(declared);
+        return declared;
     }
 
     /**
