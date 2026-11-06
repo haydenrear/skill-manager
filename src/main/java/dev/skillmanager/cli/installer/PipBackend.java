@@ -32,7 +32,20 @@ public final class PipBackend implements InstallerBackend {
     @Override
     public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
             throws IOException {
-        if (alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
+        return install(dep, store, skillName, false);
+    }
+
+    /**
+     * {@code force} skips the presence check, so a binary already in
+     * {@code bin/cli} is replaced rather than kept. {@code InstallerRegistry}
+     * sets it when the unit's declared pin moved since this home installed it
+     * (#404, {@link dev.skillmanager.lock.CliPin}); without it a bumped pin kept
+     * the old binary for as long as the file stayed executable.
+     */
+    @Override
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName,
+                                  boolean force) throws IOException {
+        if (!force && alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
         String pkg = dep.packageRef();
         if (pkg == null || pkg.isBlank()) throw new IOException("pip: spec missing package name (pip:<package>)");
         Fs.ensureDir(store.cliBinDir());

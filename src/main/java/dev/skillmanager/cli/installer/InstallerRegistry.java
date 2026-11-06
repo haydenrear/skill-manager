@@ -1,6 +1,9 @@
 package dev.skillmanager.cli.installer;
 
+import dev.skillmanager.lock.CliLock;
+import dev.skillmanager.lock.CliPin;
 import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.lock.RequestedVersion;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.store.HomeLinks;
@@ -148,6 +151,19 @@ public final class InstallerRegistry {
      */
     public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
                                      boolean force) throws IOException {
+        return installOne(dep, store, skillName, force, null);
+    }
+
+    /**
+     * {@link #installOne(CliDependency, SkillStore, String, boolean)} comparing
+     * the declared pin against {@code lock} — the in-memory lock a bulk pass is
+     * writing to — instead of re-reading {@code cli-lock.toml} from disk. A bulk
+     * pass saves once at the end, so a disk read made mid-pass sees a row an
+     * earlier dep in the same pass has already replaced (#405 review). Null
+     * reads the file, for the single-dep callers.
+     */
+    public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
+                                     boolean force, CliLock lock) throws IOException {
         String id = dep.backend();
         InstallerBackend backend = backends.get(id);
         if (backend == null) {
@@ -157,6 +173,18 @@ public final class InstallerRegistry {
         if (!backend.available()) {
             Log.warn("cli: backend %s not available on this host; skipping %s", id, dep.name());
             return InstallOutcome.SKIPPED;
+        }
+        // #404: a pin this home installed from an OLDER declaration is not
+        // "already present", whatever bin/cli holds. Folded into `force`, which
+        // already means "this home has a reason to (re)produce the artifact":
+        // it takes ownership of an inherited mirror rather than writing through
+        // it, and pip/npm/tar skip their presence check under it.
+        // Computed under a caller's force too: force decides HOW to install, and
+        // the refusal below must still fire when a moved pin did not land.
+        String pinMoved = pinMovedSince(dep, store, lock);
+        if (pinMoved != null) {
+            Log.step("cli: %s pin moved (%s) — reinstalling", dep.name(), pinMoved);
+            force = true;
         }
         WriteConfinement.Scope outer = WriteConfinement.declared();
         WriteConfinement.Scope scope = outer.unconfined()
@@ -188,7 +216,35 @@ public final class InstallerRegistry {
         } finally {
             WriteConfinement.restore(previous);
         }
+        if (pinMoved != null && outcome != InstallOutcome.INSTALLED && outcome != null) {
+            // Refused, not recorded. Returning normally would let the caller
+            // write the NEW pin into cli-lock.toml over the OLD binary — the
+            // exact silent state this check exists to end.
+            throw new IOException("cli: " + dep.name() + "'s declared pin moved (" + pinMoved
+                    + ") and the " + id + " backend did not reinstall it (" + outcome
+                    + "); bin/cli/" + dep.name() + " still holds the old install");
+        }
         return outcome == null ? InstallOutcome.INSTALLED : outcome;
+    }
+
+    /**
+     * Why {@code dep}'s declaration differs from the one this home's
+     * {@code cli-lock.toml} row was installed from, or null. See {@link CliPin}.
+     *
+     * <p>An unreadable lock is null with a warning, not a failure: it is the
+     * same state as a first install, and presence decides it as it always did.
+     */
+    private static String pinMovedSince(CliDependency dep, SkillStore store, CliLock lock) {
+        if (!CliPin.governs(dep)) return null;
+        try {
+            CliLock.Entry row = (lock != null ? lock : CliLock.load(store))
+                    .get(dep.backend(), RequestedVersion.of(dep).tool());
+            return CliPin.moved(row, dep);
+        } catch (IOException | RuntimeException unreadable) {
+            Log.warn("cli: could not read %s to compare %s's pin (%s); presence decides",
+                    CliLock.FILENAME, dep.name(), unreadable.getMessage());
+            return null;
+        }
     }
 
     /**

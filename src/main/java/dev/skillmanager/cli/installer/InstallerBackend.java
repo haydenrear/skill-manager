@@ -105,8 +105,11 @@ public interface InstallerBackend {
      * <p>Recording is universal from this ticket; GATING on the result is not.
      * {@code skill-script} compares the digest to decide whether to re-run its
      * script, because re-running one is expensive and arbitrary. The other four
-     * only record, and their install decision is unchanged — turning a recorded
-     * digest into a rebuild trigger is the {@code build} verb's job.
+     * only record — turning a recorded digest into a rebuild trigger is the
+     * {@code build} verb's job. (A bumped pin is a different, narrower question,
+     * answered from the declaration alone by {@link dev.skillmanager.lock.CliPin}
+     * in {@code InstallerRegistry.installOne}, never from this digest, which
+     * also moves when the disk does.)
      */
     Fingerprint fingerprint(CliDependency dep, SkillStore store, String unitName);
 }

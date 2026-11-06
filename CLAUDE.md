@@ -7,11 +7,11 @@ command**, which runs the graphs meant to run here and prints the ones it did
 not run, each with its reason:
 
 ```
-python3 test_graph/run-graphs.py           # the 26 graphs meant to run here
+python3 test_graph/run-graphs.py           # the 27 graphs meant to run here
 python3 test_graph/run-graphs.py --list    # classification only; runs nothing
 ```
 
-Thirty graphs are registered. Twenty-six run; four are OPT-IN and excluded by
+Thirty-one graphs are registered. Twenty-seven run; four are OPT-IN and excluded by
 default — `browser-auth` and `password-reset` boot chromedriver and a real
 browser, `refresh-flow` is a known ~1-in-4 flake
 (skill-manager-integration-repository#53), and `hyper-experiments` reaches

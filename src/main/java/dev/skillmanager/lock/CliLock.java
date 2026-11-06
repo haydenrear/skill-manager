@@ -76,10 +76,20 @@ public final class CliLock {
             List<String> requestedBy,
             String installedAt,
             String binary,
-            Fingerprint fingerprint
+            Fingerprint fingerprint,
+            String declaredPin
     ) {
         public Entry {
             requestedBy = requestedBy == null ? List.of() : List.copyOf(requestedBy);
+            declaredPin = declaredPin == null || declaredPin.isBlank() ? null : declaredPin;
+        }
+
+        /** The pre-#404 canonical shape: a row that records no {@link CliPin}. */
+        public Entry(String backend, String tool, String version, String spec,
+                     String sha256, List<String> requestedBy, String installedAt,
+                     String binary, Fingerprint fingerprint) {
+            this(backend, tool, version, spec, sha256, requestedBy, installedAt, binary,
+                    fingerprint, null);
         }
 
         // Backwards-compat constructors — older callers (tests, in-tree
@@ -107,7 +117,7 @@ public final class CliLock {
             List<String> merged = new ArrayList<>(requestedBy);
             merged.add(skillName);
             return new Entry(backend, tool, version, spec, sha256, merged, installedAt,
-                    binary, fingerprint);
+                    binary, fingerprint, declaredPin);
         }
 
         public Entry withoutRequester(String skillName) {
@@ -115,18 +125,30 @@ public final class CliLock {
             List<String> remaining = new ArrayList<>(requestedBy);
             remaining.remove(skillName);
             return new Entry(backend, tool, version, spec, sha256, remaining, installedAt,
-                    binary, fingerprint);
+                    binary, fingerprint, declaredPin);
         }
 
         public Entry withFingerprint(Fingerprint next) {
             return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
-                    binary, next);
+                    binary, next, declaredPin);
+        }
+
+        /**
+         * This row with the declaration it was installed from: the spec and the
+         * {@link CliPin} digest, which {@link CliPin#moved} compares against the
+         * next pass's declaration. Both move together, so {@code spec} never
+         * describes a different declaration than the pin does.
+         */
+        public Entry withDeclaration(String nextSpec, String nextPin) {
+            return new Entry(backend, tool, version, nextSpec == null ? spec : nextSpec,
+                    sha256, requestedBy, installedAt, binary, fingerprint,
+                    nextPin == null ? declaredPin : nextPin);
         }
 
         /** Keeps the binary already recorded when {@code next} says nothing. */
         public Entry withBinary(String next) {
             return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
-                    next == null || next.isBlank() ? binary : next, fingerprint);
+                    next == null || next.isBlank() ? binary : next, fingerprint, declaredPin);
         }
     }
 
@@ -177,7 +199,8 @@ public final class CliLock {
                         reqBy,
                         t.getString("installed_at"),
                         t.getString("binary"),
-                        readFingerprint(t)
+                        readFingerprint(t),
+                        t.getString("declared_pin")
                 ));
             }
             if (!perTool.isEmpty()) entries.put(backendKey, perTool);
@@ -201,6 +224,7 @@ public final class CliLock {
                 sb.append("requested_by = ").append(tomlStringArray(e.requestedBy())).append('\n');
                 if (e.installedAt() != null) sb.append("installed_at = ").append(tomlString(e.installedAt())).append('\n');
                 if (e.binary() != null) sb.append("binary = ").append(tomlString(e.binary())).append('\n');
+                if (e.declaredPin() != null) sb.append("declared_pin = ").append(tomlString(e.declaredPin())).append('\n');
                 Fingerprint fp = e.fingerprint();
                 if (fp != null && fp.present()) {
                     sb.append("install_fingerprint = ").append(tomlString(fp.value())).append('\n');

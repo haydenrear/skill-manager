@@ -69,6 +69,28 @@ No case adapters. The executable pins are `HomeCloseOutPublishedRefsTest` and
 `HomeSyncGitUnitTest`. Closed as spec tickets SM-390 and SM-390B
 (`../.history/desired-ticket-workflow/closed-snapshot-SM-390{,B}/`).
 
+## CLI pins (#404)
+
+`CliPinInternal.tla` models what `install` / `sync` do with a CLI dep whose
+declaring unit bumped its own pin. `SkillManager.tla` records CLI lock rows as
+set membership and cannot see the version a row records against the version of
+the bytes in `bin/cli`, which is where #404 lived.
+
+- `CliPinInternal.cfg`: healthy; no error.
+- `CliPinInternal_regression_presence.cfg`: presence decides (pre-#404 — an
+  executable binary is ALREADY_PRESENT whatever was declared); MUST FAIL
+  `NoSilentlyKeptPin`.
+- `CliPinInternal_regression_skiprecord.cfg`: a forced reinstall the backend
+  SKIPPED still records the new pin over the old binary; MUST FAIL
+  `NoSilentlyKeptPin`.
+
+No case adapters. The executable pins are `CliPinTest` and the `cli-pin`
+graph. The model is one unit in one home; a row several units claim is
+handled by `CliPin.sharedConflict` (a moved pin another claimant does not
+share is a reported conflict, not a reinstall), pinned by `CliPinTest`'s
+shared-CLI cases rather than by TLC. Closed as spec ticket 404-cli-version-pin
+(`../.history/desired-ticket-workflow/closed-snapshot-404-cli-version-pin/`).
+
 Workflow history is append-only under `../.history/desired-ticket-workflow/`.
 The closed progressive-disclosure workflow snapshot is recorded at
 `../.history/desired-ticket-workflow/closed-snapshot/`.

@@ -63,6 +63,7 @@ import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
 import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
 import dev.skillmanager.cli.installer.CliPresenceTest;
 import dev.skillmanager.cli.installer.InstallerFingerprintTest;
+import dev.skillmanager.cli.installer.CliPinTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.cli.installer.SkillScriptWriteThroughTest;
 import dev.skillmanager.cli.installer.BinCliWritersDoNotFollowLinksTest;
@@ -189,6 +190,7 @@ public class RunTests {
         failures += SkillScriptWriteThroughTest.run();
         failures += BinCliWritersDoNotFollowLinksTest.run();
         failures += InstallerFingerprintTest.run();
+        failures += CliPinTest.run();
         failures += CliPresenceTest.run();
         failures += CliArtifactMatrixTest.run();
         failures += CycleDetectionTest.run();

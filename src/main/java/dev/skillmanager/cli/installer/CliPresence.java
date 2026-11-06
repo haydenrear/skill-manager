@@ -85,14 +85,17 @@ import java.nio.file.Path;
  * {@code pip:cowsay==6.1} to {@code ==7.0} therefore keeps the 6.1 binary for
  * as long as {@code bin/cli/cowsay} is executable.
  *
- * <p>That gap is PRE-EXISTING and unchanged by this class: the old
+ * <p>That gap was PRE-EXISTING and this class did not change it: the old
  * {@code isOnPath} check found the same binary — this home's own
- * {@code bin/cli} being on PATH — and skipped just as hard. It is not repaired
- * here because repairing it means recording the installed version per artifact
- * and re-firing on a mismatch, which changes what {@code cli-lock.toml} means
- * and what {@code CliDependencyCleaner} reads beside it. It is written down so
- * the next reader does not re-derive "the lock handles it" from an empty
- * {@code install_fingerprint} column.
+ * {@code bin/cli} being on PATH — and skipped just as hard.
+ *
+ * <p><b>#404 closed it one level up, not here.</b> {@code cli-lock.toml} rows
+ * now carry a {@code declared_pin} ({@link dev.skillmanager.lock.CliPin}), and
+ * {@code InstallerRegistry.installOne} compares it with the unit's current
+ * declaration BEFORE any backend runs. When a {@code pip}/{@code npm}/{@code tar}
+ * pin moved it passes {@code force}, and those backends skip this presence
+ * check. This class still answers only "is it here and does it run" — it does
+ * not, and should not, learn what version the binary is.
  */
 public final class CliPresence {
 
