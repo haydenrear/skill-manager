@@ -40,12 +40,27 @@ public final class CliInstallRecorder {
     public static ProvisionTally run(InstallPlan plan, SkillStore store) throws IOException {
         InstallerRegistry registry = new InstallerRegistry();
         CliLock lock = CliLock.load(store);
+        java.util.Map<String, java.util.Map<String, String>> pinsInThisPass = pinsByUnit(plan);
         ProvisionTally tally = ProvisionTally.EMPTY;
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
+            // #404 / #405 review: a pin one unit moved, on a row other units
+            // still claim at the old pin, is a conflict to report -- not a
+            // reinstall. Reinstalling left bin/cli on the new pin while the
+            // other unit's record put the old one back in the lock; comparing
+            // per unit would instead flip the binary on every pass.
+            String shared = CliPin.sharedConflict(
+                    lock.get(rc.dep().backend(), RequestedVersion.of(rc.dep()).tool()),
+                    rc.dep(), rc.unitName(),
+                    pinsInThisPass.getOrDefault(key(rc.dep()), java.util.Map.of()));
+            if (shared != null) {
+                Log.warn("cli: %s", shared);
+                tally = tally.withFailure();
+                continue;
+            }
             try {
-                tally = tally.plus(
-                        registry.installOne(rc.dep(), store, rc.unitName(), rc.forceScripts()));
+                tally = tally.plus(registry.installOne(
+                        rc.dep(), store, rc.unitName(), rc.forceScripts(), lock));
                 record(lock, registry, rc.dep(), store, rc.unitName());
             } catch (dev.skillmanager.store.WriteOutsideHomeException confined) {
                 // NOT ONE DEP'S FAILURE, so not this loop's to absorb.
@@ -126,6 +141,21 @@ public final class CliInstallRecorder {
      * {@code test_graph/fixtures/skill-script-skill}, whose {@code on_path} is
      * deliberately a name nothing provides so that the install always runs.
      */
+    /** backend:tool -> (unit -> declared pin), for every governed CLI dep this pass installs. */
+    static java.util.Map<String, java.util.Map<String, String>> pinsByUnit(InstallPlan plan) {
+        java.util.Map<String, java.util.Map<String, String>> out = new java.util.HashMap<>();
+        for (PlanAction a : plan.actions()) {
+            if (!(a instanceof PlanAction.RunCliInstall rc) || !CliPin.governs(rc.dep())) continue;
+            out.computeIfAbsent(key(rc.dep()), k -> new java.util.HashMap<>())
+                    .put(rc.unitName(), CliPin.of(rc.dep()));
+        }
+        return out;
+    }
+
+    private static String key(CliDependency dep) {
+        return dep.backend() + ":" + RequestedVersion.of(dep).tool();
+    }
+
     private static String producedBinary(CliDependency dep) {
         for (var target : dep.install().values()) {
             if (target.binary() != null && !target.binary().isBlank()) return target.binary();

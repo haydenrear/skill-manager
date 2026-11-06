@@ -151,6 +151,19 @@ public final class InstallerRegistry {
      */
     public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
                                      boolean force) throws IOException {
+        return installOne(dep, store, skillName, force, null);
+    }
+
+    /**
+     * {@link #installOne(CliDependency, SkillStore, String, boolean)} comparing
+     * the declared pin against {@code lock} — the in-memory lock a bulk pass is
+     * writing to — instead of re-reading {@code cli-lock.toml} from disk. A bulk
+     * pass saves once at the end, so a disk read made mid-pass sees a row an
+     * earlier dep in the same pass has already replaced (#405 review). Null
+     * reads the file, for the single-dep callers.
+     */
+    public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
+                                     boolean force, CliLock lock) throws IOException {
         String id = dep.backend();
         InstallerBackend backend = backends.get(id);
         if (backend == null) {
@@ -166,7 +179,9 @@ public final class InstallerRegistry {
         // already means "this home has a reason to (re)produce the artifact":
         // it takes ownership of an inherited mirror rather than writing through
         // it, and pip/npm/tar skip their presence check under it.
-        String pinMoved = force ? null : pinMovedSince(dep, store);
+        // Computed under a caller's force too: force decides HOW to install, and
+        // the refusal below must still fire when a moved pin did not land.
+        String pinMoved = pinMovedSince(dep, store, lock);
         if (pinMoved != null) {
             Log.step("cli: %s pin moved (%s) — reinstalling", dep.name(), pinMoved);
             force = true;
@@ -219,10 +234,10 @@ public final class InstallerRegistry {
      * <p>An unreadable lock is null with a warning, not a failure: it is the
      * same state as a first install, and presence decides it as it always did.
      */
-    private static String pinMovedSince(CliDependency dep, SkillStore store) {
+    private static String pinMovedSince(CliDependency dep, SkillStore store, CliLock lock) {
         if (!CliPin.governs(dep)) return null;
         try {
-            CliLock.Entry row = CliLock.load(store)
+            CliLock.Entry row = (lock != null ? lock : CliLock.load(store))
                     .get(dep.backend(), RequestedVersion.of(dep).tool());
             return CliPin.moved(row, dep);
         } catch (IOException | RuntimeException unreadable) {
