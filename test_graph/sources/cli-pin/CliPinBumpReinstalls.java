@@ -197,13 +197,20 @@ public class CliPinBumpReinstalls {
     private static String runProbe(Path probe) {
         if (!Files.isExecutable(probe)) return "(absent)";
         try {
-            Process p = new ProcessBuilder(probe.toString()).redirectErrorStream(true).start();
-            String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-            if (!p.waitFor(30, TimeUnit.SECONDS)) {
-                p.destroyForcibly();
-                return "(timeout)";
+            // Output to a file, then wait: reading the pipe first would block
+            // until exit and the timeout could never fire.
+            Path out = Files.createTempFile("pin-probe", ".out");
+            try {
+                Process p = new ProcessBuilder(probe.toString()).redirectErrorStream(true)
+                        .redirectOutput(out.toFile()).start();
+                if (!p.waitFor(30, TimeUnit.SECONDS)) {
+                    p.destroyForcibly();
+                    return "(timeout)";
+                }
+                return Files.readString(out).trim();
+            } finally {
+                Files.deleteIfExists(out);
             }
-            return out;
         } catch (Exception e) {
             return "(error: " + e.getMessage() + ")";
         }

@@ -135,6 +135,35 @@ public final class CliPin {
                 + " (row predates declared_pin; compared on spec and version)";
     }
 
+    /**
+     * When {@code unit} moved its pin for a row that other units also claim:
+     * a sentence naming the units still on the row's pin, or null when there is
+     * nothing to refuse. Null when the pin did not move, when no other unit
+     * claims the row, or when every other claimant declares {@code unit}'s new
+     * pin in this same pass ({@code declaredThisPass}: unit -> {@link #of}).
+     *
+     * <p>A claimant absent from this pass still declares what it last installed
+     * — the row's pin — so it disagrees. Refusing then is the conservative
+     * reading: the alternative reinstalls under a unit whose declaration nobody
+     * re-read.
+     */
+    public static String sharedConflict(CliLock.Entry row, CliDependency dep, String unit,
+                                        Map<String, String> declaredThisPass) {
+        String why = moved(row, dep);
+        if (why == null) return null;
+        String mine = of(dep);
+        java.util.List<String> holdouts = new java.util.ArrayList<>();
+        for (String other : row.requestedBy()) {
+            if (other == null || other.equals(unit)) continue;
+            if (!mine.equals(declaredThisPass.get(other))) holdouts.add(other);
+        }
+        if (holdouts.isEmpty()) return null;
+        return dep.name() + ": " + unit + " moved its pin (" + why + ") but "
+                + String.join(", ", holdouts) + (holdouts.size() == 1 ? " still claims " : " still claim ")
+                + describe(row.spec(), row.version()) + " — not reinstalling; bin/cli/" + dep.name()
+                + " keeps the shared install until the units declare one pin";
+    }
+
     private static String describe(String spec, String version) {
         String s = spec == null || spec.isBlank() ? "(no spec)" : spec;
         return version == null || version.isBlank() || s.contains(version)

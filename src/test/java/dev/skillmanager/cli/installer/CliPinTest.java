@@ -6,6 +6,8 @@ import dev.skillmanager.lock.CliInstallRecorder;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.lock.CliPin;
 import dev.skillmanager.model.CliDependency;
+import dev.skillmanager.plan.InstallPlan;
+import dev.skillmanager.plan.PlanAction;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -32,6 +34,11 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  * {@code installOne} returned {@code ALREADY_PRESENT} because
  * {@code bin/cli/tool} was executable, and {@code bin/cli/tool} still printed
  * {@code 1.0} while {@code cli-lock.toml} recorded {@code 2.0}.
+ *
+ * <p>The first cases drive {@code installOne} with a reload and save around
+ * each call. The shared-CLI cases drive {@code CliInstallRecorder.run}, the
+ * path a sync takes, where one lock is loaded once and saved once — the path
+ * the #405 review found the first version of this fix broken on.
  */
 public final class CliPinTest {
 
@@ -155,7 +162,91 @@ public final class CliPinTest {
             assertTrue(CliPin.governs(pip61) && CliPin.governs(npm), "pip and npm governed");
         });
 
+        // ---- the bulk path a sync takes: one lock, loaded once, saved once ----
+
+        suite.test("shared CLI, one unit bumps: a conflict, and the lock still matches bin/cli", () -> {
+            // The #405 review's repro: A and B claim tar:tool @ 1.0, A bumps to
+            // 2.0. Before the fix bin/cli went to 2.0 while the lock said 1.0
+            // for B alone, and later passes skipped A as a version conflict.
+            SkillStore store = newStore("pin-shared-one-");
+            try (Served served = new Served()) {
+                sync(store, plan("A", served.tarDep("1.0"), "B", served.tarDep("1.0")));
+                assertEquals(List.of("A", "B"),
+                        CliLock.load(store).get("tar", "tool").requestedBy(), "both claim it");
+
+                for (int pass = 1; pass <= 2; pass++) {
+                    ProvisionTally t = sync(store,
+                            plan("A", served.tarDep("2.0"), "B", served.tarDep("1.0")));
+                    assertEquals(1, t.failed(), "pass " + pass + ": A's bump is reported, not absorbed");
+                    assertEquals("1.0", installedVersion(store), "pass " + pass + ": bin/cli kept");
+                    assertEquals("1.0", CliLock.load(store).get("tar", "tool").version(),
+                            "pass " + pass + ": and the lock agrees with it");
+                }
+                assertEquals(1, served.hits.get(), "no download for a refused bump");
+            }
+        });
+
+        suite.test("shared CLI, both units bump in one pass: one reinstall, both claims kept", () -> {
+            SkillStore store = newStore("pin-shared-both-");
+            try (Served served = new Served()) {
+                sync(store, plan("A", served.tarDep("1.0"), "B", served.tarDep("1.0")));
+                ProvisionTally t = sync(store,
+                        plan("A", served.tarDep("2.0"), "B", served.tarDep("2.0")));
+                assertEquals(0, t.failed(), "the units agree");
+                assertEquals("2.0", installedVersion(store), "bin/cli moved");
+                CliLock.Entry row = CliLock.load(store).get("tar", "tool");
+                assertEquals("2.0", row.version(), "the lock moved with it");
+                assertEquals(List.of("A", "B"), row.requestedBy(), "neither claim was dropped");
+                assertEquals(2, served.hits.get(), "one download per version, not per unit");
+                assertEquals(0, sync(store, plan("A", served.tarDep("2.0"),
+                        "B", served.tarDep("2.0"))).failed(), "settled");
+                assertEquals(2, served.hits.get(), "and a settled pass downloads nothing");
+            }
+        });
+
+        suite.test("same version, different urls: one conflict, no download on every pass", () -> {
+            SkillStore store = newStore("pin-shared-url-");
+            try (Served served = new Served()) {
+                for (int pass = 1; pass <= 3; pass++) {
+                    sync(store, plan("A", served.tarDep("1.0"), "B", served.tarDep("1.0", "/v2")));
+                }
+                assertEquals(1, served.hits.get(), "A's install only — B's url is a conflict");
+                assertEquals("1.0", installedVersion(store), "A's bytes");
+                assertEquals(CliPin.of(served.tarDep("1.0")),
+                        CliLock.load(store).get("tar", "tool").declaredPin(),
+                        "and the lock records the declaration those bytes came from");
+            }
+        });
+
+        suite.test("a caller's force does not skip the moved-pin refusal", () -> {
+            SkillStore store = newStore("pin-force-refuse-");
+            try (Served served = new Served()) {
+                install(store, served.tarDep("1.0"));
+                CliDependency unreinstallable = new CliDependency(
+                        "tool", "tar:tool", "2.0", null, null, false,
+                        Map.of("no-such-os-arch", new CliDependency.InstallTarget(
+                                served.url("/v2"), null, "tool", List.of(), null)));
+                try {
+                    new InstallerRegistry().installOne(unreinstallable, store, "unit-a", true);
+                    throw new AssertionError("expected a refusal under force too");
+                } catch (IOException refused) {
+                    assertContains(refused.getMessage(), "pin moved", "says why");
+                }
+            }
+        });
+
         return suite.runAll();
+    }
+
+    private static InstallPlan plan(String unitA, CliDependency a, String unitB, CliDependency b) {
+        return new InstallPlan()
+                .add(new PlanAction.RunCliInstall(unitA, a))
+                .add(new PlanAction.RunCliInstall(unitB, b));
+    }
+
+    /** The sync path: CliInstallRecorder.run, one lock for the whole plan. */
+    private static ProvisionTally sync(SkillStore store, InstallPlan plan) throws Exception {
+        return CliInstallRecorder.run(plan, store);
     }
 
     // ------------------------------------------------------------- fixture

@@ -84,8 +84,11 @@ the bytes in `bin/cli`, which is where #404 lived.
   SKIPPED still records the new pin over the old binary; MUST FAIL
   `NoSilentlyKeptPin`.
 
-No case adapters. The executable pins are `CliPinTest` and the `cli-pin-bump`
-graph. Closed as spec ticket 404-cli-version-pin
+No case adapters. The executable pins are `CliPinTest` and the `cli-pin`
+graph. The model is one unit in one home; a row several units claim is
+handled by `CliPin.sharedConflict` (a moved pin another claimant does not
+share is a reported conflict, not a reinstall), pinned by `CliPinTest`'s
+shared-CLI cases rather than by TLC. Closed as spec ticket 404-cli-version-pin
 (`../.history/desired-ticket-workflow/closed-snapshot-404-cli-version-pin/`).
 
 Workflow history is append-only under `../.history/desired-ticket-workflow/`.

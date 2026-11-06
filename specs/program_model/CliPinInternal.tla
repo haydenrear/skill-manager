@@ -27,7 +27,12 @@
 \*                 caller write the new pin over the old binary; "REFUSE" throws.
 \*
 \* NO CASE ADAPTERS. The @command annotation names the production path; the
-\* executable pins are CliPinTest (unit) and the cli-pin-bump test graph.
+\* executable pins are CliPinTest (unit) and the cli-pin test graph.
+\*
+\* SCOPE: one unit, one home. A row claimed by SEVERAL units (two units
+\* declaring one tar:tool) is outside this model: a moved pin there is a
+\* conflict CliPin.sharedConflict reports before installOne runs, pinned by
+\* CliPinTest's shared-CLI cases on the bulk path (CliInstallRecorder.run).
 \*
 \* HOW TO RUN:
 \*   run_tlc.sh CliPinInternal.tla CliPinInternal.cfg                      -> No error
