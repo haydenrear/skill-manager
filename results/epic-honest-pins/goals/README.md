@@ -146,4 +146,6 @@ home-tripwire, which will be red until DEF-HP9-001 is fixed.
 | DEF-HP5-002 | info | HP-5 | DEF-OHV-183 no longer reproduces (recorded so it can be closed) |
 | DEF-HP6-002 | trivial | HP-6 | `unit publish --dry-run` wording says "would commit" for bytecode-only divergence |
 
+Home close-out: `home close-out --home <worktree>/.skill-manager --into <project home> --json` → exit 0, `safe: true`, 0 blockers, 3 units (`home-close-out.json.txt`). No unit edited or published.
+
 Closed: DEF-HP10-001 (major, fixed inline by HP-10). `backlog.yaml` is empty; HP-3 filed none.
