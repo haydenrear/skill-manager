@@ -1,0 +1,26 @@
+# Deferred findings filed by HP-4 (#298, #103). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep "gitHash", "home sync", "marker")
+# and GitHub issues (search "home sync gitHash", "installed record gitHash"): none found.
+
+findings:
+  - id: DEF-HP4-001
+    found_by: HP-4 reading HomeSync / ChildHomeMaterializer.reconcile while adding the version restatement
+    found_at_commit: 69c64d15c04d
+    severity: minor
+    maps_to: "store/HomeSync + bindings/ChildHomeMaterializer (gitDestIsBehind fast-forward); inside app/sync-record-version but NOT fixed: moving gitHash changes what `sync` takes as its baseline (SyncGitHandler.BaselineWatch, drift), which is HP-2's and #403's ground"
+    summary: >
+      `home sync` that fast-forwards a git-backed unit (gitDestIsBehind -> wholesale copy, .git
+      included) moves the destination's HEAD but leaves installed/<unit>.json's gitHash at the
+      destination's old commit. HP-4 now restates the record's VERSION after every writing
+      outcome, so the version is right; the hash is still the pre-sync one, so `skt check`
+      compares a stale hash and RecordVersionRefresh.refreshed (hash == HEAD guard) declines
+      on later syncs. Same family as #298: two fields of one record, one maintained.
+    reproduction: >
+      By reading, not yet measured: worktree home W commits a change in a git-installed unit;
+      `home sync --from W --to P --unit <u>` reports `updated`; compare
+      `git -C P/skills/<u> rev-parse HEAD` with P/installed/<u>.json gitHash.
+    suggested_fix: >
+      In HomeSync, for a writing outcome whose destination is a git repository, also
+      withGitMoved(headHash, now) -- after confirming with SyncGitHandler's owner that the
+      baseline move is wanted there.
+    disposition: open

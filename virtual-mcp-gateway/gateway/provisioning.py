@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import os
 import platform
@@ -399,13 +400,20 @@ class Provisioner:
             spec: BinaryLoadSpec,
             install_dir: Path,
     ) -> Path:
-        marker = install_dir / ".skill-manager.installed"
-        if marker.exists() and spec.bin_path:
+        # The marker records WHICH spec was installed, not merely that one
+        # was (#103). install_dir is keyed by server_id alone, so an upgrade
+        # that changes the url under the same bin_path must not be served the
+        # old bytes: the short-circuit applies only when the digest of the
+        # install-relevant spec equals the one the marker carries. A legacy
+        # marker ("ok") never matches and reprovisions once.
+        target = _pick_install_target(spec)
+        marker = install_dir / MARKER_NAME
+        digest = install_digest(spec, target)
+        if spec.bin_path and _read_marker(marker) == digest:
             candidate = install_dir / spec.bin_path
             if candidate.exists():
                 return candidate
 
-        target = _pick_install_target(spec)
         if target is None:
             raise ValueError(
                 f"binary load spec for {server_id} has no install target for {current_platform_key()}"
@@ -449,8 +457,33 @@ class Provisioner:
             raise FileNotFoundError(f"{server_id}: binary not found at {binary_path}")
 
         _make_executable(binary_path)
-        marker.write_text("ok")
+        marker.write_text(digest)
         return binary_path
+
+
+MARKER_NAME = ".skill-manager.installed"
+
+
+def install_digest(spec: BinaryLoadSpec, target: Optional[BinaryInstallTarget]) -> str:
+    """SHA-256 over everything that decides the installed bytes: the install
+    target picked for this platform (url, archive, binary, sha256), the
+    ``bin_path`` and the ``init_script``. ``args``/``env`` only change how the
+    binary is run, so they do not force a re-download."""
+    payload = {
+        "target": target.model_dump() if target is not None else None,
+        "bin_path": spec.bin_path,
+        "init_script": spec.init_script,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _read_marker(marker: Path) -> Optional[str]:
+    try:
+        return marker.read_text().strip()
+    except OSError:
+        return None
 
 
 def _pick_install_target(spec: BinaryLoadSpec) -> Optional[BinaryInstallTarget]:

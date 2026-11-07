@@ -52,4 +52,54 @@ public final class RecordVersionRefresh {
     public static InstalledUnit orSame(SkillStore store, InstalledUnit record) {
         return refreshed(store, record).orElse(record);
     }
+
+    /**
+     * HP-4 (#298): the record's version restated from the manifest now in the
+     * store, with NO git precondition.
+     *
+     * <p>For the paths that have just replaced a unit's bytes wholesale and so
+     * know, without asking git, that the manifest on disk is the one the
+     * record now describes: {@code sync <unit> --from <dir>} (a copy of a
+     * directory that is usually not a repository at all) and {@code home sync}
+     * (a tree reconcile whose record carries the destination's clone-time
+     * hash). {@link #refreshed} declines both — no hash, or a hash that is not
+     * HEAD — which is exactly how the record stayed at 0.1.0 while the bytes
+     * said 0.3.0. Everything else is as strict: an unparseable manifest, one
+     * naming no version, or one naming a unit of another kind changes nothing.
+     */
+    public static Optional<InstalledUnit> restatedAfterWrite(SkillStore store, InstalledUnit record) {
+        if (record == null || record.name() == null) return Optional.empty();
+        try {
+            Optional<AgentUnit> unit = store.loadUnit(record.name());
+            if (unit.isEmpty()) return Optional.empty();
+            if (record.unitKind() != null && unit.get().kind() != record.unitKind()) {
+                return Optional.empty();
+            }
+            String manifest = unit.get().version();
+            if (manifest == null || manifest.isBlank() || manifest.equals(record.version())) {
+                return Optional.empty();
+            }
+            return Optional.of(record.withVersion(manifest));
+        } catch (Exception unreadable) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * {@link #restatedAfterWrite} applied to {@code installed/<name>.json} in
+     * {@code store}, when that record exists. A home with no record for the
+     * unit (a materialized child home that never installed it) gets none:
+     * restating a fact is not inventing a record.
+     *
+     * @return true when the record was rewritten
+     */
+    public static boolean restateAfterWrite(SkillStore store, String name) throws java.io.IOException {
+        UnitStore records = new UnitStore(store);
+        Optional<InstalledUnit> current = records.read(name);
+        if (current.isEmpty()) return false;
+        Optional<InstalledUnit> next = restatedAfterWrite(store, current.get());
+        if (next.isEmpty()) return false;
+        records.write(next.get());
+        return true;
+    }
 }

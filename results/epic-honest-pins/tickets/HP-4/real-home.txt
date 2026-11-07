@@ -1,0 +1,10 @@
+# real-home run (copies of the worktree home, child-home.json removed)
+invariant check (read-only) on real homes:
+.skill-manager: 3 units with a manifest version, 0 mismatched
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager: 3 units with a manifest version, 0 mismatched
+/Users/hayde/.skill-manager: 13 units with a manifest version, 0 mismatched
+
+B: tracing-observability manifest 0.4.0 -> 0.4.1; ./skill-manager home sync --from B --to A --unit tracing-observability
+first sync:  "status":"updated"  record after: "version" : "0.4.1"
+second sync: "status":"unchanged"
+build/hp4-real/A: 3 units with a manifest version, 0 mismatched
