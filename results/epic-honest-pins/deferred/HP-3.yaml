@@ -1,0 +1,5 @@
+# Deferred findings filed by HP-3 (#403). Append-only; the epic owner edits `disposition`.
+# Duplicate search: results/*/deferred/ (grep "drift", "home sync") and GitHub issues
+# (search "home sync drift"): only #403 itself.
+
+findings: []

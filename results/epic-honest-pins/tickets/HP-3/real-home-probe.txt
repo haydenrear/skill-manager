@@ -1,0 +1,19 @@
+! Telemetry export unavailable; continuing without telemetry.
+{"pending":false,"bu
+  to:          <scratch>/B
+  updated            skill:deploy-helm — the destination's working tree is clean and its history is contained in the source's, so it holds nothing of its own; a sync fast-forwards it to the source copy
+  2 unchanged, 1 updated, 0 new, 0 merged, 0 held back, 0 conflicted, 0 removed upstream, 0 linked
+✓ reconciled <scratch>/B
+! this sync changed 1 unit(s) in <scratch>/B — a launch will refuse until the change is read (`<scratch>/B/bin/cli/skill-manager home drift --home <scratch>/B`, then `<scratch>/B/bin/cli/skill-manager home drift --ack --home <scratch>/B`)
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-sync-20261107-132739-b38b.log
+! 1 unit(s) changed in <scratch>/B (home sync) and have not been read:
+✗   modified  skill:deploy-helm  602be72e  (1 file)
+✗   1 unit, 1 file changed — `home drift --detail` for the paths, `home drift --json` for the data
+!   run `<scratch>/B/bin/cli/skill-manager home drift --ack --home <scratch>/B` once you have taken it in
+claude
+codex
+gemini
+--- second sync
+  3 unchanged, 0 updated, 0 new, 0 merged, 0 held back, 0 conflicted, 0 removed upstream, 0 linked
+! Telemetry export unavailable; continuing without telemetry.
+{"pending":true,"bui
