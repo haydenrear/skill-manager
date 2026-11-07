@@ -1,3 +1,5 @@
+//SOURCES ../lib/SmEnv.java
+
 import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.Procs;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
@@ -13,7 +15,11 @@ import java.util.List;
 /**
  * Shared fixture code for the {@code honest-pins} graph (epic honest-pins,
  * HP-0). NOT a node: nothing in {@code build.gradle.kts} names it; each node
- * pulls it in with {@code //SOURCES HonestPinsKit.java}.
+ * pulls it in with {@code //SOURCES HonestPinsKit.java}. It names
+ * {@code ../lib/SmEnv.java} in its OWN {@code //SOURCES} because it spawns the
+ * CLI: {@code sandbox.env.contract} (home-tripwire) walks each file's own
+ * closure and flags a CLI resolver that does not reach the helper
+ * (DEF-HP9-001), the same shape as {@code HomeSyncSupport}.
  *
  * <p>Every node in the graph plants ONE shape in a scratch home of its own,
  * under {@code <env.prepared home>/honest-pins/<shape>}, so the nodes share no
