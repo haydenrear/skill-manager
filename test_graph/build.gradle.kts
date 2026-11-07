@@ -1918,20 +1918,20 @@ validationGraph {
      *
      * Every node asserts the HONEST outcome, carries a control arm, and names its
      * assertions setup_* / control_* / shape_*, so a red node says which half is
-     * red. Nodes for unfixed shapes are EXPECTED RED: that is the baseline, read
-     * in results/epic-honest-pins/baseline/. Each later ticket edits ONLY its own
-     * node file. OPT-IN until HP-9 (#413) reads it green: EXCLUDED in
-     * .github/scripts/select-graph-set.py, so a red baseline does not redden CI.
+     * red. The HP-0 baseline (results/epic-honest-pins/baseline/) had every
+     * unfixed shape red; the terminal evaluation HP-9 (#413) read it green
+     * (results/epic-honest-pins/goals/) and moved it out of EXCLUDED in
+     * .github/scripts/select-graph-set.py, so it now runs in the FULL CI set
+     * like any other graph. A red node here is a regression of the shape it
+     * names, not a baseline.
      *
      * No registry, no postgres, no live gateway: pin-e drives the gateway's
      * Provisioner directly, which is why it needs the gateway venv.
      *
-     * The nodes share NO state, so measure it with
-     *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 run.py honest-pins --continue
-     * Without that variable the plan stops at the first red node (pin-b at the
-     * baseline) and every later shape is reported `skipped`, which is not a
-     * measurement. `--continue` alone is Gradle's task-level flag and does not
-     * reach inside one graph.
+     * The nodes share NO state. To read every shape after a regression, run it
+     * with TESTGRAPH_CONTINUE_AFTER_FAILURE=1; without it the plan stops at the
+     * first red node and reports the rest `skipped`. `--continue` alone is
+     * Gradle's task-level flag and does not reach inside one graph.
      */
     testGraph("honest-pins") {
         node("sources/common/EnvPrepared.java")

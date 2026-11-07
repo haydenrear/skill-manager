@@ -35,7 +35,10 @@ findings:
       Add `//SOURCES ../lib/SmEnv.java` (the path the node files already use) to
       HonestPinsKit.java's header, so the support file's own closure reaches the helper.
       One line, in HP-0's file; re-run home-tripwire and honest-pins.
-    disposition: open
+    disposition: fixed
+    disposition_note: >-
+      HP-0 fixup (feature/HP-0-fixup): HonestPinsKit.java now carries its own
+      //SOURCES ../lib/SmEnv.java; home-tripwire and honest-pins re-run green.
 
   - id: DEF-HP9-002
     found_by: HP-9 full run, graphs doc-smoke and onboarding
