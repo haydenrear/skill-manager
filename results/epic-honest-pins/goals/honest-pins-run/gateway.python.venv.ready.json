@@ -1,0 +1,31 @@
+{
+  "nodeId" : "gateway.python.venv.ready",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:28:38.591614Z",
+  "endedAt" : "2026-11-07T21:28:42.787809Z",
+  "assertions" : [ {
+    "name" : "uv_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "venv_python_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "uv-sync",
+    "command" : [ "uv", "sync", "--locked", "--all-extras" ],
+    "startedAt" : "2026-11-07T21:28:38.595755Z",
+    "endedAt" : "2026-11-07T21:28:42.787219Z",
+    "exitCode" : 0,
+    "pid" : 61215,
+    "log" : "node-logs/gateway.python.venv.ready.uv-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 4196
+  },
+  "logs" : [ ],
+  "published" : {
+    "venvPython" : "/Volumes/dev/skill-manager-hp-9/virtual-mcp-gateway/.venv/bin/python"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:28:37.878403Z","executorEndedAt":"2026-11-07T21:28:56.912486Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.python.venv.ready.stdout.log","inputContextFile":"context/gateway.python.venv.ready.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

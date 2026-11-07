@@ -1,0 +1,95 @@
+{
+  "nodeId" : "honest.record-f",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:32:41.213022Z",
+  "endedAt" : "2026-11-07T21:33:05.325667Z",
+  "assertions" : [ {
+    "name" : "setup_homes_cloned_and_shapes_planted",
+    "status" : "passed"
+  }, {
+    "name" : "setup_partial_unit_discovers_enclosing_repo",
+    "status" : "passed"
+  }, {
+    "name" : "control_valid_nested_repo_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "control_truly_diverged_unit_still_conflicted",
+    "status" : "passed"
+  }, {
+    "name" : "control_linked_worktree_unit_not_damaged",
+    "status" : "passed"
+  }, {
+    "name" : "control_symlinked_home_path_same_answers",
+    "status" : "passed"
+  }, {
+    "name" : "shape_close_out_reports_damaged_units_as_blockers",
+    "status" : "passed"
+  }, {
+    "name" : "shape_home_sync_reports_damaged_units",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_enclosing_identity_or_publish_remedy",
+    "status" : "passed"
+  }, {
+    "name" : "shape_damaged_unit_not_synced_into_project",
+    "status" : "passed"
+  }, {
+    "name" : "shape_partial_git_preserved_for_recovery",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_ref_mutation_in_app_or_origins",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "clone_project",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/seed", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/project", "--json" ],
+    "startedAt" : "2026-11-07T21:32:42.305955Z",
+    "endedAt" : "2026-11-07T21:32:46.368406Z",
+    "exitCode" : 0,
+    "pid" : 77652,
+    "log" : "node-logs/honest.record-f.clone_project.log",
+    "error" : null
+  }, {
+    "label" : "clone_worktree",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/seed", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/worktree", "--json" ],
+    "startedAt" : "2026-11-07T21:32:46.368713Z",
+    "endedAt" : "2026-11-07T21:32:49.045708Z",
+    "exitCode" : 0,
+    "pid" : 77882,
+    "log" : "node-logs/honest.record-f.clone_worktree.log",
+    "error" : null
+  }, {
+    "label" : "close_out",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/worktree", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/project", "--json" ],
+    "startedAt" : "2026-11-07T21:32:49.872834Z",
+    "endedAt" : "2026-11-07T21:32:55.920099Z",
+    "exitCode" : 1,
+    "pid" : 78576,
+    "log" : "node-logs/honest.record-f.close_out.log",
+    "error" : null
+  }, {
+    "label" : "close_out_alias",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/worktree-alias", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/project", "--json" ],
+    "startedAt" : "2026-11-07T21:32:55.920850Z",
+    "endedAt" : "2026-11-07T21:33:00.928623Z",
+    "exitCode" : 1,
+    "pid" : 81915,
+    "log" : "node-logs/honest.record-f.close_out_alias.log",
+    "error" : null
+  }, {
+    "label" : "home_sync",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/worktree", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/project", "--merge", "--json" ],
+    "startedAt" : "2026-11-07T21:33:00.929187Z",
+    "endedAt" : "2026-11-07T21:33:05.130780Z",
+    "exitCode" : 1,
+    "pid" : 86989,
+    "log" : "node-logs/honest.record-f.home_sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 24112
+  },
+  "logs" : [ "close-out rc=1 partial=damaged missing=damaged valid=unchanged diverged=conflicted linked=new; sync rc=1 partial=damaged missing=damaged valid=unchanged; leaks=[]; projectUntouched=true partialPreserved=true nothingMutated=true; alias rc=1 controlAlias=true; setup=true hazard=true; partial unit={\"unit\":\"skill:hp-f-partial\",\"name\":\"hp-f-partial\",\"kind\":\"skill\",\"status\":\"damaged\",\"detail\":\"damaged unit: the source copy's Git metadata is not its own -- .git is partial: HEAD and config missing; its HEAD and history are unknown; nothing was written and its .git was left exactly as found. Recover it in place (restore HEAD/config from a good copy of the unit's repository) or replace the unit with a valid checkout of its reviewed pin, then re-run\",\"files\":[],\"conflicts\":[]} partial blocker={\"unit\":\"skill:hp-f-partial\",\"status\":\"damaged\",\"detail\":\"damaged unit: the source copy's Git metadata is not its own -- .git is partial: HEAD and config missing; its HEAD and history are unknown; nothing was written and its .git was left exactly as found. Recover it in place (restore HEAD/config from a good copy of the unit's repository) or replace the unit with a valid checkout of its reviewed pin, then re-run\",\"conflicts\":[],\"remedy\":\"recover the unit's .git in place, or replace the unit with a valid checkout of its reviewed pin, then re-run /Volumes/dev/skill-manager-hp-9/skill-manager home close-out --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/worktree --into /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-f/app/homes/project  (damaged unit: the source copy's Git metadata is not its own -- .git is partial: HEAD and config missing; its HEAD and history are unknown; nothing was written and its .git was left exactly as found. Recover it in place (restore HEAD/config from a good copy of the unit's repository) or replace the unit with a valid checkout of its reviewed pin, then re-run)\"}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:32:40.473264Z","executorEndedAt":"2026-11-07T21:33:19.735533Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.record-f.stdout.log","inputContextFile":"context/honest.record-f.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

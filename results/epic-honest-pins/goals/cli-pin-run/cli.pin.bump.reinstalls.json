@@ -1,0 +1,69 @@
+{
+  "nodeId" : "cli.pin.bump.reinstalls",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:27:46.341268Z",
+  "endedAt" : "2026-11-07T21:27:55.542932Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "v1_installed_reports_1_0",
+    "status" : "passed"
+  }, {
+    "name" : "bump_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "bumped_binary_reports_2_0",
+    "status" : "passed"
+  }, {
+    "name" : "cli_lock_records_2_0",
+    "status" : "passed"
+  }, {
+    "name" : "bump_downloaded_once",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "noop_keeps_2_0",
+    "status" : "passed"
+  }, {
+    "name" : "noop_does_not_redownload",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8912668314039728875/cli-pin-home/fixture", "--yes" ],
+    "startedAt" : "2026-11-07T21:27:46.497044Z",
+    "endedAt" : "2026-11-07T21:27:50.289573Z",
+    "exitCode" : 0,
+    "pid" : 56983,
+    "log" : "node-logs/cli.pin.bump.reinstalls.install.log",
+    "error" : null
+  }, {
+    "label" : "sync_after_bump",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8912668314039728875/cli-pin-home/fixture", "cli-pin-skill", "--yes" ],
+    "startedAt" : "2026-11-07T21:27:50.445367Z",
+    "endedAt" : "2026-11-07T21:27:52.897267Z",
+    "exitCode" : 0,
+    "pid" : 57237,
+    "log" : "node-logs/cli.pin.bump.reinstalls.sync_after_bump.log",
+    "error" : null
+  }, {
+    "label" : "sync_noop",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8912668314039728875/cli-pin-home/fixture", "cli-pin-skill", "--yes" ],
+    "startedAt" : "2026-11-07T21:27:53.073031Z",
+    "endedAt" : "2026-11-07T21:27:55.528298Z",
+    "exitCode" : 0,
+    "pid" : 57503,
+    "log" : "node-logs/cli.pin.bump.reinstalls.sync_noop.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "downloads" : 2,
+    "durationMs" : 9201
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:27:45.390860Z","executorEndedAt":"2026-11-07T21:28:09.259998Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cli.pin.bump.reinstalls.stdout.log","inputContextFile":"context/cli.pin.bump.reinstalls.input.json","traceId":"5eb85d5d23c665469490800882b59d44"}

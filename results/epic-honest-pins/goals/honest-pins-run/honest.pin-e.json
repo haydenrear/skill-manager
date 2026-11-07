@@ -1,0 +1,50 @@
+{
+  "nodeId" : "honest.pin-e",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:30:10.975819Z",
+  "endedAt" : "2026-11-07T21:30:12.168546Z",
+  "assertions" : [ {
+    "name" : "setup_v1_provisioned_reports_1_0",
+    "status" : "passed"
+  }, {
+    "name" : "control_unchanged_spec_served_from_cache",
+    "status" : "passed"
+  }, {
+    "name" : "shape_changed_url_serves_new_binary",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "provision_v1",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/virtual-mcp-gateway/.venv/bin/python", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/drive.py", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/vmg-data", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/v1/probe" ],
+    "startedAt" : "2026-11-07T21:30:10.984838Z",
+    "endedAt" : "2026-11-07T21:30:11.756615Z",
+    "exitCode" : 0,
+    "pid" : 67837,
+    "log" : "node-logs/honest.pin-e.provision_v1.log",
+    "error" : null
+  }, {
+    "label" : "provision_v1_unchanged",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/virtual-mcp-gateway/.venv/bin/python", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/drive.py", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/vmg-data", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/v1/probe" ],
+    "startedAt" : "2026-11-07T21:30:11.759040Z",
+    "endedAt" : "2026-11-07T21:30:11.885189Z",
+    "exitCode" : 0,
+    "pid" : 67889,
+    "log" : "node-logs/honest.pin-e.provision_v1_unchanged.log",
+    "error" : null
+  }, {
+    "label" : "provision_v2_same_bin_path",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/virtual-mcp-gateway/.venv/bin/python", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/drive.py", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/vmg-data", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-e/v2/probe" ],
+    "startedAt" : "2026-11-07T21:30:11.885891Z",
+    "endedAt" : "2026-11-07T21:30:12.165518Z",
+    "exitCode" : 0,
+    "pid" : 67891,
+    "log" : "node-logs/honest.pin-e.provision_v2_same_bin_path.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 1193
+  },
+  "logs" : [ "v1 reported=1.0; v1 again (url gone) reported=1.0; v2 (url changed, same bin_path) reported=2.0" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:30:10.303995Z","executorEndedAt":"2026-11-07T21:30:29.413225Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.pin-e.stdout.log","inputContextFile":"context/honest.pin-e.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

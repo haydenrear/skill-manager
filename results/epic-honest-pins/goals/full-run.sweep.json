@@ -1,0 +1,258 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 27,
+  "graphs_executed": 27,
+  "graphs_passed": 19,
+  "graphs_failed": 8,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "smoke",
+      "status": "failed",
+      "seconds": 112.626,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-213432"
+      ],
+      "reason": "Execution failed for task ':smoke'."
+    },
+    {
+      "graph": "onboard",
+      "status": "failed",
+      "seconds": 61.035,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-213547"
+      ],
+      "reason": "Execution failed for task ':onboard'."
+    },
+    {
+      "graph": "sponsored",
+      "status": "failed",
+      "seconds": 58.174,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-213648"
+      ],
+      "reason": "Execution failed for task ':sponsored'."
+    },
+    {
+      "graph": "source-tracking",
+      "status": "passed",
+      "seconds": 310.853,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-213745"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "git-latest-source-tracking",
+      "status": "passed",
+      "seconds": 236.152,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-214254"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "plugin-smoke",
+      "status": "failed",
+      "seconds": 80.114,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-214701"
+      ],
+      "reason": "Execution failed for task ':plugin-smoke'."
+    },
+    {
+      "graph": "harness-smoke",
+      "status": "passed",
+      "seconds": 306.399,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-214812"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "doc-smoke",
+      "status": "failed",
+      "seconds": 157.606,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-215334"
+      ],
+      "reason": "Execution failed for task ':doc-smoke'."
+    },
+    {
+      "graph": "project-manifest",
+      "status": "passed",
+      "seconds": 91.18,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-215550"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-resolve",
+      "status": "passed",
+      "seconds": 97.23,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-215722"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-smoke",
+      "status": "passed",
+      "seconds": 199.711,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-215901"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "spec-conformance",
+      "status": "passed",
+      "seconds": 95.02,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-220218"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-child-home",
+      "status": "passed",
+      "seconds": 268.778,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-220358"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-clone",
+      "status": "passed",
+      "seconds": 368.677,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-220837"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-tripwire",
+      "status": "failed",
+      "seconds": 25.664,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-221433"
+      ],
+      "reason": "Execution failed for task ':home-tripwire'."
+    },
+    {
+      "graph": "checkout-home",
+      "status": "passed",
+      "seconds": 186.975,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-221458"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-sync",
+      "status": "passed",
+      "seconds": 582.386,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-221813"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "ticket-lifecycle",
+      "status": "failed",
+      "seconds": 363.434,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-222751"
+      ],
+      "reason": "Execution failed for task ':ticket-lifecycle'."
+    },
+    {
+      "graph": "project-env",
+      "status": "passed",
+      "seconds": 96.944,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-223350"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-libs",
+      "status": "passed",
+      "seconds": 86.404,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-223525"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-profiles",
+      "status": "passed",
+      "seconds": 91.915,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-223652"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "artifact-dag",
+      "status": "passed",
+      "seconds": 253.798,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-223827"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "onboarding",
+      "status": "failed",
+      "seconds": 63.086,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-224249"
+      ],
+      "reason": "Execution failed for task ':onboarding'."
+    },
+    {
+      "graph": "home-integrity",
+      "status": "passed",
+      "seconds": 411.462,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-224350"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-verdicts",
+      "status": "passed",
+      "seconds": 401.398,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-225040"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "sync-settles",
+      "status": "passed",
+      "seconds": 57.771,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-225712"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "cli-pin",
+      "status": "passed",
+      "seconds": 44.559,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-225810"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261107-213337",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}

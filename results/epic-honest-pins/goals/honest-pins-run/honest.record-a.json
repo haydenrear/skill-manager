@@ -1,0 +1,98 @@
+{
+  "nodeId" : "honest.record-a",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:30:30.176124Z",
+  "endedAt" : "2026-11-07T21:30:43.917949Z",
+  "assertions" : [ {
+    "name" : "setup_homes_built_and_baselined",
+    "status" : "passed"
+  }, {
+    "name" : "control_noop_sync_records_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "setup_changing_sync_changed_the_unit",
+    "status" : "passed"
+  }, {
+    "name" : "shape_changing_sync_leaves_pending_drift",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/source/hp-record-a-unit", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:30:30.186531Z",
+    "endedAt" : "2026-11-07T21:30:33.085094Z",
+    "exitCode" : 0,
+    "pid" : 69054,
+    "log" : "node-logs/honest.record-a.install.log",
+    "error" : null
+  }, {
+    "label" : "drift_record_baseline",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "drift", "--record", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/project-home" ],
+    "startedAt" : "2026-11-07T21:30:33.085406Z",
+    "endedAt" : "2026-11-07T21:30:34.500899Z",
+    "exitCode" : 0,
+    "pid" : 69293,
+    "log" : "node-logs/honest.record-a.drift_record_baseline.log",
+    "error" : null
+  }, {
+    "label" : "clone_to_worktree",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/project-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/worktree-home", "--json" ],
+    "startedAt" : "2026-11-07T21:30:34.501194Z",
+    "endedAt" : "2026-11-07T21:30:36.614847Z",
+    "exitCode" : 0,
+    "pid" : 69395,
+    "log" : "node-logs/honest.record-a.clone_to_worktree.log",
+    "error" : null
+  }, {
+    "label" : "drift_before",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "drift", "--json", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/project-home" ],
+    "startedAt" : "2026-11-07T21:30:36.615206Z",
+    "endedAt" : "2026-11-07T21:30:38.296025Z",
+    "exitCode" : 0,
+    "pid" : 69531,
+    "log" : "node-logs/honest.record-a.drift_before.log",
+    "error" : null
+  }, {
+    "label" : "home_sync_noop",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/worktree-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/project-home", "--json" ],
+    "startedAt" : "2026-11-07T21:30:38.297118Z",
+    "endedAt" : "2026-11-07T21:30:39.712659Z",
+    "exitCode" : 0,
+    "pid" : 69615,
+    "log" : "node-logs/honest.record-a.home_sync_noop.log",
+    "error" : null
+  }, {
+    "label" : "drift_after_noop",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "drift", "--json", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/project-home" ],
+    "startedAt" : "2026-11-07T21:30:39.712964Z",
+    "endedAt" : "2026-11-07T21:30:41.083089Z",
+    "exitCode" : 0,
+    "pid" : 69711,
+    "log" : "node-logs/honest.record-a.drift_after_noop.log",
+    "error" : null
+  }, {
+    "label" : "home_sync_changing",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/worktree-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/project-home", "--json" ],
+    "startedAt" : "2026-11-07T21:30:41.084126Z",
+    "endedAt" : "2026-11-07T21:30:42.571288Z",
+    "exitCode" : 0,
+    "pid" : 69752,
+    "log" : "node-logs/honest.record-a.home_sync_changing.log",
+    "error" : null
+  }, {
+    "label" : "drift_after_change",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "drift", "--json", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-a/project-home" ],
+    "startedAt" : "2026-11-07T21:30:42.571556Z",
+    "endedAt" : "2026-11-07T21:30:43.912252Z",
+    "exitCode" : 8,
+    "pid" : 69862,
+    "log" : "node-logs/honest.record-a.drift_after_change.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 13741
+  },
+  "logs" : [ "changing sync rc=0 unitChanged=true pending=true; noop sync unchanged=true pending=false; setup=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:30:29.442224Z","executorEndedAt":"2026-11-07T21:30:57.322724Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.record-a.stdout.log","inputContextFile":"context/honest.record-a.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

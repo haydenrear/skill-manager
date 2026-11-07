@@ -1,0 +1,47 @@
+{
+  "schema" : 2,
+  "home" : "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+  "summary" : {
+    "artifacts" : 41,
+    "stale" : 0,
+    "unverifiable" : 3,
+    "current" : 38,
+    "stale_by_kind" : {
+      "unit-store" : 0,
+      "cli-shim" : 0,
+      "provisioned-tree" : 0,
+      "projection" : 0,
+      "marketplace-entry" : 0,
+      "harness-instance" : 0,
+      "mcp-registration" : 0,
+      "doc-import" : 0,
+      "unit-digest" : 0
+    }
+  },
+  "stale" : [ ],
+  "unverifiable" : [ {
+    "id" : "unit-digest:deploy-helm",
+    "kind" : "unit-digest",
+    "owner" : "deploy-helm",
+    "freshness" : "unverifiable",
+    "materialization" : "materialized",
+    "reason" : "verifying a digest row is a full walk of the unit; this read did not do one",
+    "because" : [ ]
+  }, {
+    "id" : "unit-digest:tla-spec-dev",
+    "kind" : "unit-digest",
+    "owner" : "tla-spec-dev",
+    "freshness" : "unverifiable",
+    "materialization" : "materialized",
+    "reason" : "verifying a digest row is a full walk of the unit; this read did not do one",
+    "because" : [ ]
+  }, {
+    "id" : "unit-digest:tracing-observability",
+    "kind" : "unit-digest",
+    "owner" : "tracing-observability",
+    "freshness" : "unverifiable",
+    "materialization" : "materialized",
+    "reason" : "verifying a digest row is a full walk of the unit; this read did not do one",
+    "because" : [ ]
+  } ]
+}
