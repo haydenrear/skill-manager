@@ -1,0 +1,51 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 4,
+  "graphs_executed": 4,
+  "graphs_passed": 1,
+  "graphs_failed": 3,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "source-tracking",
+      "status": "passed",
+      "seconds": 320.924,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-4/test_graph/build/validation-reports/20261107-204341"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "smoke",
+      "status": "failed",
+      "seconds": 1003.54,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-4/test_graph/build/validation-reports/20261107-204925"
+      ],
+      "reason": "Execution failed for task ':smoke'."
+    },
+    {
+      "graph": "plugin-smoke",
+      "status": "failed",
+      "seconds": 605.542,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-4/test_graph/build/validation-reports/20261107-210552"
+      ],
+      "reason": "Execution failed for task ':plugin-smoke'."
+    },
+    {
+      "graph": "honest-pins",
+      "status": "failed",
+      "seconds": 253.25,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-4/test_graph/build/validation-reports/20261107-211546"
+      ],
+      "reason": "Execution failed for task ':honest-pins'."
+    }
+  ],
+  "sweep_id": "20261107-204305",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}
