@@ -525,7 +525,7 @@ tickets:
   - id: HP-9
     github_issue: https://github.com/haydenrear/skill-manager/issues/413
     title: "Terminal evaluation: decide both goals on the integrated epic"
-    status: planned
+    status: pr_open
     role: evaluation
     owns_goals: ["GOAL-a-pin-is-honoured", "GOAL-the-record-describes-the-home"]
     schedule_revision: 2
