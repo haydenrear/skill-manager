@@ -1464,6 +1464,7 @@ public final class HomeCommand {
             // "reconciled" would be reading it wrong.
             return report.conflicted().isEmpty()
                     && report.with(ChildHomeMaterializer.SyncStatus.LINKED).isEmpty()
+                    && report.with(ChildHomeMaterializer.SyncStatus.DAMAGED).isEmpty()
                     ? 0 : 1;
         }
     }
@@ -1587,7 +1588,7 @@ public final class HomeCommand {
         }
         Log.info("  " + (report.dryRun() ? "would be: " : "")
                         + "%d unchanged, %d updated, %d new, %d merged, %d held back, "
-                        + "%d conflicted, %d removed upstream, %d linked",
+                        + "%d conflicted, %d removed upstream, %d linked, %d damaged",
                 report.count(ChildHomeMaterializer.SyncStatus.UNCHANGED),
                 report.count(ChildHomeMaterializer.SyncStatus.UPDATED),
                 report.count(ChildHomeMaterializer.SyncStatus.NEW),
@@ -1595,7 +1596,8 @@ public final class HomeCommand {
                 report.count(ChildHomeMaterializer.SyncStatus.HELD_BACK),
                 report.count(ChildHomeMaterializer.SyncStatus.CONFLICTED),
                 report.count(ChildHomeMaterializer.SyncStatus.REMOVED_UPSTREAM),
-                report.count(ChildHomeMaterializer.SyncStatus.LINKED));
+                report.count(ChildHomeMaterializer.SyncStatus.LINKED),
+                report.count(ChildHomeMaterializer.SyncStatus.DAMAGED));
         if (report.clean()) {
             Log.ok("%s%s%s", report.dryRun() ? "would reconcile " : "reconciled ", report.to(),
                     report.targeted() ? " (unit " + report.unit() + " only)" : "");

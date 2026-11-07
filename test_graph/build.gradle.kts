@@ -1914,7 +1914,7 @@ validationGraph {
      *   GOAL-the-record-describes-the-home
      *                                 record-a (#403)  record-b (#298)  record-c (#409)
      *                                 record-d (#400)  record-e (#394)
-     *                                 (record-f, #412, is HP-10's node, added by HP-10)
+     *                                 record-f (#412, HP-10)
      *
      * Every node asserts the HONEST outcome, carries a control arm, and names its
      * assertions setup_* / control_* / shape_*, so a red node says which half is
@@ -1945,5 +1945,6 @@ validationGraph {
         node("sources/honest-pins/RecordCSystemCliShim.java")
         node("sources/honest-pins/RecordDBytecode.java")
         node("sources/honest-pins/RecordEStaleManifest.java")
+        node("sources/honest-pins/RecordFDamagedUnitGit.java")
     }
 }

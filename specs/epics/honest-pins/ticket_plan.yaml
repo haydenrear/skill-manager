@@ -567,7 +567,7 @@ tickets:
   - id: HP-10
     github_issue: https://github.com/haydenrear/skill-manager/issues/412
     title: "A damaged unit's Git is reported as damaged, never read through the enclosing repository"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 2

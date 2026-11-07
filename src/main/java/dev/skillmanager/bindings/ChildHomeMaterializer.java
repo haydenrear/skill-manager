@@ -1150,7 +1150,20 @@ public final class ChildHomeMaterializer {
          * never happen is what happened before: the enumerator skipped it, the
          * report said {@code clean: true}, and the unit was never named.
          */
-        LINKED
+        LINKED,
+        /**
+         * One side's copy carries Git metadata that does not belong to it -- a
+         * {@code .git} missing HEAD or config, one git rejects, or one that was
+         * deleted from a copy whose record says it carried history (#412).
+         *
+         * <p>Its HEAD and refs are UNKNOWN, and unknown is never safe: nothing
+         * is written to either side, nothing is compared as history, and the
+         * partial {@code .git} is left exactly as found so its objects, index
+         * and refs can be recovered. Reading it anyway is how git discovery
+         * climbed to the enclosing application repository and reported that
+         * repository's branches as the unit's unpublished history.
+         */
+        DAMAGED
     }
 
     public record UnitSync(
@@ -1178,7 +1191,7 @@ public final class ChildHomeMaterializer {
         /** Is this an outcome a close-out must refuse on? */
         public boolean unresolved() {
             return status == SyncStatus.HELD_BACK || status == SyncStatus.CONFLICTED
-                    || status == SyncStatus.LINKED;
+                    || status == SyncStatus.LINKED || status == SyncStatus.DAMAGED;
         }
 
         /**
@@ -1267,6 +1280,15 @@ public final class ChildHomeMaterializer {
         }
 
         MaterializationRecord record = readRecord(name, kind).orElse(null);
+
+        // #412. Before ANY git question is asked of either copy: is its Git its
+        // own? A damaged copy's HEAD and refs are unknown, and every answer
+        // below would be read through whatever repository encloses it.
+        String damaged = damagedGitDetail("source", source, sourceRecordFor(name, kind));
+        if (damaged == null && destIsDir) damaged = damagedGitDetail("destination", dest, record);
+        if (damaged != null) {
+            return new UnitSync(name, kind, SyncStatus.DAMAGED, dest, List.of(), List.of(), damaged);
+        }
         if (destIsDir && record != null
                 && MaterializationMode.CHECKOUT.name().equals(record.mode())) {
             // A checkout's history is the thing of value in it, and a tree copy
@@ -1502,6 +1524,33 @@ public final class ChildHomeMaterializer {
         } finally {
             if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
         }
+    }
+
+    /**
+     * Why {@code unit}'s Git metadata cannot be trusted as its own, or null --
+     * #412. A {@code .git} present but not {@code unit}'s repository, or a
+     * {@code .git} gone from a copy whose own record says it carried history
+     * (a CHECKOUT, or a recorded history digest). A unit that never had a
+     * {@code .git} and was never recorded with one is NOT damaged (#333).
+     */
+    static String damagedGitDetail(String side, Path unit, MaterializationRecord record) {
+        GitOps.UnitGitIdentity id = GitOps.unitGitIdentity(unit);
+        String recovery = "; nothing was written and its .git was left exactly as found. "
+                + "Recover it in place (restore HEAD/config from a good copy of the unit's "
+                + "repository) or replace the unit with a valid checkout of its reviewed pin, "
+                + "then re-run";
+        if (id.damaged()) {
+            return "damaged unit: the " + side + " copy's Git metadata is not its own -- "
+                    + id.reason() + "; its HEAD and history are unknown" + recovery;
+        }
+        if (id.state() == GitOps.UnitGitState.ABSENT && record != null
+                && (MaterializationMode.CHECKOUT.name().equals(record.mode())
+                    || (record.historyDigest() != null && !record.historyDigest().isBlank()))) {
+            return "damaged unit: the " + side + " copy's .git is missing, though its "
+                    + "materialization record says it carried git history; its HEAD and history "
+                    + "are unknown" + recovery;
+        }
+        return null;
     }
 
     /** The source home's own record for this unit, or null. */
