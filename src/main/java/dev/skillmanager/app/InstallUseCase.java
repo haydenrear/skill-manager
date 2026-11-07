@@ -58,7 +58,27 @@ public final class InstallUseCase {
              * command can give them an exit code — see
              * {@link dev.skillmanager.validation.MarkdownImportValidator#EXIT_CODE}.
              */
-            int markdownImportViolations) {
+            int markdownImportViolations,
+            /**
+             * HP-5 (#376, DEF-OHV-186): one line per FAILED or PARTIAL receipt,
+             * {@code <Effect>: <message>}, in program order. {@link #errorCount}
+             * said how many and nothing said which, so a caller that refused on
+             * it — {@code project resolve} — could only print a count. A PARTIAL
+             * receipt is not printed by the renderer, so this was the only place
+             * the reason survived.
+             */
+            List<String> failures) {
+
+        public Report {
+            failures = failures == null ? List.of() : List.copyOf(failures);
+        }
+
+        public Report(int errorCount, int exitCode, List<String> committed,
+                      Map<McpWriter.ConfigChange, List<String>> agentConfigChanges,
+                      List<String> orphansUnregistered, int markdownImportViolations) {
+            this(errorCount, exitCode, committed, agentConfigChanges, orphansUnregistered,
+                    markdownImportViolations, List.of());
+        }
 
         public static Report empty() {
             return new Report(0, 0, List.of(), Map.of(), List.of(), 0);
@@ -395,8 +415,12 @@ public final class InstallUseCase {
         Map<McpWriter.ConfigChange, List<String>> agentChanges = new LinkedHashMap<>();
         List<String> orphans = new ArrayList<>();
         int importViolations = 0;
+        List<String> failures = new ArrayList<>();
         for (EffectReceipt r : receipts) {
-            if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) errorCount++;
+            if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) {
+                errorCount++;
+                failures.add(describeFailure(r));
+            }
             boolean commitFailed = r.status() == EffectStatus.FAILED
                     && r.effect() instanceof SkillEffect.CommitUnitsToStore;
             for (ContextFact f : r.facts()) {
@@ -421,6 +445,15 @@ public final class InstallUseCase {
             }
         }
         return new Report(errorCount, exitCode, committed, agentChanges, orphans,
-                importViolations);
+                importViolations, failures);
+    }
+
+    /** {@code <Effect>: <message>} — or the status alone when the receipt carried none. */
+    static String describeFailure(EffectReceipt r) {
+        String effect = r.effect() == null ? "?" : r.effect().getClass().getSimpleName();
+        String msg = r.errorMessage();
+        return effect + ": " + (msg == null || msg.isBlank()
+                ? r.status().name().toLowerCase(java.util.Locale.ROOT) + " (no message)"
+                : msg);
     }
 }

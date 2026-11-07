@@ -248,6 +248,48 @@ public final class LauncherShims {
         return new Result(dir, List.copyOf(written), pin);
     }
 
+    /** What {@link #pinIfAbsent} did. */
+    public enum PinOutcome {
+        /** No entrypoint was there; launchers and the pin were written. */
+        WROTE,
+        /** An entrypoint already answered; nothing was written. */
+        KEPT,
+        /** No entrypoint, and the running CLI could not be located to pin. */
+        UNLOCATED
+    }
+
+    /**
+     * @param pin the path the entrypoint pins when {@link PinOutcome#WROTE};
+     *            the existing entrypoint when {@link PinOutcome#KEPT}; null
+     *            when {@link PinOutcome#UNLOCATED}
+     */
+    public record PinIfAbsent(PinOutcome outcome, Path pin) {}
+
+    /**
+     * HP-5 (#376, DEF-OHV-184): give a home its CLI pin when it has none, in the
+     * same shape {@code home shims} writes, and leave an existing one alone.
+     *
+     * <p>{@code onboard} is the caller. Before this, a freshly onboarded home
+     * held {@code bin/cli/skt} and no {@code bin/cli/skill-manager}, so every
+     * reader of the pin — {@code skt sync} ("no pinned CLI"), {@code skt check}
+     * ("no skill-manager build consulted"), the launchers — had nothing to read.
+     *
+     * <p><b>An existing entrypoint is kept, not re-pinned.</b> Re-onboarding a
+     * home must not silently move which build it runs: choosing a build for an
+     * existing home is {@code home shims}' decision, made on purpose. "Exists"
+     * follows links, so a dangling entrypoint counts as absent and is replaced
+     * ({@link #writeOwnFile} deletes the link rather than writing through it).
+     *
+     * @param locatedCli the running CLI, or null when it cannot be located
+     *                   ({@link RunningCli#locateOrNull()})
+     */
+    public static PinIfAbsent pinIfAbsent(SkillStore store, Path locatedCli) throws IOException {
+        Path entry = cliEntrypoint(store);
+        if (Files.exists(entry)) return new PinIfAbsent(PinOutcome.KEPT, entry);
+        if (locatedCli == null) return new PinIfAbsent(PinOutcome.UNLOCATED, null);
+        return new PinIfAbsent(PinOutcome.WROTE, write(store, locatedCli).pin());
+    }
+
     /**
      * Write a generated file this home owns, replacing a symlink rather than
      * writing through it.
