@@ -11,11 +11,13 @@ python3 test_graph/run-graphs.py           # the 27 graphs meant to run here
 python3 test_graph/run-graphs.py --list    # classification only; runs nothing
 ```
 
-Thirty-one graphs are registered. Twenty-seven run; four are OPT-IN and excluded by
+Thirty-two graphs are registered. Twenty-seven run; five are OPT-IN and excluded by
 default — `browser-auth` and `password-reset` boot chromedriver and a real
 browser, `refresh-flow` is a known ~1-in-4 flake
-(skill-manager-integration-repository#53), and `hyper-experiments` reaches
-github, npm and the live RunPod API (#143). `run-graphs.py` names all four and
+(skill-manager-integration-repository#53), `hyper-experiments` reaches
+github, npm and the live RunPod API (#143), and `honest-pins` is the
+honest-pins epic's baseline harness, red by design until its terminal
+evaluation (#411, #413). `run-graphs.py` names all five and
 prints each one's opt-in command, so "did not run" can be told apart from "is
 not run here". It reads its verdicts from the sweep ledger, and it always exits
 0: it reports, it does not gate.
@@ -169,10 +171,11 @@ python3 .github/scripts/select-graph-set.py --scope full --print
 
 The selector fails if a name in `CORE` or `EXCLUDED` no longer exists in
 `test_graph/build.gradle.kts`, so renaming a graph breaks the selector
-loudly instead of shrinking the matrix silently. **Two graphs are excluded
+loudly instead of shrinking the matrix silently. **Three graphs are excluded
 from every automatic set** — `refresh-flow` (integration-repo #53, ~1-in-4
-flake by construction) and `hyper-experiments` (#143, three third-party
-services) — and the reason is printed into the job summary of every run.
+flake by construction), `hyper-experiments` (#143, three third-party
+services) and `honest-pins` (#411, an epic baseline that is red by design
+until HP-9 moves it into `full`) — and the reason is printed into the job summary of every run.
 
 **How many graphs did a run actually execute?** Read it, do not infer it:
 

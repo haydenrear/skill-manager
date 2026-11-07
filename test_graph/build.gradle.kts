@@ -1904,4 +1904,46 @@ validationGraph {
         node("sources/common/EnvPrepared.java")
         node("sources/cli-pin/CliPinBumpReinstalls.java")
     }
+
+    /**
+     * honest-pins — epic honest-pins (#411), built by HP-0 (#408): ONE NODE PER
+     * PLANTED SHAPE of the epic's two goals, each in a scratch home of its own.
+     *
+     *   GOAL-a-pin-is-honoured        pin-b (#406)  pin-c, pin-d (#407)  pin-e (#103)
+     *                                 (pin shape (a), #404, is the cli-pin graph above)
+     *   GOAL-the-record-describes-the-home
+     *                                 record-a (#403)  record-b (#298)  record-c (#409)
+     *                                 record-d (#400)  record-e (#394)
+     *                                 (record-f, #412, is HP-10's node, added by HP-10)
+     *
+     * Every node asserts the HONEST outcome, carries a control arm, and names its
+     * assertions setup_* / control_* / shape_*, so a red node says which half is
+     * red. Nodes for unfixed shapes are EXPECTED RED: that is the baseline, read
+     * in results/epic-honest-pins/baseline/. Each later ticket edits ONLY its own
+     * node file. OPT-IN until HP-9 (#413) reads it green: EXCLUDED in
+     * .github/scripts/select-graph-set.py, so a red baseline does not redden CI.
+     *
+     * No registry, no postgres, no live gateway: pin-e drives the gateway's
+     * Provisioner directly, which is why it needs the gateway venv.
+     *
+     * The nodes share NO state, so measure it with
+     *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 run.py honest-pins --continue
+     * Without that variable the plan stops at the first red node (pin-b at the
+     * baseline) and every later shape is reported `skipped`, which is not a
+     * measurement. `--continue` alone is Gradle's task-level flag and does not
+     * reach inside one graph.
+     */
+    testGraph("honest-pins") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/honest-pins/PinBLockShaBump.java")
+        node("sources/honest-pins/PinCAheadOfPin.java")
+        node("sources/honest-pins/PinDAheadOfPinWithEdit.java")
+        node("sources/honest-pins/PinEMcpBinaryUrl.java")
+        node("sources/honest-pins/RecordAHomeSyncArmsDrift.java")
+        node("sources/honest-pins/RecordBRecordedVersion.java")
+        node("sources/honest-pins/RecordCSystemCliShim.java")
+        node("sources/honest-pins/RecordDBytecode.java")
+        node("sources/honest-pins/RecordEStaleManifest.java")
+    }
 }
