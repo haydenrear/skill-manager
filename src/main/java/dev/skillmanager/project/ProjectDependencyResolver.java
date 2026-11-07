@@ -210,6 +210,33 @@ public final class ProjectDependencyResolver {
     private record MissingRef(SkillProject.ProjectUnitRef ref, String expectedName) {}
 
     /**
+     * HP-5 (#376, DEF-OHV-186): the refusal names what failed.
+     *
+     * <p>It used to read "failed publishing declared units, exit=0, errors=1":
+     * {@code exit} was the program's typed-halt code — 0 whenever no effect
+     * halted — printed by a command that then exited 1, and the one error was
+     * counted and never named. With the gateway unreachable that error is a
+     * PARTIAL {@code EnsureGateway} receipt, which the renderer does not print,
+     * so the log held that one line and nothing else. Now each failed effect is
+     * named with its own message, and a halt code is shown only when there was
+     * one.
+     */
+    public static String publishFailureMessage(InstallUseCase.Report report, boolean rolledBack) {
+        StringBuilder sb = new StringBuilder(
+                "project dependency resolve failed publishing declared units");
+        if (rolledBack) sb.append(" (rolled back)");
+        if (report.exitCode() != 0) sb.append(", halt exit code ").append(report.exitCode());
+        List<String> failures = report.failures();
+        if (!failures.isEmpty()) {
+            sb.append(": ").append(failures.size()).append(" effect(s) failed — ")
+                    .append(String.join("; ", failures));
+        } else if (report.errorCount() != 0) {
+            sb.append(": ").append(report.errorCount()).append(" effect(s) failed");
+        }
+        return sb.toString();
+    }
+
+    /**
      * Install the declared units the store is missing — atomically across the
      * whole declared closure (issue #168).
      *
@@ -283,9 +310,7 @@ public final class ProjectDependencyResolver {
                     new Executor(store, gateway).runStaged(program);
             InstallUseCase.Report report = result.result();
             if (report.exitCode() != 0 || report.errorCount() != 0 || result.rolledBack()) {
-                throw new IOException("project dependency resolve failed publishing declared units"
-                        + (result.rolledBack() ? " (rolled back)" : "")
-                        + ", exit=" + report.exitCode() + ", errors=" + report.errorCount());
+                throw new IOException(publishFailureMessage(report, result.rolledBack()));
             }
             installed.addAll(report.committed());
         } finally {

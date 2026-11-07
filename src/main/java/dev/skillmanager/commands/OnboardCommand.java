@@ -181,6 +181,9 @@ public final class OnboardCommand implements Callable<Integer> {
             else if (report.markdownImportViolations() > 0) {
                 rc = dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE;
             }
+            if (!outcome.rolledBack()) {
+                ensureCliPin(store, dev.skillmanager.launch.RunningCli.locateOrNull());
+            }
         }
 
         System.out.println();
@@ -188,6 +191,40 @@ public final class OnboardCommand implements Callable<Integer> {
                 + " skipped=" + report.skipped()
                 + (skipGateway ? "" : " gateway=" + gatewayStatus(store)));
         return rc;
+    }
+
+    /**
+     * HP-5 (#376, DEF-OHV-184): leave the onboarded home with its own
+     * {@code bin/cli/skill-manager}, the shape {@code home shims} writes.
+     *
+     * <p>Without it the home held {@code bin/cli/skt} and nothing else, and
+     * every reader of the pin had nothing to read: {@code skt sync} refused "no
+     * pinned CLI", {@code skt check} reported "no skill-manager build consulted
+     * (no-cli)". An existing entrypoint is kept — re-onboarding must not move a
+     * home to a different build behind its owner's back
+     * ({@link dev.skillmanager.launch.LauncherShims#pinIfAbsent}).
+     *
+     * <p>Not fatal when it cannot be done: the units are installed by now, and
+     * a pin is repairable by one command, which is printed. Returns the outcome
+     * so the decision can be asserted without driving picocli.
+     */
+    static dev.skillmanager.launch.LauncherShims.PinOutcome ensureCliPin(SkillStore store, Path locatedCli) {
+        String remedy = "skill-manager home shims --home " + store.root();
+        try {
+            var r = dev.skillmanager.launch.LauncherShims.pinIfAbsent(store, locatedCli);
+            switch (r.outcome()) {
+                case WROTE -> Log.ok("pinned CLI: %s -> %s",
+                        dev.skillmanager.launch.LauncherShims.cliEntrypoint(store), r.pin());
+                case KEPT -> Log.detail("kept the existing CLI pin at %s", r.pin());
+                case UNLOCATED -> Log.warn("this home has no bin/cli/skill-manager and the running "
+                        + "CLI could not be located to pin, so `skt sync` here will refuse "
+                        + "\"no pinned CLI\". Fix: %s", remedy);
+            }
+            return r.outcome();
+        } catch (IOException | RuntimeException e) {
+            Log.warn("could not write this home's CLI pin (%s). Fix: %s", e.getMessage(), remedy);
+            return dev.skillmanager.launch.LauncherShims.PinOutcome.UNLOCATED;
+        }
     }
 
     /**

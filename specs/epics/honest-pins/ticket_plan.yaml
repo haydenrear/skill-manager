@@ -298,7 +298,7 @@ tickets:
   - id: HP-5
     github_issue: https://github.com/haydenrear/skill-manager/issues/376
     title: "Onboarding writes the CLI pin, installs the current skt, and project resolve surfaces its error"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 2
