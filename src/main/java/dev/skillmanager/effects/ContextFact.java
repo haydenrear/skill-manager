@@ -164,6 +164,21 @@ public sealed interface ContextFact {
     record ProjectSyncSkippedNonDurable(String projectName, int findings, String message)
             implements ContextFact {}
 
+    /**
+     * A claiming project was NOT refreshed after a parent-home unit sync,
+     * because its repository's own manifest could not be read (#394). The
+     * registry's cached copy is deliberately not used in its place: a copy
+     * that cannot show it is current must not decide what the child home
+     * prunes. Like {@link ProjectSyncSkippedNonDurable}, the unit sync's exit
+     * code does not move.
+     *
+     * @param projectName the project whose child home was left untouched
+     * @param manifest    the manifest path that was tried
+     * @param message     the full advisory, including the repair command
+     */
+    record ProjectSyncSkippedManifestUnreadable(String projectName, String manifest, String message)
+            implements ContextFact {}
+
     // ---- Sync git ----
     record SyncGitUpToDate(String skillName, String label) implements ContextFact {}
     record SyncGitMerged(String skillName, String fetchedHash) implements ContextFact {}

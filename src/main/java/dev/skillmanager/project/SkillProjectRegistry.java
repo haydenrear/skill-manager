@@ -134,6 +134,52 @@ public final class SkillProjectRegistry {
         return Optional.of(SkillProjectParser.loadManifest(manifest, reg.projectRoot()));
     }
 
+    /**
+     * The manifest a registered project declares TODAY: the repository's own
+     * file, never the copy this registry cached under {@code projects/<name>/}.
+     *
+     * <p>#394. A root-home sync reconciled a project's child home against
+     * {@link #loadSnapshot}, a copy two months older than the repository's
+     * {@code skill-project.toml}, concluded a plugin the repository declares
+     * was "no longer a project dependency", and deleted it. The snapshot is a
+     * record of what was registered; it cannot show it is current, so nothing
+     * that DELETES may be judged against it.
+     *
+     * <p>Which file: the registration's {@code manifest_path} when it names a
+     * file outside this registry's own directory (the project's manifest, or a
+     * custom {@code --manifest}); otherwise — the incident's shape, where the
+     * registration was re-written from the snapshot and so points at itself —
+     * {@code <project_root>/<manifest_file>}.
+     *
+     * @return empty when the project is not registered
+     * @throws ProjectManifestUnreadableException when the repository's manifest
+     *         is missing or does not parse; the caller must leave the child
+     *         home alone rather than fall back to the snapshot
+     */
+    public Optional<SkillProject> loadCurrent(String name) throws IOException {
+        Optional<SkillProjectRegistration> registration = read(name);
+        if (registration.isEmpty()) return Optional.empty();
+        Path manifest = repositoryManifest(registration.get());
+        if (!Files.isRegularFile(manifest)) {
+            throw new ProjectManifestUnreadableException(name, manifest,
+                    "the repository's manifest is not there");
+        }
+        try {
+            return Optional.of(SkillProjectParser.loadManifest(manifest, registration.get().projectRoot()));
+        } catch (IOException | RuntimeException parse) {
+            throw new ProjectManifestUnreadableException(name, manifest,
+                    "the repository's manifest does not parse: " + parse.getMessage());
+        }
+    }
+
+    /** The repository's own manifest for {@code reg} — see {@link #loadCurrent}. */
+    public static Path repositoryManifest(SkillProjectRegistration reg) {
+        Path recorded = reg.manifestPath() == null ? null : reg.manifestPath().toAbsolutePath().normalize();
+        Path cacheDir = reg.registrationDir().toAbsolutePath().normalize();
+        if (recorded != null && !recorded.startsWith(cacheDir)) return recorded;
+        return reg.projectRoot().resolve(reg.manifestFile()).toAbsolutePath().normalize();
+    }
+
     public void delete(String name) throws IOException {
         requireSafeName(name);
         Path dir = store.projectsDir().resolve(name);

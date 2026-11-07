@@ -298,11 +298,24 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 dev.skillmanager.project.SkillProjectLock lock =
                         locks.read(projectName).orElse(null);
                 LinkedHashSet<String> refreshedClaimers = projectLockUnitNames(lock);
-                dev.skillmanager.model.SkillProject project = registry.loadSnapshot(projectName)
+                // #394: judged against the REPOSITORY's manifest, never the
+                // registry's cached copy under projects/<name>/. The reconcile
+                // below prunes undeclared units from the child home, and a
+                // copy that silently aged deleted a plugin the repository
+                // declared. An unreadable manifest throws
+                // ProjectManifestUnreadableException, handled below as a skip.
+                dev.skillmanager.model.SkillProject project = registry.loadCurrent(projectName)
                         .orElseThrow(() -> new IOException(
-                                "project registration snapshot is missing"));
+                                "project is not registered"));
                 if (lock != null && lock.profile() != null && !lock.profile().isBlank()) {
                     project = project.withProfile(lock.profile());
+                }
+                if (!projectName.equals(project.registryName())) {
+                    throw new dev.skillmanager.project.ProjectManifestUnreadableException(
+                            projectName,
+                            project.manifestPath(),
+                            "the repository's manifest now names project '" + project.registryName()
+                                    + "', not the registered '" + projectName + "'");
                 }
                 dev.skillmanager.project.ProjectSyncUseCase.Result result =
                         new dev.skillmanager.project.ProjectSyncUseCase(ctx.store(), e.gateway())
@@ -356,6 +369,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 String message = durability.advisory();
                 facts.add(new ContextFact.ProjectSyncSkippedNonDurable(
                         projectName, durability.fatalCount(), message));
+            } catch (dev.skillmanager.project.ProjectManifestUnreadableException unreadable) {
+                // #394, "cannot tell" leaves it in place. Same blast-radius
+                // reasoning as DEF-103 above: the unit whose bytes moved is
+                // fine, and a project whose checkout moved or was deleted must
+                // not fail every unit sync it happens to claim. Named, with
+                // the repair, never swallowed -- and never reconciled against
+                // the cached snapshot instead.
+                facts.add(new ContextFact.ProjectSyncSkippedManifestUnreadable(
+                        projectName, String.valueOf(unreadable.manifest()), unreadable.getMessage()));
             } catch (dev.skillmanager.project.ProjectImportViolationException imports) {
                 // M7 of #229's review: the THIRD caller of ProjectSyncUseCase.sync,
                 // and the one no CLI is standing in front of. The generic branch

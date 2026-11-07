@@ -1019,9 +1019,10 @@ public final class ProjectDependencyResolverTest {
                                 "project child skill exists before sync");
                         assertTrue(Files.isRegularFile(ledger), "project binding ledger exists before sync");
 
-                        Files.writeString(h.store().projectsDir()
-                                .resolve("rollback-refresh-project")
-                                .resolve("skill-project.toml"), """
+                        // #394: the reconcile reads the REPOSITORY's manifest, not
+                        // the registry's cached copy, so that is where the broken
+                        // declaration has to go to reach it.
+                        Files.writeString(repoRoot.resolve("skill-project.toml"), """
                                 [project]
                                 name = "rollback-refresh-project"
 
@@ -1038,7 +1039,7 @@ public final class ProjectDependencyResolverTest {
                                 false));
 
                         assertEquals(dev.skillmanager.effects.EffectStatus.PARTIAL, receipt.status(),
-                                "invalid project snapshot reports partial project sync failure");
+                                "invalid project manifest reports partial project sync failure");
                         assertTrue(Files.exists(codexProjection, LinkOption.NOFOLLOW_LINKS),
                                 "failed automatic refresh keeps previous Codex projection");
                         assertTrue(Files.exists(childSkill, LinkOption.NOFOLLOW_LINKS),

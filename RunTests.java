@@ -238,6 +238,7 @@ public class RunTests {
         failures += ProjectLibResolverTest.run();
         failures += ProjectVendoredResolverTest.run();
         failures += ProjectToRootPromotionTest.run();
+        failures += dev.skillmanager.project.RootSyncStaleManifestTest.run();
         failures += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
