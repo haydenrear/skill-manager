@@ -66,3 +66,8 @@ newer pin short of the tip, older pin without and with an applying edit, a
 conflicting edit refused with state preserved, a local commit refused, an
 unavailable sha failing closed, ordinary git-latest unchanged, lock-row
 mapping, and CLI `sync --lock` / `sync --to` with dry-run and second-run checks).
+
+## Other graphs (one sweep, 20261107-190044; `sweep-other-graphs.json`)
+
+graphs_selected=5 executed=5 passed=5 failed=0 — source-tracking, git-latest-source-tracking,
+project-resolve, project-smoke, sync-settles all PASSED. `smoke`: not run, docker unavailable.
