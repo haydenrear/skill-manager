@@ -1,0 +1,52 @@
+{
+  "nodeId" : "onboarding.bootstrapped",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T18:27:56.193881Z",
+  "endedAt" : "2026-11-07T18:28:55.450366Z",
+  "assertions" : [ {
+    "name" : "bootstrap_home_sh_exited_zero",
+    "status" : "passed"
+  }, {
+    "name" : "the_new_home_has_a_runtime_descriptor",
+    "status" : "passed"
+  }, {
+    "name" : "the_project_home_is_its_own_copy_of_the_source",
+    "status" : "passed"
+  }, {
+    "name" : "the_clone_carried_every_unit_the_source_home_held",
+    "status" : "passed"
+  }, {
+    "name" : "bootstrapping_a_home_leaves_the_checkout_clean",
+    "status" : "passed"
+  }, {
+    "name" : "the_onboarded_project_home_holds_bin_cli_skill_manager",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "bootstrap-project-home",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/plugins/tla-spec-dev/skills/git-issue-workflow/scripts/bootstrap-home.sh", "--root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/onboarding/proj", "--source", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/onboarding/src-home" ],
+    "startedAt" : "2026-11-07T18:27:56.203981Z",
+    "endedAt" : "2026-11-07T18:28:55.373766Z",
+    "exitCode" : 0,
+    "pid" : 57374,
+    "log" : "node-logs/onboarding.bootstrapped.bootstrap-project-home.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "storeUnits" : 6,
+    "sourceUnits" : 6,
+    "durationMs" : 59257
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/onboarding/proj/.skill-manager",
+    "bootstrapLog" : "/Volumes/dev/skill-manager-hp-5/test_graph/build/validation-reports/20261107-182448/node-logs/onboarding.bootstrapped.bootstrap-project-home.log",
+    "storeUnitCount" : "6",
+    "bootstrapExit" : "0",
+    "sourceForeignLedger" : "ob-alpha.projections.json -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/foreign-checkouts/foreign-checkout-1/.claude/skills\nob-alpha.projections.json -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/foreign-checkouts/foreign-checkout-1/.claude/skills/ob-alpha\nob-beta.projections.json -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/foreign-checkouts/foreign-checkout-2/.claude/skills\nob-beta.projections.json -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/foreign-checkouts/foreign-checkout-2/.claude/skills/ob-beta",
+    "cloneForeignLedger" : "",
+    "sourceForeignChildHomes" : "project_foreign-checkout-1 -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/foreign-checkouts/foreign-checkout-1/.skill-manager\nproject_foreign-checkout-2 -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/foreign-checkouts/foreign-checkout-2/.skill-manager",
+    "cloneForeignChildHomes" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T18:27:53.155626Z","executorEndedAt":"2026-11-07T18:29:09.040438Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboarding.bootstrapped.stdout.log","inputContextFile":"context/onboarding.bootstrapped.input.json","traceId":"048072f8fbbbaafded90e663432075b1"}

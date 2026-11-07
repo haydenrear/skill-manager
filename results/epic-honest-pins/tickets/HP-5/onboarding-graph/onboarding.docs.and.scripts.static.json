@@ -1,0 +1,42 @@
+{
+  "nodeId" : "onboarding.docs.and.scripts.static",
+  "status" : "failed",
+  "startedAt" : "2026-11-07T18:25:07.126257Z",
+  "endedAt" : "2026-11-07T18:25:07.364721Z",
+  "failureMessage" : "referenced=[agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh] missing=[] relativeCliHits=[selftest.sh:76, selftest.sh:2789, selftest.sh:2812, selftest.sh:2813] unwaived=[]",
+  "assertions" : [ {
+    "name" : "the_skill_under_test_was_found",
+    "status" : "passed"
+  }, {
+    "name" : "the_documentation_extractor_found_at_least_one_script",
+    "status" : "passed"
+  }, {
+    "name" : "the_extractor_found_the_four_known_good_scripts",
+    "status" : "failed"
+  }, {
+    "name" : "every_script_the_docs_tell_you_to_copy_or_run_exists",
+    "status" : "passed"
+  }, {
+    "name" : "the_resolution_base_is_the_skill_root_not_an_ancestor",
+    "status" : "passed"
+  }, {
+    "name" : "the_existence_predicate_discriminates_present_from_absent",
+    "status" : "passed"
+  }, {
+    "name" : "the_relative_cli_pattern_still_matches_its_known_waived_lines",
+    "status" : "passed"
+  }, {
+    "name" : "no_script_outside_the_waiver_resolves_a_cli_by_relative_path",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "scriptsReferenced" : 4,
+    "scriptsMissing" : 0,
+    "waivedRelativeCliLines" : 4,
+    "durationMs" : 238
+  },
+  "logs" : [ "referenced: [agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh]", "missing: []", "relative-cli hits: [selftest.sh:76, selftest.sh:2789, selftest.sh:2812, selftest.sh:2813]", "skill root: /Users/hayde/.skill-manager/plugins/tla-spec-dev/skills/git-issue-workflow", "ancestor copy of agent-home.sh exists: false at /Users/hayde/.skill-manager/plugins/tla-spec-dev/scripts/agent-home.sh" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T18:25:05.298017Z","executorEndedAt":"2026-11-07T18:25:21.119954Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboarding.docs.and.scripts.static.stdout.log","inputContextFile":"context/onboarding.docs.and.scripts.static.input.json","traceId":"048072f8fbbbaafded90e663432075b1","rerunGuidance":{"resumeGraphCommand":"./gradlew 'onboarding' --resume-from-build '/Volumes/dev/skill-manager-hp-5/test_graph/build/validation-reports/20261107-182448' --resume-from-node 'onboarding.docs.and.scripts.static'","runOnlyCommand":"./gradlew 'onboarding' --resume-from-build '/Volumes/dev/skill-manager-hp-5/test_graph/build/validation-reports/20261107-182448' --run-only-node 'onboarding.docs.and.scripts.static'","inputContextFile":"context/onboarding.docs.and.scripts.static.input.json"}}
