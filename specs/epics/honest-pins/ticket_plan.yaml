@@ -312,7 +312,7 @@ tickets:
       - goal: GOAL-a-pin-is-honoured
         contribution: guard
         expected_effect: "a freshly onboarded project home carries the CLI pin: no -> yes"
-        local_signal: "run.py onboarding: an assertion that <project>/.skill-manager/bin/cli/skill-manager exists after onboarding"
+        local_signal: "run.py onboarding: an assertion that the onboarded project home holds bin/cli/skill-manager"
 
   - id: HP-6
     github_issue: https://github.com/haydenrear/skill-manager/issues/400
