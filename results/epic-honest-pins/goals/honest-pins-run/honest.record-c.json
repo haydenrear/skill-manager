@@ -1,0 +1,53 @@
+{
+  "nodeId" : "honest.record-c",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:31:25.886138Z",
+  "endedAt" : "2026-11-07T21:31:32.618674Z",
+  "assertions" : [ {
+    "name" : "setup_system_cli_unlinked_and_own_cli_installed",
+    "status" : "passed"
+  }, {
+    "name" : "control_installed_shim_present_is_not_stale",
+    "status" : "passed"
+  }, {
+    "name" : "control_deleted_installed_shim_is_stale",
+    "status" : "passed"
+  }, {
+    "name" : "shape_system_cli_not_reported_stale",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-c/fixture/hp-record-c-unit", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:31:25.911578Z",
+    "endedAt" : "2026-11-07T21:31:28.861465Z",
+    "exitCode" : 0,
+    "pid" : 72566,
+    "log" : "node-logs/honest.record-c.install.log",
+    "error" : null
+  }, {
+    "label" : "artifacts_stale_installed",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-11-07T21:31:28.862616Z",
+    "endedAt" : "2026-11-07T21:31:30.763086Z",
+    "exitCode" : 0,
+    "pid" : 72777,
+    "log" : "node-logs/honest.record-c.artifacts_stale_installed.log",
+    "error" : null
+  }, {
+    "label" : "artifacts_stale_after_delete",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "artifacts", "stale", "--json" ],
+    "startedAt" : "2026-11-07T21:31:30.764142Z",
+    "endedAt" : "2026-11-07T21:31:32.613894Z",
+    "exitCode" : 0,
+    "pid" : 72884,
+    "log" : "node-logs/honest.record-c.artifacts_stale_after_delete.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 6732
+  },
+  "logs" : [ "system sh listed stale=false; own probe present listed stale=false; own probe deleted listed stale=true; reportRead=true; setup=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:31:25.123135Z","executorEndedAt":"2026-11-07T21:31:48.584348Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.record-c.stdout.log","inputContextFile":"context/honest.record-c.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

@@ -1,0 +1,33 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 2,
+  "graphs_executed": 2,
+  "graphs_passed": 2,
+  "graphs_failed": 0,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "cli-pin",
+      "status": "passed",
+      "seconds": 47.431,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-212730"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "honest-pins",
+      "status": "passed",
+      "seconds": 310.481,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-9/test_graph/build/validation-reports/20261107-212823"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261107-212708",
+  "gradle_exit_code": 0,
+  "continue_past_failures": true
+}

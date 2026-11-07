@@ -1,0 +1,86 @@
+{
+  "nodeId" : "honest.record-d",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:31:49.312634Z",
+  "endedAt" : "2026-11-07T21:32:05.045260Z",
+  "assertions" : [ {
+    "name" : "setup_installed_from_remote",
+    "status" : "passed"
+  }, {
+    "name" : "setup_consumers_installed_behind",
+    "status" : "passed"
+  }, {
+    "name" : "control_real_edit_is_published",
+    "status" : "passed"
+  }, {
+    "name" : "shape_bytecode_not_published",
+    "status" : "passed"
+  }, {
+    "name" : "shape_bytecode_alone_does_not_refuse_sync",
+    "status" : "passed"
+  }, {
+    "name" : "control_real_edit_still_refuses_sync",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "git+file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-d/remote.git/", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:31:49.501502Z",
+    "endedAt" : "2026-11-07T21:31:52.394886Z",
+    "exitCode" : 0,
+    "pid" : 74026,
+    "log" : "node-logs/honest.record-d.install.log",
+    "error" : null
+  }, {
+    "label" : "install_consumer_bytecode_only",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "git+file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-d/remote.git/", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:31:52.411873Z",
+    "endedAt" : "2026-11-07T21:31:54.587330Z",
+    "exitCode" : 0,
+    "pid" : 74248,
+    "log" : "node-logs/honest.record-d.install_consumer_bytecode_only.log",
+    "error" : null
+  }, {
+    "label" : "install_consumer_bytecode_and_edit",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "git+file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-d/remote.git/", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:31:54.587745Z",
+    "endedAt" : "2026-11-07T21:31:56.764756Z",
+    "exitCode" : 0,
+    "pid" : 74396,
+    "log" : "node-logs/honest.record-d.install_consumer_bytecode_and_edit.log",
+    "error" : null
+  }, {
+    "label" : "unit_publish",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "unit", "publish", "hp-record-d-unit", "--direct", "--ticket", "hp0", "--json" ],
+    "startedAt" : "2026-11-07T21:31:56.797722Z",
+    "endedAt" : "2026-11-07T21:31:58.563095Z",
+    "exitCode" : 0,
+    "pid" : 74529,
+    "log" : "node-logs/honest.record-d.unit_publish.log",
+    "error" : null
+  }, {
+    "label" : "sync_consumer_bytecode_only",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "hp-record-d-unit", "--git-latest", "--skip-mcp", "--yes" ],
+    "startedAt" : "2026-11-07T21:31:58.614185Z",
+    "endedAt" : "2026-11-07T21:32:01.919474Z",
+    "exitCode" : 0,
+    "pid" : 74674,
+    "log" : "node-logs/honest.record-d.sync_consumer_bytecode_only.log",
+    "error" : null
+  }, {
+    "label" : "sync_consumer_bytecode_and_edit",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "hp-record-d-unit", "--git-latest", "--skip-mcp", "--yes" ],
+    "startedAt" : "2026-11-07T21:32:01.919746Z",
+    "endedAt" : "2026-11-07T21:32:05.005586Z",
+    "exitCode" : 7,
+    "pid" : 75071,
+    "log" : "node-logs/honest.record-d.sync_consumer_bytecode_and_edit.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 15733
+  },
+  "logs" : [ "publish rc=0 moved=true; remote tree=SKILL.md,skill-manager.toml,tool.py; editPublished=true; setup=true; sync(bytecode only) rc=0 refused=false reached=true bytecodeKept=true; sync(bytecode+edit) rc=7 refused=true editKept=true; consumersSetup=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:31:48.609542Z","executorEndedAt":"2026-11-07T21:32:18.525131Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.record-d.stdout.log","inputContextFile":"context/honest.record-d.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}
