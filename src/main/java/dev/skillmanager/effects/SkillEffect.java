@@ -451,8 +451,35 @@ public sealed interface SkillEffect permits
             UnitKind kind,
             InstalledUnit.InstallSource installSource,
             boolean gitLatest,
-            boolean merge
-    ) implements SkillEffect {}
+            boolean merge,
+            /**
+             * HP-2 (#406, #407): an immutable target this sync must land on, or
+             * null for an ordinary sync that follows the recorded ref. When set,
+             * the handler moves HEAD to {@link Pin#sha} (or what {@link Pin#ref}
+             * names) — older or newer than HEAD — carrying worktree edits by a
+             * three-way apply onto the PIN, and refuses by name rather than
+             * landing anywhere else. See {@link SyncGitPin}.
+             */
+            Pin pin
+    ) implements SkillEffect {
+        public SyncGit(String unitName, UnitKind kind, InstalledUnit.InstallSource installSource,
+                       boolean gitLatest, boolean merge) {
+            this(unitName, kind, installSource, gitLatest, merge, null);
+        }
+
+        /**
+         * The requested identity. {@code origin} null keeps the recorded origin;
+         * {@code ref} is what the installed record (and so the lock row) tracks
+         * afterwards; {@code sha} null means "whatever {@code ref} resolves to
+         * now", which is then recorded as the resolved sha.
+         */
+        public record Pin(String origin, String ref, String sha) {
+            public String label() {
+                if (sha != null && !sha.isBlank()) return sha.length() > 12 ? sha.substring(0, 12) : sha;
+                return ref;
+            }
+        }
+    }
 
     /** Set an error on a unit's source record. */
     record AddUnitError(String unitName, InstalledUnit.ErrorKind kind, String message) implements SkillEffect {}

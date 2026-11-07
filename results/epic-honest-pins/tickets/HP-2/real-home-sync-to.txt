@@ -1,0 +1,14 @@
+### 5b. state before: HEAD=1669c894039e7aca679c289981dcfc84f2eec567
+### 5c. sync tracing-observability --to OLD (older than HEAD)
+rc=0
+tracing-observability: moved 1669c89403 → pin aa6149c1cc
+HEAD=aa6149c1ccbf027c6a59eaba1487dca0e41042ce
+### 6b. SECOND (plain) sync tracing-observability
+rc=0
+✓ tools: 2 already present
+✓ cli: 17 already present
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261107-133058-d227.log
+HEAD=aa6149c1ccbf027c6a59eaba1487dca0e41042ce
+ref = "aa6149c1ccbf027c6a59eaba1487dca0e41042ce"
+resolved_sha = "aa6149c1ccbf027c6a59eaba1487dca0e41042ce"
+record aa6149c1ccbf027c6a59eaba1487dca0e41042ce aa6149c1ccbf027c6a59eaba1487dca0e41042ce

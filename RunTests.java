@@ -223,6 +223,7 @@ public class RunTests {
         failures += LockSchemaVersionTest.run();
         failures += LockAtomicityTest.run();
         failures += SyncFromLockScenarioTest.run();
+        failures += dev.skillmanager.effects.SyncGitPinTest.run();
         failures += ClaudeProjectorTest.run();
         failures += CodexProjectorTest.run();
         failures += GeminiProjectorTest.run();

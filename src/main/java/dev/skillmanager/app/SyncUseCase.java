@@ -127,7 +127,26 @@ public final class SyncUseCase {
              * Ensure a gateway is RUNNING before the sync, starting one if it
              * is not — the half {@code 7fce8ed} was right to make opt-in.
              */
-            boolean startGateway) {
+            boolean startGateway,
+            /**
+             * HP-2: run the post-sync {@code SyncClaimingProjects} refresh. False
+             * only for the pin reconcile {@code project resolve} itself runs —
+             * that resolve IS the project refresh, and re-entering it from inside
+             * its own sync would resolve the same project twice, nested.
+             */
+            boolean refreshClaimingProjects) {
+        public Options(String registryOverride,
+                       boolean gitLatest,
+                       boolean merge,
+                       boolean withMcp,
+                       boolean withAgents,
+                       boolean yesForFromDir,
+                       boolean forceScripts,
+                       boolean startGateway) {
+            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+                    forceScripts, startGateway, true);
+        }
+
         public Options(String registryOverride,
                        boolean gitLatest,
                        boolean merge,
@@ -171,7 +190,15 @@ public final class SyncUseCase {
      */
     public sealed interface Target {
         String skillName();
-        record Git(String skillName) implements Target {}
+        /**
+         * {@code pin} null: follow the recorded ref (ordinary sync). Non-null
+         * (HP-2): land on exactly that identity or refuse by name — the shape
+         * {@code sync --lock}, {@code sync <unit> --to} and {@code project
+         * resolve} all reduce to.
+         */
+        record Git(String skillName, SkillEffect.SyncGit.Pin pin) implements Target {
+            public Git(String skillName) { this(skillName, null); }
+        }
         record FromDir(String skillName, Path dir) implements Target {}
         /**
          * Doc-repo sync (#48). {@code force} clobbers locally-edited
@@ -271,7 +298,7 @@ public final class SyncUseCase {
                             ? src.unitKind()
                             : dev.skillmanager.model.UnitKind.SKILL;
                     effects.add(new SkillEffect.SyncGit(
-                            g.skillName(), kind, is, options.gitLatest(), options.merge()));
+                            g.skillName(), kind, is, options.gitLatest(), options.merge(), g.pin()));
                 }
                 case Target.FromDir f -> effects.add(new SkillEffect.SyncFromLocalDir(
                         f.skillName(), f.dir(), options.merge(), options.yesForFromDir()));
@@ -410,7 +437,7 @@ public final class SyncUseCase {
         // have been written by RecordSourceProvenance by then.
         effects.add(buildLockUpdate(store, liveUnits));
         List<String> projectSyncUnits = projectSyncUnitNames(targets);
-        if (!projectSyncUnits.isEmpty()) {
+        if (!projectSyncUnits.isEmpty() && options.refreshClaimingProjects()) {
             // startGateway, NOT withMcp, and this one is load-bearing rather
             // than tidy. This argument reaches a CHILD project's own install
             // program through ProjectDependencyResolver ->
