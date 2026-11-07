@@ -1,0 +1,58 @@
+{
+  "nodeId" : "onboarding.global.home.untouched",
+  "status" : "failed",
+  "startedAt" : "2026-11-07T18:37:28.778984Z",
+  "endedAt" : "2026-11-07T18:38:04.800296Z",
+  "failureMessage" : "sandboxGlobalHomeAbsent=true baselineEntries=107604 differences=[-F\t.claude/skills/synced/8253a04d-f03b-4fa6-ab60-7f752c0a4c53_1e44d41e-f99f-4374-a6db-119098a4bcc9/.last-complete-round\t40\t1794075666518, -F\t.claude/skills/synced/8253a04d-f03b-4fa6-ab60-7f752c0a4c53_1e44d41e-f99f-4374-a6db-119098a4bcc9/manifest.json\t11500\t1794075666517, +F\t.claude/skills/synced/8253a04d-f03b-4fa6-ab60-7f752c0a4c53_1e44d41e-f99f-4374-a6db-119098a4bcc9/.last-complete-round\t40\t1794076266732, +F\t.claude/skills/synced/8253a04d-f03b-4fa6-ab60-7f752c0a4c53_1e44d41e-f99f-4374-a6db-119098a4bcc9/manifest.json\t11500\t1794076266732] worktreeNoise=0 configChanges=[] control=true m1=true m2=true m3=true agentControl=true m4=true configPlantMisses=[]",
+  "assertions" : [ {
+    "name" : "the_walk_never_created_a_global_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_baseline_is_readable",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_baseline_watched_a_non_trivial_tree",
+    "status" : "passed"
+  }, {
+    "name" : "the_operators_real_agent_homes_did_not_move",
+    "status" : "failed"
+  }, {
+    "name" : "the_config_check_covers_the_sibling_claude_json_file",
+    "status" : "passed"
+  }, {
+    "name" : "the_agent_config_registrations_are_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "an_unchanged_tree_reports_clean",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_a_planted_unit_directory",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_a_planted_symlink",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_an_in_place_rewrite",
+    "status" : "passed"
+  }, {
+    "name" : "an_unchanged_agent_home_reports_clean",
+    "status" : "passed"
+  }, {
+    "name" : "the_leak_oracle_detects_a_repointed_agent_skill_link",
+    "status" : "passed"
+  }, {
+    "name" : "the_config_fingerprint_sees_registrations_and_not_counters",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "baselineEntries" : 107604,
+    "differencesFound" : 4,
+    "worktreeRegistrationChanges" : 0,
+    "configFilesChanged" : 0,
+    "durationMs" : 36022
+  },
+  "logs" : [ "config changes: []" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T18:37:26.251336Z","executorEndedAt":"2026-11-07T18:38:18.141559Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboarding.global.home.untouched.stdout.log","inputContextFile":"context/onboarding.global.home.untouched.input.json","traceId":"048072f8fbbbaafded90e663432075b1","rerunGuidance":{"resumeGraphCommand":"./gradlew 'onboarding' --resume-from-build '/Volumes/dev/skill-manager-hp-5/test_graph/build/validation-reports/20261107-182448' --resume-from-node 'onboarding.global.home.untouched'","runOnlyCommand":"./gradlew 'onboarding' --resume-from-build '/Volumes/dev/skill-manager-hp-5/test_graph/build/validation-reports/20261107-182448' --run-only-node 'onboarding.global.home.untouched'","inputContextFile":"context/onboarding.global.home.untouched.input.json"}}

@@ -1,0 +1,3 @@
+$ /Users/hayde/IdeaProjects/skill-manager/.skill-manager/bin/cli/skill-manager home close-out --home /Volumes/dev/skill-manager-hp-5/.skill-manager --into /Users/hayde/IdeaProjects/skill-manager/.skill-manager
+✓ /Volumes/dev/skill-manager-hp-5/.skill-manager holds nothing that removing it would destroy
+exit 0

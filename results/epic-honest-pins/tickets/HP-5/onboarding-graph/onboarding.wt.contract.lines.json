@@ -1,0 +1,50 @@
+{
+  "nodeId" : "onboarding.wt.contract.lines",
+  "status" : "failed",
+  "startedAt" : "2026-11-07T18:37:12.960029Z",
+  "endedAt" : "2026-11-07T18:37:13.014697Z",
+  "failureMessage" : "problems=[wt new exit 0 printed 2 line(s): [still running after 25s (new OB-1) — watch: tail -f /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-s00Ws1-run.log, created worktree /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/onboarding/proj-OB-1], summary named '', wt info named '/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/onboarding/proj-OB-1'] newExit=0 infoExit=0 blockedExit=4 forcedExit=0",
+  "assertions" : [ {
+    "name" : "the_anchored_matcher_distinguishes_close_from_closed",
+    "status" : "passed"
+  }, {
+    "name" : "the_unforced_close_was_genuinely_blocked_by_the_gate",
+    "status" : "passed"
+  }, {
+    "name" : "the_forced_close_took_the_forced_path_not_the_pass_through",
+    "status" : "passed"
+  }, {
+    "name" : "wt_new_succeeded_in_exactly_one_line",
+    "status" : "failed"
+  }, {
+    "name" : "wt_new_emitted_one_contract_not_both",
+    "status" : "passed"
+  }, {
+    "name" : "wt_info_printed_the_full_key_set",
+    "status" : "passed"
+  }, {
+    "name" : "the_one_line_summary_names_the_worktree_wt_info_names",
+    "status" : "failed"
+  }, {
+    "name" : "wt_new_on_a_dirty_tree_emitted_only_the_failure_contract",
+    "status" : "passed"
+  }, {
+    "name" : "wt_close_blocked_emitted_only_the_failure_contract",
+    "status" : "passed"
+  }, {
+    "name" : "wt_close_force_emitted_one_contract_not_both",
+    "status" : "passed"
+  }, {
+    "name" : "every_refusal_fit_the_three_line_budget",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "contractProblems" : 2,
+    "newSuccessLines" : 2,
+    "durationMs" : 54
+  },
+  "logs" : [ "problems: [wt new exit 0 printed 2 line(s): [still running after 25s (new OB-1) — watch: tail -f /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-s00Ws1-run.log, created worktree /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/onboarding/proj-OB-1], summary named '', wt info named '/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2700469802360617589/onboarding/proj-OB-1']" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T18:37:10.671417Z","executorEndedAt":"2026-11-07T18:37:26.193611Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboarding.wt.contract.lines.stdout.log","inputContextFile":"context/onboarding.wt.contract.lines.input.json","traceId":"048072f8fbbbaafded90e663432075b1","rerunGuidance":{"resumeGraphCommand":"./gradlew 'onboarding' --resume-from-build '/Volumes/dev/skill-manager-hp-5/test_graph/build/validation-reports/20261107-182448' --resume-from-node 'onboarding.wt.contract.lines'","runOnlyCommand":"./gradlew 'onboarding' --resume-from-build '/Volumes/dev/skill-manager-hp-5/test_graph/build/validation-reports/20261107-182448' --run-only-node 'onboarding.wt.contract.lines'","inputContextFile":"context/onboarding.wt.contract.lines.input.json"}}

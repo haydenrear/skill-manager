@@ -1,0 +1,65 @@
+# Deferred findings filed by HP-5 (#376). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep "PARTIAL", "renderer") and
+# GitHub issues (search "partial receipt renderer"): none.
+
+findings:
+  - id: DEF-HP5-001
+    found_by: HP-5 tracing DEF-OHV-186 (project resolve hides its error)
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "none (effects/ConsoleProgramRenderer is outside HP-5's conflict keys)"
+    summary: >
+      ConsoleProgramRenderer.onReceipt prints a receipt's errorMessage only when its
+      status is FAILED (or when it HALTs). A PARTIAL receipt -- EnsureGateway's
+      "remote gateway unreachable", RunInstallPlan's "N plan-action effect(s) failed",
+      SyncAgents' "N agent step(s) failed" and ~20 others -- is counted as an error by
+      every use-case decode yet never printed. That is why #376's log held one line.
+      HP-5 fixed the project-resolve refusal by naming the failures from the report;
+      every other command that counts PARTIAL receipts into an exit code (install,
+      onboard, sync) still prints the count without the reason.
+    reproduction: >
+      SKILL_MANAGER_GATEWAY_URL=http://gw.invalid:9 skill-manager install <local skill>
+      (no --skip-gateway) in a scratch home: exit non-zero, no line names EnsureGateway.
+      Compare results/epic-honest-pins/tickets/HP-5/project-resolve-unreachable-gateway.log,
+      where project resolve now names it.
+    evidence: [results/epic-honest-pins/tickets/HP-5/project-resolve-unreachable-gateway.log]
+    suggested_fix: >
+      In ConsoleProgramRenderer.onReceipt, print PARTIAL receipts' errorMessage as a
+      warning ("! <Effect> partial: <message>"), or have each command print
+      InstallUseCase.Report.failures() (added by HP-5) next to its error count.
+    disposition: open
+
+  - id: DEF-HP5-002
+    found_by: HP-5 re-checking DEF-OHV-183 (onboard installs an old vendored skt)
+    found_at_commit: 433f1090ab6c
+    severity: info
+    maps_to: "none -- already fixed before this epic (OUN-6 / SI-18)"
+    summary: >
+      DEF-OHV-183 no longer reproduces: OnboardCommand.BUNDLED_SKILLS holds one entry,
+      github:haydenrear/tla-spec-dev-plugin with dirName=null, and neither
+      skill-publisher-skill/ nor skill-manager-skill/ is in the tree, so onboard always
+      fetches the current plugin (which carries skt) from its own repository. Recorded
+      so the backlog entry can be closed rather than re-investigated.
+    reproduction: >
+      ls skill-publisher-skill skill-manager-skill -> both absent;
+      grep -n BundledSkill src/main/java/dev/skillmanager/commands/OnboardCommand.java
+    evidence: [results/epic-honest-pins/tickets/HP-5/README.md]
+    disposition: open
+
+  - id: DEF-HP5-003
+    found_by: HP-5 running `skt check` on a home freshly onboarded by this branch's build
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "tla-spec-dev-plugin (skt) -- outside this repository"
+    summary: >
+      With the pin now written, `skt check` on a freshly onboarded home reports
+      "no skill-manager build consulted (timeout)" instead of "(no-cli)": it reads
+      bin/cli/skill-manager and runs it, but the pinned build here is the checkout's
+      jbang launcher, whose cold start exceeds skt's probe budget. A Homebrew-installed
+      release would likely answer in time; not measured.
+    reproduction: >
+      ./skill-manager onboard --skip-gateway into a scratch SKILL_MANAGER_HOME, then
+      SKILL_MANAGER_HOME=<home> <home>/bin/cli/skt check
+    evidence: [results/epic-honest-pins/tickets/HP-5/onboard-fresh-home-cli-pin.txt]
+    suggested_fix: "skt: raise the build-probe timeout, or report the timeout with the pinned path it ran."
+    disposition: open

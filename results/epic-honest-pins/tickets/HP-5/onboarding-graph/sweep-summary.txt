@@ -1,0 +1,4 @@
+== test graph sweep 20261107-182306 ==
+Counted from this invocation's own task outcomes, not from build/validation-reports/.
+graphs_selected=1  graphs_executed=1  graphs_passed=0  graphs_failed=1  graphs_not_run=0
+  FAILED   onboarding  991.5s  build/validation-reports/20261107-182448  (Execution failed for task ':onboarding'.)
