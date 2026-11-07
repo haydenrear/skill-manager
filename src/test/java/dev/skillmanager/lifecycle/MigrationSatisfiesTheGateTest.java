@@ -414,10 +414,23 @@ public final class MigrationSatisfiesTheGateTest {
             git(unit.getParent(), "clone", "-q", bare.toString(), unit.toString());
             Files.writeString(unit.resolve("SKILL.md"), "---\nname: " + MOVED + "\ndescription: x\n---\n\nbody\n");
             git(unit, "add", "-A");
+            git(unit, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "fetched once");
+            // The last state this checkout fetched: origin/main exists, at c1.
+            git(unit, "push", "-q", "origin", "HEAD:refs/heads/main");
+            String fetched = gitOut(unit, "rev-parse", "HEAD");
+            Files.writeString(unit.resolve("NOTES.md"), "published later\n");
+            git(unit, "add", "-A");
             git(unit, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "published");
-            // Push by URL, not by remote name: the commit reaches the remote
-            // but refs/remotes/origin/* is NOT updated — the stale-ref state.
+            String published = gitOut(unit, "rev-parse", "HEAD");
             git(unit, "push", "-q", bare.toString(), "HEAD:refs/heads/main");
+            // #408: whether a push updates refs/remotes/origin/* depends on the
+            // runner's git -- 2.56 updates it even for a push by URL when the
+            // URL matches origin's, so "push by URL" no longer leaves it stale.
+            // Rewind the tracking ref explicitly: the remote holds the work,
+            // and the local refs are one fetch behind it, on every git.
+            git(unit, "update-ref", "refs/remotes/origin/main", fetched);
+            assertEquals(published, gitOut(bare, "rev-parse", "refs/heads/main"),
+                    "setup: the work really is on the remote");
             assertTrue(dev.skillmanager.source.GitOps.publishedRefContaining(unit) == null,
                     "precondition: the local refs alone say unpublished");
 
@@ -579,6 +592,15 @@ public final class MigrationSatisfiesTheGateTest {
         Process p = new ProcessBuilder(cmd).directory(dir.toFile()).redirectErrorStream(true).start();
         String out = new String(p.getInputStream().readAllBytes());
         if (p.waitFor() != 0) throw new IllegalStateException("git " + String.join(" ", args) + ": " + out);
+    }
+
+    private static String gitOut(Path dir, String... args) throws Exception {
+        java.util.List<String> cmd = new java.util.ArrayList<>(List.of("git"));
+        cmd.addAll(List.of(args));
+        Process p = new ProcessBuilder(cmd).directory(dir.toFile()).start();
+        String out = new String(p.getInputStream().readAllBytes()).trim();
+        if (p.waitFor() != 0) throw new IllegalStateException("git " + String.join(" ", args) + ": " + out);
+        return out;
     }
 
     /** A child-home registration listing {@code units}, as a project resolve writes one. */
