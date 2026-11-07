@@ -1,0 +1,110 @@
+{
+ "runId": "20261107-184954",
+ "sweepId": "20261107-184906",
+ "nodes": {
+  "env.prepared": {
+   "status": "passed",
+   "assertions": {
+    "home_created": "passed",
+    "agent_home_created": "passed",
+    "codex_home_created": "passed",
+    "gemini_home_created": "passed",
+    "ports_allocated": "passed"
+   }
+  },
+  "gateway.python.venv.ready": {
+   "status": "passed",
+   "assertions": {
+    "uv_sync_ok": "passed",
+    "venv_python_present": "passed"
+   }
+  },
+  "honest.pin-b": {
+   "status": "passed",
+   "assertions": {
+    "setup_installed_at_A": "passed",
+    "setup_lock_pins_A": "passed",
+    "setup_desired_lock_names_B": "passed",
+    "control_unchanged_lock_is_noop": "passed",
+    "shape_lock_pin_honoured_or_refused_by_name": "passed",
+    "shape_no_false_convergence": "passed"
+   }
+  },
+  "honest.pin-c": {
+   "status": "passed",
+   "assertions": {
+    "setup_resolved_at_pin_A": "passed",
+    "setup_unit_moved_ahead_to_B": "passed",
+    "control_resolve_at_pin_keeps_pin": "passed",
+    "shape_resolve_restores_pin_or_refuses_by_name": "passed",
+    "shape_no_false_convergence": "passed"
+   }
+  },
+  "honest.pin-d": {
+   "status": "passed",
+   "assertions": {
+    "setup_resolved_at_pin_A": "passed",
+    "setup_unit_moved_ahead_to_B": "passed",
+    "setup_local_edit_written": "passed",
+    "control_local_edit_never_lost": "passed",
+    "shape_resolve_restores_pin_keeping_edit_or_refuses_by_name": "passed",
+    "shape_no_false_convergence": "passed"
+   }
+  },
+  "honest.pin-e": {
+   "status": "failed",
+   "assertions": {
+    "setup_v1_provisioned_reports_1_0": "passed",
+    "control_unchanged_spec_served_from_cache": "passed",
+    "shape_changed_url_serves_new_binary": "failed"
+   }
+  },
+  "honest.record-a": {
+   "status": "failed",
+   "assertions": {
+    "setup_homes_built_and_baselined": "passed",
+    "control_noop_sync_records_nothing": "passed",
+    "setup_changing_sync_changed_the_unit": "passed",
+    "shape_changing_sync_leaves_pending_drift": "failed"
+   }
+  },
+  "honest.record-b": {
+   "status": "failed",
+   "assertions": {
+    "setup_installed_records_agree_at_0_1_0": "passed",
+    "setup_home_sync_moved_0_2_0_bytes": "passed",
+    "setup_sync_from_moved_0_3_0_bytes": "passed",
+    "control_git_latest_rewrites_record_version": "passed",
+    "shape_home_sync_record_matches_manifest": "failed",
+    "shape_sync_from_record_matches_manifest": "failed"
+   }
+  },
+  "honest.record-c": {
+   "status": "failed",
+   "assertions": {
+    "setup_system_cli_unlinked_and_own_cli_installed": "passed",
+    "control_installed_shim_present_is_not_stale": "passed",
+    "control_deleted_installed_shim_is_stale": "passed",
+    "shape_system_cli_not_reported_stale": "failed"
+   }
+  },
+  "honest.record-d": {
+   "status": "failed",
+   "assertions": {
+    "setup_installed_from_remote": "passed",
+    "control_real_edit_is_published": "passed",
+    "shape_bytecode_not_published": "failed"
+   }
+  },
+  "honest.record-e": {
+   "status": "failed",
+   "assertions": {
+    "setup_child_home_holds_all_three_and_stale_snapshot_planted": "passed",
+    "setup_root_sync_ok": "passed",
+    "control_undeclared_unmodified_unit_removed": "passed",
+    "shape_unit_declared_by_project_manifest_kept": "failed",
+    "shape_removal_audited_in_child_home": "failed"
+   }
+  }
+ }
+}

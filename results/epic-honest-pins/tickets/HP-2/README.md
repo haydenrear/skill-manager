@@ -8,8 +8,19 @@ Expected effect: shapes (b), (c), (d) red -> green. Baseline (HP-0,
 `results/epic-honest-pins/baseline/2026-11-07-1b52427/honest-pins.json`):
 all three red on `shape_*`, every setup and control assertion green.
 
-Graph result: see `honest-pins-local-signal.md` (added when the shared
-graph lock released; the PR body carries the same numbers).
+Graph result (`graph-run.sh honest-pins --continue`, sweep 20261107-184906,
+run 20261107-184954; `sweep-honest-pins.json`, `honest-pins-local-signal.json`):
+
+| node | baseline | HP-2 |
+| --- | --- | --- |
+| honest.pin-b | red (shape_*) | **green**, all 6 assertions incl. control_unchanged_lock_is_noop |
+| honest.pin-c | red (shape_*) | **green**, all 5 incl. control_resolve_at_pin_keeps_pin |
+| honest.pin-d | red (shape_*) | **green**, all 6 incl. control_local_edit_never_lost |
+| pin-e, record-a..e | red (shape_*) | red on exactly the same shape_* assertions (other tickets' shapes); every setup/control green |
+
+The graph task is FAILED overall only because of those other tickets' expected-red
+nodes. GOAL-a on this branch: 1 of 5 -> 4 of 5 shapes (cli-pin from HP-1 plus b, c, d;
+e remains for its ticket).
 
 ## Scratch-home reproduction of the three shapes (worktree build)
 
