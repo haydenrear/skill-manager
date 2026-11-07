@@ -1,0 +1,11 @@
+== GitOpsRepoBoundaryTest (10 cases)
+   → 10 passed, 0 failed
+== GitOpsUnitIdentityTest (8 cases)
+   → 8 passed, 0 failed
+--
+== HomeSyncTest (22 cases)
+   → 22 passed, 0 failed
+--
+== HomeCloseOutDamagedUnitTest (5 cases)
+   → 5 passed, 0 failed
+ALL PASSED

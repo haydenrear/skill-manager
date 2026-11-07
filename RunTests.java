@@ -201,6 +201,7 @@ public class RunTests {
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
         failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
+        failures += dev.skillmanager.source.GitOpsUnitIdentityTest.run();
         failures += dev.skillmanager.source.DereferencedStoreLinkSyncTest.run();
         failures += dev.skillmanager.source.SyncPathsAgreeAboutDirtyTest.run();
         failures += dev.skillmanager.source.GeneratedContentTest.run();
@@ -334,6 +335,7 @@ public class RunTests {
         failures += dev.skillmanager.store.HomeSyncMergeTest.run();
         failures += dev.skillmanager.store.HomeSyncGitUnitTest.run();
         failures += dev.skillmanager.store.HomeCloseOutPublishedRefsTest.run();
+        failures += dev.skillmanager.store.HomeCloseOutDamagedUnitTest.run();
         failures += dev.skillmanager.store.HomeSyncUnitFilterTest.run();
         failures += dev.skillmanager.store.HomeSyncStaleBaselineTest.run();
         failures += dev.skillmanager.commands.HomeSyncUnitCliTest.run();

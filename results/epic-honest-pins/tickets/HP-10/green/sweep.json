@@ -1,0 +1,60 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 5,
+  "graphs_executed": 5,
+  "graphs_passed": 4,
+  "graphs_failed": 1,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "honest-pins",
+      "status": "failed",
+      "seconds": 278.738,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-10/test_graph/build/validation-reports/20261107-191625"
+      ],
+      "reason": "Execution failed for task ':honest-pins'."
+    },
+    {
+      "graph": "checkout-home",
+      "status": "passed",
+      "seconds": 189.368,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-10/test_graph/build/validation-reports/20261107-192100"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-sync",
+      "status": "passed",
+      "seconds": 532.42,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-10/test_graph/build/validation-reports/20261107-192418"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "ticket-lifecycle",
+      "status": "passed",
+      "seconds": 450.389,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-10/test_graph/build/validation-reports/20261107-193306"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-integrity",
+      "status": "passed",
+      "seconds": 437.896,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-10/test_graph/build/validation-reports/20261107-194040"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261107-191610",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}

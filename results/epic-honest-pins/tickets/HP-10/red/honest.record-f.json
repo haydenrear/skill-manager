@@ -1,0 +1,96 @@
+{
+  "nodeId" : "honest.record-f",
+  "status" : "failed",
+  "startedAt" : "2026-11-07T18:48:14.414769Z",
+  "endedAt" : "2026-11-07T18:48:44.393920Z",
+  "failureMessage" : "close-out rc=1 partial=updated missing=updated valid=unchanged diverged=conflicted linked=new; sync rc=1 partial=updated missing=updated valid=unchanged; leaks=[]; projectUntouched=false partialPreserved=true nothingMutated=true; alias rc=1 controlAlias=false; setup=true hazard=true; partial unit={\"unit\":\"skill:hp-f-partial\",\"name\":\"hp-f-partial\",\"kind\":\"skill\",\"status\":\"updated\",\"detail\":\"the destination holds no local work, so a sync replaces it with the source copy\",\"files\":[\".git/HEAD\",\".git/config\"],\"conflicts\":[]} partial blocker={\"unit\":\"skill:hp-f-partial\",\"status\":\"updated\",\"detail\":\"the destination holds no local work, so a sync replaces it with the source copy\",\"conflicts\":[],\"remedy\":\"/Volumes/dev/skill-manager-hp-10/skill-manager home sync --from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/worktree --to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/project\"}",
+  "assertions" : [ {
+    "name" : "setup_homes_cloned_and_shapes_planted",
+    "status" : "passed"
+  }, {
+    "name" : "setup_partial_unit_discovers_enclosing_repo",
+    "status" : "passed"
+  }, {
+    "name" : "control_valid_nested_repo_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "control_truly_diverged_unit_still_conflicted",
+    "status" : "passed"
+  }, {
+    "name" : "control_linked_worktree_unit_not_damaged",
+    "status" : "passed"
+  }, {
+    "name" : "control_symlinked_home_path_same_answers",
+    "status" : "failed"
+  }, {
+    "name" : "shape_close_out_reports_damaged_units_as_blockers",
+    "status" : "failed"
+  }, {
+    "name" : "shape_home_sync_reports_damaged_units",
+    "status" : "failed"
+  }, {
+    "name" : "shape_no_enclosing_identity_or_publish_remedy",
+    "status" : "passed"
+  }, {
+    "name" : "shape_damaged_unit_not_synced_into_project",
+    "status" : "failed"
+  }, {
+    "name" : "shape_partial_git_preserved_for_recovery",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_ref_mutation_in_app_or_origins",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "clone_project",
+    "command" : [ "/Volumes/dev/skill-manager-hp-10/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/seed", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/project", "--json" ],
+    "startedAt" : "2026-11-07T18:48:16.879911Z",
+    "endedAt" : "2026-11-07T18:48:22.166119Z",
+    "exitCode" : 0,
+    "pid" : 35423,
+    "log" : "node-logs/honest.record-f.clone_project.log",
+    "error" : null
+  }, {
+    "label" : "clone_worktree",
+    "command" : [ "/Volumes/dev/skill-manager-hp-10/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/seed", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/worktree", "--json" ],
+    "startedAt" : "2026-11-07T18:48:22.166392Z",
+    "endedAt" : "2026-11-07T18:48:26.685052Z",
+    "exitCode" : 0,
+    "pid" : 35998,
+    "log" : "node-logs/honest.record-f.clone_worktree.log",
+    "error" : null
+  }, {
+    "label" : "close_out",
+    "command" : [ "/Volumes/dev/skill-manager-hp-10/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/worktree", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/project", "--json" ],
+    "startedAt" : "2026-11-07T18:48:27.134382Z",
+    "endedAt" : "2026-11-07T18:48:32.036258Z",
+    "exitCode" : 1,
+    "pid" : 36820,
+    "log" : "node-logs/honest.record-f.close_out.log",
+    "error" : null
+  }, {
+    "label" : "close_out_alias",
+    "command" : [ "/Volumes/dev/skill-manager-hp-10/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/worktree-alias", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/project", "--json" ],
+    "startedAt" : "2026-11-07T18:48:32.036704Z",
+    "endedAt" : "2026-11-07T18:48:39.350100Z",
+    "exitCode" : 1,
+    "pid" : 37365,
+    "log" : "node-logs/honest.record-f.close_out_alias.log",
+    "error" : null
+  }, {
+    "label" : "home_sync",
+    "command" : [ "/Volumes/dev/skill-manager-hp-10/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/worktree", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/project", "--merge", "--json" ],
+    "startedAt" : "2026-11-07T18:48:39.350717Z",
+    "endedAt" : "2026-11-07T18:48:44.043042Z",
+    "exitCode" : 1,
+    "pid" : 38301,
+    "log" : "node-logs/honest.record-f.home_sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 29979
+  },
+  "logs" : [ "close-out rc=1 partial=updated missing=updated valid=unchanged diverged=conflicted linked=new; sync rc=1 partial=updated missing=updated valid=unchanged; leaks=[]; projectUntouched=false partialPreserved=true nothingMutated=true; alias rc=1 controlAlias=false; setup=true hazard=true; partial unit={\"unit\":\"skill:hp-f-partial\",\"name\":\"hp-f-partial\",\"kind\":\"skill\",\"status\":\"updated\",\"detail\":\"the destination holds no local work, so a sync replaces it with the source copy\",\"files\":[\".git/HEAD\",\".git/config\"],\"conflicts\":[]} partial blocker={\"unit\":\"skill:hp-f-partial\",\"status\":\"updated\",\"detail\":\"the destination holds no local work, so a sync replaces it with the source copy\",\"conflicts\":[],\"remedy\":\"/Volumes/dev/skill-manager-hp-10/skill-manager home sync --from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/worktree --to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11052320101185067640/honest-pins/record-f/app/homes/project\"}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T18:48:13.150830Z","executorEndedAt":"2026-11-07T18:48:58.292588Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.record-f.stdout.log","inputContextFile":"context/honest.record-f.input.json","traceId":"13f3e73b8a52b64cb12e4f9cf0bc38b4","rerunGuidance":{"resumeGraphCommand":"./gradlew 'honest-pins' --resume-from-build '/Volumes/dev/skill-manager-hp-10/test_graph/build/validation-reports/20261107-184251' --resume-from-node 'honest.record-f'","runOnlyCommand":"./gradlew 'honest-pins' --resume-from-build '/Volumes/dev/skill-manager-hp-10/test_graph/build/validation-reports/20261107-184251' --run-only-node 'honest.record-f'","inputContextFile":"context/honest.record-f.input.json"}}

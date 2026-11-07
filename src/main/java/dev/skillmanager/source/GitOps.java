@@ -85,6 +85,109 @@ public final class GitOps {
         }
     }
 
+    /**
+     * What a unit directory's own Git metadata says about it -- #412.
+     *
+     * <ul>
+     *   <li>{@link #OWN}: {@code dir} is the top level of a working tree whose
+     *       repository git resolved from {@code dir}'s own {@code .git}
+     *       (a directory, or the gitfile of a linked worktree).</li>
+     *   <li>{@link #ABSENT}: {@code dir} carries no {@code .git} entry at all.
+     *       Deliberately not "damaged": a unit installed without Git is #333's
+     *       question, and nothing here changes how it is treated.</li>
+     *   <li>{@link #DAMAGED}: {@code dir} carries a {@code .git} that git does
+     *       not accept as {@code dir}'s repository -- HEAD or config missing,
+     *       a gitfile to nowhere, or a toplevel that is not {@code dir}.</li>
+     *   <li>{@link #UNVERIFIED}: git is not on PATH, so nothing can be said.</li>
+     * </ul>
+     */
+    public enum UnitGitState { OWN, ABSENT, DAMAGED, UNVERIFIED }
+
+    /**
+     * The identity git bound for a unit directory: the expected root, and the
+     * absolute toplevel / git-dir / common-dir git actually resolved for it.
+     * {@code reason} says why a non-{@link UnitGitState#OWN} answer was given.
+     */
+    public record UnitGitIdentity(UnitGitState state, Path unitRoot, Path toplevel,
+                                  Path gitDir, Path commonDir, String reason) {
+        public boolean damaged() { return state == UnitGitState.DAMAGED; }
+    }
+
+    /**
+     * Bind {@code dir} to the repository git resolves for it, before anything
+     * interprets its HEAD or refs -- #412.
+     *
+     * <h2>What went wrong</h2>
+     *
+     * <p>In a consumer close-out on 0.28.2, units in a home inside an
+     * application checkout had {@code .git} directories missing HEAD and
+     * config. Git does not accept such a directory as a repository, so
+     * {@code git -C <unit> rev-parse} kept DISCOVERING upward and answered for
+     * the application. The gate then read the application's branches as the
+     * unit's unpublished history, called the unit diverged, and recommended
+     * {@code unit publish}. Nothing was published; the report was false, and
+     * following it would have published application commits as a skill.
+     *
+     * <h2>How it is bound</h2>
+     *
+     * <p>{@code rev-parse --show-toplevel --absolute-git-dir --git-common-dir}
+     * is asked with discovery confined to {@code dir} (see {@link #run}: a
+     * directory carrying {@code .git} gets {@code GIT_CEILING_DIRECTORIES} at
+     * its parent), and the toplevel must be {@code dir} itself. A
+     * {@code .git} directory without {@code HEAD} or {@code config} is
+     * DAMAGED even where git would tolerate it: a unit whose config is gone
+     * has lost its remotes, and "cannot tell" is never "safe".
+     *
+     * <p>Reads only: nothing under {@code .git} is created, repaired or
+     * deleted, so a partial repository stays exactly as found for recovery.
+     */
+    public static UnitGitIdentity unitGitIdentity(Path dir) {
+        if (dir == null || !Files.isDirectory(dir)) {
+            return new UnitGitIdentity(UnitGitState.ABSENT, dir, null, null, null, "not a directory");
+        }
+        Path dotGit = dir.resolve(".git");
+        if (!Files.exists(dotGit, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            return new UnitGitIdentity(UnitGitState.ABSENT, dir, null, null, null, "no .git");
+        }
+        if (!isAvailable()) {
+            return new UnitGitIdentity(UnitGitState.UNVERIFIED, dir, null, null, null, "git is not on PATH");
+        }
+        if (Files.isDirectory(dotGit, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            List<String> lost = new java.util.ArrayList<>();
+            if (!Files.exists(dotGit.resolve("HEAD"), java.nio.file.LinkOption.NOFOLLOW_LINKS)) lost.add("HEAD");
+            if (!Files.exists(dotGit.resolve("config"), java.nio.file.LinkOption.NOFOLLOW_LINKS)) lost.add("config");
+            if (!lost.isEmpty()) {
+                return new UnitGitIdentity(UnitGitState.DAMAGED, dir, null, null, null,
+                        ".git is partial: " + String.join(" and ", lost) + " missing");
+            }
+        }
+        Result r = run(dir, List.of("git", "rev-parse", "--show-toplevel",
+                "--absolute-git-dir", "--git-common-dir"));
+        String[] lines = r.stdout.trim().split("\\R");
+        if (r.exit != 0 || lines.length < 3) {
+            String first = r.stdout.trim().isEmpty() ? "rc=" + r.exit : r.stdout.trim().split("\\R")[0];
+            return new UnitGitIdentity(UnitGitState.DAMAGED, dir, null, null, null,
+                    "git does not accept its .git as a repository (" + first + ")");
+        }
+        Path toplevel = Path.of(lines[0].trim());
+        Path gitDir = Path.of(lines[1].trim());
+        Path common = Path.of(lines[2].trim());
+        if (!common.isAbsolute()) common = dir.resolve(common).normalize();
+        if (!sameDirectory(toplevel, dir)) {
+            return new UnitGitIdentity(UnitGitState.DAMAGED, dir, toplevel, gitDir, common,
+                    "git resolved a repository whose top level is not this unit");
+        }
+        return new UnitGitIdentity(UnitGitState.OWN, dir, toplevel, gitDir, common, null);
+    }
+
+    private static boolean sameDirectory(Path a, Path b) {
+        try {
+            return Files.isSameFile(a, b);
+        } catch (IOException e) {
+            return a.toAbsolutePath().normalize().equals(b.toAbsolutePath().normalize());
+        }
+    }
+
     public static String headHash(Path dir) {
         Result r = run(dir, List.of("git", "rev-parse", "HEAD"));
         return r.exit == 0 ? r.stdout.trim() : null;
@@ -328,6 +431,7 @@ public final class GitOps {
         ProcessBuilder pb = new ProcessBuilder(List.of("git", "rev-list", "--stdin", "--not", "--all"))
                 .redirectErrorStream(true);
         pb.directory(dir.toFile());
+        confineDiscovery(pb, dir);
         try {
             Process p = pb.start();
             try (java.io.Writer w = new java.io.OutputStreamWriter(p.getOutputStream(),
@@ -659,9 +763,37 @@ public final class GitOps {
 
     private record Result(int exit, String stdout, String stderr) {}
 
+    /**
+     * Confine git's repository discovery to {@code workdir} when it carries a
+     * {@code .git} of its own -- #412.
+     *
+     * <p>A directory with a {@code .git} entry is claiming to be a repository
+     * root. If git rejects that {@code .git} (no HEAD, no config, a gitfile to
+     * nowhere) it does not stop: it walks up and answers for whatever encloses
+     * the directory, and every query here -- HEAD, refs, ancestry, status --
+     * then describes somebody else's repository. No caller wants that, so
+     * {@code GIT_CEILING_DIRECTORIES} is set to the directory's parent: git may
+     * look at {@code workdir/.git} and nowhere above it. A valid repository and
+     * a linked worktree's gitfile are both found at {@code workdir} and are
+     * unaffected; a directory with no {@code .git} entry keeps ordinary
+     * discovery, so nothing about #333's units changes here.
+     */
+    private static void confineDiscovery(ProcessBuilder pb, Path workdir) {
+        if (workdir == null) return;
+        if (!Files.exists(workdir.resolve(".git"), java.nio.file.LinkOption.NOFOLLOW_LINKS)) return;
+        Path parent;
+        try {
+            parent = workdir.toRealPath().getParent();
+        } catch (IOException e) {
+            parent = workdir.toAbsolutePath().normalize().getParent();
+        }
+        if (parent != null) pb.environment().put("GIT_CEILING_DIRECTORIES", parent.toString());
+    }
+
     private static Result run(Path workdir, List<String> argv) {
         ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
         if (workdir != null) pb.directory(workdir.toFile());
+        confineDiscovery(pb, workdir);
         try {
             Process p = pb.start();
             StringBuilder out = new StringBuilder();

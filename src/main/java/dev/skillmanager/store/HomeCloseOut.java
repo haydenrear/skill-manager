@@ -367,6 +367,14 @@ public final class HomeCloseOut {
             // no units at all.
             case LINKED -> "resolve the symlink first, then re-run: " + sync + " --merge"
                     + "  (" + unit.detail() + ")";
+            // #412. Never a sync and never a publish: both would act on a HEAD
+            // nobody knows, and a publish from a damaged copy is how application
+            // commits get pushed as a unit's history. Recovery first.
+            case DAMAGED -> "recover the unit's .git in place, or replace the unit with a valid "
+                    + "checkout of its reviewed pin, then re-run "
+                    + (cli + " home close-out " + HomeDescriptor.homeArg(home)).strip()
+                    + " --into " + HomeDescriptor.shellQuote(into.toString())
+                    + "  (" + unit.detail() + ")";
             case UNCHANGED, REMOVED_UPSTREAM -> null;
         };
     }

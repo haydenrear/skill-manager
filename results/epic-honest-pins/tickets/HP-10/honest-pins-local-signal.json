@@ -1,0 +1,21 @@
+{
+ "node": "honest.record-f",
+ "red_run": "20261107-184251",
+ "red_status": "failed",
+ "green_run": "20261107-191625",
+ "green_status": "passed",
+ "assertions": {
+  "setup_homes_cloned_and_shapes_planted": "passed",
+  "setup_partial_unit_discovers_enclosing_repo": "passed",
+  "control_valid_nested_repo_unchanged": "passed",
+  "control_truly_diverged_unit_still_conflicted": "passed",
+  "control_linked_worktree_unit_not_damaged": "passed",
+  "control_symlinked_home_path_same_answers": "passed",
+  "shape_close_out_reports_damaged_units_as_blockers": "passed",
+  "shape_home_sync_reports_damaged_units": "passed",
+  "shape_no_enclosing_identity_or_publish_remedy": "passed",
+  "shape_damaged_unit_not_synced_into_project": "passed",
+  "shape_partial_git_preserved_for_recovery": "passed",
+  "shape_no_ref_mutation_in_app_or_origins": "passed"
+ }
+}
