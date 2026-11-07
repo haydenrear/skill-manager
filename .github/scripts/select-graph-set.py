@@ -145,6 +145,14 @@ EXCLUDED: dict[str, str] = {
         "the build level (HYPER_EXPERIMENTS=1 / HYPER_LOCAL_DIR), so it is not "
         "in validationRunAll either. Run it deliberately, not on a push."
     ),
+    "honest-pins": (
+        "skill-manager#411 (epic honest-pins) — the epic's baseline harness: one "
+        "node per planted pin/record shape, and nodes for shapes not yet fixed "
+        "are RED BY DESIGN (HP-0, #408, measured the baseline). Opt-in until the "
+        "terminal evaluation HP-9 (#413) reads it green and moves it into the "
+        "full set. Run it with TESTGRAPH_CONTINUE_AFTER_FAILURE=1 run.py "
+        "honest-pins --continue (the nodes are independent)."
+    ),
 }
 
 # ---------------------------------------------------------------------------
