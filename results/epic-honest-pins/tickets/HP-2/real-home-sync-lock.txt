@@ -1,0 +1,40 @@
+### 1. sync --lock (live lock, dry-run)
+Picked up JAVA_TOOL_OPTIONS: -Djava.net.preferIPv6Addresses=true
+! Telemetry export unavailable; continuing without telemetry.
+✓ disk state matches $SCRATCH/realhome/home/units.lock.toml — no reconciliation needed
+### 2. sync --lock desired --dry-run
+DRY RUN — no changes will be made
+→ [1] git-sync tracing-observability (kind=SKILL, installSource=GIT, gitLatest=false, merge=false, pin=aa6149c1ccbf027c6a59eaba1487dca0e41042ce ref=main origin=https://github.com/haydenrear/tracing_skill)
+### 3. sync --lock desired
+→ cli: skill-script helm-deploy — writing output to $SCRATCH/realhome/home/logs/skill-scripts/20261107-182645-104-deploy-helm-helm-deploy.log
+cli: rewrote bin/cli/helm-deploy to resolve the home it is standing in (it had this home's absolute path baked in, which a copy of the home would not have)
+✓ cli: installed helm-deploy -> $SCRATCH/realhome/home/bin/cli/helm-deploy
+→ cli: skill-script tracing-observability — running $SCRATCH/realhome/home/skills/tracing-observability/skill-scripts/install-python-package.sh
+→ cli: skill-script tracing-observability — writing output to $SCRATCH/realhome/home/logs/skill-scripts/20261107-182738-130-tracing-observability-tracing-observability.log
+cli: rewrote bin/cli/tracing-observability-install to resolve the home it is standing in (it had this home's absolute path baked in, which a copy of the home would not have)
+✓ cli: installed tracing-observability -> $SCRATCH/realhome/home/bin/cli/tracing-observability-install
+✓ units.lock.toml: wrote 3 unit(s) → $SCRATCH/realhome/home/units.lock.toml
+rc=
+HEAD=aa6149c1ccbf027c6a59eaba1487dca0e41042ce
+ref = "main"
+resolved_sha = "aa6149c1ccbf027c6a59eaba1487dca0e41042ce"
+record aa6149c1ccbf027c6a59eaba1487dca0e41042ce main
+### 4. SECOND sync --lock desired
+Picked up JAVA_TOOL_OPTIONS: -Djava.net.preferIPv6Addresses=true
+! Telemetry export unavailable; continuing without telemetry.
+✓ disk state matches $SCRATCH/realhome/desired.toml — no reconciliation needed
+rc=
+### 5. sync tracing-observability --to ORIG
+✓ cli: 17 already present
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+child homes: 1 unit(s) left as-is (local changes) across 1 home(s) — `--verbose` or the run log names each one
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261107-132903-1936.log
+HEAD=1669c894039e7aca679c289981dcfc84f2eec567
+### 6. SECOND (plain) sync tracing-observability
+✓ synced 1 unit(s) — 1 merged
+✓ tools: 2 already present
+✓ cli: 17 already present
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261107-133031-3be4.log
+HEAD=1669c894039e7aca679c289981dcfc84f2eec567
+ref = "1669c894039e7aca679c289981dcfc84f2eec567"
+resolved_sha = "1669c894039e7aca679c289981dcfc84f2eec567"

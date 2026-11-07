@@ -221,8 +221,11 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] refresh harness plugin marketplace (reinstall=%d, uninstall=%d)",
                             n, e.reinstall().size(), e.uninstall().size());
             case SkillEffect.SyncGit e ->
-                    Log.step("[%d] git-sync %s (kind=%s, installSource=%s, gitLatest=%s, merge=%s)",
-                            n, e.unitName(), e.kind(), e.installSource(), e.gitLatest(), e.merge());
+                    Log.step("[%d] git-sync %s (kind=%s, installSource=%s, gitLatest=%s, merge=%s%s)",
+                            n, e.unitName(), e.kind(), e.installSource(), e.gitLatest(), e.merge(),
+                            e.pin() == null ? "" : ", pin=" + (e.pin().sha() != null ? e.pin().sha() : e.pin().ref())
+                                    + (e.pin().ref() != null ? " ref=" + e.pin().ref() : "")
+                                    + (e.pin().origin() != null ? " origin=" + e.pin().origin() : ""));
             case SkillEffect.AddUnitError e ->
                     Log.step("[%d] add error %s on %s: %s", n, e.kind(), e.unitName(), e.message());
             case SkillEffect.ClearUnitError e ->

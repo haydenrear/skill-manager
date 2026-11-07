@@ -47,6 +47,13 @@ public final class SyncGitHandler {
         Path storeDir = store.unitDir(skillName, e.kind());
         InstalledUnit src = ctx.source(skillName).orElse(null);
 
+        if (e.pin() != null) {
+            // HP-2: a requested immutable target never falls through to the
+            // ordinary "follow the recorded ref" path below — that is how
+            // `sync --lock` reported convergence to main's tip (#406).
+            return SyncGitPin.run(e, ctx, src, storeDir);
+        }
+
         if (!GitOps.isGitRepo(storeDir)) {
             // A unit the operator DELIBERATELY installed from a local path is
             // in exactly the state they asked for. It has nothing upstream, so

@@ -75,9 +75,27 @@ public final class ProjectDependencyResolver {
      *        {@link ProjectChildHomeScaffolder#reportSameHome}.
      */
     public record Options(boolean yes, boolean withGateway, Set<String> checkoutUnits,
-                          boolean repairVendored, boolean allowSameHome) {
+                          boolean repairVendored, boolean allowSameHome,
+                          /**
+                           * HP-2 (#407): put declared units back on their sha
+                           * revision. On for {@code project resolve} / {@code project
+                           * sync}; OFF for the best-effort refresh a unit sync runs
+                           * for its claiming projects, so {@code sync <unit>
+                           * --git-latest} is not silently undone by the same command.
+                           */
+                          boolean reconcilePins) {
         public Options {
             checkoutUnits = checkoutUnits == null ? Set.of() : Set.copyOf(checkoutUnits);
+        }
+
+        public Options(boolean yes, boolean withGateway, Set<String> checkoutUnits,
+                       boolean repairVendored, boolean allowSameHome) {
+            this(yes, withGateway, checkoutUnits, repairVendored, allowSameHome, true);
+        }
+
+        /** The same options with the pin reconcile switched off. */
+        public Options withoutPinReconcile() {
+            return new Options(yes, withGateway, checkoutUnits, repairVendored, allowSameHome, false);
         }
 
         public Options(boolean yes, boolean withGateway, Set<String> checkoutUnits,
@@ -117,6 +135,7 @@ public final class ProjectDependencyResolver {
         SkillProjectLockStore lockStore = new SkillProjectLockStore(store);
         SkillProjectLock previousLock = lockStore.read(project.registryName()).orElse(null);
         InstalledProjectUnits installed = installMissing(project, opts);
+        if (opts.reconcilePins()) reconcilePins(installed.pins());
         List<SkillProjectLock.ResolvedUnit> resolvedUnits =
                 collectResolvedUnits(project, installed.directNames());
         ProjectChildHomeScaffolder.Result childHome = new ProjectChildHomeScaffolder(store)
@@ -205,7 +224,91 @@ public final class ProjectDependencyResolver {
         return report;
     }
 
-    private record InstalledProjectUnits(List<String> installed, List<String> directNames) {}
+    private record InstalledProjectUnits(List<String> installed, List<String> directNames,
+                                         List<DeclaredPin> pins) {}
+
+    /** A declared unit whose {@code skill-project.toml} revision is an immutable git sha. */
+    record DeclaredPin(String unitName, String revision) {}
+
+    /**
+     * HP-2 (#407): put every declared unit back on its {@code skill-project.toml}
+     * revision. {@code installMissing} only ever installed what was ABSENT, so a
+     * unit installed ahead of (or behind) its pin was reported "resolved" and left
+     * there — "✓ resolved project … installed: 0" with deploy-helm off-pin for
+     * weeks, and {@code skt check}'s remedy pointed back at this command.
+     *
+     * <p>Each off-pin unit becomes a pinned {@link dev.skillmanager.app.SyncUseCase}
+     * target, so the move is the same primitive as {@code sync <unit> --to}: HEAD
+     * goes to the pin, older or newer; worktree edits are carried onto the PIN by
+     * three-way apply (never onto trunk); a conflict or an unpushed local commit
+     * refuses by name and changes nothing. The sync program's own lock update
+     * then restates {@code units.lock.toml}. A refusal fails the resolve before
+     * the child home or the project lock is written from an off-pin store.
+     *
+     * <p>Only sha revisions (7-40 hex) are reconciled. A branch "revision" is a
+     * moving target and reconciling it on every resolve would be {@code sync}.
+     */
+    private void reconcilePins(List<DeclaredPin> pins) throws IOException {
+        List<dev.skillmanager.app.SyncUseCase.Target> targets = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        UnitStore records = new UnitStore(store);
+        for (DeclaredPin p : pins) {
+            if (!store.containsUnit(p.unitName())) continue;
+            UnitKind kind = records.read(p.unitName())
+                    .map(dev.skillmanager.source.InstalledUnit::unitKind).orElse(UnitKind.SKILL);
+            Path dir = store.unitDir(p.unitName(), kind);
+            String head = dev.skillmanager.source.GitOps.isGitRepo(dir)
+                    ? dev.skillmanager.source.GitOps.headHash(dir) : null;
+            if (head != null && head.startsWith(p.revision().toLowerCase())) continue;
+            targets.add(new dev.skillmanager.app.SyncUseCase.Target.Git(p.unitName(),
+                    new SkillEffect.SyncGit.Pin(null, null, p.revision().toLowerCase())));
+            names.add(p.unitName());
+        }
+        if (targets.isEmpty()) {
+            Log.info("pins: every declared sha revision is already checked out (moved 0 units)");
+            return;
+        }
+        var opts = new dev.skillmanager.app.SyncUseCase.Options(
+                null, false, false, /*withMcp=*/false, /*withAgents=*/true, true, false,
+                /*startGateway=*/false, /*refreshClaimingProjects=*/false);
+        var program = dev.skillmanager.app.SyncUseCase.buildProgram(store, gateway, opts, targets, List.of());
+        Executor.Outcome<dev.skillmanager.app.SyncUseCase.Report> outcome =
+                new Executor(store, gateway).runStaged(program);
+        var report = outcome.result();
+        List<String> off = new ArrayList<>();
+        for (DeclaredPin p : pins) {
+            if (!names.contains(p.unitName())) continue;
+            UnitKind kind = records.read(p.unitName())
+                    .map(dev.skillmanager.source.InstalledUnit::unitKind).orElse(UnitKind.SKILL);
+            String head = dev.skillmanager.source.GitOps.headHash(store.unitDir(p.unitName(), kind));
+            if (head == null || !head.startsWith(p.revision().toLowerCase())) {
+                off.add(p.unitName() + " (pin " + p.revision() + ", HEAD "
+                        + (head == null ? "<none>" : head.substring(0, Math.min(10, head.length()))) + ")");
+            }
+        }
+        if (!off.isEmpty() || outcome.rolledBack() || report.worstRc() != 0) {
+            throw new IOException("project resolve could not put declared unit(s) on their pin: "
+                    + (off.isEmpty() ? String.join(", ", names) : String.join(", ", off))
+                    + (outcome.rolledBack() ? " (rolled back)" : "")
+                    + " — see the refusal above; nothing else was resolved");
+        }
+        Log.ok("pins: moved %d unit(s) to their skill-project.toml revision: %s",
+                names.size(), String.join(", ", names));
+    }
+
+    private static final java.util.regex.Pattern SHA_REVISION =
+            java.util.regex.Pattern.compile("[0-9a-fA-F]{7,40}");
+
+    /** The declared pin for {@code ref}, when it is a git source with a sha revision. */
+    private static Optional<DeclaredPin> declaredPin(SkillProject.ProjectUnitRef ref, String unitName) {
+        if (unitName == null) return Optional.empty();
+        String revision = blankToNull(ref.revision());
+        if (revision == null || !SHA_REVISION.matcher(revision).matches()) return Optional.empty();
+        Coord c = ref.reference().coord();
+        if (c instanceof Coord.SubElement s) c = s.unitCoord();
+        if (!(c instanceof Coord.DirectGit)) return Optional.empty();
+        return Optional.of(new DeclaredPin(unitName, revision));
+    }
 
     private record MissingRef(SkillProject.ProjectUnitRef ref, String expectedName) {}
 
@@ -238,6 +341,7 @@ public final class ProjectDependencyResolver {
     private InstalledProjectUnits installMissing(SkillProject project, Options options) throws IOException {
         List<String> installed = new ArrayList<>();
         List<String> directNames = new ArrayList<>();
+        List<DeclaredPin> pins = new ArrayList<>();
         List<MissingRef> missing = new ArrayList<>();
         List<Resolver.Coord> coords = new ArrayList<>();
         for (SkillProject.ProjectUnitRef ref : installableRefs(project)) {
@@ -251,6 +355,7 @@ public final class ProjectDependencyResolver {
             if (expectedName != null) {
                 directNames.add(expectedName);
             }
+            declaredPin(ref, expectedName).ifPresent(pins::add);
             if (expectedName != null && store.containsUnit(expectedName)) {
                 validateExpectedKind(ref, expectedName);
                 continue;
@@ -260,7 +365,7 @@ public final class ProjectDependencyResolver {
             coords.add(new Resolver.Coord(source.source(), source.version()));
         }
         if (missing.isEmpty()) {
-            return new InstalledProjectUnits(List.copyOf(installed), List.copyOf(directNames));
+            return new InstalledProjectUnits(List.copyOf(installed), List.copyOf(directNames), List.copyOf(pins));
         }
 
         Resolver.ResolveOutcome outcome = new Resolver(store).resolveAll(coords);
@@ -299,7 +404,7 @@ public final class ProjectDependencyResolver {
             }
             validateExpectedKind(m.ref(), m.expectedName());
         }
-        return new InstalledProjectUnits(List.copyOf(installed), List.copyOf(directNames));
+        return new InstalledProjectUnits(List.copyOf(installed), List.copyOf(directNames), List.copyOf(pins));
     }
 
     /**

@@ -307,7 +307,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 dev.skillmanager.project.ProjectSyncUseCase.Result result =
                         new dev.skillmanager.project.ProjectSyncUseCase(ctx.store(), e.gateway())
                                 .sync(project, new dev.skillmanager.project.ProjectDependencyResolver.Options(
-                                                true, e.withGateway()),
+                                                true, e.withGateway()).withoutPinReconcile(),
                                         // QUIETLY: the drift this measures is
                                         // THIS home's, not the project's, so
                                         // reporting it here prints the same

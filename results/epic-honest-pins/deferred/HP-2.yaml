@@ -1,0 +1,35 @@
+# Deferred findings filed by HP-2 (#406, #407). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep "merged", "sha-detached", "gitRef")
+# and GitHub issues (search "sync merged no-op", "units.lock install provenance"): DEF-HP0-002 only.
+
+findings:
+  - id: DEF-HP2-001
+    found_by: HP-2 checking that `sync <unit> --to <sha>` sticks under a later plain `sync`
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "none (effects/SyncGitHandler ordinary path; no ticket owns it, left unedited to keep HP-2's diff to the pin branch)"
+    summary: >
+      When an installed record's gitRef is a full sha (as `sync --to <sha>` and a lock row with
+      ref = <sha> now leave it), an ordinary `sync <unit>` that changes nothing still reports
+      "✓ synced 1 unit(s) — 1 merged". resolveTarget builds TargetRef(tracked, sha=null, ...) for a
+      tracked ref, so the up-to-date-by-hash short-circuit never fires and a no-op merge of the
+      same commit is counted as a merge. HEAD, record and lock are all correct; only the count lies.
+    reproduction: >
+      SyncGitPinTest "CLI: sync <unit> --to <older sha> moves back and a plain sync then stays":
+      the second (plain) sync prints "1 merged" with HEAD unchanged at A.
+    evidence: [src/test/java/dev/skillmanager/effects/SyncGitPinTest.java]
+    suggested_fix: >
+      In SyncGitHandler.resolveTarget, when the tracked ref matches [0-9a-f]{40}, set TargetRef.sha
+      to it so the `target.sha.equals(baseline)` short-circuit reports SyncGitUpToDate.
+    disposition: open
+
+  - id: DEF-HP0-002
+    found_by: HP-0 (re-read by HP-2)
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "install path (InstallUseCase / UpdateUnitsLock ordering) — outside HP-2's conflict keys; NOT fixed here"
+    summary: >
+      Still open after HP-2. HP-2 does not need it: the pin moves HP-2 adds go through the sync
+      program, whose UpdateUnitsLock runs after the record is written, so every pinned move
+      leaves the lock row with origin/ref/resolved_sha. A plain install still does not.
+    disposition: open

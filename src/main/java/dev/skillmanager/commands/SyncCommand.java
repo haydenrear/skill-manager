@@ -36,6 +36,7 @@ import java.util.concurrent.Callable;
 
                 Sync modes:
                   - skill-manager sync <name> - refresh one installed unit.
+                  - skill-manager sync <name> --to <sha> - move one unit to an exact revision.
                   - skill-manager sync - refresh every installed unit.
                   - skill-manager sync <name> --from <dir> --yes - refresh from a local working tree.
                   - skill-manager sync --lock <units.lock.toml> - reconcile a vendored lock file.
@@ -151,6 +152,19 @@ public final class SyncCommand implements Callable<Integer> {
                     + "and the declared binary already exists. Does not bypass policy.install gates.")
     public boolean forceScripts;
 
+    /**
+     * HP-2 (#407): the primitive that was missing — move ONE installed unit to
+     * an exact revision, older or newer than HEAD, carrying worktree edits onto
+     * it by three-way apply, or refuse by name. The installed record (and so the
+     * units lock) then tracks that revision, so a later plain {@code sync} stays.
+     */
+    @Option(names = "--to",
+            description = "Move <name> to this exact revision (sha, tag or branch), older or newer "
+                    + "than HEAD. Local edits are carried onto it by a three-way apply; a conflict "
+                    + "or a local commit the revision lacks refuses by name and changes nothing. "
+                    + "The installed record and units.lock.toml then track that revision.")
+    public String toRevision;
+
     @Option(names = "--lock",
             description = "Reconcile against a vendored units.lock.toml at <path>. "
                     + "Walks the diff against the live state and runs sync over the listed units; "
@@ -196,6 +210,11 @@ public final class SyncCommand implements Callable<Integer> {
         // primary reconciliation entry point per ticket 10.
         if (lockPath != null) {
             return runFromLock(store, lockPath);
+        }
+
+        if (toRevision != null && (name == null || name.isBlank() || fromDir != null || gitLatest)) {
+            Log.error("--to requires a unit name and cannot be combined with --from or --git-latest");
+            return 2;
         }
 
         if (fromDir != null && (name == null || name.isBlank())) {
@@ -256,6 +275,11 @@ public final class SyncCommand implements Callable<Integer> {
             }
         }
 
+        if (toRevision != null && kindOf(store, name) == dev.skillmanager.model.UnitKind.HARNESS) {
+            Log.error("--to does not apply to a harness template: %s", name);
+            return 2;
+        }
+
         ResolvedTargets resolved = resolveTargets(store);
         if (resolved.targets().isEmpty()) {
             Log.warn("no units installed");
@@ -299,6 +323,14 @@ public final class SyncCommand implements Callable<Integer> {
         return 0;
     }
 
+    /** The git target for the named unit: pinned under {@code --to}, ordinary otherwise. */
+    private SyncUseCase.Target namedGitTarget() {
+        if (toRevision == null) return new SyncUseCase.Target.Git(name);
+        boolean fullSha = toRevision.matches("[0-9a-fA-F]{40}");
+        return new SyncUseCase.Target.Git(name, new dev.skillmanager.effects.SkillEffect.SyncGit.Pin(
+                null, toRevision, fullSha ? toRevision.toLowerCase() : null));
+    }
+
     private record ResolvedTargets(List<SyncUseCase.Target> targets, List<UnitReadProblem> readProblems) {}
 
     private ResolvedTargets resolveTargets(SkillStore store) throws IOException {
@@ -327,13 +359,13 @@ public final class SyncCommand implements Callable<Integer> {
                 // and every version check nagged forever (#173).
                 // SyncGitHandler no-ops gracefully for non-git installs.
                 return new ResolvedTargets(List.of(
-                        new SyncUseCase.Target.Git(name),
+                        namedGitTarget(),
                         new SyncUseCase.Target.DocRepo(name, force)), List.of());
             }
             if (kind == dev.skillmanager.model.UnitKind.HARNESS) {
                 return new ResolvedTargets(harnessInstanceTargets(store, name), List.of());
             }
-            return new ResolvedTargets(List.of(new SyncUseCase.Target.Git(name)), List.of());
+            return new ResolvedTargets(List.of(namedGitTarget()), List.of());
         }
         // Walk every installed unit so a no-arg sync re-runs the
         // post-update tail (or doc-repo drift sweep, or harness
@@ -478,7 +510,12 @@ public final class SyncCommand implements Callable<Integer> {
         // the end of the sync program.
         GatewayConfig gw = GatewayConfig.resolve(store, null);
         List<SyncUseCase.Target> targets = new ArrayList<>();
-        for (var b : diff.bumped()) targets.add(new SyncUseCase.Target.Git(b.before().name()));
+        // HP-2 (#406): each bumped row carries the lock's IDENTITY — origin,
+        // ref and resolved sha — into the target. It used to be
+        // Target.Git(name), which re-read the installed record and followed
+        // its old ref: a row pinning B landed on main's tip C and the command
+        // still exited 0.
+        for (var b : diff.bumped()) targets.add(lockTarget(b.after()));
         SyncUseCase.Options opts = new SyncUseCase.Options(
                 registryUrl, /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes, forceScripts,
                 includeMcp && !skipMcp);
@@ -497,6 +534,53 @@ public final class SyncCommand implements Callable<Integer> {
         }
         int worst = report.worstRc();
         if (worst != 0) return worst;
-        return report.errorCount() > 0 ? 1 : 0;
+        if (report.errorCount() > 0) return 1;
+        if (!dryRun && !reachedLock(store, diff)) return 1;
+        return 0;
+    }
+
+    /** The sync target for one lock row: pinned when the row names an identity. */
+    public static SyncUseCase.Target lockTarget(dev.skillmanager.lock.LockedUnit row) {
+        boolean hasSha = row.resolvedSha() != null && !row.resolvedSha().isBlank();
+        boolean hasRef = row.ref() != null && !row.ref().isBlank();
+        if (!hasSha && !hasRef) return new SyncUseCase.Target.Git(row.name());
+        return new SyncUseCase.Target.Git(row.name(), new dev.skillmanager.effects.SkillEffect.SyncGit.Pin(
+                blankToNull(row.origin()), hasRef ? row.ref() : null, hasSha ? row.resolvedSha() : null));
+    }
+
+    /**
+     * The last word on "converged": re-read the live rows and compare the
+     * identity each bumped target row asked for. A sync that exits 0 at a
+     * different revision is the defect #406 reports, so a mismatch here is an
+     * error naming the unit whatever the pipeline's receipts said.
+     */
+    private static boolean reachedLock(SkillStore store, dev.skillmanager.lock.LockDiff diff) throws IOException {
+        java.util.Map<String, dev.skillmanager.lock.LockedUnit> live = new java.util.HashMap<>();
+        for (var u : LockCommand.readLiveState(store).lock().units()) live.put(u.name(), u);
+        boolean ok = true;
+        for (var b : diff.bumped()) {
+            var want = b.after();
+            var got = live.get(want.name());
+            List<String> off = new ArrayList<>();
+            if (got == null) {
+                off.add("not installed");
+            } else {
+                if (want.resolvedSha() != null && !want.resolvedSha().equals(got.resolvedSha()))
+                    off.add("resolved_sha " + got.resolvedSha() + " != " + want.resolvedSha());
+                if (want.ref() != null && !want.ref().equals(got.ref()))
+                    off.add("ref " + got.ref() + " != " + want.ref());
+                if (want.origin() != null && !want.origin().isBlank() && !want.origin().equals(got.origin()))
+                    off.add("origin " + got.origin() + " != " + want.origin());
+            }
+            if (!off.isEmpty()) {
+                ok = false;
+                Log.error("%s: did not reach the lock — %s", want.name(), String.join("; ", off));
+            }
+        }
+        return ok;
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s;
     }
 }

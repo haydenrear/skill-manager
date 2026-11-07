@@ -178,6 +178,12 @@ public final class ProjectSyncUseCase {
                 ? pullTrunks(project, previousLock, sync.pullOptions())
                 : new UnitTrunkPull.Report(List.of());
 
+        // HP-2: a trunk pull is the operator asking for the units' CURRENT
+        // version, so the resolve after it must not put sha-pinned units back on
+        // their revision and silently undo the pull it just did. Without the
+        // pull (`project sync --no-pull`), and in `project resolve`, it does.
+        if (sync.pull()) opts = opts.withoutPinReconcile();
+
         Result result = sync.rebuild()
                 ? rebuild(project, previousLock, opts, pull)
                 : reconcile(project, opts, pull);
