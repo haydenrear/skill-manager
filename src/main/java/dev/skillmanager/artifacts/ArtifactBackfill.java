@@ -10,6 +10,7 @@ import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionKind;
 import dev.skillmanager.bindings.Sha256;
 import dev.skillmanager.cli.installer.CliArtifact;
+import dev.skillmanager.cli.installer.CliPresence;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.lock.Fingerprint;
 import dev.skillmanager.lock.Fingerprints;
@@ -240,6 +241,13 @@ public final class ArtifactBackfill {
             return List.of();
         }
         Map<String, String> declaredBinary = declaredBinaries();
+        // Keyed the way the lock is (RequestedVersion's tool), not by dep name:
+        // the PATH probe has to find the declaration that wrote THIS row.
+        Map<String, String> declaredOnPath = new LinkedHashMap<>();
+        ArtifactFreshness.cliProducers(store).forEach((key, producer) -> {
+            String onPath = producer.dep().onPath();
+            if (onPath != null && !onPath.isBlank()) declaredOnPath.put(key, onPath);
+        });
         List<Artifact> out = new ArrayList<>();
         for (CliLock.Entry entry : lock.all()) {
             List<String> inputs = new ArrayList<>();
@@ -277,6 +285,26 @@ public final class ArtifactBackfill {
             } else {
                 Path shim = store.cliBinDir().resolve(binary);
                 CliArtifact.Verdict verdict = CliArtifact.inspect(shim, root);
+                Path system = "absent".equals(verdict.reason())
+                        ? providedBySystem(entry, binary, declaredOnPath.get(
+                                ArtifactFreshness.lockKey(entry.backend(), entry.tool())))
+                        : null;
+                if (system != null) {
+                    // #409: the system satisfies this dep and nothing was ever
+                    // linked, so bin/cli/<binary> is not this artifact's output
+                    // and its absence is not a fact about this home. No output
+                    // is expected; the row (its source) is the whole artifact.
+                    out.add(cliShimArtifact(entry, inputs, List.of(),
+                            Artifact.facts("provided_by", system.toString(),
+                                    "provided_basis", entry.providedBySystem()
+                                            ? "cli-lock.toml records provided = \"system\""
+                                            : "inferred: the row predates `provided`, and its "
+                                                    + "on_path resolves outside every Skill "
+                                                    + "Manager home, so the next sync would "
+                                                    + "link nothing either"),
+                            List.of()));
+                    continue;
+                }
                 Artifact.Presence presence = verdict.usable() ? Artifact.Presence.PRESENT
                         : ("absent".equals(verdict.reason()) ? Artifact.Presence.MISSING
                                                              : Artifact.Presence.DANGLING);
@@ -285,35 +313,7 @@ public final class ArtifactBackfill {
                 observed = referencedTreePaths(shim);
             }
 
-            out.add(new Artifact(
-                    ArtifactIds.cliShim(entry.backend(), entry.tool()),
-                    ArtifactKind.CLI_SHIM,
-                    entry.requestedBy().isEmpty() ? null : entry.requestedBy().get(0),
-                    inputs,
-                    outputs,
-                    "cli-lock.toml",
-                    Artifact.facts("backend", entry.backend(), "tool", entry.tool(),
-                            "spec", entry.spec(),
-                            "version", entry.version(), "sha256", entry.sha256(),
-                            "binary", entry.binary(),
-                            "install_fingerprint", entry.installFingerprint(),
-                            "install_fingerprint_kind",
-                            entry.fingerprint() == null || entry.fingerprint().kind() == null
-                                    ? null : entry.fingerprint().kind().token(),
-                            "install_fingerprint_basis",
-                            entry.fingerprint() == null ? null : entry.fingerprint().basis(),
-                            "install_fingerprint_gap",
-                            entry.fingerprint() == null ? null : entry.fingerprint().gap()),
-                    actual,
-                    // The fingerprint is over the artifact's declared INPUTS,
-                    // so re-deriving it is the backend's job and not a read
-                    // command's; ARTI-04 owns making it comparable, and
-                    // claiming AGREES here would be the presence check wearing
-                    // a fingerprint's clothes a second time.
-                    entry.installFingerprint() == null ? Artifact.Agreement.UNRECORDED
-                                                       : Artifact.Agreement.UNVERIFIABLE,
-                    Artifact.Origin.HOME,
-                    observed));
+            out.add(cliShimArtifact(entry, inputs, outputs, actual, observed));
         }
         return out;
     }
@@ -358,6 +358,75 @@ public final class ArtifactBackfill {
      * reference out of. That is how a skill-script cache tree came to outlive
      * its unit with nothing in the home able to name it.
      */
+    /** One cli-lock row as a {@link ArtifactKind#CLI_SHIM} artifact. */
+    private static Artifact cliShimArtifact(CliLock.Entry entry, List<String> inputs,
+                                            List<Artifact.Output> outputs,
+                                            Map<String, String> actual,
+                                            List<String> observed) {
+    return new Artifact(
+                ArtifactIds.cliShim(entry.backend(), entry.tool()),
+                ArtifactKind.CLI_SHIM,
+                entry.requestedBy().isEmpty() ? null : entry.requestedBy().get(0),
+                inputs,
+                outputs,
+                "cli-lock.toml",
+                Artifact.facts("backend", entry.backend(), "tool", entry.tool(),
+                        "spec", entry.spec(),
+                        "version", entry.version(), "sha256", entry.sha256(),
+                        "binary", entry.binary(),
+                        "provided", entry.provided(),
+                        "install_fingerprint", entry.installFingerprint(),
+                        "install_fingerprint_kind",
+                        entry.fingerprint() == null || entry.fingerprint().kind() == null
+                                ? null : entry.fingerprint().kind().token(),
+                        "install_fingerprint_basis",
+                        entry.fingerprint() == null ? null : entry.fingerprint().basis(),
+                        "install_fingerprint_gap",
+                        entry.fingerprint() == null ? null : entry.fingerprint().gap()),
+                actual,
+                // The fingerprint is over the artifact's declared INPUTS,
+                // so re-deriving it is the backend's job and not a read
+                // command's; ARTI-04 owns making it comparable, and
+                // claiming AGREES here would be the presence check wearing
+                // a fingerprint's clothes a second time.
+                entry.installFingerprint() == null ? Artifact.Agreement.UNRECORDED
+                                                   : Artifact.Agreement.UNVERIFIABLE,
+                Artifact.Origin.HOME,
+                observed);
+    }
+
+    /**
+     * #409: where the system — not this home — provides {@code entry}'s
+     * executable, or null when this home is supposed to hold it.
+     *
+     * <p>Only two kinds of row qualify, and the order is the whole rule:
+     * <ul>
+     *   <li>A row that records {@code provided = "system"}: the recorder saw
+     *       {@code CliPresence.alreadyProvided} answer from PATH and link
+     *       nothing. It is still re-checked here, so a tool the system stopped
+     *       providing is reported missing — which a sync then installs.</li>
+     *   <li>A row written before {@code provided} existed, whose declaring unit
+     *       still names an {@code on_path} that resolves outside every Skill
+     *       Manager home. That is exactly the case the backend would answer
+     *       {@code ALREADY_PRESENT} for on the next pass, so the shim is not
+     *       one any verb can produce; reporting it stale has no remedy.</li>
+     * </ul>
+     *
+     * <p>A row recording {@code provided = "home"} never qualifies: this home
+     * installed it, and a deleted shim stays missing whatever PATH holds,
+     * until a sync re-records how it is satisfied.
+     */
+    static Path providedBySystem(CliLock.Entry entry, String binary, String declaredOnPath) {
+        if (entry.provided() == null) {
+            return declaredOnPath == null ? null
+                    : CliPresence.providedOutsideEveryHome(declaredOnPath);
+        }
+        if (!entry.providedBySystem()) return null;
+        Path found = declaredOnPath == null ? null
+                : CliPresence.providedOutsideEveryHome(declaredOnPath);
+        return found != null ? found : CliPresence.providedOutsideEveryHome(binary);
+    }
+
     private Map<String, String> declaredBinaries() {
         Map<String, String> out = new LinkedHashMap<>();
         try {

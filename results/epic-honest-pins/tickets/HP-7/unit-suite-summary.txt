@@ -1,0 +1,331 @@
+jbang RunTests.java @ worktree (exit 0)
+== PluginParserTest (5 cases)    → 5 passed, 0 failed
+== PluginParserDriftWarnsTest (5 cases)    → 5 passed, 0 failed
+== EffectiveDepUnionTest (7 cases)    → 7 passed, 0 failed
+== SkillUnitWrapsSkillTest (4 cases)    → 4 passed, 0 failed
+== CoordParserTest (22 cases)   [PASS] skill: prefix → Kinded(SKILL)
+  [PASS] plugin: prefix → Kinded(PLUGIN)   [PASS] github: → DirectGit
+  [PASS] file:// absolute path → Local   [PASS] file: (single-slash, legacy) → Local
+  [PASS] ./ relative path → Local   [PASS] ../ relative path → Local
+  [PASS] / absolute path → Local   [PASS] skill: with sub-element → SubElement wrapping Kinded
+   → 22 passed, 0 failed == CoordRoundTripTest (18 cases)
+   → 18 passed, 0 failed == UnitReferenceFromTomlTest (4 cases)
+  [PASS] skill_references with mixed kinds → mixed kindFilters   [PASS] inline-table reference (name + path) → legacy projection
+  [PASS] inline-table reference (path only) → Local   [PASS] empty references → empty list
+   → 4 passed, 0 failed == SkillProjectParserTest (11 cases)
+   → 11 passed, 0 failed == UnitStoreDirChoiceTest (5 cases)
+   → 5 passed, 0 failed == InstalledUnitRoundTripTest (5 cases)
+   → 5 passed, 0 failed == MigrationFromSkillSourceTest (6 cases)
+   → 6 passed, 0 failed == FetcherLocalSourceTest (5 cases)
+→ registry: resolving definitely-not-a-real-skill-name-535373903299125 from http://127.0.0.1:8090    → 5 passed, 0 failed
+== RegistryUnavailableExceptionTest (3 cases)    → 3 passed, 0 failed
+== ResolverKindFilterTest (6 cases)    → 6 passed, 0 failed
+== ResolverHeterogeneousRefsTest (3 cases)    → 3 passed, 0 failed
+== ResolverContainedSkillNotMatchedTest (3 cases)    → 3 passed, 0 failed
+== ResolverBundledAliasTest (1 cases)    → 1 passed, 0 failed
+== ResolverDirectGitDetectsKindTest (8 cases)   [PASS] github:user/repo of a skill → SKILL descriptor
+  [PASS] github:user/repo of a plugin → PLUGIN descriptor   [PASS] file:./ pointing at a plugin → PLUGIN
+  [PASS] clone target with neither plugin.json nor SKILL.md → UnknownLayout   [PASS] local path does not exist → NotFound
+   → 8 passed, 0 failed == ResolverDirectGitTransitiveTest (1 cases)
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/resolver-direct-git-transitive-16957592450732949583/child/    → 1 passed, 0 failed
+== ResolverDeterminismTest (4 cases)    → 4 passed, 0 failed
+== ResolverCycleTest (3 cases)    → 3 passed, 0 failed
+== PlanShapeInvariantTest (4 cases)    → 4 passed, 0 failed
+== SkillScriptBackendTest (9 cases) → cli: skill-script force-script-bin - force rerun requested
+→ cli: skill-script force-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-7135553232021743823/skills/force-script-skill/skill-scripts/install.sh → cli: skill-script force-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-force-7135553232021743823/logs/skill-scripts/20261107-182813-839-force-script-skill-force-script-bin.log
+→ cli: skill-script logged-script-bin - force rerun requested → cli: skill-script logged-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-11959628431758911065/skills/logged-script-skill/skill-scripts/install.sh
+→ cli: skill-script logged-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-log-11959628431758911065/logs/skill-scripts/20261107-182814-056-logged-script-skill-logged-script-bin.log → cli: skill-script failing-script-bin - force rerun requested
+→ cli: skill-script failing-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-1235539234373766565/skills/failing-script-skill/skill-scripts/install.sh → cli: skill-script failing-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-fail-1235539234373766565/logs/skill-scripts/20261107-182814-333-failing-script-skill-failing-script-bin.log
+→ cli: skill-script shim-token-bin - force rerun requested → cli: skill-script shim-token-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-deploy-helm-15756498313277022300/skills/shim-token-skill/skill-scripts/install.sh
+→ cli: skill-script shim-token-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-deploy-helm-15756498313277022300/logs/skill-scripts/20261107-182814-532-shim-token-skill-shim-token-bin.log → cli: skill-script shim-token-bin - force rerun requested
+→ cli: skill-script shim-token-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-half-adopted-16327183026644728875/skills/shim-token-skill/skill-scripts/install.sh → cli: skill-script shim-token-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-shim-half-adopted-16327183026644728875/logs/skill-scripts/20261107-182815-019-shim-token-skill-shim-token-bin.log
+→ cli: skill-script contained-script-bin - force rerun requested → cli: skill-script contained-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-contained-6696649339714035336/plugins/carrier-plugin/skills/declaring-skill/skill-scripts/install.sh
+→ cli: skill-script contained-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-contained-6696649339714035336/logs/skill-scripts/20261107-182815-571-carrier-plugin-contained-script-bin.log → cli: skill-script both-rungs-bin - force rerun requested
+→ cli: skill-script both-rungs-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-precedence-7636348763488344607/plugins/both-rungs-plugin/skill-scripts/install.sh → cli: skill-script both-rungs-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-script-precedence-7636348763488344607/logs/skill-scripts/20261107-182815-771-both-rungs-plugin-both-rungs-bin.log
+   → 9 passed, 0 failed == SkillScriptWriteThroughTest (7 cases)
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-backend-15358634606731454049/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh → cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-backend-15358634606731454049/child/.skill-manager/logs/skill-scripts/20261107-182815-997-wt-unit-wt-tool.log
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-registry-3567171456939225126/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh → cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-registry-3567171456939225126/child/.skill-manager/logs/skill-scripts/20261107-182816-249-wt-unit-wt-tool.log
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-7585886055399208633/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh → cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-7585886055399208633/child/.skill-manager/logs/skill-scripts/20261107-182816-464-wt-unit-wt-tool.log
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-fail-8398359128462740860/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh → cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-restore-fail-8398359128462740860/child/.skill-manager/logs/skill-scripts/20261107-182816-656-wt-unit-wt-tool.log
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-changed-2944854848342875570/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh → cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-changed-2944854848342875570/child/.skill-manager/logs/skill-scripts/20261107-182816-850-wt-unit-wt-tool.log
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-11050492563634000901/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh → cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-relink-11050492563634000901/child/.skill-manager/logs/skill-scripts/20261107-182817-067-wt-unit-wt-tool.log
+→ cli: skill-script wt-tool — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-inside-12128999441338719209/child/.skill-manager/skills/wt-unit/skill-scripts/install.sh → cli: skill-script wt-tool — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/wt-inside-12128999441338719209/child/.skill-manager/logs/skill-scripts/20261107-182817-305-wt-unit-wt-tool.log
+   → 7 passed, 0 failed == BinCliWritersDoNotFollowLinksTest (7 cases)
+   → 7 passed, 0 failed == InstallerFingerprintTest (28 cases)
+   → 28 passed, 0 failed == CliPinTest (11 cases)
+→ cli: downloading tool from http://127.0.0.1:62592/v1 → cli: tool pin moved (declared tar:tool @ 2.0, this home installed tar:tool @ 1.0) — reinstalling
+→ cli: downloading tool from http://127.0.0.1:62592/v2 → cli: downloading tool from http://127.0.0.1:62595/v1
+→ cli: downloading tool from http://127.0.0.1:62597/v1 → cli: tool pin moved (tar:tool @ 1.0 now declares a different install target (url, sha256, archive, binary or extract)) — reinstalling
+→ cli: downloading tool from http://127.0.0.1:62597/v2 → cli: downloading tool from http://127.0.0.1:62600/v1
+→ cli: downloading tool from http://127.0.0.1:62602/v1 → cli: tool pin moved (declared tar:tool @ 2.0, this home installed tar:tool @ 1.0) — reinstalling
+→ cli: downloading tool from http://127.0.0.1:62604/v1 → cli: tool pin moved (declared tar:tool @ 2.0, this home installed tar:tool @ 1.0 (row predates declared_pin; compared on spec and version)) — reinstalling
+→ cli: downloading tool from http://127.0.0.1:62604/v2 → cli: downloading tool from http://127.0.0.1:62607/v1
+→ cli: downloading tool from http://127.0.0.1:62609/v1 → cli: tool pin moved (declared tar:tool @ 2.0, this home installed tar:tool @ 1.0) — reinstalling
+→ cli: downloading tool from http://127.0.0.1:62609/v2 → cli: downloading tool from http://127.0.0.1:62616/v1
+→ cli: downloading tool from http://127.0.0.1:62618/v1 → cli: tool pin moved (declared tar:tool @ 2.0, this home installed tar:tool @ 1.0) — reinstalling
+   → 11 passed, 0 failed == CliPresenceTest (6 cases)
+→ cli: downloading hello from http://127.0.0.1:62622/hello    → 6 passed, 0 failed
+== CliArtifactMatrixTest (42 cases) → cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-5832784331523197745/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-ABSENT-5832784331523197745/logs/skill-scripts/20261107-182818-390-matrix-unit-matrix-tool.log → cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-215666522303817459/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-DANGLING_SYMLINK-215666522303817459/logs/skill-scripts/20261107-182818-640-matrix-unit-matrix-tool.log → cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-2014375168605527001/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-WRAPPER_TARGET_MISSING-2014375168605527001/logs/skill-scripts/20261107-182818-853-matrix-unit-matrix-tool.log → cli: skill-script matrix-tool — running /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-12719144179221526841/skills/matrix-unit/skill-scripts/install.sh
+→ cli: skill-script matrix-tool — writing output to /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/matrix-SKILL_SCRIPT-NON_EXECUTABLE_FILE-12719144179221526841/logs/skill-scripts/20261107-182819-058-matrix-unit-matrix-tool.log    → 42 passed, 0 failed
+== CycleDetectionTest (8 cases)    → 8 passed, 0 failed
+== MixedKindTopoOrderTest (4 cases)    → 4 passed, 0 failed
+== PlanPolicyCategorizationTest (6 cases)    → 6 passed, 0 failed
+== PolicyGatingTest (18 cases)   [PASS] skill — no deps + all flags on → zero violations
+  [PASS] skill — CLI + MCP with both flags on → two violations   [PASS] plugin — no deps + all flags on → zero violations
+  [PASS] plugin — CLI + MCP with both flags on → two violations   [PASS] empty violations → empty message
+  [PASS] default policy: hello-skill-shaped plan (CLI + MCP) → no violations    → 18 passed, 0 failed
+== HandlerSubstitutabilityTest (14 cases)    → 14 passed, 0 failed
+== ListTypedHandlerSubstitutabilityTest (12 cases)    → 12 passed, 0 failed
+== GitOpsRepoBoundaryTest (10 cases)    → 10 passed, 0 failed
+== DereferencedStoreLinkSyncTest (10 cases)    → 10 passed, 0 failed
+== SyncPathsAgreeAboutDirtyTest (4 cases)    → 4 passed, 0 failed
+== SyncFastForwardReleaseTest (4 cases)    → 4 passed, 0 failed
+== SourceProvenanceRecorderTest (4 cases)    → 4 passed, 0 failed
+== ResolveGraphDirectGitSyncTest (4 cases) → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-5370206049108817587/shared-child-repository/
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-attribution-5370206049108817587/shared-child-repository/ → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-removed-3375463914273734701/never-a-repository
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sync-direct-git-reconcile-10828881979440543490/never-a-repository    → 4 passed, 0 failed
+== SyncGitDocRepoTest (1 cases)    → 1 passed, 0 failed
+== KindAwareDispatchTest (6 cases)    → 6 passed, 0 failed
+== CompensationLogicTest (8 cases)   [PASS] compensationsFor(RunCliInstall) → UninstallCliIfOrphan
+   → 8 passed, 0 failed == ProjectSyncErrorReportingTest (3 cases)
+   → 3 passed, 0 failed == CompensationPairingTest (12 cases)
+  [PASS] CommitUnitsToStore → DeleteUnitDir per committed (kind-aware)   [PASS] RecordSourceProvenance → DeleteInstalledUnit per resolved
+  [PASS] RunCliInstall → UninstallCliIfOrphan   [PASS] RegisterMcpServer → UnregisterMcpIfOrphan
+  [PASS] SyncAgents → UnprojectIfOrphan per unit that synced   [PASS] preState(AddUnitError) on existing record → RestoreInstalledUnit
+  [PASS] preState(AddUnitError) on absent record → DeleteInstalledUnit   [PASS] preState(OnboardUnit) on absent record → DeleteInstalledUnit
+  [PASS] preState(OnboardUnit) on existing record → empty (effect skips)   [PASS] MaterializeProjection → ReverseProjection (post-state, when materialized)
+  [PASS] MaterializeProjection skipped (no fact) → no compensation   [PASS] CreateBinding → RestoreProjectionLedger pre-state snapshot
+   → 12 passed, 0 failed == CompensationOrphanTest (7 cases)
+  [PASS] isClaimedByOtherUnit: no other claimant → false   [PASS] isMcpClaimedByOtherUnit: no other claimant → false
+   → 7 passed, 0 failed == UninstallScenarioTest (8 cases)
+  [PASS] SKILL with one MCP dep, no other claimants → unregister   [PASS] SKILL with MCP dep claimed by sibling → no orphan emitted
+  [PASS] SKILL with no MCP deps → no orphans (regardless of siblings)   [PASS] SKILL with multiple MCP deps, one claimed by sibling → only unclaimed unregister
+  [PASS] PLUGIN with no MCP deps → no orphans    → 8 passed, 0 failed
+== UninstallCliCleanupTest (7 cases) ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9760617916352020809/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12837008346409404309/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6841855776355185800/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2756687893902821774/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3518877292466014347/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10108906219348466670/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13285201246493414713/units.lock.toml
+   → 7 passed, 0 failed == FailureInjectionSweepTest (9 cases)
+  [PASS] skill — fail at step 1 of 3-effect chain → all prior mutations rolled back   [PASS] skill — fail at step 2 of 3-effect chain → all prior mutations rolled back
+  [PASS] skill — fail at step 0 (first effect) → no prior steps, no leak   [PASS] plugin — fail at step 1 of 3-effect chain → all prior mutations rolled back
+  [PASS] plugin — fail at step 2 of 3-effect chain → all prior mutations rolled back   [PASS] plugin — fail at step 0 (first effect) → no prior steps, no leak
+  [PASS] pre-existing installed-record → AddUnitError + fail → record restored to pre-image   [PASS] multi-unit commit + fail → every committed unit's dir removed
+  [PASS] clean run (no fault) → no rollback, mutations persist    → 9 passed, 0 failed
+== CommitPreImageRestoreTest (10 cases)    → 10 passed, 0 failed
+== LockReadWriteTest (8 cases)   [PASS] missing file → empty lock with current schema
+   → 8 passed, 0 failed == RequestedVersionTest (12 cases)
+   → 12 passed, 0 failed == LockDiffTest (6 cases)
+  [PASS] equal locks → empty diff   [PASS] unit in target but not in current → added
+  [PASS] unit in current but not in target → removed   [PASS] same name + different sha → bumped (not added/removed)
+  [PASS] same name + different version → bumped    → 6 passed, 0 failed
+== LockSchemaVersionTest (4 cases)   [PASS] schema_version=1 → reads cleanly
+  [PASS] schema_version=2 (future) → IOException with explicit message   [PASS] schema_version=99 → IOException
+  [PASS] missing schema_version key → defaults to current (legacy compat)    → 4 passed, 0 failed
+== LockAtomicityTest (3 cases)   [PASS] UpdateUnitsLock + fault → byte-identical pre-image restored
+  [PASS] fault BEFORE UpdateUnitsLock → lock untouched on disk   [PASS] clean run (no fault) → lock advances to target, persists
+   → 3 passed, 0 failed == SyncFromLockScenarioTest (7 cases)
+  [PASS] empty store + empty lock → no drift (idempotent baseline)   [PASS] install + refresh + status → empty diff (round-trip idempotent)
+  [PASS] install without lock update → status shows added drift   [PASS] uninstall without lock update → status shows removed drift
+  [PASS] sha drift → status shows bumped drift    → 7 passed, 0 failed
+== ClaudeProjectorTest (9 cases)   [PASS] skill — apply creates a symlink target → source
+   → 9 passed, 0 failed == CodexProjectorTest (3 cases)
+  [PASS] SKILL → one projection routing to skillsDir    → 3 passed, 0 failed
+== GeminiProjectorTest (3 cases)    → 3 passed, 0 failed
+== ProjectorRegistryTest (4 cases)    → 4 passed, 0 failed
+== SkillProjectRegistryTest (4 cases)    → 4 passed, 0 failed
+== ProjectDependencyResolverTest (29 cases) ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5682485840157422675/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7543759010833537582/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6527038973988294330/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17182221048356190054/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17508522945046869821/units.lock.toml
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-16950081401153339190/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1787887840078480233/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1787887840078480233/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17405444767237111531/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3997568756392779589/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3997568756392779589/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-337571511288910782/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-337571511288910782/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15146920393566354314/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15081350830558307232/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1968683208784119253/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17806800196517152875/units.lock.toml
+→ cli: skill-script project-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17806800196517152875/skills/project-cli-skill/skill-scripts/install-project-auto-cli.sh → cli: skill-script project-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17806800196517152875/logs/skill-scripts/20261107-182842-338-project-cli-skill-project-auto-cli.log
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17806800196517152875/units.lock.toml → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-3741286110212429982/upstream/pinned-claimant-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-pinned-claimant-3741286110212429982/upstream/pinned-claimant-skill → cli: skill-script unrelated-claimant-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9560717299316707995/skills/unrelated-claimant-skill/skill-scripts/install-unrelated-claimant-cli.sh
+→ cli: skill-script unrelated-claimant-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9560717299316707995/logs/skill-scripts/20261107-182843-973-unrelated-claimant-skill-unrelated-claimant-cli.log ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9560717299316707995/units.lock.toml
+✓ units.lock.toml refreshed (2 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9560717299316707995/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9560717299316707995/units.lock.toml
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-1497077195320159909/git-skill/global-project-cli-skill → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-global-sync-claiming-cli-1497077195320159909/git-skill/global-project-cli-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12712443969942233790/units.lock.toml → cli: skill-script project-global-auto-cli — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12712443969942233790/skills/global-project-cli-skill/skill-scripts/install-project-global-auto-cli.sh
+→ cli: skill-script project-global-auto-cli — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12712443969942233790/logs/skill-scripts/20261107-182849-232-global-project-cli-skill-project-global-auto-cli.log ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12712443969942233790/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-16500879374779246367/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-884647931709632055/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5962923068306495133/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12498487001230103321/units.lock.toml
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-13612249108070260452/git-skill/git-locked-skill → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-13612249108070260452/git-skill/git-locked-skill
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15198282551607480462/units.lock.toml → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-transitive-git-7225837382061411835/acp-cdc-ai-python-skill/
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15442351901120832047/units.lock.toml → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5315873481211191342/git-skill/preinstalled-git-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-preinstalled-git-5315873481211191342/git-skill/preinstalled-git-skill ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14919790114754633287/units.lock.toml
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-9757467768575205491/git-doc/git-prompts → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-9757467768575205491/git-harness/git-project-harness
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-9757467768575205491/git-harness/git-project-harness → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-direct-git-bindings-9757467768575205491/git-doc/git-prompts
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1274080363867530068/units.lock.toml → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-16018797437677189429/revision-skill/revision-skill
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/project-resolve-revision-16018797437677189429/revision-skill/revision-skill ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-58969298058439165/units.lock.toml
+✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10870726824755397522/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-18020748496050691579/units.lock.toml
+   → 29 passed, 0 failed == ProjectResolveAtomicClosureTest (4 cases)
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9086985729666488636/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10785737357760369134/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6864517195378931852/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4907173562475010950/units.lock.toml
+   → 4 passed, 0 failed == ProjectSyncTypedRefusalTest (4 cases)
+   → 4 passed, 0 failed == ProjectChildHomeMaterializationTest (24 cases)
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5970028254557944851/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-16471906470756359820/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7190671181581610723/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4058715756065472305/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3338000843071791889/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17046873841409500419/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3023961288897394786/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9794644106961235129/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-16998786583066382980/units.lock.toml ✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1730760237060560720/units.lock.toml
+   → 24 passed, 0 failed == ProjectSyncIdempotencyTest (2 cases)
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-18161006851874132944/units.lock.toml    → 2 passed, 0 failed
+== ProjectEnvMaterializerTest (3 cases) ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-398727026127621982/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10710242338778074236/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17950224593568367880/units.lock.toml
+   → 3 passed, 0 failed == ProjectLibResolverTest (5 cases)
+   → 5 passed, 0 failed == ProjectVendoredResolverTest (23 cases)
+   → 23 passed, 0 failed == ProjectToRootPromotionTest (5 cases)
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-claimed-14255609176632507040/src/promotion-claimed-unit → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-claimed-14255609176632507040/src/promotion-claimed-unit
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13886112728763793675/units.lock.toml → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-guard-13404526511407057410/src/promotion-guard-unit
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-guard-13404526511407057410/src/promotion-guard-unit ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-16183147933892334628/units.lock.toml
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-unrelated-broken-8567070509147525486/src/promotion-unrelated-broken-unit → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-unrelated-broken-8567070509147525486/src/promotion-unrelated-broken-unit
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9711225710037487152/units.lock.toml → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-unrelated-healthy-4892846740479218062/src/promotion-unrelated-healthy-unit
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-unrelated-healthy-4892846740479218062/src/promotion-unrelated-healthy-unit ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9711225710037487152/units.lock.toml
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-direct-root-14293170806102945205/src/promotion-direct-root-unit → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-direct-root-14293170806102945205/src/promotion-direct-root-unit
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1293108838715449872/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1293108838715449872/units.lock.toml
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-advisory-15342717912438374880/src/promotion-advisory-unit → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-advisory-15342717912438374880/src/promotion-advisory-unit
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7717110314764815994/units.lock.toml → cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-advisory-15342717912438374880/src2/promotion-advisory-unit-b
+→ cloning file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/promotion-advisory-15342717912438374880/src2/promotion-advisory-unit-b ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-7717110314764815994/units.lock.toml
+   → 5 passed, 0 failed == SourcesAreGreppableTest (1 cases)
+   → 1 passed, 0 failed == PluginMarketplaceTest (20 cases)
+  [PASS] empty store → manifest has 0 plugins + dirs created   [PASS] one plugin → symlink + manifest entry
+  [PASS] skills-only store → empty plugin list, no spurious symlinks    → 20 passed, 0 failed
+== HarnessPluginCliTest (22 cases)    → 22 passed, 0 failed
+== MarketplaceRegistrationsTest (8 cases)    → 8 passed, 0 failed
+== HomeRefreshPluginsTest (3 cases)    → 3 passed, 0 failed
+== RefreshHarnessPluginsTest (7 cases)    → 7 passed, 0 failed
+== PublishDetectsPluginTest (4 cases)   [PASS] plugin dir → detectKind returns PLUGIN
+   → 4 passed, 0 failed == PublishDetectsSkillTest (4 cases)
+  [PASS] skill dir → detectKind returns SKILL   [PASS] dir with neither SKILL.md nor plugin.json → IOException with explicit message
+   → 4 passed, 0 failed == MarkdownImportValidatorTest (16 cases)
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10823886403684350060/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-10823886403684350060/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13289934396691230806/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13289934396691230806/units.lock.toml
+✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13289934396691230806/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-13289934396691230806/units.lock.toml
+   → 16 passed, 0 failed == UnitEdgeGraphTest (6 cases)
+   → 6 passed, 0 failed == ContainedNameCollisionIsRefusedTest (9 cases)
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17996687743961806446/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-15624625962178975028/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3771373922498409495/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3771373922498409495/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-1311268538945209911/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6359609217809179555/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-3379554777268949357/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5177585210393292143/units.lock.toml
+   → 9 passed, 0 failed == MigrationSatisfiesTheGateTest (26 cases)
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2404495133719202962/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2404495133719202962/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2404495133719202962/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17877412608794520596/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17877412608794520596/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6994166285219008416/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6994166285219008416/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14360650836532939310/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14360650836532939310/units.lock.toml ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14360650836532939310/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-6090423332307851365/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-969930920950356362/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-969930920950356362/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4784968233952292805/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4784968233952292805/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-4784968233952292805/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14469824727710493021/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-14469824727710493021/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-442443132746207047/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5450043988458052148/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-5450043988458052148/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-9571940568513189237/units.lock.toml
+✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2316113341522189559/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2316113341522189559/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2316113341522189559/units.lock.toml ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-18236593087888949936/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-12299981252159840003/units.lock.toml ✓ units.lock.toml: wrote 0 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-17901308526361438452/units.lock.toml
+   → 26 passed, 0 failed == ProjectMarkdownImportsTest (3 cases)
+   → 3 passed, 0 failed == LocalInstallIsNotAnErrorTest (4 cases)
+   → 4 passed, 0 failed == ScaffoldPluginTest (3 cases)
+   → 3 passed, 0 failed == CliObservabilityTest (9 cases)
+   → 9 passed, 0 failed == QuietConsoleTest (14 cases)
+   → 14 passed, 0 failed == ServerObservabilityContractTest (8 cases)
+   → 8 passed, 0 failed == CliAgentContextExecutionTest (2 cases)
+   → 2 passed, 0 failed == CliRefusalsAreMessagesTest (5 cases)
+   → 5 passed, 0 failed == JsonContractTest (39 cases)
+   → 39 passed, 0 failed == LazyHomeScaffoldTest (64 cases)
+   → 64 passed, 0 failed == HomeBindsBothAxesTest (17 cases)
+   → 17 passed, 0 failed == CliAgentContextTest (3 cases)
+   → 3 passed, 0 failed == CliHelpProgressiveDisclosureTest (2 cases)
+   → 2 passed, 0 failed == CliMetadataTest (6 cases)
+   → 6 passed, 0 failed == CommandKindCoverageTest (8 cases)
+→ cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-15624780224737019900/skills/target-script-skill/skill-scripts/install.sh → cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-15624780224737019900/logs/skill-scripts/20261107-183052-992-target-script-skill-target-script-bin.log
+→ cli: skill-script other-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-15624780224737019900/skills/other-script-skill/skill-scripts/install.sh → cli: skill-script other-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-15624780224737019900/logs/skill-scripts/20261107-183053-221-other-script-skill-other-script-bin.log
+→ cli: skill-script target-script-bin - force rerun requested → cli: skill-script target-script-bin — running /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-15624780224737019900/skills/target-script-skill/skill-scripts/install.sh
+→ cli: skill-script target-script-bin — writing output to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-15624780224737019900/logs/skill-scripts/20261107-183053-859-target-script-skill-target-script-bin.log ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/kind-coverage-15624780224737019900/units.lock.toml
+   → 8 passed, 0 failed == ProjectCommandTest (2 cases)
+   → 2 passed, 0 failed == RemediesAreRunnableTest (6 cases)
+   → 6 passed, 0 failed == CreatePluginScenarioTest (3 cases)
+  [PASS] create plugin → parses as PluginUnit   [PASS] create plugin → publish detects PLUGIN + bundles all expected entries
+   → 3 passed, 0 failed == GatewayStatusCommandTest (1 cases)
+   → 1 passed, 0 failed == ListShowsKindAndShaTest (5 cases)
+   → 5 passed, 0 failed == SearchShowsKindTest (4 cases)
+  [PASS] registry hit with unit_kind=plugin → kind 'plugin'   [PASS] registry hit with unit_kind=skill → kind 'skill'
+  [PASS] legacy registry hit without unit_kind → defaults to 'skill'    → 4 passed, 0 failed
+== ShowNonSkillUnitsTest (2 cases)    → 2 passed, 0 failed
+== ShowPluginListsContainedSkillsTest (4 cases)   [PASS] attribution: plugin-level dep → 'plugin level', contained → 'skills/<name>'
+   → 4 passed, 0 failed == SkillManagerSkillDocsTest (3 cases)
+   → 3 passed, 0 failed == AgentHomesTest (14 cases)
+   → 14 passed, 0 failed == AgentProjectionFollowsHomeTest (8 cases)
+   → 8 passed, 0 failed == McpWriterTest (8 cases)
+   → 8 passed, 0 failed == GatewayRuntimeTest (2 cases)
+   → 2 passed, 0 failed == FetcherGitCloneTest (12 cases)
+   → 12 passed, 0 failed == HomePathsTest (26 cases)
+   → 26 passed, 0 failed == HomeCloneTest (36 cases)
+   → 36 passed, 0 failed == HomeVerifyReportTest (4 cases)
+   → 4 passed, 0 failed == HelpIsTextOnlyTest (4 cases)
+   → 4 passed, 0 failed == HomeReportsMarkWhatTheyInventTest (6 cases)
+   → 6 passed, 0 failed == HomeVerifyDiagnosticTextTest (3 cases)
+   → 3 passed, 0 failed == HomeUnresolvedGateTest (4 cases)
+   → 4 passed, 0 failed == ChildHomeShimIsolationTest (9 cases)
+   → 9 passed, 0 failed == ClonedHomeDescentTest (6 cases)
+   → 6 passed, 0 failed == DamagedHomeIsRepairableTest (31 cases)
+   → 31 passed, 0 failed == HomeVerifyPathSpellingTest (6 cases)
+   → 6 passed, 0 failed == CloneReanchorsEveryAliasTest (3 cases)
+   → 3 passed, 0 failed == SyncReportsDriftOnceTest (5 cases)
+   → 5 passed, 0 failed == ProvenanceRecordExemptionTest (4 cases)
+   → 4 passed, 0 failed == CliShimPrunerTest (7 cases)
+   → 7 passed, 0 failed == WriteConfinementTest (7 cases)
+   → 7 passed, 0 failed == PruneStaysInsideItsHomeTest (6 cases)
+   → 6 passed, 0 failed == ProducerStaysInsideItsHomeTest (7 cases)
+   → 7 passed, 0 failed == ConfinementTest (8 cases)
+   → 8 passed, 0 failed == BuildIdentityTest (6 cases)
+   → 6 passed, 0 failed == VerdictsNameTheirBuildTest (8 cases)
+   → 8 passed, 0 failed == HomeDescriptorTest (14 cases)
+   → 14 passed, 0 failed == HomeDescriptorCliRemedyTest (14 cases)
+   → 14 passed, 0 failed == HomePolicyTest (11 cases)
+✓ units.lock.toml refreshed (1 unit(s)) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/policy-live-5969807141263932306/.skill-manager/units.lock.toml    → 11 passed, 0 failed
+== LauncherShimsTest (41 cases)    → 41 passed, 0 failed
+== LaunchCredentialAxisTest (7 cases)    → 7 passed, 0 failed
+== ShimHomeContractTest (2 cases)    → 2 passed, 0 failed
+== ShimSurvivesACopyTest (14 cases)    → 14 passed, 0 failed
+== ShimAnchorRunsUnderEveryShellTest (9 cases)    → 9 passed, 0 failed
+== CopyCrossesAPlatformTest (9 cases)    → 9 passed, 0 failed
+== DurableCliPinTest (20 cases)    → 20 passed, 0 failed
+== ProjectTrunkSyncTest (20 cases)    → 20 passed, 0 failed
+== HomeDriftGateTest (28 cases)    → 28 passed, 0 failed
+== HomeSyncTest (22 cases)    → 22 passed, 0 failed
+== HomeCloseOutTenseTest (3 cases)    → 3 passed, 0 failed
+== HomeSyncMergeTest (17 cases)    → 17 passed, 0 failed
+== HomeSyncGitUnitTest (10 cases)    → 10 passed, 0 failed
+== HomeCloseOutPublishedRefsTest (4 cases)    → 4 passed, 0 failed
+== HomeSyncUnitFilterTest (7 cases)    → 7 passed, 0 failed
+== HomeSyncStaleBaselineTest (6 cases)    → 6 passed, 0 failed
+== HomeSyncUnitCliTest (6 cases)    → 6 passed, 0 failed
+== AuditTrailTest (2 cases) ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2041484994477013174/units.lock.toml
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-handler-test-2041484994477013174/units.lock.toml    → 2 passed, 0 failed
+== SharedGatewayTest (12 cases) → [1] ensure gateway running at http://127.0.0.1:52006
+→ [1] ensure gateway running at http://127.0.0.1:52007 → [1] ensure gateway running at http://127.0.0.1:52008
+   → 12 passed, 0 failed == SyncMcpSplitTest (7 cases)
+   → 7 passed, 0 failed == GeminiHomeParityTest (5 cases)
+   → 5 passed, 0 failed == ArtifactBackfillTest (11 cases)
+   → 11 passed, 0 failed == SystemProvidedCliShimTest (6 cases)
+   → 6 passed, 0 failed == ArtifactHomeStabilityTest (9 cases)
+   → 9 passed, 0 failed == ArtifactGraphTest (14 cases)
+   → 14 passed, 0 failed == ArtifactStalenessTest (30 cases)
+   → 30 passed, 0 failed == ArtifactBuildTest (18 cases)
+   → 18 passed, 0 failed == LazyArtifactHomeTest (15 cases)
+   → 15 passed, 0 failed == ArtifactPruneTest (31 cases)
+   → 31 passed, 0 failed == RecordVersionRefreshTest (3 cases)
+   → 3 passed, 0 failed == BindingsTest (13 cases)
+   → 13 passed, 0 failed == DocRepoTest (17 cases)
+  [PASS] Sha256 hashFile round-trip + missing file → null   [PASS] DocSync upgrade: source changed, dest unchanged → rewrites + bumps boundHash
+   → 17 passed, 0 failed == HarnessTest (13 cases)
+  [PASS] SyncHarness effect: removed unit from template → orphan binding torn down    → 13 passed, 0 failed
+== ScaffoldedTreeIsNotContentTest (14 cases)    → 14 passed, 0 failed
+   → 14 passed, 0 failed 
+ALL PASSED

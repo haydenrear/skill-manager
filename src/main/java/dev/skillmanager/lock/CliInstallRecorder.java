@@ -1,5 +1,7 @@
 package dev.skillmanager.lock;
 
+import dev.skillmanager.cli.installer.CliArtifact;
+import dev.skillmanager.cli.installer.CliPresence;
 import dev.skillmanager.cli.installer.InstallerRegistry;
 import dev.skillmanager.cli.installer.ProvisionTally;
 import dev.skillmanager.model.CliDependency;
@@ -115,9 +117,37 @@ public final class CliInstallRecorder {
         // recordInstall because that method keeps an existing row whole when the
         // version is unchanged -- including its old spec -- and a tar url bump at
         // the same min_version is exactly that case.
-        CliLock.Entry declared = row.withDeclaration(dep.spec(), CliPin.of(dep));
+        CliLock.Entry declared = row.withDeclaration(dep.spec(), CliPin.of(dep))
+                .withProvided(provenance(dep, store));
         lock.put(declared);
         return declared;
+    }
+
+    /**
+     * #409: how {@code dep} is satisfied right now — {@link CliLock#PROVIDED_HOME}
+     * when this home holds a usable {@code bin/cli} artifact for it,
+     * {@link CliLock#PROVIDED_SYSTEM} when it does not and
+     * {@link CliPresence#providedOutsideEveryHome} finds its {@code on_path} on
+     * PATH outside every Skill Manager home, else null.
+     *
+     * <p>Read off the disk after the backend ran rather than from the backend's
+     * {@code InstallOutcome}, because {@code ALREADY_PRESENT} conflates the two
+     * answers {@link CliPresence#alreadyProvided} keeps apart — "this home
+     * already provisioned it" and "the system provides it" — and only the
+     * second means {@code bin/cli} is not expected to hold anything. Home first:
+     * a shim this home DOES hold is this home's artifact whatever else is on
+     * PATH, and must stay reported if it is later deleted.
+     *
+     * <p>Null when neither holds (a skipped backend, a failed probe) — the row
+     * then claims nothing about provenance, which {@code ArtifactBackfill}
+     * treats as a pre-#409 row rather than as either answer.
+     */
+    public static String provenance(CliDependency dep, SkillStore store) {
+        String binary = producedBinary(dep);
+        if (binary != null && CliArtifact.inHome(store, binary).usable()) return CliLock.PROVIDED_HOME;
+        if (CliPresence.providedByThisHome(dep, store) != null) return CliLock.PROVIDED_HOME;
+        if (CliPresence.providedOutsideEveryHome(dep.onPath()) != null) return CliLock.PROVIDED_SYSTEM;
+        return null;
     }
 
     /**
