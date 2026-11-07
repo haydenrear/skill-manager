@@ -139,6 +139,9 @@ public final class HomeSync {
      * @param unit the single unit this pass was narrowed to, or null for the
      *        whole home. Carried so a reader cannot mistake a targeted run's
      *        all-but-one-zero summary for a verdict on every unit.
+     * @param drift the destination's pending drift record after this pass
+     *        armed it (#403), or null when the pass wrote no loadable change
+     *        (a dry run, or nothing {@code UPDATED}/{@code MERGED}/{@code NEW}).
      */
     public record Report(
             Path from,
@@ -147,11 +150,18 @@ public final class HomeSync {
             boolean dryRun,
             boolean destinationFrozen,
             List<UnitSync> units,
-            String unit
+            String unit,
+            DriftGate drift
     ) {
         public Report {
             units = units == null ? List.of() : List.copyOf(units);
             if (unit != null && unit.isBlank()) unit = null;
+        }
+
+        /** A report from a pass that armed no drift gate. */
+        public Report(Path from, Path to, boolean merge, boolean dryRun,
+                      boolean destinationFrozen, List<UnitSync> units, String unit) {
+            this(from, to, merge, dryRun, destinationFrozen, units, unit, null);
         }
 
         /** Was this pass narrowed to one unit? */
@@ -258,6 +268,7 @@ public final class HomeSync {
                 ? HomeLock.acquireWithoutCreating(dest, "home sync --dry-run")
                 : HomeLock.acquire(dest, "home sync")) {
             if (!opts.dryRun()) to.init();
+            HomeDigest before = opts.dryRun() ? null : driftBaseline(to);
             ChildHomeMaterializer materializer = new ChildHomeMaterializer(from, to);
             List<UnitSync> outcomes = new ArrayList<>();
             for (UnitRef ref : unitsToVisit(from, to, opts.unit())) {
@@ -271,15 +282,55 @@ public final class HomeSync {
                             outcome.detail());
                 }
             }
+            DriftGate drift = null;
             if (!opts.dryRun()) {
                 materializer.cleanStaging();
                 // OHV-6 (#352) shape 3: the destination's manifest names the
                 // destination's identity, whatever was reconciled into it.
                 HomeCloner.rederiveMarketplaceIdentity(to, "home sync");
+                // #403: a pass that wrote a loadable change arms the
+                // destination's drift gate, exactly as `project sync` does, so
+                // the next launch refuses until somebody reads what moved.
+                // Both directions: the hazard is the same one tier up. Still
+                // under the lock, so a peer cannot slip a change between the
+                // pass and the digest meant to describe it.
+                //
+                // Only UPDATED / MERGED / NEW write (UnitSync#writes). HELD_BACK,
+                // CONFLICTED, UNCHANGED, REMOVED_UPSTREAM and LINKED change
+                // nothing loadable, and a pass made only of those puts nothing
+                // on disk — not even a refreshed baseline — so a no-op sync is
+                // indistinguishable afterwards from no sync at all.
+                boolean wrote = outcomes.stream().anyMatch(UnitSync::writes);
+                if (wrote && before != null) {
+                    drift = DriftGate.recordSince(to, before, "home sync").orElse(null);
+                }
             }
             return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes,
-                    opts.unit());
+                    opts.unit(), drift);
         }
+    }
+
+    /**
+     * The digest drift is measured from: the destination's recorded baseline
+     * when it has one, otherwise the destination as it stands before the pass.
+     *
+     * <p>The recorded baseline first, for the reason {@code ProjectSyncUseCase}
+     * gives: it is the state somebody last acknowledged, so a change an earlier
+     * unacknowledged operation made is still reported rather than silently
+     * folded into a fresh "before". Null when neither can be had — the pass
+     * then proceeds and arms nothing, and says so, because a sync that cannot
+     * be measured must not be refused on that account.
+     */
+    private static HomeDigest driftBaseline(SkillStore to) {
+        return HomeDigest.read(to).orElseGet(() -> {
+            try {
+                return HomeDigest.compute(to);
+            } catch (IOException uncomputable) {
+                Log.warn("home sync: could not digest %s before the pass (%s) — this sync "
+                        + "will not arm the drift gate", to.root(), uncomputable.getMessage());
+                return null;
+            }
+        });
     }
 
     /**

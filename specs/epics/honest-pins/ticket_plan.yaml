@@ -261,7 +261,7 @@ tickets:
   - id: HP-3
     github_issue: https://github.com/haydenrear/skill-manager/issues/403
     title: "home sync arms the drift gate when it changes a unit"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 2

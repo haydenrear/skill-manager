@@ -1603,6 +1603,19 @@ public final class HomeCommand {
             Log.warn("%d unit(s) were not reconciled and were left exactly as they were",
                     report.unresolved().size());
         }
+        if (report.drift() != null) {
+            // #403: same notice `project sync` prints, naming the destination,
+            // because that is the home whose next launch now refuses.
+            dev.skillmanager.store.HomeDescriptor.CliSpelling spelling =
+                    dev.skillmanager.store.HomeDescriptor.cliSpelling(report.to());
+            String cli = spelling.binary();
+            String homeArg = spelling.homeArg();
+            int units = report.drift().report() == null ? 0 : report.drift().report().units().size();
+            Log.warn("this sync changed %d unit(s) in %s — a launch will refuse until the change "
+                            + "is read (`%s home drift %s`, then `%s home drift --ack %s`)",
+                    units, report.to(), cli, homeArg, cli, homeArg);
+            if (spelling.caveat() != null) Log.warn("  note: %s", spelling.caveat());
+        }
     }
 
     private static String syncJson(HomeSync.Report report) {
@@ -1616,6 +1629,10 @@ public final class HomeCommand {
                 // indistinguishable from `clean:true` on the whole home.
                 + ",\"unit\":" + (report.unit() == null ? "null" : "\"" + esc(report.unit()) + "\"")
                 + ",\"clean\":" + report.clean()
+                // #403: did this pass arm the destination's drift gate? A
+                // script that syncs and then launches reads this instead of
+                // discovering the refusal at launch.
+                + ",\"driftPending\":" + (report.drift() != null)
                 + ",\"units\":" + unitsJson(report.units()) + "}";
     }
 
