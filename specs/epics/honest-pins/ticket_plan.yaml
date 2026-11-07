@@ -488,7 +488,7 @@ tickets:
   - id: HP-8
     github_issue: https://github.com/haydenrear/skill-manager/issues/394
     title: "A root sync never removes a declared plugin against a stale cached manifest"
-    status: planned
+    status: pr_open
     role: implementation
     schedule_revision: 2
     wave: 3
