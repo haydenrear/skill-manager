@@ -1,0 +1,3 @@
+! Telemetry export unavailable; continuing without telemetry.
+✓ /Volumes/dev/skill-manager-hp-6/.skill-manager holds nothing that removing it would destroy
+exit=0
