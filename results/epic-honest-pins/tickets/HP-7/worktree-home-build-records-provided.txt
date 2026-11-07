@@ -1,0 +1,28 @@
+# worktree home: build --force cli-shim:brew/gh (brew backend ALREADY_PRESENT from /opt/homebrew/bin/gh)
+17a18
+> provided = "system"
+
+id:              cli-shim:brew/gh
+kind:            cli-shim
+owner:           tla-spec-dev
+materialization: materialized
+agreement:       unverifiable
+origin:          ledger-and-home
+source:          cli-lock.toml
+inputs:
+  spec:brew:gh
+  unit:tla-spec-dev
+outputs:
+  (none — the source record is the artifact)
+recorded:
+  binary = gh
+  install_fingerprint = 700737e9f88165021d6479febc6189ea1970fed6c6a4d045d54727e2b6cf5623
+  install_fingerprint_basis = declared formula + version 2.96.0 brew resolved it to
+  spec = brew:gh
+  tool = gh
+  install_fingerprint_kind = resolved
+  backend = brew
+  provided = system
+actual:
+  provided_by = /opt/homebrew/bin/gh
+  provided_basis = cli-lock.toml records provided = "system"

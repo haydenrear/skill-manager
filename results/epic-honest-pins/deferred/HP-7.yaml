@@ -1,0 +1,24 @@
+findings:
+  - id: HP-7-D1
+    title: "skt ticket new loses a race on the shared index-base retention ref"
+    unit: "tla-spec-dev / skt (src/skt/ticket.py ~L306-316)"
+    outside_conflict_keys: true
+    fixed_here: false
+    blocking: false
+    reproduction: |
+      Two ticket agents of one epic run `skt ticket new <id> --base <same epic tip SHA>`
+      at the same moment. Both `git rev-parse --verify refs/index-bases/<repo>/<tree>`
+      miss; the second `git update-ref <ref> <oid> ""` (create-only) then fails with
+      "cannot lock ref ...: reference already exists", and skt exits 1 with
+      "error: could not create retention ref" -- although the ref now holds exactly
+      the commit it wanted. Observed 2026-11-07 creating HP-7 alongside sibling
+      wave-2 agents; a plain retry succeeded.
+    proposed_fix: |
+      After a failed create-only update-ref, re-read the ref and continue when it
+      equals commit_oid (only a DIFFERENT value is a real conflict):
+        made = git("update-ref", ref_name, commit_oid, "")
+        if made.returncode != 0:
+            again = git("rev-parse", "--verify", "--quiet", ref_name)
+            if again.returncode != 0 or again.stdout.strip() != commit_oid:
+                print(f"error: could not create retention ref ..."); return 1
+    duplicate_search: "results/*/deferred/ and gh issue search 'retention ref': no match"

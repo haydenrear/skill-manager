@@ -68,6 +68,7 @@ import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.cli.installer.SkillScriptWriteThroughTest;
 import dev.skillmanager.cli.installer.BinCliWritersDoNotFollowLinksTest;
 import dev.skillmanager.artifacts.ArtifactBackfillTest;
+import dev.skillmanager.artifacts.SystemProvidedCliShimTest;
 import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
 import dev.skillmanager.artifacts.ArtifactGraphTest;
 import dev.skillmanager.artifacts.ArtifactStalenessTest;
@@ -335,6 +336,7 @@ public class RunTests {
         failures += dev.skillmanager.app.SyncMcpSplitTest.run();
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
         failures += ArtifactBackfillTest.run();
+        failures += SystemProvidedCliShimTest.run();
         failures += ArtifactHomeStabilityTest.run();
         failures += ArtifactGraphTest.run();
         failures += ArtifactStalenessTest.run();

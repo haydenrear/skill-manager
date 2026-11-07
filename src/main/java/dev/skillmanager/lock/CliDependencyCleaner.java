@@ -63,7 +63,8 @@ public final class CliDependencyCleaner {
                         existing.installedAt(),
                         existing.binary(),
                         existing.fingerprint(),
-                        existing.declaredPin()));
+                        existing.declaredPin(),
+                        existing.provided()));
                 lockUpdated = true;
             } else {
                 lock.remove(backend, tool);

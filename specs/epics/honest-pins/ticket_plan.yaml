@@ -370,7 +370,7 @@ tickets:
   - id: HP-7
     github_issue: https://github.com/haydenrear/skill-manager/issues/409
     title: "A CLI the system provides is not a stale cli-shim"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 2

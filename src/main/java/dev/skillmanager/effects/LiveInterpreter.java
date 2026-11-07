@@ -2098,6 +2098,28 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * changing it here would be a second claim about a line nobody asked me to
      * move.
      */
+    /**
+     * #409: mark {@code dep}'s lock row {@code provided = "system"} when that is
+     * what the disk says now, touching nothing else on the row. Best effort: a
+     * row that cannot be rewritten keeps its earlier claim and is reported the
+     * way it was before.
+     */
+    private void recordSystemProvided(dev.skillmanager.model.CliDependency dep) {
+        try {
+            if (!CliLock.PROVIDED_SYSTEM.equals(
+                    dev.skillmanager.lock.CliInstallRecorder.provenance(dep, store))) return;
+            CliLock lock = CliLock.load(store);
+            CliLock.Entry row = lock.get(dep.backend(),
+                    dev.skillmanager.lock.RequestedVersion.of(dep).tool());
+            if (row == null || row.providedBySystem()) return;
+            lock.put(row.withProvided(CliLock.PROVIDED_SYSTEM));
+            lock.save(store);
+        } catch (Exception err) {
+            Log.warn("cli: %s is provided by the system, but its lock row was not marked: %s",
+                    dep.name(), err.getMessage());
+        }
+    }
+
     private EffectReceipt rebuildCliArtifact(SkillEffect.RebuildCliArtifact e) {
         try {
             dev.skillmanager.cli.installer.InstallerRegistry registry =
@@ -2134,6 +2156,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // claim MORE than it holds — which is the mis-recorded-`binary`
                 // defect this run is reporting, committed one layer deeper by
                 // the command written to report it.
+                //
+                // #409: the one thing that IS recorded is the narrower claim.
+                // When the system satisfied the dep, the row says so, so the
+                // shim this verb was asked to rebuild stops being expected in
+                // bin/cli -- otherwise `artifacts stale` names it again on the
+                // next read and no verb can ever clear it.
+                recordSystemProvided(e.dep());
                 return EffectReceipt.skipped(e,
                         e.artifactId() + ": the " + e.dep().backend() + " backend reported the "
                                 + "dependency already satisfied and wrote nothing into this home");
