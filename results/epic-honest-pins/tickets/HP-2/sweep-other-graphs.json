@@ -1,0 +1,60 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 5,
+  "graphs_executed": 5,
+  "graphs_passed": 5,
+  "graphs_failed": 0,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "source-tracking",
+      "status": "passed",
+      "seconds": 321.137,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-2/test_graph/build/validation-reports/20261107-190103"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "git-latest-source-tracking",
+      "status": "passed",
+      "seconds": 243.419,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-2/test_graph/build/validation-reports/20261107-190621"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-resolve",
+      "status": "passed",
+      "seconds": 95.438,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-2/test_graph/build/validation-reports/20261107-191018"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-smoke",
+      "status": "passed",
+      "seconds": 203.172,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-2/test_graph/build/validation-reports/20261107-191157"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "sync-settles",
+      "status": "passed",
+      "seconds": 55.042,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-2/test_graph/build/validation-reports/20261107-191516"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261107-190044",
+  "gradle_exit_code": 0,
+  "continue_past_failures": true
+}
