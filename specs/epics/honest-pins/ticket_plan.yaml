@@ -132,8 +132,8 @@ epic_goals:
     metric: >
       False or missing reports across the planted shapes: (a) a unit-changing
       `home sync` leaves no pending drift record (#403), and a no-op sync must
-      leave none; (b) installed/<unit>.json version disagrees with the synced
-      checkout's manifest (#298); (c) a system-provided CLI is reported as a
+      leave none; (b) a unit's installed record (installed/*.json) carries a version that
+      disagrees with the synced checkout's manifest (#298); (c) a system-provided CLI is reported as a
       stale cli-shim while a deleted installed shim must still be (#409);
       (d) __pycache__ bytecode is published by `unit publish` or makes sync
       refuse with "extra local changes" (#400); (e) a root-home sync removes a
@@ -437,7 +437,7 @@ tickets:
     promotion_order: 8
     promotion_predecessor: HP-2
     slice: >
-      #298: a sync that moves a unit's bytes rewrites installed/<unit>.json's
+      #298: a sync that moves a unit's bytes rewrites the installed record's
       version from the synced manifest. #103: virtual-mcp-gateway's binary
       provisioning keys its install marker on the spec digest (or puts a
       version/digest segment in install_dir), so a changed url under the same
@@ -538,10 +538,10 @@ tickets:
       evidence_root: results/epic-honest-pins/goals/
     goals:
       - goal: GOAL-a-pin-is-honoured
-        contribution: direct
+        contribution: guard
         expected_effect: "decides the goal"
         local_signal: "run.py honest-pins cli-pin --continue"
       - goal: GOAL-the-record-describes-the-home
-        contribution: direct
+        contribution: guard
         expected_effect: "decides the goal"
         local_signal: "run.py honest-pins --continue"
