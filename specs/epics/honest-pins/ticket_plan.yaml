@@ -212,7 +212,7 @@ tickets:
   - id: HP-0
     github_issue: https://github.com/haydenrear/skill-manager/issues/408
     title: "Baseline: the honest-pins graph plants every shape; the nightly unit suite is green again"
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 1

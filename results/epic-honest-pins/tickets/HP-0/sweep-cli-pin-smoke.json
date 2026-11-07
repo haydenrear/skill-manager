@@ -1,0 +1,33 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 2,
+  "graphs_executed": 2,
+  "graphs_passed": 1,
+  "graphs_failed": 1,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "cli-pin",
+      "status": "passed",
+      "seconds": 52.279,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-0/test_graph/build/validation-reports/20261107-173950"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "smoke",
+      "status": "failed",
+      "seconds": 125.271,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-0/test_graph/build/validation-reports/20261107-174140"
+      ],
+      "reason": "Execution failed for task ':smoke'."
+    }
+  ],
+  "sweep_id": "20261107-173940",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}

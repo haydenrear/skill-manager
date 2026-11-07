@@ -1,0 +1,24 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 1,
+  "graphs_executed": 1,
+  "graphs_passed": 0,
+  "graphs_failed": 1,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "honest-pins",
+      "status": "failed",
+      "seconds": 361.32,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-0/test_graph/build/validation-reports/20261107-173056"
+      ],
+      "reason": "Execution failed for task ':honest-pins'."
+    }
+  ],
+  "sweep_id": "20261107-172944",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}
