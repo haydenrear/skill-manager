@@ -1,0 +1,8 @@
+  [PASS] the definition names bytecode and nothing an author writes
+  [FAIL] commitAll commits the real edit and leaves untracked bytecode out: expected false: no bytecode in the committed tree, got: SKILL.md
+  [FAIL] commitAll with ONLY bytecode commits nothing: not true: nothing to commit
+  [FAIL] commitAll stays repository-wide when run from a subdirectory: expected false: bytecode excluded from a subdirectory too: SKILL.md
+  [FAIL] bytecode alone is not a local edit; a real edit still is: expected false: untracked bytecode is not something a sync would destroy
+  [PASS] an untracked package directory holding bytecode AND a new file is still a change
+   → 2 passed, 4 failed
+FAILURES=4
