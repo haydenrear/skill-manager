@@ -275,6 +275,12 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     Log.warn("project-sync %s skipped (not refreshed) — %s",
                             x.projectName(), x.message());
 
+            // #394: the repository's manifest was unreadable, so the child
+            // home was left alone rather than judged against a cached copy.
+            case ContextFact.ProjectSyncSkippedManifestUnreadable x ->
+                    Log.warn("project-sync %s skipped (child home left untouched) — %s",
+                            x.projectName(), x.message());
+
             // ---- sync git ----
             case ContextFact.SyncGitUpToDate x -> {
                 Log.detail("✓ %s: already at %s", x.skillName(), x.label());
