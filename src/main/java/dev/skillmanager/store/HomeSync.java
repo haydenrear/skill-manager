@@ -5,6 +5,7 @@ import dev.skillmanager.bindings.ChildHomeMaterializer.SyncStatus;
 import dev.skillmanager.bindings.ChildHomeMaterializer.UnitRef;
 import dev.skillmanager.bindings.ChildHomeMaterializer.UnitSync;
 import dev.skillmanager.policy.HomePolicy;
+import dev.skillmanager.source.RecordVersionRefresh;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
@@ -284,6 +285,20 @@ public final class HomeSync {
             }
             DriftGate drift = null;
             if (!opts.dryRun()) {
+                // HP-4 (#298): a pass that moved a unit's bytes restates the
+                // destination's installed record from the manifest it now
+                // holds. The tree reconcile writes the unit directory and its
+                // materialization record and never installed/<unit>.json, so
+                // `skt status` kept printing the version first installed.
+                for (UnitSync outcome : outcomes) {
+                    if (!outcome.writes()) continue;
+                    try {
+                        RecordVersionRefresh.restateAfterWrite(to, outcome.unitName());
+                    } catch (IOException unwritable) {
+                        Log.warn("home sync: %s: could not restate installed record version (%s)",
+                                outcome.label(), unwritable.getMessage());
+                    }
+                }
                 materializer.cleanStaging();
                 // OHV-6 (#352) shape 3: the destination's manifest names the
                 // destination's identity, whatever was reconciled into it.

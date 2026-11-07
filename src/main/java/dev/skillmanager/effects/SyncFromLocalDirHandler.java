@@ -201,6 +201,18 @@ public final class SyncFromLocalDirHandler {
                 });
             }
         }
+        // HP-4 (#298): the bytes were just replaced wholesale from `src`, so
+        // the manifest now in the store IS the one the record describes —
+        // whether or not either side is a repository. The git branch above
+        // restates only when the hash is HEAD; a plain directory has no hash
+        // and left the record at the version first installed.
+        ctx.source(skillName).ifPresent(old ->
+                dev.skillmanager.source.RecordVersionRefresh.restatedAfterWrite(ctx.store(), old)
+                        .ifPresent(next -> {
+                            try {
+                                ctx.writeSource(next);
+                            } catch (IOException ignored) {}
+                        }));
         return EffectReceipt.ok(e);
     }
 
