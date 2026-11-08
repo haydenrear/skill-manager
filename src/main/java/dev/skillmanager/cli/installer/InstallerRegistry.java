@@ -179,7 +179,7 @@ public final class InstallerRegistry {
      * per-dependency install could still bump the row and drop the other unit
      * from {@code requested_by}.
      *
-     * @param declaredThisPass {@code unit -> CliPin.of(dep)} for every unit
+     * @param declaredThisPass {@code unit -> CliPin.claim(dep)} for every unit
      *        declaring this row in the caller's pass. The caller's own unit is
      *        added if missing. Units outside the pass are read from their
      *        installed manifests ({@link CliClaimants#livePins}).
@@ -188,14 +188,14 @@ public final class InstallerRegistry {
      */
     public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
                                      boolean force, CliLock lock,
-                                     Map<String, String> declaredThisPass) throws IOException {
+                                     Map<String, CliPin.Claim> declaredThisPass) throws IOException {
         String id = dep.backend();
         if (CliPin.governs(dep)) {
             CliLock.Entry row = currentRow(dep, store, lock);
             if (row != null) {
-                Map<String, String> pass = new java.util.LinkedHashMap<>(
+                Map<String, CliPin.Claim> pass = new java.util.LinkedHashMap<>(
                         declaredThisPass == null ? Map.of() : declaredThisPass);
-                if (skillName != null) pass.putIfAbsent(skillName, CliPin.of(dep));
+                if (skillName != null) pass.putIfAbsent(skillName, CliPin.claim(dep));
                 String shared = CliPin.sharedConflict(row, dep, skillName,
                         CliClaimants.livePins(store, dep.backend(),
                                 RequestedVersion.of(dep).tool(), pass));

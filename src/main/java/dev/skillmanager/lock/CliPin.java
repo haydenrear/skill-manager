@@ -56,7 +56,25 @@ public final class CliPin {
     /** Domain-separation prefix. Change what the digest covers → bump the N. */
     public static final String SCHEME = "pin-v1";
 
+    /** Domain-separation prefix of {@link #selection}. */
+    private static final String SELECTION_SCHEME = "pin-selection-v1";
+
+    /**
+     * What one unit declares for a row, as {@link CliClaimants} and the
+     * shared-pin guard compare it.
+     *
+     * @param selection {@link #selection} of the declaration
+     * @param described the declared pin, for a person to read
+     */
+    public record Claim(String selection, String described) {}
+
     private CliPin() {}
+
+    /** The {@link Claim} {@code dep} makes. */
+    public static Claim claim(CliDependency dep) {
+        RequestedVersion.Requested req = RequestedVersion.of(dep);
+        return new Claim(selection(dep), describe(dep.spec(), req.version()));
+    }
 
     /** True for the backends whose declaration carries a bumpable version. */
     public static boolean governs(CliDependency dep) {
@@ -91,6 +109,21 @@ public final class CliPin {
                 .field("tool", req.tool())
                 .field("version", req.version())
                 .field("min_version", dep.minVersion());
+        return withTargets(fp, dep).hex();
+    }
+
+    /**
+     * #434 F4: the part of a declaration that chooses the bytes, without the
+     * {@code min_version} floor. Two units with equal selections want the same
+     * artifact, so a floor is not something they can disagree about.
+     */
+    public static String selection(CliDependency dep) {
+        return withTargets(Fingerprints.scheme(SELECTION_SCHEME)
+                .field("backend", dep.backend())
+                .field("spec", dep.spec()), dep).hex();
+    }
+
+    private static Fingerprints withTargets(Fingerprints fp, CliDependency dep) {
         Map<String, CliDependency.InstallTarget> sorted = new TreeMap<>();
         for (var e : dep.install().entrySet()) {
             if (e.getKey() != null && e.getValue() != null) sorted.put(e.getKey(), e.getValue());
@@ -104,7 +137,7 @@ public final class CliPin {
                     .fields("extract", t.extract())
                     .field("sha256", t.sha256());
         }
-        return fp.hex();
+        return fp;
     }
 
     /**
@@ -118,6 +151,11 @@ public final class CliPin {
         RequestedVersion.Requested req = RequestedVersion.of(dep);
         if (row.declaredPin() != null) {
             if (row.declaredPin().equals(of(dep))) return null;
+            if (satisfiedBy(row, dep)) return null;
+            if (sameSelection(row, dep)) {
+                return "min_version " + dep.minVersion() + " is not met by the installed "
+                        + describe(row.spec(), row.version());
+            }
             if (Objects.equals(row.spec(), dep.spec())
                     && Objects.equals(row.version(), req.version())) {
                 return describe(dep.spec(), req.version()) + " now declares a different "
@@ -136,11 +174,57 @@ public final class CliPin {
     }
 
     /**
+     * #434 F4: {@code dep} differs from the declaration {@code row} was
+     * installed from only in a {@code min_version} the row's version already
+     * meets. Not a bump: reinstalling would fetch the same bytes, and the row
+     * stays as it is ({@link CliInstallRecorder#record}), because rewriting it
+     * from every such unit in turn is what made each one look moved to the next.
+     */
+    public static boolean satisfiedBy(CliLock.Entry row, CliDependency dep) {
+        if (row == null || row.declaredPin() == null || !governs(dep)) return false;
+        if (row.declaredPin().equals(of(dep))) return false;
+        return sameSelection(row, dep) && atLeast(row.version(), dep.minVersion());
+    }
+
+    /**
+     * Whether {@code dep} chooses the same artifact as the declaration behind
+     * {@code row}. pip and npm: the spec is the choice, and install targets are
+     * ignored. tar: the row's {@code version} IS the {@code min_version} it was
+     * recorded from, so {@code dep} re-digested at that floor must reproduce
+     * the row's pin; anything else differs in a target.
+     */
+    private static boolean sameSelection(CliLock.Entry row, CliDependency dep) {
+        if (!"tar".equals(dep.backend())) return Objects.equals(row.spec(), dep.spec());
+        return row.declaredPin().equals(of(new CliDependency(dep.name(), dep.spec(), row.version(),
+                dep.versionCheck(), dep.onPath(), dep.platformIndependent(), dep.install())));
+    }
+
+    /**
+     * Whether {@code have} meets the floor {@code want}, compared segment by
+     * segment numerically. Anything it cannot read as numbers, or an unknown
+     * {@code have}, does not meet a floor: an unproven floor stays a difference.
+     */
+    static boolean atLeast(String have, String want) {
+        if (want == null || want.isBlank()) return true;
+        if (have == null || have.isBlank()) return false;
+        String[] h = have.strip().replaceFirst("^v", "").split("\\.");
+        String[] w = want.strip().replaceFirst("^v", "").split("\\.");
+        for (int i = 0; i < Math.max(h.length, w.length); i++) {
+            String hs = i < h.length ? h[i] : "0";
+            String ws = i < w.length ? w[i] : "0";
+            if (!hs.matches("\\d{1,18}") || !ws.matches("\\d{1,18}")) return have.strip().equals(want.strip());
+            int c = Long.compare(Long.parseLong(hs), Long.parseLong(ws));
+            if (c != 0) return c > 0;
+        }
+        return true;
+    }
+
+    /**
      * When {@code unit} moved its pin for a row that other units also claim:
      * a sentence naming the units still on the row's pin, or null when there is
      * nothing to refuse. Null when the pin did not move, when no other unit
      * claims the row, or when every other claimant declares {@code unit}'s new
-     * pin ({@code declared}: unit -> {@link #of}).
+     * pin ({@code declared}: unit -> {@link #claim}).
      *
      * <p>#428: {@code declared} is every LIVE claimant's pin
      * ({@link CliClaimants#livePins}): the units in this pass, plus installed
@@ -152,21 +236,37 @@ public final class CliPin {
      * conservative reading.
      */
     public static String sharedConflict(CliLock.Entry row, CliDependency dep, String unit,
-                                        Map<String, String> declared) {
+                                        Map<String, Claim> declared) {
         String why = moved(row, dep);
         if (why == null) return null;
-        String mine = of(dep);
-        java.util.List<String> holdouts = new java.util.ArrayList<>();
+        Claim mine = claim(dep);
+        Map<String, String> holdouts = new java.util.LinkedHashMap<>();
         for (String other : row.requestedBy()) {
             if (other == null || other.equals(unit)) continue;
             if (declared != null && !declared.containsKey(other)) continue;
-            if (declared == null || !mine.equals(declared.get(other))) holdouts.add(other);
+            Claim theirs = declared == null ? null : declared.get(other);
+            if (theirs != null && mine.selection().equals(theirs.selection())) continue;
+            // An unreadable record leaves only the row to name their pin from.
+            String pin = theirs == null ? describe(row.spec(), row.version()) : theirs.described();
+            holdouts.put(other, pin.equals(mine.described()) ? pin + " from a different install target" : pin);
         }
         if (holdouts.isEmpty()) return null;
-        return dep.name() + ": " + unit + " moved its pin (" + why + ") but "
-                + String.join(", ", holdouts) + (holdouts.size() == 1 ? " still claims " : " still claim ")
-                + describe(row.spec(), row.version()) + " — not reinstalling; bin/cli/" + dep.name()
-                + " keeps the shared install until the units declare one pin";
+        StringBuilder out = new StringBuilder(dep.name()).append(": ").append(unit)
+                .append(" declares ").append(mine.described());
+        String sep = " but ";
+        for (var h : holdouts.entrySet()) {
+            out.append(sep).append(h.getKey()).append(" declares ").append(h.getValue());
+            sep = ", and ";
+        }
+        java.util.List<String> uninstalls = new java.util.ArrayList<>();
+        for (String other : holdouts.keySet()) uninstalls.add("`skill-manager uninstall " + other + "`");
+        return out.append(" — not reinstalling; bin/cli/").append(dep.name())
+                .append(" keeps ").append(describe(row.spec(), row.version()))
+                .append(". One install backs every unit, so to resolve this either make them declare")
+                .append(" one pin (edit the [[cli_dependencies]] entry in the unit's source, then")
+                .append(" `skill-manager sync <unit> --from <dir> --yes`, or move it to a revision that")
+                .append(" agrees with `skill-manager sync <unit> --to <rev>`), or remove the other unit (")
+                .append(String.join(", ", uninstalls)).append(")").toString();
     }
 
     private static String describe(String spec, String version) {

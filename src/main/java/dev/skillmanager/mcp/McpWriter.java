@@ -196,6 +196,7 @@ public final class McpWriter {
                 boolean digestMatches = state.specDigest() != null
                         && state.specDigest().equals(desiredDigest);
                 if (digestMatches) {
+                    warnIfStale(dep.name(), state.staleBinary());
                     if (McpDependency.SCOPE_SESSION.equals(scope)) {
                         Log.ok("gateway: %s already registered (scope=session)", dep.name());
                         recordRegistration(dep, declaringUnit, scope, desiredDigest);
@@ -225,6 +226,7 @@ public final class McpWriter {
         try {
             var r = client.register(dep, canAutoDeploy, envInit);
             Log.ok("gateway: registered %s (%s, scope=%s)", r.serverId(), dep.load().type(), scope);
+            warnIfStale(r.serverId(), r.staleBinary());
             if (r.deployError() != null) {
                 Log.warn("gateway: deploy failed for %s: %s", dep.name(), r.deployError());
                 // Deliberately NOT recorded: the payload was posted but the
@@ -247,6 +249,14 @@ public final class McpWriter {
         } catch (IOException e) {
             Log.warn("gateway: failed to register %s: %s", dep.name(), e.getMessage());
             return InstallResult.error(dep.name(), scope, e.getMessage());
+        }
+    }
+
+    /** #434 F6: the gateway accepted this server but kept serving its old binary. */
+    private static void warnIfStale(String serverId, String reason) {
+        if (reason != null && !reason.isBlank()) {
+            Log.warn("gateway: %s is still serving its previous binary; reprovision failed: %s",
+                    serverId, reason);
         }
     }
 

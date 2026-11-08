@@ -415,6 +415,9 @@ class Provisioner:
         if spec.bin_path and _read_marker(marker) == digest:
             candidate = install_dir / spec.bin_path
             if candidate.exists():
+                # The installed binary is the one this spec asks for, so an
+                # earlier failed reprovision no longer describes what is served.
+                self.stale_binaries.pop(server_id, None)
                 return candidate
 
         if target is None:
@@ -438,9 +441,10 @@ class Provisioner:
         backup: Optional[Path] = None
         try:
             if install_dir.exists():
-                backup = Path(tempfile.mkdtemp(prefix=f".{server_id}.previous-", dir=self.bin_dir))
+                backup = Path(tempfile.mkdtemp(prefix=f".{_temp_name(server_id)}.previous-", dir=self.bin_dir))
                 backup.rmdir()
                 install_dir.rename(backup)
+            install_dir.parent.mkdir(parents=True, exist_ok=True)
             staged.rename(install_dir)
             if spec.init_script:
                 logger.info("running init_script for %s", server_id)
@@ -473,7 +477,7 @@ class Provisioner:
         """Download, verify and extract into a fresh directory beside
         ``install_dir``. Returns the staged directory and the binary's path
         relative to it; on any failure the staging directory is removed."""
-        staged = Path(tempfile.mkdtemp(prefix=f".{server_id}.staging-", dir=self.bin_dir))
+        staged = Path(tempfile.mkdtemp(prefix=f".{_temp_name(server_id)}.staging-", dir=self.bin_dir))
         try:
             downloaded = _download(target.url, staged)
             if target.sha256:
@@ -515,6 +519,12 @@ class Provisioner:
             server_id, reason, previous,
         )
         return previous
+
+
+def _temp_name(server_id: str) -> str:
+    """``server_id`` as one path component. Ids are unvalidated, and one with a
+    ``/`` names a nested install dir that mkdtemp's prefix cannot express."""
+    return server_id.replace("/", "_")
 
 
 def _working_binary(

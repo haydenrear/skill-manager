@@ -101,3 +101,53 @@ def test_verified_download_is_swapped_in_with_nothing_left_behind(tmp_path: Path
     assert _leftovers(data) == []
     v2.unlink()
     assert _provision(data, _spec(v2.as_uri())) == "2.0"  # cached under the new digest
+
+
+# ----- #434 F6: a failed reprovision is visible, and clears when it stops being true.
+
+
+def _provisioner(data: Path) -> Provisioner:
+    return Provisioner(data)
+
+
+def _serve(provisioner: Provisioner, spec: LoadSpec, server: str = SERVER) -> str:
+    cfg = asyncio.run(provisioner.provision(server, spec))
+    return subprocess.run(cfg.command, capture_output=True, text=True, check=True).stdout.strip()
+
+
+def test_stale_entry_clears_when_the_reprovision_later_succeeds(tmp_path: Path) -> None:
+    v1 = _write(tmp_path / "v1" / "probe", "1.0")
+    v2 = tmp_path / "v2" / "probe"
+    p = _provisioner(tmp_path / "data")
+    assert _serve(p, _spec(v1.as_uri())) == "1.0"
+    assert _serve(p, _spec(v2.as_uri())) == "1.0"
+    assert SERVER in p.stale_binaries
+    _write(v2, "2.0")
+    assert _serve(p, _spec(v2.as_uri())) == "2.0"
+    assert SERVER not in p.stale_binaries
+
+
+def test_stale_entry_clears_when_the_spec_returns_to_the_installed_binary(tmp_path: Path) -> None:
+    """Back on the digest the marker carries: the short-circuit serves the
+    binary the spec asks for, so it is no longer stale."""
+    v1 = _write(tmp_path / "v1" / "probe", "1.0")
+    p = _provisioner(tmp_path / "data")
+    good = _spec(v1.as_uri())
+    assert _serve(p, good) == "1.0"
+    assert _serve(p, _spec((tmp_path / "v2" / "probe").as_uri())) == "1.0"
+    assert SERVER in p.stale_binaries
+    assert _serve(p, good) == "1.0"
+    assert SERVER not in p.stale_binaries
+
+
+def test_server_id_with_a_slash_provisions(tmp_path: Path) -> None:
+    """Nothing validates an mcp_dependencies name, and the old mkdir(parents=True)
+    took one with a slash; mkdtemp's prefix must not refuse it."""
+    v1 = _write(tmp_path / "v1" / "probe", "1.0")
+    v2 = _write(tmp_path / "v2" / "probe", "2.0")
+    data = tmp_path / "data"
+    p = _provisioner(data)
+    assert _serve(p, _spec(v1.as_uri()), "org/probe") == "1.0"
+    assert _serve(p, _spec(v2.as_uri()), "org/probe") == "2.0"
+    assert (data / "mcp_binaries" / "org" / "probe" / "probe").is_file()
+    assert sorted(x.name for x in (data / "mcp_binaries").iterdir()) == ["org"]

@@ -154,6 +154,8 @@ class ToolRegistry:
                 self.global_errors.pop(server_id, None)
                 for session_errs in self.session_errors.values():
                     session_errs.pop(server_id, None)
+                if self.provisioner is not None:
+                    self.provisioner.stale_binaries.pop(server_id, None)
 
             if self.last_init_store is not None:
                 try:
@@ -729,9 +731,15 @@ class ToolRegistry:
                     "deployed_in_session": deployed_in_session,
                     "tool_count": tool_count,
                     "last_error": last_error.to_public_dict() if last_error else None,
+                    "stale_binary": self.stale_binary(server_id),
                 }
             )
         return items
+
+    def stale_binary(self, server_id: str) -> Optional[str]:
+        """Why the last binary reprovision failed while the previous binary
+        keeps serving (#434 F6), or None when what is served is what was asked."""
+        return self.provisioner.stale_binaries.get(server_id) if self.provisioner else None
 
     def _tool_count_for(self, server_id: str, session_id: Optional[str]) -> int:
         count = len(self.global_tools_by_server.get(server_id, {}))
@@ -785,6 +793,7 @@ class ToolRegistry:
 
         last_error = self._resolve_last_error(server_id, session_id)
         payload["last_error"] = last_error.to_public_dict() if last_error else None
+        payload["stale_binary"] = self.stale_binary(server_id)
 
         return payload
 

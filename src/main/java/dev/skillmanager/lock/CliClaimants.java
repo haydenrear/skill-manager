@@ -2,6 +2,7 @@ package dev.skillmanager.lock;
 
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.CliDependency;
+import dev.skillmanager.store.InstalledUnitsResult;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
@@ -37,24 +38,24 @@ public final class CliClaimants {
     private CliClaimants() {}
 
     /**
-     * {@code unit -> pin} for every live claimant of {@code (backend, tool)}.
+     * {@code unit -> claim} for every live claimant of {@code (backend, tool)}.
      * The current pass wins over the installed manifest. Null when the
      * installed records cannot be read: then nobody can be called stale.
      */
-    public static Map<String, String> livePins(SkillStore store, String backend, String tool,
-                                               Map<String, String> declaredThisPass) {
-        Map<String, Map<String, String>> installed = installedPinsByKey(store);
+    public static Map<String, CliPin.Claim> livePins(SkillStore store, String backend, String tool,
+                                               Map<String, CliPin.Claim> declaredThisPass) {
+        Map<String, Map<String, CliPin.Claim>> installed = installedPinsByKey(store);
         // Unreadable installed records: no claimant can be called stale, so
         // the caller falls back to treating every requester as a holdout.
         if (installed == null) return null;
-        Map<String, String> out = new LinkedHashMap<>(
+        Map<String, CliPin.Claim> out = new LinkedHashMap<>(
                 installed.getOrDefault(backend + ":" + tool, Map.of()));
         if (declaredThisPass != null) out.putAll(declaredThisPass);
         return out;
     }
 
     /** The requesters of {@code row} that are not live. */
-    public static List<String> stale(CliLock.Entry row, Map<String, String> livePins) {
+    public static List<String> stale(CliLock.Entry row, Map<String, CliPin.Claim> livePins) {
         List<String> out = new ArrayList<>();
         if (row == null) return out;
         for (String r : row.requestedBy()) {
@@ -69,19 +70,19 @@ public final class CliClaimants {
      * left: removing an artifact is uninstall's job ({@code CliDependencyCleaner}),
      * and a lock row is the only record of where it is.
      *
-     * @param passByKey {@code "backend:tool" -> (unit -> pin)} for this pass,
+     * @param passByKey {@code "backend:tool" -> (unit -> claim)} for this pass,
      *        or empty
      * @return one line per pruned requester, for the run log
      */
     public static List<String> prune(CliLock lock, SkillStore store,
-                                     Map<String, Map<String, String>> passByKey) {
-        Map<String, Map<String, String>> installed = installedPinsByKey(store);
+                                     Map<String, Map<String, CliPin.Claim>> passByKey) {
+        Map<String, Map<String, CliPin.Claim>> installed = installedPinsByKey(store);
         List<String> pruned = new ArrayList<>();
         // Never prune on an unreadable record: "could not read" is not "gone".
         if (installed == null) return pruned;
         for (CliLock.Entry row : lock.all()) {
             String key = row.backend() + ":" + row.tool();
-            Map<String, String> live = new LinkedHashMap<>(installed.getOrDefault(key, Map.of()));
+            Map<String, CliPin.Claim> live = new LinkedHashMap<>(installed.getOrDefault(key, Map.of()));
             live.putAll(passByKey.getOrDefault(key, Map.of()));
             CliLock.Entry next = row;
             for (String gone : stale(row, live)) {
@@ -97,12 +98,20 @@ public final class CliClaimants {
         return pruned;
     }
 
-    private static Map<String, Map<String, String>> installedPinsByKey(SkillStore store) {
-        Map<String, Map<String, String>> out = new LinkedHashMap<>();
+    private static Map<String, Map<String, CliPin.Claim>> installedPinsByKey(SkillStore store) {
+        Map<String, Map<String, CliPin.Claim>> out = new LinkedHashMap<>();
         if (store == null) return null;
         List<AgentUnit> units;
         try {
-            units = store.listInstalledUnits().units();
+            InstalledUnitsResult listed = store.listInstalledUnits();
+            // #434 F5: a unit that failed to read is missing from units(), and
+            // it may still claim any row. Absent from the list is not gone.
+            if (!listed.problems().isEmpty()) {
+                Log.warn("cli: %d installed unit(s) could not be read; not deciding CLI claimants "
+                        + "from a partial list", listed.problems().size());
+                return null;
+            }
+            units = listed.units();
         } catch (IOException | RuntimeException e) {
             Log.warn("cli: could not read installed units to decide CLI claimants: %s",
                     e.getMessage());
@@ -112,7 +121,7 @@ public final class CliClaimants {
             for (CliDependency dep : unit.cliDependencies()) {
                 String key = dep.backend() + ":" + RequestedVersion.of(dep).tool();
                 out.computeIfAbsent(key, k -> new LinkedHashMap<>())
-                        .putIfAbsent(unit.name(), CliPin.of(dep));
+                        .putIfAbsent(unit.name(), CliPin.claim(dep));
             }
         }
         return out;
