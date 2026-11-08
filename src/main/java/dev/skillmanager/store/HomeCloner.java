@@ -225,7 +225,10 @@ public final class HomeCloner {
      * is the remedy the clone prints.
      */
     public static final Set<String> CREDENTIAL_ROOT_FILES =
-            Set.of(dev.skillmanager.registry.AuthStore.FILENAME);
+            // The legacy registry client's token file (#427 removed that
+            // client). A home written before then may still hold one, and a
+            // copy must still not carry it.
+            Set.of("auth.token");
 
     /**
      * The credential files present in {@code source} that a clone of it will

@@ -18,8 +18,7 @@ package dev.skillmanager.store;
  *       indicators.</li>
  * </ul>
  *
- * <p>The CLI top-level catches this and renders a stable banner —
- * mirroring the registry's {@code AuthenticationRequiredException} —
+ * <p>The CLI top-level catches this and renders a stable banner,
  * so the user gets an actionable "you need to configure git access
  * to {@code <url>}" message instead of a {@code TransportException}
  * stack.
@@ -28,10 +27,8 @@ public final class GitCloneAuthException extends GitFetcherException {
 
     /**
      * Stable exit code so agents and shell wrappers can branch on
-     * "git auth failed". Sits next to
-     * {@link dev.skillmanager.registry.AuthenticationRequiredException#EXIT_CODE}
-     * (7) but distinct — different remediation (configure git / SSH
-     * agent / a credential helper, not {@code skill-manager login}).
+     * "git auth failed" — remediation is to configure git / an SSH agent /
+     * a credential helper.
      *
      * <p>The handler should match this subclass BEFORE the
      * {@link GitFetcherException} base so the auth-specific banner

@@ -269,7 +269,7 @@ public final class ProjectDependencyResolver {
             return;
         }
         var opts = new dev.skillmanager.app.SyncUseCase.Options(
-                null, false, false, /*withMcp=*/false, /*withAgents=*/true, true, false,
+                false, false, /*withMcp=*/false, /*withAgents=*/true, true, false,
                 /*startGateway=*/false, /*refreshClaimingProjects=*/false);
         var program = dev.skillmanager.app.SyncUseCase.buildProgram(store, gateway, opts, targets, List.of());
         Executor.Outcome<dev.skillmanager.app.SyncUseCase.Report> outcome =

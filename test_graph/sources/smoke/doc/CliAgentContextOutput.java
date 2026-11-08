@@ -38,7 +38,7 @@ public class CliAgentContextOutput {
                     new Check("bind", "bind-projection", "bind", "--help"),
                     new Check("env-sync", "project-env", "env", "sync", "--help"),
                     new Check("harness-instantiate", "harness-instantiate", "harness", "instantiate", "--help"),
-                    new Check("publish", "publish-unit", "publish", "--help")
+                    new Check("unit-publish", "publish-unit", "unit", "publish", "--help")
             );
 
             List<ProcessRecord> processes = new ArrayList<>();

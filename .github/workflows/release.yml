@@ -34,7 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli_changed: ${{ steps.diff.outputs.cli_changed }}
-      server_changed: ${{ steps.diff.outputs.server_changed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,7 +52,6 @@ jobs:
           if [ -z "${PREV_TAG}" ]; then
             echo "No previous tag — first release; building all artifacts."
             echo "cli_changed=true" >> "$GITHUB_OUTPUT"
-            echo "server_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -90,19 +88,8 @@ jobs:
           else
             cli_changed=false
           fi
-          # Pushing the multi-arch server image is heavy; only rebuild when
-          # the launcher, JBang server entry, server-java tree, or the
-          # CLI-side `shared/` package (DTOs + Archives/Fs the server
-          # JBang fatjar pulls in via //SOURCES) changed. Anything else
-          # under src/main/ is CLI-only.
-          if printf '%s\n' "${CHANGED}" | grep -E '^(SkillManagerServer\.java|skill-manager-server|server-java/|src/main/java/dev/skillmanager/shared/)' >/dev/null; then
-            server_changed=true
-          else
-            server_changed=false
-          fi
           echo "cli_changed=${cli_changed}" >> "$GITHUB_OUTPUT"
-          echo "server_changed=${server_changed}" >> "$GITHUB_OUTPUT"
-          echo "cli_changed=${cli_changed} server_changed=${server_changed}"
+          echo "cli_changed=${cli_changed}"
 
   publish-cli:
     name: Build CLI tarball + attach to release
@@ -125,10 +112,6 @@ jobs:
 
       - uses: jbangdev/setup-jbang@main
 
-      # Server fatjar is intentionally not built here — the server ships
-      # via the GHCR container image (see publish-server-image job). Brew
-      # users who want to run the server use `docker compose -f
-      # docker-compose-ghcr.yml up`.
       - name: Build CLI fatjar
         run: |
           mkdir -p dist/lib dist/bin dist/share
@@ -187,64 +170,6 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: skill-manager-${{ needs.release-please.outputs.version }}.tar.gz
-
-  publish-server-image:
-    name: Build server container + push to GHCR
-    needs: [release-please, detect-changes]
-    if: ${{ needs.release-please.outputs.release_created == 'true' && needs.detect-changes.outputs.server_changed == 'true' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-
-      # QEMU enables linux/arm64 cross-builds on the amd64 GitHub-hosted runner.
-      # Without this the build-push step skips arm64 silently.
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/skill-manager-server
-          tags: |
-            type=raw,value=${{ needs.release-please.outputs.version }}
-            type=raw,value=v${{ needs.release-please.outputs.version }}
-            type=raw,value=latest
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.version }}
-            type=semver,pattern={{major}},value=${{ needs.release-please.outputs.version }}
-
-      - id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.server
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ghcr.io/${{ github.repository_owner }}/skill-manager-server
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
 
   bump-homebrew-tap:
     name: Bump skill-manager/homebrew-tap formula

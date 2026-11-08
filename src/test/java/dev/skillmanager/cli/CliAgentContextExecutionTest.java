@@ -2,7 +2,7 @@ package dev.skillmanager.cli;
 
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.observability.CliObservability;
-import dev.skillmanager.registry.RegistryUnavailableException;
+import dev.skillmanager.store.GitFetcherException;
 import io.opentelemetry.context.Scope;
 import picocli.CommandLine;
 
@@ -27,10 +27,10 @@ public final class CliAgentContextExecutionTest {
                 .test("handled execution exceptions emit failed agent context", () -> {
                     CommandLine cmd = new CommandLine(new SkillManagerCli());
                     CommandLine.ParseResult pr = cmd.parseArgs(
-                            "--agent-context", "search", "demo",
-                            "--registry", "http://127.0.0.1:1");
-                    RegistryUnavailableException ex = new RegistryUnavailableException(
-                            "http://127.0.0.1:1",
+                            "--agent-context", "install", "git+https://127.0.0.1:1/demo.git");
+                    GitFetcherException ex = new GitFetcherException(
+                            "https://127.0.0.1:1/demo.git",
+                            "git clone failed: Connection refused",
                             new ConnectException("Connection refused"));
 
                     ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -45,8 +45,8 @@ public final class CliAgentContextExecutionTest {
                         System.setErr(new PrintStream(err, true, StandardCharsets.UTF_8));
                         try (Scope ignored = telemetry.makeCurrent()) {
                             int rc = SkillManagerCli.handleExecutionException(ex, cmd, pr);
-                            assertEquals(RegistryUnavailableException.EXIT_CODE, rc,
-                                    "registry-unavailable exit code");
+                            assertEquals(GitFetcherException.EXIT_CODE, rc,
+                                    "git-fetch exit code");
                         }
                     } finally {
                         System.setErr(originalErr);
@@ -55,13 +55,13 @@ public final class CliAgentContextExecutionTest {
                     }
 
                     String rendered = err.toString(StandardCharsets.UTF_8);
-                    assertContains(rendered, "ERROR: registry unreachable",
-                            "registry banner still renders");
+                    assertContains(rendered, "ERROR: git clone failed",
+                            "git banner still renders");
                     assertContains(rendered, CliAgentContext.BEGIN,
                             "agent context begin emitted");
-                    assertContains(rendered, "command_path: search",
+                    assertContains(rendered, "command_path: install",
                             "failing command path retained");
-                    assertContains(rendered, "exit_code: " + RegistryUnavailableException.EXIT_CODE,
+                    assertContains(rendered, "exit_code: " + GitFetcherException.EXIT_CODE,
                             "failing exit code retained");
                     assertContains(rendered, "status: failed",
                             "failed status emitted");

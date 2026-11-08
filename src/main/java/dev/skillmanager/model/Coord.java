@@ -65,8 +65,7 @@ public sealed interface Coord permits Coord.Bare, Coord.Kinded, Coord.DirectGit,
      * for blank / null input; otherwise always produces a {@link Coord}
      * — even malformed-looking strings fall through to {@link Bare}, on
      * the principle that the parser is permissive and the resolver is
-     * strict (ambiguity becomes a {@code ResolutionError} in ticket 04,
-     * not a parse error here).
+     * strict (a bare name is refused at fetch time, not here).
      */
     static Coord parse(String input) {
         if (input == null) throw new IllegalArgumentException("coord must not be null");

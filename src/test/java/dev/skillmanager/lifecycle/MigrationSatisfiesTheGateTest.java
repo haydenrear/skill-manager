@@ -507,7 +507,7 @@ public final class MigrationSatisfiesTheGateTest {
         suite.test("the sync plans the retirement before it commits units", () -> {
             TestHarness h = TestHarness.create();
             var program = SyncUseCase.buildProgram(h.store(), null,
-                    new SyncUseCase.Options(null, false, false, false, false, false, false, false),
+                    new SyncUseCase.Options(false, false, false, false, false, false, false),
                     List.of(new SyncUseCase.Target.Git("acme-tool")), List.of());
 
             // STAGE 2, and deliberately: stage 1 is where the git pulls
@@ -567,7 +567,7 @@ public final class MigrationSatisfiesTheGateTest {
         java.util.List<SyncUseCase.Target> targets = new java.util.ArrayList<>();
         for (String name : unitNames) targets.add(new SyncUseCase.Target.Git(name));
         var program = SyncUseCase.buildProgram(store, null,
-                new SyncUseCase.Options(null, false, false, false, false, false, false, false),
+                new SyncUseCase.Options(false, false, false, false, false, false, false),
                 targets, java.util.List.of());
         new Executor(store, null).runStaged(program);
     }
@@ -627,7 +627,7 @@ public final class MigrationSatisfiesTheGateTest {
 
     private static InstallUseCase.Report install(SkillStore store, Path unitDir) {
         var program = InstallUseCase.buildProgram(
-                store, null, null, unitDir.toString(), null, true, false, false, true);
+                store, null, unitDir.toString(), null, true, false, false, true);
         return new Executor(store, null).runStaged(program).result();
     }
 

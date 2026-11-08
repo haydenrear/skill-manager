@@ -180,7 +180,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt execute(SkillEffect effect, EffectContext ctx) throws IOException {
         return switch (effect) {
-            case SkillEffect.ConfigureRegistry e -> configureRegistry(e, ctx);
             case SkillEffect.EnsureGateway e -> ensureGateway(e);
             case SkillEffect.StopGateway e -> stopGateway(e);
             case SkillEffect.ConfigureGateway e -> configureGateway(e, ctx);
@@ -496,18 +495,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
             ctx.clearError(unitName, InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED);
         } catch (IOException io) {
             Log.warn("could not clear project sync error for %s: %s", unitName, io.getMessage());
-        }
-    }
-
-    private EffectReceipt configureRegistry(SkillEffect.ConfigureRegistry e, EffectContext ctx) {
-        if (e.url() == null || e.url().isBlank()) {
-            return EffectReceipt.skipped(e, "no override");
-        }
-        try {
-            dev.skillmanager.registry.RegistryConfig.resolve(ctx.store(), e.url());
-            return EffectReceipt.ok(e, new ContextFact.RegistryConfigured(e.url()));
-        } catch (Exception ex) {
-            return EffectReceipt.failed(e, "invalid registry URL " + e.url() + ": " + ex.getMessage());
         }
     }
 
@@ -1291,16 +1278,18 @@ public final class LiveInterpreter implements ProgramInterpreter {
                                     .map(InstalledUnit::installSource)
                                     .filter(InstalledUnit.InstallSource.LOCAL_FILE::equals)
                                     .isPresent());
+            // #427: the registry server and its client are gone, so nothing
+            // records these any more. A home written before that still carries
+            // them, and no sync could ever clear them -- they are stale by
+            // construction, so the validation pass drops them.
+            case REGISTRY_UNAVAILABLE, AUTHENTICATION_NEEDED ->
+                    clearIf(ctx, e.unitName(), e.kind(), true);
             case GATEWAY_UNAVAILABLE, AGENT_SYNC_FAILED,
-                 MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE,
-                 AUTHENTICATION_NEEDED -> {
+                 MCP_REGISTRATION_FAILED -> {
                 // No cheap "is it really fixed" probe — pinging the gateway
                 // tells us nothing about whether THIS skill's MCPs are
-                // registered, etc., and a registry-side auth-validity probe
-                // costs a real HTTP round-trip per unit. Handlers clear
-                // these on actual success (RegisterMcp / SyncAgents /
-                // SyncGit registry lookup → AUTHENTICATION_NEEDED clears
-                // the moment the next describeVersion succeeds).
+                // registered, etc. Handlers clear these on actual success
+                // (RegisterMcp / SyncAgents).
                 yield false;
             }
             case PROJECT_SYNC_FAILED -> {

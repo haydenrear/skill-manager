@@ -2,7 +2,7 @@
 
 A JBang-based CLI + Python services that acts as a **build tool for agent
 skills and plugins**. Like `uv` / `cargo` / `gradle`, but for both unit
-kinds: install, publish, search, manage dependencies, and register
+kinds: install from git or local sources, manage dependencies, and register
 downstream MCP servers. Plugins flow through a skill-manager-owned local
 marketplace and `claude plugin install` / `codex plugin marketplace add`
 so harness hooks/commands actually load.
@@ -46,8 +46,8 @@ on_path = "rg"
 url = "https://…/rg.tar.gz"
 binary = "rg-dir/rg"
 
-# Transitive deps resolved against the skill registry.
-skill_references = ["base-skill", "shared-prompts@1.2.0"]
+# Transitive deps, by git or local coordinate.
+skill_references = ["github:acme/base-skill", "git+https://example.com/shared-prompts.git"]
 # Or, for local development:
 # [[skill_references]]
 # path = "../shared-prompts"
@@ -100,16 +100,19 @@ A reference example lives at [`examples/hello-plugin/`](examples/hello-plugin/).
 
 ### Coordinates
 
-When referencing other units, prefix with the kind to disambiguate when
-both kinds exist with the same name:
+Units install from, and reference each other by, a git or local
+coordinate:
 
 | Form | Resolves to |
 | --- | --- |
-| `skill:hello-skill` | bare skill named `hello-skill` (registry) |
-| `plugin:repo-intelligence` | plugin named `repo-intelligence` (registry) |
-| `hello-skill` | either kind — registry warns on ambiguity |
 | `github:user/repo` | git source (kind detected at clone time) |
-| `file:./path` | local source (kind detected at parse time) |
+| `git+https://…`, `….git`, `git@host:…`, `ssh://…` | git URL (kind detected at clone time) |
+| `file:./path`, `./path`, `/abs/path` | local source (kind detected at parse time) |
+
+A bare name (`hello-skill`, `skill:hello-skill`, `plugin:repo-intelligence`)
+is not an install source: it used to resolve through the skill-manager
+registry, which was removed. An install or reference that names one fails
+and says which of the forms above to use instead.
 
 ### Lockfile (`units.lock.toml`)
 
@@ -140,10 +143,8 @@ no user action required:
 
 | Piece | Language | Purpose |
 | --- | --- | --- |
-| `skill-manager` | Java (JBang) | The CLI users run locally — install / sync / upgrade / publish / search skills |
-| `server-java/` | Java (Spring Boot) | Skill registry + embedded OAuth2 authorization server — publish, serve, search, auth |
+| `skill-manager` | Java (JBang) | The CLI users run locally — install / sync / upgrade units |
 | `virtual-mcp-gateway/` | Python (FastAPI + MCP SDK) | MCP gateway that fronts every downstream MCP server for the agents |
-| `skill-manager-server` | Bash | JBang wrapper that runs the registry locally (`./skill-manager-server`) |
 
 ## Install the CLI
 
@@ -169,141 +170,11 @@ If you're hacking on the CLI from this repo instead, every `./skill-manager`
 invocation in the docs below works the same (JBang resolves dependencies on
 first run; subsequent runs are cached).
 
-## Run the registry
-
-The skill registry is a Spring Boot service in `server-java/`. It owns
-publish/download/search, plus an embedded OAuth2 authorization server
-that mints JWTs for the CLI's `skill-manager login`. Two ways to run it.
-
-### Option A — local with `./skill-manager-server`
-
-```bash
-docker compose up -d                                  # spin up your postgres store
-./skill-manager-server                                # default port 8080
-SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE ./skill-manager-server   # also accept --upload-tarball
-```
-
-Data lives at `~/.skill-registry/` (persistence-friendly: keystore,
-schema, files). Postgres is started from docker compose in this mode. 
-You can see the data from postgres in data/ from where you call the 
-docker compose command. You can edit it there as well.
-
-`SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE` enables the legacy multipart
-publish backend — needed when you want to push a local skill directly
-without going through the github-pointer flow (see "Local publish +
-install round-trip" below).
-
-Point the CLI at the local server with `--registry http://localhost:8080`
-(or persist it via `skill-manager registry set http://localhost:8080`).
-The server in this mode is the same one as the docker image — same
-endpoints, same auth, same code.
-
-### Option B — self-host with `docker-compose-ghcr.yml`
-
-For a Postgres-backed deployment (closer to production), use the GHCR
-image alongside Postgres:
-
-```bash
-docker compose -f docker-compose-ghcr.yml up -d
-docker compose -f docker-compose-ghcr.yml pull   # bump to latest tag
-```
-
-That stack:
-
-- pulls `ghcr.io/haydenrear/skill-manager-server:latest`,
-- runs Postgres 16 with a healthcheck so the registry waits for it,
-- persists everything under `./data/` (gitignored): `./data/postgres/`
-  for the database, `./data/registry/` for the registry root (keystore,
-  uploaded tarballs, etc.),
-- pre-sets `SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE`, so file-upload
-  publishes work out of the box.
-
-Override Postgres credentials, the keystore password, and the CI client
-secret via env vars (see the compose file for the full list).
-
-### A note on the embedded auth server and keystore
-
-The registry's auth surface is a real Spring Security OAuth2 authorization
-server: PKCE for the CLI's `authorization_code` flow, refresh tokens, JWT
-access tokens with RS256 signing, JWKS published at `/oauth2/jwks`. It's
-production-shaped — the only caveat worth understanding is the **signing
-keystore**.
-
-On first boot the server generates a 2048-bit RSA keypair and persists it
-at `${SKILL_REGISTRY_ROOT}/jwt-keystore.p12` (default
-`~/.skill-registry/jwt-keystore.p12` locally; `./data/registry/jwt-keystore.p12`
-under docker compose). Subsequent boots load the same keypair, so JWTs
-stay valid across restarts as long as the registry root is persisted.
-
-What this means in practice:
-
-- **Local + `./data/registry/` mounted** — keystore survives restarts;
-  cached `skill-manager login` tokens keep working.
-- **Wipe `~/.skill-registry/` (or `./data/registry/`)** — a fresh keypair
-  is generated on next boot. Every JWT in the wild is now signed by a
-  retired key and is rejected by JWKS validation; users have to re-run
-  `skill-manager login`.
-- **Productionizing** — you'd typically inject the keystore externally
-  rather than rely on auto-generation: set
-  `SKILL_REGISTRY_KEYSTORE_PASSWORD` to your real password and pre-seed
-  `${SKILL_REGISTRY_ROOT}/jwt-keystore.p12` from a secret store before
-  the container starts. Everything else (token issuance, validation,
-  rotation by replacing the file and restarting) is already wired.
-
-## Authenticate against the registry
-
-Mutating operations — `publish`, creating campaigns, `ads` — need a
-bearer token. Reads (`search`, `show`, `list`, public skill installs)
-do not. Both commands below require the registry server to be running
-and reachable, and they both accept `--registry <url>` if you haven't
-persisted it yet.
-
-### Create an account
-
-```bash
-# server must be running first — Option A or B above.
-./skill-manager create-account \
-    --username my-user \
-    --email me@example.com \
-    --display-name "My User" \
-    --registry http://localhost:8080
-# password is prompted (>=10 chars). Use --password=<pw> to skip the prompt
-# in scripts; never paste real secrets into shell history.
-```
-
-### Log in
-
-```bash
-./skill-manager login --registry http://localhost:8080
-```
-
-Opens a browser to the registry's authorization endpoint, runs the
-PKCE-protected `authorization_code` flow against a loopback callback
-on `127.0.0.1:8765`, and writes the resulting access + refresh tokens
-to `~/.skill-manager/auth.token`. From then on every authed CLI call
-attaches the bearer transparently.
-
-`--no-browser` prints the authorize URL instead of launching a
-browser (useful over SSH or in headless containers); paste it into a
-local browser, complete the flow, and the loopback callback still
-catches the redirect on the machine that ran `login`.
-
-The CLI silently refreshes the access token from the cached refresh
-token (7-day TTL) — in steady state you log in once a week. When the
-refresh token is also expired or rejected, the CLI exits with code
-`7` and a stable banner asking the user to re-run `skill-manager
-login`. Subcommands:
-
-```bash
-./skill-manager login show     # print the cached identity (/auth/me)
-./skill-manager login logout   # forget the cached tokens
-```
-
-## Iterate on a skill locally — no server, no publish
+## Iterate on a skill locally
 
 If you just want to install or update a skill from a directory on
-disk (a working tree, a git checkout, an in-flight branch), you don't
-need the registry server, an account, or a publish step. Two flows:
+disk (a working tree, a git checkout, an in-flight branch), install it
+from the path. Two flows:
 
 ### First-time install from a directory
 
@@ -315,13 +186,12 @@ need the registry server, an account, or a publish step. Two flows:
 
 `install` resolves local paths directly — it copies the directory into
 `$SKILL_MANAGER_HOME/skills/<name>/`, runs CLI-dep installation, and
-registers any MCP servers the skill declares with the gateway. The
-registry is never contacted.
+registers any MCP servers the skill declares with the gateway.
 
 ### Refresh an already-installed skill from a directory
 
 After you've made edits in the source dir, push them back into the
-installed copy without a publish round-trip:
+installed copy:
 
 ```bash
 ./skill-manager sync my-skill --from ./path/to/my-skill
@@ -337,44 +207,8 @@ and MCP-config entries).
 If the diff is empty, sync says so and continues straight to the
 side-effect refresh.
 
-The full publish-then-install round-trip below is only needed when you
-want the skill to be installable by *name* (e.g. for transitive
-`skill_references` from another skill).
-
-## Local publish + install round-trip
-
-Once the registry is up locally and the CLI is pointed at it, you can
-package a skill on disk and round-trip it through the registry without
-touching GitHub:
-
-```bash
-# 1. (Once per shell) start the local registry with file upload enabled
-SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE ./skill-manager-server &
-
-# 2. Authenticate (publish needs a bearer token; install doesn't).
-#    Skip if you've already created an account and logged in.
-./skill-manager create-account \
-    --username my-user --email me@example.com \
-    --registry http://localhost:8080
-./skill-manager login --registry http://localhost:8080
-
-# 3. Publish a local skill directory as a tarball into the registry
-./skill-manager publish ../hyper-experiments-skill \
-    --upload-tarball \
-    --registry http://localhost:8080
-
-# 4. Install it back by name from a fresh cwd
-./skill-manager install hyper-experiments \
-    --registry http://localhost:8080
-```
-
-Swap `hyper-experiments` for any skill name. The `--upload-tarball`
-flag uses the multipart backend that `SKILL_REGISTRY_ALLOW_FILE_UPLOAD`
-enables; without it, `publish` defaults to a github-pointer publish that
-needs a real remote.
-
-Once you've persisted the registry URL (`skill-manager registry set
-http://localhost:8080`), the `--registry` flag becomes optional.
+To publish an edit made inside a home back to the unit's own repository,
+use `skill-manager unit publish <name>`.
 
 ## Run the MCP gateway
 
@@ -397,20 +231,14 @@ for the agent-facing reference.
 
 ## CLI reference
 
-Most modifying commands take `--registry <url>` to override the
-persisted registry for one invocation (typically
-`--registry http://localhost:8080` while developing against a local
-`./skill-manager-server`).
-
 ### Skill management
 
 | Command | Purpose |
 | --- | --- |
 | `skill-manager list` | List installed skills |
-| `skill-manager install <name>[@version]` | Install from the registry |
-| `skill-manager install <./path>` | Install from a local directory (no registry call) |
+| `skill-manager install <./path>` | Install from a local directory |
 | `skill-manager install github:user/repo` | Install from a git repo |
-| `skill-manager install file:<path>` | Install from an absolute local path (no registry call) |
+| `skill-manager install file:<path>` | Install from an absolute local path |
 | `skill-manager install <source> --force-scripts` | Install and explicitly rerun `skill-script:` CLI deps instead of using the fingerprint skip |
 | `skill-manager sync [<name>]` | Re-run install side effects (MCP register, agent symlinks) without re-fetching |
 | `skill-manager sync <name> --from <dir>` | Diff the store against `<dir>`, prompt, apply, then re-run side effects |
@@ -432,26 +260,11 @@ stdout/stderr is written under
 and a tail of recent output. Uninstall only removes managed CLI artifacts
 when no remaining installed unit claims the same dependency.
 
-### Registry (publish / search / server config)
+### Publishing an edit
 
 | Command | Purpose |
 | --- | --- |
-| `skill-manager registry set <url>` | Persist the registry URL |
-| `skill-manager registry status` | Reachability |
-| `skill-manager publish [<path>]` | Package + upload (path defaults to CWD) |
-| `skill-manager publish [<path>] --upload-tarball` | Multipart-publish into a `SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE` server |
-| `skill-manager publish --dry-run` | Just build the tarball |
-| `skill-manager search "<query>"` | Lexical search |
-
-### Authentication
-
-| Command | Purpose |
-| --- | --- |
-| `skill-manager create-account --username <u> --email <e>` | Register a new user (server must be running) |
-| `skill-manager login` | Browser PKCE flow; cache tokens at `~/.skill-manager/auth.token` |
-| `skill-manager login --no-browser` | Print the authorize URL instead of opening a browser |
-| `skill-manager login show` | Print the cached identity (`/auth/me`) |
-| `skill-manager login logout` | Forget the cached tokens |
+| `skill-manager unit publish <name>` | Commit and push a home edit back to the unit's own repository |
 
 ### Gateway lifecycle
 
@@ -472,22 +285,20 @@ the gateway process lifecycle.
 ~/.skill-manager/
   skills/<name>/          # canonical skill source
   bin/                    # CLI binaries installed via tar backend
-  cache/                  # downloads + publish staging
+  cache/                  # downloads + staging
   gateway.pid|log|config  # gateway process state
-  registry.properties     # persisted registry URL
   gateway.properties      # persisted gateway URL
 ```
 
 ## Source sugar for `add`
 
-- `<name>[@version]` → **registry lookup** (default)
 - `./path`, `/path`, `file:/path` → local directory
 - `github:user/repo`, `git+https://…`, `ssh://…`, `….git` → git clone
+- `<name>[@version]` → refused: the registry was removed; use one of the above
 
 ## Status
 
 - TOML-only skill metadata; SKILL.md is base spec only.
-- Registry: filesystem storage, FastAPI server, publish + search + download + versioning.
 - CLI installers: tar / pip / npm / brew, dispatch by `spec` prefix, `platform_independent` honored.
-- Skill references: name-based via registry; local `path =` works for development.
+- Skill references: git or local coordinates; local `path =` works for development.
 - MCP gateway: docker + binary load specs, dynamic registration at runtime.

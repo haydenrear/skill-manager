@@ -27,14 +27,14 @@ import java.util.concurrent.Callable;
  * <p>Drives the same {@link SyncUseCase} program as {@code sync} — no
  * command-from-command instantiation. The
  * {@link dev.skillmanager.effects.SkillEffect.SyncGit} handler does the
- * registry lookup / non-downgrade / git fetch+merge per target, then the
+ * git fetch+merge per target, then the
  * post-update tail (transitives, tools, CLI, MCP, agents) runs once.
  *
  * <p>Non-git installs are not supported — convert them to a git source first.
  */
 @Command(name = "upgrade",
-        description = "Upgrade installed git-tracked units — skills and plugins — to the latest "
-                + "registry version (and optionally skill-manager itself). Plugins re-register "
+        description = "Upgrade installed git-tracked units — skills and plugins — to their "
+                + "tracked ref's latest commit (and optionally skill-manager itself). Plugins re-register "
                 + "with Claude/Codex via their CLIs after the bytes update so hooks reload.")
 public final class UpgradeCommand implements Callable<Integer> {
 
@@ -48,10 +48,6 @@ public final class UpgradeCommand implements Callable<Integer> {
     @Option(names = {"--self", "--skill-manager"},
             description = "Upgrade the skill-manager CLI via Homebrew.")
     boolean self;
-
-    @Option(names = "--registry",
-            description = "Registry URL override for this invocation (persisted).")
-    String registryUrl;
 
     @Option(names = "--merge",
             description = "Run a 3-way merge against the new version's git_sha when local edits exist.")
@@ -94,8 +90,6 @@ public final class UpgradeCommand implements Callable<Integer> {
         }
 
         store.init();
-        // Registry override is persisted by the ConfigureRegistry effect that
-        // SyncUseCase prepends — no inline RegistryConfig.resolve needed.
 
         List<AgentUnit> targets;
         List<UnitReadProblem> initialReadProblems = List.of();
@@ -168,7 +162,7 @@ public final class UpgradeCommand implements Callable<Integer> {
         // for one; `upgrade` deliberately grows no flag of its own rather than
         // adding a second spelling of the same switch.
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, /*gitLatest=*/false, merge, /*withMcp=*/true, /*withAgents=*/true,
+                /*gitLatest=*/false, merge, /*withMcp=*/true, /*withAgents=*/true,
                 /*yesForFromDir=*/false, /*forceScripts=*/false, /*startGateway=*/false);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targetList, initialReadProblems);

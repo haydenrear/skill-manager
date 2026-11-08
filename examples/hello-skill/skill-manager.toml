@@ -3,7 +3,8 @@
 # header belongs to that table.
 
 # Transitive skill deps. Prefixes:
-#   skill:<name>[@<version>]   registry lookup
+#   github:<owner>/<repo>      git source
+#   git+<url>                  git URL
 #   file:<path>                sub-skill bundled in this directory (resolved
 #                              relative to this skill's directory)
 skill_references = []

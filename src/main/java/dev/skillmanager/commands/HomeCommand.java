@@ -2053,8 +2053,8 @@ public final class HomeCommand {
         if (!credentials.isEmpty()) {
             Log.info("  credentials: %s not copied — a copy of a home is not a copy of its "
                             + "login, and a home that is imaged or moved would otherwise "
-                            + "carry a working refresh token. Run `skill-manager login` in "
-                            + "the copy if it needs registry access.",
+                            + "carry a working refresh token. (This is the legacy registry "
+                            + "token; the registry was removed and nothing reads it.)",
                     String.join(", ", credentials));
         }
         if (!report.droppedRegistrations().isEmpty()) {

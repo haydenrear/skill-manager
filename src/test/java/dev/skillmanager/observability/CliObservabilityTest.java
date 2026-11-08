@@ -6,8 +6,6 @@ import dev.skillmanager.cli.SkillManagerCli;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.GatewayRuntime;
-import dev.skillmanager.registry.RegistryClient;
-import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.store.SkillStore;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
@@ -89,7 +87,7 @@ public final class CliObservabilityTest {
                         telemetry.flushAndClose(500);
                     }
                 })
-                .test("active W3C context reaches registry and gateway HTTP boundaries", () -> {
+                .test("active W3C context reaches the gateway HTTP boundaries", () -> {
                     List<String> traceparents = new CopyOnWriteArrayList<>();
                     HttpServer server = HttpServer.create(
                             new InetSocketAddress("127.0.0.1", 0), 0);
@@ -111,8 +109,6 @@ public final class CliObservabilityTest {
                         try (Scope ignored = telemetry.makeCurrent()) {
                             assertFalse(Span.current().isRecording(),
                                     "network waits retain only a non-recording context");
-                            assertTrue(new RegistryClient(RegistryConfig.of(baseUrl)).ping(),
-                                    "registry health request succeeded");
                             assertTrue(new GatewayClient(GatewayConfig.of(baseUrl)).ping(),
                                     "gateway client health request succeeded");
                             GatewayRuntime runtime = new GatewayRuntime(new SkillStore(
@@ -126,7 +122,7 @@ public final class CliObservabilityTest {
                         server.stop(0);
                     }
 
-                    assertEquals(3, traceparents.size(),
+                    assertEquals(2, traceparents.size(),
                             "all HTTP boundaries reached the server");
                     for (String traceparent : traceparents) {
                         assertNotNull(traceparent, "traceparent injected");

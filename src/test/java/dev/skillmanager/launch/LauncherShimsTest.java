@@ -979,7 +979,7 @@ public final class LauncherShimsTest {
 
         suite.test("an install dir that names something else is rejected, not stretched", () -> {
             Path dir = Files.createTempDirectory("running-cli-wrongname-");
-            writeArgvDump(dir.resolve("skill-manager-server"));
+            writeArgvDump(dir.resolve("skill-manager-other"));
 
             try {
                 RunningCli.locate(Map.of(RunningCli.INSTALL_DIR, dir.toString())::get,

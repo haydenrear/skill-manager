@@ -113,7 +113,7 @@ public final class HomePolicyTest {
                         store,
                         GatewayConfig.of(java.net.URI.create("http://127.0.0.1:1")),
                         new dev.skillmanager.app.SyncUseCase.Options(
-                                null, false, false, false, false, true),
+                                false, false, false, false, true),
                         List.of(new dev.skillmanager.app.SyncUseCase.Target.Git("alpha")),
                         List.of());
                 throw new AssertionError("expected buildProgram to refuse on a frozen home");

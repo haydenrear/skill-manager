@@ -44,11 +44,6 @@ import java.util.Set;
  * <h2>Where the borderline rows landed, and why</h2>
  *
  * <ul>
- *   <li>{@code search} and {@code registry status} talk to the registry but
- *       write nothing locally — READ_ONLY. {@code login} bare is the browser
- *       OAuth flow rather than a usage print and caches a bearer token under
- *       the home, so the whole {@code login} family except {@code login show}
- *       writes.</li>
  *   <li>{@code lock status} reports drift; {@code lock} bare prints usage.
  *       Neither writes. {@code sync --lock} does, and that is {@code sync}.</li>
  *   <li>{@code policy show} / {@code policy path} report the effective policy,
@@ -212,8 +207,6 @@ public final class CommandHomeAccess {
 
         // ------------------------------------------------------------ read-only
         m.put("skill-manager", READ);       // bare invocation prints usage
-        m.put("ads", READ);
-        m.put("ads list", READ);
         m.put("artifacts", READ);        // parent; `artifacts record` writes
         m.put("artifacts list", READ);
         m.put("artifacts show", READ);
@@ -235,7 +228,6 @@ public final class CommandHomeAccess {
         m.put("list", READ);
         m.put("lock", READ);
         m.put("lock status", READ);
-        m.put("login show", READ);
         m.put("pm", READ);
         m.put("pm list", READ);
         m.put("pm which", READ);
@@ -247,8 +239,6 @@ public final class CommandHomeAccess {
         m.put("project show", READ);
         m.put("project profiles", READ);
         m.put("project profiles list", READ);
-        m.put("registry", READ);
-        m.put("registry status", READ);
         // `sandbox status` reads the ENVIRONMENT, never the store: it answers
         // "is this process confined?" from the five home variables and the
         // working directory. Classified READ rather than given a fourth
@@ -256,13 +246,12 @@ public final class CommandHomeAccess {
         // property this table decides.
         m.put("sandbox", READ);
         m.put("sandbox status", READ);
-        m.put("search", READ);
         m.put("show", READ);
         m.put("unit", READ);                // parent; `unit publish` writes
+        m.put("unit validate", READ);       // parses a directory; writes nothing
+        m.put("publish", READ);             // #427 removed stub: prints a pointer
 
         // ----------------------------------------------------------- writes home
-        m.put("ads create", WRITE);
-        m.put("ads delete", WRITE);
         m.put("artifacts record", WRITE);
         // `artifacts prune` DELETES from the home, so it is the strongest
         // WRITE in this table. --dry-run now moves it, along with every other
@@ -279,7 +268,6 @@ public final class CommandHomeAccess {
         // bytes, and this table is what decides whether bytes are written.
         m.put("build", WRITE);
         m.put("create", WRITE);
-        m.put("create-account", WRITE);
         m.put("env sync", WRITE);
         m.put("env run", WRITE);
         m.put("exec", WRITE);
@@ -338,10 +326,6 @@ public final class CommandHomeAccess {
         // is that it performs none.
         m.put("home repair", READ);
         m.put("install", WRITE);
-        // `login` bare is the browser OAuth flow, not a usage print: it
-        // caches the bearer token under the home. Only `login show` reads.
-        m.put("login", WRITE);
-        m.put("login logout", WRITE);
         m.put("onboard", WRITE);
         m.put("pm install", WRITE);
         m.put("pm setup", WRITE);
@@ -350,11 +334,8 @@ public final class CommandHomeAccess {
         m.put("project resolve", WRITE);
         m.put("project sync", WRITE);
         m.put("project remove", WRITE);
-        m.put("publish", WRITE);
         m.put("rebind", WRITE);
-        m.put("registry set", WRITE);
         m.put("remove", WRITE);
-        m.put("reset-password", WRITE);
         m.put("sync", WRITE);
         m.put("unbind", WRITE);
         m.put("uninstall", WRITE);

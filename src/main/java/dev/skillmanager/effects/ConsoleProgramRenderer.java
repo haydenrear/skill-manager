@@ -149,7 +149,6 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 // (Log.error "✋ halted: ..."). The exit code is for the
                 // decoder; no extra user-visible line needed.
             }
-            case ContextFact.RegistryConfigured x -> Log.detail("✓ registry: %s", x.url());
             case ContextFact.GatewayAlreadyRunning ignored -> { /* silent: not noteworthy */ }
             case ContextFact.GatewayStarted x -> Log.ok("gateway up at %s:%d", x.host(), x.port());
             case ContextFact.GatewayUnreachable x -> Log.warn(
@@ -341,16 +340,6 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             }
             case ContextFact.SyncGitNoOrigin x ->
                     Log.warn("%s: git-tracked but no origin remote configured", x.skillName());
-            case ContextFact.SyncGitRegistryUnavailable x ->
-                    Log.warn("%s: registry didn't return a git_sha — leaving sync state unchanged", x.skillName());
-            case ContextFact.SyncGitAuthRequired x -> Log.warn(
-                    "%s: registry refused cached credentials (%s) — run `skill-manager login` and re-sync",
-                    x.skillName(), x.message());
-            case ContextFact.SyncGitNoUpgradeNeeded x -> {
-                Log.detail("✓ %s: at %s (>= registry's latest) — no upgrade needed",
-                        x.skillName(), x.version());
-                gitCurrent.add(x.skillName());
-            }
 
             // ---- error management ----
             case ContextFact.ErrorAdded ignored -> { /* silent: tracked on source record */ }

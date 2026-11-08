@@ -15,7 +15,7 @@ import java.util.concurrent.Callable;
 /**
  * {@code skill-manager install <source>} resolves and stages the dep
  * graph, then drives an {@link InstallUseCase} program. Every side
- * effect — registry override, gateway start, pre-condition checks,
+ * effect — gateway start, pre-condition checks,
  * plan build, commit, audit, source provenance, transitive resolution,
  * tool/CLI/MCP per-action effects, agent sync, orphan unregister, and
  * staged-graph cleanup — is its own effect with a receipt.
@@ -26,14 +26,13 @@ import java.util.concurrent.Callable;
         footer = """
 
                 Sources:
-                  - name[@version] - registry lookup
-                  - skill:<name> / plugin:<name> - kind-pinned registry lookup
                   - github:user/repo[@ref] - direct git
-                  - git+https://... - direct git URL
+                  - git+https://..., *.git, git@host:..., ssh://... - direct git URL
                   - ./path, /abs/path, file:<path> - local directory
 
-                Local-directory installs do not contact the registry — useful
-                for iterating from a working tree without publishing first.
+                A bare unit name (name[@version], skill:<name>, plugin:<name>)
+                is not a source: the skill-manager registry was removed, so
+                install fails and names the forms above.
 
                 Plugin vs skill detection (at parse time, after fetch):
                   - PLUGIN if the unit's root contains `.claude-plugin/plugin.json`
@@ -79,20 +78,14 @@ import java.util.concurrent.Callable;
 public final class InstallCommand implements Callable<Integer> {
 
     @Parameters(index = "0",
-            description = "Source: name[@version] (registry), skill:<name> / plugin:<name> "
-                    + "(kind-pinned), github:user/repo, git+https://..., or a local directory "
-                    + "(./path, /abs/path, file:<path>) — local sources do not contact the "
-                    + "registry. Plugins detected by the presence of `.claude-plugin/plugin.json` "
+            description = "Source: github:user/repo, git+https://... (or any *.git / git@ / "
+                    + "ssh:// URL), or a local directory (./path, /abs/path, file:<path>). "
+                    + "Plugins detected by the presence of `.claude-plugin/plugin.json` "
                     + "at the unit root.")
     public String source;
 
-    @Option(names = {"--version", "--ref"}, description = "Registry version / git ref")
+    @Option(names = {"--version", "--ref"}, description = "Git ref to check out")
     public String version;
-
-    @Option(names = "--registry",
-            description = "Registry URL override for this invocation (persisted so `search` and "
-                    + "`install` stay consistent). Can also be set via SKILL_MANAGER_REGISTRY_URL.")
-    public String registryUrl;
 
     @Option(names = "--dry-run",
             description = "Resolve, plan, and print the install effects without committing to the "
@@ -126,15 +119,6 @@ public final class InstallCommand implements Callable<Integer> {
         store.init();
         Policy.writeDefaultIfMissing(store);
 
-        // Apply --registry BEFORE the program starts so the in-program
-        // resolve sees the override — the program's ConfigureRegistry
-        // effect also persists it, but the resolve happens later in the
-        // same program and needs the override active immediately.
-        // Skipped on dry-run to avoid persisting state during a no-op.
-        if (!dryRun && registryUrl != null && !registryUrl.isBlank()) {
-            dev.skillmanager.registry.RegistryConfig.resolve(store, registryUrl);
-        }
-
         // Gateway resolution doesn't side-effect — the Program's
         // EnsureGateway effect does the actual probe + start + persist.
         GatewayConfig gw = GatewayConfig.resolve(store, null);
@@ -151,7 +135,7 @@ public final class InstallCommand implements Callable<Integer> {
         //      on user-blocking violations / declined prompt.
         //   4. Commit + audit + provenance + summary + run + tail.
         dev.skillmanager.effects.StagedProgram<InstallUseCase.Report> program =
-                InstallUseCase.buildProgram(store, gw, registryUrl, source, version, yes, dryRun,
+                InstallUseCase.buildProgram(store, gw, source, version, yes, dryRun,
                         !dryRun, !noBindDefault, forceScripts);
 
         InstallUseCase.Report report;

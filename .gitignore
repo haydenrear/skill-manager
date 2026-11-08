@@ -70,8 +70,6 @@ Thumbs.db
 **/__pycache__/**
 test_graph/.bin
 
-### docker-compose-ghcr.yml self-host data ###
-/data/
 test_graph/docs
 states
 

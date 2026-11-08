@@ -116,7 +116,6 @@ public final class SyncUseCase {
      * cleanly and says so, which is what the rollback was really asking for.
      */
     public record Options(
-            String registryOverride,
             boolean gitLatest,
             boolean merge,
             boolean withMcp,
@@ -135,36 +134,33 @@ public final class SyncUseCase {
              * its own sync would resolve the same project twice, nested.
              */
             boolean refreshClaimingProjects) {
-        public Options(String registryOverride,
-                       boolean gitLatest,
+        public Options(boolean gitLatest,
                        boolean merge,
                        boolean withMcp,
                        boolean withAgents,
                        boolean yesForFromDir,
                        boolean forceScripts,
                        boolean startGateway) {
-            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+            this(gitLatest, merge, withMcp, withAgents, yesForFromDir,
                     forceScripts, startGateway, true);
         }
 
-        public Options(String registryOverride,
-                       boolean gitLatest,
+        public Options(boolean gitLatest,
                        boolean merge,
                        boolean withMcp,
                        boolean withAgents,
                        boolean yesForFromDir,
                        boolean forceScripts) {
-            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+            this(gitLatest, merge, withMcp, withAgents, yesForFromDir,
                     forceScripts, false);
         }
 
-        public Options(String registryOverride,
-                       boolean gitLatest,
+        public Options(boolean gitLatest,
                        boolean merge,
                        boolean withMcp,
                        boolean withAgents,
                        boolean yesForFromDir) {
-            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+            this(gitLatest, merge, withMcp, withAgents, yesForFromDir,
                     false, false);
         }
     }
@@ -175,7 +171,7 @@ public final class SyncUseCase {
      * we're syncing:
      * <ul>
      *   <li>{@link Git} — skill/plugin sync: fetch + merge against the
-     *       unit's git origin (or registry-driven sha).</li>
+     *       unit's git origin.</li>
      *   <li>{@link FromDir} — skill/plugin: apply contents from a
      *       local working directory ({@code --from <dir>}).</li>
      *   <li>{@link DocRepo} — doc-repo: walk the projection ledger
@@ -281,8 +277,7 @@ public final class SyncUseCase {
                 // on the sync path that can start a process and fail the whole
                 // program. Registration below is gateway-tolerant by its own
                 // handler and does not belong behind the same switch (#123).
-                ResolveContextUseCase.preflight(gw, options.registryOverride(),
-                        options.startGateway()));
+                ResolveContextUseCase.preflight(gw, options.startGateway()));
         if (initialReadProblems != null && !initialReadProblems.isEmpty()) {
             effects.add(new SkillEffect.ReportUnitReadProblems(initialReadProblems));
         }

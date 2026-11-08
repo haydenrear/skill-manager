@@ -844,9 +844,9 @@ public final class HomeCloneTest {
         // that is the whole point: #281 sat open for weeks as an "unverified
         // inference" precisely because it was reasoned from the absence of an
         // exclusion rather than by cloning a home and looking.
-        suite.test("a clone does not carry the registry credential", () -> {
+        suite.test("a clone does not carry the legacy registry credential", () -> {
             Path source = seededHome();
-            Path token = source.resolve(dev.skillmanager.registry.AuthStore.FILENAME);
+            Path token = source.resolve("auth.token");
             Files.writeString(token, """
                     {"access_token":"FAKE-ACCESS","refresh_token":"FAKE-REFRESH",\
                     "expires_at":"2099-01-01T00:00:00Z"}
@@ -861,11 +861,11 @@ public final class HomeCloneTest {
 
             HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
 
-            assertFalse(Files.exists(dest.resolve(dev.skillmanager.registry.AuthStore.FILENAME)),
+            assertFalse(Files.exists(dest.resolve("auth.token")),
                     "the copy holds no auth.token");
             assertTrue(Files.isRegularFile(token),
                     "and the SOURCE still has its own — this drops a copy, it does not log you out");
-            assertEquals(List.of(dev.skillmanager.registry.AuthStore.FILENAME),
+            assertEquals(List.of("auth.token"),
                     HomeCloner.credentialsNotCopied(source),
                     "the clone can say what it did not carry, read from the source: "
                             + "'there was never one' and 'you had one' are different answers");

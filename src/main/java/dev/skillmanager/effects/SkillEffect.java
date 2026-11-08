@@ -23,14 +23,13 @@ import java.util.List;
  * Every interpreter handles every variant by exhaustive switch.
  *
  * <p>Each effect either touches an external system that can fail
- * (filesystem, gateway, registry, audit log) or modifies one of the
+ * (filesystem, gateway, git, audit log) or modifies one of the
  * source-of-truth records the rest of the system reads (skill store,
- * {@code sources/<name>.json}, {@code registry.properties}). Receipts
+ * {@code sources/<name>.json}, {@code gateway.properties}). Receipts
  * carry the per-effect outcome so decoders can build reports and so a
  * future compensation pass can roll back partial state.
  */
 public sealed interface SkillEffect permits
-        SkillEffect.ConfigureRegistry,
         SkillEffect.EnsureGateway,
         SkillEffect.StopGateway,
         SkillEffect.ConfigureGateway,
@@ -119,18 +118,6 @@ public sealed interface SkillEffect permits
     default Continuation continuationOnOk() { return Continuation.CONTINUE; }
     default Continuation continuationOnPartial() { return Continuation.CONTINUE; }
     default Continuation continuationOnFail() { return Continuation.CONTINUE; }
-
-    /**
-     * Persist a registry URL override and reload {@link
-     * dev.skillmanager.registry.RegistryConfig}. Failure modes: malformed
-     * URI, unwritable store root.
-     *
-     * <p>Halts on fail: a wrong registry URL would route the resolve
-     * downstream at the wrong server, so the program should stop.
-     */
-    record ConfigureRegistry(String url) implements SkillEffect {
-        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
-    }
 
     /**
      * Probe the gateway; if local and not running, start it and wait for

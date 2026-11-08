@@ -1,6 +1,5 @@
 package dev.skillmanager.cli;
 
-import dev.skillmanager.commands.AdsCommand;
 import dev.skillmanager.commands.ArtifactsCommand;
 import dev.skillmanager.commands.BindCommand;
 import dev.skillmanager.commands.BuildCommand;
@@ -8,7 +7,6 @@ import dev.skillmanager.commands.BindingsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.HarnessCommand;
 import dev.skillmanager.commands.HomeCommand;
-import dev.skillmanager.commands.CreateAccountCommand;
 import dev.skillmanager.commands.CreateCommand;
 import dev.skillmanager.commands.DepsCommand;
 import dev.skillmanager.commands.EnvCommand;
@@ -17,26 +15,19 @@ import dev.skillmanager.commands.GatewayCommand;
 import dev.skillmanager.commands.InstallCommand;
 import dev.skillmanager.commands.ListCommand;
 import dev.skillmanager.commands.LockCommand;
-import dev.skillmanager.commands.LoginCommand;
 import dev.skillmanager.commands.OnboardCommand;
 import dev.skillmanager.commands.PmCommand;
 import dev.skillmanager.commands.PolicyCommand;
 import dev.skillmanager.commands.ProjectCommand;
-import dev.skillmanager.commands.PublishCommand;
 import dev.skillmanager.commands.RebindCommand;
-import dev.skillmanager.commands.RegistryCommand;
 import dev.skillmanager.commands.RemoveCommand;
-import dev.skillmanager.commands.ResetPasswordCommand;
 import dev.skillmanager.commands.SandboxCommand;
-import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
 import dev.skillmanager.commands.SyncCommand;
 import dev.skillmanager.commands.UnbindCommand;
 import dev.skillmanager.commands.UninstallCommand;
 import dev.skillmanager.commands.UnitCommand;
 import dev.skillmanager.commands.UpgradeCommand;
-import dev.skillmanager.registry.AuthenticationRequiredException;
-import dev.skillmanager.registry.RegistryUnavailableException;
 import dev.skillmanager.observability.CliObservability;
 import dev.skillmanager.store.GitCloneAuthException;
 import dev.skillmanager.store.GitFetcherException;
@@ -71,19 +62,12 @@ import picocli.CommandLine.Option;
                 ShowCommand.class,
                 DepsCommand.class,
                 GatewayCommand.class,
-                RegistryCommand.class,
-                PublishCommand.class,
-                SearchCommand.class,
                 PolicyCommand.class,
                 PmCommand.class,
                 CliCommand.class,
                 EnvCommand.class,
                 ExecCommand.class,
                 CreateCommand.class,
-                AdsCommand.class,
-                LoginCommand.class,
-                CreateAccountCommand.class,
-                ResetPasswordCommand.class,
                 OnboardCommand.class,
                 BindCommand.class,
                 UnbindCommand.class,
@@ -93,7 +77,8 @@ import picocli.CommandLine.Option;
                 HomeCommand.class,
                 ProjectCommand.class,
                 SandboxCommand.class,
-                UnitCommand.class
+                UnitCommand.class,
+                UnitCommand.RemovedPublishCmd.class
         })
 public final class SkillManagerCli implements Runnable {
 
@@ -228,7 +213,7 @@ public final class SkillManagerCli implements Runnable {
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
         });
-        // Surface auth-expiry + registry-unreachable as stable,
+        // Surface git-auth + git-fetch failures as stable,
         // agent-parseable banners so the skill-manager-skill wrapper can
         // relay them verbatim to the user. Anything that carries a message
         // of its own is printed AS that message — see
@@ -406,15 +391,6 @@ public final class SkillManagerCli implements Runnable {
     static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
             throws Exception {
         jsonErrorCode = classify(ex);
-        AuthenticationRequiredException auth = unwrapCause(ex, AuthenticationRequiredException.class);
-        if (auth != null) {
-            return completeExecution(rootCommand(pr), pr, printAuthBanner(auth.getMessage()));
-        }
-        RegistryUnavailableException unreachable =
-                unwrapCause(ex, RegistryUnavailableException.class);
-        if (unreachable != null) {
-            return completeExecution(rootCommand(pr), pr, printRegistryUnreachableBanner(unreachable));
-        }
         // Match the auth subclass FIRST so its specific banner
         // wins; the generic GitFetcherException catch below is
         // the fall-through for every other git-clone failure
@@ -541,12 +517,6 @@ public final class SkillManagerCli implements Runnable {
         }
         if (unwrapCause(ex, dev.skillmanager.sandbox.ConfinementEscapeException.class) != null) {
             return dev.skillmanager.sandbox.ConfinementEscapeException.ERROR_CODE;
-        }
-        if (unwrapCause(ex, AuthenticationRequiredException.class) != null) {
-            return "authentication_required";
-        }
-        if (unwrapCause(ex, RegistryUnavailableException.class) != null) {
-            return "registry_unavailable";
         }
         return null;
     }
@@ -798,38 +768,10 @@ public final class SkillManagerCli implements Runnable {
     }
 
     /**
-     * Print the {@code ACTION_REQUIRED: skill-manager login} banner.
-     * Public so {@link dev.skillmanager.resolve.TransitiveFailures} can
-     * call it for resolve-time failures that don't escape as
-     * exceptions — keeps a single canonical banner per failure mode
-     * regardless of which surface emitted it.
-     */
-    public static int printAuthBanner(String reason) {
-        System.err.println();
-        System.err.println("ACTION_REQUIRED: skill-manager login");
-        System.err.println("Reason: " + (reason == null ? "registry credentials are no longer valid" : reason));
-        System.err.println("Ask the user to run the following in their terminal, then retry the task:");
-        System.err.println();
-        System.err.println("    skill-manager login");
-        System.err.println();
-        System.err.println("A browser window will open for them to sign in. Tokens are refreshed automatically");
-        System.err.println("after that — this banner only fires if the refresh token is also expired.");
-        return AuthenticationRequiredException.EXIT_CODE;
-    }
-
-    /**
-     * Render a friendly, actionable banner when the registry server
-     * isn't reachable. Replaces the raw {@code java.net.ConnectException}
-     * stack trace users used to see when running {@code create-account},
-     * {@code login}, {@code search}, {@code install <name>}, etc. with
-     * the registry server down.
-     */
-    /**
      * Banner for a {@code git clone} that the remote refused because we
-     * couldn't (or didn't) authenticate. Mirrors the registry's auth
-     * banner but with remediation focused on git/SSH config: the user
-     * fixes this by configuring credentials on their machine, not by
-     * running {@code skill-manager login}.
+     * couldn't (or didn't) authenticate. Remediation is focused on git/SSH
+     * config: the user fixes this by configuring credentials on their
+     * machine.
      */
     public static int printGitAuthBanner(GitCloneAuthException ex) {
         System.err.println();
@@ -884,30 +826,4 @@ public final class SkillManagerCli implements Runnable {
         return GitFetcherException.EXIT_CODE;
     }
 
-    public static int printRegistryUnreachableBanner(RegistryUnavailableException ex) {
-        System.err.println();
-        System.err.println("ERROR: registry unreachable");
-        System.err.println("URL:    " + ex.baseUrl());
-        Throwable cause = ex.getCause();
-        if (cause != null) {
-            String msg = cause.getMessage();
-            System.err.println("Cause:  " + cause.getClass().getSimpleName()
-                    + (msg == null || msg.isBlank() ? "" : " — " + msg));
-        }
-        System.err.println();
-        System.err.println("Likely fixes:");
-        System.err.println("  - The registry server isn't running at that URL. Start it (or wait for it");
-        System.err.println("    to come up) and retry the command.");
-        System.err.println("  - You're on the wrong URL. Override per-command with:");
-        System.err.println("        --registry <url>");
-        System.err.println("    or set persistently with:");
-        System.err.println("        skill-manager registry set <url>");
-        System.err.println("    or via env var:");
-        System.err.println("        SKILL_MANAGER_REGISTRY_URL=<url>");
-        System.err.println("  - For installing a unit from local disk (skipping the registry entirely):");
-        System.err.println("        skill-manager install ./path/to/dir");
-        System.err.println("        skill-manager install file:/abs/path");
-        System.err.println();
-        return RegistryUnavailableException.EXIT_CODE;
-    }
 }

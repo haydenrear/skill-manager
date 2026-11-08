@@ -92,7 +92,6 @@ public final class SourceProvenanceRecorder {
     private static InstalledUnit.InstallSource mapInstallSource(ResolvedGraph.SourceKind sk) {
         if (sk == null) return InstalledUnit.InstallSource.UNKNOWN;
         return switch (sk) {
-            case REGISTRY -> InstalledUnit.InstallSource.REGISTRY;
             case GIT -> InstalledUnit.InstallSource.GIT;
             case LOCAL -> InstalledUnit.InstallSource.LOCAL_FILE;
         };

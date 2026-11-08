@@ -654,3 +654,30 @@ tickets:
       toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
       evidence_root: results/epic-honest-pins/tickets/HP-11/
     goals: []
+
+  - id: HP-12
+    github_issue: https://github.com/haydenrear/skill-manager/issues/427
+    title: "Remove the registry server and its CLI client"
+    status: pr_open
+    role: implementation
+    comment: "added post-evaluation at owner request"
+    schedule_revision: 3
+    wave: 5
+    depends_on: ["HP-11"]
+    blocks: []
+    promotion_order: 13
+    promotion_predecessor: HP-11
+    slice: >
+      Delete server-java/, SkillManagerServer.java, the skill-manager-server
+      launcher, Dockerfile.server, the compose files, infra/postgres and the
+      server image release job; delete the registry-only CLI commands (ads,
+      create-account, login, reset-password, search, registry, publish) and the
+      dev.skillmanager.registry client. A bare-name install fails naming the
+      github:/git+/file: forms. `unit validate <dir>` keeps publish --dry-run's
+      import check. Then (after HP-11) delete browser-auth, password-reset and
+      refresh-flow and convert hyper-experiments to a git/file coordinate.
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["smoke", "onboard", "plugin-smoke", "doc-smoke", "hyper-experiments"]
+      evidence_root: "the PR body"

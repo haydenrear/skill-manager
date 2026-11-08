@@ -26,7 +26,6 @@ public sealed interface PlanAction {
     record FetchUnit(ResolvedGraph.Resolved resolved) implements PlanAction {
         @Override public Severity severity() {
             return switch (resolved.sourceKind()) {
-                case REGISTRY -> Severity.NOTICE;
                 case GIT -> Severity.WARN;
                 case LOCAL -> Severity.INFO;
             };
@@ -34,7 +33,6 @@ public sealed interface PlanAction {
         @Override public Section section() { return Section.RESOLVE; }
         @Override public String title() {
             String kindLabel = switch (resolved.sourceKind()) {
-                case REGISTRY -> "registry";
                 case GIT -> "git";
                 case LOCAL -> "local";
             };

@@ -32,10 +32,6 @@ class SkillManager < Formula
       Java is provided by openjdk@21 (a brew dependency). If `java -version`
       fails, run:
         brew link --force openjdk@21
-      The skill-manager registry server is published as a container image at
-      ghcr.io/haydenrear/skill-manager-server. To self-host:
-        docker compose -f docker-compose-ghcr.yml up -d
-      (see https://github.com/haydenrear/skill-manager)
     EOS
   end
 

@@ -99,13 +99,9 @@ public final class SyncCommand implements Callable<Integer> {
     public boolean merge;
 
     @Option(names = "--git-latest",
-            description = "Skip the registry; fetch the install-time gitRef (branch / tag) instead of the "
-                    + "server-published version's git_sha.")
+            description = "Fetch the install-time gitRef (branch / tag), or HEAD when none was "
+                    + "recorded, instead of falling back to the remote's default branch.")
     public boolean gitLatest;
-
-    @Option(names = "--registry",
-            description = "Registry URL override for this invocation (persisted).")
-    public String registryUrl;
 
     @Option(names = "--skip-agents",
             description = "Don't refresh agent symlinks or MCP-config entries.")
@@ -139,7 +135,7 @@ public final class SyncCommand implements Callable<Integer> {
 
     @Option(names = "--dry-run",
             description = "Print the effects the program would run without mutating filesystem, "
-                    + "gateway, or registry.")
+                    + "or gateway.")
     public boolean dryRun;
 
     @Option(names = "--force",
@@ -290,7 +286,7 @@ public final class SyncCommand implements Callable<Integer> {
         // again — it pings and skips when no gateway answers — while STARTING
         // one stays opt-in, which is the half 7fce8ed was right about.
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes, forceScripts,
+                gitLatest, merge, !skipMcp, !skipAgents, yes, forceScripts,
                 includeMcp && !skipMcp);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, resolved.targets(), resolved.readProblems());
@@ -528,7 +524,7 @@ public final class SyncCommand implements Callable<Integer> {
         // still exited 0.
         for (var b : diff.bumped()) targets.add(lockTarget(b.after()));
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes, forceScripts,
+                /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes, forceScripts,
                 includeMcp && !skipMcp);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targets, liveState.problems());
