@@ -1,0 +1,42 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 3,
+  "graphs_executed": 3,
+  "graphs_passed": 1,
+  "graphs_failed": 2,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "smoke",
+      "status": "failed",
+      "seconds": 988.021,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-11/test_graph/build/validation-reports/20261108-031940"
+      ],
+      "reason": "Execution failed for task ':smoke'."
+    },
+    {
+      "graph": "onboard",
+      "status": "passed",
+      "seconds": 369.649,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-11/test_graph/build/validation-reports/20261108-033545"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "plugin-smoke",
+      "status": "failed",
+      "seconds": 518.066,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-11/test_graph/build/validation-reports/20261108-034207"
+      ],
+      "reason": "Execution failed for task ':plugin-smoke'."
+    }
+  ],
+  "sweep_id": "20261108-031904",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}

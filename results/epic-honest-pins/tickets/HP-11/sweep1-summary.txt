@@ -1,0 +1,7 @@
+== test graph sweep 20261108-031904 ==
+Counted from this invocation's own task outcomes, not from build/validation-reports/.
+graphs_selected=3  graphs_executed=3  graphs_passed=1  graphs_failed=2  graphs_not_run=0
+  FAILED   smoke         988.0s  build/validation-reports/20261108-031940  (Execution failed for task ':smoke'.)
+  PASSED   onboard       369.6s  build/validation-reports/20261108-033545
+  FAILED   plugin-smoke  518.1s  build/validation-reports/20261108-034207  (Execution failed for task ':plugin-smoke'.)
+sweep record: /Volumes/dev/skill-manager-hp-11/test_graph/build/validation-sweeps/20261108-031904/sweep.json

@@ -7,17 +7,19 @@ command**, which runs the graphs meant to run here and prints the ones it did
 not run, each with its reason:
 
 ```
-python3 test_graph/run-graphs.py           # the 28 graphs meant to run here
+python3 test_graph/run-graphs.py           # the 27 graphs meant to run here
 python3 test_graph/run-graphs.py --list    # classification only; runs nothing
 ```
 
-Thirty-two graphs are registered. Twenty-eight run; four are OPT-IN and excluded by
+Thirty-one graphs are registered. Twenty-seven run; four are OPT-IN and excluded by
 default — `browser-auth` and `password-reset` boot chromedriver and a real
 browser, `refresh-flow` is a known ~1-in-4 flake
 (skill-manager-integration-repository#53), and `hyper-experiments` reaches
 github, npm and the live RunPod API (#143). `honest-pins` (#411) was opt-in as
 that epic's red-by-design baseline until its terminal evaluation (HP-9, #413)
-read it green and moved it into the run set. `run-graphs.py` names all four and
+read it green and moved it into the run set. `sponsored` was removed at HP-11
+(#426): it tested only the registry server's sponsored search, and skill-manager
+is not used through that server. `run-graphs.py` names all four and
 prints each one's opt-in command, so "did not run" can be told apart from "is
 not run here". It reads its verdicts from the sweep ledger, and it always exits
 0: it reports, it does not gate.
@@ -109,9 +111,18 @@ summary; add `--continue` if you want one.
 - **Policy gate prompts hang in non-interactive contexts**: tests pass
   `--yes`; the test home's `policy.toml` (written by `EnvPrepared`)
   also turns off every install-confirmation gate.
-- **Docker pulls fail with 403/404**: the image isn't published, or the
-  registry rejects anonymous pulls. Swap to a known-public image
-  (`mcp/sequentialthinking:latest` for stdio examples).
+- **Docker is not needed by the run set.** Since HP-11 (#426) `smoke`,
+  `onboard` and `plugin-smoke` boot no docker, Postgres or registry server,
+  and `sponsored` is gone; `examples/hello-skill` declares its MCP server as a
+  session-scoped npm load, so installing it pulls no image. Only the opt-in
+  server graphs (`browser-auth`, `password-reset`, `refresh-flow`,
+  `hyper-experiments`) still bring up Postgres and the registry through
+  docker compose.
+- **Concurrent worktrees kill each other's gateways**: `gateway.up`'s stale
+  cleanup terminates every `gateway.server` process whose command line holds
+  `sm-testgraph-`, including a gateway another worktree's graph is using.
+  Two graphs running at once on one host can turn a later MCP node red with a
+  `ConnectException`; set `HONEST_PINS_SERIAL=1` on the epic wrapper, or rerun.
 - **`hello.installed` resolves to a contained-skill name**: the
   resolver / fetcher's locate-root logic descended into
   `skills/<contained>/SKILL.md` instead of detecting the plugin

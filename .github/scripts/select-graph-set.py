@@ -56,14 +56,14 @@ from pathlib import Path
 # list, and it is smaller than the twelve-graph matrix it replaces.
 # ---------------------------------------------------------------------------
 CORE: list[str] = [
-    "smoke",               # 52 nodes — install/bind/sync/gateway spine
+    "smoke",               # 43 nodes — install/bind/sync/gateway spine; no docker since HP-11
     "home-clone",          # 13 — home cloning, the epic's subject
     "home-sync",           # 18 — sync up a tier
     "checkout-home",       # 7  — per-checkout home bootstrap
     "project-child-home",  # 12 — child homes
     "ticket-lifecycle",    # 13 — wt/skt ticket new + close
-    "plugin-smoke",        # 23 — plugin layout + harness registration
-    "onboard",             # 14 — onboarding a unit end to end
+    "plugin-smoke",        # 21 — plugin layout + harness registration; no docker since HP-11
+    "onboard",             # 9  — onboarding a unit end to end; no docker since HP-11
     "home-integrity",      # 12 — what a healthy home IS (#124); no docker, no postgres
 ]
 
@@ -146,6 +146,15 @@ EXCLUDED: dict[str, str] = {
         "in validationRunAll either. Run it deliberately, not on a push."
     ),
 }
+
+# sponsored was DELETED at HP-11 (#426), not excluded: it tested nothing but
+# the registry server's sponsored-search feature, and skill-manager is not used
+# through that server (owner: "we literally never use the server - ever"). At
+# the same ticket smoke, onboard and plugin-smoke stopped booting docker,
+# Postgres and the registry (PostgresUp/RegistryUp/CiLoggedIn/JwtValid). The
+# server-centric graphs that remain -- browser-auth, password-reset,
+# refresh-flow, hyper-experiments -- are follow-up candidates for the same
+# treatment; they are BROWSER or EXCLUDED below and above already.
 
 # honest-pins was REMOVED from EXCLUDED at HP-9 (#413). It was opt-in while it was the
 # honest-pins epic's baseline harness (one node per planted pin/record shape,

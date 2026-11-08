@@ -3,7 +3,7 @@
 
 WHY THIS EXISTS
 ---------------
-`test_graph/build.gradle.kts` registers thirty graphs. The documented way to
+`test_graph/build.gradle.kts` registers thirty-one graphs. The documented way to
 run them all is the installed test-graph skill's `scripts/run.py --all`, which invokes Gradle's
 `validationRunAll`; that task fans out over `ext.graphs`, i.e. every graph
 registered with `testGraph(...)`. Three of those boot Selenium and chromedriver

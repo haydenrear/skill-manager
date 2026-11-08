@@ -21,8 +21,8 @@ import java.nio.file.Path;
  * {@code InstallCommand}; this node keeps that wiring honest.
  *
  * <p>The check piggybacks on {@code hello.installed} and
- * {@code umbrella.installed} so the assertions cover both a registry
- * install (hello) and a transitive multi-skill install (umbrella +
+ * {@code umbrella.installed} so the assertions cover both a single
+ * {@code file:} install (hello) and a transitive multi-skill install (umbrella +
  * pip-cli-skill + npm-cli-skill).
  */
 public class AgentSkillSymlinks {

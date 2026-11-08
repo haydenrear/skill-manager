@@ -35,34 +35,37 @@ import java.nio.file.Path;
  * gateway and re-registered every installed unit's MCP deps (parity
  * with {@link SkillSynced}).
  *
- * <h2>The two plugins in this home are the D14 discriminator</h2>
+ * <h2>The two plugins in this home, and what HP-11 changed</h2>
  *
  * <p>This node used to assert both plugins carried a
  * {@code NEEDS_GIT_MIGRATION} record ("outstanding errors (2)"), which was
  * asserting the defect: a store directory with no {@code .git} was an
  * outstanding error regardless of how it got that way, so a unit the operator
  * DELIBERATELY installed from a local path appended an error — with a remedy
- * that undoes their own choice — to every subsequent command, forever.
+ * that undoes their own choice — to every subsequent command, forever (D14).
  *
- * <p>The home now holds one of each shape, and the assertion is that
- * {@code sync} tells them apart in the same run:
+ * <p>Until HP-11 (#426) the home held one of each shape: {@code umbrella-plugin}
+ * from a {@code file:} install, and {@code hello-plugin} published to a per-run
+ * registry server with {@code --upload-tarball} (not git-tracked, so still an
+ * error). The registry server is not how skill-manager is used and the graph no
+ * longer boots it, so {@code hello-plugin} now arrives by {@code file:} too.
+ * That loses the COMPANION arm (an accidental non-git install still errors);
+ * it was only reachable through the server and is recorded as dropped.
+ *
+ * <p>What is asserted now, on disk (the per-unit {@code installed/<name>.json}
+ * records) and not by grepping one banner:
  *
  * <ul>
- *   <li>{@code umbrella-plugin} — {@code installSource: LOCAL_FILE}, a
- *       deliberate {@code file:} install. No error record; the provenance is
- *       still REPORTED (a {@code SyncGitLocalInstall} fact), so "this will
- *       not update" stays visible as a run-log sentence and a console
- *       count.</li>
- *   <li>{@code hello-plugin} — {@code installSource: REGISTRY}, published
- *       with {@code --upload-tarball} and therefore not git-tracked. Still an
- *       error, so sync still exits 1.</li>
+ *   <li>both records say {@code installSource: LOCAL_FILE} and neither carries
+ *       {@code NEEDS_GIT_MIGRATION};</li>
+ *   <li>no outstanding-errors banner, and sync's only non-zero cause is
+ *       exit 11 for the deliberately broken {@code imports-*} probe skills
+ *       sibling nodes install into this home;</li>
+ *   <li>the provenance is still REPORTED for BOTH units (a
+ *       {@code SyncGitLocalInstall} fact per unit in the run log, and the
+ *       console count), which is the non-vacuity control: a handler that
+ *       stopped recording anything would not name either unit.</li>
  * </ul>
- *
- * <p>Both halves are asserted, and asserted on disk (the per-unit
- * {@code installed/<name>.json} records) rather than by grepping one banner:
- * "no error was recorded" is what a handler that stopped recording anything
- * would also produce, and the record files are the thing every later command
- * reads.
  *
  * <p>The per-unit provenance sentence is DEMOTED to the run log named by the
  * {@code log:} footer, so this node follows that footer through
@@ -126,39 +129,52 @@ public class PluginSynced {
             boolean mcpReRegistered = console.contains("---MCP-INSTALL-RESULTS-BEGIN---")
                     && console.contains("---MCP-INSTALL-RESULTS-END---");
 
-            // ---- D14: the two provenances, told apart, on disk ----
+            // ---- D14: two deliberate local installs, both cleared, on disk ----
             Path localRecord = Path.of(home, "installed", pluginName + ".json");
-            Path registryRecord = Path.of(home, "installed", "hello-plugin.json");
+            Path helloRecord = Path.of(home, "installed", "hello-plugin.json");
             String localJson = RunLogText.read(localRecord);
-            String registryJson = RunLogText.read(registryRecord);
+            String helloJson = RunLogText.read(helloRecord);
             // Non-vacuity for the two containment checks below: an absent or
             // empty record file would satisfy "does not contain" for free.
             boolean bothRecordsReadable = localJson.contains("\"" + pluginName + "\"")
-                    && registryJson.contains("\"hello-plugin\"");
+                    && helloJson.contains("\"hello-plugin\"");
             boolean localInstallIsLocalFile = localJson.contains("\"installSource\" : \"LOCAL_FILE\"");
-            boolean registryInstallIsRegistry = registryJson.contains("\"installSource\" : \"REGISTRY\"");
-            boolean deliberateLocalInstallCleared =
-                    bothRecordsReadable && !localJson.contains("NEEDS_GIT_MIGRATION");
-            boolean accidentalNonGitStillErrors =
-                    bothRecordsReadable && registryJson.contains("NEEDS_GIT_MIGRATION");
+            boolean helloInstallIsLocalFile = helloJson.contains("\"installSource\" : \"LOCAL_FILE\"");
+            boolean neitherRecordsAnError = bothRecordsReadable
+                    && !localJson.contains("NEEDS_GIT_MIGRATION")
+                    && !helloJson.contains("NEEDS_GIT_MIGRATION");
 
             // ...and reported, rather than silently dropped: the count on the
-            // console, the sentence in the run log.
+            // console, the sentence in the run log, for EACH unit.
             boolean localOnlyCounted = console.contains("local-only (no shared upstream)");
             boolean localProvenanceInRunLog =
                     body.contains(pluginName + ": installed from a local path");
-            // One remaining outstanding error, and it is the registry one.
-            boolean oneOutstandingError = body.contains("skills with outstanding errors (1)")
-                    && body.contains("1 distinct cause")
-                    && body.contains("hello-plugin");
-            boolean expectedMigrationExit = rc == 1;
+            boolean helloProvenanceInRunLog =
+                    body.contains("hello-plugin: installed from a local path");
+            boolean noOutstandingErrors = !body.contains("skills with outstanding errors");
+            // Not 0, and correctly so: sibling nodes (plugin.contained.skill.
+            // resolves.by.name, plugin.qualified.name.resolves) install probe
+            // skills named imports-* whose skill-imports are broken ON PURPOSE,
+            // and sync reports them with MarkdownImportValidator.EXIT_CODE (11).
+            // Until HP-11 the registry install's NEEDS_GIT_MIGRATION error
+            // (exit 1) masked that. What must hold is that 11 is the ONLY
+            // cause: every violation names a probe, none names a real unit.
+            java.util.List<String> violators = new java.util.ArrayList<>();
+            java.util.regex.Matcher vm = java.util.regex.Pattern
+                    .compile("(?m)^\\S+\\s+- (\\S+) \\((?:skill|plugin|doc-repo|harness)\\):")
+                    .matcher(console);
+            while (vm.find()) violators.add(vm.group(1));
+            boolean onlyProbesViolate = !violators.isEmpty()
+                    && violators.stream().allMatch(v -> v.startsWith("imports-"));
+            boolean syncExitIsProbeViolationsOnly = rc == 11 && onlyProbesViolate;
 
             boolean pass = preSymlinkGone && preManifestStubbed
                     && symlinkRestored && manifestRestored && mcpReRegistered
-                    && expectedMigrationExit && bothRecordsReadable
-                    && localInstallIsLocalFile && registryInstallIsRegistry
-                    && deliberateLocalInstallCleared && accidentalNonGitStillErrors
-                    && localOnlyCounted && localProvenanceInRunLog && oneOutstandingError;
+                    && syncExitIsProbeViolationsOnly && bothRecordsReadable
+                    && localInstallIsLocalFile && helloInstallIsLocalFile
+                    && neitherRecordsAnError && localOnlyCounted
+                    && localProvenanceInRunLog && helloProvenanceInRunLog
+                    && noOutstandingErrors;
             return (pass
                     ? NodeResult.pass("plugin.synced")
                     : NodeResult.fail("plugin.synced",
@@ -169,12 +185,13 @@ public class PluginSynced {
                                     + " mcpReRegistered=" + mcpReRegistered
                                     + " recordsReadable=" + bothRecordsReadable
                                     + " localIsLocalFile=" + localInstallIsLocalFile
-                                    + " registryIsRegistry=" + registryInstallIsRegistry
-                                    + " localCleared=" + deliberateLocalInstallCleared
-                                    + " registryStillErrors=" + accidentalNonGitStillErrors
+                                    + " helloIsLocalFile=" + helloInstallIsLocalFile
+                                    + " neitherErrors=" + neitherRecordsAnError
                                     + " localOnlyCounted=" + localOnlyCounted
                                     + " localInRunLog=" + localProvenanceInRunLog
-                                    + " oneOutstanding=" + oneOutstandingError))
+                                    + " helloInRunLog=" + helloProvenanceInRunLog
+                                    + " noOutstanding=" + noOutstandingErrors
+                                    + " violators=" + violators))
                     .process(proc)
                     .assertion("marketplace_symlink_was_drifted", preSymlinkGone)
                     .assertion("marketplace_manifest_was_drifted", preManifestStubbed)
@@ -183,16 +200,14 @@ public class PluginSynced {
                     .assertion("mcp_register_results_emitted", mcpReRegistered)
                     .assertion("both_install_records_readable", bothRecordsReadable)
                     .assertion("local_install_recorded_as_local_file", localInstallIsLocalFile)
-                    .assertion("registry_install_recorded_as_registry", registryInstallIsRegistry)
-                    .assertion("deliberate_local_install_records_no_error",
-                            deliberateLocalInstallCleared)
-                    .assertion("COMPANION_non_git_registry_install_still_errors",
-                            accidentalNonGitStillErrors)
+                    .assertion("hello_install_recorded_as_local_file", helloInstallIsLocalFile)
+                    .assertion("deliberate_local_installs_record_no_error", neitherRecordsAnError)
                     .assertion("local_only_counted_on_console", localOnlyCounted)
                     .assertion("local_provenance_named_in_run_log", localProvenanceInRunLog)
-                    .assertion("one_outstanding_error_and_it_is_the_registry_one",
-                            oneOutstandingError)
-                    .assertion("sync_exit_one_for_remaining_migration", expectedMigrationExit)
+                    .assertion("hello_provenance_named_in_run_log", helloProvenanceInRunLog)
+                    .assertion("no_outstanding_errors", noOutstandingErrors)
+                    .assertion("sync_exit_is_only_the_sibling_probes_import_violations",
+                            syncExitIsProbeViolationsOnly)
                     .metric("exitCode", rc);
         });
     }

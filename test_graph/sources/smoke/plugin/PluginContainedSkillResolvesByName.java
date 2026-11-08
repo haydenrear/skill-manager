@@ -17,12 +17,13 @@ import java.nio.file.Path;
  * OUN-1, end to end: a skill contained in an installed plugin resolves when a
  * markdown {@code skill-imports} names it.
  *
- * <h2>Two senses of "addressable", and this graph now asserts both</h2>
+ * <h2>Two senses of "addressable"</h2>
  *
- * <p>{@code plugin.contained.skill.not.addressable} — the node next door —
- * asserts that {@code install hello-impl --registry} FAILS: a contained skill
- * has no independent identity as a registry unit. That is still true and this
- * node does not contradict it.
+ * <p>{@code plugin.contained.skill.not.addressable} used to sit next door and
+ * assert that {@code install hello-impl --registry} FAILS: a contained skill
+ * has no independent identity as a registry unit. It asserted the registry
+ * server's behaviour and was deleted with the server at HP-11 (#426); this node
+ * never depended on it.
  *
  * <p>What changed is a different question with a confusingly similar name.
  * Until OUN-1, an import naming a contained skill was reported as a MISSING
@@ -31,8 +32,7 @@ import java.nio.file.Path;
  * two properties were one word apart and only one of them was covered, which
  * is how the gap survived.
  *
- * <p>So: <b>not installable as a top-level unit, and resolvable by name from
- * an import.</b> Both, deliberately.
+ * <p>So: <b>resolvable by name from an import.</b>
  *
  * <h2>The controls</h2>
  *
@@ -97,9 +97,7 @@ public class PluginContainedSkillResolvesByName {
                 .assertion("CONTROL_a_missing_path_inside_it_is_still_a_violation",
                         pathStillChecked)
                 .log("Before OUN-1 this import was reported as a MISSING UNIT while the "
-                        + "skill sat on disk in the same home. The sibling node asserts the "
-                        + "OTHER sense of addressable — not installable from the registry — "
-                        + "and both hold.");
+                        + "skill sat on disk in the same home.");
     }
 
     private static ProcessRecord installImporter(NodeContext ctx, String home, Path scratch,
