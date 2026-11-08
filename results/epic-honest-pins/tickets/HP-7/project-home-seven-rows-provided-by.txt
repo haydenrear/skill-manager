@@ -1,0 +1,35 @@
+== cli-shim:brew/docker
+outputs:
+  (none — the source record is the artifact)
+  provided_basis = inferred: the row predates `provided`, and its on_path resolves outside every Skill Manager home, so the next sync would link nothing either
+  provided_by = /Users/hayde/.docker/bin/docker
+== cli-shim:brew/gh
+outputs:
+  (none — the source record is the artifact)
+  provided_by = /opt/homebrew/bin/gh
+  provided_basis = inferred: the row predates `provided`, and its on_path resolves outside every Skill Manager home, so the next sync would link nothing either
+== cli-shim:brew/helm
+outputs:
+  (none — the source record is the artifact)
+  provided_by = /opt/homebrew/bin/helm
+  provided_basis = inferred: the row predates `provided`, and its on_path resolves outside every Skill Manager home, so the next sync would link nothing either
+== cli-shim:brew/k3d
+outputs:
+  (none — the source record is the artifact)
+  provided_by = /opt/homebrew/bin/k3d
+  provided_basis = inferred: the row predates `provided`, and its on_path resolves outside every Skill Manager home, so the next sync would link nothing either
+== cli-shim:brew/kubernetes-cli
+outputs:
+  (none — the source record is the artifact)
+  provided_basis = inferred: the row predates `provided`, and its on_path resolves outside every Skill Manager home, so the next sync would link nothing either
+  provided_by = /Users/hayde/.docker/bin/kubectl
+== cli-shim:brew/opentofu
+outputs:
+  (none — the source record is the artifact)
+  provided_by = /opt/homebrew/bin/tofu
+  provided_basis = inferred: the row predates `provided`, and its on_path resolves outside every Skill Manager home, so the next sync would link nothing either
+== cli-shim:pip/pytest
+outputs:
+  (none — the source record is the artifact)
+  provided_basis = inferred: the row predates `provided`, and its on_path resolves outside every Skill Manager home, so the next sync would link nothing either
+  provided_by = /Library/Frameworks/Python.framework/Versions/3.10/bin/pytest

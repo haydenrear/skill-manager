@@ -1,0 +1,15 @@
+{
+  "schema" : 2,
+  "home" : "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+  "summary" : {
+    "artifacts" : 15,
+    "stale" : 0,
+    "unverifiable" : 0,
+    "current" : 15,
+    "stale_by_kind" : {
+      "cli-shim" : 0
+    }
+  },
+  "stale" : [ ],
+  "unverifiable" : [ ]
+}

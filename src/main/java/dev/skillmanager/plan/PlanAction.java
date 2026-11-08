@@ -26,7 +26,6 @@ public sealed interface PlanAction {
     record FetchUnit(ResolvedGraph.Resolved resolved) implements PlanAction {
         @Override public Severity severity() {
             return switch (resolved.sourceKind()) {
-                case REGISTRY -> Severity.NOTICE;
                 case GIT -> Severity.WARN;
                 case LOCAL -> Severity.INFO;
             };
@@ -34,7 +33,6 @@ public sealed interface PlanAction {
         @Override public Section section() { return Section.RESOLVE; }
         @Override public String title() {
             String kindLabel = switch (resolved.sourceKind()) {
-                case REGISTRY -> "registry";
                 case GIT -> "git";
                 case LOCAL -> "local";
             };
@@ -221,6 +219,33 @@ public sealed interface PlanAction {
             }
             out.add("resolve: bump one skill's spec to match, or delete the conflicting entry in cli-lock.toml");
             return out;
+        }
+
+        /**
+         * #434 F4: this conflict as one sentence for the halt message, naming both
+         * sides and the way out. The plan itself prints only at detail level, so
+         * without this a halted install names neither unit nor pin.
+         */
+        public String summary() {
+            String holders = previouslyRequestedBy.isEmpty()
+                    ? "another unit" : String.join(", ", previouslyRequestedBy);
+            StringBuilder out = new StringBuilder("CLI conflict over ").append(dep.backend()).append(":")
+                    .append(dep.name()).append(": ").append(unitName).append(" declares ")
+                    .append(requestedVersion == null ? "any" : requestedVersion).append(" but ")
+                    .append(holders).append(" holds ").append(lockedVersion)
+                    .append(". One install backs every unit, so to resolve this either make them declare")
+                    .append(" one pin (edit the unit's [[cli_dependencies]] entry, then `skill-manager sync")
+                    .append(" <unit> --from <dir> --yes`, or `skill-manager sync <unit> --to <rev>`), or");
+            if (previouslyRequestedBy.isEmpty()) {
+                out.append(" remove the other unit with `skill-manager uninstall <unit>`");
+            } else {
+                String sep = " ";
+                for (String holder : previouslyRequestedBy) {
+                    out.append(sep).append("`skill-manager uninstall ").append(holder).append("`");
+                    sep = ", ";
+                }
+            }
+            return out.toString();
         }
     }
 

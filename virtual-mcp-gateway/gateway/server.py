@@ -375,6 +375,7 @@ class GatewayServer:
             "deployed": False,
             "transport": definition.client.transport,
             "default_scope": definition.default_scope,
+            "stale_binary": self.registry.stale_binary(definition.server_id),
         }
 
         # REST deploy is global-only: no session context available here.
@@ -413,6 +414,7 @@ class GatewayServer:
                     "deployed": server_id in self.registry.global_deployments,
                     "deployed_globally": server_id in self.registry.global_deployments,
                     "tool_count": len(self.registry.global_tools_by_server.get(server_id, {})),
+                    "stale_binary": self.registry.stale_binary(server_id),
                 }
             )
         return JSONResponse({"items": items, "count": len(items)})

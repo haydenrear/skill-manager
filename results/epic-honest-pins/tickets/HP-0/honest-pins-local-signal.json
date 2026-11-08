@@ -1,0 +1,148 @@
+{
+  "graph": "honest-pins",
+  "run_id": "20261107-173056",
+  "sweep_id": "20261107-172944",
+  "base": "1b52427487a0 (origin/epic/honest-pins) + HP-0 harness",
+  "command": "TESTGRAPH_CONTINUE_AFTER_FAILURE=1 /Volumes/dev/.honest-pins/graph-run.sh honest-pins --continue",
+  "sweep": {
+    "schema": "test-graph.sweep.v1",
+    "mode": "graphs",
+    "selection_known": true,
+    "graphs_selected": 1,
+    "graphs_executed": 1,
+    "graphs_passed": 0,
+    "graphs_failed": 1,
+    "graphs_not_run": 0,
+    "results": [
+      {
+        "graph": "honest-pins",
+        "status": "failed",
+        "seconds": 361.32,
+        "run_dirs": [
+          "/Volumes/dev/skill-manager-hp-0/test_graph/build/validation-reports/20261107-173056"
+        ],
+        "reason": "Execution failed for task ':honest-pins'."
+      }
+    ],
+    "sweep_id": "20261107-172944",
+    "gradle_exit_code": 1,
+    "continue_past_failures": true
+  },
+  "nodes": {
+    "env.prepared": {
+      "status": "passed",
+      "detail": null,
+      "assertions": {
+        "home_created": "passed",
+        "agent_home_created": "passed",
+        "codex_home_created": "passed",
+        "gemini_home_created": "passed",
+        "ports_allocated": "passed"
+      }
+    },
+    "gateway.python.venv.ready": {
+      "status": "passed",
+      "detail": null,
+      "assertions": {
+        "uv_sync_ok": "passed",
+        "venv_python_present": "passed"
+      }
+    },
+    "honest.pin-b": {
+      "status": "failed",
+      "detail": "A=d9603b90f8adbf078ea568a90f99f1c8515870c7 B(pin)=9641ce998fea3809b6c75f6785e8a298cbf1376a C(tip)=7004e218cd53e8bb3c69471071d984646a510b74; sync --lock rc=0 HEAD=C (main's tip) record=7004e218cd53e8bb3c69471071d984646a510b74 lock=7004e218cd53e8bb3c69471071d984646a510b74 bytesAtB=false; control rc=0 noop=true; setup installedAtA=true lockPinsA=true",
+      "assertions": {
+        "setup_installed_at_A": "passed",
+        "setup_lock_pins_A": "passed",
+        "setup_desired_lock_names_B": "passed",
+        "control_unchanged_lock_is_noop": "passed",
+        "shape_lock_pin_honoured_or_refused_by_name": "failed",
+        "shape_no_false_convergence": "failed"
+      }
+    },
+    "honest.pin-c": {
+      "status": "failed",
+      "detail": "A(pin)=9769df6cfd2f9a716b21751821a4ec97f5423219 B=9b8f2ac59ea0fcd00d83d040a2557c5d6cfa4a43; resolve rc=0 HEAD=B (ahead) units.lock resolved_sha=9b8f2ac59ea0fcd00d83d040a2557c5d6cfa4a43; control rc=0 stays=true; setup resolvedAtA=true ahead=true",
+      "assertions": {
+        "setup_resolved_at_pin_A": "passed",
+        "setup_unit_moved_ahead_to_B": "passed",
+        "control_resolve_at_pin_keeps_pin": "passed",
+        "shape_resolve_restores_pin_or_refuses_by_name": "failed",
+        "shape_no_false_convergence": "failed"
+      }
+    },
+    "honest.pin-d": {
+      "status": "failed",
+      "detail": "A(pin)=bc97dc31b180255be2745fc33d6244ff32daa0ec B=c3d4046c517e6656b0e2c2dfa853020b7775f8e8; resolve rc=0 HEAD=B (ahead) editKept=true; setup resolvedAtA=true ahead=true edited=true",
+      "assertions": {
+        "setup_resolved_at_pin_A": "passed",
+        "setup_unit_moved_ahead_to_B": "passed",
+        "setup_local_edit_written": "passed",
+        "control_local_edit_never_lost": "passed",
+        "shape_resolve_restores_pin_keeping_edit_or_refuses_by_name": "failed",
+        "shape_no_false_convergence": "failed"
+      }
+    },
+    "honest.pin-e": {
+      "status": "failed",
+      "detail": "v1 reported=1.0; v1 again (url gone) reported=1.0; v2 (url changed, same bin_path) reported=1.0",
+      "assertions": {
+        "setup_v1_provisioned_reports_1_0": "passed",
+        "control_unchanged_spec_served_from_cache": "passed",
+        "shape_changed_url_serves_new_binary": "failed"
+      }
+    },
+    "honest.record-a": {
+      "status": "failed",
+      "detail": "changing sync rc=0 unitChanged=true pending=false; noop sync unchanged=true pending=false; setup=true",
+      "assertions": {
+        "setup_homes_built_and_baselined": "passed",
+        "control_noop_sync_records_nothing": "passed",
+        "setup_changing_sync_changed_the_unit": "passed",
+        "shape_changing_sync_leaves_pending_drift": "failed"
+      }
+    },
+    "honest.record-b": {
+      "status": "failed",
+      "detail": "after home sync: manifest=0.2.0 record=0.1.0; after sync --from: manifest=0.3.0 record=0.1.0; control git-latest: manifest=0.2.0 record=0.2.0 rc=0; setup recordAgrees=true homeSyncMoved=true syncFromMoved=true",
+      "assertions": {
+        "setup_installed_records_agree_at_0_1_0": "passed",
+        "setup_home_sync_moved_0_2_0_bytes": "passed",
+        "setup_sync_from_moved_0_3_0_bytes": "passed",
+        "control_git_latest_rewrites_record_version": "passed",
+        "shape_home_sync_record_matches_manifest": "failed",
+        "shape_sync_from_record_matches_manifest": "failed"
+      }
+    },
+    "honest.record-c": {
+      "status": "failed",
+      "detail": "system sh listed stale=true; own probe present listed stale=false; own probe deleted listed stale=true; reportRead=true; setup=true",
+      "assertions": {
+        "setup_system_cli_unlinked_and_own_cli_installed": "passed",
+        "control_installed_shim_present_is_not_stale": "passed",
+        "control_deleted_installed_shim_is_stale": "passed",
+        "shape_system_cli_not_reported_stale": "failed"
+      }
+    },
+    "honest.record-d": {
+      "status": "failed",
+      "detail": "publish rc=0 moved=true; remote tree=SKILL.md,__pycache__/tool.cpython-312.pyc,skill-manager.toml,tool.py; editPublished=true; setup=true",
+      "assertions": {
+        "setup_installed_from_remote": "passed",
+        "control_real_edit_is_published": "passed",
+        "shape_bytecode_not_published": "failed"
+      }
+    },
+    "honest.record-e": {
+      "status": "failed",
+      "detail": "sync rc=0; declared hp-record-e-two kept=false; undeclared hp-record-e-three removed=true audited in child home=false; setup resolved=true planted=true",
+      "assertions": {
+        "setup_child_home_holds_all_three_and_stale_snapshot_planted": "passed",
+        "setup_root_sync_ok": "passed",
+        "control_undeclared_unmodified_unit_removed": "passed",
+        "shape_unit_declared_by_project_manifest_kept": "failed",
+        "shape_removal_audited_in_child_home": "failed"
+      }
+    }
+  }
+}

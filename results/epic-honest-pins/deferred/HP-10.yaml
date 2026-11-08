@@ -1,0 +1,44 @@
+# Deferred findings filed by HP-10 (#412). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep "attempt closure", "GIT_CEILING",
+# "enclosing repo") and GitHub issues (search "attempt closure replay"): none.
+
+findings:
+  - id: DEF-HP10-001
+    found_by: HP-10 running the red record-f node (honest-pins run 20261107-184251)
+    found_at_commit: 433f1090ab6c
+    severity: major
+    maps_to: "HP-10 (#412) -- fixed inline, inside source/git-ops-identity + store/close-out-git-history"
+    summary: >
+      Worse than #412 reported. With a worktree copy whose .git lost HEAD and config, the
+      baseline CLI did not only misreport it: `home close-out` called it `updated` with
+      remedy `home sync`, and a real `home sync --merge` REPLACED the project home's valid
+      copy with the damaged one (files: .git/HEAD, .git/config). The damage propagated into
+      the destination. The consumer's "diverged, publish it" shape is the same root cause on
+      a destination without a usable record.
+    reproduction: >
+      run.py honest-pins (TESTGRAPH_CONTINUE_AFTER_FAILURE=1) at 433f1090 -> honest.record-f
+      detail "partial=updated ... projectUntouched=false"; evidence
+      results/epic-honest-pins/tickets/HP-10/red/.
+    evidence: [results/epic-honest-pins/tickets/HP-10/red/honest.record-f.json]
+    disposition: fixed-inline
+
+  - id: DEF-HP10-002
+    found_by: HP-10 iterating record-f with --resume-from-build/--run-only-node
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "test-graph skill (tla-spec-dev plugin) / test_graph/build-logic -- outside HP-10's keys"
+    summary: >
+      `run.py honest-pins --resume-from-build <run> --run-only-node honest.record-f` refused
+      with "replay source attempt closure is not a regular file or is a symlink": the source
+      run (a full honest-pins attempt made through graph-run.sh, i.e. with
+      TESTGRAPH_CONTINUE_AFTER_FAILURE=1, ending red) wrote no attempt-closure file
+      (RunTestGraphTask logs "attempt closure withheld because process ownership could not be
+      proven" on that path). The documented single-node iteration loop is therefore not
+      available from the only kind of run the epic's graph-run.sh produces, and each
+      iteration costs a full graph run plus the shared lock wait.
+    reproduction: >
+      graph-run.sh honest-pins --continue (red), then graph-run.sh honest-pins
+      --resume-from-build test_graph/build/validation-reports/<that run> --run-only-node
+      <node>; ls <that run> shows no attempt-closure file.
+    evidence: []
+    disposition: open

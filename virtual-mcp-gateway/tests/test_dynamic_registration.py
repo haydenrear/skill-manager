@@ -141,3 +141,54 @@ def test_list_and_unregister(gateway: GatewayServer) -> None:
 
         missing = client.delete("/servers/does-not-exist")
         assert missing.status_code == 404
+
+
+def _write_probe(path: Path, version: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"#!/bin/sh\necho {version}\n")
+    return path
+
+
+def _binary_payload(server_id: str, url: str) -> dict:
+    return {
+        "server_id": server_id,
+        "load_spec": {
+            "type": "binary",
+            "binary": {"install": {"any": {"url": url, "archive": "raw"}}, "bin_path": "probe"},
+        },
+    }
+
+
+def test_stale_binary_is_in_every_status_surface_and_clears(gateway: GatewayServer, tmp_path: Path) -> None:
+    """#434 F6: a failed reprovision that keeps serving the old binary shows in
+    the server's status, not only in the gateway log."""
+    v1 = _write_probe(tmp_path / "v1" / "probe", "1.0")
+    v2 = tmp_path / "v2" / "probe"
+    with TestClient(gateway.app) as client:
+        first = client.post("/servers", json=_binary_payload("probe", v1.as_uri()))
+        assert first.status_code == 201, first.text
+        assert first.json().get("stale_binary") is None
+        assert client.get("/servers").json()["items"][0].get("stale_binary") is None
+
+        failed = client.post("/servers", json=_binary_payload("probe", v2.as_uri()))
+        assert failed.status_code == 201, failed.text
+        assert failed.json()["stale_binary"]
+        assert client.get("/servers").json()["items"][0]["stale_binary"]
+        assert client.get("/servers/probe").json()["stale_binary"]
+        assert gateway.registry.browse_servers()[0]["stale_binary"]
+
+        _write_probe(v2, "2.0")
+        fixed = client.post("/servers", json=_binary_payload("probe", v2.as_uri()))
+        assert fixed.json().get("stale_binary") is None
+        assert client.get("/servers/probe").json()["stale_binary"] is None
+        assert client.get("/servers").json()["items"][0].get("stale_binary") is None
+
+
+def test_unregister_forgets_the_stale_binary(gateway: GatewayServer, tmp_path: Path) -> None:
+    v1 = _write_probe(tmp_path / "v1" / "probe", "1.0")
+    with TestClient(gateway.app) as client:
+        client.post("/servers", json=_binary_payload("probe", v1.as_uri()))
+        client.post("/servers", json=_binary_payload("probe", (tmp_path / "gone" / "probe").as_uri()))
+        assert gateway.provisioner.stale_binaries
+        assert client.delete("/servers/probe").status_code == 200
+    assert gateway.provisioner.stale_binaries == {}

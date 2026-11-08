@@ -12,7 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Drives {@code skill-manager onboard} against the per-run registry. The
+ * Drives {@code skill-manager onboard}. No registry server is involved
+ * (HP-11, #426: this used to pass {@code --registry} at a per-run server that
+ * onboarding never needed — neither bundled unit is fetched from it). The
  * onboard CLI installs {@code skill-manager-skill} from a local path and
  * fetches the {@code tla-spec-dev} plugin from github, then ensures the
  * gateway is up.
@@ -32,7 +34,7 @@ import java.nio.file.Path;
 public class OnboardCompleted {
     static final NodeSpec SPEC = NodeSpec.of("onboard.completed")
             .kind(NodeSpec.Kind.ACTION)
-            .dependsOn("registry.up", "ci.logged.in", "gateway.python.venv.ready")
+            .dependsOn("env.prepared", "gateway.python.venv.ready")
             .tags("onboard", "cli")
             // RAISED from 180s at #40. That budget predates SI-18, when onboard
             // installed both bundled units from LOCAL paths and never touched
@@ -55,9 +57,8 @@ public class OnboardCompleted {
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);
-            String registryUrl = ctx.get("registry.up", "baseUrl").orElse(null);
             String gatewayPort = ctx.get("env.prepared", "gatewayPort").orElse(null);
-            if (home == null || registryUrl == null || gatewayPort == null) {
+            if (home == null || gatewayPort == null) {
                 return NodeResult.fail("onboard.completed", "missing upstream context");
             }
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
@@ -75,8 +76,7 @@ public class OnboardCompleted {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "onboard",
-                    "--install-dir", repoRoot.toString(),
-                    "--registry", registryUrl);
+                    "--install-dir", repoRoot.toString());
             SmEnv.apply(pb, home, repoRoot.toString(),
                     SmEnv.sandbox(agentHome, agentHome.resolve(".codex"), geminiHome));
             // Pin the gateway port to the env-allocated one so onboard's

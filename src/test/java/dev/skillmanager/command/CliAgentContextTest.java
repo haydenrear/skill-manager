@@ -34,7 +34,7 @@ public final class CliAgentContextTest {
             assertContext("bind", "bind-projection", "skill-manager unbind <binding-id>");
             assertContext("env sync", "project-env", "skill-manager env run <env> -- <cmd>");
             assertContext("harness instantiate", "harness-instantiate", "skill-manager harness list");
-            assertContext("publish", "publish-unit", "skill-manager search <unit>");
+            assertContext("unit publish", "publish-unit", "skill-manager sync <unit>");
         });
 
         suite.test("renderer exposes only a valid lowercase trace handle", () -> {

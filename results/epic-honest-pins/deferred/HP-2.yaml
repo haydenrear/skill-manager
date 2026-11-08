@@ -1,0 +1,65 @@
+# Deferred findings filed by HP-2 (#406, #407). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep "merged", "sha-detached", "gitRef")
+# and GitHub issues (search "sync merged no-op", "units.lock install provenance"): DEF-HP0-002 only.
+
+findings:
+  - id: DEF-HP2-001
+    found_by: HP-2 checking that `sync <unit> --to <sha>` sticks under a later plain `sync`
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "none (effects/SyncGitHandler ordinary path; no ticket owns it, left unedited to keep HP-2's diff to the pin branch)"
+    summary: >
+      When an installed record's gitRef is a full sha (as `sync --to <sha>` and a lock row with
+      ref = <sha> now leave it), an ordinary `sync <unit>` that changes nothing still reports
+      "✓ synced 1 unit(s) — 1 merged". resolveTarget builds TargetRef(tracked, sha=null, ...) for a
+      tracked ref, so the up-to-date-by-hash short-circuit never fires and a no-op merge of the
+      same commit is counted as a merge. HEAD, record and lock are all correct; only the count lies.
+    reproduction: >
+      SyncGitPinTest "CLI: sync <unit> --to <older sha> moves back and a plain sync then stays":
+      the second (plain) sync prints "1 merged" with HEAD unchanged at A.
+    evidence: [src/test/java/dev/skillmanager/effects/SyncGitPinTest.java]
+    suggested_fix: >
+      In SyncGitHandler.resolveTarget, when the tracked ref matches [0-9a-f]{40}, set TargetRef.sha
+      to it so the `target.sha.equals(baseline)` short-circuit reports SyncGitUpToDate.
+    disposition: open
+
+  - id: DEF-HP0-002
+    found_by: HP-0 (re-read by HP-2)
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "install path (InstallUseCase / UpdateUnitsLock ordering) — outside HP-2's conflict keys; NOT fixed here"
+    summary: >
+      Still open after HP-2. HP-2 does not need it: the pin moves HP-2 adds go through the sync
+      program, whose UpdateUnitsLock runs after the record is written, so every pinned move
+      leaves the lock row with origin/ref/resolved_sha. A plain install still does not.
+    disposition: open
+
+  - id: DEF-HP2-002
+    found_by: HP-2 running the assignment's "back up installed/, run ./skill-manager against a scratch copy of a project home"
+    found_at_commit: f246a840
+    severity: major
+    maps_to: "none (project/child-home registration; HP-7's project/child-home-reconcile is the nearest key) — an instruction hazard as much as a code one"
+    summary: >
+      A byte copy of a project home (rsync of /Users/hayde/IdeaProjects/skill-manager/.skill-manager,
+      cache excluded) keeps projects/skill-manager/registration.toml (project_root = the REAL repo)
+      and child-homes/project_skill-manager/child-home.json (childHome = the REAL project home). Any
+      `sync <unit>` / `sync --lock` in the copy ends with SyncClaimingProjects, which resolves that
+      project and MATERIALIZES INTO THE REAL PROJECT HOME. Observed: the copy's run wrote a 192 MB
+      staging tree at <real home>/.materialization/tmp/plugin-tla-spec-dev-<uuid>/ (left behind when
+      the run was stopped) and refreshed three units' .git/index; unit HEADs, worktrees, installed/
+      and units.lock.toml of the real home were verified unchanged (HEADs deb03ff/1669c89/6892258,
+      porcelain clean, installed/ byte-equal to the backup).
+    reproduction: >
+      rsync -a --exclude cache <project>/.skill-manager/ $SCRATCH/home/;
+      SKILL_MANAGER_HOME=$SCRATCH/home ./skill-manager sync <claimed unit> --skip-mcp --skip-agents;
+      find <project>/.skill-manager/.materialization -newer <marker>  -> new tmp tree.
+    evidence: [results/epic-honest-pins/tickets/HP-2/README.md]
+    impact: >
+      "Run the real thing on a scratch copy" is unsafe as written for a home that registers its own
+      project. HP-2's evidence was re-taken with the copy's projects/ and child-homes/ detached.
+    suggested_fix: >
+      Either `home clone` (not rsync) is the documented way to make a scratch copy and it rewrites or
+      drops project registrations, or SyncClaimingProjects refuses to materialize into a child home
+      whose child-home.json parentHome does not resolve to the running home. The leftover tmp tree in
+      the real project home is for its owner to remove (not removed by hand here, per the assignment).
+    disposition: open

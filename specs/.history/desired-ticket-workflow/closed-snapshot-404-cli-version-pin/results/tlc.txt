@@ -1,0 +1,13 @@
+=== CliPinInternal.cfg
+Finished computing initial states: 4 distinct states generated at 2026-11-04 21:20:39.
+Model checking completed. No error has been found.
+  because two distinct states had the same fingerprint:
+102 states generated, 32 distinct states found, 0 states left on queue.
+=== CliPinInternal_regression_presence.cfg
+Finished computing initial states: 4 distinct states generated at 2026-11-04 21:20:41.
+Error: Invariant NoSilentlyKeptPin is violated.
+37 states generated, 21 distinct states found, 9 states left on queue.
+=== CliPinInternal_regression_skiprecord.cfg
+Finished computing initial states: 4 distinct states generated at 2026-11-04 21:20:42.
+Error: Invariant NoSilentlyKeptPin is violated.
+65 states generated, 27 distinct states found, 6 states left on queue.

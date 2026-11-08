@@ -2,9 +2,6 @@
 //JAVA 21+
 //SOURCES src/main/java/**/*.java
 //SOURCES src/test/java/**/*.java
-//SOURCES ServerObservabilityContractTest.java
-//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservability.java
-//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservabilityFilter.java
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.showThreadName=false
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.showDateTime=false
@@ -25,11 +22,6 @@
 //DEPS org.slf4j:slf4j-simple:2.0.16
 //DEPS io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.62.0
 //DEPS io.opentelemetry:opentelemetry-exporter-otlp:1.62.0
-// Server-observability contract test dependencies; these are not part of the
-// SkillManager.java CLI classpath mirrored above.
-//DEPS org.springframework:spring-webmvc:6.1.13
-//DEPS org.springframework:spring-test:6.1.13
-//DEPS jakarta.servlet:jakarta.servlet-api:6.0.0
 
 import dev.skillmanager.model.CoordParserTest;
 import dev.skillmanager.model.CoordRoundTripTest;
@@ -63,10 +55,12 @@ import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
 import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
 import dev.skillmanager.cli.installer.CliPresenceTest;
 import dev.skillmanager.cli.installer.InstallerFingerprintTest;
+import dev.skillmanager.cli.installer.CliPinTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.cli.installer.SkillScriptWriteThroughTest;
 import dev.skillmanager.cli.installer.BinCliWritersDoNotFollowLinksTest;
 import dev.skillmanager.artifacts.ArtifactBackfillTest;
+import dev.skillmanager.artifacts.SystemProvidedCliShimTest;
 import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
 import dev.skillmanager.artifacts.ArtifactGraphTest;
 import dev.skillmanager.artifacts.ArtifactStalenessTest;
@@ -74,7 +68,6 @@ import dev.skillmanager.artifacts.ArtifactBuildTest;
 import dev.skillmanager.artifacts.LazyArtifactHomeTest;
 import dev.skillmanager.artifacts.ArtifactPruneTest;
 import dev.skillmanager.bindings.BindingsTest;
-import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
 import dev.skillmanager.command.ShowPluginListsContainedSkillsTest;
 import dev.skillmanager.command.SkillManagerSkillDocsTest;
@@ -82,8 +75,6 @@ import dev.skillmanager.command.SyncFromLockScenarioTest;
 import dev.skillmanager.command.UninstallCliCleanupTest;
 import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
-import dev.skillmanager.registry.PublishDetectsPluginTest;
-import dev.skillmanager.registry.PublishDetectsSkillTest;
 import dev.skillmanager.effects.ContainedNameCollisionIsRefusedTest;
 import dev.skillmanager.resolve.UnitEdgeGraphTest;
 import dev.skillmanager.validation.MarkdownImportValidatorTest;
@@ -124,16 +115,10 @@ import dev.skillmanager.effects.SourceProvenanceRecorderTest;
 import dev.skillmanager.plan.PlanPolicyCategorizationTest;
 import dev.skillmanager.plan.PlanShapeInvariantTest;
 import dev.skillmanager.plan.PolicyGatingTest;
-import dev.skillmanager.resolve.ResolverContainedSkillNotMatchedTest;
 import dev.skillmanager.resolve.ResolverBundledAliasTest;
-import dev.skillmanager.resolve.ResolverDeterminismTest;
-import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
+import dev.skillmanager.resolve.ResolverBareNameTransitiveTest;
 import dev.skillmanager.resolve.ResolverDirectGitTransitiveTest;
-import dev.skillmanager.resolve.ResolverHeterogeneousRefsTest;
-import dev.skillmanager.resolve.ResolverKindFilterTest;
 import dev.skillmanager.resolve.ResolverCycleTest;
-import dev.skillmanager.registry.RegistryUnavailableExceptionTest;
-import dev.skillmanager.server.observability.ServerObservabilityContractTest;
 import dev.skillmanager.store.FetcherLocalSourceTest;
 import dev.skillmanager.store.InstalledUnitRoundTripTest;
 import dev.skillmanager.store.MigrationFromSkillSourceTest;
@@ -175,20 +160,17 @@ public class RunTests {
         failures += InstalledUnitRoundTripTest.run();
         failures += MigrationFromSkillSourceTest.run();
         failures += FetcherLocalSourceTest.run();
-        failures += RegistryUnavailableExceptionTest.run();
-        failures += ResolverKindFilterTest.run();
-        failures += ResolverHeterogeneousRefsTest.run();
-        failures += ResolverContainedSkillNotMatchedTest.run();
         failures += ResolverBundledAliasTest.run();
-        failures += ResolverDirectGitDetectsKindTest.run();
         failures += ResolverDirectGitTransitiveTest.run();
-        failures += ResolverDeterminismTest.run();
+        failures += ResolverBareNameTransitiveTest.run();
         failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
         failures += SkillScriptWriteThroughTest.run();
         failures += BinCliWritersDoNotFollowLinksTest.run();
         failures += InstallerFingerprintTest.run();
+        failures += CliPinTest.run();
+        failures += dev.skillmanager.cli.installer.CliSharedPinPathsTest.run();
         failures += CliPresenceTest.run();
         failures += CliArtifactMatrixTest.run();
         failures += CycleDetectionTest.run();
@@ -198,8 +180,10 @@ public class RunTests {
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
         failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
+        failures += dev.skillmanager.source.GitOpsUnitIdentityTest.run();
         failures += dev.skillmanager.source.DereferencedStoreLinkSyncTest.run();
         failures += dev.skillmanager.source.SyncPathsAgreeAboutDirtyTest.run();
+        failures += dev.skillmanager.source.GeneratedContentTest.run();
         failures += dev.skillmanager.effects.SyncFastForwardReleaseTest.run();
         failures += SourceProvenanceRecorderTest.run();
         failures += ResolveGraphDirectGitSyncTest.run();
@@ -219,6 +203,7 @@ public class RunTests {
         failures += LockSchemaVersionTest.run();
         failures += LockAtomicityTest.run();
         failures += SyncFromLockScenarioTest.run();
+        failures += dev.skillmanager.effects.SyncGitPinTest.run();
         failures += ClaudeProjectorTest.run();
         failures += CodexProjectorTest.run();
         failures += GeminiProjectorTest.run();
@@ -233,14 +218,13 @@ public class RunTests {
         failures += ProjectLibResolverTest.run();
         failures += ProjectVendoredResolverTest.run();
         failures += ProjectToRootPromotionTest.run();
+        failures += dev.skillmanager.project.RootSyncStaleManifestTest.run();
         failures += dev.skillmanager._lib.test.SourcesAreGreppableTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
         failures += dev.skillmanager.project.MarketplaceRegistrationsTest.run();
         failures += HomeRefreshPluginsTest.run();
         failures += RefreshHarnessPluginsTest.run();
-        failures += PublishDetectsPluginTest.run();
-        failures += PublishDetectsSkillTest.run();
         failures += MarkdownImportValidatorTest.run();
         failures += UnitEdgeGraphTest.run();
         failures += ContainedNameCollisionIsRefusedTest.run();
@@ -250,7 +234,6 @@ public class RunTests {
         failures += ScaffoldPluginTest.run();
         failures += CliObservabilityTest.run();
         failures += QuietConsoleTest.run();
-        failures += ServerObservabilityContractTest.run();
         failures += CliAgentContextExecutionTest.run();
         failures += CliRefusalsAreMessagesTest.run();
         failures += JsonContractTest.run();
@@ -263,9 +246,9 @@ public class RunTests {
         failures += ProjectCommandTest.run();
         failures += RemediesAreRunnableTest.run();
         failures += CreatePluginScenarioTest.run();
+        failures += dev.skillmanager.command.UnitValidateCommandTest.run();
         failures += GatewayStatusCommandTest.run();
         failures += ListShowsKindAndShaTest.run();
-        failures += SearchShowsKindTest.run();
         failures += ShowNonSkillUnitsTest.run();
         failures += ShowPluginListsContainedSkillsTest.run();
         failures += SkillManagerSkillDocsTest.run();
@@ -307,6 +290,8 @@ public class RunTests {
         failures += dev.skillmanager.store.HomeDescriptorCliRemedyTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();
         failures += dev.skillmanager.launch.LauncherShimsTest.run();
+        // HP-5 (#376): onboard writes the CLI pin; project resolve names its error.
+        failures += dev.skillmanager.commands.OnboardCliPinTest.run();
         failures += dev.skillmanager.launch.LaunchCredentialAxisTest.run();
         // HBR-0's guard. RED on purpose against today's tree: it names the
         // shim generators that freeze another home's path into their bytes.
@@ -321,10 +306,13 @@ public class RunTests {
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
         failures += dev.skillmanager.store.HomeDriftGateTest.run();
         failures += dev.skillmanager.store.HomeSyncTest.run();
+        failures += dev.skillmanager.store.HomeSyncPartialFailureTest.run();
+        failures += dev.skillmanager.store.HomeSyncRecordVersionTest.run();
         failures += dev.skillmanager.store.HomeCloseOutTenseTest.run();
         failures += dev.skillmanager.store.HomeSyncMergeTest.run();
         failures += dev.skillmanager.store.HomeSyncGitUnitTest.run();
         failures += dev.skillmanager.store.HomeCloseOutPublishedRefsTest.run();
+        failures += dev.skillmanager.store.HomeCloseOutDamagedUnitTest.run();
         failures += dev.skillmanager.store.HomeSyncUnitFilterTest.run();
         failures += dev.skillmanager.store.HomeSyncStaleBaselineTest.run();
         failures += dev.skillmanager.commands.HomeSyncUnitCliTest.run();
@@ -333,6 +321,7 @@ public class RunTests {
         failures += dev.skillmanager.app.SyncMcpSplitTest.run();
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
         failures += ArtifactBackfillTest.run();
+        failures += SystemProvidedCliShimTest.run();
         failures += ArtifactHomeStabilityTest.run();
         failures += ArtifactGraphTest.run();
         failures += ArtifactStalenessTest.run();

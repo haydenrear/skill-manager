@@ -23,8 +23,8 @@ on:
     branches:
       - main
     # Skip the test-graph matrix when a push only touches files that don't
-    # affect tested code (release-please's bookkeeping, brew formula, docs,
-    # server Dockerfile). The release.yml workflow still runs on those pushes;
+    # affect tested code (release-please's bookkeeping, brew formula, docs).
+    # The release.yml workflow still runs on those pushes;
     # only this CI workflow short-circuits.
     #
     # `.github/workflows/**` used to be on this list, as a blanket. ARTI-12
@@ -45,8 +45,6 @@ on:
       - "release-please-config.json"
       - "infra/homebrew/**"
       - "infra/homebrew-skill-manager/**"
-      - "Dockerfile.server"
-      - "docker-compose-ghcr.yml"
       - "*.md"
   pull_request:
     # `epic/**` is here deliberately, and it is not free. An epic branch is an
@@ -73,8 +71,6 @@ on:
       - "release-please-config.json"
       - "infra/homebrew/**"
       - "infra/homebrew-skill-manager/**"
-      - "Dockerfile.server"
-      - "docker-compose-ghcr.yml"
       - "*.md"
   schedule:
     # Nightly full sweep, 07:00 UTC. This is where the graphs that are not in
@@ -91,10 +87,6 @@ on:
         options:
           - core
           - full
-      run_browser_graphs:
-        description: "Also run the Selenium graphs (browser-auth, password-reset)"
-        type: boolean
-        default: false
 
 # A second push to the same branch supersedes the first. Without this, an epic
 # branch taking several ticket merges an hour queues graph matrices behind each
@@ -105,17 +97,13 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Public pgvector image substituted for the local-registry one used in dev.
-# docker-compose.yml reads ${POSTGRES_IMAGE} with a fallback to the local tag.
 env:
-  POSTGRES_IMAGE: pgvector/pgvector:pg16
-
-  # No collector runs on a hosted runner. The noise is the SERVER's, not the
-  # CLI's: `i.o.s.m.export.PeriodicMetricReader` in the Spring Boot process the
-  # graph nodes start, retrying http://localhost:4318 on its metric interval.
+  # No collector runs on a hosted runner. The noise was the registry SERVER's
+  # (a Spring Boot process the graph nodes used to start, retrying
+  # http://localhost:4318 on its metric interval) — #427 removed that server.
   # CliObservability already installs a filter that swallows this for the CLI —
-  # verified locally against a dead endpoint, where the CLI logs nothing — so
-  # turning the SDK off at the job level is what reaches the server too.
+  # verified locally against a dead endpoint, where the CLI logs nothing — and
+  # turning the SDK off at the job level still quiets the gateway.
   #
   # This comment used to call the exporter "NOISE AND NOT A CAUSE". For the
   # 2026-09-06 nightly's log lines that was true, but it was not true of the
@@ -182,7 +170,6 @@ jobs:
       deferred: ${{ steps.pick.outputs.deferred }}
       registered: ${{ steps.pick.outputs.registered }}
       gateway_graphs: ${{ steps.pick.outputs.gateway_graphs }}
-      browser: ${{ steps.browser.outputs.browser }}
     steps:
       - uses: actions/checkout@v4
 
@@ -193,35 +180,6 @@ jobs:
           # everything. workflow_dispatch does what it was asked.
           GRAPH_SCOPE: ${{ github.event_name == 'schedule' && 'full' || github.event.inputs.graph_set || 'core' }}
         run: python3 .github/scripts/select-graph-set.py
-
-      - name: Decide browser graphs
-        id: browser
-        run: |
-          # Selenium graphs never run on a push or a PR. Reviewed again on
-          # 2026-08-15 when the private-dependency wall came down, and the
-          # answer did not change — because the dependency was never the reason:
-          #
-          #   * `refresh-flow` is excluded outright (#53): a 3s token TTL with
-          #     CLOCK_SKEW_SECONDS=0 verified by a live /auth/me after a
-          #     driver.quit() measured at 7.6-8.6s. ~1 in 4, by construction.
-          #   * `browser-auth` and `password-reset` boot chromedriver and a real
-          #     browser — the most expensive cells in the suite, and the budget
-          #     argument for the core set is unaffected by what is public.
-          #   * Neither has been OBSERVED to execute in this epic. Putting a set
-          #     of graphs on every PR without one observed run is the same
-          #     unvalidated-config move that left `ENABLE_TEST_GRAPH` set to
-          #     nothing for two releases.
-          #
-          # First real evidence arrives from the nightly full sweep once this
-          # reaches main. If browser-auth is green on two consecutive nightlies,
-          # promoting it into CORE is a one-line change in select-graph-set.py.
-          # Schedule and explicit dispatch only until then.
-          if [ "${{ github.event_name }}" = "schedule" ] \
-             || [ "${{ github.event.inputs.run_browser_graphs }}" = "true" ]; then
-            echo "browser=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "browser=false" >> "$GITHUB_OUTPUT"
-          fi
 
   unit-tests:
     name: skill-manager unit tests (RunTests.java + spec models)
@@ -366,7 +324,7 @@ jobs:
 
       # Cache JBang separately from the test-graph job — the unit suite
       # only needs the much smaller dep set declared in RunTests.java
-      # (no Spring Boot), so a separate cache key keeps eviction
+      # (lighter than the graph set), so a separate cache key keeps eviction
       # pressure off the heavier graph cache. Restore-keys still falls
       # back to any prior unit-tests cache.
       - name: Cache JBang (unit tests)
@@ -560,22 +518,19 @@ jobs:
 
           echo
           echo "--- direct reachability of Maven Central ---"
-          # Probe a Spring Boot artifact that the registry server depends
-          # on. A non-200 here is the smoking gun for "Maven Central is
-          # genuinely refusing this runner" rather than cache state.
-          curl -sS -o /dev/null -w "spring-boot-starter-web 3.3.4 jar HEAD: %{http_code} (%{time_total}s)\n" \
-              -I https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-starter-web/3.3.4/spring-boot-starter-web-3.3.4.jar
-          curl -sS -o /dev/null -w "spring-boot-starter-web 3.3.4 pom HEAD: %{http_code} (%{time_total}s)\n" \
-              -I https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-starter-web/3.3.4/spring-boot-starter-web-3.3.4.pom
+          # Probe an artifact the CLI depends on. A non-200 here is the
+          # smoking gun for "Maven Central is genuinely refusing this
+          # runner" rather than cache state.
+          curl -sS -o /dev/null -w "picocli 4.7.6 jar HEAD:            %{http_code} (%{time_total}s)\n" \
+              -I https://repo1.maven.org/maven2/info/picocli/picocli/4.7.6/picocli-4.7.6.jar
+          curl -sS -o /dev/null -w "picocli 4.7.6 pom HEAD:            %{http_code} (%{time_total}s)\n" \
+              -I https://repo1.maven.org/maven2/info/picocli/picocli/4.7.6/picocli-4.7.6.pom
           curl -sS -o /dev/null -w "central root GET:                 %{http_code} (%{time_total}s)\n" \
               https://repo1.maven.org/maven2/
 
           echo
           echo "--- DNS for repo1.maven.org ---"
           getent hosts repo1.maven.org 2>&1 || echo "(getent failed)"
-
-      - name: Pre-pull postgres image
-        run: docker pull "$POSTGRES_IMAGE"
 
       # GatewayRuntime.pythonExecutable() auto-picks virtual-mcp-gateway/.venv/bin/python
       # when it exists; `uv sync` materializes the venv with fastapi/uvicorn/mcp/etc.
@@ -773,8 +728,8 @@ jobs:
       # clone fails with GitCloneAuthException — `onboard exited 9`, measured on
       # run 35712895588, eight of nine core graphs green and this the only red.
       #
-      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after postgres
-      # and the registry are up, and reads as a graph defect. This step names
+      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after the
+      # testbed is up, and reads as a graph defect. This step names
       # the missing secret before anything starts.
       #
       # The token needs READ access to TWO private repositories and nothing
@@ -974,266 +929,3 @@ jobs:
               sys.exit(1)
           print(f"{executed} of {selected} selected graphs executed.")
           PY
-
-  test-graph-browser:
-    # Selenium + chromedriver. Kept off push and pull_request on purpose, and
-    # the reason is named rather than implied:
-    #
-    #   * `refresh-flow` is EXCLUDED outright — see
-    #     skill-manager-integration-repository#53. Its access token has a 3s TTL
-    #     with CLOCK_SKEW_SECONDS=0 and the helper verifies the login with a
-    #     live /auth/me inside that window, after a driver.quit() that stalls
-    #     7.6-8.6s against a ~2.0s norm. It flakes ~1 in 4, identically on
-    #     pre-epic code, so it is neither an epic regression nor fixable from a
-    #     CI ticket. `.github/scripts/select-graph-set.py` carries the same
-    #     reason in EXCLUDED and prints it into every run's job summary, so the
-    #     quarantine is visible from any run rather than only from this file.
-    #   * `browser-auth` and `password-reset` are not flaky, but they boot a
-    #     real browser and are the most expensive cells in the suite. Schedule
-    #     and explicit dispatch.
-    needs: graph-set
-    if: ${{ needs.graph-set.outputs.browser == 'true' }}
-    name: "test-graph (selenium): ${{ matrix.graph }}"
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        graph: [browser-auth, password-reset]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Install JBang
-        uses: jbangdev/setup-jbang@main
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            test_graph/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('test_graph/**/*.gradle*', 'test_graph/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
-
-      # - name: Cache JBang
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ~/.jbang
-      #     key: jbang-${{ runner.os }}-${{ hashFiles('**/*.java') }}
-      #     restore-keys: jbang-${{ runner.os }}-
-
-      - name: Pre-pull postgres image
-        run: docker pull "$POSTGRES_IMAGE"
-
-      # `continue-on-error` for the same reason as the test-graph job above: a
-      # browser graph that ran and went red is information, a skipped one is
-      # not. The private-dependency wall that used to make this fail is gone.
-      - name: Install gateway Python deps
-        continue-on-error: true
-        run: uv sync --all-extras
-        working-directory: virtual-mcp-gateway
-
-      # PROVISIONING, NOT EXCLUSION (#40). SI-18 stopped vendoring
-      # skills/test_graph/ and test_graph/{sdk,build-logic,standard-nodes}:
-      # those copies had drifted 381 lines and three whole files ahead of the
-      # skill they copy, and nothing could see it. The runner and the SDK now
-      # come from the installed test-graph skill, so the graphs exercise the
-      # same copy the evals do.
-      #
-      # On a laptop that is `project resolve` into .skill-manager. A runner has
-      # no home, and .skill-manager is gitignored, so the three vendored paths
-      # arrive as DANGLING SYMLINKS and every graph would fail on its first
-      # jbang //SOURCES. This step is what makes the checkout buildable.
-      #
-      # NO TOKEN, DELIBERATELY. The tla-spec-dev PLUGIN is private, but
-      # test-graph is a constituent of it and its own repository is PUBLIC —
-      # and the runner needs only that skill, never the whole bundle. Cloning
-      # the constituent keeps this matrix credential-free.
-      #
-      # PINNED BY SHA, like the git-issue-workflow step above, so a green run
-      # names the SDK it measured and a push to that repository cannot turn the
-      # matrix red or green overnight. Bump it deliberately.
-      - name: Provision the test-graph skill (runner + SDK)
-        env:
-          TG_REPO: https://github.com/haydenrear/test-graph
-          TG_SHA: b0e35fdfdbccffd6ac311e5b564aaba4925ec221
-        run: |
-          set -euo pipefail
-          dest="$RUNNER_TEMP/test-graph"
-          git init -q "$dest"
-          if ! git -C "$dest" fetch -q --depth 1 "$TG_REPO" "$TG_SHA"; then
-            echo "::error::test-graph@$TG_SHA is not fetchable — bump TG_SHA"; exit 1
-          fi
-          git -C "$dest" checkout -q FETCH_HEAD
-          # F4: every path this step goes on to symlink, not a subset —
-          # `ln -s` happily creates a dangling link for a missing target, and
-          # the failure would surface much later inside Gradle or jbang.
-          for f in scripts/run.py scripts/discover.py \
-                   project_sdk_sources/sdk project_sdk_sources/build-logic \
-                   project_sdk_sources/standard-nodes; do
-            test -e "$dest/$f" || { echo "::error::test-graph@$TG_SHA has no $f"; exit 1; }
-          done
-          # Replace the vendored symlinks (dangling here) with links into the
-          # pinned checkout. Same shape `project resolve --repair-vendored`
-          # produces on a laptop, same source skill, different rung.
-          for leaf in sdk build-logic standard-nodes; do
-            rm -f "test_graph/$leaf"
-            ln -s "$dest/project_sdk_sources/$leaf" "test_graph/$leaf"
-          done
-          echo "TG_SCRIPTS=$dest/scripts" >> "$GITHUB_ENV"
-          echo "test-graph@$(git -C "$dest" rev-parse HEAD) -> $dest"
-
-      # PROVISIONING, NOT EXCLUSION (#40). OUN-6 removed skill-manager-skill/
-      # too, and three nodes read that skill's own files — env.script.reports
-      # in `smoke` (a CORE graph), and two docs nodes in `doc-smoke`. A runner
-      # has no home: .skill-manager is gitignored, EnvPrepared's scratch home
-      # is empty, and ~/.skill-manager is seeded only for three other graphs.
-      # Without this those nodes fail on every runner while passing on any
-      # laptop whose operator has the unit installed, which is the asymmetry
-      # worth avoiding rather than the failure.
-      #
-      # The skill's own repository is PUBLIC, so this needs no token either —
-      # the plugin that now carries it is private, but the runner needs only
-      # the skill.
-      - name: Provision the skill-manager skill (smoke, doc-smoke)
-        env:
-          SMS_REPO: https://github.com/haydenrear/skill-manager-skill
-          SMS_SHA: 043a0d333586d0f825ec6ffc9e0cc75aad6a3f57
-        run: |
-          set -euo pipefail
-          dest="$RUNNER_TEMP/skill-manager-skill"
-          git init -q "$dest"
-          git -C "$dest" fetch -q --depth 1 "$SMS_REPO" "$SMS_SHA"
-          git -C "$dest" checkout -q FETCH_HEAD
-          for f in scripts/env.sh SKILL.md skill-manager.toml references/projects.md; do
-            test -e "$dest/$f" || {
-              echo "::error::skill-manager-skill@$SMS_SHA has no $f"; exit 1; }
-          done
-          echo "SKILL_MANAGER_SKILL_DIR=$dest" >> "$GITHUB_ENV"
-          echo "skill-manager-skill@$(git -C "$dest" rev-parse HEAD) -> $dest"
-
-      # THE PRIVATE COORD. SI-18 made `skill-manager onboard` install the
-      # tla-spec-dev PLUGIN, and that repository is private while the epic
-      # finishes. A runner's GITHUB_TOKEN is scoped to THIS repository, so the
-      # clone fails with GitCloneAuthException — `onboard exited 9`, measured on
-      # run 35712895588, eight of nine core graphs green and this the only red.
-      #
-      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after postgres
-      # and the registry are up, and reads as a graph defect. This step names
-      # the missing secret before anything starts.
-      #
-      # The token needs READ access to TWO private repositories and nothing
-      # else. It is deliberately NOT the homebrew-tap PAT: that one exists to
-      # push to a different repository, and widening its blast radius to cover
-      # an unrelated private read is how a credential quietly becomes the
-      # credential for everything.
-      #
-      #   haydenrear/tla-spec-dev-plugin  — the bundled unit onboard installs
-      #   haydenrear/deploy-cdc           — pulled in TRANSITIVELY: three of the
-      #                                     plugin's contained skills (test-graph,
-      #                                     git-issue, git-issue-workflow) declare
-      #                                     it in skill-manager.toml to get the
-      #                                     deploy-helm skill and its monitoring CLI
-      #
-      # THE TOKEN IS GRANTED ON `deploy-helm`, THOUGH THE COORD SAYS
-      # `deploy-cdc`. The repository was renamed; GitHub redirects the clone, so
-      # the old spelling still resolves and is what the manifests contain and
-      # therefore what skill-manager asks git for. A fine-grained PAT selects
-      # repositories by their CURRENT name, so the grant is on `deploy-helm`
-      # while the coord stays `deploy-cdc`. Both are correct in their own place;
-      # that is not a mistake to tidy up. (The credential helper below is keyed
-      # on the github.com host, not on either repository name, so the rename
-      # cannot silently un-authorize it the way a per-URL rule could.)
-      #
-      # Delete this step once both are public — a credential helper is a
-      # rewrite rule that outlives its reason very quietly.
-      - name: Configure git access to the private plugin coord
-        env:
-          PLUGIN_TOKEN: ${{ secrets.TLA_SPEC_DEV_PLUGIN_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${PLUGIN_TOKEN:-}" ]; then
-            echo "::error title=TLA_SPEC_DEV_PLUGIN_TOKEN is not set::skill-manager onboard installs github:haydenrear/tla-spec-dev-plugin, which is private, and that plugin transitively pulls github:haydenrear/deploy-cdc (renamed to deploy-helm, also private). A runner's GITHUB_TOKEN cannot read another repository, so the clone fails with exit 9 (GitCloneAuthException) partway through the onboard graph. Add a repo secret TLA_SPEC_DEV_PLUGIN_TOKEN with READ access to BOTH repositories, or make them public and delete this step."
-            exit 1
-          fi
-          # A CREDENTIAL HELPER, NOT `url.<...>.insteadOf`.
-          #
-          # The rewrite approach put the token IN THE URL, and git then wrote
-          # that URL into the clone's `remote.origin.url` -- inside the
-          # skill-manager home. The onboard graph caught it: the carrier's
-          # recorded remote came back as
-          # `https://x-access-token:<token>@github.com/haydenrear/tla-spec-dev-plugin.git`
-          # instead of the clean coord, which `carrier_origin_points_to_the_plugin_repo`
-          # rejects. It is right to reject it, and the test failure is the
-          # smaller half: a home carrying a live credential in its git config is
-          # a home that leaks it wherever the home goes, and `home-clone` exists
-          # to copy homes.
-          #
-          # A helper keeps the URL pristine -- git asks for the credential at
-          # transport time and stores nothing. The helper file holds the token
-          # rather than reading it from the environment because git invokes it
-          # from deep inside the graph's own subprocesses (Gradle -> JVM -> the
-          # skill-manager CLI -> git), and exporting the secret across that
-          # whole tree to reach the last hop is a wider exposure than one
-          # 0600 file on an ephemeral runner.
-          helper="${RUNNER_TEMP:-/tmp}/git-credential-plugin.sh"
-          umask 077
-          {
-            printf '#!/bin/sh\n'
-            printf '[ "$1" = get ] || exit 0\n'
-            printf 'printf "username=x-access-token\\npassword=%%s\\n" "%s"\n' "$PLUGIN_TOKEN"
-          } > "$helper"
-          chmod 700 "$helper"
-          git config --global credential."https://github.com".helper "$helper"
-          echo "git credential helper configured for github.com (read); remote URLs stay clean"
-
-      - name: Plan graph
-        run: |
-          mkdir -p ci-logs
-          set -o pipefail
-          python "$TG_SCRIPTS/discover.py" "${{ matrix.graph }}" --test-graph-root test_graph \
-            2>&1 | tee ci-logs/plan.log
-
-      # CiLoggedIn (and several other nodes) use ProcessBuilder.inheritIO(),
-      # so their subprocess stderr only reaches Gradle's stdout. Tee the full
-      # stream so the real error is recoverable from the uploaded artifact
-      # even after the live log scrolls / the run ages out.
-      - name: Run graph
-        run: |
-          mkdir -p ci-logs
-          set -o pipefail
-          python "$TG_SCRIPTS/run.py" "${{ matrix.graph }}" --test-graph-root test_graph \
-            2>&1 | tee ci-logs/run.log
-
-      - name: Collect diagnostics
-        if: always()
-        run: bash .github/scripts/collect-test-graph-diagnostics.sh
-
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: diagnostics-${{ matrix.graph }}
-          path: ci-diagnostics/
-          if-no-files-found: ignore

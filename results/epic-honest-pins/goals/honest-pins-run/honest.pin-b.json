@@ -1,0 +1,68 @@
+{
+  "nodeId" : "honest.pin-b",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:28:57.651835Z",
+  "endedAt" : "2026-11-07T21:29:08.095233Z",
+  "assertions" : [ {
+    "name" : "setup_installed_at_A",
+    "status" : "passed"
+  }, {
+    "name" : "setup_lock_pins_A",
+    "status" : "passed"
+  }, {
+    "name" : "setup_desired_lock_names_B",
+    "status" : "passed"
+  }, {
+    "name" : "control_unchanged_lock_is_noop",
+    "status" : "passed"
+  }, {
+    "name" : "shape_lock_pin_honoured_or_refused_by_name",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_false_convergence",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "git+file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-b/upstream/", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:28:57.746356Z",
+    "endedAt" : "2026-11-07T21:29:01.644569Z",
+    "exitCode" : 0,
+    "pid" : 63105,
+    "log" : "node-logs/honest.pin-b.install.log",
+    "error" : null
+  }, {
+    "label" : "lock_refresh",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "--refresh" ],
+    "startedAt" : "2026-11-07T21:29:01.644865Z",
+    "endedAt" : "2026-11-07T21:29:03.528660Z",
+    "exitCode" : 0,
+    "pid" : 63312,
+    "log" : "node-logs/honest.pin-b.lock_refresh.log",
+    "error" : null
+  }, {
+    "label" : "sync_lock_unchanged",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "--lock", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-b/control.lock.toml", "--skip-mcp", "--yes" ],
+    "startedAt" : "2026-11-07T21:29:03.722049Z",
+    "endedAt" : "2026-11-07T21:29:04.980402Z",
+    "exitCode" : 0,
+    "pid" : 63498,
+    "log" : "node-logs/honest.pin-b.sync_lock_unchanged.log",
+    "error" : null
+  }, {
+    "label" : "sync_lock_bumped",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "--lock", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-b/desired.lock.toml", "--skip-mcp", "--yes" ],
+    "startedAt" : "2026-11-07T21:29:04.995993Z",
+    "endedAt" : "2026-11-07T21:29:08.071199Z",
+    "exitCode" : 0,
+    "pid" : 63552,
+    "log" : "node-logs/honest.pin-b.sync_lock_bumped.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 10444
+  },
+  "logs" : [ "A=e5219975c18b5792d839e02f8e181a128d0b8680 B(pin)=bcb7e0d227e49203528f3982ec078efe1ffc6042 C(tip)=2162176c9f4d648b29d183ae77362802db6d3f4e; sync --lock rc=0 HEAD=B (the pin) record=bcb7e0d227e49203528f3982ec078efe1ffc6042 lock=bcb7e0d227e49203528f3982ec078efe1ffc6042 bytesAtB=true; control rc=0 noop=true; setup installedAtA=true lockPinsA=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:28:56.968604Z","executorEndedAt":"2026-11-07T21:29:20.867859Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.pin-b.stdout.log","inputContextFile":"context/honest.pin-b.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

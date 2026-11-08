@@ -1,0 +1,47 @@
+# Deferred findings filed by HP-6 (#400). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep pycache, .pyc) and GitHub issues
+# (search "pycache"): only #400 itself, and DEF in epic-home-integrity-sync about
+# HomeCloneSupport.surfaceOf vs PROVISIONED_SEGMENTS (different reader, not these).
+
+findings:
+  - id: DEF-HP6-001
+    found_by: HP-6 designing the publish exclusion
+    found_at_commit: 433f1090ab6c
+    severity: minor
+    maps_to: "unit/publish (inside HP-6 keys) -- recorded, not fixed: it is a policy choice for the owner"
+    summary: >
+      Bytecode that is ALREADY TRACKED in a unit (the state cdc-agent-substrate-plugin
+      1dfc3633 left behind) is now neither re-staged by `unit publish` nor counted as a
+      local edit by sync, but nothing REMOVES it from the index either. A unit that
+      already published bytecode stays polluted until a human `git rm --cached`s it.
+      The issue's suggestion "refuse publishing when untracked build artifacts are
+      present" was likewise not taken: the slice (schedule_revision 2) says exclude,
+      and a refusal would block every publish from a home where a test was ever run.
+    reproduction: >
+      In a unit repo: commit __pycache__/x.pyc; then `unit publish <unit> --direct`
+      with an unrelated edit -> the remote tree still holds __pycache__/x.pyc.
+    suggested_fix: >
+      Optionally have UnitPublisher `git rm -r --cached` tracked GeneratedContent paths
+      (with a warning line) before commitAll, or print a remedy naming them.
+    disposition: open
+
+  - id: DEF-HP6-002
+    found_by: HP-6 reading UnitPublisher.publish
+    found_at_commit: 433f1090ab6c
+    severity: trivial
+    maps_to: "unit/publish; the same line is DEF-016's ledger entry in SyncPathsAgreeAboutDirtyTest"
+    summary: >
+      `unit publish --dry-run` still decides "would commit local changes" vs "would push
+      the existing commits" from the raw GitOps.hasWorktreeChanges, so a unit whose only
+      divergence is bytecode says it would commit when the real publish commits nothing
+      (NOTHING_TO_PUBLISH). Cosmetic (dry-run wording only). Left unchanged because
+      changing it moves the DEF-016 ledger count (4 raw readers outside effects/) asserted
+      by SyncPathsAgreeAboutDirtyTest, which also covers the dereferenced-link half
+      HP-6 does not own.
+    reproduction: >
+      Plant only __pycache__/x.pyc in a home unit; `unit publish <unit> --dry-run --ticket t`
+      prints "would commit local changes".
+    suggested_fix: >
+      Ask DereferencedStoreLinks.hasAuthoredWorktreeChanges there and update DEF-016's
+      ledger count to 3 in the same change.
+    disposition: open

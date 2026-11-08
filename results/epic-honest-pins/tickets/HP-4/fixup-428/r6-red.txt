@@ -1,0 +1,14 @@
+____________ test_failed_download_of_a_new_url_keeps_the_old_binary ____________
+E           FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/pytest-of-hayde/pytest-412/test_failed_download_of_a_new_0/v2/probe'
+tmp_path = PosixPath('/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/pytest-of-hayde/pytest-412/test_failed_download_of_a_new_0')
+    def test_failed_download_of_a_new_url_keeps_the_old_binary(tmp_path: Path) -> None:
+E           urllib.error.URLError: <urlopen error [Errno 2] No such file or directory: '/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/pytest-of-hayde/pytest-412/test_failed_download_of_a_new_0/v2/probe'>
+_______________ test_failed_init_script_restores_the_old_install _______________
+tmp_path = PosixPath('/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/pytest-of-hayde/pytest-412/test_failed_init_script_restor0')
+    def test_failed_init_script_restores_the_old_install(tmp_path: Path) -> None:
+kwargs = {'cwd': PosixPath('/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/pytest-of-hayde/pytest-412/test_failed_init_script_restor0/data/mcp_binaries/probe-server'), 'shell': True}
+FAILED tests/test_binary_provisioning_swap.py::test_legacy_marker_offline_keeps_serving_the_old_binary
+FAILED tests/test_binary_provisioning_swap.py::test_failed_download_of_a_new_url_keeps_the_old_binary
+FAILED tests/test_binary_provisioning_swap.py::test_checksum_mismatch_is_never_swapped_in
+FAILED tests/test_binary_provisioning_swap.py::test_failed_init_script_restores_the_old_install
+4 failed, 2 passed in 1.42s

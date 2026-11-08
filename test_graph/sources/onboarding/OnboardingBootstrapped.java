@@ -88,6 +88,13 @@ public class OnboardingBootstrapped {
             // would be measuring the bootstrap rather than the sync.
             boolean theBootstrapLeftTheCheckoutClean =
                     HomeSyncSupport.git(proj, "status", "--porcelain").trimmed().isEmpty();
+            // HP-5 (#376, DEF-OHV-184): the onboarded project home carries its
+            // own CLI pin. Without bin/cli/skill-manager `skt sync` there refuses
+            // "no pinned CLI" and `skt check` consults no build. Not a symlink:
+            // a link would hand this home another home's pin (OHV-9).
+            Path cliPin = projectHome.resolve("bin/cli/skill-manager");
+            boolean theProjectHomeHoldsItsCliPin = Files.isRegularFile(cliPin)
+                    && !Files.isSymbolicLink(cliPin) && Files.isExecutable(cliPin);
 
             // --- the ledger, captured at the one moment it holds this state ---
             //
@@ -113,7 +120,7 @@ public class OnboardingBootstrapped {
 
             boolean pass = theBootstrapExitedZero && theHomeHasADescriptor
                     && theProjectHomeIsItsOwnCopy && theCloneCarriedTheSourcesUnits
-                    && theBootstrapLeftTheCheckoutClean;
+                    && theBootstrapLeftTheCheckoutClean && theProjectHomeHoldsItsCliPin;
 
             return (pass
                     ? NodeResult.pass("onboarding.bootstrapped")
@@ -121,6 +128,7 @@ public class OnboardingBootstrapped {
                             "exit=" + bootstrap.exitCode()
                                     + " descriptor=" + theHomeHasADescriptor
                                     + " storeUnits=" + storeUnits + "/" + sourceUnits
+                                    + " cliPin=" + theProjectHomeHoldsItsCliPin
                                     + " gitStatus="
                                     + HomeSyncSupport.git(proj, "status", "--porcelain")
                                             .trimmed()))
@@ -133,6 +141,8 @@ public class OnboardingBootstrapped {
                             theCloneCarriedTheSourcesUnits)
                     .assertion("bootstrapping_a_home_leaves_the_checkout_clean",
                             theBootstrapLeftTheCheckoutClean)
+                    .assertion("the_onboarded_project_home_holds_bin_cli_skill_manager",
+                            theProjectHomeHoldsItsCliPin)
                     .metric("storeUnits", storeUnits)
                     .metric("sourceUnits", sourceUnits)
                     .publish("projectHome", projectHome.toString())

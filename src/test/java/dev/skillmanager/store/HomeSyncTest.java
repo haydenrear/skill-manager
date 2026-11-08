@@ -85,6 +85,58 @@ public final class HomeSyncTest {
                             "a repeat pass is unchanged");
                 })
 
+                .test("a sync that changes a unit arms the destination's drift gate (#403)", () -> {
+                    Homes homes = Homes.create("drift-arm");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    sync(homes, false, false);
+                    // Read what the first (NEW) pass armed, then retire it, so
+                    // the fast-forward below is measured on its own.
+                    assertTrue(DriftGate.pending(homes.dest()).isPresent(),
+                            "a NEW unit is a loadable change too");
+                    DriftGate.acknowledge(homes.dest());
+                    assertFalse(DriftGate.pending(homes.dest()).isPresent(), "acknowledged");
+
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V2\n");
+                    HomeSync.Report report = sync(homes, false, false);
+                    assertEquals(SyncStatus.UPDATED, only(report).status(), "a fast-forward");
+                    DriftGate pending = DriftGate.pending(homes.dest()).orElse(null);
+                    assertTrue(pending != null, "the destination now carries a pending record");
+                    assertEquals("home sync", pending.operation(), "naming the operation");
+                    assertTrue(pending.report().units().stream()
+                                    .anyMatch(u -> u.name().equals(UNIT)),
+                            "and naming the unit that moved: " + pending.report().units());
+                    assertTrue(report.drift() != null, "the report carries the armed gate");
+                })
+
+                .test("a no-op, held-back or dry-run sync records no drift (#403)", () -> {
+                    Homes homes = Homes.create("drift-noop");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    sync(homes, false, false);
+                    DriftGate.acknowledge(homes.dest());
+                    Path digest = HomeDigest.file(homes.dest());
+                    String digestBefore = Files.isRegularFile(digest) ? read(digest) : null;
+
+                    HomeSync.Report noop = sync(homes, false, false);
+                    assertEquals(SyncStatus.UNCHANGED, only(noop).status(), "nothing to move");
+                    assertFalse(DriftGate.pending(homes.dest()).isPresent(),
+                            "a no-op pass records nothing");
+                    assertTrue(noop.drift() == null, "and reports no armed gate");
+                    assertEquals(digestBefore, Files.isRegularFile(digest) ? read(digest) : null,
+                            "nor refreshes the baseline");
+
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V2\n");
+                    HomeSync.Report dry = sync(homes, false, true);
+                    assertEquals(SyncStatus.UPDATED, only(dry).status(), "it would update");
+                    assertFalse(DriftGate.pending(homes.dest()).isPresent(),
+                            "a dry run writes no record");
+
+                    write(homes.destUnit().resolve("SKILL.md"), "AGENT EDIT\n");
+                    HomeSync.Report held = sync(homes, false, false);
+                    assertEquals(SyncStatus.HELD_BACK, only(held).status(), "held back");
+                    assertFalse(DriftGate.pending(homes.dest()).isPresent(),
+                            "a held-back unit changed nothing loadable, so nothing is recorded");
+                })
+
                 .test("a locally modified destination unit is held back with its bytes intact", () -> {
                     Homes homes = Homes.create("hold");
                     write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
@@ -319,8 +371,14 @@ public final class HomeSyncTest {
                     write(homes.destUnit().resolve(".git/HEAD"), "ref: refs/heads/ticket\n");
 
                     UnitSync outcome = only(sync(homes, false, false));
-                    assertEquals(SyncStatus.HELD_BACK, outcome.status(),
-                            "a unit carrying git history the source has never had is held back");
+                    // This .git is hand-written (no config, HEAD to an unborn
+                    // branch), so since #412 it reads as DAMAGED rather than
+                    // HELD_BACK. Either way the claim under test holds: it is
+                    // not overwritten, and the gate below refuses.
+                    assertTrue(outcome.status() == SyncStatus.HELD_BACK
+                                    || outcome.status() == SyncStatus.DAMAGED,
+                            "a unit carrying git history the source has never had is held back: "
+                                    + outcome.status());
                     assertFalse(HomeCloseOut.inspect(homes.dest(), homes.source()).safe(),
                             "and the teardown gate REFUSES: those commits exist in one home only");
                     assertEquals("a commit object\n",

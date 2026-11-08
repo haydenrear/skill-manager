@@ -1,0 +1,47 @@
+{
+  "nodeId" : "honest.record-e",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:32:19.217487Z",
+  "endedAt" : "2026-11-07T21:32:24.958935Z",
+  "assertions" : [ {
+    "name" : "setup_child_home_holds_all_three_and_stale_snapshot_planted",
+    "status" : "passed"
+  }, {
+    "name" : "setup_root_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "control_undeclared_unmodified_unit_removed",
+    "status" : "passed"
+  }, {
+    "name" : "shape_unit_declared_by_project_manifest_kept",
+    "status" : "passed"
+  }, {
+    "name" : "shape_removal_audited_in_child_home",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "project_resolve",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-e/project" ],
+    "startedAt" : "2026-11-07T21:32:19.227207Z",
+    "endedAt" : "2026-11-07T21:32:21.988812Z",
+    "exitCode" : 0,
+    "pid" : 76140,
+    "log" : "node-logs/honest.record-e.project_resolve.log",
+    "error" : null
+  }, {
+    "label" : "root_sync_one",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "hp-record-e-one", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-e/sources/hp-record-e-one", "--skip-mcp", "--yes", "--verbose" ],
+    "startedAt" : "2026-11-07T21:32:21.991117Z",
+    "endedAt" : "2026-11-07T21:32:24.953839Z",
+    "exitCode" : 0,
+    "pid" : 76252,
+    "log" : "node-logs/honest.record-e.root_sync_one.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 5741
+  },
+  "logs" : [ "sync rc=0; declared hp-record-e-two kept=true; undeclared hp-record-e-three removed=true audited in child home=true; setup resolved=true planted=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:32:18.545535Z","executorEndedAt":"2026-11-07T21:32:40.425765Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.record-e.stdout.log","inputContextFile":"context/honest.record-e.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

@@ -182,7 +182,7 @@ public final class ProjectResolveAtomicClosureTest {
                         Path solo = scaffoldImportingSkill(units, "direct-solo", "nowhere-unit");
 
                         var program = InstallUseCase.buildProgram(
-                                h.store(), null, null, solo.toString(), null,
+                                h.store(), null, solo.toString(), null,
                                 true, false, false, true);
                         Executor.Outcome<InstallUseCase.Report> outcome =
                                 new Executor(h.store(), null).runStaged(program);

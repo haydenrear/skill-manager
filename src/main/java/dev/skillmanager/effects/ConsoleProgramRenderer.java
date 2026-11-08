@@ -71,6 +71,11 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
     private final List<String> orphans = new ArrayList<>();
     private final List<InstallResult> mcpResults = new ArrayList<>();
     private final List<ContextFact.MarkdownImportViolation> markdownImportViolations = new ArrayList<>();
+    /**
+     * #428 R5: CLI installs this run refused, keyed by message so a refusal
+     * lifted from a sub-program onto its parent receipt is listed once.
+     */
+    private final Map<String, ContextFact.CliRefused> cliRefused = new LinkedHashMap<>();
     private final Map<String, java.util.LinkedHashMap<InstalledUnit.ErrorKind, String>> outstandingErrors =
             new LinkedHashMap<>();
 
@@ -144,7 +149,6 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 // (Log.error "✋ halted: ..."). The exit code is for the
                 // decoder; no extra user-visible line needed.
             }
-            case ContextFact.RegistryConfigured x -> Log.detail("✓ registry: %s", x.url());
             case ContextFact.GatewayAlreadyRunning ignored -> { /* silent: not noteworthy */ }
             case ContextFact.GatewayStarted x -> Log.ok("gateway up at %s:%d", x.host(), x.port());
             case ContextFact.GatewayUnreachable x -> Log.warn(
@@ -275,6 +279,12 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     Log.warn("project-sync %s skipped (not refreshed) — %s",
                             x.projectName(), x.message());
 
+            // #394: the repository's manifest was unreadable, so the child
+            // home was left alone rather than judged against a cached copy.
+            case ContextFact.ProjectSyncSkippedManifestUnreadable x ->
+                    Log.warn("project-sync %s skipped (child home left untouched) — %s",
+                            x.projectName(), x.message());
+
             // ---- sync git ----
             case ContextFact.SyncGitUpToDate x -> {
                 Log.detail("✓ %s: already at %s", x.skillName(), x.label());
@@ -330,16 +340,6 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             }
             case ContextFact.SyncGitNoOrigin x ->
                     Log.warn("%s: git-tracked but no origin remote configured", x.skillName());
-            case ContextFact.SyncGitRegistryUnavailable x ->
-                    Log.warn("%s: registry didn't return a git_sha — leaving sync state unchanged", x.skillName());
-            case ContextFact.SyncGitAuthRequired x -> Log.warn(
-                    "%s: registry refused cached credentials (%s) — run `skill-manager login` and re-sync",
-                    x.skillName(), x.message());
-            case ContextFact.SyncGitNoUpgradeNeeded x -> {
-                Log.detail("✓ %s: at %s (>= registry's latest) — no upgrade needed",
-                        x.skillName(), x.version());
-                gitCurrent.add(x.skillName());
-            }
 
             // ---- error management ----
             case ContextFact.ErrorAdded ignored -> { /* silent: tracked on source record */ }
@@ -418,6 +418,10 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         x.depName(), x.skillName(), x.message());
                 clis = clis.withFailure();
             }
+            // Collected, not printed here: the installer already warned at the
+            // point of refusal, and onComplete lists them where they cannot be
+            // read as a passing aside.
+            case ContextFact.CliRefused x -> cliRefused.putIfAbsent(x.message(), x);
             // Kept on the console: it is the evidence that the run reached its
             // lock write, which is what "the store and the lock agree" rests
             // on, and it is one line however many units there are.
@@ -513,6 +517,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         // exit code (MarkdownImportValidator.EXIT_CODE is), but a report whose
         // last line contradicts its own findings costs a round trip anyway.
         printMarkdownImportViolations();
+        printCliRefusals();
         printAgentConfigSummary();
         printOutstandingErrors();
     }
@@ -533,6 +538,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         .putIfAbsent(x.kind(), x.message());
             }
             case ContextFact.MarkdownImportViolation x -> markdownImportViolations.add(x);
+            case ContextFact.CliRefused x -> cliRefused.putIfAbsent(x.message(), x);
             case ContextFact.CantReadUnit ignored -> {}
             default -> {}
         }
@@ -584,7 +590,17 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         out.put("agentConfigChanges", agentChanges);
         out.put("markdownImportViolations", markdownImportViolations);
         out.put("outstandingErrors", outstandingErrors);
+        out.put("cliRefused", new ArrayList<>(cliRefused.values()));
         return out;
+    }
+
+    private void printCliRefusals() {
+        if (cliRefused.isEmpty()) return;
+        Log.error("cli: %d install(s) refused — this home does not hold what its units declare:",
+                cliRefused.size());
+        for (ContextFact.CliRefused x : cliRefused.values()) {
+            Log.error("  [%s] %s", x.kind(), x.message());
+        }
     }
 
     // ----------------------------------------------- summaries

@@ -19,9 +19,9 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  *       registry. The fallthrough used to surface as a confusing
  *       "registry unreachable" or HTTP 404 that hid the real mistake
  *       (typo in path, wrong CWD).</li>
- *   <li>A bare {@code name} (no path-shape prefix) keeps falling
- *       through to the registry — that's the documented "is this a
- *       registry coord or a directory?" disambiguation.</li>
+ *   <li>A bare {@code name} (no path-shape prefix) used to fall through
+ *       to the registry. The registry was removed (#427), so it now fails
+ *       with a message naming the github:/git+/file: forms.</li>
  * </ul>
  */
 public final class FetcherLocalSourceTest {
@@ -86,32 +86,33 @@ public final class FetcherLocalSourceTest {
                     "distinguishes file-vs-dir from missing (was: " + msg + ")");
         });
 
-        suite.test("bare <name> still falls through to registry resolution (not fail-fast)", () -> {
-            // The bare-name branch should NOT trip the fail-fast even
-            // when no directory of that name exists in CWD — that's
-            // the documented "treat ambiguous coords as registry
-            // names" behavior. We assert this by checking the
-            // exception is NOT the "local source not found" variety.
-            // The actual outcome (registry lookup result) depends on
-            // network state, so we either get a registry-related
-            // failure or a successful lookup; either way, the
-            // fail-fast message must NOT appear.
-            Path workspace = Files.createTempDirectory("fetcher-test-");
-            SkillStore store = new SkillStore(Files.createTempDirectory("fetcher-store-"));
-            store.init();
-            String source = "definitely-not-a-real-skill-name-" + System.nanoTime();
+        // #427: the registry is gone, so a bare name has nowhere to resolve.
+        // It must fail as a coordinate problem (not as a missing local
+        // directory), and the message must name every form that does work.
+        for (String bare : new String[]{
+                "definitely-not-a-real-skill-name-" + System.nanoTime(),
+                "hello-skill@1.0.0",
+                "skill:hello-skill",
+                "plugin:hello-plugin"}) {
+            suite.test("bare '" + bare.replaceAll("-\\d+$", "-N") + "' fails and names github:/git+/file:", () -> {
+                Path workspace = Files.createTempDirectory("fetcher-test-");
+                SkillStore store = new SkillStore(Files.createTempDirectory("fetcher-store-"));
+                store.init();
 
-            try {
-                Fetcher.fetch(source, null, workspace, store);
-                // Either path is fine here — we only care that the
-                // local-source fail-fast didn't fire.
-            } catch (Throwable thrown) {
+                IOException thrown = expectIOException(() ->
+                        Fetcher.fetch(bare, null, workspace, store));
                 String msg = thrown.getMessage() == null ? "" : thrown.getMessage();
                 assertTrue(!msg.contains("local source"),
-                        "bare name must not be treated as local-source-fail-fast "
-                                + "(was: " + msg + ")");
-            }
-        });
+                        "a bare name is not a missing local directory (was: " + msg + ")");
+                assertTrue(msg.contains("'" + bare + "'"), "names the coordinate (was: " + msg + ")");
+                for (String form : new String[]{"github:", "git+", "file:"}) {
+                    assertTrue(msg.contains(form), "names the " + form + " form (was: " + msg + ")");
+                }
+                assertTrue(msg.length() <= 240,
+                        "fits under ResolveFailure.reason()'s cut, so no form is truncated: "
+                                + msg.length());
+            });
+        }
 
         return suite.runAll();
     }

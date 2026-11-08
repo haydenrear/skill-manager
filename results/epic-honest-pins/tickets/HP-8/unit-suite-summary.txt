@@ -1,0 +1,14 @@
+jbang RunTests.java @ f4187e64 (worktree /Volumes/dev/skill-manager-hp-8)
+[PASS] lines: 1670
+[FAIL] lines: 0
+
+ALL PASSED
+
+New/changed suites:
+  [PASS] #394: loadCurrent reads the repository's manifest, not an aged cached copy
+  [PASS] #394: a registration that points at its own snapshot still reads the repository
+  [PASS] #394: loadCurrent refuses, never falls back, when the repository's manifest is gone
+  [PASS] automatic project sync rollback preserves existing realization on refresh failure
+== RootSyncStaleManifestTest (2 cases)
+1416:  [PASS] a stale cached manifest does not remove a unit the repository declares
+1429:  [PASS] an unreadable repository manifest leaves the child home untouched

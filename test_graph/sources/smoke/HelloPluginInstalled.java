@@ -12,7 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Installs hello-plugin from the registry. Parallel to {@code HelloInstalled}
+ * Installs examples/hello-plugin from a local {@code file:} coordinate
+ * (HP-11, #426: formerly published to and installed from a per-run registry
+ * server). Parallel to {@code HelloInstalled}
  * for skills, but verifies the plugin lands at {@code SKILL_MANAGER_HOME/plugins/}
  * (not {@code skills/}) — exercises the kind-aware
  * {@code CommitUnitsToStore} path, the units.lock flip, and the
@@ -29,8 +31,8 @@ import java.nio.file.Path;
 public class HelloPluginInstalled {
     static final NodeSpec SPEC = NodeSpec.of("hello.plugin.installed")
             .kind(NodeSpec.Kind.ACTION)
-            .dependsOn("hello.plugin.published")
-            .tags("registry", "install", "plugin")
+            .dependsOn("env.prepared", "gateway.up")
+            .tags("install", "file", "plugin")
             .timeout("60s")
             .output("pluginDir", "string")
             .output("marketplaceDir", "string");
@@ -41,17 +43,16 @@ public class HelloPluginInstalled {
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
             String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
-            String registryUrl = ctx.get("registry.up", "baseUrl").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null || geminiHome == null || registryUrl == null) {
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("hello.plugin.installed", "missing upstream context");
             }
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
+            Path helloPlugin = repoRoot.resolve("examples/hello-plugin");
 
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "install", "hello-plugin",
-                    "--registry", registryUrl,
+                    sm.toString(), "install", "file:" + helloPlugin,
                     "--yes");
             SmEnv.apply(ctx, pb, home);
             // CLAUDE_CONFIG_DIR is what the Claude CLI itself honors —

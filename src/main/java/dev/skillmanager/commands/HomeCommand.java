@@ -1455,6 +1455,9 @@ public final class HomeCommand {
             // real run would have produced, so nothing branching on it changes.
             // See HomeSync#run, issue #51.
             if (report.destinationFrozen()) return FrozenHomeException.EXIT_CODE;
+            // #434 F7: the bytes moved and the record did not. Not a conflict,
+            // and not a success either.
+            if (!report.recordFailures().isEmpty()) return 1;
             // Held-back units are the documented default outcome of a plain
             // sync, so they are reported and do not fail the command. A
             // conflict is different: it is a decision nothing here is allowed
@@ -1464,6 +1467,7 @@ public final class HomeCommand {
             // "reconciled" would be reading it wrong.
             return report.conflicted().isEmpty()
                     && report.with(ChildHomeMaterializer.SyncStatus.LINKED).isEmpty()
+                    && report.with(ChildHomeMaterializer.SyncStatus.DAMAGED).isEmpty()
                     ? 0 : 1;
         }
     }
@@ -1553,6 +1557,7 @@ public final class HomeCommand {
     // --------------------------------------------------------- home sync IO
 
     private static void renderSync(HomeSync.Report report) {
+        for (String failure : report.recordFailures()) Log.error("home sync: %s", failure);
         Log.detail("  from:        %s", report.from());
         Log.info("  to:          %s%s", report.to(), report.dryRun() ? "  (dry run — nothing written)" : "");
         if (report.targeted()) {
@@ -1587,7 +1592,7 @@ public final class HomeCommand {
         }
         Log.info("  " + (report.dryRun() ? "would be: " : "")
                         + "%d unchanged, %d updated, %d new, %d merged, %d held back, "
-                        + "%d conflicted, %d removed upstream, %d linked",
+                        + "%d conflicted, %d removed upstream, %d linked, %d damaged",
                 report.count(ChildHomeMaterializer.SyncStatus.UNCHANGED),
                 report.count(ChildHomeMaterializer.SyncStatus.UPDATED),
                 report.count(ChildHomeMaterializer.SyncStatus.NEW),
@@ -1595,13 +1600,27 @@ public final class HomeCommand {
                 report.count(ChildHomeMaterializer.SyncStatus.HELD_BACK),
                 report.count(ChildHomeMaterializer.SyncStatus.CONFLICTED),
                 report.count(ChildHomeMaterializer.SyncStatus.REMOVED_UPSTREAM),
-                report.count(ChildHomeMaterializer.SyncStatus.LINKED));
+                report.count(ChildHomeMaterializer.SyncStatus.LINKED),
+                report.count(ChildHomeMaterializer.SyncStatus.DAMAGED));
         if (report.clean()) {
             Log.ok("%s%s%s", report.dryRun() ? "would reconcile " : "reconciled ", report.to(),
                     report.targeted() ? " (unit " + report.unit() + " only)" : "");
         } else {
             Log.warn("%d unit(s) were not reconciled and were left exactly as they were",
                     report.unresolved().size());
+        }
+        if (report.drift() != null) {
+            // #403: same notice `project sync` prints, naming the destination,
+            // because that is the home whose next launch now refuses.
+            dev.skillmanager.store.HomeDescriptor.CliSpelling spelling =
+                    dev.skillmanager.store.HomeDescriptor.cliSpelling(report.to());
+            String cli = spelling.binary();
+            String homeArg = spelling.homeArg();
+            int units = report.drift().report() == null ? 0 : report.drift().report().units().size();
+            Log.warn("this sync changed %d unit(s) in %s — a launch will refuse until the change "
+                            + "is read (`%s home drift %s`, then `%s home drift --ack %s`)",
+                    units, report.to(), cli, homeArg, cli, homeArg);
+            if (spelling.caveat() != null) Log.warn("  note: %s", spelling.caveat());
         }
     }
 
@@ -1616,6 +1635,11 @@ public final class HomeCommand {
                 // indistinguishable from `clean:true` on the whole home.
                 + ",\"unit\":" + (report.unit() == null ? "null" : "\"" + esc(report.unit()) + "\"")
                 + ",\"clean\":" + report.clean()
+                // #403: did this pass arm the destination's drift gate? A
+                // script that syncs and then launches reads this instead of
+                // discovering the refusal at launch.
+                + ",\"driftPending\":" + (report.drift() != null)
+                + ",\"recordFailures\":" + strings(report.recordFailures())
                 + ",\"units\":" + unitsJson(report.units()) + "}";
     }
 
@@ -2034,8 +2058,8 @@ public final class HomeCommand {
         if (!credentials.isEmpty()) {
             Log.info("  credentials: %s not copied — a copy of a home is not a copy of its "
                             + "login, and a home that is imaged or moved would otherwise "
-                            + "carry a working refresh token. Run `skill-manager login` in "
-                            + "the copy if it needs registry access.",
+                            + "carry a working refresh token. (This is the legacy registry "
+                            + "token; the registry was removed and nothing reads it.)",
                     String.join(", ", credentials));
         }
         if (!report.droppedRegistrations().isEmpty()) {

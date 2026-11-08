@@ -1,0 +1,57 @@
+# Deferred findings filed by HP-0 (#408). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep maintenance.lock, resolved_sha)
+# and GitHub issues (search "maintenance.lock", "resolved_sha install lock"): none.
+
+findings:
+  - id: DEF-HP0-001
+    found_by: HP-0 running the full unit suite under a Homebrew git 2.56.0 bottle to confirm the #408 fix
+    found_at_commit: 1b52427487a0
+    severity: minor
+    maps_to: "none (outside HP-0 conflict keys: home-sync and HIS-18 unit tests)"
+    summary: >
+      Under git 2.56.0 (Homebrew build, macOS) two unit cases fail on a copy racing
+      git's own background maintenance: a .git/objects/maintenance.lock appears in a
+      unit's .git while the test copies or compares the tree.
+        [FAIL] a commit on a side branch survives, with HEAD never having moved:
+               .../source/skills/git-sourced-skill/.git/objects/maintenance.lock
+        [FAIL] a scaffolded tree the unit COMMITTED is still materialized, and both sides
+               name it: .../parent/.skill-manager/skills/graph-consumer/.git/objects/maintenance.lock
+      The CI runner's git 2.56 (ubuntu) did NOT show these in run 42238079447 (its only
+      failure was the #408 case), so this is a latent flake, not a CI blocker.
+    reproduction: >
+      brew fetch git; extract the bottle; relink pcre2/gettext with install_name_tool;
+      PATH=<bottle>/bin:$PATH GIT_EXEC_PATH=<bottle>/libexec/git-core jbang RunTests.java
+      -> FAILURES: 2 (the two above). With /usr/bin/git 2.54: ALL PASSED.
+    evidence: [results/epic-honest-pins/tickets/HP-0/unit-tests.md]
+    impact: >
+      Any code path that copies or digests a unit's .git while a git command it just ran
+      has detached auto-maintenance can see a transient lock file. In product code that
+      is home sync / home clone copying a unit; here only the tests were observed.
+    suggested_fix: >
+      Run fixture git commands with -c maintenance.auto=false -c gc.auto=0 (tests), and
+      decide whether the copy paths should skip *.lock under .git/objects (product).
+    disposition: open
+
+  - id: DEF-HP0-002
+    found_by: HP-0 planting pin shape (b)
+    found_at_commit: 1b52427487a0
+    severity: minor
+    maps_to: "HP-2 (#406) may want it; the node works around it with sync --refresh"
+    summary: >
+      `install git+file://...` writes the unit's units.lock.toml row with
+      install_source = "GIT" but WITHOUT origin, ref or resolved_sha, although
+      installed/<unit>.json carries all three. Only a later `sync --refresh` writes
+      them. A lock vendored straight after an install therefore pins nothing.
+      ProjectPinnedSyncRevisionCoherent already documents the same thing for
+      project resolve ("Install/resolve deliberately writes the lock before source
+      provenance ... is visible").
+    reproduction: >
+      git init -b main U && commit; SKILL_MANAGER_HOME=<scratch> skill-manager install
+      git+file://$PWD/U --yes; cat <scratch>/units.lock.toml -> no resolved_sha;
+      skill-manager sync --refresh -> resolved_sha appears.
+    evidence: [test_graph/sources/honest-pins/PinBLockShaBump.java]
+    impact: >-
+      a "record describes the home" gap in the lock itself, adjacent to #406.
+    suggested_fix: >-
+      write provenance into the lock row in the same program that records it, or document the refresh as required
+    disposition: open

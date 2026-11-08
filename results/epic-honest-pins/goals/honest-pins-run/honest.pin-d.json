@@ -1,0 +1,59 @@
+{
+  "nodeId" : "honest.pin-d",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:29:46.885786Z",
+  "endedAt" : "2026-11-07T21:29:57.172998Z",
+  "assertions" : [ {
+    "name" : "setup_resolved_at_pin_A",
+    "status" : "passed"
+  }, {
+    "name" : "setup_unit_moved_ahead_to_B",
+    "status" : "passed"
+  }, {
+    "name" : "setup_local_edit_written",
+    "status" : "passed"
+  }, {
+    "name" : "control_local_edit_never_lost",
+    "status" : "passed"
+  }, {
+    "name" : "shape_resolve_restores_pin_keeping_edit_or_refuses_by_name",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_false_convergence",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve_at_pin",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-d/project" ],
+    "startedAt" : "2026-11-07T21:29:47.045837Z",
+    "endedAt" : "2026-11-07T21:29:50.332042Z",
+    "exitCode" : 0,
+    "pid" : 66115,
+    "log" : "node-logs/honest.pin-d.resolve_at_pin.log",
+    "error" : null
+  }, {
+    "label" : "sync_git_latest_ahead",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "hp-pin-d-unit", "--git-latest", "--skip-mcp", "--yes" ],
+    "startedAt" : "2026-11-07T21:29:50.347981Z",
+    "endedAt" : "2026-11-07T21:29:53.768863Z",
+    "exitCode" : 0,
+    "pid" : 66310,
+    "log" : "node-logs/honest.pin-d.sync_git_latest_ahead.log",
+    "error" : null
+  }, {
+    "label" : "resolve_while_ahead_with_edit",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/pin-d/project" ],
+    "startedAt" : "2026-11-07T21:29:53.785667Z",
+    "endedAt" : "2026-11-07T21:29:57.150875Z",
+    "exitCode" : 0,
+    "pid" : 66617,
+    "log" : "node-logs/honest.pin-d.resolve_while_ahead_with_edit.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 10287
+  },
+  "logs" : [ "A(pin)=909b837111262a3894da5d2a91c8865cb11c6216 B=98664ae6e47f262cc92eba206afc7d49db8ab226; resolve rc=0 HEAD=A (the pin) editKept=true; setup resolvedAtA=true ahead=true edited=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:29:45.999695Z","executorEndedAt":"2026-11-07T21:30:10.283804Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.pin-d.stdout.log","inputContextFile":"context/honest.pin-d.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

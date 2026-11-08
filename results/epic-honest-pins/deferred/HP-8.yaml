@@ -1,0 +1,26 @@
+# Deferred findings filed by HP-8 (#394). Append-only; the epic owner edits `disposition`.
+# Duplicate search done first: results/*/deferred/ (grep "summary line", "child home removed")
+# and GitHub issues (search "child home removed summary"): none besides #394 itself.
+
+findings:
+  - id: DEF-HP8-001
+    found_by: HP-8 reading #394's "two things that made it hard to see", item 2
+    found_at_commit: f4187e64
+    severity: minor
+    maps_to: "effects/ConsoleProgramRenderer sync summary — outside HP-8's slice (the slice names the manifest and the audit entry, not the console)"
+    summary: >
+      A root-home unit sync that removes a unit from a registered child home still reports it only
+      as one `!` warning line inside the sync log; the closing summary ("synced N unit(s)") does not
+      count or name removals made in other homes, so the run reads as a plain successful sync.
+      HP-8 now writes the removal into the child home's audit.log (CHILD_HOME_PRUNE), which fixes
+      item 1; item 2 is unchanged.
+    reproduction: >
+      test_graph node honest.record-e: the root_sync_one log shows "! child home skill:hp-record-e-three
+      — no longer a project dependency and unmodified, so it was removed from …" and the summary
+      line does not mention it.
+    evidence: [test_graph/sources/honest-pins/RecordEStaleManifest.java]
+    suggested_fix: >
+      Carry the pruned units out of ProjectChildHomeScaffolder.Result into ContextFact.ProjectSynced
+      (or a new ChildHomeUnitsPruned fact) and print "removed K unit(s) from <child home>" in the
+      sync summary.
+    disposition: open

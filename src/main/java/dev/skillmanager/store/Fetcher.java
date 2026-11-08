@@ -1,9 +1,6 @@
 package dev.skillmanager.store;
 
-import dev.skillmanager.shared.util.Archives;
 import dev.skillmanager.model.SkillParser;
-import dev.skillmanager.registry.RegistryClient;
-import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
@@ -11,12 +8,9 @@ import org.eclipse.jgit.api.Git;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -42,13 +36,10 @@ public final class Fetcher {
         if (trimmed.isEmpty()) throw new IOException("empty unit source");
 
         // Track whether the user explicitly named a local source — i.e.
-        // anything that ISN'T a bare {@code name} for registry lookup.
-        // We use this to decide whether a "directory not found" should
-        // fail fast (explicit local) or fall through to the registry
-        // (bare name). Without this distinction, {@code install
-        // file:./typo-or-missing-dir} would silently fall through and
-        // surface as a confusing "registry unreachable" or HTTP 404
-        // when the directory genuinely just doesn't exist.
+        // anything that ISN'T a bare {@code name}. An explicit local
+        // source that does not exist fails as a missing directory; a bare
+        // name fails as an unsupported coordinate (#427: there is no
+        // registry to look a name up in any more).
         boolean explicitLocal = trimmed.startsWith("file:")
                 || trimmed.startsWith("./")
                 || trimmed.startsWith("../")
@@ -87,11 +78,8 @@ public final class Fetcher {
         }
 
         if (explicitLocal) {
-            // User asked for a local source explicitly. The registry
-            // lookup is not a meaningful fallback here — it would
-            // either time out, 404, or surface a misleading "registry
-            // unreachable" banner that hides the actual mistake (typo
-            // in path, wrong CWD, deleted dir).
+            // User asked for a local source explicitly: name the actual
+            // mistake (typo in path, wrong CWD, deleted dir).
             String detail = Files.exists(localCandidate)
                     ? "exists but is not a directory"
                     : "does not exist";
@@ -100,51 +88,19 @@ public final class Fetcher {
                             + " (parsed from '" + source + "')");
         }
 
-        return fetchFromRegistry(normalized, version, workspace, store);
+        throw new IOException(bareNameMessage(trimmed));
     }
 
-    private static FetchResult fetchFromRegistry(String coord, String version, Path workspace, SkillStore store) throws IOException {
-        String name = coord;
-        String resolvedVersion = version;
-        int at = coord.indexOf('@');
-        if (at >= 0) {
-            name = coord.substring(0, at);
-            String ver = coord.substring(at + 1);
-            if (resolvedVersion == null || resolvedVersion.isBlank()) resolvedVersion = ver;
-        }
-
-        RegistryConfig cfg = RegistryConfig.resolve(store, null);
-        RegistryClient client = RegistryClient.authenticated(store, cfg);
-        Log.step("registry: resolving %s%s from %s", name,
-                resolvedVersion == null ? "" : "@" + resolvedVersion, cfg.baseUrl());
-
-        // The registry is metadata-only by default; ask which github URL +
-        // SHA backs this version, then clone directly from there.
-        java.util.Map<String, Object> meta = client.describeVersion(
-                name, resolvedVersion == null || resolvedVersion.isBlank() ? "latest" : resolvedVersion);
-        String githubUrl = (String) meta.get("github_url");
-        if (githubUrl != null && !githubUrl.isBlank()) {
-            String gitSha = (String) meta.get("git_sha");
-            String gitRef = (String) meta.get("git_ref");
-            String checkoutRef = gitSha != null && !gitSha.isBlank() ? gitSha : gitRef;
-            Log.step("registry → github: clone %s @ %s", githubUrl,
-                    checkoutRef == null ? "HEAD" : checkoutRef);
-            return new FetchResult(
-                    gitClone(githubUrl + ".git", checkoutRef, workspace),
-                    ResolvedGraph.SourceKind.REGISTRY, 0, gitSha);
-        }
-
-        // Legacy tarball-published version (only reachable when the server
-        // has skill-registry.publish.allow-file-upload=true and an old row
-        // is being installed).
-        Path tar = workspace.resolve(name + ".tar.gz");
-        long bytes = client.download(name, resolvedVersion, tar);
-        String sha = sha256(tar);
-
-        Path extract = workspace.resolve("extracted");
-        Fs.ensureDir(extract);
-        Archives.extractTarGz(tar, extract);
-        return new FetchResult(locateSkillRoot(extract), ResolvedGraph.SourceKind.REGISTRY, bytes, sha);
+    /**
+     * The message for a coordinate that is neither a git source nor a local
+     * directory. Such a name used to be looked up in the skill-manager
+     * registry; the registry server and its client were removed (#427), so a
+     * bare name has nowhere to resolve and says which forms do.
+     */
+    public static String bareNameMessage(String coord) {
+        // Kept under ResolveFailure.reason()'s 240-char cut so the forms survive.
+        return "cannot resolve '" + coord + "': bare unit names are not supported "
+                + "(the registry was removed); use github:<owner>/<repo>, git+<url> or file:<path>";
     }
 
     /**
@@ -350,17 +306,4 @@ public final class Fetcher {
         }
     }
 
-    private static String sha256(Path file) throws IOException {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            try (InputStream in = Files.newInputStream(file)) {
-                byte[] buf = new byte[8192];
-                int n;
-                while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
-            }
-            return HexFormat.of().formatHex(md.digest());
-        } catch (Exception e) {
-            return null;
-        }
-    }
 }

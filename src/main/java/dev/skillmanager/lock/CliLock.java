@@ -40,6 +40,16 @@ public final class CliLock {
 
     public static final String FILENAME = "cli-lock.toml";
 
+    /** {@link Entry#provided}: the artifact is this home's {@code bin/cli/<binary>}. */
+    public static final String PROVIDED_HOME = "home";
+
+    /**
+     * {@link Entry#provided}: the system satisfied the dependency from PATH,
+     * outside every Skill Manager home, and nothing was linked into
+     * {@code bin/cli} — so no shim there is expected (#409).
+     */
+    public static final String PROVIDED_SYSTEM = "system";
+
     /**
      * The basis recorded for a digest that predates the basis being recorded.
      * Old rows carry {@code install_fingerprint} and nothing that says what it
@@ -66,6 +76,15 @@ public final class CliLock {
      *        recorded together or not at all.
      * @param fingerprint what the backend can say about this row's declared
      *        INPUTS, or the reason it can say nothing. See {@link Fingerprint}.
+     * @param provided HOW the dependency was satisfied on the pass that wrote
+     *        this row: {@link #PROVIDED_HOME} when the artifact is this home's
+     *        {@code bin/cli/<binary>}, {@link #PROVIDED_SYSTEM} when
+     *        {@code CliPresence.alreadyProvided} found it on PATH outside every
+     *        Skill Manager home and nothing was linked (#409), or null for a row
+     *        written before the field existed — "not recorded", never guessed
+     *        into either value. {@code binary} still names the executable in
+     *        both cases; this field is what says whether {@code bin/cli} is
+     *        supposed to hold it.
      */
     public record Entry(
             String backend,
@@ -76,10 +95,35 @@ public final class CliLock {
             List<String> requestedBy,
             String installedAt,
             String binary,
-            Fingerprint fingerprint
+            Fingerprint fingerprint,
+            String declaredPin,
+            String provided
     ) {
         public Entry {
             requestedBy = requestedBy == null ? List.of() : List.copyOf(requestedBy);
+            declaredPin = declaredPin == null || declaredPin.isBlank() ? null : declaredPin;
+            provided = provided == null || provided.isBlank() ? null : provided;
+        }
+
+        /** The pre-#409 shape: a row that records no {@link #provided}. */
+        public Entry(String backend, String tool, String version, String spec,
+                     String sha256, List<String> requestedBy, String installedAt,
+                     String binary, Fingerprint fingerprint, String declaredPin) {
+            this(backend, tool, version, spec, sha256, requestedBy, installedAt, binary,
+                    fingerprint, declaredPin, null);
+        }
+
+        /** Whether this row records that the system, not this home, satisfied it. */
+        public boolean providedBySystem() {
+            return PROVIDED_SYSTEM.equals(provided);
+        }
+
+        /** The pre-#404 canonical shape: a row that records no {@link CliPin}. */
+        public Entry(String backend, String tool, String version, String spec,
+                     String sha256, List<String> requestedBy, String installedAt,
+                     String binary, Fingerprint fingerprint) {
+            this(backend, tool, version, spec, sha256, requestedBy, installedAt, binary,
+                    fingerprint, null);
         }
 
         // Backwards-compat constructors — older callers (tests, in-tree
@@ -107,7 +151,7 @@ public final class CliLock {
             List<String> merged = new ArrayList<>(requestedBy);
             merged.add(skillName);
             return new Entry(backend, tool, version, spec, sha256, merged, installedAt,
-                    binary, fingerprint);
+                    binary, fingerprint, declaredPin, provided);
         }
 
         public Entry withoutRequester(String skillName) {
@@ -115,18 +159,40 @@ public final class CliLock {
             List<String> remaining = new ArrayList<>(requestedBy);
             remaining.remove(skillName);
             return new Entry(backend, tool, version, spec, sha256, remaining, installedAt,
-                    binary, fingerprint);
+                    binary, fingerprint, declaredPin, provided);
         }
 
         public Entry withFingerprint(Fingerprint next) {
             return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
-                    binary, next);
+                    binary, next, declaredPin, provided);
+        }
+
+        /**
+         * This row with the declaration it was installed from: the spec and the
+         * {@link CliPin} digest, which {@link CliPin#moved} compares against the
+         * next pass's declaration. Both move together, so {@code spec} never
+         * describes a different declaration than the pin does.
+         */
+        public Entry withDeclaration(String nextSpec, String nextPin) {
+            return new Entry(backend, tool, version, nextSpec == null ? spec : nextSpec,
+                    sha256, requestedBy, installedAt, binary, fingerprint,
+                    nextPin == null ? declaredPin : nextPin, provided);
+        }
+
+        /**
+         * This row recording how it was satisfied on the pass that wrote it.
+         * Unlike {@link #withBinary}, null is written as null: a pass that
+         * could not tell must stop repeating the previous pass's answer.
+         */
+        public Entry withProvided(String next) {
+            return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
+                    binary, fingerprint, declaredPin, next);
         }
 
         /** Keeps the binary already recorded when {@code next} says nothing. */
         public Entry withBinary(String next) {
             return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
-                    next == null || next.isBlank() ? binary : next, fingerprint);
+                    next == null || next.isBlank() ? binary : next, fingerprint, declaredPin, provided);
         }
     }
 
@@ -177,7 +243,9 @@ public final class CliLock {
                         reqBy,
                         t.getString("installed_at"),
                         t.getString("binary"),
-                        readFingerprint(t)
+                        readFingerprint(t),
+                        t.getString("declared_pin"),
+                        t.getString("provided")
                 ));
             }
             if (!perTool.isEmpty()) entries.put(backendKey, perTool);
@@ -201,6 +269,8 @@ public final class CliLock {
                 sb.append("requested_by = ").append(tomlStringArray(e.requestedBy())).append('\n');
                 if (e.installedAt() != null) sb.append("installed_at = ").append(tomlString(e.installedAt())).append('\n');
                 if (e.binary() != null) sb.append("binary = ").append(tomlString(e.binary())).append('\n');
+                if (e.declaredPin() != null) sb.append("declared_pin = ").append(tomlString(e.declaredPin())).append('\n');
+                if (e.provided() != null) sb.append("provided = ").append(tomlString(e.provided())).append('\n');
                 Fingerprint fp = e.fingerprint();
                 if (fp != null && fp.present()) {
                     sb.append("install_fingerprint = ").append(tomlString(fp.value())).append('\n');
@@ -264,8 +334,14 @@ public final class CliLock {
         if (existing != null && java.util.Objects.equals(existing.version(), version)) {
             updated = existing.withRequester(requester);
         } else {
-            List<String> reqBy = new ArrayList<>();
-            if (requester != null) reqBy.add(requester);
+            // #428 R3: a new version keeps the row's other claimants. Every
+            // install path now runs CliPin.sharedConflict first, so reaching
+            // here with other live requesters means they declare this version
+            // too. Starting from {requester} alone is how a bump silently
+            // dropped them. Stale ones are pruned by CliClaimants instead.
+            List<String> reqBy = new ArrayList<>(
+                    existing == null ? List.of() : existing.requestedBy());
+            if (requester != null && !reqBy.contains(requester)) reqBy.add(requester);
             updated = new Entry(backend, tool, version, spec, sha256,
                     reqBy, Instant.now().toString(), null, null);
         }

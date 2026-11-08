@@ -1,0 +1,23 @@
+{
+  "sweep": "20261107-204733",
+  "run": "20261107-210240",
+  "commit": "f4187e64",
+  "local_signal": "run.py honest-pins: node record-e green",
+  "baseline_record_e": "failed (shape_unit_declared_by_project_manifest_kept, shape_removal_audited_in_child_home failed; control passed)",
+  "measured_record_e": "passed",
+  "classification": "moved as expected",
+  "nodes": {
+    "env.prepared": "passed",
+    "gateway.python.venv.ready": "passed",
+    "honest.pin-b": "passed",
+    "honest.pin-c": "passed",
+    "honest.pin-d": "passed",
+    "honest.pin-e": "failed",
+    "honest.record-a": "passed",
+    "honest.record-b": "failed",
+    "honest.record-c": "passed",
+    "honest.record-d": "passed",
+    "honest.record-e": "passed"
+  },
+  "note": "honest.pin-e and honest.record-b are red at baseline and owned by other tickets (record-b: HP-4, unmerged); not HP-8's"
+}

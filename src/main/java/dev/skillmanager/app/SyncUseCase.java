@@ -116,7 +116,6 @@ public final class SyncUseCase {
      * cleanly and says so, which is what the rollback was really asking for.
      */
     public record Options(
-            String registryOverride,
             boolean gitLatest,
             boolean merge,
             boolean withMcp,
@@ -127,25 +126,41 @@ public final class SyncUseCase {
              * Ensure a gateway is RUNNING before the sync, starting one if it
              * is not — the half {@code 7fce8ed} was right to make opt-in.
              */
-            boolean startGateway) {
-        public Options(String registryOverride,
-                       boolean gitLatest,
+            boolean startGateway,
+            /**
+             * HP-2: run the post-sync {@code SyncClaimingProjects} refresh. False
+             * only for the pin reconcile {@code project resolve} itself runs —
+             * that resolve IS the project refresh, and re-entering it from inside
+             * its own sync would resolve the same project twice, nested.
+             */
+            boolean refreshClaimingProjects) {
+        public Options(boolean gitLatest,
+                       boolean merge,
+                       boolean withMcp,
+                       boolean withAgents,
+                       boolean yesForFromDir,
+                       boolean forceScripts,
+                       boolean startGateway) {
+            this(gitLatest, merge, withMcp, withAgents, yesForFromDir,
+                    forceScripts, startGateway, true);
+        }
+
+        public Options(boolean gitLatest,
                        boolean merge,
                        boolean withMcp,
                        boolean withAgents,
                        boolean yesForFromDir,
                        boolean forceScripts) {
-            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+            this(gitLatest, merge, withMcp, withAgents, yesForFromDir,
                     forceScripts, false);
         }
 
-        public Options(String registryOverride,
-                       boolean gitLatest,
+        public Options(boolean gitLatest,
                        boolean merge,
                        boolean withMcp,
                        boolean withAgents,
                        boolean yesForFromDir) {
-            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+            this(gitLatest, merge, withMcp, withAgents, yesForFromDir,
                     false, false);
         }
     }
@@ -156,7 +171,7 @@ public final class SyncUseCase {
      * we're syncing:
      * <ul>
      *   <li>{@link Git} — skill/plugin sync: fetch + merge against the
-     *       unit's git origin (or registry-driven sha).</li>
+     *       unit's git origin.</li>
      *   <li>{@link FromDir} — skill/plugin: apply contents from a
      *       local working directory ({@code --from <dir>}).</li>
      *   <li>{@link DocRepo} — doc-repo: walk the projection ledger
@@ -171,7 +186,15 @@ public final class SyncUseCase {
      */
     public sealed interface Target {
         String skillName();
-        record Git(String skillName) implements Target {}
+        /**
+         * {@code pin} null: follow the recorded ref (ordinary sync). Non-null
+         * (HP-2): land on exactly that identity or refuse by name — the shape
+         * {@code sync --lock}, {@code sync <unit> --to} and {@code project
+         * resolve} all reduce to.
+         */
+        record Git(String skillName, SkillEffect.SyncGit.Pin pin) implements Target {
+            public Git(String skillName) { this(skillName, null); }
+        }
         record FromDir(String skillName, Path dir) implements Target {}
         /**
          * Doc-repo sync (#48). {@code force} clobbers locally-edited
@@ -254,8 +277,7 @@ public final class SyncUseCase {
                 // on the sync path that can start a process and fail the whole
                 // program. Registration below is gateway-tolerant by its own
                 // handler and does not belong behind the same switch (#123).
-                ResolveContextUseCase.preflight(gw, options.registryOverride(),
-                        options.startGateway()));
+                ResolveContextUseCase.preflight(gw, options.startGateway()));
         if (initialReadProblems != null && !initialReadProblems.isEmpty()) {
             effects.add(new SkillEffect.ReportUnitReadProblems(initialReadProblems));
         }
@@ -271,7 +293,7 @@ public final class SyncUseCase {
                             ? src.unitKind()
                             : dev.skillmanager.model.UnitKind.SKILL;
                     effects.add(new SkillEffect.SyncGit(
-                            g.skillName(), kind, is, options.gitLatest(), options.merge()));
+                            g.skillName(), kind, is, options.gitLatest(), options.merge(), g.pin()));
                 }
                 case Target.FromDir f -> effects.add(new SkillEffect.SyncFromLocalDir(
                         f.skillName(), f.dir(), options.merge(), options.yesForFromDir()));
@@ -410,7 +432,7 @@ public final class SyncUseCase {
         // have been written by RecordSourceProvenance by then.
         effects.add(buildLockUpdate(store, liveUnits));
         List<String> projectSyncUnits = projectSyncUnitNames(targets);
-        if (!projectSyncUnits.isEmpty()) {
+        if (!projectSyncUnits.isEmpty() && options.refreshClaimingProjects()) {
             // startGateway, NOT withMcp, and this one is load-bearing rather
             // than tidy. This argument reaches a CHILD project's own install
             // program through ProjectDependencyResolver ->
@@ -626,6 +648,10 @@ public final class SyncUseCase {
                     case ContextFact.SyncGitFailed ignored -> {
                         if (worstRc < 1) worstRc = 1;
                     }
+                    // #428 R5: a refused CLI install fails the sync. The
+                    // InstallCli receipt is PARTIAL (so nothing rolls back), and
+                    // PARTIAL on that effect is not counted above, so the fact is.
+                    case ContextFact.CliRefused ignored -> errorCount++;
                     case ContextFact.AgentMcpConfigChanged c -> agentChanges
                             .computeIfAbsent(c.change(), k -> new ArrayList<>())
                             .add(c.agentId() + " (" + c.configPath() + ")");

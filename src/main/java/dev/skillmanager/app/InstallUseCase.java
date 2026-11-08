@@ -58,7 +58,43 @@ public final class InstallUseCase {
              * command can give them an exit code — see
              * {@link dev.skillmanager.validation.MarkdownImportValidator#EXIT_CODE}.
              */
-            int markdownImportViolations) {
+            int markdownImportViolations,
+            /**
+             * HP-5 (#376, DEF-OHV-186): one line per FAILED or PARTIAL receipt,
+             * {@code <Effect>: <message>}, in program order. {@link #errorCount}
+             * said how many and nothing said which, so a caller that refused on
+             * it — {@code project resolve} — could only print a count. A PARTIAL
+             * receipt is not printed by the renderer, so this was the only place
+             * the reason survived.
+             */
+            List<String> failures,
+            /**
+             * #428 R5: one line per CLI install the run REFUSED
+             * ({@code ContextFact.CliRefused}: a shared-pin conflict, or a moved
+             * pin that was not reinstalled). Non-empty makes
+             * {@link #commandExitCode} non-zero.
+             */
+            List<String> cliRefusals) {
+
+        public Report {
+            failures = failures == null ? List.of() : List.copyOf(failures);
+            cliRefusals = cliRefusals == null ? List.of() : List.copyOf(cliRefusals);
+        }
+
+        public Report(int errorCount, int exitCode, List<String> committed,
+                      Map<McpWriter.ConfigChange, List<String>> agentConfigChanges,
+                      List<String> orphansUnregistered, int markdownImportViolations,
+                      List<String> failures) {
+            this(errorCount, exitCode, committed, agentConfigChanges, orphansUnregistered,
+                    markdownImportViolations, failures, List.of());
+        }
+
+        public Report(int errorCount, int exitCode, List<String> committed,
+                      Map<McpWriter.ConfigChange, List<String>> agentConfigChanges,
+                      List<String> orphansUnregistered, int markdownImportViolations) {
+            this(errorCount, exitCode, committed, agentConfigChanges, orphansUnregistered,
+                    markdownImportViolations, List.of());
+        }
 
         public static Report empty() {
             return new Report(0, 0, List.of(), Map.of(), List.of(), 0);
@@ -76,9 +112,16 @@ public final class InstallUseCase {
          * violation reaches an exit code rather than being a comment under the
          * success banner.
          */
+        /** #428 R5: the exit code for a run that refused a CLI install. */
+        public static final int CLI_REFUSED_EXIT_CODE = 1;
+
         public int commandExitCode() {
             if (exitCode != 0) return exitCode;
             if (committed.isEmpty()) return 4;
+            // #428 R5: the unit landed, but a CLI it declares was refused.
+            // The home is not in the state its manifests declare, so the run
+            // does not exit 0.
+            if (!cliRefusals.isEmpty()) return CLI_REFUSED_EXIT_CODE;
             if (markdownImportViolations > 0) {
                 return dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE;
             }
@@ -125,10 +168,9 @@ public final class InstallUseCase {
     }
 
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun) {
-        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun, !dryRun, true);
+        return buildProgram(store, gw, source, version, yes, dryRun, !dryRun, true);
     }
 
     /**
@@ -139,11 +181,10 @@ public final class InstallUseCase {
      * gated behind {@code withGateway}).
      */
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway) {
-        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun, withGateway, true);
+        return buildProgram(store, gw, source, version, yes, dryRun, withGateway, true);
     }
 
     /**
@@ -155,17 +196,15 @@ public final class InstallUseCase {
      * implicit one.
      */
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway,
                                                      boolean bindDefault) {
-        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun,
+        return buildProgram(store, gw, source, version, yes, dryRun,
                 withGateway, bindDefault, false);
     }
 
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway,
@@ -175,7 +214,7 @@ public final class InstallUseCase {
 
         // --- Stage 1: preflight + resolve + plan + policy gate + commit + run ---
         List<SkillEffect> stage1Effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, registryOverride, withGateway && !dryRun));
+                ResolveContextUseCase.preflight(gw, withGateway && !dryRun));
 
         // The resolver call now lives inside the program. Halts the
         // program (with a HaltWithExitCode fact) on any failure —
@@ -299,7 +338,7 @@ public final class InstallUseCase {
         String operationId = "install-staged-" + UUID.randomUUID();
 
         List<SkillEffect> stage1Effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, null, withGateway));
+                ResolveContextUseCase.preflight(gw, withGateway));
         stage1Effects.add(new SkillEffect.SnapshotMcpDeps());
         stage1Effects.add(new SkillEffect.BuildInstallPlan(graph, false, List.of(), withGateway));
         stage1Effects.add(new SkillEffect.CheckInstallPolicyGate(yes));
@@ -382,7 +421,6 @@ public final class InstallUseCase {
     private static dev.skillmanager.source.InstalledUnit.InstallSource mapSourceKind(
             ResolvedGraph.SourceKind k) {
         return switch (k) {
-            case REGISTRY -> dev.skillmanager.source.InstalledUnit.InstallSource.REGISTRY;
             case GIT -> dev.skillmanager.source.InstalledUnit.InstallSource.GIT;
             case LOCAL -> dev.skillmanager.source.InstalledUnit.InstallSource.LOCAL_FILE;
         };
@@ -395,8 +433,13 @@ public final class InstallUseCase {
         Map<McpWriter.ConfigChange, List<String>> agentChanges = new LinkedHashMap<>();
         List<String> orphans = new ArrayList<>();
         int importViolations = 0;
+        List<String> failures = new ArrayList<>();
+        java.util.LinkedHashSet<String> cliRefusals = new java.util.LinkedHashSet<>();
         for (EffectReceipt r : receipts) {
-            if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) errorCount++;
+            if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) {
+                errorCount++;
+                failures.add(describeFailure(r));
+            }
             boolean commitFailed = r.status() == EffectStatus.FAILED
                     && r.effect() instanceof SkillEffect.CommitUnitsToStore;
             for (ContextFact f : r.facts()) {
@@ -409,6 +452,7 @@ public final class InstallUseCase {
                             .add(c.agentId() + " (" + c.configPath() + ")");
                     case ContextFact.OrphanUnregistered o -> orphans.add(o.serverId());
                     case ContextFact.MarkdownImportViolation ignored -> importViolations++;
+                    case ContextFact.CliRefused c -> cliRefusals.add(c.message());
                     case ContextFact.HaltWithExitCode h -> {
                         // The first non-zero exit code wins — typed
                         // halts (resolve failure, policy gate) take
@@ -421,6 +465,15 @@ public final class InstallUseCase {
             }
         }
         return new Report(errorCount, exitCode, committed, agentChanges, orphans,
-                importViolations);
+                importViolations, failures, new ArrayList<>(cliRefusals));
+    }
+
+    /** {@code <Effect>: <message>} — or the status alone when the receipt carried none. */
+    static String describeFailure(EffectReceipt r) {
+        String effect = r.effect() == null ? "?" : r.effect().getClass().getSimpleName();
+        String msg = r.errorMessage();
+        return effect + ": " + (msg == null || msg.isBlank()
+                ? r.status().name().toLowerCase(java.util.Locale.ROOT) + " (no message)"
+                : msg);
     }
 }

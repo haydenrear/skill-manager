@@ -1,0 +1,26 @@
+$ ls -la bin/cli
+total 80
+drwxr-xr-x@ 12 hayde  wheel    384 Nov  7 13:21 .
+drwxr-xr-x@  5 hayde  wheel    160 Nov  7 13:21 ..
+drwxr-xr-x@  3 hayde  wheel     96 Nov  7 13:16 .spec-double-compiler
+-rwxr-xr-x@  1 hayde  wheel    422 Nov  7 13:17 computeq
+-rwxr-xr-x@  1 hayde  wheel    428 Nov  7 13:21 helm-deploy
+lrwxr-xr-x@  1 hayde  wheel     33 Nov  7 13:16 jinja2 -> ../../venvs/jinja2-cli/bin/jinja2
+-rwxr-xr-x@  1 hayde  wheel    426 Nov  7 13:19 monitoring
+-rwxr-xr-x@  1 hayde  wheel  10637 Nov  7 13:21 skill-manager
+-rwxr-xr-x@  1 hayde  wheel   2499 Nov  7 13:16 skt
+-rwxr-xr-x@  1 hayde  wheel    375 Nov  7 13:16 tla-spec-dev
+-rwxr-xr-x@  1 hayde  wheel    349 Nov  7 13:16 tlc2
+-rwxr-xr-x@  1 hayde  wheel   1086 Nov  7 13:21 tracing-observability-install
+
+$ bin/cli/skill-manager --version
+skill-manager 0.28.2+g433f1090ab6c
+build:  433f1090ab6c (refs/heads/feature/HP-5)
+cli:    /Volumes/dev/skill-manager-hp-5/skill-manager
+! Telemetry export unavailable; continuing without telemetry.
+rc=0
+
+$ skt check (same home)
+  build: skt 0.8.2; no skill-manager build consulted (timeout)
+# reason changed from "(no-cli)" (DEF-OHV-184) to "(timeout)": skt found the pin and ran it; the pinned build is a
+# jbang checkout launcher whose cold start exceeds skt's probe budget. See DEF-HP5-003.

@@ -88,7 +88,11 @@ public record InstalledUnit(
         NO_GIT_REMOTE,
         /** Unit has no .git/ in the store — can't sync or upgrade until reinstalled from a git source. */
         NEEDS_GIT_MIGRATION,
-        /** {@link InstallSource#REGISTRY} install but the registry was unreachable. */
+        /**
+         * LEGACY (#427): recorded when the registry server was unreachable.
+         * Nothing records it any more; kept so a record written before the
+         * server was removed still parses, and cleared on the next validation.
+         */
         REGISTRY_UNAVAILABLE,
         /** A specific agent's symlink/copy of this unit failed — message carries the agent id. */
         AGENT_SYNC_FAILED,
@@ -102,21 +106,17 @@ public record InstalledUnit(
          */
         HARNESS_CLI_UNAVAILABLE,
         /**
-         * A registry call needed for this unit (sync's "what's the
-         * latest version's git_sha?" lookup, etc.) returned 401 / auth
-         * couldn't refresh. The user needs to {@code skill-manager login}
-         * before sync/upgrade can advance this unit. Self-clears on
-         * the next successful registry lookup. Distinct from {@link
-         * #REGISTRY_UNAVAILABLE} (server reachable, credentials
-         * rejected).
+         * LEGACY (#427): recorded when the registry refused cached
+         * credentials. Nothing records it any more; kept so an older record
+         * still parses, and cleared on the next validation.
          */
         AUTHENTICATION_NEEDED,
         /**
          * One of this unit's transitive {@code skill_references} (or
          * {@code references} on a plugin) could not be resolved
          * end-to-end — git clone refused (auth, repo not found,
-         * network), a {@code file:} target was missing, or a
-         * registry-by-name lookup failed. Recorded against the
+         * network), a {@code file:} target was missing, or the
+         * reference was a bare name with nothing to resolve it. Recorded against the
          * <em>parent</em> unit (the one that declared the ref) so the
          * breadcrumb survives in {@code skill-manager list} and the
          * closing report; the failing transitive itself never makes

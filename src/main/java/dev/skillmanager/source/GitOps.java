@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -81,6 +82,109 @@ public final class GitOps {
         } catch (IOException e) {
             return toplevel.toAbsolutePath().normalize()
                     .equals(dir.toAbsolutePath().normalize());
+        }
+    }
+
+    /**
+     * What a unit directory's own Git metadata says about it -- #412.
+     *
+     * <ul>
+     *   <li>{@link #OWN}: {@code dir} is the top level of a working tree whose
+     *       repository git resolved from {@code dir}'s own {@code .git}
+     *       (a directory, or the gitfile of a linked worktree).</li>
+     *   <li>{@link #ABSENT}: {@code dir} carries no {@code .git} entry at all.
+     *       Deliberately not "damaged": a unit installed without Git is #333's
+     *       question, and nothing here changes how it is treated.</li>
+     *   <li>{@link #DAMAGED}: {@code dir} carries a {@code .git} that git does
+     *       not accept as {@code dir}'s repository -- HEAD or config missing,
+     *       a gitfile to nowhere, or a toplevel that is not {@code dir}.</li>
+     *   <li>{@link #UNVERIFIED}: git is not on PATH, so nothing can be said.</li>
+     * </ul>
+     */
+    public enum UnitGitState { OWN, ABSENT, DAMAGED, UNVERIFIED }
+
+    /**
+     * The identity git bound for a unit directory: the expected root, and the
+     * absolute toplevel / git-dir / common-dir git actually resolved for it.
+     * {@code reason} says why a non-{@link UnitGitState#OWN} answer was given.
+     */
+    public record UnitGitIdentity(UnitGitState state, Path unitRoot, Path toplevel,
+                                  Path gitDir, Path commonDir, String reason) {
+        public boolean damaged() { return state == UnitGitState.DAMAGED; }
+    }
+
+    /**
+     * Bind {@code dir} to the repository git resolves for it, before anything
+     * interprets its HEAD or refs -- #412.
+     *
+     * <h2>What went wrong</h2>
+     *
+     * <p>In a consumer close-out on 0.28.2, units in a home inside an
+     * application checkout had {@code .git} directories missing HEAD and
+     * config. Git does not accept such a directory as a repository, so
+     * {@code git -C <unit> rev-parse} kept DISCOVERING upward and answered for
+     * the application. The gate then read the application's branches as the
+     * unit's unpublished history, called the unit diverged, and recommended
+     * {@code unit publish}. Nothing was published; the report was false, and
+     * following it would have published application commits as a skill.
+     *
+     * <h2>How it is bound</h2>
+     *
+     * <p>{@code rev-parse --show-toplevel --absolute-git-dir --git-common-dir}
+     * is asked with discovery confined to {@code dir} (see {@link #run}: a
+     * directory carrying {@code .git} gets {@code GIT_CEILING_DIRECTORIES} at
+     * its parent), and the toplevel must be {@code dir} itself. A
+     * {@code .git} directory without {@code HEAD} or {@code config} is
+     * DAMAGED even where git would tolerate it: a unit whose config is gone
+     * has lost its remotes, and "cannot tell" is never "safe".
+     *
+     * <p>Reads only: nothing under {@code .git} is created, repaired or
+     * deleted, so a partial repository stays exactly as found for recovery.
+     */
+    public static UnitGitIdentity unitGitIdentity(Path dir) {
+        if (dir == null || !Files.isDirectory(dir)) {
+            return new UnitGitIdentity(UnitGitState.ABSENT, dir, null, null, null, "not a directory");
+        }
+        Path dotGit = dir.resolve(".git");
+        if (!Files.exists(dotGit, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            return new UnitGitIdentity(UnitGitState.ABSENT, dir, null, null, null, "no .git");
+        }
+        if (!isAvailable()) {
+            return new UnitGitIdentity(UnitGitState.UNVERIFIED, dir, null, null, null, "git is not on PATH");
+        }
+        if (Files.isDirectory(dotGit, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            List<String> lost = new java.util.ArrayList<>();
+            if (!Files.exists(dotGit.resolve("HEAD"), java.nio.file.LinkOption.NOFOLLOW_LINKS)) lost.add("HEAD");
+            if (!Files.exists(dotGit.resolve("config"), java.nio.file.LinkOption.NOFOLLOW_LINKS)) lost.add("config");
+            if (!lost.isEmpty()) {
+                return new UnitGitIdentity(UnitGitState.DAMAGED, dir, null, null, null,
+                        ".git is partial: " + String.join(" and ", lost) + " missing");
+            }
+        }
+        Result r = run(dir, List.of("git", "rev-parse", "--show-toplevel",
+                "--absolute-git-dir", "--git-common-dir"));
+        String[] lines = r.stdout.trim().split("\\R");
+        if (r.exit != 0 || lines.length < 3) {
+            String first = r.stdout.trim().isEmpty() ? "rc=" + r.exit : r.stdout.trim().split("\\R")[0];
+            return new UnitGitIdentity(UnitGitState.DAMAGED, dir, null, null, null,
+                    "git does not accept its .git as a repository (" + first + ")");
+        }
+        Path toplevel = Path.of(lines[0].trim());
+        Path gitDir = Path.of(lines[1].trim());
+        Path common = Path.of(lines[2].trim());
+        if (!common.isAbsolute()) common = dir.resolve(common).normalize();
+        if (!sameDirectory(toplevel, dir)) {
+            return new UnitGitIdentity(UnitGitState.DAMAGED, dir, toplevel, gitDir, common,
+                    "git resolved a repository whose top level is not this unit");
+        }
+        return new UnitGitIdentity(UnitGitState.OWN, dir, toplevel, gitDir, common, null);
+    }
+
+    private static boolean sameDirectory(Path a, Path b) {
+        try {
+            return Files.isSameFile(a, b);
+        } catch (IOException e) {
+            return a.toAbsolutePath().normalize().equals(b.toAbsolutePath().normalize());
         }
     }
 
@@ -327,6 +431,7 @@ public final class GitOps {
         ProcessBuilder pb = new ProcessBuilder(List.of("git", "rev-list", "--stdin", "--not", "--all"))
                 .redirectErrorStream(true);
         pb.directory(dir.toFile());
+        confineDiscovery(pb, dir);
         try {
             Process p = pb.start();
             try (java.io.Writer w = new java.io.OutputStreamWriter(p.getOutputStream(),
@@ -449,13 +554,42 @@ public final class GitOps {
      * stashed (working tree had changes), false if the tree was clean (nothing
      * to do) or the stash failed.
      */
-    public static boolean stashAll(Path dir, String message) {
+    private static boolean stashAll(Path dir, String message) {
         if (porcelainStatus(dir).isBlank()) return false;
         Result r = run(dir, List.of("git",
                 "-c", "user.email=skill-manager@localhost",
                 "-c", "user.name=skill-manager",
                 "stash", "push", "--include-untracked", "-m", message));
         return r.exit == 0;
+    }
+
+    /**
+     * The outcome of {@link #setAside}: {@code failure} null means the tree is
+     * clean now, and {@code stashed} says whether a pop is owed.
+     */
+    public record SetAside(boolean stashed, String failure) {
+        public boolean ok() { return failure == null; }
+    }
+
+    /**
+     * Stash everything, for a caller about to do something that a
+     * {@code reset --hard} may have to undo (#428 R1, #434 F1). {@link #stashAll}
+     * answers false both for "nothing to stash" and for "the stash FAILED", and
+     * only the first may proceed: a reset after the second destroys the edits
+     * the stash never took. So ask the tree first, and after a stash ask again
+     * that it is really clean.
+     *
+     * <p>On failure the tree is as it was — nothing is stashed — and
+     * {@code failure} says why, for the caller's refusal.
+     */
+    public static SetAside setAside(Path dir, String message) {
+        if (porcelainStatus(dir).isBlank()) return new SetAside(false, null);
+        boolean stashed = stashAll(dir, message);
+        if (stashed && porcelainStatus(dir).isBlank()) return new SetAside(true, null);
+        if (stashed) stashPop(dir);
+        return new SetAside(false, "could not set the local edits aside (git stash "
+                + (stashed ? "left the tree dirty" : "failed")
+                + "); refusing to reset over them — nothing was changed");
     }
 
     /**
@@ -475,6 +609,9 @@ public final class GitOps {
         return run(dir, List.of("git", "merge", "--abort")).exit == 0;
     }
 
+    /** rev-parse suffix peeling a ref to the commit it ultimately names. */
+    private static final String COMMIT = "^{commit}";
+
     public static String fetchHead(Path dir, String remote) {
         return fetchRef(dir, remote, "HEAD");
     }
@@ -483,6 +620,10 @@ public final class GitOps {
      * Fetches {@code ref} from {@code remote} into FETCH_HEAD. Falls back to a
      * full fetch + rev-parse when the remote rejects fetch-by-sha (older git
      * servers without {@code uploadpack.allowAnySHA1InWant}).
+     *
+     * <p>The answer is always a COMMIT: an annotated tag's ref names a tag
+     * object, and HEAD can only ever be the commit it peels to, so an unpeeled
+     * answer disagrees with HEAD on every comparison and every record (#434 F2).
      */
     public static String fetchRef(Path dir, String remote, String ref) {
         Result fetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote, ref));
@@ -495,14 +636,14 @@ public final class GitOps {
             // branch and return the wrong sha. Try remote-tracking first;
             // tags and full shas resolve identically either way, so the bare
             // <ref> fallback only fires for those.
-            Result remoteRev = run(dir, List.of("git", "rev-parse", remote + "/" + ref));
+            Result remoteRev = run(dir, List.of("git", "rev-parse", remote + "/" + ref + COMMIT));
             if (remoteRev.exit == 0 && !remoteRev.stdout.trim().isBlank()) {
                 return remoteRev.stdout.trim();
             }
-            Result rev = run(dir, List.of("git", "rev-parse", ref));
+            Result rev = run(dir, List.of("git", "rev-parse", ref + COMMIT));
             return rev.exit == 0 ? rev.stdout.trim() : null;
         }
-        Result rev = run(dir, List.of("git", "rev-parse", "FETCH_HEAD"));
+        Result rev = run(dir, List.of("git", "rev-parse", "FETCH_HEAD" + COMMIT));
         return rev.exit == 0 ? rev.stdout.trim() : null;
     }
 
@@ -594,8 +735,21 @@ public final class GitOps {
      * there was nothing to commit (which is not an error — an idempotent
      * re-publish reaches this).
      */
+    /**
+     * Stage every change in the repository except {@linkplain GeneratedContent
+     * generated bytecode}, and commit it. Returns the new HEAD, or null when
+     * nothing was staged or the commit failed.
+     *
+     * <p>{@code git add -A} alone staged untracked {@code __pycache__/*.pyc}
+     * left by a local test run, and {@code unit publish} pushed it upstream
+     * (#400). The exclusion pathspecs are anchored at the repository top, so
+     * the add stays repository-wide exactly as before; {@code .gitignore} is
+     * still honoured on top of them.
+     */
     public static String commitAll(Path dir, String message) {
-        if (run(dir, List.of("git", "add", "-A")).exit != 0) return null;
+        List<String> add = new ArrayList<>(List.of("git", "add", "-A", "--", ":/"));
+        add.addAll(GeneratedContent.EXCLUDE_PATHSPECS);
+        if (run(dir, add).exit != 0) return null;
         if (run(dir, List.of("git", "diff", "--cached", "--quiet")).exit == 0) return null;
         Result commit = run(dir, List.of("git",
                 "-c", "user.email=skill-manager@localhost",
@@ -645,9 +799,37 @@ public final class GitOps {
 
     private record Result(int exit, String stdout, String stderr) {}
 
+    /**
+     * Confine git's repository discovery to {@code workdir} when it carries a
+     * {@code .git} of its own -- #412.
+     *
+     * <p>A directory with a {@code .git} entry is claiming to be a repository
+     * root. If git rejects that {@code .git} (no HEAD, no config, a gitfile to
+     * nowhere) it does not stop: it walks up and answers for whatever encloses
+     * the directory, and every query here -- HEAD, refs, ancestry, status --
+     * then describes somebody else's repository. No caller wants that, so
+     * {@code GIT_CEILING_DIRECTORIES} is set to the directory's parent: git may
+     * look at {@code workdir/.git} and nowhere above it. A valid repository and
+     * a linked worktree's gitfile are both found at {@code workdir} and are
+     * unaffected; a directory with no {@code .git} entry keeps ordinary
+     * discovery, so nothing about #333's units changes here.
+     */
+    private static void confineDiscovery(ProcessBuilder pb, Path workdir) {
+        if (workdir == null) return;
+        if (!Files.exists(workdir.resolve(".git"), java.nio.file.LinkOption.NOFOLLOW_LINKS)) return;
+        Path parent;
+        try {
+            parent = workdir.toRealPath().getParent();
+        } catch (IOException e) {
+            parent = workdir.toAbsolutePath().normalize().getParent();
+        }
+        if (parent != null) pb.environment().put("GIT_CEILING_DIRECTORIES", parent.toString());
+    }
+
     private static Result run(Path workdir, List<String> argv) {
         ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
         if (workdir != null) pb.directory(workdir.toFile());
+        confineDiscovery(pb, workdir);
         try {
             Process p = pb.start();
             StringBuilder out = new StringBuilder();

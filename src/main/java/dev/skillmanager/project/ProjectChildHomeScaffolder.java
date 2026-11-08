@@ -431,6 +431,15 @@ public final class ProjectChildHomeScaffolder {
             Fs.deleteRecursive(unitDir);
             childUnits.delete(existing.name());
             materializer.forgetUnit(existing.name(), existing.kind());
+            // #394: recorded in the CHILD home's audit.log -- the home the
+            // unit was removed from. The warning above lands in the PARENT
+            // home's run log, so before this the only home that lost a unit
+            // was the one with no record of it.
+            new dev.skillmanager.plan.AuditLog(childStore).record("CHILD_HOME_PRUNE",
+                    existing.kind().name().toLowerCase() + ":" + existing.name()
+                            + " removed from " + unitDir
+                            + " — no longer a project dependency and unmodified; reconciled by "
+                            + parentStore.root());
         }
         return heldBack;
     }

@@ -1,5 +1,8 @@
 package dev.skillmanager.lock;
 
+import dev.skillmanager.cli.installer.CliArtifact;
+import dev.skillmanager.cli.installer.CliPresence;
+import dev.skillmanager.cli.installer.CliRefusedException;
 import dev.skillmanager.cli.installer.InstallerRegistry;
 import dev.skillmanager.cli.installer.ProvisionTally;
 import dev.skillmanager.model.CliDependency;
@@ -37,16 +40,43 @@ public final class CliInstallRecorder {
 
     private CliInstallRecorder() {}
 
+    /** What a bulk pass did, and what it refused (#428 R5). */
+    public record Result(ProvisionTally tally, java.util.List<CliRefusedException> refusals) {
+        public Result {
+            refusals = refusals == null ? java.util.List.of() : java.util.List.copyOf(refusals);
+        }
+    }
+
+    /** {@link #runWithRefusals}'s tally alone, for callers that only count. */
     public static ProvisionTally run(InstallPlan plan, SkillStore store) throws IOException {
+        return runWithRefusals(plan, store).tally();
+    }
+
+    public static Result runWithRefusals(InstallPlan plan, SkillStore store) throws IOException {
         InstallerRegistry registry = new InstallerRegistry();
         CliLock lock = CliLock.load(store);
+        java.util.Map<String, java.util.Map<String, CliPin.Claim>> pinsInThisPass = pinsByUnit(plan);
+        // #428 R4: a requester that is neither in this pass nor an installed
+        // unit still declaring the row is stale. Drop it before anything
+        // compares against the row, and persist that with the pass's save.
+        CliClaimants.prune(lock, store, claimsByUnit(plan));
         ProvisionTally tally = ProvisionTally.EMPTY;
+        java.util.List<CliRefusedException> refusals = new java.util.ArrayList<>();
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
             try {
-                tally = tally.plus(
-                        registry.installOne(rc.dep(), store, rc.unitName(), rc.forceScripts()));
+                // #404 / #405 review, #428 R3: the shared-pin guard now runs
+                // inside installOne, so this path and every other one share it.
+                tally = tally.plus(registry.installOne(
+                        rc.dep(), store, rc.unitName(), rc.forceScripts(), lock,
+                        pinsInThisPass.getOrDefault(key(rc.dep()), java.util.Map.of())));
                 record(lock, registry, rc.dep(), store, rc.unitName());
+            } catch (CliRefusedException refused) {
+                // Still printed, and now also returned so the receipt can make
+                // the command exit non-zero (#428 R5).
+                Log.warn("%s", refused.getMessage());
+                tally = tally.withFailure();
+                refusals.add(refused);
             } catch (dev.skillmanager.store.WriteOutsideHomeException confined) {
                 // NOT ONE DEP'S FAILURE, so not this loop's to absorb.
                 //
@@ -75,7 +105,7 @@ public final class CliInstallRecorder {
             }
         }
         lock.save(store);
-        return tally;
+        return new Result(tally, refusals);
     }
 
     /**
@@ -91,10 +121,54 @@ public final class CliInstallRecorder {
     public static CliLock.Entry record(CliLock lock, InstallerRegistry registry,
                                        CliDependency dep, SkillStore store, String unitName) {
         RequestedVersion.Requested req = RequestedVersion.of(dep);
-        return lock.recordInstall(dep.backend(), req.tool(), req.version(), dep.spec(),
+        CliLock.Entry current = lock.get(dep.backend(), req.tool());
+        if (CliPin.satisfiedBy(current, dep)) {
+            // #434 F4: this unit only joins a row that already meets its floor.
+            CliLock.Entry joined = current.withRequester(unitName)
+                    .withProvided(provenance(dep, store));
+            lock.put(joined);
+            return joined;
+        }
+        CliLock.Entry row = lock.recordInstall(dep.backend(), req.tool(), req.version(), dep.spec(),
                 declaredHash(dep), unitName,
                 registry.fingerprintFor(dep, store, unitName),
                 producedBinary(dep));
+        // #404: the declaration this install was made FROM, so the next pass can
+        // tell a bumped pin from an unchanged one (CliPin.moved). Written after
+        // recordInstall because that method keeps an existing row whole when the
+        // version is unchanged -- including its old spec -- and a tar url bump at
+        // the same min_version is exactly that case.
+        CliLock.Entry declared = row.withDeclaration(dep.spec(), CliPin.of(dep))
+                .withProvided(provenance(dep, store));
+        lock.put(declared);
+        return declared;
+    }
+
+    /**
+     * #409: how {@code dep} is satisfied right now — {@link CliLock#PROVIDED_HOME}
+     * when this home holds a usable {@code bin/cli} artifact for it,
+     * {@link CliLock#PROVIDED_SYSTEM} when it does not and
+     * {@link CliPresence#providedOutsideEveryHome} finds its {@code on_path} on
+     * PATH outside every Skill Manager home, else null.
+     *
+     * <p>Read off the disk after the backend ran rather than from the backend's
+     * {@code InstallOutcome}, because {@code ALREADY_PRESENT} conflates the two
+     * answers {@link CliPresence#alreadyProvided} keeps apart — "this home
+     * already provisioned it" and "the system provides it" — and only the
+     * second means {@code bin/cli} is not expected to hold anything. Home first:
+     * a shim this home DOES hold is this home's artifact whatever else is on
+     * PATH, and must stay reported if it is later deleted.
+     *
+     * <p>Null when neither holds (a skipped backend, a failed probe) — the row
+     * then claims nothing about provenance, which {@code ArtifactBackfill}
+     * treats as a pre-#409 row rather than as either answer.
+     */
+    public static String provenance(CliDependency dep, SkillStore store) {
+        String binary = producedBinary(dep);
+        if (binary != null && CliArtifact.inHome(store, binary).usable()) return CliLock.PROVIDED_HOME;
+        if (CliPresence.providedByThisHome(dep, store) != null) return CliLock.PROVIDED_HOME;
+        if (CliPresence.providedOutsideEveryHome(dep.onPath()) != null) return CliLock.PROVIDED_SYSTEM;
+        return null;
     }
 
     /**
@@ -118,6 +192,53 @@ public final class CliInstallRecorder {
      * {@code test_graph/fixtures/skill-script-skill}, whose {@code on_path} is
      * deliberately a name nothing provides so that the install always runs.
      */
+    /** backend:tool -> (unit -> declared claim), for every governed CLI dep this pass installs. */
+    static java.util.Map<String, java.util.Map<String, CliPin.Claim>> pinsByUnit(InstallPlan plan) {
+        java.util.Map<String, java.util.Map<String, CliPin.Claim>> out = new java.util.HashMap<>();
+        for (PlanAction a : plan.actions()) {
+            if (!(a instanceof PlanAction.RunCliInstall rc) || !CliPin.governs(rc.dep())) continue;
+            out.computeIfAbsent(key(rc.dep()), k -> new java.util.HashMap<>())
+                    .put(rc.unitName(), CliPin.claim(rc.dep()));
+        }
+        return out;
+    }
+
+    /**
+     * #428 R4 on the single-dependency paths (the install effect and
+     * {@code build}): drop stale requesters from {@code cli-lock.toml}, with
+     * {@code unitName}'s declaration of {@code dep} as the only pass. Saves only
+     * when something was pruned. Best effort: a lock that cannot be read or
+     * written is left alone, and the guard still ignores stale requesters.
+     */
+    public static void pruneStaleRequesters(SkillStore store, String unitName, CliDependency dep) {
+        try {
+            CliLock lock = CliLock.load(store);
+            java.util.Map<String, java.util.Map<String, CliPin.Claim>> pass = new java.util.HashMap<>();
+            if (unitName != null && dep != null) {
+                pass.put(key(dep), java.util.Map.of(unitName, CliPin.claim(dep)));
+            }
+            if (!CliClaimants.prune(lock, store, pass).isEmpty()) lock.save(store);
+        } catch (IOException | RuntimeException e) {
+            Log.warn("cli: could not prune stale requesters from %s: %s",
+                    CliLock.FILENAME, e.getMessage());
+        }
+    }
+
+    /** Like {@link #pinsByUnit}, for every CLI dep in the pass, governed or not. */
+    static java.util.Map<String, java.util.Map<String, CliPin.Claim>> claimsByUnit(InstallPlan plan) {
+        java.util.Map<String, java.util.Map<String, CliPin.Claim>> out = new java.util.HashMap<>();
+        for (PlanAction a : plan.actions()) {
+            if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
+            out.computeIfAbsent(key(rc.dep()), k -> new java.util.HashMap<>())
+                    .put(rc.unitName(), CliPin.claim(rc.dep()));
+        }
+        return out;
+    }
+
+    private static String key(CliDependency dep) {
+        return dep.backend() + ":" + RequestedVersion.of(dep).tool();
+    }
+
     private static String producedBinary(CliDependency dep) {
         for (var target : dep.install().values()) {
             if (target.binary() != null && !target.binary().isBlank()) return target.binary();

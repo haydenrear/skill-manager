@@ -13,8 +13,10 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Installs the just-published {@code hyper-experiments} skill from the
- * registry into the per-run {@code SKILL_MANAGER_HOME}, asserts the SKILL.md
+ * Installs the {@code hyper-experiments} skill by COORDINATE into the per-run
+ * {@code SKILL_MANAGER_HOME} — {@code git+<HYPER_GIT_URL>} at
+ * {@code HYPER_GIT_REF} by default, or {@code file:<hyper.checkout's copy>}
+ * when {@code HYPER_LOCAL_DIR} is set — and asserts the SKILL.md
  * + skill-manager.toml landed, proves its pinned direct-git ACP dependency
  * landed under the manifest-declared unit name, and triggers registration of
  * the declared MCP servers (runpod) with the gateway.
@@ -22,15 +24,24 @@ import java.util.List;
  * <p>The install runs from a temp working directory rather than inside the
  * checkout — the user explicitly wanted the install path exercised from a
  * "fresh folder", not the source repo.
+ *
+ * <p>#427: this used to install {@code hyper-experiments} BY NAME through a
+ * per-run registry that {@code hyper.published} had registered it with. The
+ * registry is gone; a bare name no longer resolves, so the install names its
+ * source directly.
  */
 public class HyperInstalled {
     private static final String ACP_PIN = "dde427ed315409f9e869466f9ad45e11c37cfbb0";
 
     static final NodeSpec SPEC = NodeSpec.of("hyper.installed")
             .kind(NodeSpec.Kind.ACTION)
-            .dependsOn("hyper.published", "gateway.up")
-            .tags("hyper", "registry", "install", "mcp")
-            .timeout("120s")
+            .dependsOn("hyper.checkout", "gateway.up")
+            .tags("hyper", "git", "install", "mcp")
+            // 120s was too short once hyper-experiments' closure grew: the
+            // coordinate install resolves and clones fine, then spends minutes
+            // in transitive brew/npm/skill-script installs (measured at HP-12:
+            // still installing deploy-helm's skill-scripts at the 120s kill).
+            .timeout("600s")
             .output("skillDir", "string");
 
     public static void main(String[] args) {
@@ -39,23 +50,30 @@ public class HyperInstalled {
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
             String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
-            String registryUrl = ctx.get("registry.up", "baseUrl").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null || geminiHome == null || registryUrl == null) {
+            String checkoutDir = ctx.get("hyper.checkout", "skillDir").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null || checkoutDir == null) {
                 return NodeResult.fail("hyper.installed", "missing upstream context");
             }
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
 
-            // Run from a fresh cwd that is not the checkout — exercises the
-            // by-name resolution path through the registry.
+            // Run from a fresh cwd that is not the checkout, so the install
+            // resolves its coordinate rather than anything in the cwd.
             Path freshCwd = Path.of(home).resolve("install-cwd");
             Files.createDirectories(freshCwd);
 
-            ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "install", "hyper-experiments",
-                    "--registry", registryUrl,
-                    "--yes");
+            List<String> argv = new java.util.ArrayList<>(List.of(sm.toString(), "install"));
+            String localDir = System.getenv("HYPER_LOCAL_DIR");
+            if (localDir != null && !localDir.isBlank()) {
+                argv.add("file:" + checkoutDir);
+            } else {
+                argv.add("git+" + envOr("HYPER_GIT_URL", HyperDefaults.GIT_URL));
+                argv.add("--ref");
+                argv.add(envOr("HYPER_GIT_REF", HyperDefaults.GIT_REF));
+            }
+            argv.add("--yes");
+            ProcessBuilder pb = new ProcessBuilder(argv);
             pb.directory(freshCwd.toFile());
             SmEnv.apply(ctx, pb, home);
 
@@ -202,5 +220,16 @@ public class HyperInstalled {
             if (Files.isExecutable(candidate)) return candidate.toString();
         }
         return null;
+    }
+
+    /** Same defaults as {@code HyperCheckout} (kept in step by hand). */
+    private static final class HyperDefaults {
+        static final String GIT_URL = "https://github.com/haydenrear/hyper-experiments-skill.git";
+        static final String GIT_REF = "main";
+    }
+
+    private static String envOr(String key, String fallback) {
+        String v = System.getenv(key);
+        return v == null || v.isBlank() ? fallback : v;
     }
 }

@@ -6,9 +6,7 @@
 #   ci-diagnostics/
 #     validation-reports/       <- build/validation-reports/<runId>/summary.json + envelope/*.json
 #     sm-home/<tempname>/       <- copy of each $SKILL_MANAGER_HOME from this run
-#                                  (gateway.log, gateway.pid, gateway-config.json,
-#                                   test-graph/registry.log, etc.)
-#     postgres.log              <- docker compose logs for the postgres service
+#                                  (gateway.log, gateway.pid, gateway-config.json, etc.)
 #
 # Then tails the interesting files inline so a failing run shows the root
 # cause without having to click through to artifacts.
@@ -37,13 +35,9 @@ for d in /tmp/sm-testgraph-*; do
 done
 shopt -u nullglob
 
-# 3. docker-compose postgres logs
-docker compose logs postgres > "$DIAG_DIR/postgres.log" 2>&1 || true
-
-# 4. Gradle / test_graph stdout+stderr (teed from the Plan/Run steps).
+# 3. Gradle / test_graph stdout+stderr (teed from the Plan/Run steps).
 #    This is the only place node scripts that use ProcessBuilder.inheritIO()
-#    (e.g. CiLoggedIn → skill-manager login) show up — their stderr never
-#    hits registry.log or the validation envelope.
+#    show up — their stderr never hits the validation envelope.
 if [[ -d ci-logs ]]; then
   cp -r ci-logs "$DIAG_DIR/gradle" 2>/dev/null || true
 fi
@@ -105,15 +99,6 @@ for f in "$DIAG_DIR"/sm-home/*/gateway.log; do
 done
 echo "::endgroup::"
 
-echo "::group::registry.log"
-for f in "$DIAG_DIR"/sm-home/*/test-graph/registry.log; do
-  [[ -f "$f" ]] || continue
-  echo "--- $f ---"
-  tail -400 "$f"
-  echo
-done
-echo "::endgroup::"
-
 echo "::group::gateway-config.json"
 for f in "$DIAG_DIR"/sm-home/*/gateway-config.json; do
   [[ -f "$f" ]] || continue
@@ -123,13 +108,8 @@ for f in "$DIAG_DIR"/sm-home/*/gateway-config.json; do
 done
 echo "::endgroup::"
 
-echo "::group::postgres.log (tail)"
-tail -200 "$DIAG_DIR/postgres.log" 2>/dev/null || true
-echo "::endgroup::"
-
 # The Gradle/test_graph run log is where inheritIO() subprocesses land
-# (skill-manager login from ci.logged.in, skill-manager gateway up from
-# gateway.up, etc.). Surface a generous tail so root causes are visible
+# (skill-manager gateway up from gateway.up, etc.). Surface a generous tail so root causes are visible
 # without downloading the artifact.
 echo "::group::gradle run.log (tail 600)"
 [[ -f "$DIAG_DIR/gradle/run.log" ]] && tail -600 "$DIAG_DIR/gradle/run.log"
@@ -144,7 +124,7 @@ echo "::endgroup::"
 echo "::group::other logs"
 while IFS= read -r -d '' f; do
   case "$f" in
-    */gateway.log|*/test-graph/registry.log) continue ;;
+    */gateway.log) continue ;;
   esac
   echo "--- $f ---"
   tail -200 "$f"

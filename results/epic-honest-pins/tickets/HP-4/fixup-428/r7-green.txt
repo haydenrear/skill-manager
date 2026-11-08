@@ -1,0 +1,4 @@
+  [PASS] the 2nd of 3 units fails: the 1st is recorded and armed, a re-run converges
+  [PASS] a pass that died with no bookkeeping is repaired by the next no-op pass
+  [PASS] a no-op pass over an acknowledged home still arms nothing (#403 control)
+   → 3 passed, 0 failed

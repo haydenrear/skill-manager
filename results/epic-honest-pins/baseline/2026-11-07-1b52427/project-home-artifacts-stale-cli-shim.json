@@ -1,0 +1,71 @@
+{
+  "schema" : 2,
+  "home" : "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+  "summary" : {
+    "artifacts" : 15,
+    "stale" : 7,
+    "unverifiable" : 0,
+    "current" : 8,
+    "stale_by_kind" : {
+      "cli-shim" : 7
+    }
+  },
+  "stale" : [ {
+    "id" : "cli-shim:brew/docker",
+    "kind" : "cli-shim",
+    "owner" : "deploy-helm",
+    "freshness" : "stale",
+    "materialization" : "declared-only",
+    "reason" : "its output bin/cli/docker is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to",
+    "because" : [ ]
+  }, {
+    "id" : "cli-shim:brew/gh",
+    "kind" : "cli-shim",
+    "owner" : "tla-spec-dev",
+    "freshness" : "stale",
+    "materialization" : "declared-only",
+    "reason" : "its output bin/cli/gh is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to",
+    "because" : [ ]
+  }, {
+    "id" : "cli-shim:brew/helm",
+    "kind" : "cli-shim",
+    "owner" : "deploy-helm",
+    "freshness" : "stale",
+    "materialization" : "declared-only",
+    "reason" : "its output bin/cli/helm is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to",
+    "because" : [ ]
+  }, {
+    "id" : "cli-shim:brew/k3d",
+    "kind" : "cli-shim",
+    "owner" : "deploy-helm",
+    "freshness" : "stale",
+    "materialization" : "declared-only",
+    "reason" : "its output bin/cli/k3d is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to",
+    "because" : [ ]
+  }, {
+    "id" : "cli-shim:brew/kubernetes-cli",
+    "kind" : "cli-shim",
+    "owner" : "deploy-helm",
+    "freshness" : "stale",
+    "materialization" : "declared-only",
+    "reason" : "its output bin/cli/kubectl is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to",
+    "because" : [ ]
+  }, {
+    "id" : "cli-shim:brew/opentofu",
+    "kind" : "cli-shim",
+    "owner" : "deploy-helm",
+    "freshness" : "stale",
+    "materialization" : "declared-only",
+    "reason" : "its output bin/cli/tofu is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to",
+    "because" : [ ]
+  }, {
+    "id" : "cli-shim:pip/pytest",
+    "kind" : "cli-shim",
+    "owner" : "tla-spec-dev",
+    "freshness" : "stale",
+    "materialization" : "declared-only",
+    "reason" : "its output bin/cli/pytest is not there — a declared artifact with nothing usable at its path does not describe its inputs, whatever they hash to",
+    "because" : [ ]
+  } ],
+  "unverifiable" : [ ]
+}

@@ -13,21 +13,14 @@ package dev.skillmanager.store;
  * hierarchy lets the handler match the most specific case first
  * ({@link GitCloneAuthException}) and fall back to this base for
  * everything else.
- *
- * <p>Mirrors the shape of
- * {@link dev.skillmanager.registry.RegistryUnavailableException} —
- * both are "fetch infrastructure couldn't reach the source", just for
- * the registry vs git transport.
  */
 public class GitFetcherException extends RuntimeException {
 
     /**
      * Stable exit code so agents / shell wrappers can branch on
      * "generic git fetch failure". Sits next to
-     * {@link GitCloneAuthException#EXIT_CODE} (9, auth-specific) and
-     * {@link dev.skillmanager.registry.RegistryUnavailableException#EXIT_CODE}
-     * (8, registry unreachable) so the three "fetch refused" signals
-     * stay distinguishable.
+     * {@link GitCloneAuthException#EXIT_CODE} (9, auth-specific) so the
+     * two "fetch refused" signals stay distinguishable.
      */
     public static final int EXIT_CODE = 10;
 

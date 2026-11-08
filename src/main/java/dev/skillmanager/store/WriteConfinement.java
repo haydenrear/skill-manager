@@ -143,12 +143,10 @@ import java.util.List;
  * decoration with a docstring, so it went. If an effect ever genuinely needs a
  * second root, the place to put it back is here, with a caller.
  *
- * <p>{@link Fs} is deliberately NOT the choke point, and it cannot become one
- * here: it carries recursive delete, recursive copy, mkdir and chmod and no
- * write, move or symlink at all, and {@code SkillManagerServer.java} compiles it
- * standalone out of a {@code shared/} package that imports nothing from
- * {@code dev.skillmanager}. Adding this class to it would break the server
- * build. Filed as DEF-017 with the two options.
+ * <p>{@link Fs} is deliberately NOT the choke point: it carries recursive
+ * delete, recursive copy, mkdir and chmod and no write, move or symlink at all.
+ * (It also used to be compiled standalone by the registry server, which #427
+ * removed; that constraint is gone, and DEF-017 can be revisited.)
  *
  * <p>Nothing here can see what a <em>forked producer</em> writes; no in-JVM hook
  * can. What the producer boundary does instead is refuse to hand a producer a

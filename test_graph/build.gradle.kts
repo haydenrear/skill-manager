@@ -3,37 +3,39 @@ plugins {
 }
 
 /**
- * THIRTY integration test graphs for skill-manager, not two.
+ * TWENTY-EIGHT integration test graphs for skill-manager, not two.
  *
  * This comment said "Two integration test graphs" and named `smoke` and
  * `sponsored` until 2026-09-19. It had been wrong for a long time and it is
  * the first thing a reader of this file believes, so the count is now stated
- * where it can be checked: thirty `testGraph(...)` registrations below, one
- * of them (`hyper-experiments`) conditional on an opt-in env var and otherwise
- * replaced by a same-named task that explains itself.
+ * where it can be checked: twenty-eight `testGraph(...)` registrations below,
+ * one of them (`hyper-experiments`) conditional on an opt-in env var and
+ * otherwise replaced by a same-named task that explains itself.
  *
  * Run them — one command, which also names what it did NOT run and why:
  *
- *   python3 test_graph/run-graphs.py            # the 26 graphs meant to run here
+ *   python3 test_graph/run-graphs.py            # the 27 graphs meant to run here
  *   python3 test_graph/run-graphs.py --list     # classification only, runs nothing
  *
- * Four are opt-in rather than dead: `browser-auth` and `password-reset` boot
- * chromedriver and a real browser, `refresh-flow` is a known ~1-in-4 flake
- * (skill-manager-integration-repository#53), and `hyper-experiments` reaches
- * github, npm and the live RunPod API (#143). `run-graphs.py` prints each one
- * with its reason and its opt-in command, because a graph excluded silently
- * cannot be told apart from a graph that failed to run.
+ * One is opt-in rather than dead: `hyper-experiments` reaches github, npm and
+ * the live RunPod API (#143). `run-graphs.py` prints it with its reason and its
+ * opt-in command, because a graph excluded silently cannot be told apart from a
+ * graph that failed to run.
+ *
+ * `sponsored` was removed at HP-11 (#426), and `browser-auth`,
+ * `password-reset` and `refresh-flow` at HP-12 (#427): all four tested only
+ * the registry server, which was deleted. No graph boots docker, Postgres or
+ * a registry server any more.
  *
  * `./gradlew <name>` still runs any single graph, and
- * `./gradlew validationRunAll` still fans out over every registered graph —
- * including the three that boot a browser, which is why `run-graphs.py`
- * exists and `validationRunAll` is not the front door.
+ * `./gradlew validationRunAll` still fans out over every registered graph.
  *
  * Validate a plan first:
  *   ./gradlew validationPlanGraph --name=smoke
  *
  * Layout:
- *   sources/common/      shared infra nodes (env, postgres, registry, auth)
+ *   sources/common/      shared infra nodes (env, gateway venv, teardown,
+ *                        the home laws)
  *   sources/lib/         shared helper classes, pulled in via //SOURCES —
  *                        referenced by node files, never registered as nodes
  *   sources/<graph>/     nodes belonging to one graph
@@ -44,10 +46,6 @@ validationGraph {
     testGraph("smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/resolve/ResolverCyclesVerified.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
         // Materialize virtual-mcp-gateway/.venv before gateway.up so a
         // fresh checkout doesn't crash with "ModuleNotFoundError: uvicorn".
         // Idempotent — uv sync short-circuits on a populated lock.
@@ -55,12 +53,7 @@ validationGraph {
         node("sources/smoke/GatewayUp.java")
         node("sources/smoke/EchoHttpUp.java")
 
-        node("sources/smoke/HelloPublished.java")
         node("sources/smoke/HelloInstalled.java")
-        node("sources/smoke/SearchFinds.java")
-        node("sources/smoke/OwnershipRecorded.java")
-        node("sources/smoke/SemverEnforced.java")
-        node("sources/smoke/ImmutabilityEnforced.java")
         node("sources/smoke/MarkdownImportViolationsReported.java")
         node("sources/smoke/CrossKindMarkdownImports.java")
 
@@ -156,7 +149,6 @@ validationGraph {
 
         node("sources/smoke/SmokeReport.java")
         node("sources/common/ServersDown.java").dependsOn("smoke.report")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -165,72 +157,13 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
         // holds (DEF-047). Same structural discovery, same "zero homes
         // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
-    }
-
-    /*
-     * `browser-auth` — exercises the authorization_code + PKCE flow
-     * end-to-end through a real headless Chrome. Heavier than the other
-     * graphs (pulls Selenium + chromedriver) and run on demand rather
-     * than on every commit:
-     *
-     *   ./gradlew browser-auth
-     */
-    testGraph("browser-auth") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/SeleniumReady.java")
-        node("sources/common/AccountCreated.java")
-        node("sources/browser-auth/BrowserAuthorized.java")
-        node("sources/common/PostgresDown.java").dependsOn("browser.authorized")
-    }
-
-    /*
-     * `password-reset` — full self-serve password-reset flow end-to-end:
-     * account.created → initial.login → reset.requested → password.changed
-     * → final.login. Reads the reset token straight from Postgres so the
-     * graph is mail-free. Like browser-auth it pulls Selenium +
-     * chromedriver; run on demand, not every commit.
-     */
-    /*
-     * `refresh-flow` — forces a 3-second access-token TTL on the server
-     * so we can exercise the refresh_token grant under real expiry
-     * (rather than corruption) end-to-end. Pulls Selenium like the
-     * browser-auth graph; run on demand.
-     */
-    testGraph("refresh-flow") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/refresh-flow/ShortAccessTokenTtl.java")
-        node("sources/common/RegistryUp.java").dependsOn("short.access.token.ttl")
-        node("sources/common/SeleniumReady.java")
-        node("sources/common/AccountCreated.java")
-        node("sources/refresh-flow/RefreshOnExpiry.java")
-        node("sources/common/PostgresDown.java").dependsOn("refresh.on.expiry")
-    }
-
-    testGraph("password-reset") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/SeleniumReady.java")
-        node("sources/common/AccountCreated.java")
-        node("sources/password-reset/InitialLogin.java")
-        node("sources/password-reset/ResetRequested.java")
-        node("sources/password-reset/PasswordChanged.java")
-        node("sources/password-reset/FinalLogin.java")
-        node("sources/password-reset/RefreshHonored.java")
-        node("sources/common/PostgresDown.java").dependsOn("refresh.honored")
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     /*
@@ -238,11 +171,13 @@ validationGraph {
      * hyper-experiments-skill repo:
      *
      *   1. git clone (or copy from HYPER_LOCAL_DIR) the source.
-     *   2. publish to the per-run registry as `hyper-experiments`.
-     *   3. install by name from a fresh cwd (not the checkout).
-     *   4. assert tb-query CLI dep landed under bin/cli/.
-     *   5. assert runpod MCP dep is registered with the gateway.
-     *   6. teardown.
+     *   2. install it from a fresh cwd by COORDINATE — git+<HYPER_GIT_URL>
+     *      at HYPER_GIT_REF, or file:<the HYPER_LOCAL_DIR copy>. (#427: it
+     *      used to publish to a per-run registry and install by name; the
+     *      registry is gone, and with it the publish/persistence nodes.)
+     *   3. assert tb-query CLI dep landed under bin/cli/.
+     *   4. assert runpod MCP dep is registered with the gateway.
+     *   5. teardown.
      *
      * This graph reaches THREE third-party services it does not control:
      * github.com (the clone in hyper.checkout), npm (the runpod MCP server
@@ -293,25 +228,11 @@ validationGraph {
         }
     } else testGraph("hyper-experiments") {
         node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        // Flips SKILL_REGISTRY_ALLOW_FILE_UPLOAD=false on the registry
-        // server so this graph exercises the github-only publish path
-        // end-to-end (the production default).
-        node("sources/hyper/EnvPreparedHyper.java")
-        node("sources/common/RegistryUp.java")
-                .dependsOn("env.hyper.prepared")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
         // Bring the gateway venv up before the gateway itself.
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
 
         node("sources/hyper/HyperCheckout.java")
-        node("sources/hyper/HyperPublished.java")
-        // Asserts the registry persisted a github pointer only — no tarball
-        // bytes on disk, sha256/size_bytes null in skill_versions for the
-        // hyper-experiments rows.
-        node("sources/hyper/HyperRegistryNoTarball.java")
         node("sources/hyper/HyperInstalled.java")
         node("sources/hyper/HyperCliTbquery.java")
         node("sources/hyper/HyperRunpodRegistered.java")
@@ -324,7 +245,7 @@ validationGraph {
         node("sources/hyper/HyperRunpodTools.java")
         node("sources/hyper/HyperRunpodToolInvoked.java")
 
-        // Source-provenance + sync against the real github-published
+        // Source-provenance + sync against the real git-installed
         // hyper-experiments install — exercises the implicit-origin
         // path (install pins the github URL as the source-record
         // origin, so sync without --from just works):
@@ -338,12 +259,6 @@ validationGraph {
         //      file survives the 3-way merge, source-record hash
         //      refreshed
         node("sources/hyper/HyperSourceRecorded.java")
-        // DB-side round-trip: the postgres row for hyper@<version>
-        // has the same gitSha that install wrote into the
-        // sources/<name>.json record AND that the install dir's
-        // `git rev-parse HEAD` reports. If any of the three drift,
-        // server-versioned sync would target the wrong commit.
-        node("sources/hyper/HyperServerHashMatchesInstall.java")
         node("sources/hyper/HyperSyncCleanNoOp.java")
         node("sources/hyper/HyperSyncRefusesOnLocalCommit.java")
         node("sources/hyper/HyperSyncMergesAfterCommit.java")
@@ -351,32 +266,23 @@ validationGraph {
         node("sources/common/ServersDown.java")
                 .dependsOn("hyper.cli.tbquery", "hyper.runpod.tool.invoked",
                         "hyper.sync.merges.after.commit")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
     /*
      * `onboard` — single-command bootstrap path that ships in the CLI as
-     * `skill-manager onboard`. Two halves:
+     * `skill-manager onboard`: the CLI command installs the bundled units
+     * end-to-end and leaves the gateway up (`onboard.completed` →
+     * `onboard.skills.installed` / `onboard.gateway.healthy`).
      *
-     *   1. The Spring `SkillBootstrapper` bean has seeded
-     *      `skill-manager` and the `tla-spec-dev` plugin
-     *      into the registry by
-     *      the time `registry.up` reports healthy
-     *      (`onboard.seeded.by.server`).
-     *   2. The CLI command actually installs the bundled skills end-to-end
-     *      and leaves the gateway up
-     *      (`onboard.completed` → `onboard.skills.installed` /
-     *       `onboard.gateway.healthy`).
+     * DOCKER-FREE since HP-11 (#426): no postgres, no compose, no registry
+     * server. The half that asserted the Spring `SkillBootstrapper` had
+     * seeded the registry (`onboard.seeded.by.server`) tested only the
+     * server, which skill-manager is not used through, and was deleted.
      */
     testGraph("onboard") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
 
-        node("sources/onboard/OnboardSeededByServer.java")
         node("sources/onboard/OnboardCompleted.java")
         node("sources/onboard/OnboardSkillsInstalled.java")
         node("sources/onboard/OnboardGatewayHealthy.java")
@@ -385,7 +291,6 @@ validationGraph {
         node("sources/common/ServersDown.java")
                 .dependsOn("onboard.skills.installed", "onboard.gateway.healthy",
                         "onboard.agent.configs.written")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -394,34 +299,13 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
         // holds (DEF-047). Same structural discovery, same "zero homes
         // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
-    }
-
-    testGraph("sponsored") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
-
-        node("sources/sponsored/ReviewerPublished.java")
-        node("sources/sponsored/FormatterPublished.java")
-        node("sources/sponsored/CampaignsCreated.java")
-
-        node("sources/sponsored/SponsoredSearchMatchesKeyword.java")
-        node("sources/sponsored/SponsoredNoAdsSuppresses.java")
-        node("sources/sponsored/SponsoredOrganicUnchanged.java")
-        node("sources/sponsored/SponsoredHigherBidWins.java")
-
-        node("sources/sponsored/SponsoredTeardown.java")
-        node("sources/common/PostgresDown.java").dependsOn("sponsored.teardown")
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     /*
@@ -547,29 +431,22 @@ validationGraph {
     /**
      * Plugin smoke graph (ticket 15 — minimal subset).
      *
-     * Exercises the plugin install pipeline end-to-end: publish a
-     * plugin bundle, install it, and verify the install lands the
-     * plugin under plugins/ (not skills/), the lock advances with the
-     * right kind, the Claude projector symlink lands, and the
-     * contained skill is NOT separately addressable from the registry.
+     * Exercises the plugin install pipeline end-to-end: install the
+     * examples/hello-plugin bundle from a local `file:` coordinate and
+     * verify the install lands the plugin under plugins/ (not skills/),
+     * the lock advances with the right kind, and the harness marketplace
+     * lists it.
      *
-     * Kept off the default `smoke` graph today because it depends on
-     * server-side support for plugin bundles (server-java/ unit_kind
-     * column migration is deferred per ticket 13). Will start passing
-     * once that lands. The full sweep of *Plugin* parallel nodes
-     * (HelloPluginPublished is one of ~30 the ticket calls for) is its
-     * own follow-up — these three prove the end-to-end install path
-     * and document the pattern.
+     * DOCKER-FREE since HP-11 (#426): no postgres, no compose, no registry
+     * server. It used to publish hello-plugin to a per-run registry only to
+     * install it back; it now installs from the file, and the registry-only
+     * node (`plugin.contained.skill.not.addressable`) was deleted.
      *
      *   ./gradlew plugin-smoke
      */
     testGraph("plugin-smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/resolve/ResolverCyclesVerified.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
         // Echo MCP fixture — needed by the umbrella-plugin install
@@ -578,17 +455,13 @@ validationGraph {
         // plugin-level server name.
         node("sources/smoke/EchoHttpUp.java")
 
-        node("sources/smoke/HelloPluginPublished.java")
         node("sources/smoke/HelloPluginInstalled.java")
         node("sources/smoke/HelloPluginRegisteredWithHarness.java")
-        // TWO SENSES OF "ADDRESSABLE", one word apart, and the graph now
-        // covers both. This one: a contained skill has no independent
-        // identity as a REGISTRY unit, so `install hello-impl` fails.
-        node("sources/smoke/plugin/PluginContainedSkillNotAddressable.java")
-        // And this one (OUN-1): an import NAMING a contained skill resolves.
-        // Until OUN-1 it was reported as a missing unit while the skill sat on
-        // disk in the same home. Only the first sense was covered, which is
-        // how that survived from the day skt shipped `unit-authoring`.
+        // OUN-1: an import NAMING a contained skill resolves. Until OUN-1 it
+        // was reported as a missing unit while the skill sat on disk in the
+        // same home. (The other sense of "addressable" -- a contained skill is
+        // not a top-level REGISTRY unit -- was a registry-server assertion and
+        // left with the server at HP-11.)
         node("sources/smoke/plugin/PluginContainedSkillResolvesByName.java")
         // OUN-2, as amended by OUN-13. The node keeps its id because ids are
         // load-bearing; its headline assertion is now the opposite. A plugin
@@ -636,15 +509,13 @@ validationGraph {
         node("sources/smoke/plugin/PluginSkillScriptForceSync.java")
 
         node("sources/common/ServersDown.java")
-                .dependsOn("plugin.contained.skill.not.addressable",
-                        "plugin.contained.skill.resolves.by.name",
+                .dependsOn("plugin.contained.skill.resolves.by.name",
                         "plugin.qualified.name.resolves",
                         "plugin.name.collision.refused",
                         "plugin.supersession.migrates",
                         "plugin.markdown.import.targets",
                         "plugin.uninstalled.mixed.orphans",
                         "plugin.skill_script.force.sync")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -653,13 +524,13 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
         // holds (DEF-047). Same structural discovery, same "zero homes
         // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     // -------------------------------------------------------- doc-smoke
@@ -1396,8 +1267,8 @@ validationGraph {
      *
      * DOCKER-FREE, on purpose: no postgres, no compose, no registry, so it
      * cannot fail for reasons that are not about skill-manager, and two ticket
-     * worktrees can run it at once (which #104 measured they cannot do for the
-     * eight graphs that declare PostgresUp).
+     * worktrees can run it at once (which #104 measured they could not do for
+     * the graphs that declared PostgresUp, before #426/#427 removed it).
      *
      * It is NOT network-free end to end, and saying so would be the same
      * comfortable overstatement #124 had to walk back on its own graph:
@@ -1887,5 +1758,64 @@ validationGraph {
         // One node, four assertions, because any single link left in place
         // reproduces the drag. See the class comment for the chain.
         node("sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java")
+    }
+
+    /**
+     * cli-pin — #404: bumping a unit's OWN declared CLI pin changes the
+     * installed binary on the next sync.
+     *
+     * Its own graph because it needs nothing but a private home: no registry,
+     * no postgres, no gateway. The node serves both tar builds from a loopback
+     * server it starts itself, so it runs offline in well under a minute and
+     * is the issue's local signal run alone. Before #404 it was red: the sync
+     * after the bump left bin/cli/pin-probe printing 1.0 while cli-lock.toml
+     * recorded 2.0.
+     */
+    testGraph("cli-pin") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/cli-pin/CliPinBumpReinstalls.java")
+    }
+
+    /**
+     * honest-pins — epic honest-pins (#411), built by HP-0 (#408): ONE NODE PER
+     * PLANTED SHAPE of the epic's two goals, each in a scratch home of its own.
+     *
+     *   GOAL-a-pin-is-honoured        pin-b (#406)  pin-c, pin-d (#407)  pin-e (#103)
+     *                                 (pin shape (a), #404, is the cli-pin graph above)
+     *   GOAL-the-record-describes-the-home
+     *                                 record-a (#403)  record-b (#298)  record-c (#409)
+     *                                 record-d (#400)  record-e (#394)
+     *                                 record-f (#412, HP-10)
+     *
+     * Every node asserts the HONEST outcome, carries a control arm, and names its
+     * assertions setup_* / control_* / shape_*, so a red node says which half is
+     * red. The HP-0 baseline (results/epic-honest-pins/baseline/) had every
+     * unfixed shape red; the terminal evaluation HP-9 (#413) read it green
+     * (results/epic-honest-pins/goals/) and moved it out of EXCLUDED in
+     * .github/scripts/select-graph-set.py, so it now runs in the FULL CI set
+     * like any other graph. A red node here is a regression of the shape it
+     * names, not a baseline.
+     *
+     * No registry, no postgres, no live gateway: pin-e drives the gateway's
+     * Provisioner directly, which is why it needs the gateway venv.
+     *
+     * The nodes share NO state. To read every shape after a regression, run it
+     * with TESTGRAPH_CONTINUE_AFTER_FAILURE=1; without it the plan stops at the
+     * first red node and reports the rest `skipped`. `--continue` alone is
+     * Gradle's task-level flag and does not reach inside one graph.
+     */
+    testGraph("honest-pins") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/honest-pins/PinBLockShaBump.java")
+        node("sources/honest-pins/PinCAheadOfPin.java")
+        node("sources/honest-pins/PinDAheadOfPinWithEdit.java")
+        node("sources/honest-pins/PinEMcpBinaryUrl.java")
+        node("sources/honest-pins/RecordAHomeSyncArmsDrift.java")
+        node("sources/honest-pins/RecordBRecordedVersion.java")
+        node("sources/honest-pins/RecordCSystemCliShim.java")
+        node("sources/honest-pins/RecordDBytecode.java")
+        node("sources/honest-pins/RecordEStaleManifest.java")
+        node("sources/honest-pins/RecordFDamagedUnitGit.java")
     }
 }

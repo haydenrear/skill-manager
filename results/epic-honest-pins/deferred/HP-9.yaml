@@ -1,0 +1,68 @@
+# Deferred findings filed by HP-9 (#413), the terminal evaluation. Append-only; the epic owner
+# edits `disposition`. An evaluation ticket never fixes what it measures: each finding carries
+# its measurement, none is fixed here.
+# Duplicate search done first: results/*/deferred/ (grep HonestPinsKit, last-complete-round,
+# known_good_scripts, "project child homes") and GitHub issues (search "sandbox.env.contract
+# unrouted", "four known good scripts", "project child homes doc-smoke"): none.
+
+findings:
+  - id: DEF-HP9-001
+    found_by: HP-9 full run (run-graphs.py, sweep 20261107-213337), graph home-tripwire
+    found_at_commit: b535623abf11
+    severity: major
+    maps_to: "HP-0 (#408) -- test_graph/sources/honest-pins/HonestPinsKit.java, added in 45128031; outside HP-9's conflict keys (test_graph: [])"
+    regression: true
+    summary: >
+      home-tripwire is RED on the integrated epic tip and GREEN on main 3b92ed6e. Node
+      sandbox.env.contract fails `every_file_that_resolves_the_cli_routes_through_the_helper`:
+      unrouted=[honest-pins/HonestPinsKit.java]. HonestPinsKit calls SmEnv.cli()/SmEnv.apply()
+      but carries no `//SOURCES ../lib/SmEnv.java` of its own -- it relies on each node file
+      pulling SmEnv in -- and the tripwire walks every .java file's own //SOURCES closure, so
+      the support file reads as a CLI spawn that bypasses the sandbox helper. The other seven
+      home-tripwire nodes pass (continue-after-failure run 20261107-230753). This is a harness
+      conformance defect, not a product regression: honest-pins itself runs sandboxed, because
+      every node does reach SmEnv.
+    reproduction: >
+      run.py home-tripwire on b535623a (or feature/HP-9) -> sandbox.env.contract failed,
+      "writers=[lib/SmEnv.java] unrouted=[honest-pins/HonestPinsKit.java]"; the same graph on
+      3b92ed6e -> PASSED (sweep 20261107-225927).
+    evidence:
+      - results/epic-honest-pins/goals/full-run.sweep.json
+      - results/epic-honest-pins/goals/home-tripwire-confirm.sweep.json
+      - results/epic-honest-pins/goals/home-tripwire-continue.sweep.json
+      - results/epic-honest-pins/goals/main-3b92ed6e-confirm.sweep.json
+    suggested_fix: >
+      Add `//SOURCES ../lib/SmEnv.java` (the path the node files already use) to
+      HonestPinsKit.java's header, so the support file's own closure reaches the helper.
+      One line, in HP-0's file; re-run home-tripwire and honest-pins.
+    disposition: fixed
+    disposition_note: >-
+      HP-0 fixup (feature/HP-0-fixup): HonestPinsKit.java now carries its own
+      //SOURCES ../lib/SmEnv.java; home-tripwire and honest-pins re-run green.
+
+  - id: DEF-HP9-002
+    found_by: HP-9 full run, graphs doc-smoke and onboarding
+    found_at_commit: b535623abf11
+    severity: minor
+    maps_to: "tla-spec-dev-plugin (installed skills skill-manager and git-issue-workflow) vs this repo's test_graph assertions -- not the epic; red identically on main 3b92ed6e"
+    regression: false
+    summary: >
+      Two graphs assert the TEXT of skills installed from the tla-spec-dev plugin
+      (68922587 in this worktree's home), and that text has moved on:
+      doc-smoke skill-manager.skill.docs.projected wants SKILL.md to contain
+      "project child homes" (absent); onboarding onboarding.docs.and.scripts.static wants the
+      git-issue-workflow docs to reference the script `wt` (they now reference skt; referenced=
+      [agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh]). Both fail first, so
+      every later node in those two graphs is `skipped` -- doc-smoke's 16 downstream nodes and
+      onboarding's global-home law are UNMEASURED on both trees.
+    reproduction: >
+      run.py doc-smoke onboarding on 3b92ed6e -> both FAILED on the same nodes and assertions
+      (sweep 20261107-225927) as on the epic tip (sweep 20261107-213337).
+    evidence:
+      - results/epic-honest-pins/goals/main-3b92ed6e-confirm.sweep.json
+      - results/epic-honest-pins/goals/full-run.sweep.json
+    suggested_fix: >
+      Either restore the phrases upstream in tla-spec-dev-plugin, or loosen the two
+      assertions to what the current skills say (KNOWN_GOOD: skt instead of wt; the
+      child-home phrase). Separate ticket; it is outside honest-pins.
+    disposition: open

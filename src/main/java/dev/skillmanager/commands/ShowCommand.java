@@ -260,7 +260,7 @@ public final class ShowCommand implements Callable<Integer> {
             for (UnitReference r : s.skillReferences()) {
                 String label;
                 if (r.isLocal()) label = r.path() + "  (local)";
-                else label = r.name() + (r.version() == null ? "" : "@" + r.version()) + "  (registry)";
+                else label = r.name() + (r.version() == null ? "" : "@" + r.version()) + "  (by name; not resolvable)";
                 System.out.println("  - " + label);
             }
         }
@@ -322,7 +322,7 @@ public final class ShowCommand implements Callable<Integer> {
             for (UnitReference r : p.references()) {
                 String label;
                 if (r.isLocal()) label = r.path() + "  (local)";
-                else label = r.name() + (r.version() == null ? "" : "@" + r.version()) + "  (registry)";
+                else label = r.name() + (r.version() == null ? "" : "@" + r.version()) + "  (by name; not resolvable)";
                 System.out.println("  - " + label);
             }
         }

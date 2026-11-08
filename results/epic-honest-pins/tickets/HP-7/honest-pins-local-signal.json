@@ -1,0 +1,17 @@
+{
+  "runId": "20261107-201112",
+  "sweepId": "20261107-201036",
+  "nodes": {
+    "env.prepared": "passed",
+    "gateway.python.venv.ready": "passed",
+    "honest.pin-b": "failed",
+    "honest.pin-c": "failed",
+    "honest.pin-d": "failed",
+    "honest.pin-e": "failed",
+    "honest.record-a": "failed",
+    "honest.record-b": "failed",
+    "honest.record-c": "passed",
+    "honest.record-d": "failed",
+    "honest.record-e": "failed"
+  }
+}

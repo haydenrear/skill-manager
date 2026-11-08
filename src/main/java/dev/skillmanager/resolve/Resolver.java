@@ -49,11 +49,11 @@ public final class Resolver {
      * so the renderer reports every problem in one batch.
      *
      * @param source      the coord we tried to resolve
-     * @param version     registry version or direct-git ref attempted
+     * @param version     version or direct-git ref attempted
      * @param requestedBy unit that declared this ref via skill_references —
      *                    null for top-level coords the caller passed directly
      * @param cause       underlying exception (a GitFetcherException, an
-     *                    IOException from a file:/ probe, a RegistryUnavailableException, etc.)
+     *                    IOException from a file:/ probe or a bare-name refusal, etc.)
      */
     public record ResolveFailure(String source, String version, String requestedBy, Throwable cause) {
         /** User-facing coordinate including the attempted version or git ref. */
@@ -258,6 +258,14 @@ public final class Resolver {
                     continue;
                 }
                 Coord alias = resolveAlias(childSource, childVersion, aliases);
+                // #434 F3: with the registry gone a bare name can only mean
+                // "this unit, already installed" — the reading the sync walk
+                // (ResolveGraphHandlers) has always had. Fetching it refuses.
+                // An alias says where the name comes from, so it still wins.
+                if (ref.isRegistry() && alias.source().equals(childSource)
+                        && store.containsUnit(ref.name())) {
+                    continue;
+                }
                 childSource = alias.source();
                 childVersion = alias.version();
                 queue.push(new Pending(

@@ -1,0 +1,3 @@
+  [FAIL] a commit on a side branch survives, with HEAD never having moved: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-sync-git-sidebranch-13668984883765749610/source/skills/git-sourced-skill/.git/objects/maintenance.lock
+  [FAIL] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his18-5997369666182388212/parent/.skill-manager/skills/graph-consumer/.git/objects/maintenance.lock
+FAILURES: 2

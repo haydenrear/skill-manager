@@ -78,6 +78,33 @@ public final class ProjectDependencyResolverTest {
                                 "transitive project skill projected into Gemini home");
                     }
                 })
+                .test("#434 F3: a bare-name reference to an installed unit does not halt project resolve", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-bare-");
+                        UnitFixtures.scaffoldSkill(h.store().skillsDir(), "bare-dep", DepSpec.empty());
+                        new UnitStore(h.store()).write(new InstalledUnit("bare-dep", "0.1.0",
+                                InstalledUnit.Kind.LOCAL_DIR, InstalledUnit.InstallSource.LOCAL_FILE,
+                                "/nowhere/bare-dep", null, null, UnitStore.nowIso(), java.util.List.of(), UnitKind.SKILL));
+                        Path parent = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "bare-parent",
+                                DepSpec.of().ref("bare-dep").build()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "bare-project"
+
+                                [skills.parent]
+                                source = "%s"
+                                """.formatted(parent));
+
+                        ProjectDependencyResolver.Result result = resolver(h).resolve(
+                                project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(h.store().containsUnit("bare-parent"), "parent installed");
+                        assertTrue(result.lock().resolvedUnits().stream()
+                                        .anyMatch(u -> u.name().equals("bare-dep")),
+                                "the installed dependency is in the project closure");
+                    }
+                })
                 .test("skip-gateway resolves a skill with MCP dependencies without registering them", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-resolve-skip-gateway-");
@@ -94,7 +121,7 @@ public final class ProjectDependencyResolverTest {
                                 """.formatted(skill));
 
                         var noGatewayInstall = InstallUseCase.buildProgram(
-                                h.store(), null, null, skill.toString(), null,
+                                h.store(), null, skill.toString(), null,
                                 true, false, false, true);
                         SkillEffect.BuildInstallPlan planEffect =
                                 (SkillEffect.BuildInstallPlan) noGatewayInstall.stage1().effects().stream()
@@ -114,7 +141,7 @@ public final class ProjectDependencyResolverTest {
                                 "no-gateway install tail still persists the unit lock");
 
                         var dryRunInstall = InstallUseCase.buildProgram(
-                                h.store(), null, null, skill.toString(), null,
+                                h.store(), null, skill.toString(), null,
                                 false, true);
                         SkillEffect.BuildInstallPlan dryRunPlan =
                                 (SkillEffect.BuildInstallPlan) dryRunInstall.stage1().effects().stream()
@@ -620,7 +647,7 @@ public final class ProjectDependencyResolverTest {
                                 h.store(),
                                 gateway,
                                 new SyncUseCase.Options(
-                                        null, false, false, false, true, true),
+                                        false, false, false, true, true),
                                 java.util.List.of(
                                         new SyncUseCase.Target.FromDir(unitName, update)),
                                 java.util.List.of());
@@ -680,7 +707,7 @@ public final class ProjectDependencyResolverTest {
                         var program = SyncUseCase.buildProgram(
                                 h.store(),
                                 null,
-                                new SyncUseCase.Options(null, false, false, false, false, true),
+                                new SyncUseCase.Options(false, false, false, false, true),
                                 java.util.List.of(new SyncUseCase.Target.FromDir("project-cli-skill", skill)),
                                 java.util.List.of());
                         Executor.Outcome<SyncUseCase.Report> outcome =
@@ -1019,9 +1046,10 @@ public final class ProjectDependencyResolverTest {
                                 "project child skill exists before sync");
                         assertTrue(Files.isRegularFile(ledger), "project binding ledger exists before sync");
 
-                        Files.writeString(h.store().projectsDir()
-                                .resolve("rollback-refresh-project")
-                                .resolve("skill-project.toml"), """
+                        // #394: the reconcile reads the REPOSITORY's manifest, not
+                        // the registry's cached copy, so that is where the broken
+                        // declaration has to go to reach it.
+                        Files.writeString(repoRoot.resolve("skill-project.toml"), """
                                 [project]
                                 name = "rollback-refresh-project"
 
@@ -1038,7 +1066,7 @@ public final class ProjectDependencyResolverTest {
                                 false));
 
                         assertEquals(dev.skillmanager.effects.EffectStatus.PARTIAL, receipt.status(),
-                                "invalid project snapshot reports partial project sync failure");
+                                "invalid project manifest reports partial project sync failure");
                         assertTrue(Files.exists(codexProjection, LinkOption.NOFOLLOW_LINKS),
                                 "failed automatic refresh keeps previous Codex projection");
                         assertTrue(Files.exists(childSkill, LinkOption.NOFOLLOW_LINKS),

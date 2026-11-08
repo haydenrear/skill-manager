@@ -1,0 +1,86 @@
+{
+  "nodeId" : "honest.record-b",
+  "status" : "passed",
+  "startedAt" : "2026-11-07T21:30:58.035849Z",
+  "endedAt" : "2026-11-07T21:31:12.074236Z",
+  "assertions" : [ {
+    "name" : "setup_installed_records_agree_at_0_1_0",
+    "status" : "passed"
+  }, {
+    "name" : "setup_home_sync_moved_0_2_0_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "setup_sync_from_moved_0_3_0_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "control_git_latest_rewrites_record_version",
+    "status" : "passed"
+  }, {
+    "name" : "shape_home_sync_record_matches_manifest",
+    "status" : "passed"
+  }, {
+    "name" : "shape_sync_from_record_matches_manifest",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-b/source/hp-record-b-unit", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:30:58.111779Z",
+    "endedAt" : "2026-11-07T21:31:00.774184Z",
+    "exitCode" : 0,
+    "pid" : 70753,
+    "log" : "node-logs/honest.record-b.install.log",
+    "error" : null
+  }, {
+    "label" : "install_git_unit",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "install", "git+file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-b/git-upstream/", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-07T21:31:00.774698Z",
+    "endedAt" : "2026-11-07T21:31:02.918838Z",
+    "exitCode" : 0,
+    "pid" : 70915,
+    "log" : "node-logs/honest.record-b.install_git_unit.log",
+    "error" : null
+  }, {
+    "label" : "clone_to_worktree",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-b/project-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-b/worktree-home", "--json" ],
+    "startedAt" : "2026-11-07T21:31:02.919140Z",
+    "endedAt" : "2026-11-07T21:31:05.080045Z",
+    "exitCode" : 0,
+    "pid" : 71021,
+    "log" : "node-logs/honest.record-b.clone_to_worktree.log",
+    "error" : null
+  }, {
+    "label" : "home_sync_bumped",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-b/worktree-home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-b/project-home", "--unit", "hp-record-b-unit", "--json" ],
+    "startedAt" : "2026-11-07T21:31:05.083763Z",
+    "endedAt" : "2026-11-07T21:31:06.592896Z",
+    "exitCode" : 0,
+    "pid" : 71164,
+    "log" : "node-logs/honest.record-b.home_sync_bumped.log",
+    "error" : null
+  }, {
+    "label" : "sync_from_bumped",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "hp-record-b-unit", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17254864161839627223/honest-pins/record-b/source-0.3.0/hp-record-b-unit", "--skip-mcp", "--yes" ],
+    "startedAt" : "2026-11-07T21:31:06.593552Z",
+    "endedAt" : "2026-11-07T21:31:09.467651Z",
+    "exitCode" : 0,
+    "pid" : 71264,
+    "log" : "node-logs/honest.record-b.sync_from_bumped.log",
+    "error" : null
+  }, {
+    "label" : "sync_git_latest_bumped",
+    "command" : [ "/Volumes/dev/skill-manager-hp-9/skill-manager", "sync", "hp-record-b-git-unit", "--git-latest", "--skip-mcp", "--yes" ],
+    "startedAt" : "2026-11-07T21:31:09.512148Z",
+    "endedAt" : "2026-11-07T21:31:12.067679Z",
+    "exitCode" : 0,
+    "pid" : 71522,
+    "log" : "node-logs/honest.record-b.sync_git_latest_bumped.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 14039
+  },
+  "logs" : [ "after home sync: manifest=0.2.0 record=0.2.0; after sync --from: manifest=0.3.0 record=0.3.0; control git-latest: manifest=0.2.0 record=0.2.0 rc=0; setup recordAgrees=true homeSyncMoved=true syncFromMoved=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-07T21:30:57.343999Z","executorEndedAt":"2026-11-07T21:31:25.107395Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/honest.record-b.stdout.log","inputContextFile":"context/honest.record-b.input.json","traceId":"a4dc2e25d193aa972fd6c27a98d7fce8"}

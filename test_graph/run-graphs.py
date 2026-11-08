@@ -3,17 +3,14 @@
 
 WHY THIS EXISTS
 ---------------
-`test_graph/build.gradle.kts` registers thirty graphs. The documented way to
+`test_graph/build.gradle.kts` registers twenty-eight graphs. The documented way to
 run them all is the installed test-graph skill's `scripts/run.py --all`, which invokes Gradle's
 `validationRunAll`; that task fans out over `ext.graphs`, i.e. every graph
-registered with `testGraph(...)`. Three of those boot Selenium and chromedriver
-(`browser-auth`, `password-reset`, `refresh-flow`), so `--all` on a laptop
-starts a real browser, and `refresh-flow` is a known ~1-in-4 flake
-(skill-manager-integration-repository#53). CI already knows all of this —
-`.github/scripts/select-graph-set.py` carries the reasons — but nothing local
-did, so a developer's choice was "run everything including a browser" or "type
-a list of names from memory", and a name left out of a typed list leaves no
-record that it was left out.
+registered with `testGraph(...)`. Until HP-12 (#427) three of those booted
+Selenium and chromedriver against the registry server; they went with the
+server. CI already knows which graphs are excluded and why —
+`.github/scripts/select-graph-set.py` carries the reasons — and a name left out
+of a typed list leaves no record that it was left out.
 
 This script is the local counterpart of the CI selector, and it IMPORTS that
 selector rather than restating it, so there is one list of exclusions and one
@@ -93,14 +90,6 @@ RUNNER = _resolve_runner()
 # absent table is indistinguishable from nobody having looked.
 DEAD: dict[str, str] = {}
 
-# Reasons for the browser graphs, which the CI selector subtracts from the
-# matrix without a per-graph reason of its own (it explains them in ci.yml).
-BROWSER_REASONS: dict[str, str] = {
-    "browser-auth": "boots chromedriver and a real browser; run it deliberately",
-    "password-reset": "boots chromedriver and a real browser; run it deliberately",
-    "refresh-flow": "boots a browser AND is excluded outright (see the reason above)",
-}
-
 
 def load_selector():
     spec = importlib.util.spec_from_file_location("select_graph_set", SELECTOR)
@@ -116,9 +105,6 @@ def classify(selector) -> tuple[list[str], dict[str, str], list[str]]:
     opt_in: dict[str, str] = {}
     for name, reason in selector.EXCLUDED.items():
         opt_in[name] = reason
-    for name in selector.BROWSER:
-        extra = BROWSER_REASONS.get(name, "Selenium graph")
-        opt_in[name] = f"{opt_in[name]} ALSO: {extra}" if name in opt_in else extra
     run = [g for g in all_graphs if g not in opt_in and g not in DEAD]
     unclassified = [g for g in all_graphs if g not in run and g not in opt_in and g not in DEAD]
     return run, opt_in, unclassified
@@ -171,7 +157,7 @@ def main() -> int:
         print(f"  {graph}\n      {reason}")
         if graph == "hyper-experiments":
             print("      opt in: HYPER_EXPERIMENTS=1 ./gradlew hyper-experiments")
-        elif graph in selector.BROWSER:
+        else:
             print(f"      opt in: python3 {RUNNER} {graph}")
     print(f"\nDEAD ({len(DEAD)}):")
     for graph, reason in DEAD.items():
@@ -229,7 +215,7 @@ def main() -> int:
             if graph not in seen:
                 print(f"  {'UNDECIDED':9} {graph:28} no ledger row — it did not execute")
     for graph, reason in opt_in.items():
-        # `--only refresh-flow` runs an opt-in graph deliberately. Printing
+        # `--only hyper-experiments` runs an opt-in graph deliberately. Printing
         # "NOT RUN ... opt-in" for it in the same block that just reported its
         # ledger row contradicts the report, and the contradiction is worse
         # than the omission: a reader cannot tell which line is true.

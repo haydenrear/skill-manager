@@ -1,0 +1,7 @@
+== test graph sweep 20261108-035049 ==
+Counted from this invocation's own task outcomes, not from build/validation-reports/.
+graphs_selected=2  graphs_executed=2  graphs_passed=2  graphs_failed=0  graphs_not_run=0
+  PASSED   smoke         858.8s  build/validation-reports/20261108-035130
+  PASSED   plugin-smoke  513.5s  build/validation-reports/20261108-040535
+sweep record: /Volumes/dev/skill-manager-hp-11/test_graph/build/validation-sweeps/20261108-035049/sweep.json
+EXIT=0

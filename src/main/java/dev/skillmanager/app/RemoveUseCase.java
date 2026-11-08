@@ -107,7 +107,7 @@ public final class RemoveUseCase {
                 ? recoverEffectiveCliDeps(store, skillName, kind)
                 : List.of();
 
-        if (unregisterMcp) effects.addAll(ResolveContextUseCase.preflight(gw, null, true));
+        if (unregisterMcp) effects.addAll(ResolveContextUseCase.preflight(gw, true));
 
         // ARTI-08. FIRST, while the unit is still there to be described.
         //

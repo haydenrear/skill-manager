@@ -1,0 +1,448 @@
+package dev.skillmanager.effects;
+
+import dev.skillmanager._lib.harness.TestHarness;
+import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.app.SyncUseCase;
+import dev.skillmanager.commands.SyncCommand;
+import dev.skillmanager.lock.LockedUnit;
+import dev.skillmanager.lock.UnitsLock;
+import dev.skillmanager.lock.UnitsLockReader;
+import dev.skillmanager.lock.UnitsLockWriter;
+import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.source.GitOps;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static dev.skillmanager._lib.test.Tests.assertContains;
+import static dev.skillmanager._lib.test.Tests.assertEquals;
+import static dev.skillmanager._lib.test.Tests.assertFalse;
+import static dev.skillmanager._lib.test.Tests.assertTrue;
+
+/**
+ * HP-2 (#406, #407): a pinned sync lands on the pin or refuses by name, against
+ * a REAL local git remote — commits A, B, C on {@code main}, each with its own
+ * marker in SKILL.md.
+ *
+ * <p>The handler cases drive {@link SyncGitHandler#run} with a pinned
+ * {@link SkillEffect.SyncGit}; the CLI cases drive {@link SyncCommand} itself
+ * ({@code sync --lock}, {@code sync <unit> --to}) in-process, and read HEAD, the
+ * installed record, the regenerated units lock and the source bytes — the four
+ * observations #406 asks for. Before the fix, the {@code --lock} case ended at C
+ * with exit 0, and the older-pin cases were "already up to date" at B.
+ */
+public final class SyncGitPinTest {
+
+    private static final String UNIT = "pin-unit";
+
+    public static int run() throws Exception {
+        Tests.Suite suite = Tests.suite("SyncGitPinTest");
+        if (!gitAvailable()) {
+            System.out.println("== SyncGitPinTest — SKIPPED, git is not on PATH");
+            return 0;
+        }
+
+        suite.test("pin NEWER than HEAD but older than main's tip lands on the pin, not the tip", () -> {
+            Fixture f = Fixture.create("newer", "A");
+            EffectReceipt r = pinned(f, f.b);
+            assertEquals(EffectStatus.OK, r.status(), "moved: " + r.errorMessage());
+            f.assertAt(f.b, "marker B");
+            assertEquals(f.b, f.record().gitHash(), "record names the pin");
+        });
+
+        suite.test("pin OLDER than HEAD moves HEAD back (no edit)", () -> {
+            Fixture f = Fixture.create("older", "B");
+            EffectReceipt r = pinned(f, f.a);
+            assertEquals(EffectStatus.OK, r.status(), "moved: " + r.errorMessage());
+            f.assertAt(f.a, "marker A");
+        });
+
+        suite.test("pin OLDER than HEAD with an edit that applies keeps the edit", () -> {
+            Fixture f = Fixture.create("older-edit", "B");
+            Files.writeString(f.unit.resolve("NOTES.md"), "notes\nLOCAL EDIT\n");
+            EffectReceipt r = pinned(f, f.a);
+            assertEquals(EffectStatus.OK, r.status(), "moved: " + r.errorMessage());
+            f.assertAt(f.a, "marker A");
+            assertEquals("notes\nLOCAL EDIT\n", Files.readString(f.unit.resolve("NOTES.md")),
+                    "the edit was carried onto the pin");
+        });
+
+        suite.test("an edit that CONFLICTS with the pin refuses by name and changes nothing", () -> {
+            Fixture f = Fixture.create("conflict", "B");
+            String edited = Files.readString(f.unit.resolve("SKILL.md")).replace("marker B", "marker LOCAL");
+            Files.writeString(f.unit.resolve("SKILL.md"), edited);
+            EffectReceipt r = pinned(f, f.a);
+            assertEquals(EffectStatus.PARTIAL, r.status(), "refused");
+            assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitFailed g
+                    && g.skillName().equals(UNIT)), "the refusal names the unit");
+            assertEquals(f.b, GitOps.headHash(f.unit), "HEAD unchanged");
+            assertContains(Files.readString(f.unit.resolve("SKILL.md")), "marker LOCAL", "edit intact");
+            assertEquals(f.b, f.record().gitHash(), "record unchanged");
+        });
+
+        suite.test("a local COMMIT the pin does not contain refuses (moving would discard it)", () -> {
+            Fixture f = Fixture.create("local-commit", "B");
+            Files.writeString(f.unit.resolve("LOCAL.md"), "mine\n");
+            git(f.unit, "add", "-A");
+            commit(f.unit, "local");
+            String local = GitOps.headHash(f.unit);
+            EffectReceipt r = pinned(f, f.a);
+            assertEquals(EffectStatus.PARTIAL, r.status(), "refused");
+            assertEquals(local, GitOps.headHash(f.unit), "the local commit is still HEAD");
+        });
+
+        suite.test("an UNAVAILABLE sha fails closed and changes nothing", () -> {
+            Fixture f = Fixture.create("missing", "A");
+            EffectReceipt r = pinned(f, "0123456789abcdef0123456789abcdef01234567");
+            assertEquals(EffectStatus.PARTIAL, r.status(), "refused");
+            assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitFailed),
+                    "typed refusal");
+            f.assertAt(f.a, "marker A");
+        });
+
+        suite.test("ordinary (unpinned) git-latest sync still follows the ref to main's tip", () -> {
+            Fixture f = Fixture.create("ordinary", "A");
+            EffectReceipt r = SyncGitHandler.run(new SkillEffect.SyncGit(UNIT, UnitKind.SKILL,
+                    InstalledUnit.InstallSource.GIT, true, false), new EffectContext(f.h.store(), null));
+            assertEquals(EffectStatus.OK, r.status(), "synced: " + r.errorMessage());
+            f.assertAt(f.c, "marker C");
+        });
+
+        suite.test("lock row with resolved_sha → pinned target carrying origin/ref/sha together", () -> {
+            LockedUnit row = new LockedUnit(UNIT, UnitKind.SKILL, "0.1.0", InstalledUnit.InstallSource.GIT,
+                    "file:///x", "abc", "abcdef0123456789abcdef0123456789abcdef01");
+            SyncUseCase.Target t = SyncCommand.lockTarget(row);
+            assertTrue(t instanceof SyncUseCase.Target.Git g && g.pin() != null
+                    && "file:///x".equals(g.pin().origin()) && "abc".equals(g.pin().ref())
+                    && row.resolvedSha().equals(g.pin().sha()), "identity carried: " + t);
+            LockedUnit bare = new LockedUnit(UNIT, UnitKind.SKILL, "0.2.0", InstalledUnit.InstallSource.REGISTRY,
+                    null, null, null);
+            assertTrue(SyncCommand.lockTarget(bare) instanceof SyncUseCase.Target.Git g2 && g2.pin() == null,
+                    "a row with no identity stays an ordinary sync");
+        });
+
+        suite.test("CLI: sync --lock with a bumped resolved_sha lands on B (HEAD, record, lock, bytes); "
+                + "second run is a no-op; dry-run writes nothing", () -> {
+            Fixture f = Fixture.create("cli-lock", "A");
+            Path lockPath = UnitsLockReader.defaultPath(f.h.store());
+            UnitsLockWriter.atomicWrite(dev.skillmanager.commands.LockCommand.readLiveState(f.h.store()).lock(),
+                    lockPath);
+            UnitsLock live = UnitsLockReader.read(lockPath);
+            List<LockedUnit> rows = new ArrayList<>();
+            for (LockedUnit u : live.units()) {
+                rows.add(u.name().equals(UNIT)
+                        ? new LockedUnit(u.name(), u.kind(), u.version(), u.installSource(), u.origin(), f.b, f.b)
+                        : u);
+            }
+            Path desired = f.root.resolve("desired.lock.toml");
+            UnitsLockWriter.atomicWrite(new UnitsLock(live.schemaVersion(), rows), desired);
+
+            SyncCommand dry = command(f, desired);
+            dry.dryRun = true;
+            assertEquals(0, dry.call(), "dry-run rc");
+            f.assertAt(f.a, "marker A");
+
+            assertEquals(0, command(f, desired).call(), "sync --lock rc");
+            f.assertAt(f.b, "marker B");
+            assertEquals(f.b, f.record().gitHash(), "record at B");
+            assertEquals(f.b, f.record().gitRef(), "record tracks the lock's ref");
+            LockedUnit after = UnitsLockReader.read(lockPath).units().stream()
+                    .filter(u -> u.name().equals(UNIT)).findFirst().orElseThrow();
+            assertEquals(f.b, after.resolvedSha(), "regenerated lock at B");
+
+            assertEquals(0, command(f, desired).call(), "second sync --lock rc");
+            f.assertAt(f.b, "marker B");
+        });
+
+        suite.test("CLI: sync <unit> --to <older sha> moves back and a plain sync then stays", () -> {
+            Fixture f = Fixture.create("cli-to", "B");
+            SyncCommand to = new SyncCommand(f.h.store());
+            to.name = UNIT;
+            to.toRevision = f.a;
+            to.skipMcp = true;
+            to.skipAgents = true;
+            assertEquals(0, to.call(), "sync --to rc");
+            f.assertAt(f.a, "marker A");
+            SyncCommand plain = new SyncCommand(f.h.store());
+            plain.name = UNIT;
+            plain.skipMcp = true;
+            plain.skipAgents = true;
+            assertEquals(0, plain.call(), "plain sync rc");
+            f.assertAt(f.a, "marker A");
+        });
+
+        // ------------------------------------------------ #428 R1: failed stash
+
+        suite.test("#428 R1: a MID-MERGE store refuses by name and touches nothing (edits, HEAD, MERGE_HEAD)", () -> {
+            Fixture f = Fixture.create("midmerge", "B");
+            plantMidMerge(f);
+            EffectReceipt r = pinned(f, f.a);
+            assertEquals(EffectStatus.PARTIAL, r.status(), "refused, not moved: " + r.errorMessage());
+            assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitFailed g
+                    && g.skillName().equals(UNIT)), "the refusal names the unit");
+            assertEquals(f.b, GitOps.headHash(f.unit), "HEAD unchanged");
+            assertEquals("notes\nLOCAL EDIT\n", Files.readString(f.unit.resolve("NOTES.md")), "edit intact");
+            assertTrue(GitOps.isMidMerge(f.unit), "the merge in progress was not destroyed");
+        });
+
+        suite.test("#428 R1: moveTo itself refuses when git stash FAILS, instead of resetting over the edits", () -> {
+            Fixture f = Fixture.create("stashfail", "B");
+            plantMidMerge(f);
+            String why = SyncGitPin.moveTo(f.unit, f.b, f.a);
+            assertTrue(why != null && why.contains("stash"), "refused because the stash failed: " + why);
+            assertEquals(f.b, GitOps.headHash(f.unit), "HEAD unchanged");
+            assertEquals("notes\nLOCAL EDIT\n", Files.readString(f.unit.resolve("NOTES.md")), "edit intact");
+        });
+
+        // ------------------------------------------- #434 F1: ordinary --merge, failed stash
+
+        suite.test("#434 F1: sync --merge whose stash FAILS refuses by name and keeps the edits", () -> {
+            Fixture f = Fixture.create("merge-stashfail", "A");
+            String edited = Files.readString(f.unit.resolve("SKILL.md")).replace("marker A", "marker LOCAL");
+            Files.writeString(f.unit.resolve("SKILL.md"), edited);
+            Path unreadable = f.unit.resolve("unreadable.txt");
+            Files.writeString(unreadable, "secret\n");
+            assertTrue(unreadable.toFile().setReadable(false), "fixture: untracked file made unreadable");
+            try {
+                EffectReceipt r = merged(f);
+                assertEquals(EffectStatus.PARTIAL, r.status(), "refused, not rolled back: " + r.errorMessage());
+                assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitFailed g
+                        && g.skillName().equals(UNIT) && g.reason().contains("stash")),
+                        "the refusal names the unit and the stash: " + r.facts());
+                assertEquals(f.a, GitOps.headHash(f.unit), "HEAD unchanged");
+                assertContains(Files.readString(f.unit.resolve("SKILL.md")), "marker LOCAL", "edit intact");
+                assertFalse(GitOps.hasStash(f.unit), "nothing was left in a stash");
+                assertEquals(f.a, f.record().gitHash(), "record unchanged");
+            } finally {
+                unreadable.toFile().setReadable(true);
+            }
+        });
+
+        suite.test("#434 F1: sync --merge on a store already mid-merge still reports the conflict", () -> {
+            Fixture f = Fixture.create("merge-midmerge", "B");
+            plantMidMerge(f);
+            EffectReceipt r = merged(f);
+            assertEquals(EffectStatus.PARTIAL, r.status(), "not moved: " + r.errorMessage());
+            assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitConflicted),
+                    "a conflict the operator must resolve, not a stash failure: " + r.facts());
+            assertEquals("notes\nLOCAL EDIT\n", Files.readString(f.unit.resolve("NOTES.md")), "edit intact");
+            assertTrue(GitOps.isMidMerge(f.unit), "the merge in progress was not destroyed");
+        });
+
+        // ------------------------------------------- #434 F2: annotated tags
+
+        suite.test("#434 F2: fetchRef of an annotated tag answers the commit, not the tag object", () -> {
+            Fixture f = Fixture.create("fetch-tag", "A");
+            tagAnnotated(f, "v1.0", f.b);
+            assertEquals(f.b, GitOps.fetchRef(f.unit, f.record().origin(), "v1.0"), "peeled");
+        });
+
+        suite.test("#434 F2: a lock-row pin with ref = <annotated tag> and no sha lands on and records the commit", () -> {
+            Fixture f = Fixture.create("ref-tag", "A");
+            tagAnnotated(f, "v1.0", f.b);
+            EffectReceipt r = SyncGitHandler.run(new SkillEffect.SyncGit(UNIT, UnitKind.SKILL,
+                            InstalledUnit.InstallSource.GIT, false, false,
+                            new SkillEffect.SyncGit.Pin(null, "v1.0", null)),
+                    new EffectContext(f.h.store(), null));
+            assertEquals(EffectStatus.OK, r.status(), "moved: " + r.errorMessage());
+            f.assertAt(f.b, "marker B");
+            assertEquals(f.b, f.record().gitHash(), "record names the commit");
+            assertEquals("v1.0", f.record().gitRef(), "and tracks the tag");
+        });
+
+        suite.test("#434 F2: CLI sync --to <annotated tag> exits 0 with HEAD, record and lock on the commit", () -> {
+            Fixture f = Fixture.create("cli-tag", "A");
+            tagAnnotated(f, "v1.0", f.b);
+            int rc = toCommand(f, "v1.0").call();
+            assertEquals(0, rc, "reached the tag");
+            f.assertAt(f.b, "marker B");
+            assertEquals(f.b, f.record().gitHash(), "record names the commit");
+            assertEquals(List.of(), SyncGitPin.offPin(f.h.store(), UNIT, null), "HEAD, record and lock agree");
+        });
+
+        // ------------------------------------------- #428 R2: failed record write
+
+        suite.test("#428 R2: an unwritable installed record fails the pinned move by name", () -> {
+            Fixture f = Fixture.create("record-ro", "B");
+            Path rec = new UnitStore(f.h.store()).file(UNIT);
+            assertTrue(rec.toFile().setWritable(false), "record made read-only");
+            try {
+                EffectReceipt r = pinned(f, f.a);
+                assertEquals(EffectStatus.PARTIAL, r.status(), "not OK: " + r.errorMessage());
+                assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitFailed g
+                        && g.skillName().equals(UNIT) && g.reason().contains("record")),
+                        "the failure names the unit and the record");
+            } finally {
+                rec.toFile().setWritable(true);
+            }
+        });
+
+        suite.test("#428 R2: CLI sync --to with an unwritable record exits non-zero", () -> {
+            Fixture f = Fixture.create("cli-record-ro", "B");
+            Path rec = new UnitStore(f.h.store()).file(UNIT);
+            assertTrue(rec.toFile().setWritable(false), "record made read-only");
+            try {
+                assertTrue(toCommand(f, f.a).call() != 0, "sync --to must not report OK");
+                assertEquals(f.b, new UnitStore(f.h.store()).read(UNIT).orElseThrow().gitHash(),
+                        "(the record really did keep the old sha)");
+            } finally {
+                rec.toFile().setWritable(true);
+            }
+        });
+
+        suite.test("#428 R2: CLI sync --to whose units.lock cannot be written exits non-zero", () -> {
+            Fixture f = Fixture.create("cli-lock-ro", "B");
+            Path lock = UnitsLockReader.defaultPath(f.h.store());
+            Files.deleteIfExists(lock);
+            Files.createDirectories(lock.resolve("blocker"));  // a non-empty DIRECTORY where the file goes
+            assertTrue(toCommand(f, f.a).call() != 0, "sync --to must not report OK with no lock written");
+        });
+
+        suite.test("#428 R2: offPin names a units.lock that still holds the old sha", () -> {
+            Fixture f = Fixture.create("offpin", "A");
+            Path lockPath = UnitsLockReader.defaultPath(f.h.store());
+            UnitsLockWriter.atomicWrite(dev.skillmanager.commands.LockCommand.readLiveState(f.h.store()).lock(),
+                    lockPath);
+            assertTrue(SyncGitPin.offPin(f.h.store(), UNIT, f.a).isEmpty(), "converged home reads clean");
+            git(f.unit, "reset", "--hard", "--quiet", f.b);
+            new UnitStore(f.h.store()).write(new UnitStore(f.h.store()).read(UNIT).orElseThrow()
+                    .withGitMoved(f.b, UnitStore.nowIso()));
+            List<String> off = SyncGitPin.offPin(f.h.store(), UNIT, f.b);
+            assertTrue(off.stream().anyMatch(x -> x.startsWith("units.lock")), "stale lock named: " + off);
+        });
+
+        return suite.runAll();
+    }
+
+    private static SyncCommand toCommand(Fixture f, String rev) {
+        SyncCommand c = new SyncCommand(f.h.store());
+        c.name = UNIT;
+        c.toRevision = rev;
+        c.skipMcp = true;
+        c.skipAgents = true;
+        return c;
+    }
+
+    /** An uncommitted edit, then a merge of a conflicting side branch left unresolved. */
+    private static void plantMidMerge(Fixture f) throws Exception {
+        git(f.unit, "checkout", "--quiet", "-b", "side", f.a);
+        Files.writeString(f.unit.resolve("SKILL.md"),
+                "---\nname: " + UNIT + "\ndescription: x\nversion: 0.1.0\n---\nmarker SIDE\n");
+        git(f.unit, "add", "-A");
+        commit(f.unit, "side");
+        git(f.unit, "checkout", "--quiet", "main");
+        git(f.unit, "reset", "--hard", "--quiet", f.b);
+        Files.writeString(f.unit.resolve("NOTES.md"), "notes\nLOCAL EDIT\n");
+        Process p = new ProcessBuilder("git", "-c", "user.email=f@l", "-c", "user.name=f", "merge", "side")
+                .directory(f.unit.toFile()).redirectErrorStream(true).start();
+        p.getInputStream().readAllBytes();
+        p.waitFor();
+        assertTrue(GitOps.isMidMerge(f.unit), "fixture: store is mid-merge");
+    }
+
+    private static SyncCommand command(Fixture f, Path lock) {
+        SyncCommand c = new SyncCommand(f.h.store());
+        c.lockPath = lock;
+        c.skipMcp = true;
+        c.skipAgents = true;
+        c.yes = true;
+        return c;
+    }
+
+    private static EffectReceipt merged(Fixture f) throws Exception {
+        return SyncGitHandler.run(new SkillEffect.SyncGit(UNIT, UnitKind.SKILL,
+                InstalledUnit.InstallSource.GIT, true, true), new EffectContext(f.h.store(), null));
+    }
+
+    private static void tagAnnotated(Fixture f, String tag, String commit) throws Exception {
+        git(f.root.resolve("remote"), "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
+                "tag", "-a", "-m", tag, tag, commit);
+    }
+
+    private static EffectReceipt pinned(Fixture f, String sha) throws Exception {
+        return SyncGitHandler.run(new SkillEffect.SyncGit(UNIT, UnitKind.SKILL,
+                        InstalledUnit.InstallSource.GIT, false, false,
+                        new SkillEffect.SyncGit.Pin(null, null, sha)),
+                new EffectContext(f.h.store(), null));
+    }
+
+    private static final class Fixture {
+        final TestHarness h;
+        final Path root;
+        final Path unit;
+        final String a, b, c;
+
+        private Fixture(TestHarness h, Path root, Path unit, String a, String b, String c) {
+            this.h = h; this.root = root; this.unit = unit; this.a = a; this.b = b; this.c = c;
+        }
+
+        /** Remote with A, B, C on main; the unit cloned and recorded at {@code at} (A or B). */
+        static Fixture create(String name, String at) throws Exception {
+            TestHarness h = TestHarness.create();
+            Path root = Files.createTempDirectory("syncgitpin-" + name);
+            Path remote = root.resolve("remote");
+            Files.createDirectories(remote);
+            git(remote, "init", "-b", "main", "--quiet");
+            Files.writeString(remote.resolve("NOTES.md"), "notes\n");
+            String a = commitMarker(remote, "A");
+            String b = commitMarker(remote, "B");
+            String c = commitMarker(remote, "C");
+            Path unit = h.store().unitDir(UNIT, UnitKind.SKILL);
+            Files.createDirectories(unit.getParent());
+            git(unit.getParent(), "clone", "--quiet", remote.toUri().toString(), unit.toString());
+            String start = at.equals("A") ? a : b;
+            git(unit, "reset", "--hard", "--quiet", start);
+            new UnitStore(h.store()).write(new InstalledUnit(UNIT, "0.1.0",
+                    InstalledUnit.Kind.GIT, InstalledUnit.InstallSource.GIT,
+                    remote.toUri().toString(), start, "main", UnitStore.nowIso(), List.of(),
+                    UnitKind.SKILL));
+            return new Fixture(h, root, unit, a, b, c);
+        }
+
+        InstalledUnit record() {
+            return new UnitStore(h.store()).read(UNIT).orElseThrow();
+        }
+
+        void assertAt(String sha, String marker) throws Exception {
+            assertEquals(sha, GitOps.headHash(unit), "HEAD");
+            assertContains(Files.readString(unit.resolve("SKILL.md")), marker, "SKILL.md bytes");
+            assertFalse(Files.readString(unit.resolve("SKILL.md")).contains("<<<<<<<"), "no conflict markers");
+        }
+
+        private static String commitMarker(Path remote, String marker) throws Exception {
+            Files.writeString(remote.resolve("SKILL.md"),
+                    "---\nname: " + UNIT + "\ndescription: x\nversion: 0.1.0\n---\nmarker " + marker + "\n");
+            git(remote, "add", "-A");
+            commit(remote, marker);
+            return GitOps.headHash(remote);
+        }
+    }
+
+    private static void commit(Path dir, String message) throws Exception {
+        git(dir, "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
+                "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "--quiet", "-m", message);
+    }
+
+    private static void git(Path dir, String... args) throws Exception {
+        List<String> argv = new ArrayList<>();
+        argv.add("git");
+        argv.addAll(List.of(args));
+        Process p = new ProcessBuilder(argv).directory(dir.toFile()).redirectErrorStream(true).start();
+        String out = new String(p.getInputStream().readAllBytes());
+        if (p.waitFor() != 0) {
+            throw new IllegalStateException("git " + String.join(" ", args) + " in " + dir + ": " + out);
+        }
+    }
+
+    private static boolean gitAvailable() {
+        try {
+            return new ProcessBuilder("git", "--version").redirectErrorStream(true).start().waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}

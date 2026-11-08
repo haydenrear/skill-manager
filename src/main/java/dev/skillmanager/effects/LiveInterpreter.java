@@ -180,7 +180,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt execute(SkillEffect effect, EffectContext ctx) throws IOException {
         return switch (effect) {
-            case SkillEffect.ConfigureRegistry e -> configureRegistry(e, ctx);
             case SkillEffect.EnsureGateway e -> ensureGateway(e);
             case SkillEffect.StopGateway e -> stopGateway(e);
             case SkillEffect.ConfigureGateway e -> configureGateway(e, ctx);
@@ -298,16 +297,29 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 dev.skillmanager.project.SkillProjectLock lock =
                         locks.read(projectName).orElse(null);
                 LinkedHashSet<String> refreshedClaimers = projectLockUnitNames(lock);
-                dev.skillmanager.model.SkillProject project = registry.loadSnapshot(projectName)
+                // #394: judged against the REPOSITORY's manifest, never the
+                // registry's cached copy under projects/<name>/. The reconcile
+                // below prunes undeclared units from the child home, and a
+                // copy that silently aged deleted a plugin the repository
+                // declared. An unreadable manifest throws
+                // ProjectManifestUnreadableException, handled below as a skip.
+                dev.skillmanager.model.SkillProject project = registry.loadCurrent(projectName)
                         .orElseThrow(() -> new IOException(
-                                "project registration snapshot is missing"));
+                                "project is not registered"));
                 if (lock != null && lock.profile() != null && !lock.profile().isBlank()) {
                     project = project.withProfile(lock.profile());
+                }
+                if (!projectName.equals(project.registryName())) {
+                    throw new dev.skillmanager.project.ProjectManifestUnreadableException(
+                            projectName,
+                            project.manifestPath(),
+                            "the repository's manifest now names project '" + project.registryName()
+                                    + "', not the registered '" + projectName + "'");
                 }
                 dev.skillmanager.project.ProjectSyncUseCase.Result result =
                         new dev.skillmanager.project.ProjectSyncUseCase(ctx.store(), e.gateway())
                                 .sync(project, new dev.skillmanager.project.ProjectDependencyResolver.Options(
-                                                true, e.withGateway()),
+                                                true, e.withGateway()).withoutPinReconcile(),
                                         // QUIETLY: the drift this measures is
                                         // THIS home's, not the project's, so
                                         // reporting it here prints the same
@@ -356,6 +368,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 String message = durability.advisory();
                 facts.add(new ContextFact.ProjectSyncSkippedNonDurable(
                         projectName, durability.fatalCount(), message));
+            } catch (dev.skillmanager.project.ProjectManifestUnreadableException unreadable) {
+                // #394, "cannot tell" leaves it in place. Same blast-radius
+                // reasoning as DEF-103 above: the unit whose bytes moved is
+                // fine, and a project whose checkout moved or was deleted must
+                // not fail every unit sync it happens to claim. Named, with
+                // the repair, never swallowed -- and never reconciled against
+                // the cached snapshot instead.
+                facts.add(new ContextFact.ProjectSyncSkippedManifestUnreadable(
+                        projectName, String.valueOf(unreadable.manifest()), unreadable.getMessage()));
             } catch (dev.skillmanager.project.ProjectImportViolationException imports) {
                 // M7 of #229's review: the THIRD caller of ProjectSyncUseCase.sync,
                 // and the one no CLI is standing in front of. The generic branch
@@ -474,18 +495,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
             ctx.clearError(unitName, InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED);
         } catch (IOException io) {
             Log.warn("could not clear project sync error for %s: %s", unitName, io.getMessage());
-        }
-    }
-
-    private EffectReceipt configureRegistry(SkillEffect.ConfigureRegistry e, EffectContext ctx) {
-        if (e.url() == null || e.url().isBlank()) {
-            return EffectReceipt.skipped(e, "no override");
-        }
-        try {
-            dev.skillmanager.registry.RegistryConfig.resolve(ctx.store(), e.url());
-            return EffectReceipt.ok(e, new ContextFact.RegistryConfigured(e.url()));
-        } catch (Exception ex) {
-            return EffectReceipt.failed(e, "invalid registry URL " + e.url() + ": " + ex.getMessage());
         }
     }
 
@@ -655,8 +664,18 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // will not touch is enumerated on CliShimPruner.
         dev.skillmanager.cli.installer.CliShimPruner.prune(store);
         InstallPlan plan = buildPlan(units, e.forceScripts(), e.forceScriptUnitNames());
-        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(
-                units.size(), CliInstallRecorder.run(plan, store)));
+        CliInstallRecorder.Result result = CliInstallRecorder.runWithRefusals(plan, store);
+        ContextFact tallied = new ContextFact.CliInstalledFor(units.size(), result.tally());
+        if (result.refusals().isEmpty()) return EffectReceipt.ok(e, tallied);
+        // #428 R5: a refusal is not absorbed into an ok receipt. PARTIAL, not
+        // FAILED, because FAILED rolls the whole program back and the other
+        // deps in this pass did install; the CliRefused facts are what the use
+        // cases count into a non-zero exit, and what --json shows.
+        List<ContextFact> facts = new java.util.ArrayList<>();
+        facts.add(tallied);
+        for (var refused : result.refusals()) facts.add(ContextFact.CliRefused.of(refused));
+        return EffectReceipt.partial(e, facts,
+                result.refusals().size() + " cli install(s) refused");
     }
 
     /**
@@ -1259,16 +1278,18 @@ public final class LiveInterpreter implements ProgramInterpreter {
                                     .map(InstalledUnit::installSource)
                                     .filter(InstalledUnit.InstallSource.LOCAL_FILE::equals)
                                     .isPresent());
+            // #427: the registry server and its client are gone, so nothing
+            // records these any more. A home written before that still carries
+            // them, and no sync could ever clear them -- they are stale by
+            // construction, so the validation pass drops them.
+            case REGISTRY_UNAVAILABLE, AUTHENTICATION_NEEDED ->
+                    clearIf(ctx, e.unitName(), e.kind(), true);
             case GATEWAY_UNAVAILABLE, AGENT_SYNC_FAILED,
-                 MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE,
-                 AUTHENTICATION_NEEDED -> {
+                 MCP_REGISTRATION_FAILED -> {
                 // No cheap "is it really fixed" probe — pinging the gateway
                 // tells us nothing about whether THIS skill's MCPs are
-                // registered, etc., and a registry-side auth-validity probe
-                // costs a real HTTP round-trip per unit. Handlers clear
-                // these on actual success (RegisterMcp / SyncAgents /
-                // SyncGit registry lookup → AUTHENTICATION_NEEDED clears
-                // the moment the next describeVersion succeeds).
+                // registered, etc. Handlers clear these on actual success
+                // (RegisterMcp / SyncAgents).
                 yield false;
             }
             case PROJECT_SYNC_FAILED -> {
@@ -1803,6 +1824,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // Cooperative halt — the plan was built successfully but
                 // policy blocks some actions. Same shape as the policy
                 // gate: OK status + HALT continuation.
+                if (!plan.conflicts().isEmpty()) {
+                    return EffectReceipt.okAndHalt(e, plan.conflicts().stream()
+                            .map(dev.skillmanager.plan.PlanAction.CliVersionConflict::summary)
+                            .collect(java.util.stream.Collectors.joining("; ")));
+                }
                 return EffectReceipt.okAndHalt(e, "plan has blocked items — see policy at "
                         + ctx.store().root().resolve("policy.toml"));
             }
@@ -1846,6 +1872,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         InstallPlan plan = ctx.plan();
         if (plan == null) return EffectReceipt.skipped(e, "no plan in context");
         List<SkillEffect> sub = dev.skillmanager.app.PlanExpander.expand(plan, e.gateway());
+        List<ContextFact.CliRefused> refusedInSub = new java.util.ArrayList<>();
         // Run as a sub-program through the same context so source-cache /
         // error-state / plan slot stay shared. The shared renderer already
         // prints each sub-receipt as it lands, so we only roll up an
@@ -1858,6 +1885,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     int failed = 0;
                     for (EffectReceipt r : receipts) {
                         if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) failed++;
+                        // #428 R5: the one sub-fact lifted onto the parent, so
+                        // the install use case can count a CLI refusal into its
+                        // exit code. The renderer de-duplicates it.
+                        for (ContextFact f : r.facts()) {
+                            if (f instanceof ContextFact.CliRefused c) refusedInSub.add(c);
+                        }
                     }
                     return failed;
                 });
@@ -1865,9 +1898,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
         int failed;
         try { failed = runWithContext(subProgram, ctx); }
         finally { ctx.restore(snap); }
-        return failed == 0
-                ? EffectReceipt.ok(e)
-                : EffectReceipt.partial(e, failed + " plan-action effect(s) failed");
+        if (failed == 0) return EffectReceipt.ok(e);
+        return EffectReceipt.partial(e, new java.util.ArrayList<ContextFact>(refusedInSub),
+                failed + " plan-action effect(s) failed");
     }
 
     private EffectReceipt cleanupGraph(SkillEffect.CleanupResolvedGraph e, EffectContext ctx) {
@@ -2038,6 +2071,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         try {
             dev.skillmanager.cli.installer.InstallerRegistry registry =
                     new dev.skillmanager.cli.installer.InstallerRegistry();
+            CliInstallRecorder.pruneStaleRequesters(store, e.unitName(), e.dep());
             registry.installOne(e.dep(), store, e.unitName(), e.forceScripts());
             try {
                 CliLock lock = CliLock.load(store);
@@ -2056,6 +2090,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
             }
             return EffectReceipt.ok(e,
                     new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
+        } catch (dev.skillmanager.cli.installer.CliRefusedException refused) {
+            // #428 R3/R5: refused before anything was written (shared pin) or
+            // with nothing recorded (moved pin not reinstalled). PARTIAL, so
+            // the unit's install is not rolled back over a CLI conflict; the
+            // CliRefused fact carries the non-zero exit and the JSON.
+            Log.warn("%s", refused.getMessage());
+            return EffectReceipt.partial(e,
+                    List.of(ContextFact.CliRefused.of(refused)), refused.getMessage());
         } catch (Exception ex) {
             return EffectReceipt.failed(e,
                     List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(), ex.getMessage())),
@@ -2098,6 +2140,28 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * changing it here would be a second claim about a line nobody asked me to
      * move.
      */
+    /**
+     * #409: mark {@code dep}'s lock row {@code provided = "system"} when that is
+     * what the disk says now, touching nothing else on the row. Best effort: a
+     * row that cannot be rewritten keeps its earlier claim and is reported the
+     * way it was before.
+     */
+    private void recordSystemProvided(dev.skillmanager.model.CliDependency dep) {
+        try {
+            if (!CliLock.PROVIDED_SYSTEM.equals(
+                    dev.skillmanager.lock.CliInstallRecorder.provenance(dep, store))) return;
+            CliLock lock = CliLock.load(store);
+            CliLock.Entry row = lock.get(dep.backend(),
+                    dev.skillmanager.lock.RequestedVersion.of(dep).tool());
+            if (row == null || row.providedBySystem()) return;
+            lock.put(row.withProvided(CliLock.PROVIDED_SYSTEM));
+            lock.save(store);
+        } catch (Exception err) {
+            Log.warn("cli: %s is provided by the system, but its lock row was not marked: %s",
+                    dep.name(), err.getMessage());
+        }
+    }
+
     private EffectReceipt rebuildCliArtifact(SkillEffect.RebuildCliArtifact e) {
         try {
             dev.skillmanager.cli.installer.InstallerRegistry registry =
@@ -2112,6 +2176,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
             // Without this the producer's `cat > "$SKILL_MANAGER_BIN_DIR/<n>"`
             // FOLLOWS the link and writes the PARENT's file, with this home's
             // absolute paths in it. Measured on the operator's root home twice.
+            // #428 R4: stale requesters are dropped first, so they cannot hold
+            // this rebuild back as shared-pin holdouts.
+            CliInstallRecorder.pruneStaleRequesters(store, e.unitName(), e.dep());
             Path inherited = dev.skillmanager.cli.installer.InstallerRegistry
                     .takeOwnershipOfShim(e.dep(), store);
             dev.skillmanager.cli.installer.InstallOutcome outcome;
@@ -2134,6 +2201,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // claim MORE than it holds — which is the mis-recorded-`binary`
                 // defect this run is reporting, committed one layer deeper by
                 // the command written to report it.
+                //
+                // #409: the one thing that IS recorded is the narrower claim.
+                // When the system satisfied the dep, the row says so, so the
+                // shim this verb was asked to rebuild stops being expected in
+                // bin/cli -- otherwise `artifacts stale` names it again on the
+                // next read and no verb can ever clear it.
+                recordSystemProvided(e.dep());
                 return EffectReceipt.skipped(e,
                         e.artifactId() + ": the " + e.dep().backend() + " backend reported the "
                                 + "dependency already satisfied and wrote nothing into this home");
@@ -2155,6 +2229,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
             }
             return EffectReceipt.ok(e,
                     new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
+        } catch (dev.skillmanager.cli.installer.CliRefusedException refused) {
+            // #428 R3/R5: build goes through the same shared-pin guard as
+            // sync. FAILED is build's existing "did not rebuild" (exit 1, and
+            // FAILED in --json); the CliRefused fact says it was a refusal.
+            return EffectReceipt.failed(e,
+                    List.of(ContextFact.CliRefused.of(refused)), refused.getMessage());
         } catch (Exception ex) {
             return EffectReceipt.failed(e,
                     List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(),

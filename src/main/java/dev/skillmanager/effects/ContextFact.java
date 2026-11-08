@@ -35,7 +35,6 @@ public sealed interface ContextFact {
     record HaltWithExitCode(int code, String reason) implements ContextFact {}
 
     // ---- Pre-flight ----
-    record RegistryConfigured(String url) implements ContextFact {}
     record GatewayAlreadyRunning() implements ContextFact {}
     record GatewayStarted(String host, int port) implements ContextFact {}
     record GatewayUnreachable(String host) implements ContextFact {}
@@ -164,6 +163,21 @@ public sealed interface ContextFact {
     record ProjectSyncSkippedNonDurable(String projectName, int findings, String message)
             implements ContextFact {}
 
+    /**
+     * A claiming project was NOT refreshed after a parent-home unit sync,
+     * because its repository's own manifest could not be read (#394). The
+     * registry's cached copy is deliberately not used in its place: a copy
+     * that cannot show it is current must not decide what the child home
+     * prunes. Like {@link ProjectSyncSkippedNonDurable}, the unit sync's exit
+     * code does not move.
+     *
+     * @param projectName the project whose child home was left untouched
+     * @param manifest    the manifest path that was tried
+     * @param message     the full advisory, including the repair command
+     */
+    record ProjectSyncSkippedManifestUnreadable(String projectName, String manifest, String message)
+            implements ContextFact {}
+
     // ---- Sync git ----
     record SyncGitUpToDate(String skillName, String label) implements ContextFact {}
     record SyncGitMerged(String skillName, String fetchedHash) implements ContextFact {}
@@ -219,10 +233,6 @@ public sealed interface ContextFact {
      */
     record SyncGitLocalInstall(String skillName, String origin) implements ContextFact {}
     record SyncGitNoOrigin(String skillName) implements ContextFact {}
-    record SyncGitRegistryUnavailable(String skillName) implements ContextFact {}
-    /** Registry rejected the cached bearer + couldn't refresh — user must {@code skill-manager login}. */
-    record SyncGitAuthRequired(String skillName, String message) implements ContextFact {}
-    record SyncGitNoUpgradeNeeded(String skillName, String version) implements ContextFact {}
 
     // ---- Error management (sources/<name>.json mutations) ----
     record ErrorAdded(String skillName, InstalledUnit.ErrorKind kind) implements ContextFact {}
@@ -277,6 +287,18 @@ public sealed interface ContextFact {
     record ToolEnsured(String toolId, boolean missingOnPath, boolean bundled) implements ContextFact {}
     record CliInstalled(String skillName, String depName, String backend) implements ContextFact {}
     record CliInstallFailed(String skillName, String depName, String message) implements ContextFact {}
+    /**
+     * #428 R5: an install or rebuild REFUSED by {@code InstallerRegistry.installOne}
+     * ({@code kind}: {@code shared-pin-conflict} or {@code pin-moved-not-reinstalled}).
+     * A refusal makes the command exit non-zero and shows in its JSON; see
+     * {@link dev.skillmanager.cli.installer.CliRefusedException}.
+     */
+    record CliRefused(String skillName, String depName, String kind, String message)
+            implements ContextFact {
+        public static CliRefused of(dev.skillmanager.cli.installer.CliRefusedException e) {
+            return new CliRefused(e.unitName(), e.depName(), e.kind().token(), e.getMessage());
+        }
+    }
     /** Carries the full {@link InstallResult} so the renderer can emit the JSON block + summary. */
     record McpServerRegistered(String skillName, InstallResult result) implements ContextFact {}
     record McpServerRegistrationFailed(String skillName, InstallResult result) implements ContextFact {}

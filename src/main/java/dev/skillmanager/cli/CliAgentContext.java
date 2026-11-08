@@ -148,9 +148,9 @@ public final class CliAgentContext {
         } else if ("harness instantiate".equals(commandPath)) {
             next.add("skill-manager harness list");
             next.add("skill-manager sync <harness-template>");
-        } else if ("publish".equals(commandPath)) {
-            next.add("skill-manager install <unit>");
-            next.add("skill-manager search <unit>");
+        } else if ("unit publish".equals(commandPath)) {
+            next.add("skill-manager show <unit>");
+            next.add("skill-manager sync <unit>");
         }
         return next;
     }

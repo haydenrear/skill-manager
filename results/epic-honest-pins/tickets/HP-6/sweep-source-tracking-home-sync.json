@@ -1,0 +1,33 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 2,
+  "graphs_executed": 2,
+  "graphs_passed": 2,
+  "graphs_failed": 0,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "source-tracking",
+      "status": "passed",
+      "seconds": 338.387,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-6/test_graph/build/validation-reports/20261107-201425"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-sync",
+      "status": "passed",
+      "seconds": 541.67,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-6/test_graph/build/validation-reports/20261107-202005"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261107-201406",
+  "gradle_exit_code": 0,
+  "continue_past_failures": true
+}

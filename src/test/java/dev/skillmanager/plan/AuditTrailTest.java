@@ -76,7 +76,7 @@ public final class AuditTrailTest {
                 Executor.Outcome<SyncUseCase.Report> outcome =
                         new Executor(h.store(), null).runStaged(SyncUseCase.buildProgram(
                                 h.store(), null,
-                                new SyncUseCase.Options(null, false, false, false, false, true),
+                                new SyncUseCase.Options(false, false, false, false, true),
                                 List.of(new SyncUseCase.Target.FromDir(UNIT, updated)),
                                 List.of()));
 
@@ -102,7 +102,7 @@ public final class AuditTrailTest {
                 int before = lines.size();
                 new Executor(h.store(), null).runStaged(SyncUseCase.buildProgram(
                         h.store(), null,
-                        new SyncUseCase.Options(null, false, false, false, false, true),
+                        new SyncUseCase.Options(false, false, false, false, true),
                         List.of(new SyncUseCase.Target.FromDir(UNIT, unitDir)),
                         List.of()));
                 assertTrue(syncLines(h.store()).size() > before,

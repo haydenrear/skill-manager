@@ -1,0 +1,683 @@
+# Ticket plan -- honest-pins (#411).
+#
+# KICKOFF, schedule_revision 1, 2026-11-07. Owner decisions in the kickoff
+# conversation:
+#   - SPLIT. The cost issues (#410 skt check timeout, #261 specs/.history in
+#     every home, #401 close-out byte compare, #402 cloned-home installers)
+#     interact little with the pin and record defects; they move to a second
+#     draft epic, cheap-checks, so this epic's validation loop stays small.
+#   - GOALS accepted as proposed in #411 (goals 1 and 2; goal 3 left with the split).
+#   - DEFERMENT inline: a ticket may fix an out-of-slice defect inside its own
+#     conflict keys, and records it either way.
+#   - REVIEW finalization-only; the epic agent merges ticket PRs, no wave gate.
+#   - WORKTREES on /Volumes/dev (owner, same day).
+#   - PR #405 (#404) was open against main; it was retargeted to this branch and
+#     merged as HP-1 (b9dd09b0) before this plan was written.
+#
+# AMENDMENT, schedule_revision 2, 2026-11-07, owner request ("Can we also add
+# this one to the epic"): #412, filed the same day -- home close-out / home sync
+# read a damaged unit's Git through upward discovery and report the ENCLOSING
+# repository's branches as the unit's unpublished history. A report that
+# contradicts the disk: GOAL-the-record-describes-the-home gains shape (f).
+#   - new ticket HP-10 (#412), wave 2, after HP-0; appended at the end of
+#     `tickets`, so every dispatched ordinal is unchanged. HP-10 builds its own
+#     honest-pins node (record-f) red first: the goal's (f) baseline is that red,
+#     because HP-0's assignment was published at revision 1 and does not grow.
+#   - HP-9 depends on HP-10 and promotes after it (promotion_order 10 -> 11).
+#   - Every undelivered assignment is re-rendered at revision 2, since goal 2's
+#     text changed. No ticket had started; no branch existed but the epic's.
+#
+# AMENDMENT, schedule_revision 3, 2026-11-07 -- added post-evaluation at owner
+# request: #426. smoke, onboard, sponsored and plugin-smoke booted Postgres and
+# the Java registry server through docker compose; on a host without docker all
+# four were red at postgres.up (HP-9's full run). Owner: "we literally never use
+# the server - ever." HP-11 drops the server nodes from smoke, onboard and
+# plugin-smoke, installs their fixtures from file coordinates, and deletes the
+# sponsored graph. Wave 5, after HP-9; appended, so every ordinal is unchanged.
+# It owns no goal and changes neither goal's text.
+version: 1
+schedule_revision: 3
+name: honest-pins
+slug: honest-pins
+branch: epic/honest-pins
+base: "3b92ed6ee277d40a09e30039aa49c9da0d13eed6"
+repository: haydenrear/skill-manager
+epic_issue: https://github.com/haydenrear/skill-manager/issues/411
+ticket_prefix: HP
+updated: "2026-11-07"
+spec_workflow:
+  state: none
+  decided: "2026-11-07, epic agent, following this repository's epic precedent (one-home-one-verdict, one-unit-one-name)"
+  rule: >
+    No shared desired/current workflow. Tickets close on evidence under their
+    evidence_root and do NOT run `tla-spec-dev open ticket`, `close ticket`,
+    `scaffold workflow` or `close_tickets.py`: parallel tickets each promoting
+    into specs/program_model collide on spec_manifest.yaml and README.md. HP-1
+    landed specs/program_model/CliPinInternal.tla before this rule existed.
+    A model of the integrated pin/record behaviour, if wanted, is a finalization
+    item (as #379 was for one-home-one-verdict).
+
+purpose: >
+  A home says one thing and holds another. A bumped CLI pin kept the old binary
+  (#404). `sync --lock` follows the installed ref instead of the pin (#406), and
+  `project resolve` reports success off-pin with no way back (#407). `home sync`
+  changes skills without arming the drift gate (#403). Recorded versions lag the
+  bytes (#298, #103). Onboarding writes no CLI pin (#376). Bytecode is published
+  and reads as local edits (#400). System CLIs read as stale shims (#409). A root
+  sync removed a declared plugin against a stale cached manifest (#394). The
+  commit-diff-context-parent retrospective of its epic #462 (2026-11-06)
+  measured the cost.
+
+adjacent:
+  - {issue: 387, why: "clean-upgrade draft epic: auth.token, unit-history loss, partial-sync projection, uv lockfiles, shim resolution, write guard"}
+  - {issue: 410, why: "cheap-checks (split out): skt check timeout"}
+  - {issue: 261, why: "cheap-checks (split out): specs/.history in every home"}
+  - {issue: 401, why: "cheap-checks (split out): close-out byte compare"}
+  - {issue: 402, why: "cheap-checks (split out): cloned-home installer reruns"}
+  - {issue: 331, why: "container work, #274-#279"}
+
+deferment_policy:
+  mode: inline
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-honest-pins/deferred/backlog.yaml
+  per_ticket_backlog: "results/epic-honest-pins/deferred/{ticket}.yaml"
+  rule: >
+    Owner decision 2026-11-07: a defect found outside a ticket's slice may be
+    fixed inline when the fix stays inside the ticket's own conflict keys; it is
+    recorded in the ticket's per-ticket backlog either way, with a reproduction,
+    and listed under `## Deferred findings` in the PR. A fix that would touch
+    another ticket's conflict keys is recorded, not made. Search
+    results/*/deferred/ and GitHub issues for a duplicate first. A finding that
+    blocks the ticket's REQUIRED validation escalates to the owner.
+
+review_policy:
+  cadence: finalization-only
+  gate: false
+  merges: owner
+  milestones: []
+  walkthrough: required
+  artifact_root: results/epic-honest-pins/reviews/
+  rule: >
+    Owner decision 2026-11-07: the epic agent merges ticket PRs into
+    epic/honest-pins in promotion order and keeps dispatching. One review
+    artifact and walkthrough at finalization, before the epic PR goes to main.
+    The epic agent still stops immediately on a merge conflict (back to its
+    ticket agent) or a blocking finding. The merge of epic/honest-pins into main
+    is the owner's.
+
+validation_standards: >
+  Run the real thing on real homes: for any change to what a sync installs or
+  records, back up installed/ and run this repo's ./skill-manager against a real
+  project home and read the SECOND sync. Local graph runs: GRADLE_OPTS=
+  "-Dorg.gradle.daemon=false", JAVA_TOOL_OPTIONS="-Djava.net.preferIPv6Addresses=true",
+  COMPOSE_PROJECT_NAME=skill-manager, SKILL_MANAGER_HOME unset, never two runs
+  at once, through the installed runner
+  .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py.
+  A graph sweep's verdict comes from its own sweep summary, never from
+  build/validation-reports/.
+
+epic_goals:
+  - id: GOAL-a-pin-is-honoured
+    kind: quality
+    evidence_root: results/epic-honest-pins/goals/GOAL-a-pin-is-honoured/
+    evaluation_ticket: HP-9
+    statement: >
+      After any install, sync, `sync --lock` or `project resolve`, every governed
+      unit and CLI is at its declared pin, or the command refuses by name. It
+      never reports convergence to a different revision.
+    metric: >
+      Of the planted shapes, how many end at the pin or refuse by name:
+      (a) a unit bumps its own CLI pin (#404); (b) a lock's resolved_sha is bumped
+      for an installed unit (#406); (c) a unit installed AHEAD of an older pin,
+      no local edit (#407); (d) the same with one local edit that applies (#407);
+      (e) an MCP binary's install url changes under the same bin_path (#103).
+    harness: "the honest-pins test graph (built by HP-0): one node per planted shape"
+    baseline:
+      value: >
+        0 of 5 at 3b92ed6e (0.28.2): (a) measured -- the cli-pin graph and
+        CliPinTest fail with the #404 fix disabled; (b)-(d) reproduced in #406's
+        and #407's reports (commit-diff-context-parent, 2026-11-06); (e) by
+        source, virtual-mcp-gateway provisioning.py:396-406. 1 of 5 at b9dd09b0
+        once HP-1 landed. HP-0 re-measures all five on the honest-pins graph.
+      measured_at: "3b92ed6ee277d40a09e30039aa49c9da0d13eed6"
+      evidence: results/epic-honest-pins/baseline/
+    target: "5 of 5"
+
+  - id: GOAL-the-record-describes-the-home
+    kind: quality
+    evidence_root: results/epic-honest-pins/goals/GOAL-the-record-describes-the-home/
+    evaluation_ticket: HP-9
+    statement: >
+      What skt status, cli-lock.toml, installed/*.json, the drift gate and
+      `artifacts stale` say matches what is on disk.
+    metric: >
+      False or missing reports across the planted shapes: (a) a unit-changing
+      `home sync` leaves no pending drift record (#403), and a no-op sync must
+      leave none; (b) a unit's installed record (installed/*.json) carries a version that
+      disagrees with the synced checkout's manifest (#298); (c) a system-provided CLI is reported as a
+      stale cli-shim while a deleted installed shim must still be (#409);
+      (d) __pycache__ bytecode is published by `unit publish` or makes sync
+      refuse with "extra local changes" (#400); (e) a root-home sync removes a
+      plugin the project's own skill-project.toml declares (#394); (f) a unit
+      whose .git is missing or partial is reported by home close-out or home
+      sync with the enclosing repository's Git identity -- its branches read as
+      unpublished unit history -- instead of as a damaged unit (#412; added at
+      schedule_revision 2).
+    harness: "the honest-pins test graph (built by HP-0) plus `skill-manager artifacts stale --json` on this repository's project home"
+    baseline:
+      value: >
+        Unmeasured as a count; HP-0 measures it. Reported: (a) every unit-changing
+        home sync, 0 pending records (#403); (b) skt recorded 0.2.0 while running
+        0.8.1 (#298); (c) 7 false positives in this project home, 2026-11-04 (#409);
+        (d) recurred 2026-11-06 in commit-diff-context-parent (#400); (e) one
+        incident, 2026-09-17 (#394); (f) reported in a consumer close-out on
+        0.28.2 (haydenrear/polymarket PR 67), measured by HP-10's red node.
+      measured_at: "3b92ed6ee277d40a09e30039aa49c9da0d13eed6"
+      evidence: results/epic-honest-pins/baseline/
+    target: "0 false or missing reports across (a)-(f), with each shape's control arm still detected"
+
+tickets:
+  - id: HP-1
+    github_issue: https://github.com/haydenrear/skill-manager/issues/404
+    title: "A bumped CLI pin installs the new binary, or the sync refuses"
+    status: closed
+    delivered:
+      pr: https://github.com/haydenrear/skill-manager/pull/405
+      merge_commit: "b9dd09b097b6e59d5f1394c4e36a6129abd66421"
+      note: "Opened against main before this epic existed; retargeted and merged at kickoff. It ran its own spec ticket (CliPinInternal.tla) under the pre-epic rules."
+    role: implementation
+    schedule_revision: 1
+    wave: 1
+    depends_on: []
+    blocks: ["HP-9"]
+    promotion_order: 1
+    promotion_predecessor: null
+    slice: >
+      cli-lock.toml rows record a declared_pin digest; InstallerRegistry
+      reinstalls a moved pin for pip/npm/tar, refuses one the backend cannot
+      reinstall, and the bulk path reports a pin moved on a shared row as a
+      conflict.
+    conflict_keys:
+      production: ["cli/installer-gate", "lock/cli-lock-row"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/cli-pin"]
+      workflow: []
+    validation:
+      tlc: "run_tlc.sh CliPinInternal.tla CliPinInternal.cfg (pre-epic spec ticket)"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cli-pin", "smoke", "home-integrity", "home-verdicts", "artifact-dag", "project-child-home", "home-clone", "checkout-home", "ticket-lifecycle"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-1/
+    goals:
+      - goal: GOAL-a-pin-is-honoured
+        contribution: direct
+        expected_effect: "shape (a): no -> yes"
+        local_signal: "python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cli-pin"
+
+  - id: HP-0
+    github_issue: https://github.com/haydenrear/skill-manager/issues/408
+    title: "Baseline: the honest-pins graph plants every shape; the nightly unit suite is green again"
+    status: closed
+    role: implementation
+    schedule_revision: 2
+    wave: 1
+    depends_on: []
+    blocks: ["HP-2", "HP-3", "HP-5", "HP-6", "HP-7", "HP-9", "HP-10"]
+    promotion_order: 2
+    promotion_predecessor: HP-1
+    slice: >
+      (1) #408: MigrationSatisfiesTheGateTest's precondition fails on the CI
+      runner since 2026-10-29 (ubuntu 26.04, git 2.56). Make the fixture produce
+      stale tracking refs deterministically; do not weaken the precondition.
+      (2) A new test graph `honest-pins` registered in test_graph/build.gradle.kts
+      with ONE NODE FILE PER PLANTED SHAPE of both goals -- pin (b)-(e) and record
+      (a)-(e); pin (a) is the existing cli-pin graph -- under
+      test_graph/sources/honest-pins/<shape>.java. Each node plants its shape in
+      a scratch home, asserts the HONEST outcome, and carries a control arm.
+      Nodes for unfixed shapes are EXPECTED RED: that is the baseline. Register
+      the graph as opt-in (EXCLUDED in .github/scripts/select-graph-set.py, with
+      a reason) until HP-9, so a red baseline does not redden CI. (3) Measure
+      both goals at the epic tip and commit results/epic-honest-pins/baseline/.
+      Later tickets each edit ONLY their own node files.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: ["graph/honest-pins-registration", "graph/honest-pins-nodes-initial", "test/migration-gate"]
+      workflow: ["ci/graph-selection"]
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java; plus a CI unit-tests run on the branch: gh workflow run ci.yml -R haydenrear/skill-manager --ref feature/HP-0 -f graph_set=core"
+      graphs: ["honest-pins (expected red per unfixed shape; record which)", "cli-pin", "smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-0/
+    goals:
+      - goal: GOAL-a-pin-is-honoured
+        contribution: enabling
+        expected_effect: "none -- builds the harness and measures the baseline"
+        local_signal: "run.py honest-pins --continue: pin nodes (b)-(e) red, each failing on its shape's assertion and not on setup"
+      - goal: GOAL-the-record-describes-the-home
+        contribution: enabling
+        expected_effect: "none -- builds the harness and measures the baseline"
+        local_signal: "run.py honest-pins --continue: record nodes (a)-(e) red on their shape, control arms green"
+
+  - id: HP-3
+    github_issue: https://github.com/haydenrear/skill-manager/issues/403
+    title: "home sync arms the drift gate when it changes a unit"
+    status: closed
+    role: implementation
+    schedule_revision: 2
+    wave: 2
+    depends_on: ["HP-0"]
+    blocks: ["HP-9"]
+    promotion_order: 3
+    promotion_predecessor: HP-0
+    slice: >
+      HomeSync takes the destination's HomeDigest before the pass and calls
+      DriftGate.recordSince after it when any outcome is UPDATED, MERGED or NEW
+      (the ProjectSyncUseCase.java:185 pattern), in both directions. A no-op
+      pass records nothing; home clone's rebaseline is untouched. Settle in the
+      PR whether `home close-out --into` inherits it.
+    conflict_keys:
+      production: ["store/home-sync", "store/drift-gate"]
+      tla: []
+      adapters: []
+      test_graph: ["node/honest-pins/record-a"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["honest-pins", "home-sync", "home-clone", "ticket-lifecycle", "checkout-home"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-3/
+    goals:
+      - goal: GOAL-the-record-describes-the-home
+        contribution: direct
+        expected_effect: "record shape (a): red -> green, no-op arm stays green"
+        local_signal: "run.py honest-pins: node record-a green"
+
+  - id: HP-5
+    github_issue: https://github.com/haydenrear/skill-manager/issues/376
+    title: "Onboarding writes the CLI pin, installs the current skt, and project resolve surfaces its error"
+    status: closed
+    role: implementation
+    schedule_revision: 2
+    wave: 2
+    depends_on: ["HP-0"]
+    blocks: ["HP-9"]
+    promotion_order: 4
+    promotion_predecessor: HP-3
+    slice: >
+      Fresh-machine onboarding leaves the project home with a pinned
+      bin/cli/skill-manager (the shape `skill-manager home shims` writes), so
+      `skt sync` there does not refuse "no pinned CLI"; and the error #376 says
+      project resolve hides is printed. The skt-side fallback is
+      tla-spec-dev-plugin's issue, not this ticket.
+    conflict_keys:
+      production: ["commands/onboard", "launch/cli-pin-writer"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/onboarding"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["onboarding", "onboard", "project-resolve", "smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-5/
+    goals:
+      - goal: GOAL-a-pin-is-honoured
+        contribution: guard
+        expected_effect: "a freshly onboarded project home carries the CLI pin: no -> yes"
+        local_signal: "run.py onboarding: an assertion that the onboarded project home holds bin/cli/skill-manager"
+
+  - id: HP-6
+    github_issue: https://github.com/haydenrear/skill-manager/issues/400
+    title: "Generated bytecode is never published and never counts as a local edit"
+    status: pr_open
+    role: implementation
+    schedule_revision: 2
+    wave: 2
+    depends_on: ["HP-0"]
+    blocks: ["HP-9"]
+    promotion_order: 5
+    promotion_predecessor: HP-5
+    slice: >
+      `unit publish` does not commit untracked __pycache__/ or *.pyc, and the
+      local-change test sync uses to refuse ("extra local changes") ignores
+      them. One definition of "generated, not content", used by both.
+    conflict_keys:
+      production: ["unit/publish", "unit/content-scope"]
+      tla: []
+      adapters: []
+      test_graph: ["node/honest-pins/record-d"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["honest-pins", "source-tracking", "home-sync", "smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-6/
+    goals:
+      - goal: GOAL-the-record-describes-the-home
+        contribution: direct
+        expected_effect: "record shape (d): red -> green"
+        local_signal: "run.py honest-pins: node record-d green"
+
+  - id: HP-7
+    github_issue: https://github.com/haydenrear/skill-manager/issues/409
+    title: "A CLI the system provides is not a stale cli-shim"
+    status: closed
+    role: implementation
+    schedule_revision: 2
+    wave: 2
+    depends_on: ["HP-0"]
+    blocks: ["HP-9"]
+    promotion_order: 6
+    promotion_predecessor: HP-6
+    slice: >
+      The cli-lock row records how a dep was satisfied (for example
+      provided = "system" when CliPresence returned ALREADY_PRESENT from PATH),
+      and ArtifactBackfill.cliShims skips those rows; an installed shim that is
+      later deleted is still stale. Do not start linking system binaries.
+    conflict_keys:
+      production: ["artifacts/cli-shims", "lock/cli-lock-provided"]
+      tla: []
+      adapters: []
+      test_graph: ["node/honest-pins/record-c"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["honest-pins", "home-verdicts", "artifact-dag", "home-integrity"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-7/
+    goals:
+      - goal: GOAL-the-record-describes-the-home
+        contribution: direct
+        expected_effect: "record shape (c): red -> green; this project home 7 false stale shims -> 0"
+        local_signal: "run.py honest-pins: node record-c green; skill-manager artifacts stale --json on this repo's project home lists no cli-shim for gh/helm/docker/kubectl/k3d/tofu/pytest"
+
+  - id: HP-2
+    github_issue: https://github.com/haydenrear/skill-manager/issues/406
+    title: "Pins are honoured: sync --lock and project resolve reach the pin or refuse; sync <unit> --to <sha>"
+    status: closed
+    role: implementation
+    schedule_revision: 2
+    wave: 2
+    depends_on: ["HP-0"]
+    blocks: ["HP-4", "HP-8", "HP-9"]
+    promotion_order: 7
+    promotion_predecessor: HP-7
+    slice: >
+      #406 and #407 together. `sync --lock` reconciles a bumped row to the
+      lock's origin/ref/resolvedSha, not Target.Git(name) from the installed
+      source (SyncCommand.java:440-489, SyncUseCase.java:174,265-275), or refuses
+      before claiming success. `project resolve` reconciles every declared unit
+      to its skill-project.toml revision, carrying local edits by three-way merge
+      onto the PIN (never trunk), refusing by name on conflict, and reports
+      "moved N units". New primitive `sync <unit> --to <sha>`. #407's acceptance
+      cases (pin older than HEAD with and without an edit; pin newer).
+    conflict_keys:
+      production: ["commands/sync-lock", "app/sync-use-case", "project/resolve-reconcile", "lock/lock-diff"]
+      tla: []
+      adapters: []
+      test_graph: ["node/honest-pins/pin-b", "node/honest-pins/pin-c", "node/honest-pins/pin-d"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java (including SyncFromLockScenarioTest and new local-git cases)"
+      graphs: ["honest-pins", "source-tracking", "git-latest-source-tracking", "project-resolve", "project-smoke", "sync-settles", "smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-2/
+    goals:
+      - goal: GOAL-a-pin-is-honoured
+        contribution: direct
+        expected_effect: "shapes (b), (c), (d): red -> green (or refuse by name)"
+        local_signal: "run.py honest-pins: nodes pin-b, pin-c, pin-d green"
+
+  - id: HP-4
+    github_issue: https://github.com/haydenrear/skill-manager/issues/298
+    title: "Recorded versions match what runs: installed records and MCP binaries"
+    status: pr_open
+    role: implementation
+    schedule_revision: 2
+    wave: 3
+    depends_on: ["HP-2"]
+    blocks: ["HP-9"]
+    promotion_order: 8
+    promotion_predecessor: HP-2
+    slice: >
+      #298: a sync that moves a unit's bytes rewrites the installed record's
+      version from the synced manifest. #103: virtual-mcp-gateway's binary
+      provisioning keys its install marker on the spec digest (or puts a
+      version/digest segment in install_dir), so a changed url under the same
+      bin_path reprovisions. After HP-2 because both touch the sync path's
+      record writing.
+    conflict_keys:
+      production: ["app/sync-record-version", "gateway/binary-provisioning"]
+      tla: []
+      adapters: []
+      test_graph: ["node/honest-pins/record-b", "node/honest-pins/pin-e"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java; virtual-mcp-gateway pytest"
+      graphs: ["honest-pins", "source-tracking", "smoke", "plugin-smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-4/
+    goals:
+      - goal: GOAL-a-pin-is-honoured
+        contribution: direct
+        expected_effect: "shape (e): red -> green"
+        local_signal: "run.py honest-pins: node pin-e green"
+      - goal: GOAL-the-record-describes-the-home
+        contribution: direct
+        expected_effect: "record shape (b): red -> green"
+        local_signal: "run.py honest-pins: node record-b green"
+
+  - id: HP-8
+    github_issue: https://github.com/haydenrear/skill-manager/issues/394
+    title: "A root sync never removes a declared plugin against a stale cached manifest"
+    status: pr_open
+    role: implementation
+    schedule_revision: 2
+    wave: 3
+    depends_on: ["HP-2"]
+    blocks: ["HP-9"]
+    promotion_order: 9
+    promotion_predecessor: HP-4
+    slice: >
+      A root-home sync reconciling a registered child home judges membership
+      against the repository's own skill-project.toml (or refuses when it cannot
+      read it), never a cached copy under the home's projects/; every removal it
+      makes writes an audit entry. After HP-2 because both change what a
+      project's declared revision means to a sync.
+    conflict_keys:
+      production: ["project/registration", "project/child-home-reconcile"]
+      tla: []
+      adapters: []
+      test_graph: ["node/honest-pins/record-e"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["honest-pins", "project-child-home", "project-smoke", "home-integrity"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-8/
+    goals:
+      - goal: GOAL-the-record-describes-the-home
+        contribution: direct
+        expected_effect: "record shape (e): red -> green"
+        local_signal: "run.py honest-pins: node record-e green"
+
+  - id: HP-9
+    github_issue: https://github.com/haydenrear/skill-manager/issues/413
+    title: "Terminal evaluation: decide both goals on the integrated epic"
+    status: pr_open
+    role: evaluation
+    owns_goals: ["GOAL-a-pin-is-honoured", "GOAL-the-record-describes-the-home"]
+    schedule_revision: 2
+    wave: 4
+    depends_on: ["HP-1", "HP-0", "HP-3", "HP-5", "HP-6", "HP-7", "HP-2", "HP-4", "HP-8", "HP-10"]
+    blocks: []
+    promotion_order: 11
+    promotion_predecessor: HP-10
+    slice: >
+      Run the honest-pins graph and every graph in the tickets' matrices on the
+      integrated tip; read both goals as baseline -> measured -> target; move
+      honest-pins from EXCLUDED into the full CI set once green; run
+      `artifacts stale --json` on this repository's project home. Report every
+      goal, including a miss. Do not edit a target.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: ["ci/graph-selection"]
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["honest-pins", "cli-pin", "the union of every ticket's matrix"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/goals/
+    goals:
+      - goal: GOAL-a-pin-is-honoured
+        contribution: guard
+        expected_effect: "decides the goal"
+        local_signal: "run.py honest-pins cli-pin --continue"
+      - goal: GOAL-the-record-describes-the-home
+        contribution: guard
+        expected_effect: "decides the goal"
+        local_signal: "run.py honest-pins --continue"
+
+  - id: HP-10
+    github_issue: https://github.com/haydenrear/skill-manager/issues/412
+    title: "A damaged unit's Git is reported as damaged, never read through the enclosing repository"
+    status: closed
+    role: implementation
+    schedule_revision: 2
+    wave: 2
+    depends_on: ["HP-0"]
+    blocks: ["HP-9"]
+    promotion_order: 10
+    promotion_predecessor: HP-8
+    slice: >
+      Before every unit Git query on the home close-out and home sync paths,
+      bind the expected unit root to the repository Git actually resolved
+      (--show-toplevel, absolute git-dir / common-dir), or pass explicit
+      --git-dir / GIT_CEILING_DIRECTORIES so discovery cannot climb out of the
+      unit. A missing or partial .git (no HEAD, no config) is a distinct
+      damaged-unit result, never a unit HEAD or a skill-history conflict, and
+      unknown is never treated as safe: no sync, push or mutation on it, and
+      the partial objects/index/refs are left for recovery. Keep a valid own
+      repo, a linked worktree and a symlinked or aliased path working, and keep
+      a truly diverged unit reported as diverged. #412's fixture list is the
+      acceptance set. Adds honest-pins node record-f (red first) plus its
+      registration line; touches nothing of #333 (units installed without
+      their own .git).
+    conflict_keys:
+      production: ["source/git-ops-identity", "store/close-out-git-history"]
+      tla: []
+      adapters: []
+      test_graph: ["node/honest-pins/record-f"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java (including the new nested-Git identity cases)"
+      graphs: ["honest-pins", "home-sync", "ticket-lifecycle", "checkout-home", "home-integrity"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-10/
+    goals:
+      - goal: GOAL-the-record-describes-the-home
+        contribution: direct
+        expected_effect: "record shape (f): red -> green; the valid-repo and truly-diverged control arms stay as they are"
+        local_signal: "run.py honest-pins: node record-f green"
+
+  # Added post-evaluation at owner request (schedule_revision 3).
+  - id: HP-11
+    github_issue: https://github.com/haydenrear/skill-manager/issues/426
+    title: "smoke, onboard, plugin-smoke run without docker, postgres or the registry server; sponsored graph removed"
+    status: pr_open
+    role: implementation
+    schedule_revision: 3
+    wave: 5
+    depends_on: ["HP-9"]
+    blocks: []
+    promotion_order: 12
+    promotion_predecessor: HP-9
+    slice: >
+      Remove PostgresUp/RegistryUp/CiLoggedIn/JwtValid/PostgresDown from smoke,
+      onboard and plugin-smoke; delete the nodes that only test server behaviour
+      (registry search, ownership, semver/immutability, onboard seeding,
+      registry-addressability); install hello-skill and hello-plugin from file
+      coordinates instead of publishing them to a per-run registry; delete the
+      sponsored graph and its nodes and fixtures; update select-graph-set.py and
+      the CLAUDE.md counts. server-java/, the opt-in auth graphs and
+      hyper-experiments are out of scope (follow-up).
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: ["graph/smoke", "graph/onboard", "graph/plugin-smoke", "graph/sponsored"]
+      workflow: ["ci/graph-selection"]
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec change"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["smoke", "onboard", "plugin-smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-11/
+    goals: []
+
+  - id: HP-12
+    github_issue: https://github.com/haydenrear/skill-manager/issues/427
+    title: "Remove the registry server and its CLI client"
+    status: pr_open
+    role: implementation
+    comment: "added post-evaluation at owner request"
+    schedule_revision: 3
+    wave: 5
+    depends_on: ["HP-11"]
+    blocks: []
+    promotion_order: 13
+    promotion_predecessor: HP-11
+    slice: >
+      Delete server-java/, SkillManagerServer.java, the skill-manager-server
+      launcher, Dockerfile.server, the compose files, infra/postgres and the
+      server image release job; delete the registry-only CLI commands (ads,
+      create-account, login, reset-password, search, registry, publish) and the
+      dev.skillmanager.registry client. A bare-name install fails naming the
+      github:/git+/file: forms. `unit validate <dir>` keeps publish --dry-run's
+      import check. Then (after HP-11) delete browser-auth, password-reset and
+      refresh-flow and convert hyper-experiments to a git/file coordinate.
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["smoke", "onboard", "plugin-smoke", "doc-smoke", "hyper-experiments"]
+      evidence_root: "the PR body"
