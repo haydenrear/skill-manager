@@ -140,22 +140,27 @@ public final class CliPin {
      * a sentence naming the units still on the row's pin, or null when there is
      * nothing to refuse. Null when the pin did not move, when no other unit
      * claims the row, or when every other claimant declares {@code unit}'s new
-     * pin in this same pass ({@code declaredThisPass}: unit -> {@link #of}).
+     * pin ({@code declared}: unit -> {@link #of}).
      *
-     * <p>A claimant absent from this pass still declares what it last installed
-     * — the row's pin — so it disagrees. Refusing then is the conservative
-     * reading: the alternative reinstalls under a unit whose declaration nobody
-     * re-read.
+     * <p>#428: {@code declared} is every LIVE claimant's pin
+     * ({@link CliClaimants#livePins}): the units in this pass, plus installed
+     * units whose manifest still declares the row. A requester missing from it
+     * is stale (uninstalled, or no longer declares the dep) and is not a
+     * holdout; counting it was how one dropped dependency blocked every later
+     * bump. A null {@code declared} means the installed records could not be
+     * read, and then every other requester is a holdout, which is the
+     * conservative reading.
      */
     public static String sharedConflict(CliLock.Entry row, CliDependency dep, String unit,
-                                        Map<String, String> declaredThisPass) {
+                                        Map<String, String> declared) {
         String why = moved(row, dep);
         if (why == null) return null;
         String mine = of(dep);
         java.util.List<String> holdouts = new java.util.ArrayList<>();
         for (String other : row.requestedBy()) {
             if (other == null || other.equals(unit)) continue;
-            if (!mine.equals(declaredThisPass.get(other))) holdouts.add(other);
+            if (declared != null && !declared.containsKey(other)) continue;
+            if (declared == null || !mine.equals(declared.get(other))) holdouts.add(other);
         }
         if (holdouts.isEmpty()) return null;
         return dep.name() + ": " + unit + " moved its pin (" + why + ") but "

@@ -1,0 +1,16 @@
+# scratch home e2e (worktree build). Units hp428-A, hp428-B both declare tar:hp428tool @ 1.0
+## R5: A bumps to 2.0 while B claims 1.0 -> skill-manager sync
+sync rc=1
+! cli: hp428tool: hp428-A moved its pin (declared tar:hp428tool @ 2.0, this home installed tar:hp428tool @ 1.0) but hp428-B still claims tar:hp428tool @ 1.0 — not reinstalling; bin/cli/hp428tool keeps the shared install until the units declare one pin
+✓ cli: 1 already present, 1 failed
+✗ cli: 1 install(s) refused — this home does not hold what its units declare:
+✗   [shared-pin-conflict] cli: hp428tool: hp428-A moved its pin (declared tar:hp428tool @ 2.0, this home installed tar:hp428tool @ 1.0) but hp428-B still claims tar:hp428tool @ 1.0 — not reinstalling; bin/cli/hp428tool keeps the shared install until the units declare one pin
+bin/cli/hp428tool -> 1.0; requested_by = [hp428-A, hp428-B]
+
+## R4: B drops the dependency -> skill-manager sync
+sync rc=0
+→ cli: hp428tool pin moved (declared tar:hp428tool @ 2.0, this home installed tar:hp428tool @ 1.0) — reinstalling
+→ cli: downloading hp428tool from http://127.0.0.1:18428/v2
+✓ cli: installed hp428tool -> /Volumes/dev/skill-manager-hp-7/.hp7-red/e2e/home/bin/cli/hp428tool
+✓ cli: 1 installed
+bin/cli/hp428tool -> 2.0; requested_by = [hp428-A]; next no-op sync rc=0

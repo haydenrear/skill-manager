@@ -1,0 +1,32 @@
+# CliSharedPinPathsTest on origin/epic/honest-pins 7b2f72b8 with production changes stashed (the R5 Report case removed: it needs the new constructor)
+  [FAIL] R3: build cannot bump a CLI another installed unit still claims: build: bin/cli keeps the shared 1.0: expected <1.0> but was <2.0>
+  [FAIL] R3: the per-dependency install cannot bump a shared CLI either: per-dep install: bin/cli keeps the shared 1.0: expected <1.0> but was <2.0>
+  [FAIL] R3: a bump the claimants agree on keeps every claimant: B was not dropped by A's record: expected <[A, B]> but was <[A]>
+  [FAIL] R4: a unit that dropped the dependency no longer blocks a bump (sync): A's bump landed: expected <2.0> but was <1.0>
+  [FAIL] R4: an uninstalled unit no longer blocks a bump (sync): A's bump landed: expected <2.0> but was <1.0>
+  [PASS] R4: an uninstalled unit no longer blocks a bump (per-dep install)
+  [PASS] R4: a unit that still declares the row is kept and still blocks
+  [FAIL] R5: a refused bulk install is not an OK receipt: not true: an OK receipt is what let sync exit 0: OK
+   → 2 passed, 6 failed
+
+# with the fix
+== CliSharedPinPathsTest (9 cases)
+   → 9 passed, 0 failed
+== SystemProvidedCliShimTest (6 cases)
+   → 6 passed, 0 failed
+== ArtifactBackfillTest (11 cases)
+   → 11 passed, 0 failed
+== ArtifactStalenessTest (30 cases)
+   → 30 passed, 0 failed
+== ArtifactBuildTest (18 cases)
+   → 18 passed, 0 failed
+== ArtifactPruneTest (31 cases)
+   → 31 passed, 0 failed
+== CliPresenceTest (6 cases)
+   → 6 passed, 0 failed
+== CliPinTest (11 cases)
+   → 11 passed, 0 failed
+== InstallerFingerprintTest (28 cases)
+   → 28 passed, 0 failed
+== LockReadWriteTest (8 cases)
+   → 8 passed, 0 failed

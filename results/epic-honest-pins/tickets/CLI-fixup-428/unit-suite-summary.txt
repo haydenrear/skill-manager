@@ -1,0 +1,2 @@
+jbang RunTests.java (exit 0) -- 178 suites, 1698 cases passed, 0 failed
+ALL PASSED

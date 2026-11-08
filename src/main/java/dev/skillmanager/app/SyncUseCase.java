@@ -653,6 +653,10 @@ public final class SyncUseCase {
                     case ContextFact.SyncGitFailed ignored -> {
                         if (worstRc < 1) worstRc = 1;
                     }
+                    // #428 R5: a refused CLI install fails the sync. The
+                    // InstallCli receipt is PARTIAL (so nothing rolls back), and
+                    // PARTIAL on that effect is not counted above, so the fact is.
+                    case ContextFact.CliRefused ignored -> errorCount++;
                     case ContextFact.AgentMcpConfigChanged c -> agentChanges
                             .computeIfAbsent(c.change(), k -> new ArrayList<>())
                             .add(c.agentId() + " (" + c.configPath() + ")");

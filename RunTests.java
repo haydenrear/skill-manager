@@ -192,6 +192,7 @@ public class RunTests {
         failures += BinCliWritersDoNotFollowLinksTest.run();
         failures += InstallerFingerprintTest.run();
         failures += CliPinTest.run();
+        failures += dev.skillmanager.cli.installer.CliSharedPinPathsTest.run();
         failures += CliPresenceTest.run();
         failures += CliArtifactMatrixTest.run();
         failures += CycleDetectionTest.run();
