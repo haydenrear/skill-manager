@@ -2,9 +2,6 @@
 //JAVA 21+
 //SOURCES src/main/java/**/*.java
 //SOURCES src/test/java/**/*.java
-//SOURCES ServerObservabilityContractTest.java
-//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservability.java
-//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservabilityFilter.java
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
 //DEPS org.slf4j:slf4j-api:2.0.16
 //DEPS info.picocli:picocli:4.7.6
@@ -19,9 +16,6 @@
 //DEPS org.slf4j:slf4j-simple:2.0.16
 //DEPS io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.62.0
 //DEPS io.opentelemetry:opentelemetry-exporter-otlp:1.62.0
-//DEPS org.springframework:spring-webmvc:6.1.13
-//DEPS org.springframework:spring-test:6.1.13
-//DEPS jakarta.servlet:jakarta.servlet-api:6.0.0
 /**
  * The suite HIS-13 (#159) added, on its own.
  *

@@ -35,7 +35,6 @@ public sealed interface ContextFact {
     record HaltWithExitCode(int code, String reason) implements ContextFact {}
 
     // ---- Pre-flight ----
-    record RegistryConfigured(String url) implements ContextFact {}
     record GatewayAlreadyRunning() implements ContextFact {}
     record GatewayStarted(String host, int port) implements ContextFact {}
     record GatewayUnreachable(String host) implements ContextFact {}
@@ -234,10 +233,6 @@ public sealed interface ContextFact {
      */
     record SyncGitLocalInstall(String skillName, String origin) implements ContextFact {}
     record SyncGitNoOrigin(String skillName) implements ContextFact {}
-    record SyncGitRegistryUnavailable(String skillName) implements ContextFact {}
-    /** Registry rejected the cached bearer + couldn't refresh — user must {@code skill-manager login}. */
-    record SyncGitAuthRequired(String skillName, String message) implements ContextFact {}
-    record SyncGitNoUpgradeNeeded(String skillName, String version) implements ContextFact {}
 
     // ---- Error management (sources/<name>.json mutations) ----
     record ErrorAdded(String skillName, InstalledUnit.ErrorKind kind) implements ContextFact {}

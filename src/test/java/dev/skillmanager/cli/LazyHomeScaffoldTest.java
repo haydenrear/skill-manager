@@ -430,17 +430,10 @@ public final class LazyHomeScaffoldTest {
 
     /**
      * One in-process invocation per read-only command path.
-     *
-     * <p>Registry-backed commands ({@code search}, {@code ads list},
-     * {@code registry status}) are included deliberately: they fail fast when
-     * no registry is up, and "fails to reach the registry" must still not be a
-     * reason to materialize a home.
      */
     private static Map<String, String[]> invocations() {
         Map<String, String[]> m = new LinkedHashMap<>();
         m.put("skill-manager", new String[]{});
-        m.put("ads", new String[]{"ads"});
-        m.put("ads list", new String[]{"ads", "list"});
         m.put("artifacts", new String[]{"artifacts"});
         m.put("artifacts list", new String[]{"artifacts", "list"});
         m.put("artifacts show", new String[]{"artifacts", "show", "no-such-artifact"});
@@ -462,7 +455,6 @@ public final class LazyHomeScaffoldTest {
         m.put("list", new String[]{"list"});
         m.put("lock", new String[]{"lock"});
         m.put("lock status", new String[]{"lock", "status"});
-        m.put("login show", new String[]{"login", "show"});
         m.put("pm", new String[]{"pm"});
         m.put("pm list", new String[]{"pm", "list"});
         m.put("pm which", new String[]{"pm", "which", "uv"});
@@ -474,8 +466,6 @@ public final class LazyHomeScaffoldTest {
         m.put("project show", new String[]{"project", "show", "no-such-project"});
         m.put("project profiles", new String[]{"project", "profiles"});
         m.put("project profiles list", new String[]{"project", "profiles", "list"});
-        m.put("registry", new String[]{"registry"});
-        m.put("registry status", new String[]{"registry", "status"});
         // READ since #241's H1. The decoy probe is the point: `home describe`
         // against a home that is not there must print a refusal and create
         // NOTHING. It was WRITE, and tryReconcile ran ahead of it and wrote
@@ -483,9 +473,11 @@ public final class LazyHomeScaffoldTest {
         m.put("home describe", new String[]{"home", "describe"});
         m.put("sandbox", new String[]{"sandbox"});
         m.put("sandbox status", new String[]{"sandbox", "status"});
-        m.put("search", new String[]{"search", "no-such-unit"});
         m.put("show", new String[]{"show", "no-such-unit"});
         m.put("unit", new String[]{"unit"});
+        m.put("unit validate", new String[]{"unit", "validate", "/no/such/unit-dir"});
+        // #427 removed-command stub: prints a pointer, exits 2, writes nothing.
+        m.put("publish", new String[]{"publish", "--dry-run"});
         // Narrowed from WRITES_HOME by HIS-14 (review of #234, HIGH-2): both
         // inspect a home and neither declares --init, and while they were
         // classified as writers `tryReconcile` ran ahead of them and mutated

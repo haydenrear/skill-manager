@@ -618,6 +618,8 @@ public final class JsonContractTest {
                 "--skip-gateway");
         expect("skill-manager unit publish", Mode.FAILS, "no such unit is installed",
                 "no-such-unit");
+        expect("skill-manager unit validate", Mode.FAILS, "no unit manifest in the directory",
+                "/no/such/unit-dir-for-json-contract");
 
         // ---- success paths, which must still emit exactly one document ------
         expect("skill-manager list", Mode.SUCCEEDS, "an empty home lists nothing, in JSON");

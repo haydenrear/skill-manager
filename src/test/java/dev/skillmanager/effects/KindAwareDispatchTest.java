@@ -102,7 +102,7 @@ public final class KindAwareDispatchTest {
             assertEquals(UnitKind.PLUGIN, pluginSync.kind(), "plugin arm carries PLUGIN");
         });
 
-        suite.test("SyncGit refuses dirty registry install before returning registry failure fact", () -> {
+        suite.test("SyncGit refuses a dirty legacy-REGISTRY install like any git install", () -> {
             TestHarness h = TestHarness.create();
             Path dir = h.store().skillDir("registry-dirty");
             Files.createDirectories(dir);
@@ -128,8 +128,6 @@ public final class KindAwareDispatchTest {
             assertEquals(EffectStatus.PARTIAL, r.status(), "dirty registry sync refuses");
             assertTrue(r.facts().stream().anyMatch(f -> f instanceof ContextFact.SyncGitRefused),
                     "refusal fact present");
-            assertFalse(r.facts().stream().anyMatch(f -> f instanceof ContextFact.SyncGitRegistryUnavailable),
-                    "registry-unavailable fact does not mask dirty refusal");
         });
 
         return suite.runAll();

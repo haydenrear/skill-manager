@@ -525,7 +525,7 @@ public final class MarkdownImportValidatorTest {
         return new dev.skillmanager.effects.Executor(store, null)
                 .runStaged(SyncUseCase.buildProgram(
                         store, null,
-                        new SyncUseCase.Options(null, false, false, false, false, true),
+                        new SyncUseCase.Options(false, false, false, false, true),
                         targets, List.of()))
                 .result();
     }
@@ -596,7 +596,7 @@ public final class MarkdownImportValidatorTest {
     /** Run the real install program over a local directory, no gateway. */
     private static InstallUseCase.Report install(SkillStore store, Path unitDir) {
         var program = InstallUseCase.buildProgram(
-                store, null, null, unitDir.toString(), null, true, false, false, true);
+                store, null, unitDir.toString(), null, true, false, false, true);
         return new dev.skillmanager.effects.Executor(store, null).runStaged(program).result();
     }
 

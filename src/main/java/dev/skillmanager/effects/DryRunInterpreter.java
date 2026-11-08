@@ -176,9 +176,6 @@ public final class DryRunInterpreter implements ProgramInterpreter {
 
     private static void describe(int n, SkillEffect effect) {
         switch (effect) {
-            case SkillEffect.ConfigureRegistry e ->
-                    Log.step("[%d] persist registry URL = %s", n,
-                            e.url() == null || e.url().isBlank() ? "<no-op>" : e.url());
             case SkillEffect.EnsureGateway e ->
                     Log.step("[%d] ensure gateway running at %s", n,
                             e.gateway() == null ? "<none>" : e.gateway().baseUrl());

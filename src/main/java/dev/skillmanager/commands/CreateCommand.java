@@ -116,12 +116,12 @@ public final class CreateCommand implements Callable<Integer> {
             System.out.println("  2. edit " + dir.resolve("skill-manager-plugin.toml") + " — plugin-level deps");
             System.out.println("  3. edit " + dir.resolve("skills/" + name + "-skill/SKILL.md") + " — contained skill instructions");
             System.out.println("  4. skill-manager install " + dir + "  (install locally to test)");
-            System.out.println("  5. skill-manager publish " + dir + "  (upload to the registry)");
+            System.out.println("  5. push it to a git remote; others install it with github:<owner>/<repo>");
         } else {
             System.out.println("  1. edit " + dir.resolve("SKILL.md") + " — write the agent-facing body");
             System.out.println("  2. edit " + dir.resolve("skill-manager.toml") + " — uncomment & customize deps");
             System.out.println("  3. skill-manager install " + dir + "  (install locally to test)");
-            System.out.println("  4. skill-manager publish " + dir + "  (upload to the registry)");
+            System.out.println("  4. push it to a git remote; others install it with github:<owner>/<repo>");
         }
         return 0;
     }
@@ -318,10 +318,7 @@ public final class CreateCommand implements Callable<Integer> {
                 # TOML references by default.
                 # Any of:
                 #   "github:owner/repo"        → direct GitHub source
-                #   "skill:<name>"             → registry lookup, latest version
-                #   "plugin:<name>"            → kind-pinned registry lookup
-                #   "doc:<name>"               → doc-repo lookup
-                #   "harness:<name>"           → harness lookup
+                #   "git+https://host/repo.git" → direct git URL
                 #   "file:./local-unit"        → local unit directory
                 #   "./../sibling"             → local path (same as file:, no prefix)
                 skill_references = [

@@ -2,9 +2,6 @@
 //JAVA 21+
 //SOURCES src/main/java/**/*.java
 //SOURCES src/test/java/**/*.java
-//SOURCES ServerObservabilityContractTest.java
-//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservability.java
-//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservabilityFilter.java
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.showThreadName=false
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.showDateTime=false
@@ -25,11 +22,6 @@
 //DEPS org.slf4j:slf4j-simple:2.0.16
 //DEPS io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.62.0
 //DEPS io.opentelemetry:opentelemetry-exporter-otlp:1.62.0
-// Server-observability contract test dependencies; these are not part of the
-// SkillManager.java CLI classpath mirrored above.
-//DEPS org.springframework:spring-webmvc:6.1.13
-//DEPS org.springframework:spring-test:6.1.13
-//DEPS jakarta.servlet:jakarta.servlet-api:6.0.0
 
 import dev.skillmanager.model.CoordParserTest;
 import dev.skillmanager.model.CoordRoundTripTest;
@@ -76,7 +68,6 @@ import dev.skillmanager.artifacts.ArtifactBuildTest;
 import dev.skillmanager.artifacts.LazyArtifactHomeTest;
 import dev.skillmanager.artifacts.ArtifactPruneTest;
 import dev.skillmanager.bindings.BindingsTest;
-import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
 import dev.skillmanager.command.ShowPluginListsContainedSkillsTest;
 import dev.skillmanager.command.SkillManagerSkillDocsTest;
@@ -84,8 +75,6 @@ import dev.skillmanager.command.SyncFromLockScenarioTest;
 import dev.skillmanager.command.UninstallCliCleanupTest;
 import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
-import dev.skillmanager.registry.PublishDetectsPluginTest;
-import dev.skillmanager.registry.PublishDetectsSkillTest;
 import dev.skillmanager.effects.ContainedNameCollisionIsRefusedTest;
 import dev.skillmanager.resolve.UnitEdgeGraphTest;
 import dev.skillmanager.validation.MarkdownImportValidatorTest;
@@ -126,16 +115,9 @@ import dev.skillmanager.effects.SourceProvenanceRecorderTest;
 import dev.skillmanager.plan.PlanPolicyCategorizationTest;
 import dev.skillmanager.plan.PlanShapeInvariantTest;
 import dev.skillmanager.plan.PolicyGatingTest;
-import dev.skillmanager.resolve.ResolverContainedSkillNotMatchedTest;
 import dev.skillmanager.resolve.ResolverBundledAliasTest;
-import dev.skillmanager.resolve.ResolverDeterminismTest;
-import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
 import dev.skillmanager.resolve.ResolverDirectGitTransitiveTest;
-import dev.skillmanager.resolve.ResolverHeterogeneousRefsTest;
-import dev.skillmanager.resolve.ResolverKindFilterTest;
 import dev.skillmanager.resolve.ResolverCycleTest;
-import dev.skillmanager.registry.RegistryUnavailableExceptionTest;
-import dev.skillmanager.server.observability.ServerObservabilityContractTest;
 import dev.skillmanager.store.FetcherLocalSourceTest;
 import dev.skillmanager.store.InstalledUnitRoundTripTest;
 import dev.skillmanager.store.MigrationFromSkillSourceTest;
@@ -177,14 +159,8 @@ public class RunTests {
         failures += InstalledUnitRoundTripTest.run();
         failures += MigrationFromSkillSourceTest.run();
         failures += FetcherLocalSourceTest.run();
-        failures += RegistryUnavailableExceptionTest.run();
-        failures += ResolverKindFilterTest.run();
-        failures += ResolverHeterogeneousRefsTest.run();
-        failures += ResolverContainedSkillNotMatchedTest.run();
         failures += ResolverBundledAliasTest.run();
-        failures += ResolverDirectGitDetectsKindTest.run();
         failures += ResolverDirectGitTransitiveTest.run();
-        failures += ResolverDeterminismTest.run();
         failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
@@ -247,8 +223,6 @@ public class RunTests {
         failures += dev.skillmanager.project.MarketplaceRegistrationsTest.run();
         failures += HomeRefreshPluginsTest.run();
         failures += RefreshHarnessPluginsTest.run();
-        failures += PublishDetectsPluginTest.run();
-        failures += PublishDetectsSkillTest.run();
         failures += MarkdownImportValidatorTest.run();
         failures += UnitEdgeGraphTest.run();
         failures += ContainedNameCollisionIsRefusedTest.run();
@@ -258,7 +232,6 @@ public class RunTests {
         failures += ScaffoldPluginTest.run();
         failures += CliObservabilityTest.run();
         failures += QuietConsoleTest.run();
-        failures += ServerObservabilityContractTest.run();
         failures += CliAgentContextExecutionTest.run();
         failures += CliRefusalsAreMessagesTest.run();
         failures += JsonContractTest.run();
@@ -271,9 +244,9 @@ public class RunTests {
         failures += ProjectCommandTest.run();
         failures += RemediesAreRunnableTest.run();
         failures += CreatePluginScenarioTest.run();
+        failures += dev.skillmanager.command.UnitValidateCommandTest.run();
         failures += GatewayStatusCommandTest.run();
         failures += ListShowsKindAndShaTest.run();
-        failures += SearchShowsKindTest.run();
         failures += ShowNonSkillUnitsTest.run();
         failures += ShowPluginListsContainedSkillsTest.run();
         failures += SkillManagerSkillDocsTest.run();

@@ -476,7 +476,6 @@ public final class Executor {
             // state (next run produces the same result), or the
             // post-state compensation in {@link #compensationsFor}
             // already captures enough to walk back without a snapshot.
-            case SkillEffect.ConfigureRegistry e -> List.of();
             case SkillEffect.EnsureGateway e -> List.of();
             case SkillEffect.StopGateway e -> List.of();
             case SkillEffect.ConfigureGateway e -> List.of();
@@ -770,7 +769,6 @@ public final class Executor {
             //     RestoreInstalledUnit
             //   - lock mutation gets rollback from preStateCompensations'
             //     RestoreUnitsLock
-            case SkillEffect.ConfigureRegistry e -> List.of();
             case SkillEffect.EnsureGateway e -> List.of();
             case SkillEffect.StopGateway e -> List.of();
             case SkillEffect.ConfigureGateway e -> List.of();

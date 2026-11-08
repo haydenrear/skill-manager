@@ -19,7 +19,7 @@ import java.util.Map;
  */
 public final class ResolvedGraph {
 
-    public enum SourceKind { REGISTRY, LOCAL, GIT }
+    public enum SourceKind { LOCAL, GIT }
 
     public record Resolved(
             String name,

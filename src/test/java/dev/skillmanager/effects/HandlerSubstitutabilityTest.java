@@ -103,15 +103,12 @@ public final class HandlerSubstitutabilityTest {
                         k + ": ErrorValidated(cleared=false) for AGENT_SYNC_FAILED");
             });
 
-            suite.test(k + " — ValidateAndClearError(AUTHENTICATION_NEEDED) keeps error (no probe)", () -> {
-                // AUTHENTICATION_NEEDED is set by SyncGitHandler when the
-                // registry rejects the cached bearer + refresh fails.
-                // Probing here would cost a real registry round-trip per
-                // unit; instead the error self-clears on the next
-                // successful describeVersion (SyncGitHandler clears
-                // both REGISTRY_UNAVAILABLE and AUTHENTICATION_NEEDED on
-                // a Found result). Same no-probe semantics as the other
-                // network-bound error kinds.
+            suite.test(k + " — ValidateAndClearError(AUTHENTICATION_NEEDED) clears a legacy record", () -> {
+                // #427: AUTHENTICATION_NEEDED was only ever recorded by the
+                // registry lookup in SyncGitHandler, and that lookup is gone
+                // with the registry. A record carrying it is stale by
+                // construction -- nothing could ever clear it on success any
+                // more -- so validation drops it.
                 TestHarness h = TestHarness.create();
                 h.seedUnit("widget", kind);
                 h.run(new SkillEffect.AddUnitError(
@@ -122,13 +119,13 @@ public final class HandlerSubstitutabilityTest {
                 assertEquals(EffectStatus.OK, r.status(), k + ": status");
                 assertTrue(
                         r.facts().stream().anyMatch(f ->
-                                f instanceof ContextFact.ErrorValidated ev && !ev.cleared()),
-                        k + ": ErrorValidated(cleared=false) for AUTHENTICATION_NEEDED");
+                                f instanceof ContextFact.ErrorValidated ev && ev.cleared()),
+                        k + ": ErrorValidated(cleared=true) for AUTHENTICATION_NEEDED");
                 assertTrue(
-                        h.sourceOf("widget")
+                        !h.sourceOf("widget")
                                 .map(u -> u.hasError(InstalledUnit.ErrorKind.AUTHENTICATION_NEEDED))
                                 .orElse(false),
-                        k + ": error still recorded on the source record");
+                        k + ": error no longer recorded on the source record");
             });
 
             suite.test(k + " — RejectIfAlreadyInstalled passes when unit absent from store", () -> {

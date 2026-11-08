@@ -23,8 +23,8 @@ on:
     branches:
       - main
     # Skip the test-graph matrix when a push only touches files that don't
-    # affect tested code (release-please's bookkeeping, brew formula, docs,
-    # server Dockerfile). The release.yml workflow still runs on those pushes;
+    # affect tested code (release-please's bookkeeping, brew formula, docs).
+    # The release.yml workflow still runs on those pushes;
     # only this CI workflow short-circuits.
     #
     # `.github/workflows/**` used to be on this list, as a blanket. ARTI-12
@@ -45,8 +45,6 @@ on:
       - "release-please-config.json"
       - "infra/homebrew/**"
       - "infra/homebrew-skill-manager/**"
-      - "Dockerfile.server"
-      - "docker-compose-ghcr.yml"
       - "*.md"
   pull_request:
     # `epic/**` is here deliberately, and it is not free. An epic branch is an
@@ -73,8 +71,6 @@ on:
       - "release-please-config.json"
       - "infra/homebrew/**"
       - "infra/homebrew-skill-manager/**"
-      - "Dockerfile.server"
-      - "docker-compose-ghcr.yml"
       - "*.md"
   schedule:
     # Nightly full sweep, 07:00 UTC. This is where the graphs that are not in
@@ -105,17 +101,13 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Public pgvector image substituted for the local-registry one used in dev.
-# docker-compose.yml reads ${POSTGRES_IMAGE} with a fallback to the local tag.
 env:
-  POSTGRES_IMAGE: pgvector/pgvector:pg16
-
-  # No collector runs on a hosted runner. The noise is the SERVER's, not the
-  # CLI's: `i.o.s.m.export.PeriodicMetricReader` in the Spring Boot process the
-  # graph nodes start, retrying http://localhost:4318 on its metric interval.
+  # No collector runs on a hosted runner. The noise was the registry SERVER's
+  # (a Spring Boot process the graph nodes used to start, retrying
+  # http://localhost:4318 on its metric interval) — #427 removed that server.
   # CliObservability already installs a filter that swallows this for the CLI —
-  # verified locally against a dead endpoint, where the CLI logs nothing — so
-  # turning the SDK off at the job level is what reaches the server too.
+  # verified locally against a dead endpoint, where the CLI logs nothing — and
+  # turning the SDK off at the job level still quiets the gateway.
   #
   # This comment used to call the exporter "NOISE AND NOT A CAUSE". For the
   # 2026-09-06 nightly's log lines that was true, but it was not true of the
@@ -366,7 +358,7 @@ jobs:
 
       # Cache JBang separately from the test-graph job — the unit suite
       # only needs the much smaller dep set declared in RunTests.java
-      # (no Spring Boot), so a separate cache key keeps eviction
+      # (lighter than the graph set), so a separate cache key keeps eviction
       # pressure off the heavier graph cache. Restore-keys still falls
       # back to any prior unit-tests cache.
       - name: Cache JBang (unit tests)
@@ -560,22 +552,19 @@ jobs:
 
           echo
           echo "--- direct reachability of Maven Central ---"
-          # Probe a Spring Boot artifact that the registry server depends
-          # on. A non-200 here is the smoking gun for "Maven Central is
-          # genuinely refusing this runner" rather than cache state.
-          curl -sS -o /dev/null -w "spring-boot-starter-web 3.3.4 jar HEAD: %{http_code} (%{time_total}s)\n" \
-              -I https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-starter-web/3.3.4/spring-boot-starter-web-3.3.4.jar
-          curl -sS -o /dev/null -w "spring-boot-starter-web 3.3.4 pom HEAD: %{http_code} (%{time_total}s)\n" \
-              -I https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-starter-web/3.3.4/spring-boot-starter-web-3.3.4.pom
+          # Probe an artifact the CLI depends on. A non-200 here is the
+          # smoking gun for "Maven Central is genuinely refusing this
+          # runner" rather than cache state.
+          curl -sS -o /dev/null -w "picocli 4.7.6 jar HEAD:            %{http_code} (%{time_total}s)\n" \
+              -I https://repo1.maven.org/maven2/info/picocli/picocli/4.7.6/picocli-4.7.6.jar
+          curl -sS -o /dev/null -w "picocli 4.7.6 pom HEAD:            %{http_code} (%{time_total}s)\n" \
+              -I https://repo1.maven.org/maven2/info/picocli/picocli/4.7.6/picocli-4.7.6.pom
           curl -sS -o /dev/null -w "central root GET:                 %{http_code} (%{time_total}s)\n" \
               https://repo1.maven.org/maven2/
 
           echo
           echo "--- DNS for repo1.maven.org ---"
           getent hosts repo1.maven.org 2>&1 || echo "(getent failed)"
-
-      - name: Pre-pull postgres image
-        run: docker pull "$POSTGRES_IMAGE"
 
       # GatewayRuntime.pythonExecutable() auto-picks virtual-mcp-gateway/.venv/bin/python
       # when it exists; `uv sync` materializes the venv with fastapi/uvicorn/mcp/etc.
@@ -773,8 +762,8 @@ jobs:
       # clone fails with GitCloneAuthException — `onboard exited 9`, measured on
       # run 35712895588, eight of nine core graphs green and this the only red.
       #
-      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after postgres
-      # and the registry are up, and reads as a graph defect. This step names
+      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after the
+      # testbed is up, and reads as a graph defect. This step names
       # the missing secret before anything starts.
       #
       # The token needs READ access to TWO private repositories and nothing
@@ -1043,9 +1032,6 @@ jobs:
       #     key: jbang-${{ runner.os }}-${{ hashFiles('**/*.java') }}
       #     restore-keys: jbang-${{ runner.os }}-
 
-      - name: Pre-pull postgres image
-        run: docker pull "$POSTGRES_IMAGE"
-
       # `continue-on-error` for the same reason as the test-graph job above: a
       # browser graph that ran and went red is information, a skipped one is
       # not. The private-dependency wall that used to make this fail is gone.
@@ -1139,8 +1125,8 @@ jobs:
       # clone fails with GitCloneAuthException — `onboard exited 9`, measured on
       # run 35712895588, eight of nine core graphs green and this the only red.
       #
-      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after postgres
-      # and the registry are up, and reads as a graph defect. This step names
+      # FAIL HERE, NOT THERE. Exit 9 arrives deep inside a graph, after the
+      # testbed is up, and reads as a graph defect. This step names
       # the missing secret before anything starts.
       #
       # The token needs READ access to TWO private repositories and nothing

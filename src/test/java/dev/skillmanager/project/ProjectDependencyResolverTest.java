@@ -94,7 +94,7 @@ public final class ProjectDependencyResolverTest {
                                 """.formatted(skill));
 
                         var noGatewayInstall = InstallUseCase.buildProgram(
-                                h.store(), null, null, skill.toString(), null,
+                                h.store(), null, skill.toString(), null,
                                 true, false, false, true);
                         SkillEffect.BuildInstallPlan planEffect =
                                 (SkillEffect.BuildInstallPlan) noGatewayInstall.stage1().effects().stream()
@@ -114,7 +114,7 @@ public final class ProjectDependencyResolverTest {
                                 "no-gateway install tail still persists the unit lock");
 
                         var dryRunInstall = InstallUseCase.buildProgram(
-                                h.store(), null, null, skill.toString(), null,
+                                h.store(), null, skill.toString(), null,
                                 false, true);
                         SkillEffect.BuildInstallPlan dryRunPlan =
                                 (SkillEffect.BuildInstallPlan) dryRunInstall.stage1().effects().stream()
@@ -620,7 +620,7 @@ public final class ProjectDependencyResolverTest {
                                 h.store(),
                                 gateway,
                                 new SyncUseCase.Options(
-                                        null, false, false, false, true, true),
+                                        false, false, false, true, true),
                                 java.util.List.of(
                                         new SyncUseCase.Target.FromDir(unitName, update)),
                                 java.util.List.of());
@@ -680,7 +680,7 @@ public final class ProjectDependencyResolverTest {
                         var program = SyncUseCase.buildProgram(
                                 h.store(),
                                 null,
-                                new SyncUseCase.Options(null, false, false, false, false, true),
+                                new SyncUseCase.Options(false, false, false, false, true),
                                 java.util.List.of(new SyncUseCase.Target.FromDir("project-cli-skill", skill)),
                                 java.util.List.of());
                         Executor.Outcome<SyncUseCase.Report> outcome =

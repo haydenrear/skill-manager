@@ -1,7 +1,5 @@
 package dev.skillmanager.resolve;
 
-import dev.skillmanager.registry.AuthenticationRequiredException;
-import dev.skillmanager.registry.RegistryUnavailableException;
 import dev.skillmanager.store.GitCloneAuthException;
 import dev.skillmanager.store.GitFetcherException;
 
@@ -29,8 +27,6 @@ public final class TransitiveFailures {
      * <ul>
      *   <li>{@link GitCloneAuthException} → 9 (git credentials refused)</li>
      *   <li>{@link GitFetcherException} → 10 (generic git fetch failure)</li>
-     *   <li>{@link AuthenticationRequiredException} → 7 (skill-manager registry auth)</li>
-     *   <li>{@link RegistryUnavailableException} → 8 (registry network unreachable)</li>
      *   <li>anything else → 1 (generic failure)</li>
      * </ul>
      */
@@ -40,8 +36,6 @@ public final class TransitiveFailures {
         for (Throwable c = cause; c != null; c = c.getCause()) {
             if (c instanceof GitCloneAuthException) return GitCloneAuthException.EXIT_CODE;
             if (c instanceof GitFetcherException) return GitFetcherException.EXIT_CODE;
-            if (c instanceof AuthenticationRequiredException) return AuthenticationRequiredException.EXIT_CODE;
-            if (c instanceof RegistryUnavailableException) return RegistryUnavailableException.EXIT_CODE;
         }
         return 1;
     }

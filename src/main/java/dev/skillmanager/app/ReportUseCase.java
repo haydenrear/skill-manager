@@ -152,14 +152,12 @@ public final class ReportUseCase {
                             + " && skill-manager install github:<owner>/<repo>"
                             : "skill-manager uninstall <name> && "
                                     + "skill-manager install github:<owner>/<repo>");
-            case REGISTRY_UNAVAILABLE -> "ensure the registry is reachable, then re-run sync/upgrade "
-                    + "(or use --git-latest to bypass the registry for git-tracked skills)";
+            case REGISTRY_UNAVAILABLE, AUTHENTICATION_NEEDED -> "stale record from the removed "
+                    + "registry server; re-run `skill-manager sync" + target + "` to clear it";
             case AGENT_SYNC_FAILED -> "retry: skill-manager sync" + target
                     + " (will re-attempt the agent symlink)";
             case HARNESS_CLI_UNAVAILABLE -> "install the missing harness CLI, then re-run "
                     + "skill-manager sync" + target;
-            case AUTHENTICATION_NEEDED -> "run `skill-manager login`, then re-run "
-                    + "`skill-manager sync" + target + "`";
             case TRANSITIVE_RESOLVE_FAILED -> "fix the failing transitive (see message) "
                     + "and re-run: skill-manager sync" + target;
             // Deliberately NOT a per-unit remedy even for a block of one: the

@@ -59,7 +59,7 @@ public final class SyncMcpSplitTest {
 
             // What SyncCommand builds with no flags.
             var program = SyncUseCase.buildProgram(store, gw,
-                    new SyncUseCase.Options(null, false, false,
+                    new SyncUseCase.Options(false, false,
                             /*withMcp=*/true, /*withAgents=*/true, /*yes=*/false,
                             /*forceScripts=*/false, /*startGateway=*/false),
                     List.of(), List.of());
@@ -84,7 +84,7 @@ public final class SyncMcpSplitTest {
             GatewayConfig gw = GatewayConfig.resolve(store, "http://127.0.0.1:59999");
 
             var program = SyncUseCase.buildProgram(store, gw,
-                    new SyncUseCase.Options(null, false, false, true, true, false, false,
+                    new SyncUseCase.Options(false, false, true, true, false, false,
                             /*startGateway=*/true),
                     List.of(), List.of());
 
@@ -103,7 +103,7 @@ public final class SyncMcpSplitTest {
             // "compatibility no-op". A flag whose description says it does
             // nothing is a flag nobody can use to mean anything.
             var program = SyncUseCase.buildProgram(store, gw,
-                    new SyncUseCase.Options(null, false, false,
+                    new SyncUseCase.Options(false, false,
                             /*withMcp=*/false, true, false, false, /*startGateway=*/false),
                     List.of(), List.of());
 
@@ -128,7 +128,7 @@ public final class SyncMcpSplitTest {
             // project resolve — the exact rollback 7fce8ed fixed, at the exact
             // home tier it was reported at. It gets `startGateway`.
             var program = SyncUseCase.buildProgram(store, gw,
-                    new SyncUseCase.Options(null, false, false, /*withMcp=*/true, true, false,
+                    new SyncUseCase.Options(false, false, /*withMcp=*/true, true, false,
                             false, /*startGateway=*/false),
                     List.of(new SyncUseCase.Target.Git("alpha")), List.of());
 
@@ -164,7 +164,7 @@ public final class SyncMcpSplitTest {
             SkillStore store = seededHome("sync-mcp-exit-");
             GatewayConfig gw = GatewayConfig.resolve(store, "http://127.0.0.1:59999");
             var decoder = SyncUseCase.buildProgram(store, gw,
-                    new SyncUseCase.Options(null, false, false, true, true, false, false, false),
+                    new SyncUseCase.Options(false, false, true, true, false, false, false),
                     List.of(), List.of()).decoder();
 
             SkillEffect register = new SkillEffect.RegisterMcp(List.of(), gw);
@@ -219,10 +219,10 @@ public final class SyncMcpSplitTest {
             // start a gateway and still rolled back when it could not. The
             // exact defect 7fce8ed fixed for sync and left standing here.
             var upgrade = SyncUseCase.buildProgram(store, gw,
-                    new SyncUseCase.Options(null, false, false, true, true, false, false, false),
+                    new SyncUseCase.Options(false, false, true, true, false, false, false),
                     List.of(), List.of());
             var sync = SyncUseCase.buildProgram(store, gw,
-                    new SyncUseCase.Options(null, false, false, true, true, false, false, false),
+                    new SyncUseCase.Options(false, false, true, true, false, false, false),
                     List.of(), List.of());
 
             for (Class<? extends SkillEffect> effect : List.of(

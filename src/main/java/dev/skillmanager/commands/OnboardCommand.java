@@ -116,10 +116,6 @@ public final class OnboardCommand implements Callable<Integer> {
                     + "onboard fetches from github.")
     Path installDir;
 
-    @Option(names = "--registry",
-            description = "Registry URL override (forwarded to the install program).")
-    String registryUrl;
-
     @Option(names = "--skip-gateway",
             description = "Install skills only, don't ensure the gateway is up.")
     boolean skipGateway;
@@ -242,7 +238,7 @@ public final class OnboardCommand implements Callable<Integer> {
         String operationId = "onboard-" + UUID.randomUUID();
 
         List<SkillEffect> stage1Effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, registryUrl, !skipGateway && !dryRun));
+                ResolveContextUseCase.preflight(gw, !skipGateway && !dryRun));
 
         // Bundled-skill discovery + resolve as a single effect — emits
         // BundledSkillFound / BundledSkillFromGithub /
@@ -309,7 +305,6 @@ public final class OnboardCommand implements Callable<Integer> {
 
     private static InstalledUnit.InstallSource mapSourceKind(ResolvedGraph.SourceKind k) {
         return switch (k) {
-            case REGISTRY -> InstalledUnit.InstallSource.REGISTRY;
             case GIT -> InstalledUnit.InstallSource.GIT;
             case LOCAL -> InstalledUnit.InstallSource.LOCAL_FILE;
         };

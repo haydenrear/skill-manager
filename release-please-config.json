@@ -14,10 +14,6 @@
           "path": "src/main/java/dev/skillmanager/cli/SkillManagerCli.java"
         },
         {
-          "type": "generic",
-          "path": "SkillManagerServer.java"
-        },
-        {
           "type": "toml",
           "path": "virtual-mcp-gateway/pyproject.toml",
           "jsonpath": "$.project.version"

@@ -168,10 +168,9 @@ public final class InstallUseCase {
     }
 
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun) {
-        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun, !dryRun, true);
+        return buildProgram(store, gw, source, version, yes, dryRun, !dryRun, true);
     }
 
     /**
@@ -182,11 +181,10 @@ public final class InstallUseCase {
      * gated behind {@code withGateway}).
      */
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway) {
-        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun, withGateway, true);
+        return buildProgram(store, gw, source, version, yes, dryRun, withGateway, true);
     }
 
     /**
@@ -198,17 +196,15 @@ public final class InstallUseCase {
      * implicit one.
      */
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway,
                                                      boolean bindDefault) {
-        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun,
+        return buildProgram(store, gw, source, version, yes, dryRun,
                 withGateway, bindDefault, false);
     }
 
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
-                                                     String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway,
@@ -218,7 +214,7 @@ public final class InstallUseCase {
 
         // --- Stage 1: preflight + resolve + plan + policy gate + commit + run ---
         List<SkillEffect> stage1Effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, registryOverride, withGateway && !dryRun));
+                ResolveContextUseCase.preflight(gw, withGateway && !dryRun));
 
         // The resolver call now lives inside the program. Halts the
         // program (with a HaltWithExitCode fact) on any failure —
@@ -342,7 +338,7 @@ public final class InstallUseCase {
         String operationId = "install-staged-" + UUID.randomUUID();
 
         List<SkillEffect> stage1Effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, null, withGateway));
+                ResolveContextUseCase.preflight(gw, withGateway));
         stage1Effects.add(new SkillEffect.SnapshotMcpDeps());
         stage1Effects.add(new SkillEffect.BuildInstallPlan(graph, false, List.of(), withGateway));
         stage1Effects.add(new SkillEffect.CheckInstallPolicyGate(yes));
@@ -425,7 +421,6 @@ public final class InstallUseCase {
     private static dev.skillmanager.source.InstalledUnit.InstallSource mapSourceKind(
             ResolvedGraph.SourceKind k) {
         return switch (k) {
-            case REGISTRY -> dev.skillmanager.source.InstalledUnit.InstallSource.REGISTRY;
             case GIT -> dev.skillmanager.source.InstalledUnit.InstallSource.GIT;
             case LOCAL -> dev.skillmanager.source.InstalledUnit.InstallSource.LOCAL_FILE;
         };

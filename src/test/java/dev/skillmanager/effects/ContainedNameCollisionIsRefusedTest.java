@@ -212,7 +212,7 @@ public final class ContainedNameCollisionIsRefusedTest {
 
     private static InstallUseCase.Report install(SkillStore store, Path unitDir, boolean yes) {
         var program = InstallUseCase.buildProgram(
-                store, null, null, unitDir.toString(), null, yes, false, false, true);
+                store, null, unitDir.toString(), null, yes, false, false, true);
         return new Executor(store, null).runStaged(program).result();
     }
 
