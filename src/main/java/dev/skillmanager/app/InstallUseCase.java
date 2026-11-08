@@ -67,10 +67,26 @@ public final class InstallUseCase {
              * receipt is not printed by the renderer, so this was the only place
              * the reason survived.
              */
-            List<String> failures) {
+            List<String> failures,
+            /**
+             * #428 R5: one line per CLI install the run REFUSED
+             * ({@code ContextFact.CliRefused}: a shared-pin conflict, or a moved
+             * pin that was not reinstalled). Non-empty makes
+             * {@link #commandExitCode} non-zero.
+             */
+            List<String> cliRefusals) {
 
         public Report {
             failures = failures == null ? List.of() : List.copyOf(failures);
+            cliRefusals = cliRefusals == null ? List.of() : List.copyOf(cliRefusals);
+        }
+
+        public Report(int errorCount, int exitCode, List<String> committed,
+                      Map<McpWriter.ConfigChange, List<String>> agentConfigChanges,
+                      List<String> orphansUnregistered, int markdownImportViolations,
+                      List<String> failures) {
+            this(errorCount, exitCode, committed, agentConfigChanges, orphansUnregistered,
+                    markdownImportViolations, failures, List.of());
         }
 
         public Report(int errorCount, int exitCode, List<String> committed,
@@ -96,9 +112,16 @@ public final class InstallUseCase {
          * violation reaches an exit code rather than being a comment under the
          * success banner.
          */
+        /** #428 R5: the exit code for a run that refused a CLI install. */
+        public static final int CLI_REFUSED_EXIT_CODE = 1;
+
         public int commandExitCode() {
             if (exitCode != 0) return exitCode;
             if (committed.isEmpty()) return 4;
+            // #428 R5: the unit landed, but a CLI it declares was refused.
+            // The home is not in the state its manifests declare, so the run
+            // does not exit 0.
+            if (!cliRefusals.isEmpty()) return CLI_REFUSED_EXIT_CODE;
             if (markdownImportViolations > 0) {
                 return dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE;
             }
@@ -416,6 +439,7 @@ public final class InstallUseCase {
         List<String> orphans = new ArrayList<>();
         int importViolations = 0;
         List<String> failures = new ArrayList<>();
+        java.util.LinkedHashSet<String> cliRefusals = new java.util.LinkedHashSet<>();
         for (EffectReceipt r : receipts) {
             if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) {
                 errorCount++;
@@ -433,6 +457,7 @@ public final class InstallUseCase {
                             .add(c.agentId() + " (" + c.configPath() + ")");
                     case ContextFact.OrphanUnregistered o -> orphans.add(o.serverId());
                     case ContextFact.MarkdownImportViolation ignored -> importViolations++;
+                    case ContextFact.CliRefused c -> cliRefusals.add(c.message());
                     case ContextFact.HaltWithExitCode h -> {
                         // The first non-zero exit code wins — typed
                         // halts (resolve failure, policy gate) take
@@ -445,7 +470,7 @@ public final class InstallUseCase {
             }
         }
         return new Report(errorCount, exitCode, committed, agentChanges, orphans,
-                importViolations, failures);
+                importViolations, failures, new ArrayList<>(cliRefusals));
     }
 
     /** {@code <Effect>: <message>} — or the status alone when the receipt carried none. */

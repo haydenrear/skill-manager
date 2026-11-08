@@ -334,8 +334,14 @@ public final class CliLock {
         if (existing != null && java.util.Objects.equals(existing.version(), version)) {
             updated = existing.withRequester(requester);
         } else {
-            List<String> reqBy = new ArrayList<>();
-            if (requester != null) reqBy.add(requester);
+            // #428 R3: a new version keeps the row's other claimants. Every
+            // install path now runs CliPin.sharedConflict first, so reaching
+            // here with other live requesters means they declare this version
+            // too. Starting from {requester} alone is how a bump silently
+            // dropped them. Stale ones are pruned by CliClaimants instead.
+            List<String> reqBy = new ArrayList<>(
+                    existing == null ? List.of() : existing.requestedBy());
+            if (requester != null && !reqBy.contains(requester)) reqBy.add(requester);
             updated = new Entry(backend, tool, version, spec, sha256,
                     reqBy, Instant.now().toString(), null, null);
         }

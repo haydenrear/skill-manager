@@ -71,6 +71,11 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
     private final List<String> orphans = new ArrayList<>();
     private final List<InstallResult> mcpResults = new ArrayList<>();
     private final List<ContextFact.MarkdownImportViolation> markdownImportViolations = new ArrayList<>();
+    /**
+     * #428 R5: CLI installs this run refused, keyed by message so a refusal
+     * lifted from a sub-program onto its parent receipt is listed once.
+     */
+    private final Map<String, ContextFact.CliRefused> cliRefused = new LinkedHashMap<>();
     private final Map<String, java.util.LinkedHashMap<InstalledUnit.ErrorKind, String>> outstandingErrors =
             new LinkedHashMap<>();
 
@@ -424,6 +429,10 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         x.depName(), x.skillName(), x.message());
                 clis = clis.withFailure();
             }
+            // Collected, not printed here: the installer already warned at the
+            // point of refusal, and onComplete lists them where they cannot be
+            // read as a passing aside.
+            case ContextFact.CliRefused x -> cliRefused.putIfAbsent(x.message(), x);
             // Kept on the console: it is the evidence that the run reached its
             // lock write, which is what "the store and the lock agree" rests
             // on, and it is one line however many units there are.
@@ -519,6 +528,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         // exit code (MarkdownImportValidator.EXIT_CODE is), but a report whose
         // last line contradicts its own findings costs a round trip anyway.
         printMarkdownImportViolations();
+        printCliRefusals();
         printAgentConfigSummary();
         printOutstandingErrors();
     }
@@ -539,6 +549,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         .putIfAbsent(x.kind(), x.message());
             }
             case ContextFact.MarkdownImportViolation x -> markdownImportViolations.add(x);
+            case ContextFact.CliRefused x -> cliRefused.putIfAbsent(x.message(), x);
             case ContextFact.CantReadUnit ignored -> {}
             default -> {}
         }
@@ -590,7 +601,17 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         out.put("agentConfigChanges", agentChanges);
         out.put("markdownImportViolations", markdownImportViolations);
         out.put("outstandingErrors", outstandingErrors);
+        out.put("cliRefused", new ArrayList<>(cliRefused.values()));
         return out;
+    }
+
+    private void printCliRefusals() {
+        if (cliRefused.isEmpty()) return;
+        Log.error("cli: %d install(s) refused — this home does not hold what its units declare:",
+                cliRefused.size());
+        for (ContextFact.CliRefused x : cliRefused.values()) {
+            Log.error("  [%s] %s", x.kind(), x.message());
+        }
     }
 
     // ----------------------------------------------- summaries

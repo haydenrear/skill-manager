@@ -2,6 +2,7 @@ package dev.skillmanager.lock;
 
 import dev.skillmanager.cli.installer.CliArtifact;
 import dev.skillmanager.cli.installer.CliPresence;
+import dev.skillmanager.cli.installer.CliRefusedException;
 import dev.skillmanager.cli.installer.InstallerRegistry;
 import dev.skillmanager.cli.installer.ProvisionTally;
 import dev.skillmanager.model.CliDependency;
@@ -39,31 +40,43 @@ public final class CliInstallRecorder {
 
     private CliInstallRecorder() {}
 
+    /** What a bulk pass did, and what it refused (#428 R5). */
+    public record Result(ProvisionTally tally, java.util.List<CliRefusedException> refusals) {
+        public Result {
+            refusals = refusals == null ? java.util.List.of() : java.util.List.copyOf(refusals);
+        }
+    }
+
+    /** {@link #runWithRefusals}'s tally alone, for callers that only count. */
     public static ProvisionTally run(InstallPlan plan, SkillStore store) throws IOException {
+        return runWithRefusals(plan, store).tally();
+    }
+
+    public static Result runWithRefusals(InstallPlan plan, SkillStore store) throws IOException {
         InstallerRegistry registry = new InstallerRegistry();
         CliLock lock = CliLock.load(store);
         java.util.Map<String, java.util.Map<String, String>> pinsInThisPass = pinsByUnit(plan);
+        // #428 R4: a requester that is neither in this pass nor an installed
+        // unit still declaring the row is stale. Drop it before anything
+        // compares against the row, and persist that with the pass's save.
+        CliClaimants.prune(lock, store, claimsByUnit(plan));
         ProvisionTally tally = ProvisionTally.EMPTY;
+        java.util.List<CliRefusedException> refusals = new java.util.ArrayList<>();
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
-            // #404 / #405 review: a pin one unit moved, on a row other units
-            // still claim at the old pin, is a conflict to report -- not a
-            // reinstall. Reinstalling left bin/cli on the new pin while the
-            // other unit's record put the old one back in the lock; comparing
-            // per unit would instead flip the binary on every pass.
-            String shared = CliPin.sharedConflict(
-                    lock.get(rc.dep().backend(), RequestedVersion.of(rc.dep()).tool()),
-                    rc.dep(), rc.unitName(),
-                    pinsInThisPass.getOrDefault(key(rc.dep()), java.util.Map.of()));
-            if (shared != null) {
-                Log.warn("cli: %s", shared);
-                tally = tally.withFailure();
-                continue;
-            }
             try {
+                // #404 / #405 review, #428 R3: the shared-pin guard now runs
+                // inside installOne, so this path and every other one share it.
                 tally = tally.plus(registry.installOne(
-                        rc.dep(), store, rc.unitName(), rc.forceScripts(), lock));
+                        rc.dep(), store, rc.unitName(), rc.forceScripts(), lock,
+                        pinsInThisPass.getOrDefault(key(rc.dep()), java.util.Map.of())));
                 record(lock, registry, rc.dep(), store, rc.unitName());
+            } catch (CliRefusedException refused) {
+                // Still printed, and now also returned so the receipt can make
+                // the command exit non-zero (#428 R5).
+                Log.warn("%s", refused.getMessage());
+                tally = tally.withFailure();
+                refusals.add(refused);
             } catch (dev.skillmanager.store.WriteOutsideHomeException confined) {
                 // NOT ONE DEP'S FAILURE, so not this loop's to absorb.
                 //
@@ -92,7 +105,7 @@ public final class CliInstallRecorder {
             }
         }
         lock.save(store);
-        return tally;
+        return new Result(tally, refusals);
     }
 
     /**
@@ -176,6 +189,38 @@ public final class CliInstallRecorder {
         java.util.Map<String, java.util.Map<String, String>> out = new java.util.HashMap<>();
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc) || !CliPin.governs(rc.dep())) continue;
+            out.computeIfAbsent(key(rc.dep()), k -> new java.util.HashMap<>())
+                    .put(rc.unitName(), CliPin.of(rc.dep()));
+        }
+        return out;
+    }
+
+    /**
+     * #428 R4 on the single-dependency paths (the install effect and
+     * {@code build}): drop stale requesters from {@code cli-lock.toml}, with
+     * {@code unitName}'s declaration of {@code dep} as the only pass. Saves only
+     * when something was pruned. Best effort: a lock that cannot be read or
+     * written is left alone, and the guard still ignores stale requesters.
+     */
+    public static void pruneStaleRequesters(SkillStore store, String unitName, CliDependency dep) {
+        try {
+            CliLock lock = CliLock.load(store);
+            java.util.Map<String, java.util.Map<String, String>> pass = new java.util.HashMap<>();
+            if (unitName != null && dep != null) {
+                pass.put(key(dep), java.util.Map.of(unitName, CliPin.of(dep)));
+            }
+            if (!CliClaimants.prune(lock, store, pass).isEmpty()) lock.save(store);
+        } catch (IOException | RuntimeException e) {
+            Log.warn("cli: could not prune stale requesters from %s: %s",
+                    CliLock.FILENAME, e.getMessage());
+        }
+    }
+
+    /** Like {@link #pinsByUnit}, for every CLI dep in the pass, governed or not. */
+    static java.util.Map<String, java.util.Map<String, String>> claimsByUnit(InstallPlan plan) {
+        java.util.Map<String, java.util.Map<String, String>> out = new java.util.HashMap<>();
+        for (PlanAction a : plan.actions()) {
+            if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
             out.computeIfAbsent(key(rc.dep()), k -> new java.util.HashMap<>())
                     .put(rc.unitName(), CliPin.of(rc.dep()));
         }

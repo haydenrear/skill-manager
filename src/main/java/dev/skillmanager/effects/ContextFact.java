@@ -292,6 +292,18 @@ public sealed interface ContextFact {
     record ToolEnsured(String toolId, boolean missingOnPath, boolean bundled) implements ContextFact {}
     record CliInstalled(String skillName, String depName, String backend) implements ContextFact {}
     record CliInstallFailed(String skillName, String depName, String message) implements ContextFact {}
+    /**
+     * #428 R5: an install or rebuild REFUSED by {@code InstallerRegistry.installOne}
+     * ({@code kind}: {@code shared-pin-conflict} or {@code pin-moved-not-reinstalled}).
+     * A refusal makes the command exit non-zero and shows in its JSON; see
+     * {@link dev.skillmanager.cli.installer.CliRefusedException}.
+     */
+    record CliRefused(String skillName, String depName, String kind, String message)
+            implements ContextFact {
+        public static CliRefused of(dev.skillmanager.cli.installer.CliRefusedException e) {
+            return new CliRefused(e.unitName(), e.depName(), e.kind().token(), e.getMessage());
+        }
+    }
     /** Carries the full {@link InstallResult} so the renderer can emit the JSON block + summary. */
     record McpServerRegistered(String skillName, InstallResult result) implements ContextFact {}
     record McpServerRegistrationFailed(String skillName, InstallResult result) implements ContextFact {}

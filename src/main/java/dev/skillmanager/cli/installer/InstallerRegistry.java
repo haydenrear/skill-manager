@@ -1,5 +1,6 @@
 package dev.skillmanager.cli.installer;
 
+import dev.skillmanager.lock.CliClaimants;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.lock.CliPin;
 import dev.skillmanager.lock.Fingerprint;
@@ -164,7 +165,46 @@ public final class InstallerRegistry {
      */
     public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
                                      boolean force, CliLock lock) throws IOException {
+        return installOne(dep, store, skillName, force, lock, Map.of());
+    }
+
+    /**
+     * The one install entry every path takes: the bulk sync pass, the
+     * per-dependency install effect, and {@code build}'s rebuild.
+     *
+     * <p>#428 R3: the shared-pin guard ({@link CliPin#sharedConflict}) lives
+     * HERE, before any backend runs, so no path can bump a CLI another unit
+     * still claims at the old pin. It used to run in
+     * {@code CliInstallRecorder.run} only, and {@code build} and the
+     * per-dependency install could still bump the row and drop the other unit
+     * from {@code requested_by}.
+     *
+     * @param declaredThisPass {@code unit -> CliPin.of(dep)} for every unit
+     *        declaring this row in the caller's pass. The caller's own unit is
+     *        added if missing. Units outside the pass are read from their
+     *        installed manifests ({@link CliClaimants#livePins}).
+     * @throws CliRefusedException when the guard refuses, or when a moved pin
+     *         was not reinstalled
+     */
+    public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
+                                     boolean force, CliLock lock,
+                                     Map<String, String> declaredThisPass) throws IOException {
         String id = dep.backend();
+        if (CliPin.governs(dep)) {
+            CliLock.Entry row = currentRow(dep, store, lock);
+            if (row != null) {
+                Map<String, String> pass = new java.util.LinkedHashMap<>(
+                        declaredThisPass == null ? Map.of() : declaredThisPass);
+                if (skillName != null) pass.putIfAbsent(skillName, CliPin.of(dep));
+                String shared = CliPin.sharedConflict(row, dep, skillName,
+                        CliClaimants.livePins(store, dep.backend(),
+                                RequestedVersion.of(dep).tool(), pass));
+                if (shared != null) {
+                    throw new CliRefusedException(CliRefusedException.Kind.SHARED_PIN_CONFLICT,
+                            skillName, dep.name(), "cli: " + shared);
+                }
+            }
+        }
         InstallerBackend backend = backends.get(id);
         if (backend == null) {
             Log.warn("cli: unknown backend '%s' for %s (supported: %s)", id, dep.name(), backends.keySet());
@@ -220,7 +260,9 @@ public final class InstallerRegistry {
             // Refused, not recorded. Returning normally would let the caller
             // write the NEW pin into cli-lock.toml over the OLD binary — the
             // exact silent state this check exists to end.
-            throw new IOException("cli: " + dep.name() + "'s declared pin moved (" + pinMoved
+            throw new CliRefusedException(CliRefusedException.Kind.PIN_MOVED_NOT_REINSTALLED,
+                    skillName, dep.name(),
+                    "cli: " + dep.name() + "'s declared pin moved (" + pinMoved
                     + ") and the " + id + " backend did not reinstall it (" + outcome
                     + "); bin/cli/" + dep.name() + " still holds the old install");
         }
@@ -234,6 +276,16 @@ public final class InstallerRegistry {
      * <p>An unreadable lock is null with a warning, not a failure: it is the
      * same state as a first install, and presence decides it as it always did.
      */
+    /** {@code dep}'s row in {@code lock}, or in the file when null; null if unreadable. */
+    private static CliLock.Entry currentRow(CliDependency dep, SkillStore store, CliLock lock) {
+        try {
+            return (lock != null ? lock : CliLock.load(store))
+                    .get(dep.backend(), RequestedVersion.of(dep).tool());
+        } catch (IOException | RuntimeException unreadable) {
+            return null;
+        }
+    }
+
     private static String pinMovedSince(CliDependency dep, SkillStore store, CliLock lock) {
         if (!CliPin.governs(dep)) return null;
         try {

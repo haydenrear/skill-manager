@@ -677,8 +677,18 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // will not touch is enumerated on CliShimPruner.
         dev.skillmanager.cli.installer.CliShimPruner.prune(store);
         InstallPlan plan = buildPlan(units, e.forceScripts(), e.forceScriptUnitNames());
-        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(
-                units.size(), CliInstallRecorder.run(plan, store)));
+        CliInstallRecorder.Result result = CliInstallRecorder.runWithRefusals(plan, store);
+        ContextFact tallied = new ContextFact.CliInstalledFor(units.size(), result.tally());
+        if (result.refusals().isEmpty()) return EffectReceipt.ok(e, tallied);
+        // #428 R5: a refusal is not absorbed into an ok receipt. PARTIAL, not
+        // FAILED, because FAILED rolls the whole program back and the other
+        // deps in this pass did install; the CliRefused facts are what the use
+        // cases count into a non-zero exit, and what --json shows.
+        List<ContextFact> facts = new java.util.ArrayList<>();
+        facts.add(tallied);
+        for (var refused : result.refusals()) facts.add(ContextFact.CliRefused.of(refused));
+        return EffectReceipt.partial(e, facts,
+                result.refusals().size() + " cli install(s) refused");
     }
 
     /**
@@ -1868,6 +1878,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         InstallPlan plan = ctx.plan();
         if (plan == null) return EffectReceipt.skipped(e, "no plan in context");
         List<SkillEffect> sub = dev.skillmanager.app.PlanExpander.expand(plan, e.gateway());
+        List<ContextFact.CliRefused> refusedInSub = new java.util.ArrayList<>();
         // Run as a sub-program through the same context so source-cache /
         // error-state / plan slot stay shared. The shared renderer already
         // prints each sub-receipt as it lands, so we only roll up an
@@ -1880,6 +1891,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     int failed = 0;
                     for (EffectReceipt r : receipts) {
                         if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) failed++;
+                        // #428 R5: the one sub-fact lifted onto the parent, so
+                        // the install use case can count a CLI refusal into its
+                        // exit code. The renderer de-duplicates it.
+                        for (ContextFact f : r.facts()) {
+                            if (f instanceof ContextFact.CliRefused c) refusedInSub.add(c);
+                        }
                     }
                     return failed;
                 });
@@ -1887,9 +1904,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
         int failed;
         try { failed = runWithContext(subProgram, ctx); }
         finally { ctx.restore(snap); }
-        return failed == 0
-                ? EffectReceipt.ok(e)
-                : EffectReceipt.partial(e, failed + " plan-action effect(s) failed");
+        if (failed == 0) return EffectReceipt.ok(e);
+        return EffectReceipt.partial(e, new java.util.ArrayList<ContextFact>(refusedInSub),
+                failed + " plan-action effect(s) failed");
     }
 
     private EffectReceipt cleanupGraph(SkillEffect.CleanupResolvedGraph e, EffectContext ctx) {
@@ -2060,6 +2077,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         try {
             dev.skillmanager.cli.installer.InstallerRegistry registry =
                     new dev.skillmanager.cli.installer.InstallerRegistry();
+            CliInstallRecorder.pruneStaleRequesters(store, e.unitName(), e.dep());
             registry.installOne(e.dep(), store, e.unitName(), e.forceScripts());
             try {
                 CliLock lock = CliLock.load(store);
@@ -2078,6 +2096,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
             }
             return EffectReceipt.ok(e,
                     new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
+        } catch (dev.skillmanager.cli.installer.CliRefusedException refused) {
+            // #428 R3/R5: refused before anything was written (shared pin) or
+            // with nothing recorded (moved pin not reinstalled). PARTIAL, so
+            // the unit's install is not rolled back over a CLI conflict; the
+            // CliRefused fact carries the non-zero exit and the JSON.
+            Log.warn("%s", refused.getMessage());
+            return EffectReceipt.partial(e,
+                    List.of(ContextFact.CliRefused.of(refused)), refused.getMessage());
         } catch (Exception ex) {
             return EffectReceipt.failed(e,
                     List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(), ex.getMessage())),
@@ -2156,6 +2182,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
             // Without this the producer's `cat > "$SKILL_MANAGER_BIN_DIR/<n>"`
             // FOLLOWS the link and writes the PARENT's file, with this home's
             // absolute paths in it. Measured on the operator's root home twice.
+            // #428 R4: stale requesters are dropped first, so they cannot hold
+            // this rebuild back as shared-pin holdouts.
+            CliInstallRecorder.pruneStaleRequesters(store, e.unitName(), e.dep());
             Path inherited = dev.skillmanager.cli.installer.InstallerRegistry
                     .takeOwnershipOfShim(e.dep(), store);
             dev.skillmanager.cli.installer.InstallOutcome outcome;
@@ -2206,6 +2235,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
             }
             return EffectReceipt.ok(e,
                     new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
+        } catch (dev.skillmanager.cli.installer.CliRefusedException refused) {
+            // #428 R3/R5: build goes through the same shared-pin guard as
+            // sync. FAILED is build's existing "did not rebuild" (exit 1, and
+            // FAILED in --json); the CliRefused fact says it was a refusal.
+            return EffectReceipt.failed(e,
+                    List.of(ContextFact.CliRefused.of(refused)), refused.getMessage());
         } catch (Exception ex) {
             return EffectReceipt.failed(e,
                     List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(),
