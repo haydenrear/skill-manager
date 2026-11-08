@@ -269,60 +269,107 @@ public final class HomeSync {
                 ? HomeLock.acquireWithoutCreating(dest, "home sync --dry-run")
                 : HomeLock.acquire(dest, "home sync")) {
             if (!opts.dryRun()) to.init();
+            // Whether `before` is somebody's acknowledged baseline rather than
+            // a digest taken just now: only then can it show a change an
+            // earlier pass made and never recorded (#428 R7, the crash case).
+            boolean acknowledgedBaseline = !opts.dryRun() && HomeDigest.read(to).isPresent();
             HomeDigest before = opts.dryRun() ? null : driftBaseline(to);
             ChildHomeMaterializer materializer = new ChildHomeMaterializer(from, to);
             List<UnitSync> outcomes = new ArrayList<>();
-            for (UnitRef ref : unitsToVisit(from, to, opts.unit())) {
-                UnitSync outcome = opts.dryRun()
-                        ? materializer.planSync(ref.name(), ref.kind(), opts.merge())
-                        : materializer.applySync(ref.name(), ref.kind(), opts.merge());
-                outcomes.add(outcome);
-                if (!opts.dryRun() && outcome.unresolved()) {
-                    Log.warn("home sync: %s %s — %s", outcome.label(),
-                            outcome.status().name().toLowerCase().replace('_', ' '),
-                            outcome.detail());
+            Throwable failure = null;
+            try {
+                for (UnitRef ref : unitsToVisit(from, to, opts.unit())) {
+                    UnitSync outcome = opts.dryRun()
+                            ? materializer.planSync(ref.name(), ref.kind(), opts.merge())
+                            : materializer.applySync(ref.name(), ref.kind(), opts.merge());
+                    outcomes.add(outcome);
+                    if (!opts.dryRun() && outcome.unresolved()) {
+                        Log.warn("home sync: %s %s — %s", outcome.label(),
+                                outcome.status().name().toLowerCase().replace('_', ' '),
+                                outcome.detail());
+                    }
                 }
+            } catch (IOException | RuntimeException | Error thrown) {
+                failure = thrown;
             }
             DriftGate drift = null;
             if (!opts.dryRun()) {
-                // HP-4 (#298): a pass that moved a unit's bytes restates the
-                // destination's installed record from the manifest it now
-                // holds. The tree reconcile writes the unit directory and its
-                // materialization record and never installed/<unit>.json, so
-                // `skt status` kept printing the version first installed.
-                for (UnitSync outcome : outcomes) {
-                    if (!outcome.writes()) continue;
-                    try {
-                        RecordVersionRefresh.restateAfterWrite(to, outcome.unitName());
-                    } catch (IOException unwritable) {
-                        Log.warn("home sync: %s: could not restate installed record version (%s)",
-                                outcome.label(), unwritable.getMessage());
-                    }
+                // #428 R7: the bookkeeping runs for whatever the pass DID
+                // change, even when a later unit threw. Each unit's swap is
+                // atomic, so the units before the failure are fully moved;
+                // skipping their record and their drift entry left a home
+                // whose record and gate both described the bytes it no longer
+                // held, and a re-run (which sees them UNCHANGED) never looked
+                // again.
+                try {
+                    drift = recordWhatChanged(to, materializer, outcomes, before,
+                            acknowledgedBaseline);
+                } catch (IOException | RuntimeException bookkeeping) {
+                    if (failure == null) throw bookkeeping;
+                    failure.addSuppressed(bookkeeping);
                 }
-                materializer.cleanStaging();
-                // OHV-6 (#352) shape 3: the destination's manifest names the
-                // destination's identity, whatever was reconciled into it.
-                HomeCloner.rederiveMarketplaceIdentity(to, "home sync");
-                // #403: a pass that wrote a loadable change arms the
-                // destination's drift gate, exactly as `project sync` does, so
-                // the next launch refuses until somebody reads what moved.
-                // Both directions: the hazard is the same one tier up. Still
-                // under the lock, so a peer cannot slip a change between the
-                // pass and the digest meant to describe it.
-                //
-                // Only UPDATED / MERGED / NEW write (UnitSync#writes). HELD_BACK,
-                // CONFLICTED, UNCHANGED, REMOVED_UPSTREAM and LINKED change
-                // nothing loadable, and a pass made only of those puts nothing
-                // on disk — not even a refreshed baseline — so a no-op sync is
-                // indistinguishable afterwards from no sync at all.
-                boolean wrote = outcomes.stream().anyMatch(UnitSync::writes);
-                if (wrote && before != null) {
-                    drift = DriftGate.recordSince(to, before, "home sync").orElse(null);
+                if (failure != null) {
+                    long moved = outcomes.stream().filter(UnitSync::writes).count();
+                    Log.warn("home sync: stopped after %d unit(s) (%s); %d unit(s) already moved "
+                                    + "were recorded%s", outcomes.size(), failure.getMessage(), moved,
+                            drift != null ? " and the drift gate is armed" : "");
                 }
             }
+            if (failure instanceof IOException io) throw io;
+            if (failure instanceof RuntimeException re) throw re;
+            if (failure instanceof Error err) throw err;
             return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes,
                     opts.unit(), drift);
         }
+    }
+
+    /**
+     * Everything a pass owes the destination for the units it visited, run
+     * whether or not the pass completed (#428 R7).
+     *
+     * <ul>
+     *   <li>HP-4 (#298): restate {@code installed/<unit>.json}'s version from
+     *       the manifest now on disk — for a unit this pass wrote, and for one
+     *       it found UNCHANGED, so a record an earlier interrupted pass left
+     *       stale converges on the next run. Restating writes only on a
+     *       mismatch, so an agreeing home is untouched.</li>
+     *   <li>#403: arm the drift gate when the pass wrote a loadable change, or
+     *       when a unit it found UNCHANGED differs from the acknowledged
+     *       baseline — a change some earlier pass landed and never recorded.
+     *       HELD_BACK / CONFLICTED / LINKED units are not consulted: their
+     *       difference is local work, not something a sync moved.</li>
+     * </ul>
+     */
+    private static DriftGate recordWhatChanged(SkillStore to, ChildHomeMaterializer materializer,
+                                               List<UnitSync> outcomes, HomeDigest before,
+                                               boolean acknowledgedBaseline) throws IOException {
+        java.util.Set<String> settled = new java.util.HashSet<>();
+        for (UnitSync outcome : outcomes) {
+            if (!outcome.writes() && outcome.status() != SyncStatus.UNCHANGED) continue;
+            if (outcome.status() == SyncStatus.UNCHANGED) settled.add(outcome.unitName());
+            try {
+                RecordVersionRefresh.restateAfterWrite(to, outcome.unitName());
+            } catch (IOException unwritable) {
+                Log.warn("home sync: %s: could not restate installed record version (%s)",
+                        outcome.label(), unwritable.getMessage());
+            }
+        }
+        materializer.cleanStaging();
+        // OHV-6 (#352) shape 3: the destination's manifest names the
+        // destination's identity, whatever was reconciled into it.
+        HomeCloner.rederiveMarketplaceIdentity(to, "home sync");
+        if (before == null) return null;
+        // Only UPDATED / MERGED / NEW write (UnitSync#writes). A pass made only
+        // of HELD_BACK, CONFLICTED, UNCHANGED, REMOVED_UPSTREAM and LINKED
+        // changes nothing loadable and puts nothing on disk -- unless an
+        // UNCHANGED unit shows an unrecorded change against the acknowledged
+        // baseline, which is the one thing a re-run must still repair.
+        boolean wrote = outcomes.stream().anyMatch(UnitSync::writes);
+        boolean unrecorded = !wrote && acknowledgedBaseline && !settled.isEmpty()
+                && DriftReport.between(before, HomeDigest.compute(to)).units().stream()
+                        .anyMatch(unit -> settled.contains(unit.name()));
+        if (!wrote && !unrecorded) return null;
+        return DriftGate.recordSince(to, before, "home sync").orElse(null);
     }
 
     /**
