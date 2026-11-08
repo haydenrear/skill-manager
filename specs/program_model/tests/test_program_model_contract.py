@@ -129,7 +129,8 @@ def test_ci_does_not_gate_the_graph_matrix_off_again() -> None:
     """
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
-    for job in ("test-graph", "test-graph-browser"):
+    # `test-graph-browser` went with the Selenium graphs at HP-12 (#427).
+    for job in ("test-graph",):
         for line in _job_body(ci, job):
             stripped = line.strip()
             if stripped.startswith("#") or not stripped.startswith("if:"):

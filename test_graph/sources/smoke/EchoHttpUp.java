@@ -51,7 +51,7 @@ public class EchoHttpUp {
             // one via its pidfile, but a graph that fails before teardown
             // skips servers.down entirely, and the pidfile lives under that
             // run's random home — so the survivor can only be matched on its
-            // command line, exactly as registry.up and gateway.up do. Without
+            // command line, exactly as gateway.up does. Without
             // this, every failed run strands another fixture holding a port.
             StaleProcCleanup.killByCommandLineMatchAll(
                     ctx, "echo-http-stale-cleanup",

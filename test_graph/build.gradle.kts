@@ -3,43 +3,39 @@ plugins {
 }
 
 /**
- * THIRTY-ONE integration test graphs for skill-manager, not two.
+ * TWENTY-EIGHT integration test graphs for skill-manager, not two.
  *
  * This comment said "Two integration test graphs" and named `smoke` and
  * `sponsored` until 2026-09-19. It had been wrong for a long time and it is
  * the first thing a reader of this file believes, so the count is now stated
- * where it can be checked: thirty-one `testGraph(...)` registrations below, one
- * of them (`hyper-experiments`) conditional on an opt-in env var and otherwise
- * replaced by a same-named task that explains itself.
+ * where it can be checked: twenty-eight `testGraph(...)` registrations below,
+ * one of them (`hyper-experiments`) conditional on an opt-in env var and
+ * otherwise replaced by a same-named task that explains itself.
  *
  * Run them — one command, which also names what it did NOT run and why:
  *
  *   python3 test_graph/run-graphs.py            # the 27 graphs meant to run here
  *   python3 test_graph/run-graphs.py --list     # classification only, runs nothing
  *
- * Four are opt-in rather than dead: `browser-auth` and `password-reset` boot
- * chromedriver and a real browser, `refresh-flow` is a known ~1-in-4 flake
- * (skill-manager-integration-repository#53), and `hyper-experiments` reaches
- * github, npm and the live RunPod API (#143). `run-graphs.py` prints each one
- * with its reason and its opt-in command, because a graph excluded silently
- * cannot be told apart from a graph that failed to run.
+ * One is opt-in rather than dead: `hyper-experiments` reaches github, npm and
+ * the live RunPod API (#143). `run-graphs.py` prints it with its reason and its
+ * opt-in command, because a graph excluded silently cannot be told apart from a
+ * graph that failed to run.
  *
- * `sponsored` was the thirty-second; it tested nothing but the registry server's
- * sponsored-search feature and was removed at HP-11 (#426). `smoke`, `onboard`
- * and `plugin-smoke` no longer boot docker, Postgres or the registry server.
+ * `sponsored` was removed at HP-11 (#426), and `browser-auth`,
+ * `password-reset` and `refresh-flow` at HP-12 (#427): all four tested only
+ * the registry server, which was deleted. No graph boots docker, Postgres or
+ * a registry server any more.
  *
  * `./gradlew <name>` still runs any single graph, and
- * `./gradlew validationRunAll` still fans out over every registered graph —
- * including the three that boot a browser, which is why `run-graphs.py`
- * exists and `validationRunAll` is not the front door.
+ * `./gradlew validationRunAll` still fans out over every registered graph.
  *
  * Validate a plan first:
  *   ./gradlew validationPlanGraph --name=smoke
  *
  * Layout:
  *   sources/common/      shared infra nodes (env, gateway venv, teardown,
- *                        the home laws; postgres/registry/auth nodes remain
- *                        only for the opt-in server graphs)
+ *                        the home laws)
  *   sources/lib/         shared helper classes, pulled in via //SOURCES —
  *                        referenced by node files, never registered as nodes
  *   sources/<graph>/     nodes belonging to one graph
@@ -171,74 +167,17 @@ validationGraph {
     }
 
     /*
-     * `browser-auth` — exercises the authorization_code + PKCE flow
-     * end-to-end through a real headless Chrome. Heavier than the other
-     * graphs (pulls Selenium + chromedriver) and run on demand rather
-     * than on every commit:
-     *
-     *   ./gradlew browser-auth
-     */
-    testGraph("browser-auth") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/SeleniumReady.java")
-        node("sources/common/AccountCreated.java")
-        node("sources/browser-auth/BrowserAuthorized.java")
-        node("sources/common/PostgresDown.java").dependsOn("browser.authorized")
-    }
-
-    /*
-     * `password-reset` — full self-serve password-reset flow end-to-end:
-     * account.created → initial.login → reset.requested → password.changed
-     * → final.login. Reads the reset token straight from Postgres so the
-     * graph is mail-free. Like browser-auth it pulls Selenium +
-     * chromedriver; run on demand, not every commit.
-     */
-    /*
-     * `refresh-flow` — forces a 3-second access-token TTL on the server
-     * so we can exercise the refresh_token grant under real expiry
-     * (rather than corruption) end-to-end. Pulls Selenium like the
-     * browser-auth graph; run on demand.
-     */
-    testGraph("refresh-flow") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/refresh-flow/ShortAccessTokenTtl.java")
-        node("sources/common/RegistryUp.java").dependsOn("short.access.token.ttl")
-        node("sources/common/SeleniumReady.java")
-        node("sources/common/AccountCreated.java")
-        node("sources/refresh-flow/RefreshOnExpiry.java")
-        node("sources/common/PostgresDown.java").dependsOn("refresh.on.expiry")
-    }
-
-    testGraph("password-reset") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/SeleniumReady.java")
-        node("sources/common/AccountCreated.java")
-        node("sources/password-reset/InitialLogin.java")
-        node("sources/password-reset/ResetRequested.java")
-        node("sources/password-reset/PasswordChanged.java")
-        node("sources/password-reset/FinalLogin.java")
-        node("sources/password-reset/RefreshHonored.java")
-        node("sources/common/PostgresDown.java").dependsOn("refresh.honored")
-    }
-
-    /*
      * `hyper-experiments` — onboarding round-trip for the
      * hyper-experiments-skill repo:
      *
      *   1. git clone (or copy from HYPER_LOCAL_DIR) the source.
-     *   2. publish to the per-run registry as `hyper-experiments`.
-     *   3. install by name from a fresh cwd (not the checkout).
-     *   4. assert tb-query CLI dep landed under bin/cli/.
-     *   5. assert runpod MCP dep is registered with the gateway.
-     *   6. teardown.
+     *   2. install it from a fresh cwd by COORDINATE — git+<HYPER_GIT_URL>
+     *      at HYPER_GIT_REF, or file:<the HYPER_LOCAL_DIR copy>. (#427: it
+     *      used to publish to a per-run registry and install by name; the
+     *      registry is gone, and with it the publish/persistence nodes.)
+     *   3. assert tb-query CLI dep landed under bin/cli/.
+     *   4. assert runpod MCP dep is registered with the gateway.
+     *   5. teardown.
      *
      * This graph reaches THREE third-party services it does not control:
      * github.com (the clone in hyper.checkout), npm (the runpod MCP server
@@ -289,25 +228,11 @@ validationGraph {
         }
     } else testGraph("hyper-experiments") {
         node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        // Flips SKILL_REGISTRY_ALLOW_FILE_UPLOAD=false on the registry
-        // server so this graph exercises the github-only publish path
-        // end-to-end (the production default).
-        node("sources/hyper/EnvPreparedHyper.java")
-        node("sources/common/RegistryUp.java")
-                .dependsOn("env.hyper.prepared")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
         // Bring the gateway venv up before the gateway itself.
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
 
         node("sources/hyper/HyperCheckout.java")
-        node("sources/hyper/HyperPublished.java")
-        // Asserts the registry persisted a github pointer only — no tarball
-        // bytes on disk, sha256/size_bytes null in skill_versions for the
-        // hyper-experiments rows.
-        node("sources/hyper/HyperRegistryNoTarball.java")
         node("sources/hyper/HyperInstalled.java")
         node("sources/hyper/HyperCliTbquery.java")
         node("sources/hyper/HyperRunpodRegistered.java")
@@ -320,7 +245,7 @@ validationGraph {
         node("sources/hyper/HyperRunpodTools.java")
         node("sources/hyper/HyperRunpodToolInvoked.java")
 
-        // Source-provenance + sync against the real github-published
+        // Source-provenance + sync against the real git-installed
         // hyper-experiments install — exercises the implicit-origin
         // path (install pins the github URL as the source-record
         // origin, so sync without --from just works):
@@ -334,12 +259,6 @@ validationGraph {
         //      file survives the 3-way merge, source-record hash
         //      refreshed
         node("sources/hyper/HyperSourceRecorded.java")
-        // DB-side round-trip: the postgres row for hyper@<version>
-        // has the same gitSha that install wrote into the
-        // sources/<name>.json record AND that the install dir's
-        // `git rev-parse HEAD` reports. If any of the three drift,
-        // server-versioned sync would target the wrong commit.
-        node("sources/hyper/HyperServerHashMatchesInstall.java")
         node("sources/hyper/HyperSyncCleanNoOp.java")
         node("sources/hyper/HyperSyncRefusesOnLocalCommit.java")
         node("sources/hyper/HyperSyncMergesAfterCommit.java")
@@ -347,7 +266,6 @@ validationGraph {
         node("sources/common/ServersDown.java")
                 .dependsOn("hyper.cli.tbquery", "hyper.runpod.tool.invoked",
                         "hyper.sync.merges.after.commit")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
     /*
@@ -1349,8 +1267,8 @@ validationGraph {
      *
      * DOCKER-FREE, on purpose: no postgres, no compose, no registry, so it
      * cannot fail for reasons that are not about skill-manager, and two ticket
-     * worktrees can run it at once (which #104 measured they cannot do for the
-     * eight graphs that declare PostgresUp).
+     * worktrees can run it at once (which #104 measured they could not do for
+     * the graphs that declared PostgresUp, before #426/#427 removed it).
      *
      * It is NOT network-free end to end, and saying so would be the same
      * comfortable overstatement #124 had to walk back on its own graph:

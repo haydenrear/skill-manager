@@ -12,7 +12,7 @@ import java.nio.file.Path;
 
 /**
  * Acquires a clean copy of {@code hyper-experiments-skill} for the rest of
- * the graph to publish + install.
+ * the graph to install (and, with {@code HYPER_LOCAL_DIR}, to install from).
  *
  * <p>Default: {@code git clone} the public repo at
  * {@code https://github.com/haydenrear/hyper-experiments-skill.git} (override
@@ -23,8 +23,7 @@ import java.nio.file.Path;
  * <p>Local-iteration override: set {@code HYPER_LOCAL_DIR} to a directory
  * containing {@code SKILL.md} + {@code skill-manager.toml} (typically the
  * outer hyper-experiments-skill checkout). The node copies that tree
- * verbatim, skipping {@code .git/} and {@code libs/} to keep the published
- * tarball small. Use this when validating uncommitted manifest changes
+ * verbatim, skipping {@code .git/} and {@code libs/} to keep the copy small. Use this when validating uncommitted manifest changes
  * before pushing to GitHub.
  */
 public class HyperCheckout {
@@ -119,7 +118,7 @@ public class HyperCheckout {
 
         // Copy the working tree but skip the heavy / irrelevant subtrees.
         // This mirrors the .gitignore (libs/ is gitignored) and avoids
-        // sending a 10 MB tarball that the registry would reject.
+        // copying a 10 MB tree the install does not need.
         copySelectively(src, dest);
 
         boolean manifestOk = Files.isRegularFile(dest.resolve("skill-manager.toml"));

@@ -15,9 +15,9 @@ import java.nio.file.Path;
 
 /**
  * Validates source-provenance recording end-to-end against the real
- * {@code hyper-experiments} install. Because the registry resolved this
- * skill to a github pointer and {@link dev.skillmanager.store.Fetcher}
- * cloned via JGit, the installed copy must land with {@code .git/}
+ * {@code hyper-experiments} install. Because it was installed from a
+ * {@code git+} coordinate and {@link dev.skillmanager.store.Fetcher}
+ * cloned it, the installed copy must land with {@code .git/}
  * intact and the source record must report it as {@code kind=GIT}
  * with the github URL pinned to {@code origin} and {@code gitHash}
  * matching the actual {@code HEAD} of the install dir.
