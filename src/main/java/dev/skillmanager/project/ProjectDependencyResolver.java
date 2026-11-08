@@ -278,13 +278,11 @@ public final class ProjectDependencyResolver {
         List<String> off = new ArrayList<>();
         for (DeclaredPin p : pins) {
             if (!names.contains(p.unitName())) continue;
-            UnitKind kind = records.read(p.unitName())
-                    .map(dev.skillmanager.source.InstalledUnit::unitKind).orElse(UnitKind.SKILL);
-            String head = dev.skillmanager.source.GitOps.headHash(store.unitDir(p.unitName(), kind));
-            if (head == null || !head.startsWith(p.revision().toLowerCase())) {
-                off.add(p.unitName() + " (pin " + p.revision() + ", HEAD "
-                        + (head == null ? "<none>" : head.substring(0, Math.min(10, head.length()))) + ")");
-            }
+            // #428 R2: HEAD alone is not the pin. The installed record and the
+            // units lock are what every later reader trusts, and either write
+            // can fail after HEAD moved; read all three back from disk.
+            List<String> why = dev.skillmanager.effects.SyncGitPin.offPin(store, p.unitName(), p.revision());
+            if (!why.isEmpty()) off.add(p.unitName() + " (pin " + p.revision() + ": " + String.join("; ", why) + ")");
         }
         if (!off.isEmpty() || outcome.rolledBack() || report.worstRc() != 0) {
             throw new IOException("project resolve could not put declared unit(s) on their pin: "

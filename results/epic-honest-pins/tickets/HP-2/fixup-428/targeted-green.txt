@@ -1,0 +1,17 @@
+  [PASS] pin NEWER than HEAD but older than main's tip lands on the pin, not the tip
+  [PASS] pin OLDER than HEAD moves HEAD back (no edit)
+  [PASS] pin OLDER than HEAD with an edit that applies keeps the edit
+  [PASS] an edit that CONFLICTS with the pin refuses by name and changes nothing
+  [PASS] a local COMMIT the pin does not contain refuses (moving would discard it)
+  [PASS] an UNAVAILABLE sha fails closed and changes nothing
+  [PASS] ordinary (unpinned) git-latest sync still follows the ref to main's tip
+  [PASS] lock row with resolved_sha → pinned target carrying origin/ref/sha together
+  [PASS] CLI: sync --lock with a bumped resolved_sha lands on B (HEAD, record, lock, bytes); second run is a no-op; dry-run writes nothing
+  [PASS] CLI: sync <unit> --to <older sha> moves back and a plain sync then stays
+  [PASS] #428 R1: a MID-MERGE store refuses by name and touches nothing (edits, HEAD, MERGE_HEAD)
+  [PASS] #428 R1: moveTo itself refuses when git stash FAILS, instead of resetting over the edits
+  [PASS] #428 R2: an unwritable installed record fails the pinned move by name
+  [PASS] #428 R2: CLI sync --to with an unwritable record exits non-zero
+  [PASS] #428 R2: CLI sync --to whose units.lock cannot be written exits non-zero
+  [PASS] #428 R2: offPin names a units.lock that still holds the old sha
+FAILURES: 0

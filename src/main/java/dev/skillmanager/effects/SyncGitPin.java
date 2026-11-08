@@ -80,7 +80,8 @@ public final class SyncGitPin {
         if (sha.equals(head)) {
             // Already there. Restate the record only if it disagrees, so a
             // converged home is not rewritten on every run.
-            restateRecord(ctx, name, origin, recordedRef, sha, src, false);
+            String recordFailure = restateRecord(ctx, name, origin, recordedRef, sha, src, false);
+            if (recordFailure != null) return refuse(e, name, recordFailure);
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(name, pin.label()));
         }
 
@@ -96,6 +97,14 @@ public final class SyncGitPin {
                     + " does not contain; moving would discard them — push or drop them, then re-run");
         }
 
+        // #428 R1: a store git cannot stash (mid-merge, unmerged index) is a
+        // store whose edits a `reset --hard` would destroy. Refuse before the
+        // escrow or the reset touch anything.
+        if (GitOps.isMidMerge(storeDir) || !GitOps.unmergedFiles(storeDir).isEmpty()) {
+            return refuse(e, name, "the store is mid-merge (unresolved MERGE_HEAD or unmerged paths); "
+                    + "finish or abort the merge in " + storeDir + ", then re-run — nothing was changed");
+        }
+
         SyncGitHandler.BaselineWatch watch = SyncGitHandler.BaselineWatch.before(ctx.store(), name, e.kind());
         MaterializationEscrow escrow = MaterializationEscrow.lift(storeDir, homeRootOf(ctx), true);
         String failure;
@@ -106,7 +115,11 @@ public final class SyncGitPin {
         }
         if (failure != null) return refuse(e, name, failure);
 
-        restateRecord(ctx, name, origin, recordedRef, sha, src, true);
+        // #428 R2: the record is what the units lock is regenerated from. A move
+        // whose record could not be written is NOT a success: HEAD and record
+        // now disagree, and saying OK is how units.lock kept the old sha.
+        String recordFailure = restateRecord(ctx, name, origin, recordedRef, sha, src, true);
+        if (recordFailure != null) return refuse(e, name, recordFailure);
         watch.afterUpstreamMove();
         Log.info("%s: moved %s → pin %s%s", name, shortSha(head), shortSha(sha),
                 worktreeEdits ? " (local edits carried onto the pin)" : "");
@@ -115,7 +128,17 @@ public final class SyncGitPin {
 
     /** @return null on success, else why the store was left exactly as it was. */
     static String moveTo(Path storeDir, String preHead, String sha) {
-        boolean stashed = GitOps.stashAll(storeDir, "skill-manager-pin");
+        // stashAll answers false both for "nothing to stash" and for "the stash
+        // FAILED" (#428 R1). Only the first may proceed to a reset: ask the tree
+        // first, and after a stash, ask again that it is really clean.
+        boolean dirty = !GitOps.porcelainStatus(storeDir).isBlank();
+        boolean stashed = dirty && GitOps.stashAll(storeDir, "skill-manager-pin");
+        if (dirty && (!stashed || !GitOps.porcelainStatus(storeDir).isBlank())) {
+            if (stashed) GitOps.stashPop(storeDir);
+            return "could not set the local edits aside (git stash "
+                    + (stashed ? "left the tree dirty" : "failed")
+                    + "); refusing to reset over them — nothing was changed";
+        }
         if (!GitOps.resetHard(storeDir, sha)) {
             GitOps.resetHard(storeDir, preHead);
             if (stashed) GitOps.stashPop(storeDir);
@@ -132,20 +155,66 @@ public final class SyncGitPin {
         return null;
     }
 
-    private static void restateRecord(EffectContext ctx, String name, String origin, String ref,
-                                      String sha, InstalledUnit src, boolean moved) {
-        if (src == null) return;
+    /** @return null when the record now names the pin, else why it does not. */
+    private static String restateRecord(EffectContext ctx, String name, String origin, String ref,
+                                        String sha, InstalledUnit src, boolean moved) {
+        if (src == null) {
+            return moved ? "moved to pin " + shortSha(sha) + " but there is no installed record to "
+                    + "restate — HEAD and record disagree" : null;
+        }
         boolean same = sha.equals(src.gitHash()) && java.util.Objects.equals(origin, src.origin())
                 && java.util.Objects.equals(ref, src.gitRef());
-        if (same && !moved) return;
+        if (same && !moved) return null;
         try {
             InstalledUnit next = new InstalledUnit(src.name(), src.version(), src.kind(), src.installSource(),
                     origin, sha, ref, UnitStore.nowIso(), src.errors(), src.unitKind());
             ctx.writeSource(RecordVersionRefresh.orSame(ctx.store(), next));
+        } catch (IOException | RuntimeException ex) {
+            return (moved ? "moved to pin " + shortSha(sha) + " but " : "at pin " + shortSha(sha) + " but ")
+                    + "the installed record could not be written (" + ex.getMessage() + "); it still names "
+                    + shortSha(src.gitHash()) + ", so units.lock would too — fix the home and re-run";
+        }
+        try {
             ctx.clearError(name, InstalledUnit.ErrorKind.MERGE_CONFLICT);
         } catch (IOException ex) {
-            Log.warn("could not record pin %s for %s: %s", shortSha(sha), name, ex.getMessage());
+            Log.warn("could not clear MERGE_CONFLICT on %s: %s", name, ex.getMessage());
         }
+        return null;
+    }
+
+    /**
+     * #428 R2: the post-run check every pinned caller makes. Reads the store
+     * HEAD, the installed record and the units lock ON DISK and names each that
+     * does not agree, so a swallowed record or lock write can no longer pass as
+     * convergence. {@code wantPrefix} null asks only that the three agree.
+     */
+    public static List<String> offPin(dev.skillmanager.store.SkillStore store, String name,
+                                      String wantPrefix) {
+        List<String> off = new java.util.ArrayList<>();
+        InstalledUnit rec = new UnitStore(store).read(name).orElse(null);
+        dev.skillmanager.model.UnitKind kind = rec != null ? rec.unitKind() : dev.skillmanager.model.UnitKind.SKILL;
+        String head = GitOps.headHash(store.unitDir(name, kind));
+        if (head == null) {
+            off.add("no HEAD");
+            return off;
+        }
+        if (wantPrefix != null && !head.startsWith(wantPrefix.toLowerCase())) {
+            off.add("HEAD " + shortSha(head) + " is not " + wantPrefix);
+        }
+        if (rec == null || !head.equals(rec.gitHash())) {
+            off.add("installed record names " + (rec == null ? "<none>" : shortSha(rec.gitHash())));
+        }
+        try {
+            var lock = dev.skillmanager.lock.UnitsLockReader.read(
+                    dev.skillmanager.lock.UnitsLockReader.defaultPath(store));
+            var row = lock.units().stream().filter(u -> u.name().equals(name)).findFirst().orElse(null);
+            if (row == null || !head.equals(row.resolvedSha())) {
+                off.add("units.lock names " + (row == null ? "<no row>" : shortSha(row.resolvedSha())));
+            }
+        } catch (IOException | RuntimeException ex) {
+            off.add("units.lock unreadable (" + ex.getMessage() + ")");
+        }
+        return off;
     }
 
     private static EffectReceipt refuse(SkillEffect.SyncGit e, String name, String reason) {

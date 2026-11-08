@@ -312,6 +312,17 @@ public final class SyncCommand implements Callable<Integer> {
         // wouldn't otherwise surface as a non-zero exit.
         int worst = report.worstRc();
         if (worst != 0) return worst;
+        // #428 R2: `--to` is a promise about HEAD, the installed record AND the
+        // units lock. Read all three back and name the unit if any disagrees —
+        // a swallowed record write or a failed lock write used to exit 0 here.
+        if (!dryRun && toRevision != null) {
+            List<String> off = dev.skillmanager.effects.SyncGitPin.offPin(store, name,
+                    toRevision.matches("[0-9a-fA-F]{7,40}") ? toRevision : null);
+            if (!off.isEmpty()) {
+                Log.error("%s: did not reach %s — %s", name, toRevision, String.join("; ", off));
+                return 1;
+            }
+        }
         if (report.errorCount() > 0) return 1;
         // Typed rather than folded into the generic 1, so a caller can tell
         // this apart from a post-update tail failure. `sync` already exits
@@ -534,8 +545,8 @@ public final class SyncCommand implements Callable<Integer> {
         }
         int worst = report.worstRc();
         if (worst != 0) return worst;
-        if (report.errorCount() > 0) return 1;
         if (!dryRun && !reachedLock(store, diff)) return 1;
+        if (report.errorCount() > 0) return 1;
         return 0;
     }
 
@@ -571,6 +582,11 @@ public final class SyncCommand implements Callable<Integer> {
                     off.add("ref " + got.ref() + " != " + want.ref());
                 if (want.origin() != null && !want.origin().isBlank() && !want.origin().equals(got.origin()))
                     off.add("origin " + got.origin() + " != " + want.origin());
+                // #428 R2: the live rows above are the RECORDS; the lock file
+                // is a separate write that can fail on its own.
+                if (want.resolvedSha() != null) {
+                    off.addAll(dev.skillmanager.effects.SyncGitPin.offPin(store, want.name(), want.resolvedSha()));
+                }
             }
             if (!off.isEmpty()) {
                 ok = false;
