@@ -116,6 +116,7 @@ import dev.skillmanager.plan.PlanPolicyCategorizationTest;
 import dev.skillmanager.plan.PlanShapeInvariantTest;
 import dev.skillmanager.plan.PolicyGatingTest;
 import dev.skillmanager.resolve.ResolverBundledAliasTest;
+import dev.skillmanager.resolve.ResolverBareNameTransitiveTest;
 import dev.skillmanager.resolve.ResolverDirectGitTransitiveTest;
 import dev.skillmanager.resolve.ResolverCycleTest;
 import dev.skillmanager.store.FetcherLocalSourceTest;
@@ -161,6 +162,7 @@ public class RunTests {
         failures += FetcherLocalSourceTest.run();
         failures += ResolverBundledAliasTest.run();
         failures += ResolverDirectGitTransitiveTest.run();
+        failures += ResolverBareNameTransitiveTest.run();
         failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();

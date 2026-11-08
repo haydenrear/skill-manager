@@ -67,6 +67,8 @@ public final class SyncFromLocalDirHandler {
                 case 0 -> EffectReceipt.ok(e, new ContextFact.SyncGitMerged(skillName, mr.fetchedHash()));
                 case 8 -> EffectReceipt.partial(e, "merge conflict",
                         new ContextFact.SyncGitConflicted(skillName, mr.conflictedFiles()));
+                case SyncGitHandler.MergeResult.REFUSED -> EffectReceipt.partial(e, mr.refusal(),
+                        new ContextFact.SyncGitFailed(skillName, mr.refusal()));
                 default -> EffectReceipt.failed(e,
                         java.util.List.of(new ContextFact.SyncGitFailed(skillName, "merge rc=" + mr.rc())),
                         "merge failed");

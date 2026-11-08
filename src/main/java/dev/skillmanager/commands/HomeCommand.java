@@ -1455,6 +1455,9 @@ public final class HomeCommand {
             // real run would have produced, so nothing branching on it changes.
             // See HomeSync#run, issue #51.
             if (report.destinationFrozen()) return FrozenHomeException.EXIT_CODE;
+            // #434 F7: the bytes moved and the record did not. Not a conflict,
+            // and not a success either.
+            if (!report.recordFailures().isEmpty()) return 1;
             // Held-back units are the documented default outcome of a plain
             // sync, so they are reported and do not fail the command. A
             // conflict is different: it is a decision nothing here is allowed
@@ -1554,6 +1557,7 @@ public final class HomeCommand {
     // --------------------------------------------------------- home sync IO
 
     private static void renderSync(HomeSync.Report report) {
+        for (String failure : report.recordFailures()) Log.error("home sync: %s", failure);
         Log.detail("  from:        %s", report.from());
         Log.info("  to:          %s%s", report.to(), report.dryRun() ? "  (dry run — nothing written)" : "");
         if (report.targeted()) {
@@ -1635,6 +1639,7 @@ public final class HomeCommand {
                 // script that syncs and then launches reads this instead of
                 // discovering the refusal at launch.
                 + ",\"driftPending\":" + (report.drift() != null)
+                + ",\"recordFailures\":" + strings(report.recordFailures())
                 + ",\"units\":" + unitsJson(report.units()) + "}";
     }
 

@@ -128,17 +128,9 @@ public final class SyncGitPin {
 
     /** @return null on success, else why the store was left exactly as it was. */
     static String moveTo(Path storeDir, String preHead, String sha) {
-        // stashAll answers false both for "nothing to stash" and for "the stash
-        // FAILED" (#428 R1). Only the first may proceed to a reset: ask the tree
-        // first, and after a stash, ask again that it is really clean.
-        boolean dirty = !GitOps.porcelainStatus(storeDir).isBlank();
-        boolean stashed = dirty && GitOps.stashAll(storeDir, "skill-manager-pin");
-        if (dirty && (!stashed || !GitOps.porcelainStatus(storeDir).isBlank())) {
-            if (stashed) GitOps.stashPop(storeDir);
-            return "could not set the local edits aside (git stash "
-                    + (stashed ? "left the tree dirty" : "failed")
-                    + "); refusing to reset over them — nothing was changed";
-        }
+        GitOps.SetAside aside = GitOps.setAside(storeDir, "skill-manager-pin");
+        if (!aside.ok()) return aside.failure();
+        boolean stashed = aside.stashed();
         if (!GitOps.resetHard(storeDir, sha)) {
             GitOps.resetHard(storeDir, preHead);
             if (stashed) GitOps.stashPop(storeDir);
