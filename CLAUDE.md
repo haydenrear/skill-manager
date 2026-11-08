@@ -11,16 +11,14 @@ python3 test_graph/run-graphs.py           # the 27 graphs meant to run here
 python3 test_graph/run-graphs.py --list    # classification only; runs nothing
 ```
 
-Thirty-one graphs are registered. Twenty-seven run; four are OPT-IN and excluded by
-default — `browser-auth` and `password-reset` boot chromedriver and a real
-browser, `refresh-flow` is a known ~1-in-4 flake
-(skill-manager-integration-repository#53), and `hyper-experiments` reaches
-github, npm and the live RunPod API (#143). `honest-pins` (#411) was opt-in as
+Twenty-eight graphs are registered. Twenty-seven run; one is OPT-IN and excluded
+by default — `hyper-experiments` reaches github, npm and the live RunPod API
+(#143); it installs from a git/file coordinate since HP-12. `honest-pins` (#411) was opt-in as
 that epic's red-by-design baseline until its terminal evaluation (HP-9, #413)
 read it green and moved it into the run set. `sponsored` was removed at HP-11
-(#426): it tested only the registry server's sponsored search, and skill-manager
-is not used through that server. `run-graphs.py` names all four and
-prints each one's opt-in command, so "did not run" can be told apart from "is
+(#426), and `browser-auth`, `password-reset` and `refresh-flow` at HP-12 (#427),
+with the registry server they tested. `run-graphs.py` names the opt-in graph and
+prints its opt-in command, so "did not run" can be told apart from "is
 not run here". It reads its verdicts from the sweep ledger, and it always exits
 0: it reports, it does not gate.
 
@@ -51,7 +49,7 @@ arbitrary set. `run-graphs.py` resolves it (standalone rung first, then
 R=.skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py
 python3 $R <graph>                             # one graph (smoke / plugin-smoke / ...)
 python3 $R doc-smoke artifact-dag sync-settles # several graphs
-python3 $R --all                               # EVERY registered graph, INCLUDING the browser ones
+python3 $R --all                               # EVERY registered graph, INCLUDING the opt-in one
 ```
 
 A full `--all` run is ~7 minutes. Each registered graph runs as a Gradle
@@ -111,13 +109,12 @@ summary; add `--continue` if you want one.
 - **Policy gate prompts hang in non-interactive contexts**: tests pass
   `--yes`; the test home's `policy.toml` (written by `EnvPrepared`)
   also turns off every install-confirmation gate.
-- **Docker is not needed by the run set.** Since HP-11 (#426) `smoke`,
-  `onboard` and `plugin-smoke` boot no docker, Postgres or registry server,
-  and `sponsored` is gone; `examples/hello-skill` declares its MCP server as a
-  session-scoped npm load, so installing it pulls no image. Only the opt-in
-  server graphs (`browser-auth`, `password-reset`, `refresh-flow`,
-  `hyper-experiments`) still bring up Postgres and the registry through
-  docker compose.
+- **Docker is not needed by any graph.** Since HP-11 (#426) `smoke`,
+  `onboard` and `plugin-smoke` boot no docker, Postgres or registry server;
+  HP-12 (#427) deleted the server itself, the three browser graphs that
+  drove it, and hyper-experiments' registry nodes. `examples/hello-skill`
+  declares its MCP server as a session-scoped npm load, so installing it
+  pulls no image.
 - **Concurrent worktrees kill each other's gateways**: `gateway.up`'s stale
   cleanup terminates every `gateway.server` process whose command line holds
   `sm-testgraph-`, including a gateway another worktree's graph is using.
@@ -137,8 +134,8 @@ Do not read the matrix out of `ci.yml` — it is computed, not typed.
 | event | graph set |
 | --- | --- |
 | `push` on `main`; `pull_request` into `main` or `epic/**` | **none** — suspended, see below |
-| `schedule` (07:00 UTC) | **full** — every registered graph bar the named exclusions, plus the Selenium job |
-| `workflow_dispatch` | `graph_set: core\|full`, `run_browser_graphs: true\|false` |
+| `schedule` (07:00 UTC) | **full** — every registered graph bar the named exclusion |
+| `workflow_dispatch` | `graph_set: core\|full` |
 
 **The graphs do not run on a push or a PR right now**, at the owner's
 instruction ("disable the graphs and just run them locally for now"). The
@@ -182,9 +179,8 @@ python3 .github/scripts/select-graph-set.py --scope full --print
 
 The selector fails if a name in `CORE` or `EXCLUDED` no longer exists in
 `test_graph/build.gradle.kts`, so renaming a graph breaks the selector
-loudly instead of shrinking the matrix silently. **Two graphs are excluded
-from every automatic set** — `refresh-flow` (integration-repo #53, ~1-in-4
-flake by construction) and `hyper-experiments` (#143, three third-party
+loudly instead of shrinking the matrix silently. **One graph is excluded
+from every automatic set** — `hyper-experiments` (#143, three third-party
 services) — and the reason is printed into the job summary of every run.
 
 **How many graphs did a run actually execute?** Read it, do not infer it:

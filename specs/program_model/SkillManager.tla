@@ -126,27 +126,29 @@ ProjectProfileChildHomeEdges == {<<ProjectA, ProfileA, ChildHomeA>>}
 
 CliRootCommand == "skill-manager"
 
+\* HP-12 (#427): the registry-only commands (ads, create-account, login,
+\* reset-password, search, registry, publish) and their workflows were removed
+\* with the registry server; publish-unit now routes to `unit publish`.
+
 CliTopLevelCommands ==
-  {"ads", "bind", "bindings", "cli", "create", "create-account", "deps",
-   "env", "gateway", "harness", "install", "list", "lock", "login",
-   "onboard", "pm", "policy", "project", "publish", "registry", "rebind",
-   "remove", "reset-password", "search", "show", "sync", "unbind",
-   "uninstall", "upgrade"}
+  {"bind", "bindings", "cli", "create", "deps",
+   "env", "gateway", "harness", "install", "list", "lock",
+   "onboard", "pm", "policy", "project", "rebind",
+   "remove", "show", "sync", "unbind",
+   "uninstall", "unit", "upgrade"}
 
 CliSubcommands ==
-  {"ads list", "ads create", "ads delete",
-   "bindings list", "bindings show",
+  {"bindings list", "bindings show",
    "cli list", "cli show", "cli path",
    "env sync", "env run",
    "gateway up", "gateway down", "gateway status", "gateway set",
    "harness instantiate", "harness rm", "harness list", "harness show",
    "lock status",
-   "login logout", "login show",
    "pm install", "pm list", "pm which", "pm setup",
    "policy show", "policy init", "policy path",
    "project register", "project resolve", "project sync", "project remove",
    "project show", "project list", "project profiles", "project profiles list",
-   "registry set", "registry status"}
+   "unit publish", "unit validate"}
 
 CliCommandAliases ==
   {<<"ls", "list">>, <<"rm", "remove">>, <<"un", "uninstall">>}
@@ -155,22 +157,20 @@ CliCommandCatalog ==
   {CliRootCommand} \cup CliTopLevelCommands \cup CliSubcommands
 
 CliWorkflowCatalog ==
-  {"account-auth", "ads-manage", "author-dependencies", "author-unit",
+  {"author-dependencies", "author-unit",
    "bind-projection", "cli-lock-inspect", "discover-installed-units",
    "force-skill-scripts", "gateway-lifecycle", "harness-instantiate",
    "harness-remove", "inspect-unit", "install-git-unit",
-   "install-local-unit", "install-registry-unit", "onboard-default-skills",
+   "install-local-unit", "onboard-default-skills",
    "package-manager-bootstrap", "policy-inspect", "project-env",
    "project-profile-resolve", "project-register", "project-resolve",
    "publish-unit", "rebind-projection", "refresh-lockfile",
-   "registry-lifecycle", "remove-installed-unit", "skill-scripts",
+   "remove-installed-unit", "skill-scripts",
    "sync-all-units", "sync-from-local-source", "sync-lockfile",
    "sync-one-unit", "unbind-projection", "upgrade-units"}
 
 CliWorkflowCommandLinks ==
-  {<<"account-auth", "login">>,
-   <<"ads-manage", "ads">>,
-   <<"author-dependencies", "create">>,
+  {<<"author-dependencies", "create">>,
    <<"author-unit", "create">>,
    <<"bind-projection", "bind">>,
    <<"cli-lock-inspect", "cli">>,
@@ -182,7 +182,6 @@ CliWorkflowCommandLinks ==
    <<"inspect-unit", "show">>,
    <<"install-git-unit", "install">>,
    <<"install-local-unit", "install">>,
-   <<"install-registry-unit", "install">>,
    <<"onboard-default-skills", "onboard">>,
    <<"package-manager-bootstrap", "pm">>,
    <<"policy-inspect", "policy">>,
@@ -190,10 +189,9 @@ CliWorkflowCommandLinks ==
    <<"project-profile-resolve", "project profiles">>,
    <<"project-register", "project register">>,
    <<"project-resolve", "project resolve">>,
-   <<"publish-unit", "publish">>,
+   <<"publish-unit", "unit publish">>,
    <<"rebind-projection", "rebind">>,
    <<"refresh-lockfile", "sync">>,
-   <<"registry-lifecycle", "registry">>,
    <<"remove-installed-unit", "remove">>,
    <<"skill-scripts", "install">>,
    <<"sync-all-units", "sync">>,
@@ -225,14 +223,14 @@ SkillDocSurfaces ==
   {"skill-manager-skill", "unit-authoring"}
 
 SkillManagerSkillWorkflows ==
-  {"account-auth", "ads-manage", "bind-projection", "cli-lock-inspect",
+  {"bind-projection", "cli-lock-inspect",
    "discover-installed-units", "force-skill-scripts", "gateway-lifecycle",
    "harness-instantiate", "harness-remove", "inspect-unit",
-   "install-git-unit", "install-local-unit", "install-registry-unit",
+   "install-git-unit", "install-local-unit",
    "onboard-default-skills", "package-manager-bootstrap", "policy-inspect",
    "project-env", "project-profile-resolve", "project-register",
    "project-resolve", "publish-unit", "rebind-projection",
-   "refresh-lockfile", "registry-lifecycle", "remove-installed-unit",
+   "refresh-lockfile", "remove-installed-unit",
    "sync-all-units", "sync-from-local-source", "sync-lockfile",
    "sync-one-unit", "unbind-projection", "upgrade-units"}
 

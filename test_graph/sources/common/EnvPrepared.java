@@ -20,8 +20,8 @@ import java.nio.file.Path;
  *     MCP-config writes (under {@code .claude.json},
  *     {@code .codex/config.toml}) land inside the temp home rather than
  *     polluting the developer's real {@code ~/}.
- *   - Two free TCP ports: one for the Java skill registry server, one
- *     for the virtual MCP gateway.
+ *   - A free TCP port for the virtual MCP gateway. (A second one, for the
+ *     registry server, went with that server in #427.)
  *
  * Downstream nodes pick these up via ctx.get("env.prepared", ...).
  */
@@ -33,7 +33,6 @@ public class EnvPrepared {
             .output("claudeHome", "string")
             .output("codexHome", "string")
             .output("geminiHome", "string")
-            .output("registryPort", "integer")
             .output("gatewayPort", "integer");
 
     public static void main(String[] args) {
@@ -76,7 +75,6 @@ public class EnvPrepared {
                     require_confirmation_for_executable_commands = false
                     """);
 
-            int registryPort = freePort();
             int gatewayPort = freePort();
 
             return NodeResult.pass("env.prepared")
@@ -84,14 +82,12 @@ public class EnvPrepared {
                     .assertion("agent_home_created", Files.isDirectory(agentHome))
                     .assertion("codex_home_created", Files.isDirectory(codexHome))
                     .assertion("gemini_home_created", Files.isDirectory(geminiHome))
-                    .assertion("ports_allocated", registryPort > 0 && gatewayPort > 0)
-                    .metric("registryPort", registryPort)
+                    .assertion("ports_allocated", gatewayPort > 0)
                     .metric("gatewayPort", gatewayPort)
                     .publish("home", home.toString())
                     .publish("claudeHome", agentHome.toString())
                     .publish("codexHome", codexHome.toString())
                     .publish("geminiHome", geminiHome.toString())
-                    .publish("registryPort", Integer.toString(registryPort))
                     .publish("gatewayPort", Integer.toString(gatewayPort));
         });
     }

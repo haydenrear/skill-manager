@@ -130,15 +130,6 @@ CORE: list[str] = [
 # printed into the job summary of every run rather than living in a comment.
 # ---------------------------------------------------------------------------
 EXCLUDED: dict[str, str] = {
-    "refresh-flow": (
-        "skill-manager-integration-repository#53 — under-budgeted by design: a "
-        "3s access-token TTL with CLOCK_SKEW_SECONDS=0 is verified by a live "
-        "/auth/me round-trip that includes driver.quit(), which stalls 7.6-8.6s "
-        "against a ~2.0s norm. Flakes ~1 in 4 on pre-epic code identically, so "
-        "it is not an epic regression and not fixable from this ticket. "
-        "Re-admit once the helper verifies the cached token instead of a live "
-        "call inside the TTL."
-    ),
     "hyper-experiments": (
         "skill-manager#143 — reaches github, npm and the live RunPod API; none "
         "of the three answer a question about skill-manager. Already opt-in at "
@@ -151,10 +142,15 @@ EXCLUDED: dict[str, str] = {
 # the registry server's sponsored-search feature, and skill-manager is not used
 # through that server (owner: "we literally never use the server - ever"). At
 # the same ticket smoke, onboard and plugin-smoke stopped booting docker,
-# Postgres and the registry (PostgresUp/RegistryUp/CiLoggedIn/JwtValid). The
-# server-centric graphs that remain -- browser-auth, password-reset,
-# refresh-flow, hyper-experiments -- are follow-up candidates for the same
-# treatment; they are BROWSER or EXCLUDED below and above already.
+# Postgres and the registry (PostgresUp/RegistryUp/CiLoggedIn/JwtValid).
+#
+# browser-auth, password-reset and refresh-flow were DELETED at HP-12 (#427)
+# with the registry server itself: all three drove its OAuth/account surface
+# through Selenium, so there is nothing left for them to test, and the
+# test-graph-browser CI job went with them. refresh-flow's EXCLUDED entry
+# (integration-repo #53) went too. hyper-experiments was CONVERTED, not
+# deleted: it installs from a git/file coordinate now, and stays EXCLUDED for
+# its third-party reach (#143).
 
 # honest-pins was REMOVED from EXCLUDED at HP-9 (#413). It was opt-in while it was the
 # honest-pins epic's baseline harness (one node per planted pin/record shape,
@@ -165,13 +161,6 @@ EXCLUDED: dict[str, str] = {
 # CORE: that is a separate decision, and core does not run on push/PR today.
 # Its nodes are independent; locally, TESTGRAPH_CONTINUE_AFTER_FAILURE=1 keeps
 # one red shape from skipping the rest.
-
-# ---------------------------------------------------------------------------
-# BROWSER — Selenium/chromedriver graphs. Not excluded, but they run in their
-# own job (test-graph-browser) on schedule and dispatch only, so they are
-# subtracted from the matrix this script feeds.
-# ---------------------------------------------------------------------------
-BROWSER: list[str] = ["browser-auth", "password-reset", "refresh-flow"]
 
 # Deliberately not line-anchored: `hyper-experiments` is registered as
 # `} else testGraph("hyper-experiments") {`, and a graph that is conditionally
@@ -326,7 +315,7 @@ def select(scope: str, all_graphs: list[str]) -> tuple[list[str], list[str]]:
     elif scope == "full":
         selected = [
             g for g in all_graphs
-            if g not in EXCLUDED and g not in BROWSER
+            if g not in EXCLUDED
         ]
     else:
         sys.exit(f"select-graph-set: unknown scope {scope!r}")
@@ -363,11 +352,6 @@ def main() -> int:
     lines.append("Deliberate exclusions (every scope):")
     for name, reason in EXCLUDED.items():
         lines.append(f"- `{name}` — {reason}")
-    lines.append("")
-    lines.append(
-        "Browser graphs (`" + "`, `".join(BROWSER) + "`) run in the "
-        "`test-graph-browser` job on schedule and dispatch only."
-    )
     lines.append("")
     lines.append(
         "**Every selected graph needs the virtual-mcp-gateway venv, and "

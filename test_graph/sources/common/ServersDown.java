@@ -12,12 +12,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Teardown: stop the gateway (via CLI) and the registry + echo-http fixture
- * (via PID files they wrote). Per-graph "wait until X is done" edges are
+ * Teardown: stop the gateway (via CLI) and the echo-http fixture (via the
+ * PID file it wrote). The registry server it also used to stop was removed
+ * (#427). Per-graph "wait until X is done" edges are
  * added from the DSL via {@code .dependsOn(...)} — this script declares no
  * graph-specific dependencies so it can be reused across smoke,
- * hyper-experiments, and any future graph that brings up the same
- * registry/gateway pair.
+ * hyper-experiments, and any future graph that brings up a gateway.
  *
  * <p>The echo-http kill is best-effort: if the pid file isn't present (the
  * graph never spawned the fixture), {@link #killByPidFile} returns true and
@@ -54,13 +54,11 @@ public class ServersDown {
             ProcessRecord gatewayDownProc = Procs.run(ctx, "gateway-down", pb);
             boolean gatewayDown = gatewayDownProc.exitCode() == 0;
 
-            boolean registryDown = killByPidFile(Path.of(home, "test-graph", "registry.pid"));
             boolean echoDown = killByPidFile(Path.of(home, "test-graph", "echo-http.pid"));
 
             return NodeResult.pass("servers.down")
                     .process(gatewayDownProc)
                     .assertion("gateway_down", gatewayDown)
-                    .assertion("registry_down", registryDown)
                     .assertion("echo_fixture_down", echoDown);
         });
     }
