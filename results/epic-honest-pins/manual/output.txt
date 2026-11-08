@@ -1,0 +1,377 @@
+
+=================== M1 pin moves: install, advance upstream, sync --to older sha, annotated tag, plain sync stays
+$ sm install git+file://W/src/p1 --yes --no-bind-default
+→ cloning file://W/src/p1
+✓ resolve: 1 unit(s)
+✓ installed p1
+✓ units.lock.toml: wrote 1 unit(s) → W/home/units.lock.toml
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261108-160625-13e3.log
+[rc=0]
+$ sm sync p1 --skip-mcp --skip-agents
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → W/home/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160628-20c2.log
+[rc=0]
+expect HEAD=da878bcb43ba7fad978caff6a876849b35e6f469 got da878bcb43ba7fad978caff6a876849b35e6f469
+ref = "main"
+resolved_sha = "da878bcb43ba7fad978caff6a876849b35e6f469"
+record 2.0.0 da878bcb43ba7fad978caff6a876849b35e6f469 main
+$ sm sync p1 --to 76a609987fbcb97ebd5074a3eac13953b30d52ea --skip-mcp --skip-agents
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+p1: moved da878bcb43 → pin 76a609987f
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → W/home/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160630-1a5b.log
+[rc=0]
+expect HEAD=76a609987fbcb97ebd5074a3eac13953b30d52ea got 76a609987fbcb97ebd5074a3eac13953b30d52ea
+ref = "76a609987fbcb97ebd5074a3eac13953b30d52ea"
+resolved_sha = "76a609987fbcb97ebd5074a3eac13953b30d52ea"
+record 1.0.0 76a609987fbcb97ebd5074a3eac13953b30d52ea 76a609987fbcb97ebd5074a3eac13953b30d52ea
+$ sm sync p1 --skip-mcp --skip-agents
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → W/home/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160633-7cb9.log
+[rc=0]
+stays HEAD=76a609987fbcb97ebd5074a3eac13953b30d52ea got 76a609987fbcb97ebd5074a3eac13953b30d52ea
+$ sm sync p1 --to main --skip-mcp --skip-agents
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+p1: moved 76a609987f → pin da878bcb43
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → W/home/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160635-6925.log
+[rc=0]
+$ sm sync p1 --to v1.0 --skip-mcp --skip-agents
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+p1: moved da878bcb43 → pin 76a609987f
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → W/home/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160637-1d2f.log
+[rc=0]
+tag: expect commit 76a609987fbcb97ebd5074a3eac13953b30d52ea, not tag object 8080f4c4652732873725b0946cebb2aadf179420; HEAD=76a609987fbcb97ebd5074a3eac13953b30d52ea
+ref = "v1.0"
+resolved_sha = "76a609987fbcb97ebd5074a3eac13953b30d52ea"
+record 1.0.0 76a609987fbcb97ebd5074a3eac13953b30d52ea v1.0
+$ sm sync p1 --to does-not-exist --skip-mcp --skip-agents
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+✗ p1: git sync failed — pin does-not-exist is not available from file://W/src/p1 — nothing was changed
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 1 unit(s) → W/home/units.lock.toml
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160640-3ef1.log
+[rc=1]
+
+=================== M2 local edits survive: sync --merge with stash failure
+$ sm install git+file://W/src/e1 --yes --no-bind-default
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+→ cloning file://W/src/e1
+✓ resolve: 1 unit(s)
+✓ installed e1
+✓ units.lock.toml: wrote 2 unit(s) → W/home/units.lock.toml
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261108-160642-f821.log
+[rc=0]
+$ sm sync e1 --merge --skip-mcp --skip-agents
+! reconcile: no skill-manager projection for e1 on gemini at W/home/.gemini/skills/e1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+✗ e1: git sync failed — could not set the local edits aside (git stash failed); refusing to reset over them — nothing was changed
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 2 unit(s) → W/home/units.lock.toml
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160644-76c9.log
+[rc=1]
+LOCAL-EDIT count: 1 (want 1); stash entries:        0
+$ sm sync e1 --merge --skip-mcp --skip-agents
+✗ e1: merge conflict in 1 file(s):
+✗     SKILL.md
+✗   nothing was changed — the merge was rolled back, so the store is exactly where it was, and 1 local file(s) conflict with upstream. Commit or drop the local work in W/home/skills/e1 (`git status`), then `/Volumes/dev/skill-manager-epic-honest-pins/skill-manager sync e1 --home W/home`; or merge by hand there if both sides are wanted
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 2 unit(s) → W/home/units.lock.toml
+✗ sync: 1 unit(s) need attention
+✗   conflicted — in each unit's store directory: `git status` says which — resolve + `git add` + `git commit` mid-merge, or `git reset` to drop a failed stash pop: e1
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160646-9d83.log
+[rc=8]
+ M SKILL.md
+conflict-or-kept LOCAL-EDIT: 1
+
+=================== M3 CLI pin: bump really swaps the binary, lock tells the truth; shared-pin conflict refuses non-zero
+$ sm install git+file://W/src/c1 --yes --no-bind-default
+Installed 1 executable: pycowsay
+warning: `W/home/bin/cli` is not on your PATH. To use installed tools, run `export PATH="W/home/bin/cli:$PATH"` or `uv tool update-shell`.
+✓ cli: installed pycowsay==0.0.0.1 via uv tool (bin=W/home/bin/cli)
+✓ cli: pycowsay [pip] installed for c1
+✓ units.lock.toml: wrote 3 unit(s) → W/home/units.lock.toml
+✓ tools: 1 already present
+✓ cli: 1 installed
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261108-160651-5132.log
+[rc=0]
+["pip"."pycowsay"]
+version = "0.0.0.1"
+spec = "pip:pycowsay==0.0.0.1"
+requested_by = ["c1"]
+installed_at = "2026-11-08T21:06:54.451824Z"
+declared_pin = "a2f46e32726a9c9d4d90538278d16923b10c5ad86dda57ea825ecfc10aa22995"
+install_fingerprint = "35bd4107b3d3ba9f0bd7ebc4ac76b88d4aef5e14e6958d571b4ee5664b3eabce"
+install_fingerprint_kind = "resolved"
+install_fingerprint_basis = "declared spec + version 0.0.0.1 resolved into venvs/pycowsay"
+
+$ sm sync c1 --skip-mcp --skip-agents
+Installed 1 executable: pycowsay
+warning: `W/home/bin/cli` is not on your PATH. To use installed tools, run `export PATH="W/home/bin/cli:$PATH"` or `uv tool update-shell`.
+✓ cli: installed pycowsay==0.0.0.2 via uv tool (bin=W/home/bin/cli)
+✓ units.lock.toml: wrote 3 unit(s) → W/home/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+✓ tools: 1 already present
+✓ cli: 1 installed
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160656-ccbe.log
+[rc=0]
+version = "0.0.0.2"
+requested_by = ["c1"]
+install_fingerprint_basis = "declared spec + version 0.0.0.2 resolved into venvs/pycowsay"
+lrwxr-xr-x@ 1 hayde  wheel   33 Nov  8 16:06 pycowsay -> ../../venvs/pycowsay/bin/pycowsay
+$ sm install git+file://W/src/c2 --yes --no-bind-default
+! reconcile: no skill-manager projection for c1 on claude at W/agents/.claude/skills/c1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for c1 on codex at W/agents/.codex/skills/c1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for c1 on gemini at W/home/.gemini/skills/c1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for e1 on claude at W/agents/.claude/skills/e1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for e1 on codex at W/agents/.codex/skills/e1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for e1 on gemini at W/home/.gemini/skills/e1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+→ cloning file://W/src/c2
+✓ resolve: 1 unit(s)
+✗ ✋ halted: CLI conflict over pip:pycowsay: c2 declares 0.0.0.1 but c1 holds 0.0.0.2. One install backs every unit, so to resolve this either make them declare one pin (edit the unit's [[cli_dependencies]] entry, then `skill-manager sync <unit> --from <dir> --yes`, or `skill-manager sync <unit> --to <rev>`), or `skill-manager uninstall c1`
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261108-160700-1c8d.log
+[rc=4]
+$ sm cli list
+BACKEND  TOOL                         VERSION        REQUESTED BY
+pip      pycowsay                     0.0.0.2        c1
+[rc=0]
+
+=================== M4 registry is gone: removed verbs, bare names, publish stub, unit validate
+$ sm login
+Unmatched argument at index 0: 'login'
+Did you mean: skill-manager bindings or skill-manager bind or skill-manager rebind?
+[rc=2]
+$ sm search
+Unmatched argument at index 0: 'search'
+Did you mean: skill-manager create or skill-manager harness or skill-manager artifacts?
+[rc=2]
+$ sm ads
+Unmatched argument at index 0: 'ads'
+Did you mean: skill-manager upgrade?
+[rc=2]
+$ sm create-account
+Unmatched argument at index 0: 'create-account'
+Did you mean: skill-manager create or skill-manager un or skill-manager gateway?
+[rc=2]
+$ sm reset-password
+Unmatched argument at index 0: 'reset-password'
+Did you mean: skill-manager harness or skill-manager rebind or skill-manager onboard?
+[rc=2]
+$ sm registry
+Unmatched argument at index 0: 'registry'
+Did you mean: skill-manager list or skill-manager rebind or skill-manager install?
+[rc=2]
+$ sm install some-bare-name --yes --no-bind-default
+! reconcile: no skill-manager projection for e1 on gemini at W/home/.gemini/skills/e1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+✗ × BuildResolveGraphFromSource: 1 coord(s) failed to resolve
+! resolve: 0 unit(s) resolved, 1 failure(s)
+! transitive: some-bare-name [(top-level)] — cannot resolve 'some-bare-name': bare unit names are not supported (the registry was removed); use github:<owner>/<repo>, git+<url> or file:<path>
+! install rolled back 0 effect(s) — no partial state retained
+[rc=1]
+$ sm publish --dry-run W/src/p1
+skill-manager publish was removed with the registry (#427): validate a unit's imports with `skill-manager unit validate <dir>`, publish a home edit with `skill-manager unit publish <name>`.
+[rc=2]
+$ sm unit validate W/src/p1
+✓ p1 (skill): manifest parsed, no markdown skill-import violations
+[rc=0]
+
+=================== M5 transitive bare name, dependency installed vs absent
+$ sm install git+file://W/src/dep --yes --no-bind-default
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+→ cloning file://W/src/dep
+✓ resolve: 1 unit(s)
+✓ installed dep
+✓ units.lock.toml: wrote 4 unit(s) → W/home/units.lock.toml
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261108-160716-95ff.log
+[rc=0]
+$ sm install git+file://W/src/par --yes --no-bind-default
+! reconcile: no skill-manager projection for p1 on claude at W/agents/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+→ cloning file://W/src/par
+✓ resolve: 1 unit(s)
+✓ installed par
+✓ units.lock.toml: wrote 5 unit(s) → W/home/units.lock.toml
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261108-160719-b8c6.log
+[rc=0]
+$ sm install git+file://W/src/par2 --yes --no-bind-default
+! reconcile: no skill-manager projection for par on claude at W/agents/.claude/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on codex at W/agents/.codex/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on gemini at W/home/.gemini/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+→ cloning file://W/src/par2
+✗ × BuildResolveGraphFromSource: 1 coord(s) failed to resolve
+! resolve: 1 unit(s) resolved, 1 failure(s)
+! transitive: absent-dep [needed by par2] — cannot resolve 'absent-dep': bare unit names are not supported (the registry was removed); use github:<owner>/<repo>, git+<url> or file:<path>
+! install rolled back 0 effect(s) — no partial state retained
+[rc=1]
+$ sm list
+NAME                         KIND     VERSION    BINDINGS  SHA       SOURCE
+c1                           skill    1.1.0      0         4b48608   git
+dep                          skill    1.0.0      0         e672258   git
+e1                           skill    1.0.0      0         11311e7   git
+p1                           skill    1.0.0      0         76a6099   git
+par                          skill    1.0.0      0         767877c   git
+[rc=0]
+
+=================== M6 home sync arms the drift gate; launch refuses; ack clears
+$ sm home clone --help
+                          copy re-provisions them on first use.
+      --strict          Also fail when authored unit content mentions the
+                          source home. Such references are historical records
+                          (spec .history, effect evidence) and rewriting them
+                          corrupts the unit, so they are reported but tolerated
+                          by default.
+      --to=<to>         Destination home directory. Must not exist, or be empty.
+  -v, --verbose         Verbose output
+[rc=0]
+$ sm home clone --to W/homeW
+  gateway:     attached to http://127.0.0.1:51717 (the source home owns it; pass --own-gateway to claim it instead)
+  baseline:    recorded for 5 unit(s), so edits made here can be merged back with `skill-manager home sync`
+  drift:       baselined against this copy's own content (5 unit(s)); a clone is not drifted
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-clone-20261108-160726-7f32.log
+[rc=0]
+$ sm home describe --home=W/homeW
+  gateway:     http://127.0.0.1:51717  (attached to a shared gateway — declared in gateway.properties)
+  env:
+    SKILL_MANAGER_HOME W/homeW
+    CLAUDE_CONFIG_DIR  W/homeW/.claude
+    CLAUDE_HOME        W/homeW/.claude
+    CODEX_HOME         W/homeW/.codex
+    GEMINI_HOME        W/homeW/.gemini
+  units:       5
+[rc=0]
+$ sm home sync --from W/homeW --to W/home --unit dep
+! reconcile: no skill-manager projection for p1 on codex at W/agents/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on claude at W/agents/.claude/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on codex at W/agents/.codex/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on gemini at W/home/.gemini/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+  to:          W/home
+  unit:        dep  (only this unit was reconciled; the rest of the home was not visited)
+  updated            skill:dep — the destination's working tree is clean and its history is contained in the source's, so it holds nothing of its own; a sync fast-forwards it to the source copy
+  0 unchanged, 1 updated, 0 new, 0 merged, 0 held back, 0 conflicted, 0 removed upstream, 0 linked, 0 damaged
+✓ reconciled W/home (unit dep only)
+! this sync changed 1 unit(s) in W/home — a launch will refuse until the change is read (`/Volumes/dev/skill-manager-epic-honest-pins/skill-manager home drift --home W/home`, then `/Volumes/dev/skill-manager-epic-honest-pins/skill-manager home drift --ack --home W/home`)
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-sync-20261108-160731-e03e.log
+[rc=0]
+$ sm home drift --home=W/home
+! reconcile: no skill-manager projection for par on claude at W/home/.claude/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on codex at W/home/.codex/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on gemini at W/home/.gemini/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+build: skill-manager 0.28.2+g1f4272a36757 @ 1f4272a36757 (refs/heads/epic/honest-pins)
+! 1 unit(s) changed in W/home (home sync) and have not been read:
+✗   modified  skill:dep  bd17badf  (1 file)
+✗   1 unit, 1 file changed — `home drift --detail` for the paths, `home drift --json` for the data
+!   run `/Volumes/dev/skill-manager-epic-honest-pins/skill-manager home drift --ack --home W/home` once you have taken it in
+[rc=8]
+$ sm exec --home=W/home -- true
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on claude at W/home/.claude/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on codex at W/home/.codex/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on gemini at W/home/.gemini/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+✗ refusing to launch: W/home changed and the change has not been read.
+✗   1 unit still unread — `/Volumes/dev/skill-manager-epic-honest-pins/skill-manager home drift --ack --home W/home` to clear, `/Volumes/dev/skill-manager-epic-honest-pins/skill-manager home drift --home W/home` to re-read
+✗   Read it with `/Volumes/dev/skill-manager-epic-honest-pins/skill-manager home drift --home W/home`, then clear the gate with
+✗   `/Volumes/dev/skill-manager-epic-honest-pins/skill-manager home drift --ack --home W/home` (or launch with --ack-drift).
+[rc=8]
+$ sm home drift --ack --home=W/home
+! reconcile: no skill-manager projection for p1 on codex at W/home/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on claude at W/home/.claude/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on codex at W/home/.codex/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on gemini at W/home/.gemini/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+build: skill-manager 0.28.2+g1f4272a36757 @ 1f4272a36757 (refs/heads/epic/honest-pins)
+✓ acknowledged 1 changed unit(s) in W/home
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-drift-20261108-160737-58ad.log
+[rc=0]
+$ sm exec --home=W/home -- true
+! reconcile: no skill-manager projection for e1 on codex at W/home/.codex/skills/e1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for e1 on gemini at W/home/.gemini/skills/e1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on claude at W/home/.claude/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on codex at W/home/.codex/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for p1 on gemini at W/home/.gemini/skills/p1. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on claude at W/home/.claude/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on codex at W/home/.codex/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for par on gemini at W/home/.gemini/skills/par. In order to create all symlinks missing, please run: skill-manager sync
+[rc=0]
+
+=================== M7 upgrade: a home written by released 0.28.2, then driven by this build
+$ brew skill-manager --version
+cli:    /opt/homebrew/Cellar/skill-manager/0.28.2/libexec/bin/skill-manager
+✓ tools: 1 already present
+✓ cli: 1 installed
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261108-160740-dc79.log
+[old install rc=0]
+$ sm list
+NAME                         KIND     VERSION    BINDINGS  SHA       SOURCE
+o1                           skill    1.0.0      0         eaa371c   git
+[rc=0]
+$ sm sync --skip-mcp --skip-agents
+Installed 1 executable: pycowsay
+warning: `W/oldhome/bin/cli` is not on your PATH. To use installed tools, run `export PATH="W/oldhome/bin/cli:$PATH"` or `uv tool update-shell`.
+✓ cli: installed pycowsay==0.0.0.1 via uv tool (bin=W/oldhome/bin/cli)
+✓ units.lock.toml: wrote 1 unit(s) → W/oldhome/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+✓ tools: 1 already present
+✓ cli: 1 installed
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160745-2f2f.log
+[rc=0]
+$ sm sync o1 --skip-mcp --skip-agents
+Installed 1 executable: pycowsay
+warning: `W/oldhome/bin/cli` is not on your PATH. To use installed tools, run `export PATH="W/oldhome/bin/cli:$PATH"` or `uv tool update-shell`.
+✓ cli: installed pycowsay==0.0.0.1 via uv tool (bin=W/oldhome/bin/cli)
+✓ units.lock.toml: wrote 1 unit(s) → W/oldhome/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+✓ tools: 1 already present
+✓ cli: 1 installed
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261108-160747-dec7.log
+[rc=0]
+record 1.0.0 c2975963817cc7ec711e92d8339a3af9ec9a728b
+c2975963817cc7ec711e92d8339a3af9ec9a728b
+$ sm home close-out --help
+run repeatedly.
+      --agent-context   Emit a bounded agent-facing context block to stderr
+                          after the command.
+  -h, --help            Show this help message and exit.
+      --home=<home>     The worktree's Skill Manager home, about to be removed.
+      --into=<into>     The project home its work has to reach first.
+      --json            Emit a machine-readable verdict.
+  -v, --verbose         Verbose output
+[rc=0]

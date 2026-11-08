@@ -1,0 +1,258 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 27,
+  "graphs_executed": 27,
+  "graphs_passed": 25,
+  "graphs_failed": 2,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "smoke",
+      "status": "passed",
+      "seconds": 306.339,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-200206"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "onboard",
+      "status": "passed",
+      "seconds": 198.448,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-200645"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "source-tracking",
+      "status": "passed",
+      "seconds": 98.507,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-201007"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "git-latest-source-tracking",
+      "status": "passed",
+      "seconds": 83.694,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-201143"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "plugin-smoke",
+      "status": "passed",
+      "seconds": 320.366,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-201319"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "harness-smoke",
+      "status": "passed",
+      "seconds": 133.172,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-201841"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "doc-smoke",
+      "status": "failed",
+      "seconds": 188.331,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-202059"
+      ],
+      "reason": "Execution failed for task ':doc-smoke'."
+    },
+    {
+      "graph": "project-manifest",
+      "status": "passed",
+      "seconds": 34.74,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-202343"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-resolve",
+      "status": "passed",
+      "seconds": 41.015,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-202418"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-smoke",
+      "status": "passed",
+      "seconds": 128.548,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-202503"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "spec-conformance",
+      "status": "passed",
+      "seconds": 76.844,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-202710"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-child-home",
+      "status": "passed",
+      "seconds": 67.826,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-202832"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-clone",
+      "status": "passed",
+      "seconds": 203.651,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-202940"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-tripwire",
+      "status": "passed",
+      "seconds": 100.161,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-203259"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "checkout-home",
+      "status": "passed",
+      "seconds": 73.157,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-203439"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-sync",
+      "status": "passed",
+      "seconds": 271.349,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-203602"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "ticket-lifecycle",
+      "status": "passed",
+      "seconds": 245.117,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-204028"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-env",
+      "status": "passed",
+      "seconds": 31.021,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-204425"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-libs",
+      "status": "passed",
+      "seconds": 27.612,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-204456"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-profiles",
+      "status": "passed",
+      "seconds": 54.672,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-204528"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "artifact-dag",
+      "status": "passed",
+      "seconds": 122.548,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-204623"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "onboarding",
+      "status": "failed",
+      "seconds": 352.245,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-204835"
+      ],
+      "reason": "Execution failed for task ':onboarding'."
+    },
+    {
+      "graph": "home-integrity",
+      "status": "passed",
+      "seconds": 208.369,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-205436"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-verdicts",
+      "status": "passed",
+      "seconds": 208.596,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-205752"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "sync-settles",
+      "status": "passed",
+      "seconds": 43.821,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-210111"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "cli-pin",
+      "status": "passed",
+      "seconds": 13.396,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-210153"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "honest-pins",
+      "status": "passed",
+      "seconds": 126.392,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-honest-pins/test_graph/build/validation-reports/20261108-210213"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261108-200125",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}

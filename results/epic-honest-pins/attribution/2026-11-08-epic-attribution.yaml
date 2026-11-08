@@ -1,0 +1,628 @@
+# Bug attribution -- epic honest-pins (#411), machine-readable rows.
+#
+# Schema: spec-double-2 references/bug_attribution.md (CATCH 4, REACH 5, BLIND 6,
+# semantic bins 7c, conservation 7b). Prose reading is in the .md beside this file.
+#
+# WHERE THESE ROWS BELONG. `specs/deferred_findings.yaml` does not exist on main,
+# so the rows live in the epic's results, as earlier epics' did. The deferred
+# findings keep their full text in ../deferred/<ticket>.yaml; the rows below ADD
+# channel, area, anchor and pin. Nothing in deferred/ was edited.
+#
+# `anchor` is a TLA+ action in specs/program_model, or UNMODELED/<bin>. An action
+# is never stretched to cover a row. A roster bug whose anchor nobody worked out
+# says UNDECIDED rather than guess.
+#
+# `channel: UNDECIDED` marks a row filed before this epic, or whose discovery was
+# not recorded. Assigning a channel from somebody else's prose is the
+# classification section 9 warns against.
+#
+# `origin` is the epic ticket that introduced an in-epic defect, as the reviewer
+# or fixing agent traced it. `origin: UNTRACED` means nobody ran the trace.
+#
+# Prefix key for anchors: CPI = CliPinInternal, HI = HomeIntegrityInternal,
+# GH = GitHistoryInternal.
+
+meta:
+  epic: honest-pins
+  epic_issue: 411
+  base: 3b92ed6e
+  written: "2026-11-08"
+  conservation: >
+    First anchoring pass for this epic. No row was dropped or merged. DEF-HP0-002
+    is filed twice in deferred/ (HP-0.yaml, re-read in HP-2.yaml) and is one row here.
+
+findings:
+
+  # ========================================================== ROSTER (what the epic set out to fix)
+  - id: GH-404
+    title: "declared CLI version never enforced; bumping a unit's own pin keeps the old binary"
+    kind: product
+    channel: UNDECIDED
+    area: "CLI dependency install and cli-lock"
+    anchor: CPI.InstallCliDep
+    origin: UNTRACED
+    fix: "#405"
+    pinned_by: "test graph cli-pin; goal-a shapes in honest-pins"
+    skill_change: none
+  - id: GH-406
+    title: "sync --lock discards an immutable pin and follows the installed ref"
+    kind: product
+    channel: UNDECIDED
+    area: "sync's git pin path"
+    anchor: UNMODELED/sync-git-pin
+    origin: UNTRACED
+    fix: "#417"
+    pinned_by: "test graph honest-pins, pin shapes"
+    skill_change: none
+  - id: GH-407
+    title: "project resolve reports success on a drifted unit; no path back to an older pin"
+    kind: product
+    channel: UNDECIDED
+    area: "project resolve and sync --to"
+    anchor: UNMODELED/sync-git-pin
+    origin: UNTRACED
+    fix: "#417"
+    pinned_by: "test graph honest-pins, pin shapes"
+    skill_change: none
+  - id: GH-403
+    title: "home sync does not arm the drift gate"
+    kind: product
+    channel: UNDECIDED
+    area: "home sync into a launchable home"
+    anchor: HI.SyncDetectsAChange
+    origin: UNTRACED
+    fix: "#418"
+    pinned_by: "test graph home-sync; honest-pins record shapes"
+    skill_change: none
+  - id: GH-298
+    title: "sync updates a unit's bytes but not its recorded version"
+    kind: product
+    channel: UNDECIDED
+    area: "version field of the installed record"
+    anchor: HI.SyncLeavesTheRecordBehindSilently
+    origin: UNTRACED
+    fix: "#423"
+    pinned_by: "test graph honest-pins, record shapes"
+    skill_change: none
+  - id: GH-103
+    title: "MCP binary provisioning short-circuits on a content-independent marker"
+    kind: product
+    channel: UNDECIDED
+    area: "gateway binary provisioning"
+    anchor: UNMODELED/gateway-binary-provisioning
+    origin: UNTRACED
+    fix: "#423"
+    pinned_by: "virtual-mcp-gateway pytest provisioning tests"
+    skill_change: none
+  - id: GH-376
+    title: "fresh onboarding writes no skill-manager pin and project resolve hides its error"
+    kind: product
+    channel: UNDECIDED
+    area: "onboard and project resolve error reporting"
+    anchor: UNMODELED/onboarding
+    origin: UNTRACED
+    fix: "#416"
+    pin_note: "unit tests in #416; not re-traced for this record"
+    skill_change: none
+  - id: GH-400
+    title: "unit publish commits untracked __pycache__ bytecode"
+    kind: product
+    channel: UNDECIDED
+    area: "unit publish content selection"
+    anchor: UNMODELED/unit-publish-content
+    origin: UNTRACED
+    fix: "#421"
+    pin_note: "unit tests in #421; not re-traced for this record"
+    skill_change: none
+  - id: GH-394
+    title: "root sync removed a plugin from a project home on a stale manifest, with no audit entry"
+    kind: product
+    channel: UNDECIDED
+    area: "child-home prune"
+    anchor: UNMODELED/child-home-prune
+    origin: UNTRACED
+    fix: "#422"
+    pinned_by: "test graph honest-pins, honest.record-e"
+    skill_change: none
+  - id: GH-412
+    title: "home close-out/sync accept a damaged unit repository through parent Git discovery"
+    kind: product
+    channel: UNDECIDED
+    area: "git identity of a unit copy"
+    anchor: GH.CloseOut
+    secondary_anchors: [GH.SyncApply]
+    origin: UNTRACED
+    fix: "#419"
+    pinned_by: "test graph honest-pins, honest.record-f"
+    skill_change: none
+  - id: GH-408
+    title: "MigrationSatisfiesTheGateTest red on every nightly main run"
+    kind: instrument
+    channel: the-suite
+    channel_note: "red in CI's unit-tests job (the JVM suite, the closest token)"
+    area: "unit test fixture for the home migration gate"
+    anchor: UNMODELED/unit-test-fixture
+    origin: UNTRACED
+    fix: "#415"
+    skill_change: none
+
+  # ========================================================== FOUND WHILE DOING THE EPIC
+  - id: DEF-HP10-001
+    title: "home sync REPLACED a valid project copy with a damaged one; close-out called it updated"
+    kind: product
+    channel: test-graph
+    channel_note: "honest.record-f red on the baseline; worse than #412 reported"
+    area: "home sync over a damaged .git"
+    anchor: GH.SyncApply
+    origin: "pre-epic"
+    fix: "#419"
+    skill_change: none
+  - id: DEF-HP9-001
+    title: "HonestPinsKit.java missing its own //SOURCES for SmEnv; home-tripwire red"
+    kind: instrument
+    channel: test-graph
+    area: "honest-pins graph harness (HonestPinsKit)"
+    anchor: UNMODELED/test-graph-harness
+    origin: "HP-0 (#415)"
+    fix: "#425"
+    skill_change: none
+  - id: HP-12-TIMEOUT
+    title: "hyper-experiments graph timed out at 120s after moving to coordinate installs"
+    kind: instrument
+    channel: test-graph
+    area: "hyper-experiments graph timeout"
+    anchor: UNMODELED/test-graph-harness
+    origin: "HP-12 (#432)"
+    fix: "#432, timeout raised to 600s"
+    skill_change: none
+
+  # ---------------------------------------------------------- first review, #428
+  - id: R1
+    title: "failed stash treated as clean; reset --hard wipes edits (pin path)"
+    kind: product
+    channel: independent-review
+    area: "SyncGitPin.moveTo"
+    anchor: UNMODELED/sync-failed-stash
+    origin: "HP-2 (#417)"
+    fix: "#429"
+    pinned_by: "SyncGitPinTest (#429); results/epic-honest-pins/tickets/HP-2/fixup-428"
+    skill_change: none
+  - id: R2
+    title: "swallowed record-write error; sync --to and project resolve report OK on the old sha"
+    kind: product
+    channel: independent-review
+    area: "SyncGitPin record and lock write"
+    anchor: HI.SyncLeavesTheRecordBehindSilently
+    origin: "HP-2 (#417)"
+    fix: "#429"
+    pinned_by: "SyncGitPinTest (#429); results/epic-honest-pins/tickets/HP-2/fixup-428"
+    skill_change: none
+  - id: R3
+    title: "shared-CLI guard on the bulk install path only"
+    kind: product
+    channel: independent-review
+    area: "CLI install paths (build, per-dependency)"
+    anchor: UNMODELED/cli-shared-row
+    origin: "HP-1 / HP-7"
+    fix: "#430"
+    pinned_by: "CliSharedPinPathsTest; results/epic-honest-pins/tickets/CLI-fixup-428/unit-red-green.txt"
+    skill_change: none
+  - id: R4
+    title: "stale requested_by blocks every later pin bump"
+    kind: product
+    channel: independent-review
+    area: "cli-lock requested_by upkeep"
+    anchor: UNMODELED/cli-lock-requested-by
+    origin: "HP-1 / HP-7"
+    fix: "#430"
+    pinned_by: "CliSharedPinPathsTest; results/epic-honest-pins/tickets/CLI-fixup-428/unit-red-green.txt"
+    skill_change: none
+  - id: R5
+    title: "new CLI refusals exit 0"
+    kind: product
+    channel: independent-review
+    area: "exit code of a refused CLI install"
+    anchor: UNMODELED/refusal-exit-code
+    origin: "HP-1 / HP-7"
+    fix: "#430"
+    pinned_by: "CliSharedPinPathsTest; results/epic-honest-pins/tickets/CLI-fixup-428/unit-red-green.txt"
+    skill_change: none
+  - id: R6
+    title: "MCP migration deletes the working binary before downloading its replacement"
+    kind: product
+    channel: independent-review
+    area: "gateway binary provisioning"
+    anchor: UNMODELED/gateway-binary-provisioning
+    origin: "HP-4 (#423)"
+    fix: "#431"
+    pin_note: "pytest in #431; the test's exact name was not re-traced for this record"
+    skill_change: none
+  - id: R7
+    title: "partial home sync failure leaves stale records, gate unarmed, and a re-run never repairs"
+    kind: product
+    channel: independent-review
+    area: "HomeSync bookkeeping after a mid-pass throw"
+    anchor: HI.SyncLeavesTheRecordBehindSilently
+    origin: "HP-3 / HP-4"
+    fix: "#431"
+    pin_note: "unit test in #431; the test's exact name was not re-traced for this record"
+    skill_change: none
+
+  # ---------------------------------------------------------- second review, #434
+  - id: F1
+    title: "sync --merge loses edits when the stash fails (sibling of R1)"
+    kind: product
+    channel: independent-review
+    area: "SyncGitHandler merge path"
+    anchor: UNMODELED/sync-failed-stash
+    origin: "pre-epic; R1's fix (#429) covered one path"
+    recurrence_of: R1
+    fix: "#436"
+    pinned_by: "SyncGitPinTest::#434 F1: sync --merge whose stash FAILS refuses by name and keeps the edits"
+    skill_change: none
+  - id: F2
+    title: "sync --to <annotated tag> records the tag object's sha and exits 1"
+    kind: product
+    channel: independent-review
+    area: "GitOps.fetchRef, unpeeled FETCH_HEAD"
+    anchor: UNMODELED/pin-annotated-tag
+    origin: "HP-2 (#417)"
+    fix: "#436"
+    pinned_by: "SyncGitPinTest annotated-tag cases; honest.pin-b shape_annotated_tag_lands_on_its_commit"
+    skill_change: none
+  - id: F3
+    title: "bare-name transitive reference halts install though the unit is installed"
+    kind: product
+    channel: independent-review
+    area: "install resolver after registry removal"
+    anchor: UNMODELED/install-resolver-bare-reference
+    origin: "HP-12 (#432)"
+    fix: "#436"
+    pinned_by: "ResolverBareNameTransitiveTest; ProjectDependencyResolverTest #434 F3"
+    skill_change: none
+  - id: F4
+    title: "a unit that did not move its pin refused as moved, on every run"
+    kind: product
+    channel: independent-review
+    area: "CliPin.moved on a shared row"
+    anchor: UNMODELED/cli-shared-row
+    origin: "#405 / #430"
+    fix: "#435"
+    pinned_by: "CliPinTest F4; CliSharedPinPathsTest F4"
+    skill_change: none
+  - id: F4b
+    title: "plan-level CLI version conflict halted with only 'see policy'"
+    kind: product
+    channel: operator-doing-the-work
+    channel_note: "fixing agent noticed it while reproducing F4"
+    area: "install plan halt message"
+    anchor: UNMODELED/install-plan-halt-message
+    origin: UNTRACED
+    fix: "#435"
+    pinned_by: "CliSharedPinPathsTest::F4: a plan-level version conflict names both units, pins and the way out"
+    skill_change: none
+  - id: F5
+    title: "unreadable manifest counts as not installed and its unit is pruned from requested_by"
+    kind: product
+    channel: independent-review
+    area: "CliClaimants prune"
+    anchor: UNMODELED/cli-lock-requested-by
+    origin: "#430 (R4's fix)"
+    recurrence_of: R4
+    fix: "#435"
+    pinned_by: "CliSharedPinPathsTest::F5: an unreadable manifest is not a stale requester"
+    skill_change: none
+  - id: F6
+    title: "failed binary reprovision visible only in the gateway log"
+    kind: product
+    channel: independent-review
+    area: "gateway binary provisioning status"
+    anchor: UNMODELED/gateway-binary-provisioning
+    origin: "#431 (R6's fix)"
+    recurrence_of: R6
+    fix: "#435"
+    pinned_by: "test_stale_binary_is_in_every_status_surface_and_clears; GatewayStatusCommandTest F6"
+    skill_change: none
+  - id: F6b
+    title: "mkdtemp prefix fails for a server id containing /"
+    kind: product
+    channel: independent-review
+    area: "gateway binary provisioning"
+    anchor: UNMODELED/gateway-binary-provisioning
+    origin: "#431 (R6's fix)"
+    fix: "#435"
+    pinned_by: "test_server_id_with_a_slash_provisions"
+    skill_change: none
+  - id: F7
+    title: "home sync swallows a record-write failure (sibling of R2)"
+    kind: product
+    channel: independent-review
+    area: "HomeSync restateAfterWrite"
+    anchor: HI.SyncLeavesTheRecordBehindSilently
+    origin: "HP-4 / #431"
+    recurrence_of: R2
+    fix: "#436"
+    pinned_by: "HomeSyncUnitCliTest::#434 F7: a record that cannot be restated exits non-zero and still visits the other units"
+    skill_change: none
+
+  # ========================================================== STILL OPEN (full text in deferred/)
+  - id: DEF-HP2-002
+    title: "byte copy of a project home materializes into the REAL home through its registrations"
+    kind: product
+    severity: major
+    channel: operator-doing-the-work
+    area: "project registration carried by a home copy"
+    anchor: HI.MaterializeIntoUnregisteredHome
+    channel_note: "anchor is the nearest modeled write into a home the run does not own"
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: "proposed(git-issue-workflow, deferred/HP-2.yaml suggested_fix)"
+  - id: RV2-MCP-ID-TRAVERSAL
+    title: "mcp_dependencies names are unvalidated; .. reaches bin_dir / server_id"
+    kind: product
+    severity: major
+    channel: operator-doing-the-work
+    channel_note: "fixing agent for F6, by reading; not exercised"
+    area: "gateway binary provisioning path from an unvalidated name"
+    anchor: UNMODELED/gateway-binary-provisioning
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: RV2-MCP-ID-ROUTE
+    title: "a server id with / provisions but 404s on describe and unregister"
+    kind: product
+    severity: minor
+    channel: operator-doing-the-work
+    channel_note: "fixing agent for F6, by reading; re-registration on every sync is expected, not observed"
+    area: "GatewayClient URL path"
+    anchor: UNMODELED/gateway-binary-provisioning
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: DEF-HP4-001
+    title: "home sync fast-forward leaves the record's gitHash stale"
+    kind: product
+    severity: minor
+    channel: independent-review
+    channel_note: "HP-4 by reading; the second review widened the impact: a later sync --to an older pin can refuse"
+    area: "HomeSync git-backed fast-forward"
+    anchor: HI.SyncLeavesTheRecordBehindSilently
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: DEF-HP0-001
+    title: "git 2.56 background maintenance lock races a tree copy"
+    kind: instrument
+    channel: the-suite
+    area: "unit test fixtures' git config; possibly home copy paths"
+    anchor: UNMODELED/unit-test-fixture
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: DEF-HP0-002
+    title: "install writes the lock row without origin, ref or resolved_sha"
+    kind: product
+    channel: operator-doing-the-work
+    area: "install lock provenance ordering"
+    anchor: UNMODELED/sync-git-pin
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: DEF-HP2-001
+    title: "a no-op sync of a sha-pinned unit reports 1 merged"
+    kind: product
+    channel: operator-doing-the-work
+    area: "SyncGitHandler.resolveTarget, the summary count"
+    anchor: UNMODELED/sync-git-pin
+    origin: "pre-epic"
+    channel_note: "filed for sha-pinned units. Manual testing (M7) widened it: any unchanged git unit reports 1 merged, and released 0.28.2 prints the same"
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: MAN-CLI-INSTALLED-NOOP
+    title: "sync prints 'installed <tool>' on every run though the venv is not touched"
+    kind: product
+    severity: minor
+    channel: operator-doing-the-work
+    channel_note: "manual pass M7; venv mtime unchanged across runs; released 0.28.2 prints the same"
+    area: "pip backend's install line on a no-op uv tool install"
+    anchor: UNMODELED/console-rendering
+    origin: "pre-epic"
+    pin_note: "cosmetic, not pinned; open"
+    skill_change: none
+  - id: MAN-RECONCILE-NOISE
+    title: "a unit installed with --no-bind-default warns on every sync, telling the operator to fix it"
+    kind: product
+    severity: minor
+    channel: operator-doing-the-work
+    channel_note: "manual pass; released 0.28.2 prints the same on sync"
+    area: "reconcile's missing-projection warning"
+    anchor: UNMODELED/console-rendering
+    origin: "pre-epic"
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: DEF-HP5-001
+    title: "PARTIAL receipts' reasons are never printed"
+    kind: product
+    channel: independent-review
+    area: "ConsoleProgramRenderer.onReceipt"
+    anchor: UNMODELED/console-rendering
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: DEF-HP5-002
+    title: "DEF-OHV-183 no longer reproduces"
+    kind: record
+    channel: operator-doing-the-work
+    area: "the backlog itself: an entry already fixed"
+    anchor: UNMODELED/record-keeping
+    origin: UNTRACED
+    pin_note: "nothing to pin"
+    skill_change: none
+  - id: DEF-HP5-003
+    title: "skt check times out probing a pinned jbang launcher"
+    kind: product
+    channel: operator-doing-the-work
+    area: "skt build probe (tla-spec-dev)"
+    anchor: UNMODELED/skt
+    origin: UNTRACED
+    pin_note: "other repository; open"
+    skill_change: "proposed(skt, deferred/HP-5.yaml suggested_fix)"
+  - id: DEF-HP6-001
+    title: "already-tracked bytecode is neither re-staged nor removed by unit publish"
+    kind: product
+    channel: independent-review
+    area: "UnitPublisher"
+    anchor: UNMODELED/unit-publish-content
+    origin: "pre-epic"
+    pin_note: "policy choice for the owner; open"
+    skill_change: none
+  - id: DEF-HP6-002
+    title: "unit publish --dry-run says it would commit bytecode-only divergence"
+    kind: product
+    channel: independent-review
+    area: "UnitPublisher dry-run wording"
+    anchor: UNMODELED/unit-publish-content
+    origin: "pre-epic"
+    pin_note: "cosmetic; open"
+    skill_change: none
+  - id: DEF-HP8-001
+    title: "sync summary does not count removals from other homes"
+    kind: product
+    channel: independent-review
+    area: "ConsoleProgramRenderer sync summary"
+    anchor: UNMODELED/console-rendering
+    origin: UNTRACED
+    pin_note: "not pinned; open"
+    skill_change: none
+  - id: LEGACY-REGISTRY-SYNC
+    title: "a legacy registry-installed unit at a detached sha now follows the default branch on sync"
+    kind: product
+    severity: note
+    channel: independent-review
+    channel_note: "behaviour change from #432, not a defect by the reviewer's reading; recorded honestly by the record"
+    area: "sync of REGISTRY-source records after registry removal"
+    anchor: UNMODELED/sync-git-pin
+    origin: "HP-12 (#432)"
+    pin_note: "release note in the epic PR"
+    skill_change: none
+
+  # ========================================================== INSTRUMENT AND PROCESS
+  - id: DEF-HP11-001
+    title: "gateway stale cleanup kills every sm-testgraph gateway on the host"
+    kind: instrument
+    channel: test-graph
+    channel_note: "smoke red at mcp.tool.loads.bundled against innocent code"
+    area: "test graph gateway.up stale cleanup"
+    anchor: UNMODELED/test-graph-harness
+    origin: UNTRACED
+    pin_note: "worked around by serializing gateway-booting graphs (HONEST_PINS_SERIAL); open"
+    skill_change: none
+  - id: DEF-HP10-002
+    title: "single-node replay refused for a continue-after-failure run"
+    kind: instrument
+    channel: operator-doing-the-work
+    area: "test-graph skill's replay closure"
+    anchor: UNMODELED/test-graph-harness
+    origin: UNTRACED
+    pin_note: "other repository; open"
+    skill_change: none
+  - id: DEF-HP9-002
+    title: "doc-smoke and onboarding assert on tla-spec-dev skill text that moved"
+    kind: instrument
+    channel: test-graph
+    area: "graph assertions on another repository's prose"
+    anchor: UNMODELED/test-graph-harness
+    origin: "pre-epic; red identically on main"
+    pin_note: "goes with the tla-spec-dev handoff; open"
+    skill_change: "proposed(tla-spec-dev, handoff note)"
+  - id: HP-7-D1
+    title: "skt ticket new loses a race on the shared retention ref"
+    kind: instrument
+    channel: operator-doing-the-work
+    area: "skt ticket new (tla-spec-dev)"
+    anchor: UNMODELED/skt
+    origin: UNTRACED
+    pin_note: "other repository; retry succeeds; open"
+    skill_change: "proposed(skt, deferred/HP-7.yaml proposed_fix)"
+  - id: PROC-GRAPH-LOCK
+    title: "my cross-worktree graph lock cost 25-90 minutes per run and bought nothing"
+    kind: process
+    channel: operator-doing-the-work
+    channel_note: "the user asked why agents seemed to run full graphs"
+    area: "epic agent's graph-run wrapper"
+    anchor: UNMODELED/epic-agent-process
+    origin: "epic agent"
+    pin_note: "memory epic-acceleration"
+    skill_change: none
+  - id: PROC-PR-BODY-CLOBBER
+    title: "two PR bodies overwritten through a shared session scratchpad"
+    kind: process
+    channel: operator-doing-the-work
+    area: "epic agent's instructions to parallel agents"
+    anchor: UNMODELED/epic-agent-process
+    origin: "epic agent"
+    pin_note: "memory epic-acceleration; later agents told to keep drafts in their worktree"
+    skill_change: none
+  - id: PROC-PR-TITLE-415
+    title: "PR #415 title failed the conventional-commit lint"
+    kind: process
+    channel: operator-running-a-shipped-instrument
+    channel_note: "CI's PR title lint; retitled before merge"
+    area: "ticket PR title"
+    anchor: UNMODELED/epic-agent-process
+    origin: "HP-0"
+    pin_note: "the lint is the pin"
+    skill_change: none
+
+reach:
+  - invariant: "a failed stash never reaches reset --hard"
+    enforced_on:
+      - "SyncGitPin.moveTo and SyncGitHandler merge, both through GitOps.setAside (#436)"
+    unenforced_on: []
+    enumerated_by: "#436: stashAll made private so setAside is the only entry; other resetHard callers read and judged safe"
+    note: "R1 fixed one of two paths; F1 was the second. The private method is what makes this list closed."
+    skill_change: none
+  - invariant: "every failed record write reaches a non-zero exit"
+    enforced_on:
+      - "sync --to, sync --lock, project resolve (#429)"
+      - "home sync (#436)"
+    unenforced_on: UNDECIDED
+    enumerated_by: "not enumerated. R2 and F7 are the two paths two reviews happened to find."
+    skill_change: none
+  - invariant: "a CLI refusal reaches a non-zero exit and names a way out"
+    enforced_on:
+      - "sync, install, onboard, upgrade (#430, read in the second review)"
+    unenforced_on: UNDECIDED
+    enumerated_by: "exit reach enumerated by the second review; 'names a way out' was added for shared rows only (#435)"
+    skill_change: none
+
+blind:
+  - case: "SyncGitPinTest R1 stash-failure case (#429)"
+    passes: true
+    could_not_have_caught: "the same failure on the ordinary merge path, which it never enters"
+    why: "the test was scoped to the file the finding named"
+    note: "F1. R1's fix was green while its sibling lost edits."
+    skill_change: none
+  - case: "graph honest-pins, 5 pin shapes"
+    passes: true
+    could_not_have_caught: "an annotated tag: every planted ref was a sha or a lightweight tag until #436 added one"
+    why: "fixture construction"
+    note: "F2. Goal-a measured 5/5 with this hole."
+    skill_change: none
+  - case: "HP-12 unit tests and graphs after registry removal"
+    passes: true
+    could_not_have_caught: "a bare-name reference to an installed unit: no fixture combined an installed dependency with a bare-name transitive"
+    why: "fixture construction"
+    note: "F3."
+    skill_change: none
+  - case: "virtual-mcp-gateway provisioning pytest (R6)"
+    passes: true
+    could_not_have_caught: "whether anything read stale_binaries; the tests asserted the entry was written"
+    why: "assertion stopped at the write"
+    note: "F6."
+    skill_change: none
+  - case: "changed test sources across the epic"
+    passes: true
+    could_not_have_caught: UNDECIDED
+    why: "the second review did not get to a vacuity check of the changed tests"
+    skill_change: none
