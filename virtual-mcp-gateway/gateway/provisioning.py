@@ -220,6 +220,9 @@ class Provisioner:
         self.data_dir = Path(data_dir)
         self.bin_dir = self.data_dir / "mcp_binaries"
         self.bin_dir.mkdir(parents=True, exist_ok=True)
+        # server_id -> why its last reprovision failed and the previous
+        # binary is still being served (#428 R6). Cleared on a good install.
+        self.stale_binaries: Dict[str, str] = {}
 
     async def provision(self, server_id: str, load_spec: LoadSpec) -> ClientConfig:
         if load_spec.type == "docker":
@@ -419,46 +422,114 @@ class Provisioner:
                 f"binary load spec for {server_id} has no install target for {current_platform_key()}"
             )
 
-        if install_dir.exists():
-            shutil.rmtree(install_dir)
-        install_dir.mkdir(parents=True, exist_ok=True)
+        # #428 R6: nothing may touch the working install until a replacement
+        # is downloaded, verified and extracted. Every pre-#103 marker misses
+        # once on upgrade, so a delete-first reprovision turned an offline
+        # gateway start into a broken server. Stage beside install_dir (same
+        # filesystem, so the swap is two renames), swap, run init_script in
+        # the final location (it may bake absolute paths), and roll back to
+        # the previous install if anything after the swap fails.
+        previous = _working_binary(install_dir, spec, target)
+        try:
+            staged, bin_rel = self._stage_binary(server_id, spec, target, install_dir)
+        except Exception as exc:
+            return self._keep_previous(server_id, previous, exc)
 
-        downloaded = _download(target.url, install_dir)
-        if target.sha256:
-            _verify_sha256(downloaded, target.sha256)
-
-        archive_kind = target.archive or _guess_archive(target.url)
-        if archive_kind in ("tar.gz", "tgz"):
-            _extract_tar_gz(downloaded, install_dir)
-            downloaded.unlink(missing_ok=True)
-        elif archive_kind == "zip":
-            _extract_zip(downloaded, install_dir)
-            downloaded.unlink(missing_ok=True)
-
-        if spec.init_script:
-            logger.info("running init_script for %s", server_id)
-            subprocess.run(
-                spec.init_script,
-                shell=True,
-                cwd=install_dir,
-                check=True,
-            )
-
-        bin_rel = spec.bin_path or target.binary
-        if not bin_rel:
-            # Fall back to the downloaded file itself (raw binary).
-            if downloaded.exists():
-                bin_rel = downloaded.name
-            else:
-                raise ValueError(f"{server_id}: bin_path not set and archive contains no hint")
-
-        binary_path = install_dir / bin_rel
-        if not binary_path.exists():
-            raise FileNotFoundError(f"{server_id}: binary not found at {binary_path}")
-
-        _make_executable(binary_path)
-        marker.write_text(digest)
+        backup: Optional[Path] = None
+        try:
+            if install_dir.exists():
+                backup = Path(tempfile.mkdtemp(prefix=f".{server_id}.previous-", dir=self.bin_dir))
+                backup.rmdir()
+                install_dir.rename(backup)
+            staged.rename(install_dir)
+            if spec.init_script:
+                logger.info("running init_script for %s", server_id)
+                subprocess.run(spec.init_script, shell=True, cwd=install_dir, check=True)
+            binary_path = install_dir / bin_rel
+            if not binary_path.exists():
+                raise FileNotFoundError(f"{server_id}: binary not found at {binary_path}")
+            _make_executable(binary_path)
+            (install_dir / MARKER_NAME).write_text(digest)
+        except Exception as exc:
+            if install_dir.exists():
+                shutil.rmtree(install_dir, ignore_errors=True)
+            if backup is not None and backup.exists():
+                backup.rename(install_dir)
+                backup = None
+            shutil.rmtree(staged, ignore_errors=True)
+            return self._keep_previous(server_id, previous, exc)
+        if backup is not None:
+            shutil.rmtree(backup, ignore_errors=True)
+        self.stale_binaries.pop(server_id, None)
         return binary_path
+
+    def _stage_binary(
+            self,
+            server_id: str,
+            spec: BinaryLoadSpec,
+            target: BinaryInstallTarget,
+            install_dir: Path,
+    ) -> tuple[Path, str]:
+        """Download, verify and extract into a fresh directory beside
+        ``install_dir``. Returns the staged directory and the binary's path
+        relative to it; on any failure the staging directory is removed."""
+        staged = Path(tempfile.mkdtemp(prefix=f".{server_id}.staging-", dir=self.bin_dir))
+        try:
+            downloaded = _download(target.url, staged)
+            if target.sha256:
+                _verify_sha256(downloaded, target.sha256)
+
+            archive_kind = target.archive or _guess_archive(target.url)
+            if archive_kind in ("tar.gz", "tgz"):
+                _extract_tar_gz(downloaded, staged)
+                downloaded.unlink(missing_ok=True)
+            elif archive_kind == "zip":
+                _extract_zip(downloaded, staged)
+                downloaded.unlink(missing_ok=True)
+
+            bin_rel = spec.bin_path or target.binary
+            if not bin_rel:
+                # Fall back to the downloaded file itself (raw binary).
+                if downloaded.exists():
+                    bin_rel = downloaded.name
+                else:
+                    raise ValueError(f"{server_id}: bin_path not set and archive contains no hint")
+            if not spec.init_script and not (staged / bin_rel).exists():
+                # Without an init_script the archive alone must hold the binary;
+                # with one, the script may produce it, so that is checked after it runs.
+                raise FileNotFoundError(f"{server_id}: binary not found at {install_dir / bin_rel}")
+            return staged, bin_rel
+        except Exception:
+            shutil.rmtree(staged, ignore_errors=True)
+            raise
+
+    def _keep_previous(self, server_id: str, previous: Optional[Path], exc: Exception) -> Path:
+        """A reprovision failed: serve the previous working binary and say so,
+        or re-raise when there is none to fall back on."""
+        if previous is None or not previous.exists():
+            raise exc
+        reason = f"{type(exc).__name__}: {exc}"
+        self.stale_binaries[server_id] = reason
+        logger.warning(
+            "binary reprovision for %s failed (%s); keeping the installed binary %s",
+            server_id, reason, previous,
+        )
+        return previous
+
+
+def _working_binary(
+        install_dir: Path, spec: BinaryLoadSpec, target: Optional[BinaryInstallTarget]
+) -> Optional[Path]:
+    """The binary a previous provision left in ``install_dir``, when one is
+    there to fall back on: a marker of any content (a legacy ``ok`` included)
+    plus the executable it was installed for."""
+    if not (install_dir / MARKER_NAME).exists():
+        return None
+    bin_rel = spec.bin_path or (target.binary if target is not None else None)
+    if not bin_rel:
+        return None
+    candidate = install_dir / bin_rel
+    return candidate if candidate.is_file() else None
 
 
 MARKER_NAME = ".skill-manager.installed"
