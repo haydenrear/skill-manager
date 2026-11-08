@@ -3,18 +3,18 @@ plugins {
 }
 
 /**
- * THIRTY integration test graphs for skill-manager, not two.
+ * THIRTY-ONE integration test graphs for skill-manager, not two.
  *
  * This comment said "Two integration test graphs" and named `smoke` and
  * `sponsored` until 2026-09-19. It had been wrong for a long time and it is
  * the first thing a reader of this file believes, so the count is now stated
- * where it can be checked: thirty `testGraph(...)` registrations below, one
+ * where it can be checked: thirty-one `testGraph(...)` registrations below, one
  * of them (`hyper-experiments`) conditional on an opt-in env var and otherwise
  * replaced by a same-named task that explains itself.
  *
  * Run them — one command, which also names what it did NOT run and why:
  *
- *   python3 test_graph/run-graphs.py            # the 26 graphs meant to run here
+ *   python3 test_graph/run-graphs.py            # the 27 graphs meant to run here
  *   python3 test_graph/run-graphs.py --list     # classification only, runs nothing
  *
  * Four are opt-in rather than dead: `browser-auth` and `password-reset` boot
@@ -23,6 +23,10 @@ plugins {
  * github, npm and the live RunPod API (#143). `run-graphs.py` prints each one
  * with its reason and its opt-in command, because a graph excluded silently
  * cannot be told apart from a graph that failed to run.
+ *
+ * `sponsored` was the thirty-second; it tested nothing but the registry server's
+ * sponsored-search feature and was removed at HP-11 (#426). `smoke`, `onboard`
+ * and `plugin-smoke` no longer boot docker, Postgres or the registry server.
  *
  * `./gradlew <name>` still runs any single graph, and
  * `./gradlew validationRunAll` still fans out over every registered graph —
@@ -33,7 +37,9 @@ plugins {
  *   ./gradlew validationPlanGraph --name=smoke
  *
  * Layout:
- *   sources/common/      shared infra nodes (env, postgres, registry, auth)
+ *   sources/common/      shared infra nodes (env, gateway venv, teardown,
+ *                        the home laws; postgres/registry/auth nodes remain
+ *                        only for the opt-in server graphs)
  *   sources/lib/         shared helper classes, pulled in via //SOURCES —
  *                        referenced by node files, never registered as nodes
  *   sources/<graph>/     nodes belonging to one graph
@@ -44,10 +50,6 @@ validationGraph {
     testGraph("smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/resolve/ResolverCyclesVerified.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
         // Materialize virtual-mcp-gateway/.venv before gateway.up so a
         // fresh checkout doesn't crash with "ModuleNotFoundError: uvicorn".
         // Idempotent — uv sync short-circuits on a populated lock.
@@ -55,12 +57,7 @@ validationGraph {
         node("sources/smoke/GatewayUp.java")
         node("sources/smoke/EchoHttpUp.java")
 
-        node("sources/smoke/HelloPublished.java")
         node("sources/smoke/HelloInstalled.java")
-        node("sources/smoke/SearchFinds.java")
-        node("sources/smoke/OwnershipRecorded.java")
-        node("sources/smoke/SemverEnforced.java")
-        node("sources/smoke/ImmutabilityEnforced.java")
         node("sources/smoke/MarkdownImportViolationsReported.java")
         node("sources/smoke/CrossKindMarkdownImports.java")
 
@@ -156,7 +153,6 @@ validationGraph {
 
         node("sources/smoke/SmokeReport.java")
         node("sources/common/ServersDown.java").dependsOn("smoke.report")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -165,13 +161,13 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
         // holds (DEF-047). Same structural discovery, same "zero homes
         // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     /*
@@ -356,27 +352,19 @@ validationGraph {
 
     /*
      * `onboard` — single-command bootstrap path that ships in the CLI as
-     * `skill-manager onboard`. Two halves:
+     * `skill-manager onboard`: the CLI command installs the bundled units
+     * end-to-end and leaves the gateway up (`onboard.completed` →
+     * `onboard.skills.installed` / `onboard.gateway.healthy`).
      *
-     *   1. The Spring `SkillBootstrapper` bean has seeded
-     *      `skill-manager` and the `tla-spec-dev` plugin
-     *      into the registry by
-     *      the time `registry.up` reports healthy
-     *      (`onboard.seeded.by.server`).
-     *   2. The CLI command actually installs the bundled skills end-to-end
-     *      and leaves the gateway up
-     *      (`onboard.completed` → `onboard.skills.installed` /
-     *       `onboard.gateway.healthy`).
+     * DOCKER-FREE since HP-11 (#426): no postgres, no compose, no registry
+     * server. The half that asserted the Spring `SkillBootstrapper` had
+     * seeded the registry (`onboard.seeded.by.server`) tested only the
+     * server, which skill-manager is not used through, and was deleted.
      */
     testGraph("onboard") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
 
-        node("sources/onboard/OnboardSeededByServer.java")
         node("sources/onboard/OnboardCompleted.java")
         node("sources/onboard/OnboardSkillsInstalled.java")
         node("sources/onboard/OnboardGatewayHealthy.java")
@@ -385,7 +373,6 @@ validationGraph {
         node("sources/common/ServersDown.java")
                 .dependsOn("onboard.skills.installed", "onboard.gateway.healthy",
                         "onboard.agent.configs.written")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -394,34 +381,13 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
         // holds (DEF-047). Same structural discovery, same "zero homes
         // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
-    }
-
-    testGraph("sponsored") {
-        node("sources/common/GatewayPythonVenvReady.java")
-        node("sources/common/EnvPrepared.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
-
-        node("sources/sponsored/ReviewerPublished.java")
-        node("sources/sponsored/FormatterPublished.java")
-        node("sources/sponsored/CampaignsCreated.java")
-
-        node("sources/sponsored/SponsoredSearchMatchesKeyword.java")
-        node("sources/sponsored/SponsoredNoAdsSuppresses.java")
-        node("sources/sponsored/SponsoredOrganicUnchanged.java")
-        node("sources/sponsored/SponsoredHigherBidWins.java")
-
-        node("sources/sponsored/SponsoredTeardown.java")
-        node("sources/common/PostgresDown.java").dependsOn("sponsored.teardown")
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     /*
@@ -547,29 +513,22 @@ validationGraph {
     /**
      * Plugin smoke graph (ticket 15 — minimal subset).
      *
-     * Exercises the plugin install pipeline end-to-end: publish a
-     * plugin bundle, install it, and verify the install lands the
-     * plugin under plugins/ (not skills/), the lock advances with the
-     * right kind, the Claude projector symlink lands, and the
-     * contained skill is NOT separately addressable from the registry.
+     * Exercises the plugin install pipeline end-to-end: install the
+     * examples/hello-plugin bundle from a local `file:` coordinate and
+     * verify the install lands the plugin under plugins/ (not skills/),
+     * the lock advances with the right kind, and the harness marketplace
+     * lists it.
      *
-     * Kept off the default `smoke` graph today because it depends on
-     * server-side support for plugin bundles (server-java/ unit_kind
-     * column migration is deferred per ticket 13). Will start passing
-     * once that lands. The full sweep of *Plugin* parallel nodes
-     * (HelloPluginPublished is one of ~30 the ticket calls for) is its
-     * own follow-up — these three prove the end-to-end install path
-     * and document the pattern.
+     * DOCKER-FREE since HP-11 (#426): no postgres, no compose, no registry
+     * server. It used to publish hello-plugin to a per-run registry only to
+     * install it back; it now installs from the file, and the registry-only
+     * node (`plugin.contained.skill.not.addressable`) was deleted.
      *
      *   ./gradlew plugin-smoke
      */
     testGraph("plugin-smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/resolve/ResolverCyclesVerified.java")
-        node("sources/common/PostgresUp.java")
-        node("sources/common/RegistryUp.java")
-        node("sources/common/CiLoggedIn.java")
-        node("sources/common/JwtValid.java")
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
         // Echo MCP fixture — needed by the umbrella-plugin install
@@ -578,17 +537,13 @@ validationGraph {
         // plugin-level server name.
         node("sources/smoke/EchoHttpUp.java")
 
-        node("sources/smoke/HelloPluginPublished.java")
         node("sources/smoke/HelloPluginInstalled.java")
         node("sources/smoke/HelloPluginRegisteredWithHarness.java")
-        // TWO SENSES OF "ADDRESSABLE", one word apart, and the graph now
-        // covers both. This one: a contained skill has no independent
-        // identity as a REGISTRY unit, so `install hello-impl` fails.
-        node("sources/smoke/plugin/PluginContainedSkillNotAddressable.java")
-        // And this one (OUN-1): an import NAMING a contained skill resolves.
-        // Until OUN-1 it was reported as a missing unit while the skill sat on
-        // disk in the same home. Only the first sense was covered, which is
-        // how that survived from the day skt shipped `unit-authoring`.
+        // OUN-1: an import NAMING a contained skill resolves. Until OUN-1 it
+        // was reported as a missing unit while the skill sat on disk in the
+        // same home. (The other sense of "addressable" -- a contained skill is
+        // not a top-level REGISTRY unit -- was a registry-server assertion and
+        // left with the server at HP-11.)
         node("sources/smoke/plugin/PluginContainedSkillResolvesByName.java")
         // OUN-2, as amended by OUN-13. The node keeps its id because ids are
         // load-bearing; its headline assertion is now the opposite. A plugin
@@ -636,15 +591,13 @@ validationGraph {
         node("sources/smoke/plugin/PluginSkillScriptForceSync.java")
 
         node("sources/common/ServersDown.java")
-                .dependsOn("plugin.contained.skill.not.addressable",
-                        "plugin.contained.skill.resolves.by.name",
+                .dependsOn("plugin.contained.skill.resolves.by.name",
                         "plugin.qualified.name.resolves",
                         "plugin.name.collision.refused",
                         "plugin.supersession.migrates",
                         "plugin.markdown.import.targets",
                         "plugin.uninstalled.mixed.orphans",
                         "plugin.skill_script.force.sync")
-        node("sources/common/PostgresDown.java").dependsOn("servers.down")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -653,13 +606,13 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
         // THE MEMBERSHIP LAW, the second post-condition and the one a
         // re-realized home does NOT satisfy: `home verify` passes on a
         // home that is internally consistent and wrong about what it
         // holds (DEF-047). Same structural discovery, same "zero homes
         // is a FAILURE" rule, and it carries its own self-test.
-        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     // -------------------------------------------------------- doc-smoke

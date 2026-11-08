@@ -26,8 +26,17 @@
 #   - HP-9 depends on HP-10 and promotes after it (promotion_order 10 -> 11).
 #   - Every undelivered assignment is re-rendered at revision 2, since goal 2's
 #     text changed. No ticket had started; no branch existed but the epic's.
+#
+# AMENDMENT, schedule_revision 3, 2026-11-07 -- added post-evaluation at owner
+# request: #426. smoke, onboard, sponsored and plugin-smoke booted Postgres and
+# the Java registry server through docker compose; on a host without docker all
+# four were red at postgres.up (HP-9's full run). Owner: "we literally never use
+# the server - ever." HP-11 drops the server nodes from smoke, onboard and
+# plugin-smoke, installs their fixtures from file coordinates, and deletes the
+# sponsored graph. Wave 5, after HP-9; appended, so every ordinal is unchanged.
+# It owns no goal and changes neither goal's text.
 version: 1
-schedule_revision: 2
+schedule_revision: 3
 name: honest-pins
 slug: honest-pins
 branch: epic/honest-pins
@@ -608,3 +617,40 @@ tickets:
         contribution: direct
         expected_effect: "record shape (f): red -> green; the valid-repo and truly-diverged control arms stay as they are"
         local_signal: "run.py honest-pins: node record-f green"
+
+  # Added post-evaluation at owner request (schedule_revision 3).
+  - id: HP-11
+    github_issue: https://github.com/haydenrear/skill-manager/issues/426
+    title: "smoke, onboard, plugin-smoke run without docker, postgres or the registry server; sponsored graph removed"
+    status: pr_open
+    role: implementation
+    schedule_revision: 3
+    wave: 5
+    depends_on: ["HP-9"]
+    blocks: []
+    promotion_order: 12
+    promotion_predecessor: HP-9
+    slice: >
+      Remove PostgresUp/RegistryUp/CiLoggedIn/JwtValid/PostgresDown from smoke,
+      onboard and plugin-smoke; delete the nodes that only test server behaviour
+      (registry search, ownership, semver/immutability, onboard seeding,
+      registry-addressability); install hello-skill and hello-plugin from file
+      coordinates instead of publishing them to a per-run registry; delete the
+      sponsored graph and its nodes and fixtures; update select-graph-set.py and
+      the CLAUDE.md counts. server-java/, the opt-in auth graphs and
+      hyper-experiments are out of scope (follow-up).
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: ["graph/smoke", "graph/onboard", "graph/plugin-smoke", "graph/sponsored"]
+      workflow: ["ci/graph-selection"]
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec change"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["smoke", "onboard", "plugin-smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-honest-pins/tickets/HP-11/
+    goals: []

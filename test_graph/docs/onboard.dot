@@ -3,25 +3,14 @@ digraph "onboard" {
   node [shape=box,fontname="Courier"];
   "env.prepared" [label="env.prepared\n(fixture, jbang)"];
   "gateway.python.venv.ready" [label="gateway.python.venv.ready\n(fixture, jbang)"];
-  "postgres.up" [label="postgres.up\n(testbed, jbang)"];
-  "registry.up" [label="registry.up\n(testbed, jbang)"];
-  "ci.logged.in" [label="ci.logged.in\n(action, jbang)"];
-  "jwt.valid" [label="jwt.valid\n(assertion, jbang)"];
-  "onboard.seeded.by.server" [label="onboard.seeded.by.server\n(assertion, jbang)"];
   "onboard.completed" [label="onboard.completed\n(action, jbang)"];
   "onboard.skills.installed" [label="onboard.skills.installed\n(assertion, jbang)"];
   "onboard.gateway.healthy" [label="onboard.gateway.healthy\n(assertion, jbang)"];
   "onboard.agent.configs.written" [label="onboard.agent.configs.written\n(assertion, jbang)"];
   "servers.down" [label="servers.down\n(evidence, jbang)"];
-  "postgres.down" [label="postgres.down\n(evidence, jbang)"];
-  "env.prepared" -> "postgres.up";
-  "env.prepared" -> "registry.up";
-  "postgres.up" -> "registry.up";
-  "registry.up" -> "ci.logged.in";
-  "ci.logged.in" -> "jwt.valid";
-  "registry.up" -> "onboard.seeded.by.server";
-  "registry.up" -> "onboard.completed";
-  "ci.logged.in" -> "onboard.completed";
+  "home.fixpoint.law" [label="home.fixpoint.law\n(assertion, jbang)"];
+  "home.membership.law" [label="home.membership.law\n(assertion, jbang)"];
+  "env.prepared" -> "onboard.completed";
   "gateway.python.venv.ready" -> "onboard.completed";
   "onboard.completed" -> "onboard.skills.installed";
   "onboard.completed" -> "onboard.gateway.healthy";
@@ -29,5 +18,6 @@ digraph "onboard" {
   "onboard.skills.installed" -> "servers.down";
   "onboard.gateway.healthy" -> "servers.down";
   "onboard.agent.configs.written" -> "servers.down";
-  "servers.down" -> "postgres.down";
+  "servers.down" -> "home.fixpoint.law";
+  "servers.down" -> "home.membership.law";
 }

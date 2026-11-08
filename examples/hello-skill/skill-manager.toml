@@ -51,12 +51,15 @@ binary = "ripgrep-14.1.1-x86_64-unknown-linux-musl/rg"
 name = "sequential-thinking"
 display_name = "Sequential Thinking"
 description = "Structured step-by-step reasoning tool — public Anthropic MCP reference server."
-default_scope = "global-sticky"
-# Public stdio MCP server, anonymous-pull-friendly on Docker Hub.
-# (Previously referenced ghcr.io/cognition-ai/deepwiki-mcp:latest, which
-# isn't a published image — anonymous pulls 403'd and install rolled
-# the MCP registration to MCP_REGISTRATION_FAILED.)
-load = { type = "docker", image = "mcp/sequentialthinking:latest" }
+# session scope: install REGISTERS the server with the gateway and an agent
+# deploys it per session, so installing this example runs nothing.
+default_scope = "session"
+# The public reference server as an npm package, run by the bundled node/npx.
+# It was the Docker image mcp/sequentialthinking:latest at global-sticky
+# scope until HP-11 (#426), which made every install of this example pull an
+# image and fail MCP registration on a host without a docker daemon. The
+# docker load type stays covered by test_graph/fixtures/mcp-tool-loads-skill.
+load = { type = "npm", package = "@modelcontextprotocol/server-sequential-thinking", version = "2025.12.18" }
 
 # skill-wide metadata (kept last because [skill] steals any trailing keys)
 [skill]
