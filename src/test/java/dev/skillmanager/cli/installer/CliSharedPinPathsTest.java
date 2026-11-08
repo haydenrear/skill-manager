@@ -153,6 +153,67 @@ public final class CliSharedPinPathsTest {
             assertTrue(refused.commandExitCode() != 0, "a refused CLI install does not exit 0");
         });
 
+        suite.test("F4: a min_version-only difference is clean on sync and per-dep install", () -> {
+            try (Fixture f = Fixture.shared("f4-floor-")) {
+                CliLock.Entry before = f.row();
+                f.declare("B", "0.5", "/v1");
+                CliDependency lowered = new CliDependency("tool", "tar:tool", "0.5", null, null, true,
+                        f.dep("1.0").install());
+                for (int pass = 1; pass <= 2; pass++) {
+                    EffectReceipt sync = f.run(new SkillEffect.InstallCli(f.units()));
+                    assertEquals(EffectStatus.OK, sync.status(), "sync pass " + pass + ": " + sync.errorMessage());
+                    EffectReceipt perDep = f.run(new SkillEffect.RunCliInstall("B", lowered, false));
+                    assertEquals(EffectStatus.OK, perDep.status(), "per-dep pass " + pass + ": " + perDep.errorMessage());
+                }
+                assertEquals(1, f.served.hits.get(), "nothing moved, so nothing is downloaded");
+                assertEquals(before.version(), f.row().version(), "the row keeps the version it installed");
+                assertEquals(before.declaredPin(), f.row().declaredPin(), "and the pin it installed from");
+                assertEquals(List.of("A", "B"), f.row().requestedBy(), "both claims kept");
+            }
+        });
+
+        suite.test("F4: a real disagreement still refuses, naming both units, pins and the way out", () -> {
+            try (Fixture f = Fixture.shared("f4-real-")) {
+                f.declare("A", "2.0");
+                try {
+                    new InstallerRegistry().installOne(f.dep("2.0"), f.store, "A", false, null, null);
+                    throw new AssertionError("A and B disagree over one tool");
+                } catch (CliRefusedException refused) {
+                    assertEquals(CliRefusedException.Kind.SHARED_PIN_CONFLICT, refused.kind(), "kind");
+                    String m = refused.getMessage();
+                    Tests.assertContains(m, "A declares tar:tool @ 2.0", "names the mover and its pin");
+                    Tests.assertContains(m, "B declares tar:tool @ 1.0", "names the holdout and its pin");
+                    Tests.assertContains(m, "skill-manager uninstall B", "a way out that exists today");
+                    Tests.assertContains(m, "skill-manager sync", "and the other way out");
+                }
+                f.assertUnmoved("refused");
+            }
+        });
+
+        suite.test("F4: a plan-level version conflict names both units, pins and the way out", () -> {
+            CliDependency dep = new CliDependency("tool", "pip:tool==2.0", null, null, "tool", true, Map.of());
+            String summary = new dev.skillmanager.plan.PlanAction.CliVersionConflict(
+                    "d1", dep, "2.0", "1.0", List.of("a1", "b1")).summary();
+            for (String expected : List.of("d1 declares 2.0", "a1, b1 holds 1.0",
+                    "`skill-manager uninstall a1`", "`skill-manager uninstall b1`", "skill-manager sync")) {
+                Tests.assertContains(summary, expected, "summary");
+            }
+        });
+
+        suite.test("F5: an unreadable manifest is not a stale requester", () -> {
+            try (Fixture f = Fixture.shared("f5-unreadable-")) {
+                Files.writeString(f.store.root().resolve("skills/B/skill-manager.toml"), "[[[ not toml");
+                assertTrue(!f.store.listInstalledUnits().problems().isEmpty(), "precondition: B is a read problem");
+                CliLock lock = CliLock.load(f.store);
+                assertEquals(List.of(), dev.skillmanager.lock.CliClaimants.prune(lock, f.store, Map.of()),
+                        "'could not read' is not 'gone'");
+                assertEquals(List.of("A", "B"), lock.get("tar", "tool").requestedBy(), "B keeps its claim");
+
+                f.run(new SkillEffect.InstallCli(f.units()));
+                assertEquals(List.of("A", "B"), f.row().requestedBy(), "and survives a sync");
+            }
+        });
+
         return suite.runAll();
     }
 
@@ -188,6 +249,11 @@ public final class CliSharedPinPathsTest {
 
         /** Write unit {@code name} declaring tar:tool at {@code version}, or no CLI when null. */
         void declare(String name, String version) throws Exception {
+            declare(name, version, version == null ? null : "/v" + version.charAt(0));
+        }
+
+        /** {@link #declare(String, String)} with the url path chosen separately from the floor. */
+        void declare(String name, String version, String path) throws Exception {
             Path dir = store.root().resolve("skills/" + name);
             Files.createDirectories(dir);
             Files.writeString(dir.resolve("SKILL.md"),
@@ -203,7 +269,7 @@ public final class CliSharedPinPathsTest {
                     [cli_dependencies.install.any]
                     url = "%s"
                     binary = "tool"
-                    """.formatted(version, served.url("/v" + version.charAt(0)));
+                    """.formatted(version, served.url(path));
             Files.writeString(dir.resolve("skill-manager.toml"), """
                     [skill]
                     name = "%s"

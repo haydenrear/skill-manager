@@ -55,7 +55,7 @@ public final class CliInstallRecorder {
     public static Result runWithRefusals(InstallPlan plan, SkillStore store) throws IOException {
         InstallerRegistry registry = new InstallerRegistry();
         CliLock lock = CliLock.load(store);
-        java.util.Map<String, java.util.Map<String, String>> pinsInThisPass = pinsByUnit(plan);
+        java.util.Map<String, java.util.Map<String, CliPin.Claim>> pinsInThisPass = pinsByUnit(plan);
         // #428 R4: a requester that is neither in this pass nor an installed
         // unit still declaring the row is stale. Drop it before anything
         // compares against the row, and persist that with the pass's save.
@@ -121,6 +121,14 @@ public final class CliInstallRecorder {
     public static CliLock.Entry record(CliLock lock, InstallerRegistry registry,
                                        CliDependency dep, SkillStore store, String unitName) {
         RequestedVersion.Requested req = RequestedVersion.of(dep);
+        CliLock.Entry current = lock.get(dep.backend(), req.tool());
+        if (CliPin.satisfiedBy(current, dep)) {
+            // #434 F4: this unit only joins a row that already meets its floor.
+            CliLock.Entry joined = current.withRequester(unitName)
+                    .withProvided(provenance(dep, store));
+            lock.put(joined);
+            return joined;
+        }
         CliLock.Entry row = lock.recordInstall(dep.backend(), req.tool(), req.version(), dep.spec(),
                 declaredHash(dep), unitName,
                 registry.fingerprintFor(dep, store, unitName),
@@ -184,13 +192,13 @@ public final class CliInstallRecorder {
      * {@code test_graph/fixtures/skill-script-skill}, whose {@code on_path} is
      * deliberately a name nothing provides so that the install always runs.
      */
-    /** backend:tool -> (unit -> declared pin), for every governed CLI dep this pass installs. */
-    static java.util.Map<String, java.util.Map<String, String>> pinsByUnit(InstallPlan plan) {
-        java.util.Map<String, java.util.Map<String, String>> out = new java.util.HashMap<>();
+    /** backend:tool -> (unit -> declared claim), for every governed CLI dep this pass installs. */
+    static java.util.Map<String, java.util.Map<String, CliPin.Claim>> pinsByUnit(InstallPlan plan) {
+        java.util.Map<String, java.util.Map<String, CliPin.Claim>> out = new java.util.HashMap<>();
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc) || !CliPin.governs(rc.dep())) continue;
             out.computeIfAbsent(key(rc.dep()), k -> new java.util.HashMap<>())
-                    .put(rc.unitName(), CliPin.of(rc.dep()));
+                    .put(rc.unitName(), CliPin.claim(rc.dep()));
         }
         return out;
     }
@@ -205,9 +213,9 @@ public final class CliInstallRecorder {
     public static void pruneStaleRequesters(SkillStore store, String unitName, CliDependency dep) {
         try {
             CliLock lock = CliLock.load(store);
-            java.util.Map<String, java.util.Map<String, String>> pass = new java.util.HashMap<>();
+            java.util.Map<String, java.util.Map<String, CliPin.Claim>> pass = new java.util.HashMap<>();
             if (unitName != null && dep != null) {
-                pass.put(key(dep), java.util.Map.of(unitName, CliPin.of(dep)));
+                pass.put(key(dep), java.util.Map.of(unitName, CliPin.claim(dep)));
             }
             if (!CliClaimants.prune(lock, store, pass).isEmpty()) lock.save(store);
         } catch (IOException | RuntimeException e) {
@@ -217,12 +225,12 @@ public final class CliInstallRecorder {
     }
 
     /** Like {@link #pinsByUnit}, for every CLI dep in the pass, governed or not. */
-    static java.util.Map<String, java.util.Map<String, String>> claimsByUnit(InstallPlan plan) {
-        java.util.Map<String, java.util.Map<String, String>> out = new java.util.HashMap<>();
+    static java.util.Map<String, java.util.Map<String, CliPin.Claim>> claimsByUnit(InstallPlan plan) {
+        java.util.Map<String, java.util.Map<String, CliPin.Claim>> out = new java.util.HashMap<>();
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
             out.computeIfAbsent(key(rc.dep()), k -> new java.util.HashMap<>())
-                    .put(rc.unitName(), CliPin.of(rc.dep()));
+                    .put(rc.unitName(), CliPin.claim(rc.dep()));
         }
         return out;
     }

@@ -1824,6 +1824,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // Cooperative halt — the plan was built successfully but
                 // policy blocks some actions. Same shape as the policy
                 // gate: OK status + HALT continuation.
+                if (!plan.conflicts().isEmpty()) {
+                    return EffectReceipt.okAndHalt(e, plan.conflicts().stream()
+                            .map(dev.skillmanager.plan.PlanAction.CliVersionConflict::summary)
+                            .collect(java.util.stream.Collectors.joining("; ")));
+                }
                 return EffectReceipt.okAndHalt(e, "plan has blocked items — see policy at "
                         + ctx.store().root().resolve("policy.toml"));
             }

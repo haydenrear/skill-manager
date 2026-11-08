@@ -334,6 +334,7 @@ public final class GatewayCommand implements Runnable {
             boolean reachable = new GatewayClient(cfg).ping();
             System.out.println("health:       " + (reachable ? "reachable" : "unreachable"));
             System.out.println("status:       " + (reachable ? "up" : "down"));
+            if (reachable) printStaleBinaries(new GatewayClient(cfg));
             if (!reachable) {
                 // An attached home cannot fix this itself, so telling it to
                 // run `gateway up` would send it straight into the refusal.
@@ -343,6 +344,16 @@ public final class GatewayCommand implements Runnable {
                           + "(this home is attached)");
             }
             return reachable ? 0 : 2;
+        }
+
+        private static void printStaleBinaries(GatewayClient client) {
+            try {
+                client.staleBinaries().forEach((server, why) -> System.out.println(
+                        "stale binary: " + server + " (old binary still served; reprovision failed: "
+                                + why + ")"));
+            } catch (java.io.IOException e) {
+                Log.warn("could not read per-server status: %s", e.getMessage());
+            }
         }
     }
 }

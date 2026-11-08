@@ -101,7 +101,8 @@ public final class GatewayClient {
                     (String) parsed.get("transport"),
                     (String) parsed.getOrDefault("default_scope", dep.defaultScope()),
                     (String) parsed.get("scope"),
-                    (String) parsed.get("deploy_error")
+                    (String) parsed.get("deploy_error"),
+                    (String) parsed.get("stale_binary")
             );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -128,6 +129,30 @@ public final class GatewayClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("gateway describe interrupted", e);
+        }
+    }
+
+    /**
+     * {@code server_id -> reason} for every registered server whose last binary
+     * reprovision failed and which keeps serving its previous binary (#434 F6).
+     */
+    public Map<String, String> staleBinaries() throws IOException {
+        HttpRequest req = tracedRequest(config.serversEndpoint())
+                .timeout(Duration.ofSeconds(10)).GET().build();
+        try {
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("gateway list failed: HTTP " + resp.statusCode() + " " + resp.body());
+            }
+            Map<String, String> out = new LinkedHashMap<>();
+            for (var item : json.readTree(resp.body()).path("items")) {
+                String reason = item.path("stale_binary").asText("");
+                if (!reason.isBlank()) out.put(item.path("server_id").asText(), reason);
+            }
+            return out;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("gateway list interrupted", e);
         }
     }
 
@@ -300,7 +325,8 @@ public final class GatewayClient {
             String transport,
             String defaultScope,
             String deployedScope,
-            String deployError) {}
+            String deployError,
+            String staleBinary) {}
 
     /**
      * State of a server as the gateway sees it. Used by install-time idempotency checks
@@ -314,7 +340,8 @@ public final class GatewayClient {
             Map<String, Object> loadSpecDigestSource,
             List<Map<String, Object>> initSchemaDigestSource,
             String specDigest,
-            Map<String, Object> lastError) {
+            Map<String, Object> lastError,
+            String staleBinary) {
 
         @SuppressWarnings("unchecked")
         public static ServerState fromMap(Map<String, Object> m) {
@@ -330,7 +357,8 @@ public final class GatewayClient {
                     loadSource,
                     schema,
                     (String) m.get("spec_digest"),
-                    lastError
+                    lastError,
+                    (String) m.get("stale_binary")
             );
         }
     }

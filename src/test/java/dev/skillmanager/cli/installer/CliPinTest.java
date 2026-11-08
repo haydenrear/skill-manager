@@ -235,6 +235,43 @@ public final class CliPinTest {
             }
         });
 
+        // ---- #434 F4: a difference the row already satisfies is not a bump ----
+
+        suite.test("F4: pip, same spec, a min_version the row meets is not a bump", () -> {
+            CliDependency a1 = new CliDependency("pycowsay", "pip:pycowsay==0.0.0.2", null, null,
+                    "pycowsay", true, Map.of());
+            CliDependency b1 = new CliDependency("pycowsay", "pip:pycowsay==0.0.0.2", "0.0.0.1", null,
+                    "pycowsay", true, Map.of());
+            CliLock.Entry rowOfA = new CliLock.Entry("pip", "pycowsay", "0.0.0.2",
+                    "pip:pycowsay==0.0.0.2", null, List.of("a1"), "t", "pycowsay", null, CliPin.of(a1));
+            assertEquals(null, CliPin.moved(rowOfA, b1), "b1 adds a floor 0.0.0.2 already clears");
+            CliLock.Entry rowOfB = new CliLock.Entry("pip", "pycowsay", "0.0.0.2",
+                    "pip:pycowsay==0.0.0.2", null, List.of("b1"), "t", "pycowsay", null, CliPin.of(b1));
+            assertEquals(null, CliPin.moved(rowOfB, a1), "and the same with the units swapped");
+
+            CliDependency unmet = new CliDependency("pycowsay", "pip:pycowsay==0.0.0.2", "9.0", null,
+                    "pycowsay", true, Map.of());
+            String why = CliPin.moved(rowOfA, unmet);
+            assertNotNull(why, "a floor the row does not meet is still a difference");
+            assertContains(why, "min_version", "and is not misdescribed as an install target");
+        });
+
+        suite.test("F4: tar, same target, only a min_version the row meets differs", () -> {
+            try (Served served = new Served()) {
+                CliDependency one = served.tarDep("1.0");
+                CliLock.Entry row = new CliLock.Entry("tar", "tool", "1.0", "tar:tool", null,
+                        List.of("A"), "t", "tool", null, CliPin.of(one));
+                CliDependency lowerFloor = new CliDependency(one.name(), one.spec(), "0.5", null,
+                        one.onPath(), one.platformIndependent(), one.install());
+                assertEquals(null, CliPin.moved(row, lowerFloor), "1.0 meets a floor of 0.5");
+                CliDependency higherFloor = new CliDependency(one.name(), one.spec(), "1.5", null,
+                        one.onPath(), one.platformIndependent(), one.install());
+                assertNotNull(CliPin.moved(row, higherFloor), "1.0 does not meet a floor of 1.5");
+                assertNotNull(CliPin.moved(row, served.tarDep("1.0", "/v2")),
+                        "a different download is still a bump");
+            }
+        });
+
         return suite.runAll();
     }
 
