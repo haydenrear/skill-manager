@@ -1,0 +1,42 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 3,
+  "graphs_executed": 3,
+  "graphs_passed": 3,
+  "graphs_failed": 0,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "cli-pin",
+      "status": "passed",
+      "seconds": 49.412,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-7/test_graph/build/validation-reports/20261108-032616"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "honest-pins",
+      "status": "passed",
+      "seconds": 361.543,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-7/test_graph/build/validation-reports/20261108-032713"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "artifact-dag",
+      "status": "passed",
+      "seconds": 332.684,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-hp-7/test_graph/build/validation-reports/20261108-033312"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261108-032604",
+  "gradle_exit_code": 0,
+  "continue_past_failures": true
+}
