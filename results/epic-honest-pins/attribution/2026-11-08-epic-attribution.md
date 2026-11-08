@@ -4,7 +4,7 @@ Rows are in `2026-11-08-epic-attribution.yaml`. Counts below are computed from t
 
 ## What the record says
 
-**Reviews found what the graphs could not, and three of the second review's findings were siblings of the first's fixes.** F1 is R1 on the other path, F5 is a defect in R4's fix, F6 is the unfinished half of R6, and F7 is R2's shape in `home sync`. A fix scoped to the file a finding named left the sibling. That is the recurring family of this epic. Where the second round closed it for good, it did so by making the guard the only entry (`GitOps.setAside`, `stashAll` private).
+**Reviews found what the graphs could not, and four of the second review's findings were siblings of the first's fixes.** F1 is R1 on the other path, F5 is a defect in R4's fix, F6 is the unfinished half of R6, and F7 is R2's shape in `home sync`. A fix scoped to the file a finding named left the sibling. That is the recurring family of this epic. Where the second round closed it for good, it did so by making the guard the only entry (`GitOps.setAside`, `stashAll` private).
 
 **The anchors point at a thin model around pins.** Most in-epic defects are `UNMODELED`: shared CLI rows, `requested_by`, stash failure, annotated tags, gateway provisioning. `CliPinInternal` scopes multi-claimant rows out. The bins with repeat findings are `cli-shared-row`, `cli-lock-requested-by`, `gateway-binary-provisioning` and `sync-failed-stash`. Nobody has classified them, so their disposition is `UNDECIDED`.
 
