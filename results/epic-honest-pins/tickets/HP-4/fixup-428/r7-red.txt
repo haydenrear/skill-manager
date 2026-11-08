@@ -1,0 +1,4 @@
+  [FAIL] the 2nd of 3 units fails: the 1st is recorded and armed, a re-run converges: and its installed record was restated despite the later failure: expected <0.2.0> but was <0.1.0>
+  [FAIL] a pass that died with no bookkeeping is repaired by the next no-op pass: the record converges: expected <0.2.0> but was <0.1.0>
+  [PASS] a no-op pass over an acknowledged home still arms nothing (#403 control)
+   → 1 passed, 2 failed
