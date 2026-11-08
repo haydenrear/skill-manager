@@ -258,6 +258,14 @@ public final class Resolver {
                     continue;
                 }
                 Coord alias = resolveAlias(childSource, childVersion, aliases);
+                // #434 F3: with the registry gone a bare name can only mean
+                // "this unit, already installed" — the reading the sync walk
+                // (ResolveGraphHandlers) has always had. Fetching it refuses.
+                // An alias says where the name comes from, so it still wins.
+                if (ref.isRegistry() && alias.source().equals(childSource)
+                        && store.containsUnit(ref.name())) {
+                    continue;
+                }
                 childSource = alias.source();
                 childVersion = alias.version();
                 queue.push(new Pending(

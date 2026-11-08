@@ -78,6 +78,33 @@ public final class ProjectDependencyResolverTest {
                                 "transitive project skill projected into Gemini home");
                     }
                 })
+                .test("#434 F3: a bare-name reference to an installed unit does not halt project resolve", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-bare-");
+                        UnitFixtures.scaffoldSkill(h.store().skillsDir(), "bare-dep", DepSpec.empty());
+                        new UnitStore(h.store()).write(new InstalledUnit("bare-dep", "0.1.0",
+                                InstalledUnit.Kind.LOCAL_DIR, InstalledUnit.InstallSource.LOCAL_FILE,
+                                "/nowhere/bare-dep", null, null, UnitStore.nowIso(), java.util.List.of(), UnitKind.SKILL));
+                        Path parent = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "bare-parent",
+                                DepSpec.of().ref("bare-dep").build()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "bare-project"
+
+                                [skills.parent]
+                                source = "%s"
+                                """.formatted(parent));
+
+                        ProjectDependencyResolver.Result result = resolver(h).resolve(
+                                project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(h.store().containsUnit("bare-parent"), "parent installed");
+                        assertTrue(result.lock().resolvedUnits().stream()
+                                        .anyMatch(u -> u.name().equals("bare-dep")),
+                                "the installed dependency is in the project closure");
+                    }
+                })
                 .test("skip-gateway resolves a skill with MCP dependencies without registering them", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-resolve-skip-gateway-");

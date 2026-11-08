@@ -198,6 +198,72 @@ public final class SyncGitPinTest {
             assertEquals("notes\nLOCAL EDIT\n", Files.readString(f.unit.resolve("NOTES.md")), "edit intact");
         });
 
+        // ------------------------------------------- #434 F1: ordinary --merge, failed stash
+
+        suite.test("#434 F1: sync --merge whose stash FAILS refuses by name and keeps the edits", () -> {
+            Fixture f = Fixture.create("merge-stashfail", "A");
+            String edited = Files.readString(f.unit.resolve("SKILL.md")).replace("marker A", "marker LOCAL");
+            Files.writeString(f.unit.resolve("SKILL.md"), edited);
+            Path unreadable = f.unit.resolve("unreadable.txt");
+            Files.writeString(unreadable, "secret\n");
+            assertTrue(unreadable.toFile().setReadable(false), "fixture: untracked file made unreadable");
+            try {
+                EffectReceipt r = merged(f);
+                assertEquals(EffectStatus.PARTIAL, r.status(), "refused, not rolled back: " + r.errorMessage());
+                assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitFailed g
+                        && g.skillName().equals(UNIT) && g.reason().contains("stash")),
+                        "the refusal names the unit and the stash: " + r.facts());
+                assertEquals(f.a, GitOps.headHash(f.unit), "HEAD unchanged");
+                assertContains(Files.readString(f.unit.resolve("SKILL.md")), "marker LOCAL", "edit intact");
+                assertFalse(GitOps.hasStash(f.unit), "nothing was left in a stash");
+                assertEquals(f.a, f.record().gitHash(), "record unchanged");
+            } finally {
+                unreadable.toFile().setReadable(true);
+            }
+        });
+
+        suite.test("#434 F1: sync --merge on a store already mid-merge still reports the conflict", () -> {
+            Fixture f = Fixture.create("merge-midmerge", "B");
+            plantMidMerge(f);
+            EffectReceipt r = merged(f);
+            assertEquals(EffectStatus.PARTIAL, r.status(), "not moved: " + r.errorMessage());
+            assertTrue(r.facts().stream().anyMatch(x -> x instanceof ContextFact.SyncGitConflicted),
+                    "a conflict the operator must resolve, not a stash failure: " + r.facts());
+            assertEquals("notes\nLOCAL EDIT\n", Files.readString(f.unit.resolve("NOTES.md")), "edit intact");
+            assertTrue(GitOps.isMidMerge(f.unit), "the merge in progress was not destroyed");
+        });
+
+        // ------------------------------------------- #434 F2: annotated tags
+
+        suite.test("#434 F2: fetchRef of an annotated tag answers the commit, not the tag object", () -> {
+            Fixture f = Fixture.create("fetch-tag", "A");
+            tagAnnotated(f, "v1.0", f.b);
+            assertEquals(f.b, GitOps.fetchRef(f.unit, f.record().origin(), "v1.0"), "peeled");
+        });
+
+        suite.test("#434 F2: a lock-row pin with ref = <annotated tag> and no sha lands on and records the commit", () -> {
+            Fixture f = Fixture.create("ref-tag", "A");
+            tagAnnotated(f, "v1.0", f.b);
+            EffectReceipt r = SyncGitHandler.run(new SkillEffect.SyncGit(UNIT, UnitKind.SKILL,
+                            InstalledUnit.InstallSource.GIT, false, false,
+                            new SkillEffect.SyncGit.Pin(null, "v1.0", null)),
+                    new EffectContext(f.h.store(), null));
+            assertEquals(EffectStatus.OK, r.status(), "moved: " + r.errorMessage());
+            f.assertAt(f.b, "marker B");
+            assertEquals(f.b, f.record().gitHash(), "record names the commit");
+            assertEquals("v1.0", f.record().gitRef(), "and tracks the tag");
+        });
+
+        suite.test("#434 F2: CLI sync --to <annotated tag> exits 0 with HEAD, record and lock on the commit", () -> {
+            Fixture f = Fixture.create("cli-tag", "A");
+            tagAnnotated(f, "v1.0", f.b);
+            int rc = toCommand(f, "v1.0").call();
+            assertEquals(0, rc, "reached the tag");
+            f.assertAt(f.b, "marker B");
+            assertEquals(f.b, f.record().gitHash(), "record names the commit");
+            assertEquals(List.of(), SyncGitPin.offPin(f.h.store(), UNIT, null), "HEAD, record and lock agree");
+        });
+
         // ------------------------------------------- #428 R2: failed record write
 
         suite.test("#428 R2: an unwritable installed record fails the pinned move by name", () -> {
@@ -285,6 +351,16 @@ public final class SyncGitPinTest {
         c.skipAgents = true;
         c.yes = true;
         return c;
+    }
+
+    private static EffectReceipt merged(Fixture f) throws Exception {
+        return SyncGitHandler.run(new SkillEffect.SyncGit(UNIT, UnitKind.SKILL,
+                InstalledUnit.InstallSource.GIT, true, true), new EffectContext(f.h.store(), null));
+    }
+
+    private static void tagAnnotated(Fixture f, String tag, String commit) throws Exception {
+        git(f.root.resolve("remote"), "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
+                "tag", "-a", "-m", tag, tag, commit);
     }
 
     private static EffectReceipt pinned(Fixture f, String sha) throws Exception {

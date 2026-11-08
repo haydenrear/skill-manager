@@ -554,13 +554,42 @@ public final class GitOps {
      * stashed (working tree had changes), false if the tree was clean (nothing
      * to do) or the stash failed.
      */
-    public static boolean stashAll(Path dir, String message) {
+    private static boolean stashAll(Path dir, String message) {
         if (porcelainStatus(dir).isBlank()) return false;
         Result r = run(dir, List.of("git",
                 "-c", "user.email=skill-manager@localhost",
                 "-c", "user.name=skill-manager",
                 "stash", "push", "--include-untracked", "-m", message));
         return r.exit == 0;
+    }
+
+    /**
+     * The outcome of {@link #setAside}: {@code failure} null means the tree is
+     * clean now, and {@code stashed} says whether a pop is owed.
+     */
+    public record SetAside(boolean stashed, String failure) {
+        public boolean ok() { return failure == null; }
+    }
+
+    /**
+     * Stash everything, for a caller about to do something that a
+     * {@code reset --hard} may have to undo (#428 R1, #434 F1). {@link #stashAll}
+     * answers false both for "nothing to stash" and for "the stash FAILED", and
+     * only the first may proceed: a reset after the second destroys the edits
+     * the stash never took. So ask the tree first, and after a stash ask again
+     * that it is really clean.
+     *
+     * <p>On failure the tree is as it was — nothing is stashed — and
+     * {@code failure} says why, for the caller's refusal.
+     */
+    public static SetAside setAside(Path dir, String message) {
+        if (porcelainStatus(dir).isBlank()) return new SetAside(false, null);
+        boolean stashed = stashAll(dir, message);
+        if (stashed && porcelainStatus(dir).isBlank()) return new SetAside(true, null);
+        if (stashed) stashPop(dir);
+        return new SetAside(false, "could not set the local edits aside (git stash "
+                + (stashed ? "left the tree dirty" : "failed")
+                + "); refusing to reset over them — nothing was changed");
     }
 
     /**
@@ -580,6 +609,9 @@ public final class GitOps {
         return run(dir, List.of("git", "merge", "--abort")).exit == 0;
     }
 
+    /** rev-parse suffix peeling a ref to the commit it ultimately names. */
+    private static final String COMMIT = "^{commit}";
+
     public static String fetchHead(Path dir, String remote) {
         return fetchRef(dir, remote, "HEAD");
     }
@@ -588,6 +620,10 @@ public final class GitOps {
      * Fetches {@code ref} from {@code remote} into FETCH_HEAD. Falls back to a
      * full fetch + rev-parse when the remote rejects fetch-by-sha (older git
      * servers without {@code uploadpack.allowAnySHA1InWant}).
+     *
+     * <p>The answer is always a COMMIT: an annotated tag's ref names a tag
+     * object, and HEAD can only ever be the commit it peels to, so an unpeeled
+     * answer disagrees with HEAD on every comparison and every record (#434 F2).
      */
     public static String fetchRef(Path dir, String remote, String ref) {
         Result fetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote, ref));
@@ -600,14 +636,14 @@ public final class GitOps {
             // branch and return the wrong sha. Try remote-tracking first;
             // tags and full shas resolve identically either way, so the bare
             // <ref> fallback only fires for those.
-            Result remoteRev = run(dir, List.of("git", "rev-parse", remote + "/" + ref));
+            Result remoteRev = run(dir, List.of("git", "rev-parse", remote + "/" + ref + COMMIT));
             if (remoteRev.exit == 0 && !remoteRev.stdout.trim().isBlank()) {
                 return remoteRev.stdout.trim();
             }
-            Result rev = run(dir, List.of("git", "rev-parse", ref));
+            Result rev = run(dir, List.of("git", "rev-parse", ref + COMMIT));
             return rev.exit == 0 ? rev.stdout.trim() : null;
         }
-        Result rev = run(dir, List.of("git", "rev-parse", "FETCH_HEAD"));
+        Result rev = run(dir, List.of("git", "rev-parse", "FETCH_HEAD" + COMMIT));
         return rev.exit == 0 ? rev.stdout.trim() : null;
     }
 

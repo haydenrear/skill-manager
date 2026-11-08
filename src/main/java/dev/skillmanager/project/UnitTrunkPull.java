@@ -218,7 +218,8 @@ public final class UnitTrunkPull {
                                 + "or at stash@{0})");
             }
             default -> new UnitPull(unit.name(), unit.kind(), Status.FAILED, repo, upstream, ref,
-                    after, List.of(), "git fetch/merge failed and was rolled back");
+                    after, List.of(), result.refusal() != null ? result.refusal()
+                            : "git fetch/merge failed and was rolled back");
         };
     }
 

@@ -105,23 +105,39 @@ public class PinBLockShaBump {
                     && HonestPinsKit.output(ctx, bumped).contains(UNIT);
             boolean falseConvergence = bumped.exitCode() == 0 && !b.equals(headAfter);
 
+            // #434 F2: an annotated tag names a tag OBJECT; the pin is the commit it
+            // peels to, in HEAD, the record and the lock alike.
+            ProcessRecord tagged;
+            try {
+                HonestPinsKit.git(upstream, "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
+                        "tag", "-a", "-m", "v1.0", "v1.0", c);
+                tagged = HonestPinsKit.sm(ctx, "sync_to_annotated_tag", root, home, "sync", UNIT, "--to", "v1.0");
+            } catch (Exception e) {
+                return NodeResult.fail(ID, "setup failed tagging: " + e).assertion("setup_ok", false);
+            }
+            boolean annotatedTagPeeled = tagged.exitCode() == 0 && c.equals(HonestPinsKit.head(unitDir))
+                    && c.equals(HonestPinsKit.recordedGitHash(home, UNIT))
+                    && c.equals(HonestPinsKit.lockField(home, UNIT, "resolved_sha"));
+
             boolean setup = setupInstalledAtA && setupLockPinsA && setupDesiredNamesB;
-            boolean shape = honoured || refusedByName;
+            boolean shape = (honoured || refusedByName) && annotatedTagPeeled;
             String where = headAfter.equals(c) ? "C (main's tip)" : headAfter.equals(a) ? "A (unchanged)"
                     : headAfter.equals(b) ? "B (the pin)" : headAfter;
             String detail = "A=" + a + " B(pin)=" + b + " C(tip)=" + c
                     + "; sync --lock rc=" + bumped.exitCode() + " HEAD=" + where
                     + " record=" + recordAfter + " lock=" + lockAfter + " bytesAtB=" + bytesAtB
+                    + "; sync --to <annotated tag> rc=" + tagged.exitCode() + " peeled=" + annotatedTagPeeled
                     + "; control rc=" + control.exitCode() + " noop=" + controlNoop
                     + "; setup installedAtA=" + setupInstalledAtA + " lockPinsA=" + setupLockPinsA;
             NodeResult result = setup && controlNoop && shape ? NodeResult.pass(ID) : NodeResult.fail(ID, detail);
-            return result.process(install).process(refresh).process(control).process(bumped)
+            return result.process(install).process(refresh).process(control).process(bumped).process(tagged)
                     .assertion("setup_installed_at_A", setupInstalledAtA)
                     .assertion("setup_lock_pins_A", setupLockPinsA)
                     .assertion("setup_desired_lock_names_B", setupDesiredNamesB)
                     .assertion("control_unchanged_lock_is_noop", controlNoop)
                     .assertion("shape_lock_pin_honoured_or_refused_by_name", shape)
                     .assertion("shape_no_false_convergence", !falseConvergence)
+                    .assertion("shape_annotated_tag_lands_on_its_commit", annotatedTagPeeled)
                     .log(detail);
         });
     }

@@ -143,6 +143,9 @@ public final class HomeSync {
      * @param drift the destination's pending drift record after this pass
      *        armed it (#403), or null when the pass wrote no loadable change
      *        (a dry run, or nothing {@code UPDATED}/{@code MERGED}/{@code NEW}).
+     * @param recordFailures one line per unit whose installed record could not
+     *        be restated after the pass (#434 F7). Its bytes moved and its record
+     *        did not, so the command must not read as success.
      */
     public record Report(
             Path from,
@@ -152,17 +155,25 @@ public final class HomeSync {
             boolean destinationFrozen,
             List<UnitSync> units,
             String unit,
-            DriftGate drift
+            DriftGate drift,
+            List<String> recordFailures
     ) {
         public Report {
             units = units == null ? List.of() : List.copyOf(units);
+            recordFailures = recordFailures == null ? List.of() : List.copyOf(recordFailures);
             if (unit != null && unit.isBlank()) unit = null;
         }
 
         /** A report from a pass that armed no drift gate. */
         public Report(Path from, Path to, boolean merge, boolean dryRun,
                       boolean destinationFrozen, List<UnitSync> units, String unit) {
-            this(from, to, merge, dryRun, destinationFrozen, units, unit, null);
+            this(from, to, merge, dryRun, destinationFrozen, units, unit, null, List.of());
+        }
+
+        /** A report from a pass whose records were all restated. */
+        public Report(Path from, Path to, boolean merge, boolean dryRun,
+                      boolean destinationFrozen, List<UnitSync> units, String unit, DriftGate drift) {
+            this(from, to, merge, dryRun, destinationFrozen, units, unit, drift, List.of());
         }
 
         /** Was this pass narrowed to one unit? */
@@ -293,6 +304,7 @@ public final class HomeSync {
                 failure = thrown;
             }
             DriftGate drift = null;
+            List<String> recordFailures = new ArrayList<>();
             if (!opts.dryRun()) {
                 // #428 R7: the bookkeeping runs for whatever the pass DID
                 // change, even when a later unit threw. Each unit's swap is
@@ -303,7 +315,7 @@ public final class HomeSync {
                 // again.
                 try {
                     drift = recordWhatChanged(to, materializer, outcomes, before,
-                            acknowledgedBaseline);
+                            acknowledgedBaseline, recordFailures);
                 } catch (IOException | RuntimeException bookkeeping) {
                     if (failure == null) throw bookkeeping;
                     failure.addSuppressed(bookkeeping);
@@ -319,7 +331,7 @@ public final class HomeSync {
             if (failure instanceof RuntimeException re) throw re;
             if (failure instanceof Error err) throw err;
             return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes,
-                    opts.unit(), drift);
+                    opts.unit(), drift, recordFailures);
         }
     }
 
@@ -342,16 +354,19 @@ public final class HomeSync {
      */
     private static DriftGate recordWhatChanged(SkillStore to, ChildHomeMaterializer materializer,
                                                List<UnitSync> outcomes, HomeDigest before,
-                                               boolean acknowledgedBaseline) throws IOException {
+                                               boolean acknowledgedBaseline,
+                                               List<String> recordFailures) throws IOException {
         java.util.Set<String> settled = new java.util.HashSet<>();
         for (UnitSync outcome : outcomes) {
             if (!outcome.writes() && outcome.status() != SyncStatus.UNCHANGED) continue;
             if (outcome.status() == SyncStatus.UNCHANGED) settled.add(outcome.unitName());
             try {
                 RecordVersionRefresh.restateAfterWrite(to, outcome.unitName());
-            } catch (IOException unwritable) {
-                Log.warn("home sync: %s: could not restate installed record version (%s)",
-                        outcome.label(), unwritable.getMessage());
+            } catch (IOException | RuntimeException unwritable) {
+                // #434 F7: keep going, the other units are owed their records,
+                // but this one disagrees with its bytes and the run must say so.
+                recordFailures.add(outcome.label() + ": could not restate installed record version ("
+                        + unwritable.getMessage() + ")");
             }
         }
         materializer.cleanStaging();

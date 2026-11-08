@@ -3,6 +3,9 @@ package dev.skillmanager.commands;
 import dev.skillmanager._lib.fixtures.DepSpec;
 import dev.skillmanager._lib.fixtures.UnitFixtures;
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.HomeSync;
 import dev.skillmanager.store.SkillStore;
 import picocli.CommandLine;
@@ -56,6 +59,29 @@ public final class HomeSyncUnitCliTest {
                                     + "would read that as 'this CLI has no --unit' and silently "
                                     + "fall back to the whole-home sync this flag exists to avoid");
                     assertContains(r.all(), "no unit named 'no-such-unit'", "and it says which");
+                })
+
+                .test("#434 F7: a record that cannot be restated exits non-zero and still visits the other units", () -> {
+                    Homes homes = homes("record-ro");
+                    SkillStore dest = new SkillStore(homes.dest());
+                    assertEquals(0, sync(homes).rc(), "first pass copies both units");
+                    UnitStore records = new UnitStore(dest);
+                    records.write(staleRecord("alpha"));
+                    records.write(staleRecord("beta"));
+                    assertTrue(records.file("alpha").toFile().setWritable(false), "fixture: record read-only");
+                    try {
+                        Result r = sync(homes);
+                        assertEquals(1, r.rc(), "a record the pass could not write fails the command: " + r.all());
+                        assertContains(r.all(), "alpha", "the failure names the unit");
+                        HomeSync.Report report = HomeSync.run(new SkillStore(homes.source()), dest,
+                                new HomeSync.Options(false, false));
+                        assertTrue(report.recordFailures().stream().anyMatch(f -> f.contains("alpha")),
+                                "and the Report carries it: " + report.recordFailures());
+                        assertFalse("0.0.1".equals(records.read("beta").orElseThrow().version()),
+                                "the unit after the failure was still restated");
+                    } finally {
+                        records.file("alpha").toFile().setWritable(true);
+                    }
                 })
 
                 .test("picocli still owns 2, so the two really are distinguishable", () -> {
@@ -136,6 +162,13 @@ public final class HomeSyncUnitCliTest {
         UnitFixtures.scaffoldSkill(source.skillsDir(), "alpha", DepSpec.empty());
         UnitFixtures.scaffoldSkill(source.skillsDir(), "beta", DepSpec.empty());
         return new Homes(source.root(), dest.root());
+    }
+
+    /** An installed record naming a version the manifest does not, so a pass must restate it. */
+    private static InstalledUnit staleRecord(String name) {
+        return new InstalledUnit(name, "0.0.1", InstalledUnit.Kind.LOCAL_DIR,
+                InstalledUnit.InstallSource.LOCAL_FILE, "/nowhere/" + name, null, null,
+                "2026-01-01T00:00:00Z", java.util.List.of(), UnitKind.SKILL);
     }
 
     private static Result sync(Homes homes, String... extra) {

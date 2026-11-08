@@ -293,6 +293,8 @@ public final class SyncGitHandler {
                     new ContextFact.SyncGitMerged(skillName, result.fetchedHash));
             case 8 -> EffectReceipt.partial(effect, "merge conflict",
                     new ContextFact.SyncGitConflicted(skillName, result.conflictedFiles));
+            case MergeResult.REFUSED -> EffectReceipt.partial(effect, result.refusal,
+                    new ContextFact.SyncGitFailed(skillName, result.refusal));
             default -> EffectReceipt.failed(effect,
                     List.of(new ContextFact.SyncGitFailed(skillName, "git fetch/merge rc=" + result.rc)),
                     "git fetch/merge failed (rc=" + result.rc + ")");
@@ -319,7 +321,8 @@ public final class SyncGitHandler {
      * {@code SyncCommand} can run the same merge against a local-dir upstream
      * without duplicating the rollback / conflict / stash-pop bookkeeping.
      *
-     * @return rc — 0 ok, 1 fetch/merge failure (rolled back), 8 merge or stash-pop conflict.
+     * @return rc — 0 ok, 1 fetch/merge failure (rolled back), 8 merge or stash-pop conflict,
+     *     {@link MergeResult#REFUSED} the edits could not be set aside (nothing was touched).
      */
     public static MergeResult runMerge(EffectContext ctx, Path storeDir, String upstream,
                                        String ref, String skillName) {
@@ -357,7 +360,21 @@ public final class SyncGitHandler {
     private static MergeResult mergeWithoutMaterializedTrees(
             EffectContext ctx, Path storeDir, String upstream, String ref, String skillName,
             boolean allowUnrelatedHistories, String preHead) {
-        boolean stashed = GitOps.stashAll(storeDir, "skill-manager-sync");
+        // #434 F1: a failed merge below ends in `reset --hard`, so a tree whose
+        // edits the stash did not take must not get that far.
+        GitOps.SetAside aside = GitOps.setAside(storeDir, "skill-manager-sync");
+        if (!aside.ok()) {
+            // A store with unresolved paths cannot be stashed, and that is
+            // the conflict still standing, not a new failure: report it as one.
+            List<String> unmerged = GitOps.unmergedFiles(storeDir);
+            if (!unmerged.isEmpty()) {
+                tryAddError(ctx, skillName, InstalledUnit.ErrorKind.MERGE_CONFLICT,
+                        "merge conflict against " + upstream + " " + ref);
+                return new MergeResult(8, null, unmerged);
+            }
+            return MergeResult.refused(aside.failure());
+        }
+        boolean stashed = aside.stashed();
 
         String fetchedHash = GitOps.fetchRef(storeDir, upstream, ref);
         if (fetchedHash == null) {
@@ -448,8 +465,16 @@ public final class SyncGitHandler {
         return new MergeResult(0, fetchedHash);
     }
 
-    public record MergeResult(int rc, String fetchedHash, List<String> conflictedFiles) {
-        public MergeResult(int rc, String fetchedHash) { this(rc, fetchedHash, List.of()); }
+    public record MergeResult(int rc, String fetchedHash, List<String> conflictedFiles, String refusal) {
+        /** The merge never started: the store is untouched and {@code refusal} says why. */
+        public static final int REFUSED = 9;
+
+        public MergeResult(int rc, String fetchedHash, List<String> conflictedFiles) {
+            this(rc, fetchedHash, conflictedFiles, null);
+        }
+        public MergeResult(int rc, String fetchedHash) { this(rc, fetchedHash, List.of(), null); }
+
+        static MergeResult refused(String why) { return new MergeResult(REFUSED, null, List.of(), why); }
     }
 
     private static void tryClearError(EffectContext ctx, String skillName,
