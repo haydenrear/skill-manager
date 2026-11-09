@@ -210,8 +210,12 @@ public final class GitOps {
      *       {@code notContent} accepts does not count: an untracked
      *       {@code __pycache__} changes no unit.</li>
      *   <li>the index holds an {@code assume-unchanged} or {@code skip-worktree}
-     *       path, which {@code status} is blind to by construction. A sparse
-     *       checkout is therefore not clean here; CC-5 decides what it means.</li>
+     *       path, which {@code status} is blind to by construction. The one
+     *       exception is a path an install excluded (#261): it is under a declared
+     *       exclusion of a {@link SparseInstall} checkout AND absent from disk, so
+     *       the commit still says everything about what is there. A file at such
+     *       a path, or a {@code --skip-worktree} on any other path, is the hole
+     *       this case exists to close and still reads as not clean.</li>
      *   <li>{@code .git/info/exclude} carries a rule. It is a machine-local
      *       ignore list git cannot be told to disregard, and
      *       {@code GitIgnoreRules} refuses it for the same reason.</li>
@@ -240,7 +244,7 @@ public final class GitOps {
                 "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"));
         if (status.exit != 0 || !statusIsClean(status.stdout, notContent)) return java.util.Optional.empty();
         Result index = run(dir, List.of("git", "--no-optional-locks", "ls-files", "-v", "-z"));
-        if (index.exit != 0 || hidesPaths(index.stdout)) return java.util.Optional.empty();
+        if (index.exit != 0 || hidesPaths(dir, index.stdout)) return java.util.Optional.empty();
         return java.util.Optional.of(commit);
     }
 
@@ -265,11 +269,22 @@ public final class GitOps {
         return true;
     }
 
-    /** {@code H} is an ordinary cached path; anything else {@code status} would not report. */
-    private static boolean hidesPaths(String lsFilesV) {
+    /**
+     * {@code H} is an ordinary cached path; anything else is one {@code status}
+     * would not report, except an install-excluded path that is really absent.
+     */
+    private static boolean hidesPaths(Path dir, String lsFilesV) {
+        java.util.Optional<java.util.Set<String>> exclusions = null;
         for (String record : lsFilesV.split("\0")) {
             String trimmed = record.strip();
-            if (!trimmed.isEmpty() && trimmed.charAt(0) != 'H') return true;
+            if (trimmed.isEmpty() || trimmed.charAt(0) == 'H') continue;
+            if (trimmed.charAt(0) != 'S' || record.length() < 3) return true;
+            if (exclusions == null) exclusions = SparseInstall.managedExclusions(dir);
+            String path = record.substring(2);
+            if (exclusions.isEmpty() || !SparseInstall.isExcluded(path, exclusions.get())
+                    || Files.exists(dir.resolve(path), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                return true;
+            }
         }
         return false;
     }
@@ -888,15 +903,22 @@ public final class GitOps {
     public static boolean clone(Path dest, String source, String ref) {
         if (source == null || source.isBlank() || dest == null) return false;
         Path parent = dest.getParent();
-        java.util.ArrayList<String> argv = new java.util.ArrayList<>(List.of(
-                "git", "clone", "--quiet", source, dest.toString()));
-        if (run(parent, argv).exit != 0) return false;
+        Path local = Path.of(source);
+        java.util.Optional<java.util.Set<String>> exclusions = Files.isDirectory(local)
+                ? SparseInstall.managedExclusions(local) : java.util.Optional.empty();
+        if (exclusions.isPresent()) {
+            if (!SparseInstall.cloneKeepingExclusions(local, dest, exclusions.get())) return false;
+        } else {
+            java.util.ArrayList<String> argv = new java.util.ArrayList<>(List.of(
+                    "git", "clone", "--quiet", source, dest.toString()));
+            if (run(parent, argv).exit != 0) return false;
+        }
         if (ref == null || ref.isBlank()) return true;
         return run(dest, List.of("git", "checkout", "--quiet", ref)).exit == 0
                 || headHash(dest) != null;
     }
 
-    private record Result(int exit, String stdout, String stderr) {}
+    record Result(int exit, String stdout, String stderr) {}
 
     /**
      * Confine git's repository discovery to {@code workdir} when it carries a
@@ -925,7 +947,7 @@ public final class GitOps {
         if (parent != null) pb.environment().put("GIT_CEILING_DIRECTORIES", parent.toString());
     }
 
-    private static Result run(Path workdir, List<String> argv) {
+    static Result run(Path workdir, List<String> argv) {
         ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
         if (workdir != null) pb.directory(workdir.toFile());
         confineDiscovery(pb, workdir);

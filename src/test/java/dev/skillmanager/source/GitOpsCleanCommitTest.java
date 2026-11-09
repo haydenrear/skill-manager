@@ -52,6 +52,34 @@ public final class GitOpsCleanCommitTest {
                     assertEquals("", clean(r), "chmod is content even with core.fileMode=false");
                 })
 
+                .test("an install-excluded path that is absent keeps the commit as identity", () -> {
+                    Path r = sparseRepo();
+                    assertEquals(git(r, "rev-parse", "HEAD").trim(), clean(r), "sparse install is clean");
+                })
+
+                .test("a file planted at an excluded path is not clean", () -> {
+                    Path r = sparseRepo();
+                    Files.createDirectories(r.resolve("excluded"));
+                    Files.writeString(r.resolve("excluded/x.txt"), "planted\n");
+                    assertEquals("", clean(r), "skip-worktree hides this from status");
+                })
+
+                .test("a user's skip-worktree on a kept path is still a hole, even when sparse", () -> {
+                    Path r = sparseRepo();
+                    git(r, "update-index", "--skip-worktree", "a.txt");
+                    Files.writeString(r.resolve("a.txt"), "edited behind status\n");
+                    assertEquals("", clean(r), "must not read clean");
+                    Path plain = repo();
+                    git(plain, "update-index", "--skip-worktree", "a.txt");
+                    assertEquals("", clean(plain), "no sparse checkout at all");
+                })
+
+                .test("a sparse checkout somebody else patterned is not trusted", () -> {
+                    Path r = sparseRepo();
+                    Files.writeString(r.resolve(".git/info/sparse-checkout"), "/a.txt\n");
+                    assertEquals("", clean(r), "not the shape an install writes");
+                })
+
                 .test("the user's untracked-files setting cannot hide an untracked file", () -> {
                     Path r = repo();
                     git(r, "config", "status.showUntrackedFiles", "no");
@@ -132,6 +160,18 @@ public final class GitOpsCleanCommitTest {
         git(r, "init", "-b", "main", "--quiet");
         git(r, "add", "-A");
         git(r, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "A");
+        return r;
+    }
+
+    private static Path sparseRepo() throws Exception {
+        Path r = Files.createTempDirectory("clean-commit-sparse-");
+        Files.writeString(r.resolve("a.txt"), "a\n");
+        Files.createDirectories(r.resolve("excluded"));
+        Files.writeString(r.resolve("excluded/x.txt"), "x\n");
+        git(r, "init", "-b", "main", "--quiet");
+        git(r, "add", "-A");
+        git(r, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "A");
+        assertTrue(SparseInstall.apply(r, List.of("excluded")), "sparse-checkout set");
         return r;
     }
 
