@@ -136,15 +136,20 @@ EXCLUDED: dict[str, str] = {
         "the build level (HYPER_EXPERIMENTS=1 / HYPER_LOCAL_DIR), so it is not "
         "in validationRunAll either. Run it deliberately, not on a push."
     ),
+    "cheap-checks": (
+        "skill-manager#414 — a local verdict graph: its timing nodes need macOS "
+        "`/usr/bin/time -l` and a checkout project home (<repo>/.skill-manager), "
+        "and every CI job runs on ubuntu-latest without one. Run it on a "
+        "developer machine: `python3 test_graph/run-graphs.py --only cheap-checks`."
+    ),
 }
 
-# cheap-checks was REMOVED from EXCLUDED at CC-6 (#443). It was opt-in while it
-# was epic #414's baseline and verdict graph, red by design until fixed. The
-# terminal evaluation read it green on the integrated epic tip -- three
-# fresh-start runs (sweeps 20261109-143450, -144121, -144821) and the full sweep
-# 20261109-145430, every node passed (results/epic-cheap-checks/goals/) -- so it
-# now runs in `full` (nightly and on dispatch). Not added to CORE. Its timing
-# nodes need BSD `time -l` and the checkout's project home: see DEF-CC6-003.
+# cheap-checks is EXCLUDED because it is LOCAL-ONLY (owner decision on
+# DEF-CC6-003, CC-8 #453), not because it is red: CC-6 (#443) read it green on
+# the integrated epic tip. CheapChecksKit.timed runs BSD `/usr/bin/time -l` and
+# projectHome() is the checkout's .skill-manager, so on an ubuntu runner it
+# could only go red for environmental reasons. Excluded here means out of every
+# CI set; run-graphs.py classifies it OPT-IN and still runs it with --only.
 
 # sponsored was DELETED at HP-11 (#426), not excluded: it tested nothing but
 # the registry server's sponsored-search feature, and skill-manager is not used

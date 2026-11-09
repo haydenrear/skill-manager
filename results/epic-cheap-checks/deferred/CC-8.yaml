@@ -1,0 +1,15 @@
+findings:
+  - id: DEF-CC8-001
+    severity: low
+    kind: environmental-flake
+    owner: epic-owner
+    summary: onboarding.global.home.untouched goes red when another session syncs the operator's root home during the graph, so the node's verdict depends on what else is running on the machine.
+    detail: >
+      Sweep 20261109-172746 failed the_operators_real_agent_homes_did_not_move with 54 differences under
+      ~/.skill-manager (audit.log, cli-lock.toml, home.digest.json, installed/*.projections.json, plugin-marketplace/*).
+      ~/.skill-manager/audit.log records `sync git` for cdc-agent-substrate-plugin at 17:32:28Z, inside that graph's
+      window (it started 17:30:33Z); this ticket ran no root-home sync. sandboxGlobalHomeAbsent=true,
+      configChanges=[], and every control arm held, so this is not a leak from the graph. The rerun with no sync in its
+      window (sweep 20261109-173544) passed all nodes. Same shape as the half of DEF-CC-EPIC-001 that did not reproduce at CC-6.
+    reproduction: Run a root-home `skill-manager sync` while the onboarding graph runs, then read envelope/onboarding.global.home.untouched.json.
+    action: Owner decides whether the node should discount writes attributable to audit.log entries, or whether runs simply need a quiet root home.
