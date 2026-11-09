@@ -1,1 +1,14 @@
-findings: []
+findings:
+  - id: DEF-CC-EPIC-001
+    severity: medium
+    kind: pre-existing-red
+    found_by: epic agent, control run while checking CC-2
+    summary: The onboarding graph is red at epic tip f12a3063, before CC-2, on two nodes.
+    detail: >
+      onboarding.docs.and.scripts.static fails the_extractor_found_the_four_known_good_scripts;
+      onboarding.global.home.untouched fails with no named assertion (possibly this session's own
+      writes under the global home). Same two nodes red on feature/402-scoped-installers
+      (report 20261109-040411) and on the epic tip (report 20261109-041232). Not investigated:
+      not established whether it predates the epic or came from CC-0/CC-1.
+    reproduction: python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py onboarding
+    action: Triage at finalization; CC-6's full sweep will show it.
