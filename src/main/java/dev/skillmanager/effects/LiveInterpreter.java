@@ -1065,7 +1065,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
      *       if available, marketplace add → marketplace update → for each
      *       reinstall name run uninstall+install, for each uninstall name
      *       run uninstall. Clear {@code HARNESS_CLI_UNAVAILABLE} on every
-     *       plugin once a successful add lands.</li>
+     *       plugin once a successful add lands. A plugin in neither list is
+     *       untouched: it stays in the catalog, and if an available agent has
+     *       not enabled it, a warning names it (#442).</li>
      *   <li>For each missing driver, record {@code HARNESS_CLI_UNAVAILABLE}
      *       on every plugin in the marketplace with the {@code brew
      *       install} hint so the closing report surfaces it.</li>
@@ -1211,6 +1213,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 failed++;
             }
         }
+
+        // #442: plugins this sync left alone. Nothing installs them, so nothing
+        // may imply they are projected: one an available agent has not enabled
+        // is named. An AGENT_SYNC_FAILED on one stays, because the loop below
+        // clears only what this pass actually reinstalled.
+        dev.skillmanager.project.HarnessPluginCli.reportNotEnabled(
+                available, e.outOfScope(), marketplaceName,
+                dev.skillmanager.project.HarnessPluginCli.readEnablements());
 
         // Now that every available driver has attempted its installs,
         // clear AGENT_SYNC_FAILED only on plugins where no driver
