@@ -47,6 +47,70 @@ public final class ArtifactStalenessTest {
                     "and neither did the tree that install wrote: " + tree.reason());
         });
 
+        suite.test("#450: an old row in a git checkout stays decided from its bytes, then stamps", () -> {
+            SkillStore store = gitFingerprinted();
+            ArtifactFreshness.Verdict old = shimOf(store);
+            assertEquals(ArtifactFreshness.Freshness.CURRENT, old.freshness(), "an old row is not stale: " + old.reason());
+            assertContains(old.reason(), "still hash", "and it was decided by re-reading the bytes");
+
+            assertEquals(1, dev.skillmanager.lock.CliInstallRecorder.stampGitInputs(store), "one row upgraded");
+            assertTrue(CliLock.load(store).get("skill-script", "alpha-script").gitInputs() != null, "stamp persisted");
+            ArtifactFreshness.Verdict stamped = shimOf(store);
+            assertEquals(ArtifactFreshness.Freshness.CURRENT, stamped.freshness(), "still current: " + stamped.reason());
+            assertContains(stamped.reason(), "git holds", "now answered by git, reading no script");
+        });
+
+        suite.test("#450: a stamped row still reads stale for an edited or a committed script", () -> {
+            SkillStore store = gitFingerprinted();
+            dev.skillmanager.lock.CliInstallRecorder.stampGitInputs(store);
+            Path unit = store.root().resolve("skills/alpha");
+            Path script = unit.resolve("skill-scripts/install.sh");
+            Files.writeString(script, Files.readString(script) + "\n# edited\n");
+            assertEquals(ArtifactFreshness.Freshness.STALE, shimOf(store).freshness(), "dirty script");
+
+            gitIn(unit, "add", "-A");
+            gitIn(unit, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "edit");
+            assertEquals(ArtifactFreshness.Freshness.STALE, shimOf(store).freshness(), "committed script");
+        });
+
+        suite.test("#450: a commit that leaves skill-scripts/ alone keeps the git answer", () -> {
+            SkillStore store = gitFingerprinted();
+            dev.skillmanager.lock.CliInstallRecorder.stampGitInputs(store);
+            Path unit = store.root().resolve("skills/alpha");
+            Files.writeString(unit.resolve("OTHER.md"), "unrelated\n");
+            gitIn(unit, "add", "-A");
+            gitIn(unit, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "other");
+            assertContains(shimOf(store).reason(), "git holds", "the scripts subtree did not move");
+        });
+
+        suite.test("#450: a row whose bytes no longer match is not stamped", () -> {
+            SkillStore store = gitFingerprinted();
+            Path unit = store.root().resolve("skills/alpha");
+            Path script = unit.resolve("skill-scripts/install.sh");
+            Files.writeString(script, Files.readString(script) + "\n# moved\n");
+            gitIn(unit, "add", "-A");
+            gitIn(unit, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "moved");
+
+            assertEquals(0, dev.skillmanager.lock.CliInstallRecorder.stampGitInputs(store), "not upgraded");
+            assertEquals(null, CliLock.load(store).get("skill-script", "alpha-script").gitInputs(), "no stamp");
+            assertEquals(ArtifactFreshness.Freshness.STALE, shimOf(store).freshness(), "and it reads stale");
+        });
+
+        suite.test("#450: a dirty scripts tree cannot be stamped", () -> {
+            SkillStore store = gitFingerprinted();
+            Path script = store.root().resolve("skills/alpha/skill-scripts/note.txt");
+            Files.writeString(script, "untracked\n");
+            assertEquals(0, dev.skillmanager.lock.CliInstallRecorder.stampGitInputs(store), "not upgraded");
+        });
+
+        suite.test("#450: a moved digest drops the stamp recorded beside it", () -> {
+            CliLock.Entry row = new CliLock.Entry("skill-script", "t", "1", "s", null, List.of("u"), "now")
+                    .withFingerprint(dev.skillmanager.lock.Fingerprint.ungraded("a", "b"))
+                    .withGitInputs("g");
+            assertEquals("g", row.withFingerprint(dev.skillmanager.lock.Fingerprint.ungraded("a", "b")).gitInputs(), "same digest");
+            assertEquals(null, row.withFingerprint(dev.skillmanager.lock.Fingerprint.ungraded("c", "b")).gitInputs(), "new digest");
+        });
+
         suite.test("editing skill-scripts/ makes the shim AND its tree stale, with no install",
                 () -> {
                     SkillStore store = fingerprinted();
@@ -767,6 +831,28 @@ public final class ArtifactStalenessTest {
                 null, "alpha", fingerprint, "alpha-script");
         lock.save(store);
         return store;
+    }
+
+    private static SkillStore gitFingerprinted() throws Exception {
+        SkillStore store = fingerprinted();
+        Path unit = store.root().resolve("skills/alpha");
+        gitIn(unit, "init", "-b", "main", "--quiet");
+        gitIn(unit, "add", "-A");
+        gitIn(unit, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "A");
+        return store;
+    }
+
+    private static ArtifactFreshness.Verdict shimOf(SkillStore store) throws Exception {
+        return ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                .of(ArtifactIds.cliShim("skill-script", "alpha-script"));
+    }
+
+    private static void gitIn(Path dir, String... args) throws Exception {
+        java.util.List<String> argv = new java.util.ArrayList<>(List.of("git"));
+        argv.addAll(List.of(args));
+        Process p = new ProcessBuilder(argv).directory(dir.toFile()).redirectErrorStream(true).start();
+        String out = new String(p.getInputStream().readAllBytes());
+        assertEquals(0, p.waitFor(), "git " + argv + ": " + out);
     }
 
     private static CliDependency declaredScriptDep(SkillStore store) throws Exception {

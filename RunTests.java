@@ -182,6 +182,7 @@ public class RunTests {
         failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
         failures += dev.skillmanager.source.GitOpsUnitIdentityTest.run();
         failures += dev.skillmanager.source.GitOpsCleanCommitTest.run();
+        failures += dev.skillmanager.source.GitOpsIndexRefreshTest.run();
         failures += dev.skillmanager.source.SparseInstallTest.run();
         failures += dev.skillmanager.source.DereferencedStoreLinkSyncTest.run();
         failures += dev.skillmanager.source.SyncPathsAgreeAboutDirtyTest.run();

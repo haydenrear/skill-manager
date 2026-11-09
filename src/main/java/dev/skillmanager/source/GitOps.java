@@ -249,6 +249,63 @@ public final class GitOps {
     }
 
     /**
+     * The git tree id of {@code rel} in a checkout whose {@code rel} subtree is
+     * exactly what HEAD holds, or empty on any doubt. {@link #cleanCommit} scoped
+     * to one subdirectory: a pathspec'd status stats and hashes only that subtree,
+     * so it stays cheap however large the unit is and however stale its index.
+     *
+     * @param rel unit-relative {@code '/'}-separated directory
+     */
+    public static java.util.Optional<String> cleanTree(Path dir, String rel) {
+        if (rel == null || rel.isBlank()) return java.util.Optional.empty();
+        UnitGitIdentity identity = unitGitIdentity(dir);
+        if (identity.state() != UnitGitState.OWN) return java.util.Optional.empty();
+        if (carriesLocalExcludes(identity.commonDir())) return java.util.Optional.empty();
+        Result tree = run(dir, List.of("git", "rev-parse", "--verify", "--quiet", "HEAD:" + rel));
+        String id = tree.stdout.trim();
+        if (tree.exit != 0 || !id.matches("[0-9a-f]{40,64}")) return java.util.Optional.empty();
+        Result status = run(dir, List.of("git", "--no-optional-locks",
+                "-c", "core.fileMode=true", "-c", "core.excludesFile=/dev/null",
+                "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none",
+                "--", rel));
+        if (status.exit != 0 || !statusIsClean(status.stdout, path -> false)) return java.util.Optional.empty();
+        Result index = run(dir, List.of("git", "--no-optional-locks", "ls-files", "-v", "-z", "--", rel));
+        if (index.exit != 0 || hidesPaths(dir, index.stdout)) return java.util.Optional.empty();
+        return java.util.Optional.of(id);
+    }
+
+    /**
+     * Bring the stat data in {@code dir}'s index up to date, for a checkout that
+     * has just been copied: a copy keeps every mtime and gets a new inode and
+     * ctime, so every entry mismatches and the next {@code git status} re-hashes
+     * the tree. Only the index changes. Skip-worktree entries are left alone, so a
+     * sparse checkout's absent paths stay absent and no blob is fetched.
+     *
+     * <p>Refused unless the repository's git directory lives inside {@code dir}:
+     * a {@code .git} file pointing at another checkout would have that checkout's
+     * index written.
+     *
+     * @return null when refreshed, otherwise why it was not
+     */
+    public static String refreshIndex(Path dir) {
+        UnitGitIdentity identity = unitGitIdentity(dir);
+        if (identity.state() != UnitGitState.OWN) return identity.reason();
+        try {
+            Path real = dir.toRealPath();
+            if (!identity.gitDir().toRealPath().startsWith(real)
+                    || !identity.commonDir().toRealPath().startsWith(real)) {
+                return "its git directory is outside the checkout";
+            }
+        } catch (IOException e) {
+            return e.getMessage();
+        }
+        Result refresh = run(dir, List.of("git", "-c", "core.fsmonitor=false",
+                "update-index", "-q", "--ignore-submodules", "--refresh"));
+        return refresh.exit == 0 ? null
+                : "git update-index exited " + refresh.exit + ": " + refresh.stdout.strip();
+    }
+
+    /**
      * Whether every {@code status --porcelain=v1 -z} record names a non-content
      * path. A rename or copy is never clean (its second path follows in the next
      * record), and a record that is not {@code XY path}, such as a warning on the

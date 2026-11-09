@@ -198,13 +198,15 @@ public final class ArtifactFreshness {
         Map<String, CliProducer> producers = cliProducers(store);
         InstallerRegistry registry = new InstallerRegistry();
         Path root = store.root().toAbsolutePath().normalize();
+        // A lock row yields two artifacts, its shim and its tree: asked once.
+        Map<String, java.util.Optional<String>> gitInputs = new java.util.HashMap<>();
 
         Map<String, Verdict> out = new LinkedHashMap<>();
         // Producers first, so an upstream verdict is always already decided.
         for (String id : graph.topological()) {
             Artifact artifact = graph.byId(id);
             if (artifact == null) continue;
-            Local own = ownVerdict(artifact, store, root, registry, producers);
+            Local own = ownVerdict(artifact, store, root, registry, producers, gitInputs);
             out.put(id, combine(artifact, own, graph, out, root));
         }
         return new ArtifactFreshness(graph, out);
@@ -214,9 +216,10 @@ public final class ArtifactFreshness {
 
     private static Local ownVerdict(Artifact artifact, SkillStore store, Path root,
                                     InstallerRegistry registry,
-                                    Map<String, CliProducer> producers) {
+                                    Map<String, CliProducer> producers,
+                                    Map<String, java.util.Optional<String>> gitInputs) {
         return switch (artifact.kind()) {
-            case CLI_SHIM -> byInstallFingerprint(artifact, store, registry, producers);
+            case CLI_SHIM -> byInstallFingerprint(artifact, store, registry, producers, gitInputs);
             // A tree credited to a cli-lock row is decided by that row's
             // fingerprint, and `backend` in its record is what marks it as one.
             // ARTI-20 (#122) gave the bundled package-manager roots a record
@@ -229,7 +232,7 @@ public final class ArtifactFreshness {
             // that. A tree with neither is still UNRECORDED and still
             // unverifiable, which is the state this arm always left it in.
             case PROVISIONED_TREE -> artifact.recorded().get("backend") != null
-                    ? byInstallFingerprint(artifact, store, registry, producers)
+                    ? byInstallFingerprint(artifact, store, registry, producers, gitInputs)
                     : byAgreement(artifact);
             case PROJECTION -> byProjection(artifact);
             case UNIT_STORE, DOC_IMPORT -> byAgreement(artifact);
@@ -255,7 +258,8 @@ public final class ArtifactFreshness {
      */
     private static Local byInstallFingerprint(Artifact artifact, SkillStore store,
                                               InstallerRegistry registry,
-                                              Map<String, CliProducer> producers) {
+                                              Map<String, CliProducer> producers,
+                                              Map<String, java.util.Optional<String>> gitInputs) {
         String recorded = artifact.recorded().get("install_fingerprint");
         String backend = artifact.recorded().get("backend");
         String tool = artifact.recorded().get("tool");
@@ -279,6 +283,20 @@ public final class ArtifactFreshness {
                             + " any more, so its declared inputs cannot be re-read — the "
                             + "fingerprint recorded for it describes inputs this home can "
                             + "no longer see");
+        }
+        // #450: git may CONFIRM the inputs did not move, never report that they
+        // did. A row with no stamp, a dirty subtree or a moved tree all fall
+        // through to the bytes below. Direct, because a clean tree id equal to the
+        // one recorded beside this digest is as strong as re-reading the bytes.
+        String stamped = artifact.recorded().get("install_git_inputs");
+        if (stamped != null) {
+            java.util.Optional<String> git = gitInputs.computeIfAbsent(lockKey,
+                    k -> registry.gitInputsFor(dep, store, unitName));
+            if (git.isPresent() && git.get().equals(stamped)) {
+                return verdict(artifact, Freshness.CURRENT,
+                        "git holds its declared inputs clean and unchanged since they were "
+                                + "recorded", true);
+            }
         }
         Fingerprint now = registry.fingerprintFor(dep, store, unitName);
         if (!now.present()) {

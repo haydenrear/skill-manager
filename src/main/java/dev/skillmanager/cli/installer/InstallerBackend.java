@@ -112,4 +112,17 @@ public interface InstallerBackend {
      * also moves when the disk does.)
      */
     Fingerprint fingerprint(CliDependency dep, SkillStore store, String unitName);
+
+    /**
+     * The inputs {@link #fingerprint} digests, named by git instead of by their
+     * bytes, or empty when git cannot name them. Equal values mean the inputs did
+     * not move, so a reader need not hash them; a differing or absent value says
+     * nothing, and the reader falls back to {@link #fingerprint}.
+     *
+     * <p>Defaulted, unlike {@link #fingerprint}: empty is the true answer for a
+     * backend whose inputs are not files in a checkout, and it costs only speed.
+     */
+    default java.util.Optional<String> gitInputs(CliDependency dep, SkillStore store, String unitName) {
+        return java.util.Optional.empty();
+    }
 }

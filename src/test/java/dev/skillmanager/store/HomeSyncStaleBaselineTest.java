@@ -103,9 +103,12 @@ public final class HomeSyncStaleBaselineTest {
                     "docs/notes.md", "v3 notes\n"));
             t.pullIntoWithoutRestating(t.projectUnit());
             // The bookkeeping churn the real homes carried: skt check runs
-            // `git status` in every store copy.
+            // `git status` in every store copy. Since #450 a clone's index is
+            // already fresh, so status alone no longer rewrites it; read-tree
+            // stands in for whatever git operation moves it next.
             git(t.ticketUnit(), "status", "--porcelain");
             git(t.projectUnit(), "status", "--porcelain");
+            git(t.ticketUnit(), "read-tree", "HEAD");
             assertFalse(t.ticketRecordEntry(".git/index")
                             .equals(currentEntry(t.ticketUnit(), ".git/index")),
                     "the ticket's .git/index really moved off its own record — without this the "

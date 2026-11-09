@@ -1,0 +1,20 @@
+== before-same run 1 -> /Volumes/dev/skill-manager-450-index-refresh/test_graph/build/cc7-clones/h1
+       59.09 real        18.69 user        27.95 sys
+          1410580480  maximum resident set size
+== before-same run 2 -> /Volumes/dev/skill-manager-450-index-refresh/test_graph/build/cc7-clones/h2
+       58.84 real        18.19 user        28.31 sys
+          1397751808  maximum resident set size
+== before-same run 3 -> /Volumes/dev/skill-manager-450-index-refresh/test_graph/build/cc7-clones/h3
+       58.23 real        18.32 user        27.58 sys
+          1361854464  maximum resident set size
+== before-cross run 1 -> <scratch>/cross/h1
+       65.04 real        19.15 user        32.74 sys
+          1521074176  maximum resident set size
+== before-cross run 2 -> <scratch>/cross/h2
+       63.82 real        18.71 user        32.29 sys
+          1522188288  maximum resident set size
+== before-cross run 3 -> <scratch>/cross/h3
+       77.78 real        19.10 user        35.36 sys
+          1502642176  maximum resident set size
+
+[exited with code 0]

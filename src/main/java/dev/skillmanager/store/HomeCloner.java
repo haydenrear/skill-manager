@@ -746,6 +746,8 @@ public final class HomeCloner {
         // before rebaselineDrift, so the drift baseline describes the bytes the
         // home actually ends up with.
         warmLocalShims(dst);
+        refreshCopiedIndexes(dst);
+        upgradeCliLockRows(new SkillStore(dst));
         rebaselineDrift(new SkillStore(dst));
 
         Verification verification = verifyRoots(src, dst, strict);
@@ -790,6 +792,59 @@ public final class HomeCloner {
         Log.info("%s: plugin marketplace re-derived — expected identity %s, found %s in the manifest",
                 what, identity, claimed);
         return true;
+    }
+
+    /**
+     * Leave every copied unit checkout with an index that describes it (#450).
+     *
+     * <p>A copy keeps each file's mtime and gets a new inode and ctime, on a full
+     * cross-volume copy and on an APFS clonefile alike, so every index entry
+     * mismatches. Each later {@code git status} then re-hashes the tree, and close-out
+     * uses {@code --no-optional-locks} and writes nothing, so it paid that on every
+     * run: 5.8 s per side on tla-spec-dev. Hashed once here instead.
+     * {@code core.checkStat} stays strict; loosening it loses a same-size,
+     * same-second edit.
+     *
+     * <p>Runs only in the destination, and only ever costs speed: a failure is one
+     * log line and a working, slower clone.
+     */
+    private static void refreshCopiedIndexes(Path dst) {
+        for (String root : CONTENT_ROOTS) {
+            Path dir = dst.resolve(root);
+            if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) continue;
+            List<Path> units;
+            try (var stream = Files.list(dir)) {
+                units = stream.toList();
+            } catch (IOException e) {
+                Log.warn("clone: could not list %s to refresh git indexes (%s) — git status "
+                        + "there will be slower", dir, e.getMessage());
+                continue;
+            }
+            for (Path unit : units) {
+                if (!Files.isDirectory(unit, LinkOption.NOFOLLOW_LINKS)) continue;
+                if (!Files.exists(unit.resolve(".git"), LinkOption.NOFOLLOW_LINKS)) continue;
+                try {
+                    String why = dev.skillmanager.source.GitOps.refreshIndex(unit);
+                    if (why != null) {
+                        Log.warn("clone: left the git index of %s as copied (%s) — git status "
+                                + "there will be slower", rel(dst, unit), why);
+                    }
+                } catch (RuntimeException e) {
+                    Log.warn("clone: left the git index of %s as copied (%s) — git status "
+                            + "there will be slower", rel(dst, unit), e.getMessage());
+                }
+            }
+        }
+    }
+
+    /** {@link dev.skillmanager.lock.CliInstallRecorder#stampGitInputs}, never fatal to a clone. */
+    private static void upgradeCliLockRows(SkillStore copy) {
+        try {
+            dev.skillmanager.lock.CliInstallRecorder.stampGitInputs(copy);
+        } catch (IOException | RuntimeException e) {
+            Log.warn("clone: could not stamp cli-lock.toml with git identities (%s) — "
+                    + "artifacts stale will read the install scripts", e.getMessage());
+        }
     }
 
     /** Directory iteration order is not a contract; the report's order is. */
