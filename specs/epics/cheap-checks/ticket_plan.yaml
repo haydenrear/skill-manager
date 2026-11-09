@@ -1,0 +1,438 @@
+# Ticket plan -- cheap-checks (#414).
+#
+# KICKOFF, schedule_revision 1, 2026-11-08. Owner decisions in the kickoff
+# conversation:
+#   - IDENTITY IS GIT. Owner: "shouldn't we be able to just use if there's a new
+#     git tag or new commits to see if we need a new artifact ... this comparison
+#     thing is more of a bug ... artifact stale should be immediate ... EVERYTHING
+#     IS GIT." A clean git checkout's identity is its commit; bytes are not read.
+#   - #261 STAYS IN, reshaped. Owner: "for the specs/.history we should just be
+#     excluding certain things from the commit, and the blob - BUT MAKE SURE WE
+#     STILL HAVE FULL GIT FUNCTIONALITY." Read as: partial clone plus sparse
+#     checkout; history is not rewritten, and commits keep the excluded paths.
+#   - SCOPE: #410, #261, #401, #402, plus #402's agent re-projection cost (#442).
+#   - TARGETS accepted as proposed for artifacts stale, close-out and installers.
+#     The projection and git-functionality clauses follow from the owner's scope
+#     and git requirements; they carry no separately agreed number.
+#   - DEFERMENT batch. REVIEW finalization-only; the epic agent merges ticket PRs
+#     into epic/cheap-checks.
+#   - WORKTREES on /Volumes/dev (owner), all provisioned at kickoff.
+version: 1
+schedule_revision: 1
+name: cheap-checks
+slug: cheap-checks
+branch: epic/cheap-checks
+base: "48a07c1d0d8d9d8b8188fc55f1bee6393887c744"
+repository: haydenrear/skill-manager
+epic_issue: https://github.com/haydenrear/skill-manager/issues/414
+ticket_prefix: CC
+updated: "2026-11-08"
+spec_workflow:
+  state: none
+  decided: "2026-11-08, epic agent, following this repository's epic precedent (one-home-one-verdict, one-unit-one-name, honest-pins)"
+  rule: >
+    No shared desired/current workflow. Tickets close on evidence under their
+    evidence_root and do NOT run `tla-spec-dev open ticket`, `close ticket`,
+    `scaffold workflow` or `close_tickets.py`.
+planning_rules:
+  model_ownership_rule: >
+    No TLA+ model is opened for this epic (see spec_workflow). Ticket agents run
+    no open/close ticket command and no --accept-new. A model change found
+    necessary comes back to the epic agent in the PR body.
+
+purpose: >
+  skt check, home close-out and sync <unit> cost in proportion to the size of the
+  home, not to what changed. Every unit is a git checkout, so what changed is a
+  question git already answers.
+
+non_goals:
+  - "Raising skt's 6 s artifact budget (#410)."
+  - "home clone copying cache/, or changing --force-scripts semantics (#402)."
+  - "Rewriting any repository's history, or removing specs/.history from a commit."
+  - "Reclaiming specs/.history copies already on disk (#261's companion sweep)."
+
+acceptance_scenario: >
+  In a project home holding tla-spec-dev: skt check reports artifacts inside its
+  budget and still reports an edited plugin; closing a worktree is quick and
+  flat in memory; provisioning a worktree home and syncing one unit runs no
+  other unit's installer and projects no other plugin; and an installed unit
+  that excludes specs/.history has none of it on disk while log, blame, diff,
+  commit, fetch and push all still work.
+
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-cheap-checks/deferred/backlog.yaml
+  per_ticket_backlog: "results/epic-cheap-checks/deferred/{ticket}.yaml"
+  rule: >
+    Owner decision 2026-11-08. Record out-of-slice defects in the ticket's
+    per-ticket backlog with a reproduction, keep working the slice, list them
+    under `## Deferred findings`. Triage at finalization. Search
+    results/*/deferred/ and GitHub for a duplicate first. A finding that blocks
+    the ticket's REQUIRED validation escalates to the owner.
+
+review_policy:
+  cadence: finalization-only
+  gate: false
+  merges: owner
+  milestones: []
+  walkthrough: required
+  artifact_root: results/epic-cheap-checks/reviews/
+  rule: >
+    Owner decision 2026-11-08: the epic agent merges ticket PRs from their
+    ticket branches into epic/cheap-checks in promotion order and keeps
+    dispatching. One review artifact and walkthrough at finalization. A merge
+    conflict goes back to its ticket agent. The merge into main is the owner's.
+
+validation_standards: >
+  Local graph runs: GRADLE_OPTS="-Dorg.gradle.daemon=false",
+  JAVA_TOOL_OPTIONS="-Djava.net.preferIPv6Addresses=true", SKILL_MANAGER_HOME
+  unset, through the installed runner
+  .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py. A ticket
+  runs only its declared graphs, once; the full sweep is CC-6's. Graphs that boot
+  the gateway (smoke, plugin-smoke) must not run concurrently across worktrees:
+  set HONEST_PINS_SERIAL=1. A sweep's verdict comes from its own summary, never
+  from build/validation-reports/. Timings are recorded with /usr/bin/time -l.
+
+epic_goals:
+  - id: GOAL-checking-costs-what-changed
+    kind: perf
+    evidence_root: results/epic-cheap-checks/goals/GOAL-checking-costs-what-changed/
+    evaluation_ticket: CC-6
+    statement: >
+      skt check, home close-out and sync <unit> cost in proportion to what
+      changed, not to the size of the home.
+    metric: >
+      (a) artifacts stale --json wall time, and byte-hashed files for a clean
+      checkout; (b) close-out time and RSS on a home holding tla-spec-dev;
+      (c) other units' installers re-run by sync <unit> in a cloned home;
+      (d) other plugins re-projected into agents by sync <unit>.
+    harness: "the cheap-checks test graph (built by CC-0), run on the integrated tip"
+    baseline:
+      value: unmeasured
+      note: >
+        CC-0 measures all clauses on the epic branch. Recorded in issues, not
+        comparable: (a) 24 s in #410, 9.2 s / 672 MB on this project home at
+        48a07c1d (one run, 2026-11-08); (b) 19 s / 1.2 GB (#401);
+        (c) all of them, about 85 s (#402); (d) every plugin, 15-33 s (#402).
+      measured_at: null
+      evidence: results/epic-cheap-checks/baseline/
+    target: >
+      (a) under 6 s, reading no file contents for a clean git checkout, and every
+      planted edit still detected; (b) under 5 s and under 300 MB RSS on the
+      fixture; (c) 0 other units' installers re-run; (d) 0 other plugins
+      re-projected. One verdict per clause.
+  - id: GOAL-excluded-paths-keep-git
+    kind: quality
+    evidence_root: results/epic-cheap-checks/goals/GOAL-excluded-paths-keep-git/
+    evaluation_ticket: CC-6
+    statement: >
+      A unit can exclude tracked paths from what an install puts on disk, without
+      losing any git functionality in the installed copy.
+    metric: >
+      (a) files at an excluded path in an installed unit; (b) of log, blame, diff
+      across history, status, commit, fetch, push: how many work on an installed
+      unit, including on an excluded path; (c) whether a commit made in the
+      installed unit keeps the excluded paths in its tree.
+    harness: "the cheap-checks test graph (built by CC-0), install-exclusion node"
+    baseline:
+      value: unmeasured
+      note: "No exclusion mechanism exists (#261). CC-0 records the fixture's file count at the excluded path."
+      measured_at: null
+      evidence: results/epic-cheap-checks/baseline/
+    target: "(a) 0 files; (b) all 7 work; (c) yes, the tree is unchanged at those paths. One verdict per clause."
+
+tickets:
+  - id: CC-0
+    github_issue: https://github.com/haydenrear/skill-manager/issues/441
+    title: "cheap-checks graph and baselines for every goal"
+    feature_branch: feature/441-cheap-checks-harness
+    worktree: /Volumes/dev/skill-manager-441-cheap-checks-harness
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 1
+    depends_on: []
+    blocks: ["CC-1", "CC-2", "CC-3", "CC-4", "CC-5", "CC-6"]
+    promotion_order: 1
+    promotion_predecessor: null
+    slice: >
+      Register an opt-in test graph `cheap-checks` with one node file per clause
+      under test_graph/sources/cheap-checks/, edit-detection controls included.
+      Measure at the epic tip and commit results/epic-cheap-checks/baseline/.
+      Unfixed clauses are EXPECTED RED. No production change. Later tickets edit
+      only their own node files.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: ["graph/cheap-checks-registration", "graph/cheap-checks-nodes-initial"]
+      workflow: ["ci/graph-selection"]
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec-unit change in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cheap-checks"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-0/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: enabling
+        expected_effect: "none — enabling only; unblocks every direct ticket"
+        local_signal: "python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks"
+      - goal: GOAL-excluded-paths-keep-git
+        contribution: enabling
+        expected_effect: "none — enabling only; unblocks CC-5"
+        local_signal: "python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks"
+
+  - id: CC-1
+    github_issue: https://github.com/haydenrear/skill-manager/issues/410
+    title: "artifacts stale asks git what changed instead of hashing every byte"
+    feature_branch: feature/410-git-identity-stale
+    worktree: /Volumes/dev/skill-manager-410-git-identity-stale
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 2
+    depends_on: ["CC-0"]
+    blocks: ["CC-3", "CC-5", "CC-6"]
+    promotion_order: 2
+    promotion_predecessor: CC-0
+    slice: >
+      A reusable git identity in source/GitOps: for a directory that is a git
+      checkout, the recorded commit plus a clean status IS the fingerprint, with
+      no network call and no file contents read. Use it in
+      MarketplaceInputs.fingerprintOf and remove the byte walk for that case. A
+      dirty tree or a non-checkout falls back to the walk, with excluded
+      directories pruned during the walk rather than after (ChildHomeMaterializer
+      plainView). Keep every existing guard: the link-target input, and the
+      symlinked-root handling. State and test the gitignored-file policy: git
+      status does not see those files, and the current digest does. Do not raise
+      skt's budget.
+    conflict_keys:
+      production: ["source/git-identity", "project/marketplace-fingerprint", "bindings/plain-view-walk"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/cheap-checks-node-artifacts-stale"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec-unit change in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cheap-checks", "artifact-dag", "home-verdicts", "smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-1/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: direct
+        expected_effect: "clause (a): from the CC-0 baseline to under 6 s, no bytes read for a clean checkout, edits still detected"
+        local_signal: "/usr/bin/time -l ./skill-manager artifacts stale --json"
+
+  - id: CC-2
+    github_issue: https://github.com/haydenrear/skill-manager/issues/402
+    title: "sync <unit> in a cloned home runs only that unit's installers"
+    feature_branch: feature/402-scoped-installers
+    worktree: /Volumes/dev/skill-manager-402-scoped-installers
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 2
+    depends_on: ["CC-0"]
+    blocks: ["CC-4", "CC-6"]
+    promotion_order: 3
+    promotion_predecessor: CC-1
+    slice: >
+      Sync of one unit reconciles only the CLI dependencies that unit brings, or
+      a clone's skill-script whose fingerprint matches and whose artifact is
+      missing only because the clone skipped cache/ builds on first use. Choose
+      one and say why in the PR. Agent projection is CC-4's. home clone keeps
+      skipping cache/, and --force-scripts semantics do not change.
+    conflict_keys:
+      production: ["cli/skill-script-reinstall"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/cheap-checks-node-installers"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec-unit change in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cheap-checks", "cli-pin", "home-clone", "home-sync", "sync-settles"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-2/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: direct
+        expected_effect: "clause (c): every other unit's installer re-run -> 0; about 85 s removed"
+        local_signal: "count skill-script logs under <home>/logs/skill-scripts/ after sync <unit> in a fresh home clone"
+
+  - id: CC-3
+    github_issue: https://github.com/haydenrear/skill-manager/issues/401
+    title: "home close-out compares by git identity, not by every byte"
+    feature_branch: feature/401-closeout-git-identity
+    worktree: /Volumes/dev/skill-manager-401-closeout-git-identity
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 3
+    depends_on: ["CC-0", "CC-1"]
+    blocks: ["CC-6"]
+    promotion_order: 4
+    promotion_predecessor: CC-2
+    slice: >
+      home close-out decides a git-checkout unit from CC-1's identity and reads
+      contents only for a unit that actually differs or is not a checkout, with
+      bounded memory. Every close-out verdict and blocker stays as honest as it
+      is today: an unpublished edit, an unpushed commit and a custody blocker all
+      still report.
+    conflict_keys:
+      production: ["commands/close-out", "store/home-digest-compare"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/cheap-checks-node-close-out"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec-unit change in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cheap-checks", "home-verdicts", "home-integrity", "ticket-lifecycle"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-3/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: direct
+        expected_effect: "clause (b): from the CC-0 baseline to under 5 s and under 300 MB RSS"
+        local_signal: "/usr/bin/time -l ./skill-manager home close-out --home <fixture> --into <project-home> --json"
+
+  - id: CC-4
+    github_issue: https://github.com/haydenrear/skill-manager/issues/442
+    title: "sync <unit> projects only that unit into the agents"
+    feature_branch: feature/442-scoped-projection
+    worktree: /Volumes/dev/skill-manager-442-scoped-projection
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 3
+    depends_on: ["CC-0", "CC-2"]
+    blocks: ["CC-6"]
+    promotion_order: 5
+    promotion_predecessor: CC-3
+    slice: >
+      sync <unit> runs the agents' marketplace and install CLIs for that unit
+      only. A sync with no unit keeps projecting everything, and --skip-agents
+      semantics do not change. The marketplace file must still list every plugin.
+    conflict_keys:
+      production: ["effects/agent-projection", "project/harness-plugin-cli"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/cheap-checks-node-projection"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec-unit change in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cheap-checks", "plugin-smoke", "sync-settles"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-4/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: direct
+        expected_effect: "clause (d): every other plugin re-projected -> 0; 15-33 s removed"
+        local_signal: "count claude/codex plugin invocations in the sync log under $TMPDIR/skill-manager/logs/"
+
+  - id: CC-5
+    github_issue: https://github.com/haydenrear/skill-manager/issues/261
+    title: "A unit can exclude tracked paths from install and keep full git"
+    feature_branch: feature/261-install-exclusion
+    worktree: /Volumes/dev/skill-manager-261-install-exclusion
+    status: planned
+    role: implementation
+    schedule_revision: 1
+    wave: 3
+    depends_on: ["CC-0", "CC-1"]
+    blocks: ["CC-6"]
+    promotion_order: 6
+    promotion_predecessor: CC-4
+    slice: >
+      A unit declares paths excluded from install in its manifest. Install is a
+      partial clone (--filter=blob:none) with a sparse checkout of the rest, so
+      the excluded working-tree files and their blobs are absent while every
+      commit stays intact and blobs fetch on demand. Log, blame, diff, status,
+      commit, fetch and push all work on an installed unit; a commit made there
+      leaves the excluded paths in the tree. CC-1's identity must hold on a
+      sparse checkout, and home clone, close-out and sync must tolerate one.
+      Verify nothing in an installed unit reads an excluded path at runtime.
+      Open a PR on tla-spec-dev-plugin adding its declaration for specs/.history,
+      left unmerged until this epic ships. History is never rewritten.
+    conflict_keys:
+      production: ["store/fetcher-clone", "model/unit-manifest-exclusion"]
+      tla: []
+      adapters: []
+      test_graph: ["graph/cheap-checks-node-install-exclusion"]
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec-unit change in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cheap-checks", "source-tracking", "git-latest-source-tracking", "home-clone", "smoke", "plugin-smoke"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-5/
+    goals:
+      - goal: GOAL-excluded-paths-keep-git
+        contribution: direct
+        expected_effect: "clause (a) to 0 files; clauses (b) and (c) met"
+        local_signal: "python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks"
+      - goal: GOAL-checking-costs-what-changed
+        contribution: guard
+        expected_effect: "clause (a) must still hold on a sparse checkout"
+        local_signal: "/usr/bin/time -l ./skill-manager artifacts stale --json"
+
+  - id: CC-6
+    github_issue: https://github.com/haydenrear/skill-manager/issues/443
+    title: "Evaluate cheap-checks on the integrated epic"
+    feature_branch: feature/443-evaluate
+    worktree: /Volumes/dev/skill-manager-443-evaluate
+    status: planned
+    role: evaluation
+    owns_goals: ["GOAL-checking-costs-what-changed", "GOAL-excluded-paths-keep-git"]
+    schedule_revision: 1
+    wave: 4
+    depends_on: ["CC-0", "CC-1", "CC-2", "CC-3", "CC-4", "CC-5"]
+    blocks: []
+    promotion_order: 7
+    promotion_predecessor: CC-5
+    slice: >
+      Run each owned harness from a fresh start on the reconciled epic tip and
+      report baseline -> measured -> target with one verdict per clause. Then one
+      full run-graphs.py sweep. Move cheap-checks out of EXCLUDED if green. File
+      shortfalls as deferred findings; never edit a target.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: ["graph/cheap-checks-registration"]
+      workflow: ["ci/graph-selection"]
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "N/A: no spec-unit change in this epic"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["ALL: python3 test_graph/run-graphs.py, read from its sweep summary"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-6/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-excluded-paths-keep-git
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioral delta"
+        local_signal: "N/A: this ticket is the measurement"
