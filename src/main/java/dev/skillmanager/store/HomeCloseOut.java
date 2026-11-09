@@ -167,12 +167,19 @@ public final class HomeCloseOut {
         // "different" forever (its .git churns) and never say the one thing
         // that matters, which is whether the commits have been pushed.
         ChildHomeMaterializer worktreeSide = new ChildHomeMaterializer(into, home);
+        // Only a checkout-mode unit can land here, so only those are asked. The
+        // question for any other unit digests its whole tree, and this used to
+        // ask it of every unit, twice: 59% of the time on a home holding
+        // tla-spec-dev, for an answer read only by the CHECKOUT filter (#401).
         List<String> dirtyCheckouts = new ArrayList<>();
-        for (ChildHomeMaterializer.UnitOutcome outcome : worktreeSide.locallyModifiedUnits()) {
-            worktreeSide.readRecord(outcome.unitName(), outcome.unitKind())
+        for (ChildHomeMaterializer.UnitRef ref : ChildHomeMaterializer.unitDirectories(home)) {
+            boolean checkout = worktreeSide.readRecord(ref.name(), ref.kind())
                     .filter(r -> dev.skillmanager.bindings.MaterializationMode.CHECKOUT.name()
                             .equals(r.mode()))
-                    .ifPresent(r -> dirtyCheckouts.add(outcome.label()));
+                    .isPresent();
+            if (checkout && worktreeSide.isLocallyModified(ref.name(), ref.kind())) {
+                dirtyCheckouts.add(ref.label());
+            }
         }
 
         // DEF-101. What the DESTINATION says it can obtain for itself. Read
@@ -180,16 +187,12 @@ public final class HomeCloseOut {
         // what `--into` can fetch has to come from `--into`.
         dev.skillmanager.project.ProjectManifestRealization.Shortfall declared =
                 dev.skillmanager.project.ProjectManifestRealization.inspect(into);
-        java.util.Set<String> modifiedInWorktree = new java.util.HashSet<>();
-        for (ChildHomeMaterializer.UnitOutcome outcome : worktreeSide.locallyModifiedUnits()) {
-            modifiedInWorktree.add(outcome.label());
-        }
 
         List<Blocker> blockers = new ArrayList<>();
         List<SelfObtainable> selfObtainable = new ArrayList<>();
         for (UnitSync unit : report.units()) {
             SelfObtainable obtainable = selfObtainable(
-                    unit, declared, modifiedInWorktree, worktreeSide, home, intoRoot);
+                    unit, declared, worktreeSide, home, intoRoot);
             if (obtainable != null) {
                 selfObtainable.add(obtainable);
                 continue;
@@ -201,11 +204,11 @@ public final class HomeCloseOut {
         for (UnitSync unit : report.units()) {
             if (!dirtyCheckouts.contains(unit.label())) continue;
             if (blockers.stream().anyMatch(b -> b.label().equals(unit.label()))) continue;
-            // A dirty checkout is never self-obtainable — modifiedInWorktree is
-            // the same enumeration dirtyCheckouts is filtered from — but the
-            // guard is stated rather than relied on, because the two lists are
-            // built from one walk and a future change to either must not be able
-            // to let a unit with unpushed work out through this seam.
+            // A dirty checkout is never self-obtainable — selfObtainable asks the
+            // same isLocallyModified that dirtyCheckouts was built from — but
+            // the guard is stated rather than relied on, because a future change
+            // to either must not be able to let a unit with unpushed work out
+            // through this seam.
             if (selfObtainable.stream().anyMatch(o -> o.label().equals(unit.label()))) continue;
             blockers.add(new Blocker(unit,
                     (cliInvocation(homeRoot) + " unit publish "
@@ -228,19 +231,19 @@ public final class HomeCloseOut {
      * edited is still {@code UPDATED} / {@code HELD_BACK} / {@code CONFLICTED},
      * and still blocks.
      *
-     * @param declared          what the destination's own manifest names
-     * @param modifiedInWorktree labels the worktree home has local work on
+     * @param declared what the destination's own manifest names
      */
     private static SelfObtainable selfObtainable(
             UnitSync unit,
             dev.skillmanager.project.ProjectManifestRealization.Shortfall declared,
-            java.util.Set<String> modifiedInWorktree,
             ChildHomeMaterializer worktreeSide,
             SkillStore home,
             Path into) throws IOException {
         if (unit.status() != SyncStatus.NEW) return null;
         if (declared == null || !declared.hasManifest()) return null;
-        if (modifiedInWorktree.contains(unit.label())) return null;
+        // Asked here, for a NEW unit the destination declares, and not of the
+        // whole home up front: this predicate digests the unit (#401).
+        if (worktreeSide.isLocallyModified(unit.unitName(), unit.unitKind())) return null;
         // POSITIVE evidence of provenance, not merely the absence of a
         // complaint. isLocallyModified already answers true for a unit with no
         // materialization record, so this is belt-and-braces — and deliberately
