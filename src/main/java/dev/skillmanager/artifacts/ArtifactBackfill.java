@@ -1096,7 +1096,7 @@ public final class ArtifactBackfill {
             // rather than the one on disk. A comparison that reads its own
             // answer as input is not a comparison.
             Optional<MarketplaceInputs.Entry> row = inputs.flatMap(i -> i.plugin(name));
-            Optional<Fingerprint> recorded = row.flatMap(MarketplaceInputs.Entry::fingerprint)
+            Optional<Fingerprint> recorded = row.flatMap(MarketplaceInputs.Entry::comparableFingerprint)
                     .filter(Fingerprint::present);
             Fingerprint now = MarketplaceInputs.fingerprintOf(name,
                     "./plugins/" + name,

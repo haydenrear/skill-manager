@@ -1,0 +1,12 @@
+ 3.76 real 3.73 user 1.30 sys  480903168 maximum resident set size {'artifacts': 41, 'stale': 10, 'unverifiable': 4, 'current': 27, 'stale_by_kind': {'unit-store': 0, 'cli-shim': 5, 'provisioned-tree': 5, 'projection': 0, 'marketplace-entry': 0, 'harness-instance': 0, 'mcp-registration': 0, 'doc-import': 0, 'unit-digest': 0}}
+ 3.43 real 3.63 user 1.13 sys  589135872 maximum resident set size {'artifacts': 41, 'stale': 10, 'unverifiable': 4, 'current': 27, 'stale_by_kind': {'unit-store': 0, 'cli-shim': 5, 'provisioned-tree': 5, 'projection': 0, 'marketplace-entry': 0, 'harness-instance': 0, 'mcp-registration': 0, 'doc-import': 0, 'unit-digest': 0}}
+ 3.34 real 3.72 user 1.11 sys  584450048 maximum resident set size {'artifacts': 41, 'stale': 10, 'unverifiable': 4, 'current': 27, 'stale_by_kind': {'unit-store': 0, 'cli-shim': 5, 'provisioned-tree': 5, 'projection': 0, 'marketplace-entry': 0, 'harness-instance': 0, 'mcp-registration': 0, 'doc-import': 0, 'unit-digest': 0}}
+ 3.26 real 3.55 user 1.09 sys  573210624 maximum resident set size {'artifacts': 41, 'stale': 10, 'unverifiable': 4, 'current': 27, 'stale_by_kind': {'unit-store': 0, 'cli-shim': 5, 'provisioned-tree': 5, 'projection': 0, 'marketplace-entry': 0, 'harness-instance': 0, 'mcp-registration': 0, 'doc-import': 0, 'unit-digest': 0}}
+ 3.32 real 3.62 user 1.21 sys  577830912 maximum resident set size {'artifacts': 41, 'stale': 10, 'unverifiable': 4, 'current': 27, 'stale_by_kind': {'unit-store': 0, 'cli-shim': 5, 'provisioned-tree': 5, 'projection': 0, 'marketplace-entry': 0, 'harness-instance': 0, 'mcp-registration': 0, 'doc-import': 0, 'unit-digest': 0}}
+ 3.22 real 3.59 user 1.21 sys  623099904 maximum resident set size {'artifacts': 41, 'stale': 10, 'unverifiable': 4, 'current': 27, 'stale_by_kind': {'unit-store': 0, 'cli-shim': 5, 'provisioned-tree': 5, 'projection': 0, 'marketplace-entry': 0, 'harness-instance': 0, 'mcp-registration': 0, 'doc-import': 0, 'unit-digest': 0}}
+real 1.42 user 1.10 sys 0.13 
+
+Above: six consecutive runs of `/usr/bin/time -l ./skill-manager artifacts stale --json` on this worktree's home (all reported, none selected),
+then `--version` for JVM startup. Baseline: median 8.02 s, 26,170 files read (CC-0, cheap.stale-time).
+Graph node cheap.stale-time on this branch: seconds [5.76, 5.17, 3.78], median 5.17, clean_files_read 3, dirty_files_read 26170.
+Classification: moved as expected on time; moved less than expected on files read (3, see DEF-CC1-001).

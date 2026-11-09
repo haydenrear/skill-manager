@@ -409,7 +409,100 @@ public final class PluginMarketplaceTest {
                     "and the manifest it exists to describe is correct");
         });
 
+        suite.test("#410: a clean checkout's identity is its commit, and a real change moves it", () -> {
+            TestHarness h = TestHarness.create();
+            Path dir = gitPlugin(h, "p");
+            Fingerprint clean = print(dir, "t");
+            assertEquals(Fingerprint.Kind.RESOLVED, clean.kind(), "graded resolved");
+            assertTrue(clean.basis().contains("commit"), "basis names the commit: " + clean.basis());
+            assertEquals(clean.value(), print(dir, "t").value(), "asking twice is stable");
+
+            Files.writeString(dir.resolve("body.md"), "changed\n");
+            Fingerprint dirty = print(dir, "t");
+            assertTrue(dirty.basis().contains("per-file digest"), "a dirty tree is walked: " + dirty.basis());
+            assertFalse(clean.value().equals(dirty.value()), "a tracked edit moves it");
+            git(dir, "checkout", "--", ".");
+            assertEquals(clean.value(), print(dir, "t").value(), "restoring restores it");
+
+            Files.writeString(dir.resolve("new.txt"), "x");
+            assertFalse(clean.value().equals(print(dir, "t").value()), "an untracked file moves it");
+            Files.delete(dir.resolve("new.txt"));
+
+            git(dir, "commit", "--allow-empty", "--quiet", "-m", "B");
+            assertFalse(clean.value().equals(print(dir, "t").value()), "a new commit moves it");
+        });
+
+        suite.test("#410: a gitignored file is not identity, committed or walked", () -> {
+            TestHarness h = TestHarness.create();
+            Path dir = gitPlugin(h, "p");
+            String before = print(dir, "t").value();
+            Files.writeString(dir.resolve("ignored.txt"), "x");
+            assertEquals(before, print(dir, "t").value(), "clean status: the commit form ignores it");
+
+            Files.writeString(dir.resolve("body.md"), "changed\n");
+            String dirty = print(dir, "t").value();
+            Files.delete(dir.resolve("ignored.txt"));
+            assertEquals(dirty, print(dir, "t").value(), "dirty status: the byte walk ignores it too");
+        });
+
+        suite.test("#410: the link target stays a digest input for a clean checkout", () -> {
+            TestHarness h = TestHarness.create();
+            Path dir = gitPlugin(h, "p");
+            assertFalse(print(dir, "one").value().equals(print(dir, "two").value()),
+                    "a re-pointed link must move the digest even though the commit did not");
+        });
+
+        suite.test("#410: a symlinked store root is identified by the checkout behind it", () -> {
+            TestHarness h = TestHarness.create();
+            Path real = gitPlugin(h, "real").toRealPath();
+            Path link = h.store().unitDir("linked", UnitKind.PLUGIN);
+            Files.createDirectories(link.getParent());
+            Files.createSymbolicLink(link, real);
+            Fingerprint before = print(link, "t");
+            assertTrue(before.basis().contains("commit"), "resolved to the checkout: " + before.basis());
+            Files.writeString(real.resolve("body.md"), "changed\n");
+            assertFalse(before.value().equals(print(link, "t").value()),
+                    "an edit behind the link moves it");
+        });
+
+        suite.test("#410: a row recorded under the old scheme does not compare", () -> {
+            Fingerprint fp = Fingerprint.resolved("abc", "b");
+            assertTrue(MarketplaceInputs.Entry.of("p", "./p", "t", fp).comparableFingerprint().isPresent(),
+                    "this scheme compares");
+            MarketplaceInputs.Entry old = new MarketplaceInputs.Entry("p", "./p", "t",
+                    "marketplace-entry-v1", "abc", "resolved", "b", null);
+            assertTrue(old.fingerprint().isPresent(), "the old digest still reads");
+            assertFalse(old.comparableFingerprint().isPresent(), "but it is not comparable");
+        });
+
         return suite.runAll();
+    }
+
+    private static Fingerprint print(Path dir, String target) {
+        return MarketplaceInputs.fingerprintOf("p", "./plugins/p", target, dir);
+    }
+
+    private static Path gitPlugin(TestHarness h, String name) throws Exception {
+        Path dir = h.store().unitDir(name, UnitKind.PLUGIN);
+        Files.createDirectories(dir.resolve(".claude-plugin"));
+        Files.writeString(dir.resolve(".claude-plugin/plugin.json"), "{}\n");
+        Files.writeString(dir.resolve("body.md"), "original\n");
+        Files.writeString(dir.resolve(".gitignore"), "ignored.txt\n");
+        git(dir, "init", "-b", "main", "--quiet");
+        git(dir, "add", "-A");
+        git(dir, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "A");
+        return dir;
+    }
+
+    private static void git(Path dir, String... args) throws Exception {
+        List<String> argv = new java.util.ArrayList<>(List.of("git"));
+        if (args.length > 0 && args[0].equals("commit")) {
+            argv.addAll(List.of("-c", "user.name=t", "-c", "user.email=t@t"));
+        }
+        argv.addAll(List.of(args));
+        Process p = new ProcessBuilder(argv).directory(dir.toFile()).redirectErrorStream(true).start();
+        String out = new String(p.getInputStream().readAllBytes());
+        assertEquals(0, p.waitFor(), "git " + argv + ": " + out);
     }
 
     private static JsonNode readManifest(Path manifestPath) throws Exception {
