@@ -188,6 +188,105 @@ public final class GitOps {
         }
     }
 
+    /**
+     * The commit that IS {@code dir}'s content, or empty when the commit alone
+     * cannot say so. #410: this is the cheap identity for a directory that is a
+     * git checkout, meant to be reused wherever a caller was about to hash a
+     * whole tree.
+     *
+     * <p><b>Local and content-free.</b> Everything here is {@code rev-parse},
+     * {@code status} and {@code ls-files}: no network, no file contents read by
+     * this process. Git may stat the tree, and may re-hash files whose stat
+     * information moved; {@code --no-optional-locks} means it never writes
+     * {@code .git/index} back, so asking leaves the checkout untouched.
+     *
+     * <p>Empty, meaning "fall back to reading the bytes", for each of the cases
+     * where a clean status would be a claim the commit cannot back:
+     *
+     * <ul>
+     *   <li>{@code dir} is not its own repository ({@link #unitGitIdentity}), so
+     *       an answer would be about an enclosing tree.</li>
+     *   <li>the status shows anything that is content. A path
+     *       {@code notContent} accepts does not count: an untracked
+     *       {@code __pycache__} changes no unit.</li>
+     *   <li>the index holds an {@code assume-unchanged} or {@code skip-worktree}
+     *       path, which {@code status} is blind to by construction. A sparse
+     *       checkout is therefore not clean here; CC-5 decides what it means.</li>
+     *   <li>{@code .git/info/exclude} carries a rule. It is a machine-local
+     *       ignore list git cannot be told to disregard, and
+     *       {@code GitIgnoreRules} refuses it for the same reason.</li>
+     * </ul>
+     *
+     * <p>What the status is asked is pinned rather than inherited, since a
+     * user's git config is not an input to a unit's identity:
+     * {@code status.showUntrackedFiles}, {@code core.fileMode} (a chmod is a
+     * content change to the digest this replaces) and {@code core.excludesFile}.
+     * A path ignored by the unit's own committed {@code .gitignore} stays
+     * invisible: an ignored file is not part of a unit's identity.
+     *
+     * @param notContent unit-relative {@code '/'}-separated paths that do not
+     *                   count as a change
+     */
+    public static java.util.Optional<String> cleanCommit(Path dir,
+                                                         java.util.function.Predicate<String> notContent) {
+        UnitGitIdentity identity = unitGitIdentity(dir);
+        if (identity.state() != UnitGitState.OWN) return java.util.Optional.empty();
+        if (carriesLocalExcludes(identity.commonDir())) return java.util.Optional.empty();
+        Result head = run(dir, List.of("git", "rev-parse", "--verify", "--quiet", "HEAD^{commit}"));
+        String commit = head.stdout.trim();
+        if (head.exit != 0 || !commit.matches("[0-9a-f]{40,64}")) return java.util.Optional.empty();
+        Result status = run(dir, List.of("git", "--no-optional-locks",
+                "-c", "core.fileMode=true", "-c", "core.excludesFile=/dev/null",
+                "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"));
+        if (status.exit != 0 || !statusIsClean(status.stdout, notContent)) return java.util.Optional.empty();
+        Result index = run(dir, List.of("git", "--no-optional-locks", "ls-files", "-v", "-z"));
+        if (index.exit != 0 || hidesPaths(index.stdout)) return java.util.Optional.empty();
+        return java.util.Optional.of(commit);
+    }
+
+    /**
+     * Whether every {@code status --porcelain=v1 -z} record names a non-content
+     * path. A rename or copy is never clean (its second path follows in the next
+     * record), and a record that is not {@code XY path}, such as a warning on the
+     * merged stderr, reads as not clean: the fallback is only slower.
+     */
+    private static boolean statusIsClean(String output,
+                                         java.util.function.Predicate<String> notContent) {
+        for (String record : output.split("\0")) {
+            String trimmed = record.strip();
+            if (trimmed.isEmpty()) continue;
+            if (record.length() < 4 || record.charAt(2) != ' ') return false;
+            if (record.charAt(0) == 'R' || record.charAt(0) == 'C'
+                    || record.charAt(1) == 'R' || record.charAt(1) == 'C') return false;
+            String rel = record.substring(3).strip();
+            if (rel.endsWith("/")) rel = rel.substring(0, rel.length() - 1);
+            if (!notContent.test(rel)) return false;
+        }
+        return true;
+    }
+
+    /** {@code H} is an ordinary cached path; anything else {@code status} would not report. */
+    private static boolean hidesPaths(String lsFilesV) {
+        for (String record : lsFilesV.split("\0")) {
+            String trimmed = record.strip();
+            if (!trimmed.isEmpty() && trimmed.charAt(0) != 'H') return true;
+        }
+        return false;
+    }
+
+    private static boolean carriesLocalExcludes(Path commonDir) {
+        if (commonDir == null) return true;
+        Path exclude = commonDir.resolve("info/exclude");
+        if (!Files.isRegularFile(exclude)) return false;
+        try {
+            return Files.readAllLines(exclude).stream()
+                    .map(String::strip)
+                    .anyMatch(line -> !line.isEmpty() && !line.startsWith("#"));
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
     public static String headHash(Path dir) {
         Result r = run(dir, List.of("git", "rev-parse", "HEAD"));
         return r.exit == 0 ? r.stdout.trim() : null;

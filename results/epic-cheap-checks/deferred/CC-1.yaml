@@ -1,0 +1,27 @@
+findings:
+  - id: DEF-CC1-001
+    severity: medium
+    kind: goal-clause-gap
+    owner: CC-6
+    summary: artifacts stale still reads 3 plugin files on a clean checkout, so cheap.stale-time's no-bytes assertion stays red (3 files, down from 26,170).
+    detail: >
+      The JFR arm counts skill-scripts/install-skt.sh, install-tla-spec-dev.sh and install-tlc2.sh, each read 6 times.
+      ArtifactFreshness.byInstallFingerprint re-hashes a CLI dependency's declared inputs, which is the cli-shim and
+      provisioned-tree comparison, not the marketplace fingerprint CC-1 owns. Those three are declared inputs of
+      install rows, so reading them is a separate question from hashing the tree. The harness's MANIFESTS allowlist was
+      left alone: widening it to make the assertion pass would be tuning the instrument.
+    reproduction: >
+      python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks, then
+      jfr print --events jdk.FileRead on the node's jfr/jfr_clean recording.
+    action: The plan owner decides whether a CLI dependency's declared install scripts count as "file contents" for clause (a), or whether the install-fingerprint check should also use the git identity.
+  - id: DEF-CC1-002
+    severity: low
+    kind: plan-premise
+    owner: CC-6
+    summary: Corrects DEF-CC0-001's cause. The gitignored file was dropped by plainView, not HomeDigest.withoutIgnored.
+    detail: >
+      MarketplaceInputs.fingerprintOf calls ChildHomeMaterializer.entryDigests, which walks with GitIgnoreRules.forUnit(root)
+      (plainView before this ticket; the same rules now in entryDigests), and isUnowned drops the path. HomeDigest.withoutIgnored
+      is not on this path, and GitIgnoreRules.NONE is used only by declaredOnlyEntries.
+    reproduction: PluginMarketplaceTest "a gitignored file is not identity, committed or walked".
+    action: Owner confirms the policy that a gitignored file is not part of a unit's identity.
