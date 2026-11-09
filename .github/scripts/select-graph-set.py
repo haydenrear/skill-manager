@@ -136,14 +136,15 @@ EXCLUDED: dict[str, str] = {
         "the build level (HYPER_EXPERIMENTS=1 / HYPER_LOCAL_DIR), so it is not "
         "in validationRunAll either. Run it deliberately, not on a push."
     ),
-    "cheap-checks": (
-        "skill-manager#414 — epic cheap-checks' baseline and verdict graph: its "
-        "unfixed clauses are red by design until CC-6 (#443) reads it green, and "
-        "its timing clauses need the checkout's project home and BSD time -l. "
-        "Red nodes here are the epic's baseline, not a regression. Run it "
-        "deliberately: run.py cheap-checks."
-    ),
 }
+
+# cheap-checks was REMOVED from EXCLUDED at CC-6 (#443). It was opt-in while it
+# was epic #414's baseline and verdict graph, red by design until fixed. The
+# terminal evaluation read it green on the integrated epic tip -- three
+# fresh-start runs (sweeps 20261109-143450, -144121, -144821) and the full sweep
+# 20261109-145430, every node passed (results/epic-cheap-checks/goals/) -- so it
+# now runs in `full` (nightly and on dispatch). Not added to CORE. Its timing
+# nodes need BSD `time -l` and the checkout's project home: see DEF-CC6-003.
 
 # sponsored was DELETED at HP-11 (#426), not excluded: it tested nothing but
 # the registry server's sponsored-search feature, and skill-manager is not used

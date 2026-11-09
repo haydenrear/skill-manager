@@ -1,0 +1,226 @@
+{
+ "tree": "9af4f894 (epic/cheap-checks tip merged into feature/443-evaluate)",
+ "fresh_start": "test_graph/build removed before each run; jbang cache kept, CLI warm-up excluded by the nodes",
+ "runs": {
+  "run1": {
+   "sweep_id": "20261109-143450",
+   "report": "20261109-143517",
+   "graph": "passed",
+   "stale_s": [
+    3.35,
+    3.39,
+    3.36
+   ],
+   "stale_median": 3.36,
+   "stale_rss_median": 518.109375,
+   "clean_files_read": 0,
+   "dirty_files_read": 26170,
+   "closeout_s": [
+    3.41,
+    3.73,
+    3.57
+   ],
+   "closeout_median": 3.57,
+   "closeout_rss": [
+    240.1875,
+    229.90625,
+    232.59375
+   ],
+   "closeout_rss_median": 232.59375,
+   "small_edit_s": 3.97,
+   "plugin_edit_s": 26.6,
+   "planted_detected": 3,
+   "gitignored_detected": 0,
+   "foreign_installers": 0,
+   "foreign_projection": 0,
+   "agent_cli_calls": 8,
+   "excluded_files": 0,
+   "git_ops": 7,
+   "keeps_tree": "passed",
+   "all_nodes_passed": true
+  },
+  "run2": {
+   "sweep_id": "20261109-144121",
+   "report": "20261109-144132",
+   "graph": "passed",
+   "stale_s": [
+    3.44,
+    3.48,
+    3.64
+   ],
+   "stale_median": 3.48,
+   "stale_rss_median": 548.828125,
+   "clean_files_read": 0,
+   "dirty_files_read": 26170,
+   "closeout_s": [
+    3.44,
+    3.5,
+    3.48
+   ],
+   "closeout_median": 3.48,
+   "closeout_rss": [
+    236.765625,
+    239.078125,
+    228.609375
+   ],
+   "closeout_rss_median": 236.765625,
+   "small_edit_s": 4.09,
+   "plugin_edit_s": 27.1,
+   "planted_detected": 3,
+   "gitignored_detected": 0,
+   "foreign_installers": 0,
+   "foreign_projection": 0,
+   "agent_cli_calls": 8,
+   "excluded_files": 0,
+   "git_ops": 7,
+   "keeps_tree": "passed",
+   "all_nodes_passed": true
+  },
+  "run3": {
+   "sweep_id": "20261109-144821",
+   "report": "20261109-144831",
+   "graph": "passed",
+   "stale_s": [
+    6.31,
+    4.31,
+    3.67
+   ],
+   "stale_median": 4.31,
+   "stale_rss_median": 536.984375,
+   "clean_files_read": 0,
+   "dirty_files_read": 26170,
+   "closeout_s": [
+    3.27,
+    3.19,
+    3.35
+   ],
+   "closeout_median": 3.27,
+   "closeout_rss": [
+    232.40625,
+    233.734375,
+    231.03125
+   ],
+   "closeout_rss_median": 232.40625,
+   "small_edit_s": 3.8,
+   "plugin_edit_s": 25.22,
+   "planted_detected": 3,
+   "gitignored_detected": 0,
+   "foreign_installers": 0,
+   "foreign_projection": 0,
+   "agent_cli_calls": 8,
+   "excluded_files": 0,
+   "git_ops": 7,
+   "keeps_tree": "passed",
+   "all_nodes_passed": true
+  },
+  "sweep": {
+   "sweep_id": "20261109-145430",
+   "report": "20261109-154305",
+   "graph": "passed",
+   "stale_s": [
+    3.13,
+    3.08,
+    3.15
+   ],
+   "stale_median": 3.13,
+   "stale_rss_median": 562.28125,
+   "clean_files_read": 0,
+   "dirty_files_read": 26170,
+   "closeout_s": [
+    4.3,
+    4.3,
+    4.3
+   ],
+   "closeout_median": 4.3,
+   "closeout_rss": [
+    237.515625,
+    229.421875,
+    236.9375
+   ],
+   "closeout_rss_median": 236.9375,
+   "small_edit_s": 4.78,
+   "plugin_edit_s": 25.54,
+   "planted_detected": 3,
+   "gitignored_detected": 0,
+   "foreign_installers": 0,
+   "foreign_projection": 0,
+   "agent_cli_calls": 8,
+   "excluded_files": 0,
+   "git_ops": 7,
+   "keeps_tree": "passed",
+   "all_nodes_passed": true
+  }
+ },
+ "aggregate": {
+  "three_timing_runs": {
+   "stale_readings": [
+    3.35,
+    3.39,
+    3.36,
+    3.44,
+    3.48,
+    3.64,
+    6.31,
+    4.31,
+    3.67
+   ],
+   "stale_median_of_readings": 3.48,
+   "stale_median_of_run_medians": 3.48,
+   "stale_max": 6.31,
+   "closeout_readings": [
+    3.41,
+    3.73,
+    3.57,
+    3.44,
+    3.5,
+    3.48,
+    3.27,
+    3.19,
+    3.35
+   ],
+   "closeout_median_of_readings": 3.44,
+   "closeout_median_of_run_medians": 3.48,
+   "closeout_max": 3.73,
+   "closeout_rss_median_of_readings": 232.59375,
+   "closeout_rss_max": 240.1875
+  },
+  "three_timing_runs_plus_sweep": {
+   "stale_readings": [
+    3.35,
+    3.39,
+    3.36,
+    3.44,
+    3.48,
+    3.64,
+    6.31,
+    4.31,
+    3.67,
+    3.13,
+    3.08,
+    3.15
+   ],
+   "stale_median_of_readings": 3.415,
+   "stale_median_of_run_medians": 3.42,
+   "stale_max": 6.31,
+   "closeout_readings": [
+    3.41,
+    3.73,
+    3.57,
+    3.44,
+    3.5,
+    3.48,
+    3.27,
+    3.19,
+    3.35,
+    4.3,
+    4.3,
+    4.3
+   ],
+   "closeout_median_of_readings": 3.49,
+   "closeout_median_of_run_medians": 3.525,
+   "closeout_max": 4.3,
+   "closeout_rss_median_of_readings": 233.1640625,
+   "closeout_rss_max": 240.1875
+  }
+ }
+}

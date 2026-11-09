@@ -427,7 +427,7 @@ tickets:
     title: "Evaluate cheap-checks on the integrated epic"
     feature_branch: feature/443-evaluate
     worktree: /Volumes/dev/skill-manager-443-evaluate
-    status: planned
+    status: pr_open
     role: evaluation
     owns_goals: ["GOAL-checking-costs-what-changed", "GOAL-excluded-paths-keep-git"]
     schedule_revision: 2

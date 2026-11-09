@@ -1,0 +1,32 @@
+== test graph sweep 20261109-145430 ==
+Counted from this invocation's own task outcomes, not from build/validation-reports/.
+graphs_selected=28  graphs_executed=28  graphs_passed=26  graphs_failed=2  graphs_not_run=0
+  PASSED   smoke                       254.8s  build/validation-reports/20261109-145504
+  PASSED   onboard                     168.1s  build/validation-reports/20261109-145856
+  PASSED   source-tracking             68.4s  build/validation-reports/20261109-150148
+  PASSED   git-latest-source-tracking  51.6s  build/validation-reports/20261109-150255
+  PASSED   plugin-smoke                185.0s  build/validation-reports/20261109-150352
+  PASSED   harness-smoke               85.0s  build/validation-reports/20261109-150652
+  FAILED   doc-smoke                   126.2s  build/validation-reports/20261109-150831  (Execution failed for task ':doc-smoke'.)
+  PASSED   project-manifest            29.1s  build/validation-reports/20261109-151018
+  PASSED   project-resolve             33.7s  build/validation-reports/20261109-151047
+  PASSED   project-smoke               78.4s  build/validation-reports/20261109-151123
+  PASSED   spec-conformance            33.7s  build/validation-reports/20261109-151239
+  PASSED   project-child-home          61.0s  build/validation-reports/20261109-151318
+  PASSED   home-clone                  171.2s  build/validation-reports/20261109-151429
+  PASSED   home-tripwire               86.7s  build/validation-reports/20261109-151707
+  PASSED   checkout-home               67.5s  build/validation-reports/20261109-151834
+  PASSED   home-sync                   238.8s  build/validation-reports/20261109-151949
+  PASSED   ticket-lifecycle            234.2s  build/validation-reports/20261109-152344
+  PASSED   project-env                 28.7s  build/validation-reports/20261109-152732
+  PASSED   project-libs                25.5s  build/validation-reports/20261109-152800
+  PASSED   project-profiles            32.0s  build/validation-reports/20261109-152826
+  PASSED   artifact-dag                114.8s  build/validation-reports/20261109-152902
+  FAILED   onboarding                  282.9s  build/validation-reports/20261109-153106  (Execution failed for task ':onboarding'.)
+  PASSED   home-integrity              143.1s  build/validation-reports/20261109-153546
+  PASSED   home-verdicts               154.1s  build/validation-reports/20261109-153808
+  PASSED   sync-settles                23.1s  build/validation-reports/20261109-154032
+  PASSED   cli-pin                     11.8s  build/validation-reports/20261109-154055
+  PASSED   honest-pins                 115.5s  build/validation-reports/20261109-154113
+  PASSED   cheap-checks                316.2s  build/validation-reports/20261109-154305
+sweep record: /Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-sweeps/20261109-145430/sweep.json
