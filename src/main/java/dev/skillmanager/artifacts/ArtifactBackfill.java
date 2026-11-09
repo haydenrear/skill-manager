@@ -382,7 +382,8 @@ public final class ArtifactBackfill {
                         "install_fingerprint_basis",
                         entry.fingerprint() == null ? null : entry.fingerprint().basis(),
                         "install_fingerprint_gap",
-                        entry.fingerprint() == null ? null : entry.fingerprint().gap()),
+                        entry.fingerprint() == null ? null : entry.fingerprint().gap(),
+                        "install_git_inputs", entry.gitInputs()),
                 actual,
                 // The fingerprint is over the artifact's declared INPUTS,
                 // so re-deriving it is the backend's job and not a read

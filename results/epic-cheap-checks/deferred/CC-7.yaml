@@ -1,0 +1,15 @@
+findings:
+  - id: DEF-CC7-001
+    severity: low
+    kind: follow-up
+    owner: CC-6
+    summary: "A home that is neither re-cloned nor synced keeps deciding its skill-script rows from the script bytes; it is correct and just reads those files."
+    detail: >
+      Old cli-lock rows carry no install_git_inputs. A clone stamps the copy's rows after verifying the bytes still match,
+      and every sync records a stamp, but the root home's existing rows stay unstamped until one of those happens. Reading
+      the bytes is the sound fallback, so nothing reads stale or fresh wrongly; the root home simply does not get the zero
+      reads of clause (a) until its next sync.
+    reproduction: >
+      On a home whose cli-lock.toml has no install_git_inputs lines, run artifacts stale under jdk.FileRead and count the
+      skill-scripts/ reads.
+    action: None needed unless clause (a) is later read against the root home; `sync` upgrades the rows.

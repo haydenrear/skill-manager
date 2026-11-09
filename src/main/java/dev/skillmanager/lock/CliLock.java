@@ -85,6 +85,12 @@ public final class CliLock {
      *        into either value. {@code binary} still names the executable in
      *        both cases; this field is what says whether {@code bin/cli} is
      *        supposed to hold it.
+     * @param gitInputs the same declared inputs as {@code fingerprint}, named by
+     *        git rather than by their bytes ({@link
+     *        dev.skillmanager.cli.installer.InstallerBackend#gitInputs}), or null
+     *        when this row has none. A shortcut for readers and nothing else:
+     *        equal means the inputs did not move, and any other answer is settled
+     *        by the fingerprint.
      */
     public record Entry(
             String backend,
@@ -97,12 +103,23 @@ public final class CliLock {
             String binary,
             Fingerprint fingerprint,
             String declaredPin,
-            String provided
+            String provided,
+            String gitInputs
     ) {
         public Entry {
             requestedBy = requestedBy == null ? List.of() : List.copyOf(requestedBy);
             declaredPin = declaredPin == null || declaredPin.isBlank() ? null : declaredPin;
             provided = provided == null || provided.isBlank() ? null : provided;
+            gitInputs = gitInputs == null || gitInputs.isBlank() ? null : gitInputs;
+        }
+
+        /** The pre-#450 shape: a row that records no {@link #gitInputs}. */
+        public Entry(String backend, String tool, String version, String spec,
+                     String sha256, List<String> requestedBy, String installedAt,
+                     String binary, Fingerprint fingerprint, String declaredPin,
+                     String provided) {
+            this(backend, tool, version, spec, sha256, requestedBy, installedAt, binary,
+                    fingerprint, declaredPin, provided, null);
         }
 
         /** The pre-#409 shape: a row that records no {@link #provided}. */
@@ -151,7 +168,7 @@ public final class CliLock {
             List<String> merged = new ArrayList<>(requestedBy);
             merged.add(skillName);
             return new Entry(backend, tool, version, spec, sha256, merged, installedAt,
-                    binary, fingerprint, declaredPin, provided);
+                    binary, fingerprint, declaredPin, provided, gitInputs);
         }
 
         public Entry withoutRequester(String skillName) {
@@ -159,12 +176,24 @@ public final class CliLock {
             List<String> remaining = new ArrayList<>(requestedBy);
             remaining.remove(skillName);
             return new Entry(backend, tool, version, spec, sha256, remaining, installedAt,
-                    binary, fingerprint, declaredPin, provided);
+                    binary, fingerprint, declaredPin, provided, gitInputs);
         }
 
+        /**
+         * A digest that moved takes {@link #gitInputs} with it: the stamp was a
+         * statement about the digest it was recorded beside.
+         */
         public Entry withFingerprint(Fingerprint next) {
+            boolean sameDigest = next != null && fingerprint != null
+                    && java.util.Objects.equals(next.value(), fingerprint.value());
             return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
-                    binary, next, declaredPin, provided);
+                    binary, next, declaredPin, provided, sameDigest ? gitInputs : null);
+        }
+
+        /** This row naming its inputs by git; null says it cannot. */
+        public Entry withGitInputs(String next) {
+            return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
+                    binary, fingerprint, declaredPin, provided, next);
         }
 
         /**
@@ -176,7 +205,7 @@ public final class CliLock {
         public Entry withDeclaration(String nextSpec, String nextPin) {
             return new Entry(backend, tool, version, nextSpec == null ? spec : nextSpec,
                     sha256, requestedBy, installedAt, binary, fingerprint,
-                    nextPin == null ? declaredPin : nextPin, provided);
+                    nextPin == null ? declaredPin : nextPin, provided, gitInputs);
         }
 
         /**
@@ -186,13 +215,14 @@ public final class CliLock {
          */
         public Entry withProvided(String next) {
             return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
-                    binary, fingerprint, declaredPin, next);
+                    binary, fingerprint, declaredPin, next, gitInputs);
         }
 
         /** Keeps the binary already recorded when {@code next} says nothing. */
         public Entry withBinary(String next) {
             return new Entry(backend, tool, version, spec, sha256, requestedBy, installedAt,
-                    next == null || next.isBlank() ? binary : next, fingerprint, declaredPin, provided);
+                    next == null || next.isBlank() ? binary : next, fingerprint, declaredPin, provided,
+                    gitInputs);
         }
     }
 
@@ -245,7 +275,8 @@ public final class CliLock {
                         t.getString("binary"),
                         readFingerprint(t),
                         t.getString("declared_pin"),
-                        t.getString("provided")
+                        t.getString("provided"),
+                        t.getString("install_git_inputs")
                 ));
             }
             if (!perTool.isEmpty()) entries.put(backendKey, perTool);
@@ -286,6 +317,9 @@ public final class CliLock {
                     // reason is indistinguishable from a row nobody asked, which
                     // is the state this ticket removed.
                     sb.append("install_fingerprint_gap = ").append(tomlString(fp.gap())).append('\n');
+                }
+                if (e.gitInputs() != null) {
+                    sb.append("install_git_inputs = ").append(tomlString(e.gitInputs())).append('\n');
                 }
                 sb.append('\n');
             }
