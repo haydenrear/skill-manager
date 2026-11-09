@@ -1,0 +1,30 @@
+{
+ "run1": {
+  "sweep_id": "20261109-143450",
+  "excluded_files": 0,
+  "git_ops": 7,
+  "keeps_tree": "passed",
+  "all_nodes_passed": true
+ },
+ "run2": {
+  "sweep_id": "20261109-144121",
+  "excluded_files": 0,
+  "git_ops": 7,
+  "keeps_tree": "passed",
+  "all_nodes_passed": true
+ },
+ "run3": {
+  "sweep_id": "20261109-144821",
+  "excluded_files": 0,
+  "git_ops": 7,
+  "keeps_tree": "passed",
+  "all_nodes_passed": true
+ },
+ "sweep": {
+  "sweep_id": "20261109-145430",
+  "excluded_files": 0,
+  "git_ops": 7,
+  "keeps_tree": "passed",
+  "all_nodes_passed": true
+ }
+}

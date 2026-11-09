@@ -1,0 +1,37 @@
+{
+ "status": "passed",
+ "metrics": {
+  "excluded_files_on_disk": 0,
+  "git_ops_working": 7,
+  "durationMs": 27869
+ },
+ "assertions": {
+  "setup_installed_as_git_checkout": "passed",
+  "control_non_excluded_file_is_installed": "passed",
+  "shape_no_files_at_excluded_path": "passed",
+  "shape_git_log_on_excluded_path": "passed",
+  "shape_git_blame_on_excluded_path": "passed",
+  "shape_git_diff_across_history_on_excluded_path": "passed",
+  "shape_git_status_clean": "passed",
+  "shape_git_commit": "passed",
+  "shape_git_fetch": "passed",
+  "shape_git_push": "passed",
+  "shape_commit_keeps_excluded_paths_in_tree": "passed",
+  "shape_partial_clone_blobs_absent": "passed",
+  "shape_commit_after_add_all": "passed",
+  "shape_add_all_keeps_excluded_paths_in_tree": "passed",
+  "shape_stash_and_pop": "passed",
+  "shape_sync_merge_touching_excluded_path": "passed",
+  "shape_sync_keeps_exclusion_on_disk": "passed",
+  "shape_sync_took_excluded_change_in_history": "passed",
+  "shape_blame_on_demand_after_sync": "passed",
+  "fallback_no_filter_source_excludes_working_tree": "passed",
+  "fallback_no_filter_source_keeps_blobs": "passed",
+  "fallback_blame_on_excluded_path": "passed",
+  "control_undeclared_unit_is_a_plain_clone": "passed",
+  "shape_home_clone_keeps_exclusion": "passed",
+  "shape_home_clone_status_clean": "passed",
+  "shape_home_clone_blame_on_excluded_path": "passed"
+ },
+ "failureMessage": null
+}

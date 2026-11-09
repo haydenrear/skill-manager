@@ -1,0 +1,267 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 28,
+  "graphs_executed": 28,
+  "graphs_passed": 26,
+  "graphs_failed": 2,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "smoke",
+      "status": "passed",
+      "seconds": 254.797,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-145504"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "onboard",
+      "status": "passed",
+      "seconds": 168.068,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-145856"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "source-tracking",
+      "status": "passed",
+      "seconds": 68.386,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-150148"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "git-latest-source-tracking",
+      "status": "passed",
+      "seconds": 51.635,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-150255"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "plugin-smoke",
+      "status": "passed",
+      "seconds": 184.963,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-150352"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "harness-smoke",
+      "status": "passed",
+      "seconds": 85.005,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-150652"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "doc-smoke",
+      "status": "failed",
+      "seconds": 126.242,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-150831"
+      ],
+      "reason": "Execution failed for task ':doc-smoke'."
+    },
+    {
+      "graph": "project-manifest",
+      "status": "passed",
+      "seconds": 29.073,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151018"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-resolve",
+      "status": "passed",
+      "seconds": 33.684,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151047"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-smoke",
+      "status": "passed",
+      "seconds": 78.398,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151123"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "spec-conformance",
+      "status": "passed",
+      "seconds": 33.736,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151239"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-child-home",
+      "status": "passed",
+      "seconds": 60.973,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151318"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-clone",
+      "status": "passed",
+      "seconds": 171.193,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151429"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-tripwire",
+      "status": "passed",
+      "seconds": 86.72,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151707"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "checkout-home",
+      "status": "passed",
+      "seconds": 67.482,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151834"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-sync",
+      "status": "passed",
+      "seconds": 238.832,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-151949"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "ticket-lifecycle",
+      "status": "passed",
+      "seconds": 234.175,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-152344"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-env",
+      "status": "passed",
+      "seconds": 28.667,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-152732"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-libs",
+      "status": "passed",
+      "seconds": 25.466,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-152800"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-profiles",
+      "status": "passed",
+      "seconds": 32.037,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-152826"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "artifact-dag",
+      "status": "passed",
+      "seconds": 114.823,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-152902"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "onboarding",
+      "status": "failed",
+      "seconds": 282.93,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-153106"
+      ],
+      "reason": "Execution failed for task ':onboarding'."
+    },
+    {
+      "graph": "home-integrity",
+      "status": "passed",
+      "seconds": 143.053,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-153546"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-verdicts",
+      "status": "passed",
+      "seconds": 154.126,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-153808"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "sync-settles",
+      "status": "passed",
+      "seconds": 23.07,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-154032"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "cli-pin",
+      "status": "passed",
+      "seconds": 11.752,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-154055"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "honest-pins",
+      "status": "passed",
+      "seconds": 115.484,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-154113"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "cheap-checks",
+      "status": "passed",
+      "seconds": 316.176,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-154305"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261109-145430",
+  "gradle_exit_code": 1,
+  "continue_past_failures": true
+}

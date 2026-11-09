@@ -1,0 +1,59 @@
+findings:
+  - id: DEF-CC6-001
+    severity: low
+    kind: pre-existing-red
+    owner: epic-owner
+    summary: doc-smoke is red on one assertion because the plugin's skill-manager SKILL.md hard-wraps a phrase the node matches literally.
+    detail: >
+      skill-manager.skill.docs.projected fails skill_md_mentions_projects_and_child_homes (SmEnv reads
+      plugins/tla-spec-dev/skills/skill-manager/SKILL.md). Lines 16-17 read "project child" / "homes", so
+      contains("project child homes") is false; the guidance itself is present. The same red is in
+      results/epic-honest-pins/goals/main-3b92ed6e-confirm.sweep.json on main, so it predates this epic.
+      Not an epic regression; the fix is one line in the plugin repo or whitespace-normalizing the node.
+    reproduction: python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py doc-smoke
+    action: Normalize the phrase in the plugin (published through its own repo) or in the node's match.
+  - id: DEF-CC6-002
+    severity: low
+    kind: pre-existing-red
+    owner: epic-owner
+    summary: onboarding stays red on the_extractor_found_the_four_known_good_scripts because KNOWN_GOOD still names `wt`, which the installed workflow skill no longer references.
+    detail: >
+      Disposition of DEF-CC-EPIC-001. OnboardingDocsAndScriptsStatic.KNOWN_GOOD is [bootstrap-home.sh, close-change.sh, wt];
+      the extractor found agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh (missing=[], unwaived=[]), and
+      `wt` is gone from the skill's text. No network involved: not a GitHub 5xx. Red on main before the epic
+      (main-3b92ed6e-confirm.sweep.json). The second node in DEF-CC-EPIC-001, onboarding.global.home.untouched, PASSED on
+      all assertions in sweep 20261109-145430, so that half did not reproduce; it was consistent with session writes.
+    reproduction: python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py onboarding
+    action: Update KNOWN_GOOD to the skt front door the skill now names, or restore a `wt` reference.
+  - id: DEF-CC6-003
+    severity: medium
+    kind: ci-consequence
+    owner: epic-owner
+    summary: cheap-checks now sits in the `full` set (schedule, dispatch), but its timing nodes need BSD /usr/bin/time -l and a checkout project home, and every CI job runs on ubuntu-latest.
+    detail: >
+      CheapChecksKit.timed runs `/usr/bin/time -l` (GNU time has no -l; setup_time_l_parsed fails rather than estimates)
+      and projectHome() is <repo>/.skill-manager, which a CI checkout does not have unless resolved. So the graph is
+      expected to go red on the next 07:00 UTC run for an environmental reason. Not run on Linux here; this is read from
+      ci.yml (5 runs-on: ubuntu-latest, no macos) and the kit. Moved out of EXCLUDED as CC-6 was instructed.
+    reproduction: gh workflow run ci.yml -R haydenrear/skill-manager --ref epic/cheap-checks -f graph_set=full
+    action: Owner decides before finalization - keep it local-only (a named EXCLUDED reason on portability), or make the timing nodes portable.
+  - id: DEF-CC6-004
+    severity: low
+    kind: goal-observation
+    owner: epic-owner
+    summary: close-out with one edited file in the large plugin costs 25-27 s, against 3-4 s clean; no target covers it, but the goal statement says cost in proportion to what changed.
+    detail: >
+      cheap.close-out plugin_edit_seconds 26.6, 27.1, 25.22 and 25.54 across the four runs, against small_unit_edit_seconds
+      3.97, 4.09, 3.8 and 4.78. An edit to a small unit stays fast; one edit in the 26,588-file plugin digests that plugin.
+      The per-clause target (b) is on a clean close-out and is met; this is not a miss of it.
+    reproduction: python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks, node cheap.close-out metric plugin_edit_seconds
+    action: Owner decides whether a dirty unit should be costed by changed paths.
+dispositions:
+  DEF-CC-EPIC-001: "Reproduced for one of two nodes. docs.and.scripts.static is red for a stale KNOWN_GOOD (DEF-CC6-002), not a GitHub 5xx, and predates the epic; global.home.untouched passed. onboard (a different graph) passed."
+  DEF-CC0-002: "Closed by measurement. 12 readings over 4 runs, 3.08-4.31 s except one 6.31 s (run 3, reading 1); medians 3.36, 3.48, 4.31, 3.13. The former 5 s / 8-9 s modes did not recur. Load average was 6-27, not a quiet machine."
+  DEF-CC1-001: "Closed by CC-7. clean_files_read 0 in all four runs."
+  DEF-CC1-002: "Closed. Owner confirmed in schedule_revision 2 that a gitignored file is not unit identity; EditDetection asserts it."
+  DEF-CC3-001: "Closed by CC-7. As-cloned close-out medians 3.57, 3.48, 3.27, 4.30 s, RSS 232-237 MB."
+  DEF-CC3-002: "Carried to the owner, unchanged. No clause depends on it; not measured here."
+  DEF-CC5-001: "Carried to the owner, unchanged. Not re-run: reproducing it means cloning this worktree home to a new home by hand, outside this ticket's write scope. The home-clone graph passed, but it does not exercise the child-home record."
+  DEF-CC7-001: "No action. The clause was measured on a clone of the project home, whose rows the clone stamps. Unstamped root-home rows were not measured; sync upgrades them."

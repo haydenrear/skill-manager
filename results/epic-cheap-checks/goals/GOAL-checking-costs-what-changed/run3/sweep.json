@@ -1,0 +1,24 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 1,
+  "graphs_executed": 1,
+  "graphs_passed": 1,
+  "graphs_failed": 0,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "cheap-checks",
+      "status": "passed",
+      "seconds": 336.106,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-443-evaluate/test_graph/build/validation-reports/20261109-144831"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261109-144821",
+  "gradle_exit_code": 0,
+  "continue_past_failures": true
+}
