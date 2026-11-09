@@ -17,8 +17,18 @@
 #   - DEFERMENT batch. REVIEW finalization-only; the epic agent merges ticket PRs
 #     into epic/cheap-checks.
 #   - WORKTREES on /Volumes/dev (owner), all provisioned at kickoff.
+#
+# AMENDMENT, schedule_revision 2, 2026-11-09. Owner decisions after CC-5 merged:
+#   - CC-7 added (appended, so every ordinal is unchanged): home clone refreshes
+#     git indexes (DEF-CC3-001) and artifacts stale stops reading install scripts
+#     (DEF-CC1-001). CC-6 depends on it and promotes after it.
+#   - A gitignored file is NOT part of a unit's identity. The "every planted edit"
+#     clause reads as tracked, untracked and re-pointed-link edits. The target's
+#     numbers are unchanged.
+#   - CC-2's scoping of sync --force-scripts stands: named units are forced; other
+#     units get no reconcile.
 version: 1
-schedule_revision: 1
+schedule_revision: 2
 name: cheap-checks
 slug: cheap-checks
 branch: epic/cheap-checks
@@ -26,7 +36,7 @@ base: "48a07c1d0d8d9d8b8188fc55f1bee6393887c744"
 repository: haydenrear/skill-manager
 epic_issue: https://github.com/haydenrear/skill-manager/issues/414
 ticket_prefix: CC
-updated: "2026-11-08"
+updated: "2026-11-09"
 spec_workflow:
   state: none
   decided: "2026-11-08, epic agent, following this repository's epic precedent (one-home-one-verdict, one-unit-one-name, honest-pins)"
@@ -110,14 +120,14 @@ epic_goals:
       (d) other plugins re-projected into agents by syncing one unit.
     harness: "the cheap-checks test graph (built by CC-0), run on the integrated tip"
     baseline:
-      value: unmeasured
+      value: "(a) median 8.02 s, 26,170 files read, 3 of 4 planted edits; (b) median 45.69 s, 1,277 MB; (c) 2 of 2; (d) 3 calls of 11"
       note: >
-        CC-0 measures all clauses on the epic branch. Recorded in issues, not
+        Measured by CC-0 (sweep 20261109-022337). Recorded in issues, not
         comparable: (a) 24 s in #410, 9.2 s / 672 MB on this project home at
         48a07c1d (one run, 2026-11-08); (b) 19 s / 1.2 GB (#401);
         (c) all of them, about 85 s (#402); (d) every plugin, 15-33 s (#402).
-      measured_at: null
-      evidence: results/epic-cheap-checks/baseline/
+      measured_at: "dbd6c783"
+      evidence: results/epic-cheap-checks/baseline/2026-11-08-dbd6c783/
     target: >
       (a) under 6 s, reading no file contents for a clean git checkout, and every
       planted edit still detected; (b) under 5 s and under 300 MB RSS on the
@@ -137,10 +147,10 @@ epic_goals:
       installed unit keeps the excluded paths in its tree.
     harness: "the cheap-checks test graph (built by CC-0), install-exclusion node"
     baseline:
-      value: unmeasured
-      note: "No exclusion mechanism exists (#261). CC-0 records the fixture's file count at the excluded path."
-      measured_at: null
-      evidence: results/epic-cheap-checks/baseline/
+      value: "(a) 2 files; (b) 7 of 7; (c) yes"
+      note: "Measured by CC-0 (sweep 20261109-022337): no exclusion mechanism existed (#261)."
+      measured_at: "dbd6c783"
+      evidence: results/epic-cheap-checks/baseline/2026-11-08-dbd6c783/
     target: "(a) 0 files; (b) all 7 work; (c) yes, the tree is unchanged at those paths. One verdict per clause."
 
 tickets:
@@ -149,7 +159,10 @@ tickets:
     title: "cheap-checks graph and baselines for every goal"
     feature_branch: feature/441-cheap-checks-harness
     worktree: /Volumes/dev/skill-manager-441-cheap-checks-harness
-    status: planned
+    status: closed
+    delivered:
+      pr: https://github.com/haydenrear/skill-manager/pull/444
+      merge_commit: "aa5346783c7944fa7d877f0a4364bb0f71b792e3"
     role: implementation
     schedule_revision: 1
     wave: 1
@@ -192,7 +205,10 @@ tickets:
     title: "artifacts stale asks git what changed instead of hashing every byte"
     feature_branch: feature/410-git-identity-stale
     worktree: /Volumes/dev/skill-manager-410-git-identity-stale
-    status: planned
+    status: closed
+    delivered:
+      pr: https://github.com/haydenrear/skill-manager/pull/445
+      merge_commit: "84e01b6fdb67584640dbaa7e3fae21553b641aec"
     role: implementation
     schedule_revision: 1
     wave: 2
@@ -236,7 +252,10 @@ tickets:
     title: "sync <unit> in a cloned home runs only that unit's installers"
     feature_branch: feature/402-scoped-installers
     worktree: /Volumes/dev/skill-manager-402-scoped-installers
-    status: planned
+    status: closed
+    delivered:
+      pr: https://github.com/haydenrear/skill-manager/pull/446
+      merge_commit: "1f3d20eee829d5307cbd1a2d4edf91eca3c71e60"
     role: implementation
     schedule_revision: 1
     wave: 2
@@ -275,7 +294,10 @@ tickets:
     title: "home close-out compares by git identity, not by every byte"
     feature_branch: feature/401-closeout-git-identity
     worktree: /Volumes/dev/skill-manager-401-closeout-git-identity
-    status: planned
+    status: closed
+    delivered:
+      pr: https://github.com/haydenrear/skill-manager/pull/447
+      merge_commit: "03398c3256cd30ec33675b92189d40718920afbd"
     role: implementation
     schedule_revision: 1
     wave: 3
@@ -314,7 +336,10 @@ tickets:
     title: "sync <unit> projects only that unit into the agents"
     feature_branch: feature/442-scoped-projection
     worktree: /Volumes/dev/skill-manager-442-scoped-projection
-    status: planned
+    status: closed
+    delivered:
+      pr: https://github.com/haydenrear/skill-manager/pull/448
+      merge_commit: "cc5cbba69c58b16096751a06a5d36b911511748d"
     role: implementation
     schedule_revision: 1
     wave: 3
@@ -351,7 +376,10 @@ tickets:
     title: "A unit can exclude tracked paths from install and keep full git"
     feature_branch: feature/261-install-exclusion
     worktree: /Volumes/dev/skill-manager-261-install-exclusion
-    status: planned
+    status: closed
+    delivered:
+      pr: https://github.com/haydenrear/skill-manager/pull/449
+      merge_commit: "ababeddda6bc446233f8648a3aafa4872785f534"
     role: implementation
     schedule_revision: 1
     wave: 3
@@ -402,12 +430,12 @@ tickets:
     status: planned
     role: evaluation
     owns_goals: ["GOAL-checking-costs-what-changed", "GOAL-excluded-paths-keep-git"]
-    schedule_revision: 1
-    wave: 4
-    depends_on: ["CC-0", "CC-1", "CC-2", "CC-3", "CC-4", "CC-5"]
+    schedule_revision: 2
+    wave: 5
+    depends_on: ["CC-0", "CC-1", "CC-2", "CC-3", "CC-4", "CC-5", "CC-7"]
     blocks: []
-    promotion_order: 7
-    promotion_predecessor: CC-5
+    promotion_order: 8
+    promotion_predecessor: CC-7
     slice: >
       Run each owned harness from a fresh start on the reconciled epic tip and
       report baseline -> measured -> target with one verdict per clause. Then one
@@ -436,3 +464,43 @@ tickets:
         contribution: guard
         expected_effect: "decides the goal; adds no behavioral delta"
         local_signal: "N/A: this ticket is the measurement"
+
+  - id: CC-7
+    github_issue: https://github.com/haydenrear/skill-manager/issues/450
+    title: "home clone refreshes git indexes; artifacts stale reads no install scripts"
+    feature_branch: feature/450-index-refresh
+    worktree: /Volumes/dev/skill-manager-450-index-refresh
+    status: planned
+    role: implementation
+    schedule_revision: 2
+    wave: 4
+    depends_on: ["CC-0", "CC-1", "CC-3", "CC-5"]
+    blocks: ["CC-6"]
+    promotion_order: 7
+    promotion_predecessor: CC-5
+    slice: >
+      (1) DEF-CC3-001: home clone leaves each copied git checkout with a fresh
+      index, so the next git status does not re-hash the tree. Must not change a
+      tracked file, and must work on a partial/sparse checkout. Do not loosen
+      core.checkStat. (2) DEF-CC1-001: artifacts stale reads no install-script
+      contents for a clean checkout, using the unit's git identity; a truly
+      edited script is still reported stale and still re-runs.
+    conflict_keys:
+      production: ["store/home-cloner-index-refresh", "artifacts/install-fingerprint-freshness"]
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow: []
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["cheap-checks", "home-clone", "artifact-dag", "cli-pin", "home-verdicts"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-7/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: direct
+        expected_effect: "clause (b) time from about 16.9 s as cloned to under 5 s; clause (a) files read from 3 to 0"
+        local_signal: "python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks"
