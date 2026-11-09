@@ -29,7 +29,7 @@ Close-out readings by run: [3.41, 3.73, 3.57], [3.44, 3.50, 3.48], [3.27, 3.19, 
 
 ## Validation
 
-- Full sweep 20261109-145430, installed runner: `graphs_selected=28 graphs_executed=28 graphs_passed=26 graphs_failed=2 graphs_not_run=0` (`tickets/CC-6/full-sweep-summary.txt`). Failed: `doc-smoke`, `onboarding`. No retries were needed and no 5xx occurred; `onboard` and `ticket-lifecycle` passed first time.
+- Full sweep 20261109-145430, installed runner: `graphs_selected=28 graphs_executed=28 graphs_passed=26 graphs_failed=2 graphs_not_run=0` (`tickets/CC-6/full-sweep-summary.txt`). Failed: `doc-smoke`, `onboarding`. No retries were needed: no download failure turned a graph red (sweep stdout has no 5xx line; node logs were not searched), and `onboard` and `ticket-lifecycle` passed first time.
 - `cheap-checks` passed in all 4 runs, so it leaves `EXCLUDED`. `select-graph-set.py --scope full` now selects 28 of 29 registered, and `run-graphs.py --list` shows 28 run and 1 opt-in.
 - Spec unit: 11 passed. `jbang RunTests.java`: 1734 passed, 0 failed.
 - Run outside the assignment's literal matrix: the 3 extra `cheap-checks` runs, requested for DEF-CC0-002.
