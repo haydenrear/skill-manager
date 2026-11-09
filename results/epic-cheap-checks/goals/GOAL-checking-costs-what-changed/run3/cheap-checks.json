@@ -1,0 +1,103 @@
+{
+ "cheap.close-out": {
+  "status": "passed",
+  "metrics": {
+   "median_seconds": 3.27,
+   "median_rss_mb": 232.40625,
+   "plugin_files": 26588,
+   "small_unit_edit_seconds": 3.8,
+   "plugin_edit_seconds": 25.22,
+   "durationMs": 160044
+  },
+  "assertions": {
+   "setup_two_clones_hold_plugin": "passed",
+   "setup_time_l_parsed": "passed",
+   "control_clean_home_closes_safe": "passed",
+   "control_unpublished_edit_blocks_by_name": "passed",
+   "control_small_unit_edit_blocks_by_name": "passed",
+   "shape_small_unit_edit_caught_at_clean_closeout_speed": "passed",
+   "shape_close_out_under_5s": "passed",
+   "shape_close_out_under_300mb_rss": "passed"
+  },
+  "failureMessage": null
+ },
+ "cheap.edit-detection": {
+  "status": "passed",
+  "metrics": {
+   "planted_edits_detected": 3,
+   "gitignored_file_detected": 0,
+   "durationMs": 21447
+  },
+  "assertions": {
+   "setup_installed_with_marketplace_link": "passed",
+   "setup_clean_checkout_row_is_not_stale": "passed",
+   "control_row_clean_after_restoring_tracked_edit": "passed",
+   "control_row_clean_after_removing_untracked_file": "passed",
+   "control_row_clean_after_removing_gitignored_file": "passed",
+   "control_row_clean_after_restoring_link": "passed",
+   "shape_tracked_edit_detected": "passed",
+   "shape_untracked_file_detected": "passed",
+   "shape_gitignored_file_not_detected": "passed",
+   "shape_repointed_link_detected": "passed"
+  },
+  "failureMessage": null
+ },
+ "cheap.foreign-installers": {
+  "status": "passed",
+  "metrics": {
+   "foreign_installers_rerun": 0,
+   "foreign_installers_rerun_force_scripts": 0,
+   "foreign_units": 2,
+   "durationMs": 19400
+  },
+  "assertions": {
+   "setup_units_installed_and_cloned": "passed",
+   "control_counter_counts_each_installer_once": "passed",
+   "control_sync_landed_on_named_unit": "passed",
+   "shape_no_other_units_installers_rerun": "passed",
+   "control_edited_script_reruns": "passed",
+   "shape_unbuilt_other_unit_tools_are_named": "passed"
+  },
+  "failureMessage": null
+ },
+ "cheap.foreign-projection": {
+  "status": "passed",
+  "metrics": {
+   "other_plugin_projection_calls": 0,
+   "agent_cli_calls_during_sync": 8,
+   "durationMs": 10573
+  },
+  "assertions": {
+   "setup_two_plugins_installed_and_cloned": "passed",
+   "control_install_projected_both_through_the_fakes": "passed",
+   "control_sync_projected_the_named_plugin": "passed",
+   "control_named_plugin_installed_into_both_agents": "passed",
+   "control_absent_other_plugin_is_named_not_assumed": "passed",
+   "control_sync_with_no_unit_projects_both": "passed",
+   "control_marketplace_still_lists_both": "passed",
+   "shape_no_other_plugin_reprojected": "passed"
+  },
+  "failureMessage": null
+ },
+ "cheap.stale-time": {
+  "status": "passed",
+  "metrics": {
+   "median_seconds": 4.31,
+   "median_rss_mb": 536.984375,
+   "clean_files_read": 0,
+   "dirty_files_read": 26170,
+   "plugin_files": 26588,
+   "durationMs": 99165
+  },
+  "assertions": {
+   "setup_cloned_home_holds_plugin": "passed",
+   "setup_plugin_is_clean_git_checkout": "passed",
+   "setup_time_l_parsed": "passed",
+   "control_stale_exits_zero": "passed",
+   "control_instrument_sees_reads_on_a_dirty_checkout": "passed",
+   "shape_stale_under_6s": "passed",
+   "shape_clean_checkout_reads_no_file_contents": "passed"
+  },
+  "failureMessage": null
+ }
+}

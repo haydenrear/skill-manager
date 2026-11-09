@@ -1,0 +1,1 @@
+{"fixture":"two home clones of the project home holding tla-spec-dev","plugin_files":26588,"seconds":[3.44, 3.5, 3.48],"median_seconds":3.48,"rss_mb":[236.765625, 239.078125, 228.609375],"median_rss_mb":236.765625,"target_seconds":5.0,"target_rss_mb":300.0,"clean_exit":0,"small_unit_edit_seconds":4.09,"plugin_edit_seconds":27.1}

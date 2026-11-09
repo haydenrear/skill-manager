@@ -1,0 +1,12 @@
+{"tree":"9af4f894 merged at feature/443-evaluate","instrument":"cheap-checks graph, three fresh runs plus one in the full sweep","verdicts":[
+{"goal":"GOAL-checking-costs-what-changed","clause":"(a) stale time","baseline":"8.02 s","measured":"run medians 3.36, 3.48, 4.31; sweep 3.13","target":"< 6 s","verdict":"met"},
+{"goal":"GOAL-checking-costs-what-changed","clause":"(a) no file contents, clean checkout","baseline":"26,170 files","measured":"0 in all four runs (control: 26,170 when dirty)","target":"0","verdict":"met"},
+{"goal":"GOAL-checking-costs-what-changed","clause":"(a) planted edits detected","baseline":"3 of 4 arms (gitignored undetected)","measured":"3 of 3: tracked, untracked, re-pointed link; gitignored not detected, as schedule_revision 2 states","target":"every planted edit (owner reading: tracked, untracked, re-pointed link)","verdict":"met"},
+{"goal":"GOAL-checking-costs-what-changed","clause":"(b) close-out time","baseline":"45.69 s","measured":"run medians 3.57, 3.48, 3.27; sweep 4.30","target":"< 5 s","verdict":"met"},
+{"goal":"GOAL-checking-costs-what-changed","clause":"(b) close-out RSS","baseline":"1,277 MB","measured":"232.6, 236.8, 232.4; sweep 236.9 MB","target":"< 300 MB","verdict":"met"},
+{"goal":"GOAL-checking-costs-what-changed","clause":"(c) other units' installers re-run","baseline":"2 of 2","measured":"0 of 2 in all four runs","target":"0","verdict":"met"},
+{"goal":"GOAL-checking-costs-what-changed","clause":"(d) other plugins re-projected","baseline":"3 calls of 11","measured":"0 calls of 8 in all four runs","target":"0","verdict":"met"},
+{"goal":"GOAL-excluded-paths-keep-git","clause":"(a) files at excluded path","baseline":"2","measured":"0 in all four runs","target":"0","verdict":"met"},
+{"goal":"GOAL-excluded-paths-keep-git","clause":"(b) git operations","baseline":"7 of 7","measured":"7 of 7 in all four runs","target":"all 7","verdict":"met"},
+{"goal":"GOAL-excluded-paths-keep-git","clause":"(c) commit keeps excluded paths in tree","baseline":"yes","measured":"yes in all four runs","target":"yes, tree unchanged at those paths","verdict":"met"}
+]}
