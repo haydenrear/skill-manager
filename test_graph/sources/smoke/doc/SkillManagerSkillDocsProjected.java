@@ -9,7 +9,10 @@ import com.hayden.testgraphsdk.sdk.NodeSpec;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * External docs regression for the bundled skill-manager skill. This keeps
@@ -42,7 +45,7 @@ public class SkillManagerSkillDocsProjected {
             String toml = read(root.resolve("skill-manager.toml"));
 
             boolean skillMentionsProjects = contains(skill, "skill projects")
-                    && contains(skill, "project child homes")
+                    && containsAcrossWrap(skill, "project child homes")
                     && contains(skill, "references/projects.md");
             if (!skillMentionsProjects) errors.add("SKILL.md missing project/child-home guidance");
 
@@ -62,7 +65,7 @@ public class SkillManagerSkillDocsProjected {
             if (!helperDocumented) errors.add("cli.md missing env helper project context");
 
             boolean manifestMentionsProjects = contains(toml, "skill projects")
-                    && contains(toml, "project child homes");
+                    && containsAcrossWrap(toml, "project child homes");
             if (!manifestMentionsProjects) errors.add("skill-manager.toml description missing projects");
 
             boolean pass = errors.isEmpty();
@@ -87,5 +90,19 @@ public class SkillManagerSkillDocsProjected {
 
     private static boolean contains(String body, String needle) {
         return body != null && body.contains(needle);
+    }
+
+    /**
+     * {@code needle}'s words in order, where each gap is one space or a line
+     * wrap. Hard-wrapped prose splits a phrase across lines; that is the only
+     * looseness allowed, so a missing or reworded phrase still fails.
+     */
+    static boolean containsAcrossWrap(String body, String needle) {
+        if (body == null) return false;
+        String gap = "(?: |[ \\t]*\\R[ \\t]*)";
+        String regex = Arrays.stream(needle.split(" "))
+                .map(Pattern::quote)
+                .collect(Collectors.joining(gap));
+        return Pattern.compile(regex).matcher(body).find();
     }
 }

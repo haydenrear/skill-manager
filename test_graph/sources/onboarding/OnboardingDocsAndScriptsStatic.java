@@ -42,10 +42,10 @@ import java.util.regex.Pattern;
  * referenced files exist" is true over an empty set. That is the classic form
  * and this graph exists because of it.
  * <br><b>Companion:</b> the extracted set must be non-empty AND must contain
- * the four known-good scripts {@code bootstrap-home.sh}, {@code new-change.sh},
- * {@code close-change.sh} and {@code wt}. If {@code agent-home.sh} is later
- * added, the set still must not shrink below those four — a regex that stopped
- * matching would fail here rather than pass silently.
+ * the four known-good scripts {@code agent-home.sh}, {@code bootstrap-home.sh},
+ * {@code close-change.sh} and {@code selftest.sh}. The set must not shrink below
+ * those four — a regex that stopped matching would fail here rather than pass
+ * silently.
  *
  * <p><b>Vacuous-pass risk 2 — resolving against the integration repo root</b>
  * rather than the skill root, which makes {@code scripts/agent-home.sh} resolve
@@ -84,18 +84,26 @@ public class OnboardingDocsAndScriptsStatic {
     /**
      * Scripts the extractor must find, or the extractor itself is broken.
      *
-     * <p>Each is named as a PATH in the documented procedure, each ships, and
-     * between them they cover all three spellings the docs use — so an
-     * extractor that goes blind to any one of them fails here rather than
-     * silently reporting a smaller set:
+     * <p>Each is named as a PATH in the documented procedure, each ships in
+     * git-issue-workflow's own scripts dir, and between them they cover the
+     * spellings the docs use — so an extractor that goes blind to any one of
+     * them fails here rather than silently reporting a smaller set:
      *
      * <ul>
      *   <li>{@code bootstrap-home.sh} — inside a {@code $(...)} rung probe;</li>
      *   <li>{@code close-change.sh} — same, and it is the one the probe idiom
      *       took out (see {@code claimsOwnScriptsDir});</li>
-     *   <li>{@code wt} — in prose, as {@code `skt`'s `scripts/wt`}, with no
-     *       path qualifier at all.</li>
+     *   <li>{@code agent-home.sh} — in unqualified backticked prose, and in
+     *       close-change.sh's remedy string;</li>
+     *   <li>{@code selftest.sh} — in unqualified backticked prose.</li>
      * </ul>
+     *
+     * <p>{@code wt} left this floor at CC-8 (#453). It is {@code skt}'s script,
+     * and its only unqualified mention was one comment in provision.md, present
+     * in some published versions of the skill and absent from others, so the
+     * entry's truth depended on which home's copy this node read. The four
+     * above are referenced in every version checked, in the root and project
+     * homes alike. {@code skt ticket} is the documented front door now.
      *
      * <p>SI-18 removed {@code new-change.sh} from this floor, and the reason is
      * upstream's, not this node's: the git-issue-workflow docs mention it nine
@@ -110,7 +118,7 @@ public class OnboardingDocsAndScriptsStatic {
      * still pinned, which is what it is for.
      */
     static final List<String> KNOWN_GOOD =
-            List.of("bootstrap-home.sh", "close-change.sh", "wt");
+            List.of("agent-home.sh", "bootstrap-home.sh", "close-change.sh", "selftest.sh");
 
     /** The relative-path CLI resolution that is waived, and where. */
     static final Pattern RELATIVE_CLI = Pattern.compile(

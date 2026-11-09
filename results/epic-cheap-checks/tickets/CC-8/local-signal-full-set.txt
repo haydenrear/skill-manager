@@ -1,0 +1,11 @@
+scope: **full**
+
+- registered in `test_graph/build.gradle.kts`: **29**
+- selected for this run: **27** — `smoke`, `onboard`, `source-tracking`, `git-latest-source-tracking`, `plugin-smoke`, `harness-smoke`, `doc-smoke`, `project-manifest`, `project-resolve`, `project-smoke`, `spec-conformance`, `project-child-home`, `home-clone`, `home-tripwire`, `checkout-home`, `home-sync`, `ticket-lifecycle`, `project-env`, `project-libs`, `project-profiles`, `artifact-dag`, `onboarding`, `home-integrity`, `home-verdicts`, `sync-settles`, `cli-pin`, `honest-pins`
+- not in this run (2): `hyper-experiments`, `cheap-checks`
+
+Deliberate exclusions (every scope):
+- `hyper-experiments` — skill-manager#143 — reaches github, npm and the live RunPod API; none of the three answer a question about skill-manager. Already opt-in at the build level (HYPER_EXPERIMENTS=1 / HYPER_LOCAL_DIR), so it is not in validationRunAll either. Run it deliberately, not on a push.
+- `cheap-checks` — skill-manager#414 — a local verdict graph: its timing nodes need macOS `/usr/bin/time -l` and a checkout project home (<repo>/.skill-manager), and every CI job runs on ubuntu-latest without one. Run it on a developer machine: `python3 test_graph/run-graphs.py --only cheap-checks`.
+
+**Every selected graph needs the virtual-mcp-gateway venv, and therefore the PRIVATE `haydenrear/tracing_skill` dependency** — `skill-manager install` runs `EnsureGateway`, which builds it. Booting a gateway explicitly: `smoke`, `onboard`, `source-tracking`, `git-latest-source-tracking`, `plugin-smoke`, `harness-smoke`, `honest-pins` (7 of 27); the rest reach it through `install`.
