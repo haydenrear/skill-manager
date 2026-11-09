@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.30.0](https://github.com/haydenrear/skill-manager/compare/v0.29.0...v0.30.0) (2026-11-09)
+
+
+### Features
+
+* **install:** exclude declared paths from install, keeping full git ([#261](https://github.com/haydenrear/skill-manager/issues/261)) ([67e223c](https://github.com/haydenrear/skill-manager/commit/67e223c2a60351a2165743f04e400ccfbb899189))
+
+
+### Bug Fixes
+
+* **artifacts:** use a clean checkout's commit as its marketplace identity ([#410](https://github.com/haydenrear/skill-manager/issues/410)) ([f8e1c4a](https://github.com/haydenrear/skill-manager/commit/f8e1c4aa349e8979d5789ec4a7d61c539386d32a))
+* **home:** clone refreshes git indexes and stale reads no install scripts ([#450](https://github.com/haydenrear/skill-manager/issues/450)) ([00febe6](https://github.com/haydenrear/skill-manager/commit/00febe6de467709478a2f5820c8ae77f3a7d7812))
+* **home:** decide close-out for clean checkouts from git identity ([#401](https://github.com/haydenrear/skill-manager/issues/401)) ([8ece8b5](https://github.com/haydenrear/skill-manager/commit/8ece8b50b3726d9cd316338cb3f6f40126016cfd))
+* **sync:** project only the named unit into the agents ([#442](https://github.com/haydenrear/skill-manager/issues/442)) ([8d85591](https://github.com/haydenrear/skill-manager/commit/8d85591cc1a12a230e410179d9c4e8a3001af93c))
+* **sync:** reconcile only the named unit's CLI deps ([#402](https://github.com/haydenrear/skill-manager/issues/402)) ([65938de](https://github.com/haydenrear/skill-manager/commit/65938de6bec85f74f2b5f3956d1923895be9417a))
+
 ## [0.29.0](https://github.com/haydenrear/skill-manager/compare/v0.28.2...v0.29.0) (2026-11-08)
 
 
