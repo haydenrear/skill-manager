@@ -1818,4 +1818,30 @@ validationGraph {
         node("sources/honest-pins/RecordEStaleManifest.java")
         node("sources/honest-pins/RecordFDamagedUnitGit.java")
     }
+
+    /**
+     * cheap-checks — epic cheap-checks (#414), built by CC-0 (#441): ONE NODE PER
+     * CLAUSE of the epic's two goals, each in a scratch home of its own.
+     *
+     *   GOAL-checking-costs-what-changed
+     *       (a) stale-time, edit-detection (#410)   (b) close-out (#401)
+     *       (c) foreign-installers (#402)            (d) foreign-projection (#442)
+     *   GOAL-excluded-paths-keep-git
+     *       install-exclusion (#261)
+     *
+     * Every node asserts the TARGET, carries a control arm, and names its assertions
+     * setup_* / control_* / shape_*. Unfixed clauses are red by design: the epic's
+     * baseline (results/epic-cheap-checks/baseline/) and verdict are the same node.
+     * Opt-in, in EXCLUDED of .github/scripts/select-graph-set.py, until CC-6 reads it
+     * green. Read every clause with TESTGRAPH_CONTINUE_AFTER_FAILURE=1.
+     */
+    testGraph("cheap-checks") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/cheap-checks/StaleTime.java")
+        node("sources/cheap-checks/EditDetection.java")
+        node("sources/cheap-checks/CloseOutTime.java")
+        node("sources/cheap-checks/ForeignInstallers.java")
+        node("sources/cheap-checks/ForeignProjection.java")
+        node("sources/cheap-checks/InstallExclusion.java")
+    }
 }
