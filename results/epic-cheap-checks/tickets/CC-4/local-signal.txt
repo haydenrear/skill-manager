@@ -1,0 +1,17 @@
+local_signal: claude/codex plugin invocations during `sync <one plugin>`; foreign plugin calls and real wall time
+Scratch home: `home clone` of this worktree's home plus a one-skill fixture plugin (cc4-fix); foreign plugin tla-spec-dev (26k files).
+Real claude and codex, through wrappers setting HOME, CLAUDE_CONFIG_DIR and CODEX_HOME inside the scratch directory. No real agent config touched.
+Command: `sync cc4-fix --from <dir> --yes --skip-mcp`, three runs each, every run reported.
+
+before (this branch at origin/epic/cheap-checks 9f44fecb, before the change):
+  24.43 s, 30.21 s, 28.68 s; 8 agent CLI calls each; 3 name tla-spec-dev (claude uninstall, claude install, codex add)
+after:
+  8.61 s, 5.79 s, 5.82 s; 5 agent CLI calls each; 0 name tla-spec-dev
+Classification: moved as expected (clause (d): other plugins re-projected -> 0; about 20 s removed per sync of one unit here).
+
+Fixture: test_graph cheap.foreign-projection other_plugin_projection_calls 0 (baseline 3 of 11); agent_cli_calls_during_sync 8.
+The sync's own log for the third "after" run has 5 marketplace/plugin invocation lines (sync-20261109-001702-7d34.log under $TMPDIR/skill-manager/logs/).
+
+Foreign plugin absent from an agent (same home, fresh agent directories; real CLIs):
+  rc 0; 8 calls, none naming tla-spec-dev; settings.json does not gain it; the sync warns
+  "agents: 2 plugin install(s) are absent from this home's agents, and this sync did not install them: tla-spec-dev (claude), tla-spec-dev (codex)."

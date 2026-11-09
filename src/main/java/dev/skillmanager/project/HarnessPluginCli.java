@@ -736,6 +736,50 @@ public final class HarnessPluginCli {
     }
 
     /**
+     * The enablements in the files the drivers' CLIs write: the same directories
+     * {@link Claude} and {@link Codex} point them at. Read from disk so that
+     * reporting costs no agent CLI start (#442).
+     */
+    public static List<MarketplaceRegistrations.Entry> readEnablements() {
+        return MarketplaceRegistrations.read(
+                dev.skillmanager.agent.AgentHomes.claude().configDir(),
+                Codex.codexConfigPath().getParent());
+    }
+
+    /**
+     * #442: warn about each out-of-scope plugin an available agent has not
+     * enabled from this marketplace. Such a plugin is listed in the catalog but
+     * the agent does not load it, which is the normal state in a fresh
+     * {@code home clone} whose agent config is new. A scoped sync does not
+     * install it, because that would put back the per-plugin cost for exactly
+     * that home.
+     *
+     * @return the {@code plugin (agent)} entries warned about
+     */
+    public static List<String> reportNotEnabled(List<Driver> drivers, List<String> outOfScope,
+                                                String marketplaceName,
+                                                List<MarketplaceRegistrations.Entry> entries) {
+        List<String> absent = new ArrayList<>();
+        for (Driver d : drivers) {
+            for (String plugin : outOfScope) {
+                String key = plugin + "@" + marketplaceName;
+                boolean enabled = entries.stream().anyMatch(en -> !en.registration()
+                        && en.agent().name().equalsIgnoreCase(d.agentId())
+                        && en.key().equals(key));
+                if (!enabled) absent.add(plugin + " (" + d.agentId() + ")");
+            }
+        }
+        if (!absent.isEmpty()) {
+            dev.skillmanager.util.Log.warn("agents: %d plugin install(s) are absent from this home's "
+                            + "agents, and this sync did not install them: %s. "
+                            + "`skill-manager sync <plugin>` installs one; `skill-manager sync` "
+                            + "installs them all.",
+                    absent.size(), String.join(", ", absent));
+        }
+        return List.copyOf(absent);
+    }
+
+    /**
      * Build the {@code HARNESS_CLI_UNAVAILABLE} message body listing
      * which harness CLIs the user is missing and how to install each.
      * Returns {@code null} when every driver has its CLI on PATH —

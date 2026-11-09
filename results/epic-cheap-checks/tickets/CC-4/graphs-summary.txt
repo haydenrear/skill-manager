@@ -1,0 +1,13 @@
+== test graph sweep 20261109-051717 ==
+Counted from this invocation's own task outcomes, not from build/validation-reports/.
+graphs_selected=4  graphs_executed=4  graphs_passed=3  graphs_failed=1  graphs_not_run=0
+  FAILED   cheap-checks   441.1s  build/validation-reports/20261109-051746  (Execution failed for task ':cheap-checks'.)
+  PASSED   plugin-smoke   223.9s  build/validation-reports/20261109-052513
+  PASSED   home-verdicts  201.2s  build/validation-reports/20261109-052856
+  PASSED   sync-settles   45.0s  build/validation-reports/20261109-053207
+sweep record: /Volumes/dev/skill-manager-442-scoped-projection/test_graph/build/validation-sweeps/20261109-051717/sweep.json
+
+cheap-checks node verdicts (report 20261109-051746):
+cheap.foreign-projection passed (other_plugin_projection_calls 0)
+cheap.foreign-installers passed; cheap.edit-detection passed
+expected red, not this ticket: cheap.close-out (DEF-CC3-001), cheap.stale-time (DEF-CC1-001), cheap.install-exclusion (CC-5)

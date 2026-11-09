@@ -416,14 +416,30 @@ public sealed interface SkillEffect permits
      * regeneration happens regardless — it's a function of current
      * store state.
      */
-    record RefreshHarnessPlugins(List<String> reinstall, List<String> uninstall)
+    record RefreshHarnessPlugins(
+            List<String> reinstall,
+            List<String> uninstall,
+            /**
+             * #442: installed plugins this pass deliberately does NOT reinstall,
+             * because the sync named other units. They stay in the marketplace
+             * file; one an agent has not enabled is reported, not assumed projected.
+             */
+            List<String> outOfScope)
             implements SkillEffect {
         public RefreshHarnessPlugins {
             reinstall = reinstall == null ? List.of() : List.copyOf(reinstall);
             uninstall = uninstall == null ? List.of() : List.copyOf(uninstall);
+            outOfScope = outOfScope == null ? List.of() : List.copyOf(outOfScope);
+        }
+        public RefreshHarnessPlugins(List<String> reinstall, List<String> uninstall) {
+            this(reinstall, uninstall, List.of());
         }
         public static RefreshHarnessPlugins reinstallAll(List<String> names) {
             return new RefreshHarnessPlugins(names, List.of());
+        }
+        /** Reinstall {@code names} only; {@code left} is reported, never touched. */
+        public static RefreshHarnessPlugins reinstallScoped(List<String> names, List<String> left) {
+            return new RefreshHarnessPlugins(names, List.of(), left);
         }
         public static RefreshHarnessPlugins removing(String name) {
             return new RefreshHarnessPlugins(List.of(), List.of(name));
