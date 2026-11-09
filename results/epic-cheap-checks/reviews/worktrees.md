@@ -12,3 +12,4 @@ Every worktree is on `/Volumes/dev` (owner). Homes are full cross-volume copies.
 | skill-manager-442-scoped-projection | CC-4 | feature/442-scoped-projection | #448 | yes | nothing to sync (close-out safe, 0 blockers) | none | standing |
 | skill-manager-261-install-exclusion | CC-5 | feature/261-install-exclusion | #449 | yes | nothing to sync (close-out safe, 0 blockers) | none | standing |
 | skill-manager-443-evaluate | CC-6 | feature/443-evaluate | | | | | standing |
+| skill-manager-450-index-refresh | CC-7 | feature/450-index-refresh | | | | | standing |
