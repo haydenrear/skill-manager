@@ -133,6 +133,21 @@ public final class CliShimPrunerTest {
                             "with the reason; got: " + pruned);
                 })
 
+                .test("#402: a foreign link named in keep survives a scoped prune", () -> {
+                    TestHarness h = TestHarness.create();
+                    Path foreign = Files.createTempDirectory("foreign-home-");
+                    new SkillStore(foreign).init();
+                    executable(Files.createDirectories(foreign.resolve("bin/cli")).resolve("leaky"));
+                    Files.createDirectories(h.store().cliBinDir());
+                    Path link = h.store().cliBinDir().resolve("leaky");
+                    Files.createSymbolicLink(link, foreign.resolve("bin/cli/leaky"));
+
+                    List<CliShimPruner.Pruned> pruned = CliShimPruner.prune(h.store(), java.util.Set.of("leaky"));
+
+                    assertTrue(pruned.isEmpty(), "nothing pruned: " + pruned);
+                    assertTrue(Files.exists(link, LinkOption.NOFOLLOW_LINKS), "the install pass won't rebuild it");
+                })
+
                 .test("a child home's sanctioned mirror of its parent's shim survives", () -> {
                     TestHarness h = TestHarness.create();
                     Path parent = Files.createTempDirectory("parent-home-");

@@ -97,6 +97,16 @@ public final class CliShimPruner {
      *         {@code bin/cli} resolves outside {@code store.root()}
      */
     public static List<Pruned> prune(SkillStore store) {
+        return prune(store, Set.of());
+    }
+
+    /**
+     * {@link #prune(SkillStore)}, leaving every entry named in {@code keep}
+     * alone. #402: this prune's foreign-link arm relies on the install pass
+     * that follows to re-provision what it removed, so a pass scoped to some
+     * units must not remove a shim only the other units declare.
+     */
+    public static List<Pruned> prune(SkillStore store, Set<String> keep) {
         Path binDir = store.cliBinDir();
         // DEF-007. THE ONE LINE THAT STOPS THIS EMPTYING ANOTHER HOME.
         //
@@ -128,7 +138,7 @@ public final class CliShimPruner {
         entries.sort(java.util.Comparator.comparing(p -> p.getFileName().toString()));
         for (Path entry : entries) {
             String name = entry.getFileName().toString();
-            if (LAUNCHER_PIN.equals(name)) continue;
+            if (LAUNCHER_PIN.equals(name) || keep.contains(name)) continue;
             if (Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) continue;
             String reason = pruneReason(entry, name, homeRoot, declared);
             if (reason == null) continue;
@@ -201,7 +211,6 @@ public final class CliShimPruner {
      * the manifests" must not become "nothing is declared".
      */
     private static Set<String> declaredArtifactNames(SkillStore store) {
-        Set<String> out = new LinkedHashSet<>();
         List<AgentUnit> units;
         try {
             units = store.listInstalledUnits().units();
@@ -210,6 +219,12 @@ public final class CliShimPruner {
                     + "no shim is treated as undeclared this pass", cannotRead.getMessage());
             return null;
         }
+        return declaredNames(units);
+    }
+
+    /** The {@code bin/cli} basenames {@code units} could be asking for. */
+    static Set<String> declaredNames(List<AgentUnit> units) {
+        Set<String> out = new LinkedHashSet<>();
         for (AgentUnit unit : units) {
             for (CliDependency dep : unit.cliDependencies()) {
                 add(out, dep.name());

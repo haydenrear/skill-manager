@@ -152,6 +152,52 @@ public final class CommandKindCoverageTest {
             assertEquals(1, readRunCount(store, "other-script-bin"), "other did not rerun");
         });
 
+        suite.test("#402: sync <unit> leaves another unit's missing binary missing, and says so", () -> {
+            SkillStore store = newStore();
+            Path targetSource = installSkillScriptFixture(store, "target-script-skill", "target-script-bin");
+            installSkillScriptFixture(store, "other-script-skill", "other-script-bin");
+            // What a home clone leaves: fingerprint recorded, artifact gone.
+            Files.delete(store.cliBinDir().resolve("other-script-bin"));
+
+            int rc = new CommandLine(new SyncCommand(store))
+                    .execute("target-script-skill", "--from", targetSource.toString(),
+                            "--yes", "--skip-mcp", "--skip-agents");
+
+            assertEquals(0, rc, "sync rc");
+            assertEquals(1, readRunCount(store, "other-script-bin"), "other unit's installer did not run");
+            assertTrue(!Files.exists(store.cliBinDir().resolve("other-script-bin")),
+                    "and its binary is still absent, not reported present by a marker");
+            List<String> unbuilt = dev.skillmanager.cli.installer.CliReconcileScope.reportUnbuilt(
+                    List.of(), List.of(SkillParser.load(store.skillDir("other-script-skill")).asUnit()), store);
+            assertEquals(List.of("other-script-bin (other-script-skill)"), unbuilt, "named as unbuilt");
+        });
+
+        suite.test("#402: sync <unit> still reruns that unit's edited installer", () -> {
+            SkillStore store = newStore();
+            Path targetSource = installSkillScriptFixture(store, "target-script-skill", "target-script-bin");
+            Files.writeString(targetSource.resolve("skill-scripts/install.sh"),
+                    Files.readString(targetSource.resolve("skill-scripts/install.sh")) + "\n# edited\n");
+
+            int rc = new CommandLine(new SyncCommand(store))
+                    .execute("target-script-skill", "--from", targetSource.toString(),
+                            "--yes", "--skip-mcp", "--skip-agents");
+
+            assertEquals(0, rc, "sync rc");
+            assertEquals(2, readRunCount(store, "target-script-bin"), "a changed fingerprint still reruns");
+        });
+
+        suite.test("#402: sync with no unit is still whole-home and rebuilds a missing binary", () -> {
+            SkillStore store = newStore();
+            installSkillScriptFixture(store, "other-script-skill", "other-script-bin");
+            Files.delete(store.cliBinDir().resolve("other-script-bin"));
+
+            int rc = new CommandLine(new SyncCommand(store)).execute("--yes", "--skip-mcp", "--skip-agents");
+
+            assertEquals(0, rc, "sync rc");
+            assertEquals(2, readRunCount(store, "other-script-bin"), "whole-home sync rebuilt it");
+            assertTrue(Files.isExecutable(store.cliBinDir().resolve("other-script-bin")), "binary back");
+        });
+
         suite.test("sync --from harness preserves live instance reconciliation", () -> {
             SkillStore store = newStore();
             installHarness(store, "learning-app-coordinator");
