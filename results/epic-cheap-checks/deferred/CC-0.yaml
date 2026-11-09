@@ -1,0 +1,19 @@
+findings:
+  - id: DEF-CC0-001
+    severity: low
+    kind: plan-premise
+    owner: CC-1
+    summary: The plan says git status cannot see a gitignored file but the current digest does; the digest does not.
+    detail: >
+      HomeDigest.withoutIgnored drops the unit's gitignored paths before digesting (schema 2), so a planted gitignored
+      file never moved marketplace-entry at the CC-0 baseline (cheap.edit-detection shape_gitignored_file_detected red).
+    reproduction: python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks
+    action: CC-1 states the policy (ignored files are or are not content) and edits EditDetection.java's arm to match.
+  - id: DEF-CC0-002
+    severity: low
+    kind: measurement-noise
+    owner: CC-6
+    summary: artifacts stale wall time is bimodal on this machine, roughly 5 s or 8-9 s, straddling the 6 s target.
+    detail: Three node runs gave medians 9.21, 5.14 and 8.02 s on the same fixture; the cause was not determined.
+    reproduction: run cheap.stale-time repeatedly; see results/epic-cheap-checks/baseline/README.md.
+    action: Read clause (a) on a quiet machine or across several runs at CC-6; do not take one sub-6 s reading as met.

@@ -11,9 +11,10 @@ python3 test_graph/run-graphs.py           # the 27 graphs meant to run here
 python3 test_graph/run-graphs.py --list    # classification only; runs nothing
 ```
 
-Twenty-eight graphs are registered. Twenty-seven run; one is OPT-IN and excluded
+Twenty-nine graphs are registered. Twenty-seven run; two are OPT-IN and excluded
 by default — `hyper-experiments` reaches github, npm and the live RunPod API
-(#143); it installs from a git/file coordinate since HP-12. `honest-pins` (#411) was opt-in as
+(#143), and installs from a git/file coordinate since HP-12; `cheap-checks` is
+epic #414's baseline and verdict graph, red by design until CC-6 (#443). `honest-pins` (#411) was opt-in as
 that epic's red-by-design baseline until its terminal evaluation (HP-9, #413)
 read it green and moved it into the run set. `sponsored` was removed at HP-11
 (#426), and `browser-auth`, `password-reset` and `refresh-flow` at HP-12 (#427),
