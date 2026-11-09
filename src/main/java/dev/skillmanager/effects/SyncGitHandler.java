@@ -198,7 +198,10 @@ public final class SyncGitHandler {
         BaselineWatch watch = BaselineWatch.before(store, skillName, e.kind());
         EffectReceipt receipt = runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e,
                 allowUnrelatedHistories(src, skillName));
-        if (receipt.status() == EffectStatus.OK) watch.afterUpstreamMove();
+        if (receipt.status() == EffectStatus.OK) {
+            dev.skillmanager.source.SparseInstall.reconcile(storeDir);
+            watch.afterUpstreamMove();
+        }
         return receipt;
     }
 

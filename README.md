@@ -60,6 +60,33 @@ image = "ghcr.io/acme/deepwiki-mcp:latest"
 args = ["--stdio"]
 ```
 
+## Keeping tracked paths out of an install
+
+A unit can keep tracked paths out of what an install puts on disk, without
+losing any git functionality in the installed copy:
+
+```toml
+[skill]                # or [plugin], [doc-repo], [harness]
+name = "my-skill"
+excluded_from_install = ["specs/.history"]
+```
+
+Paths are literal and relative to the repository root. Only the manifest at the
+root of the repository is read: a plugin declares for its contained skills.
+
+The install is a blobless partial clone with a sparse checkout, so the files and
+their blobs are absent while every commit stays intact. `log`, `blame`, `diff`,
+`status`, `commit`, `fetch` and `push` all work, a commit keeps the excluded paths
+in its tree, and the history is never rewritten. A blob of an excluded file is
+fetched from `origin` the first time something asks for it, so `blame` of one
+needs the remote to be reachable; `log` does not.
+
+A source that cannot serve a partial clone (a local path, or a server with
+`uploadpack.allowFilter` off) keeps the working-tree exclusion and leaves the blobs
+in `.git`; the install says so. An install from a plain directory with no `.git`
+just omits the paths. A unit that adds a declaration later keeps its existing full
+clone until it is reinstalled.
+
 ## Plugins (alongside skills)
 
 Plugins are skills' bigger sibling — a unit that bundles one or more

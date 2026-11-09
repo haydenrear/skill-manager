@@ -74,6 +74,7 @@ public final class Fetcher {
             if (Files.exists(staged)) Fs.deleteRecursive(staged);
             Fs.ensureDir(staged);
             Fs.copyRecursive(localCandidate, staged);
+            dev.skillmanager.source.SparseInstall.applyDeclared(staged);
             return new FetchResult(locateSkillRoot(staged), ResolvedGraph.SourceKind.LOCAL, 0, null);
         }
 
@@ -138,11 +139,92 @@ public final class Fetcher {
         }
 
         if (haveGit) {
-            cloneViaSubprocess(url, ref, target);
+            List<String> exclusions = declaredExclusions(url, ref, workspace);
+            if (exclusions.isEmpty()) {
+                cloneViaSubprocess(url, ref, target);
+                // Only reached with a declaration when the look-ahead could not
+                // read the manifest; the tree is still honoured, the blobs are not.
+                dev.skillmanager.source.SparseInstall.applyDeclared(target);
+            } else {
+                partialClone(url, ref, target, exclusions);
+            }
         } else {
             cloneViaJGit(url, ref, target);
+            if (!dev.skillmanager.model.InstallExclusion.declaredIn(target).isEmpty()) {
+                Log.warn("this unit declares %s, which needs the git CLI; installed everything",
+                        dev.skillmanager.model.InstallExclusion.KEY);
+            }
         }
         return locateSkillRoot(target);
+    }
+
+    /**
+     * What the unit at {@code url} excludes from install, read before the clone
+     * is chosen. The manifest decides the clone's shape, so this is a throwaway
+     * commits-only look at it: a unit declaring nothing then gets the same plain
+     * clone it always got.
+     */
+    private static List<String> declaredExclusions(String url, String ref, Path workspace) throws IOException {
+        Path probe = workspace.resolve("probe");
+        boolean hasRef = ref != null && !ref.isBlank();
+        try {
+            List<String> shallow = new java.util.ArrayList<>(List.of("git", "clone", "--quiet", "--no-checkout",
+                    "--filter=blob:none", "--depth=1"));
+            if (hasRef) shallow.addAll(List.of("--branch", ref));
+            shallow.addAll(List.of("--", url, probe.toString()));
+            if (runGit(null, shallow).exit != 0) {
+                // --branch cannot name a sha, so that ref needs the commits.
+                Fs.deleteRecursive(probe);
+                if (runGit(null, List.of("git", "clone", "--quiet", "--no-checkout", "--filter=blob:none",
+                        "--", url, probe.toString())).exit != 0) return List.of();
+            }
+            String commit = probeCommit(probe, ref);
+            if (commit == null) return List.of();
+            return dev.skillmanager.model.InstallExclusion.declared(rel -> {
+                SubprocessResult show = runGit(probe, List.of("git", "show", commit + ":" + rel));
+                return show.exit == 0 ? show.combined : null;
+            });
+        } finally {
+            Fs.deleteRecursive(probe);
+        }
+    }
+
+    private static String probeCommit(Path probe, String ref) throws IOException {
+        boolean hasRef = ref != null && !ref.isBlank();
+        for (String rev : hasRef ? List.of(ref, "origin/" + ref, "HEAD") : List.of("HEAD")) {
+            SubprocessResult r = runGit(probe, List.of("git", "rev-parse", "--verify", "--quiet", rev + "^{commit}"));
+            if (r.exit == 0 && !r.combined.isBlank()) return r.combined.strip();
+        }
+        return null;
+    }
+
+    /** A blobless clone with the excluded paths left out of the checkout. */
+    private static void partialClone(String url, String ref, Path target, List<String> exclusions)
+            throws IOException {
+        SubprocessResult clone = runGit(null, List.of("git", "clone", "--no-checkout", "--filter=blob:none",
+                "--", url, target.toString()));
+        requireCloned(url, clone);
+        if (!dev.skillmanager.source.SparseInstall.apply(target, exclusions)) {
+            throw new GitFetcherException(url, "could not set the install exclusions in " + target, null);
+        }
+        boolean hasRef = ref != null && !ref.isBlank();
+        SubprocessResult checkout = runGit(target, hasRef
+                ? List.of("git", "checkout", ref)
+                : List.of("git", "checkout"));
+        if (checkout.exit != 0) {
+            throw new GitFetcherException(url, "git checkout " + (hasRef ? ref + " " : "") + "failed in " + target
+                    + " (rc=" + checkout.exit + "):\n" + checkout.combined, null);
+        }
+        dev.skillmanager.source.SparseInstall.report(target, new java.util.LinkedHashSet<>(exclusions));
+    }
+
+    private static void requireCloned(String url, SubprocessResult clone) {
+        if (clone.exit == 0) return;
+        if (looksLikeAuthFailure(clone.combined)) {
+            throw new GitCloneAuthException(url, summarizeFirstLines(clone.combined), null);
+        }
+        throw new GitFetcherException(url,
+                "git clone " + url + " failed (rc=" + clone.exit + "):\n" + clone.combined, null);
     }
 
     private static boolean gitOnPath() {
@@ -158,14 +240,7 @@ public final class Fetcher {
 
     private static void cloneViaSubprocess(String url, String ref, Path target) throws IOException {
         SubprocessResult clone = runGit(null, List.of("git", "clone", "--", url, target.toString()));
-        if (clone.exit != 0) {
-            if (looksLikeAuthFailure(clone.combined)) {
-                throw new GitCloneAuthException(url, summarizeFirstLines(clone.combined), null);
-            }
-            throw new GitFetcherException(url,
-                    "git clone " + url + " failed (rc=" + clone.exit + "):\n" + clone.combined,
-                    null);
-        }
+        requireCloned(url, clone);
         if (ref != null && !ref.isBlank()) {
             SubprocessResult checkout = runGit(target, List.of("git", "checkout", ref));
             if (checkout.exit != 0) {
