@@ -519,7 +519,7 @@ tickets:
     title: "Keep cheap-checks local-only; fix doc-smoke and onboarding matchers"
     feature_branch: feature/453-graph-housekeeping
     worktree: /Volumes/dev/skill-manager-453-graph-housekeeping
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 3
     wave: 6
