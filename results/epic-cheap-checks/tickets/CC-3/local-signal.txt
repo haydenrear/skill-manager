@@ -1,0 +1,15 @@
+# home close-out local signal (/usr/bin/time -l), fixture: two home clones of the project home
+## as cloned (every index stat-stale; git re-hashes each tree)
+       16.81 real         6.48 user         7.64 sys
+           241270784  maximum resident set size
+       16.90 real         6.55 user         7.67 sys
+           240222208  maximum resident set size
+       17.59 real         6.76 user         7.62 sys
+           244891648  maximum resident set size
+## indexes refreshed by hand with git update-index --refresh
+        4.34 real         2.89 user         3.38 sys
+           239042560  maximum resident set size
+        4.20 real         2.88 user         3.31 sys
+           241057792  maximum resident set size
+        4.18 real         2.86 user         3.16 sys
+           234438656  maximum resident set size
