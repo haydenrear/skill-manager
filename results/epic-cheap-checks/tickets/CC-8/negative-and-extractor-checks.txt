@@ -1,0 +1,19 @@
+## negative check for containsAcrossWrap (method copied verbatim from the node)
+real SKILL.md literal contains: false
+real SKILL.md across wrap (want true): true
+real with phrase removed (want false): false
+reworded project children homes (want false): false
+words split by a blank line (want false): false
+double space (want false): false
+empty (want false): false
+
+## extractor over each home copy (methods copied verbatim from the node)
+/Volumes/dev/skill-manager-453-graph-housekeeping/.skill-manager/plugins/tla-spec-dev/skills/git-issue-workflow
+  referenced=[agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh]
+  containsAll KNOWN_GOOD=true KNOWN_GOOD=[agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh]
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager/plugins/tla-spec-dev/skills/git-issue-workflow
+  referenced=[agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh]
+  containsAll KNOWN_GOOD=true KNOWN_GOOD=[agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh]
+/Users/hayde/.skill-manager/plugins/tla-spec-dev/skills/git-issue-workflow
+  referenced=[agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh, wt]
+  containsAll KNOWN_GOOD=true KNOWN_GOOD=[agent-home.sh, bootstrap-home.sh, close-change.sh, selftest.sh]
