@@ -101,13 +101,13 @@ epic_goals:
     evidence_root: results/epic-cheap-checks/goals/GOAL-checking-costs-what-changed/
     evaluation_ticket: CC-6
     statement: >
-      skt check, home close-out and sync <unit> cost in proportion to what
+      skt check, home close-out and syncing one unit cost in proportion to what
       changed, not to the size of the home.
     metric: >
       (a) artifacts stale --json wall time, and byte-hashed files for a clean
       checkout; (b) close-out time and RSS on a home holding tla-spec-dev;
-      (c) other units' installers re-run by sync <unit> in a cloned home;
-      (d) other plugins re-projected into agents by sync <unit>.
+      (c) other units' installers re-run by syncing one unit in a cloned home;
+      (d) other plugins re-projected into agents by syncing one unit.
     harness: "the cheap-checks test graph (built by CC-0), run on the integrated tip"
     baseline:
       value: unmeasured
@@ -171,7 +171,7 @@ tickets:
       workflow: ["ci/graph-selection"]
     validation:
       tlc: "N/A: no TLA workflow in this epic"
-      spec_unit: "N/A: no spec-unit change in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
       repository_unit: "jbang RunTests.java"
       graphs: ["cheap-checks"]
       spec_graph: "N/A: no TLA workflow in this epic"
@@ -219,7 +219,7 @@ tickets:
       workflow: []
     validation:
       tlc: "N/A: no TLA workflow in this epic"
-      spec_unit: "N/A: no spec-unit change in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
       repository_unit: "jbang RunTests.java"
       graphs: ["cheap-checks", "artifact-dag", "home-verdicts", "smoke"]
       spec_graph: "N/A: no TLA workflow in this epic"
@@ -258,7 +258,7 @@ tickets:
       workflow: []
     validation:
       tlc: "N/A: no TLA workflow in this epic"
-      spec_unit: "N/A: no spec-unit change in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
       repository_unit: "jbang RunTests.java"
       graphs: ["cheap-checks", "cli-pin", "home-clone", "home-sync", "sync-settles"]
       spec_graph: "N/A: no TLA workflow in this epic"
@@ -268,7 +268,7 @@ tickets:
       - goal: GOAL-checking-costs-what-changed
         contribution: direct
         expected_effect: "clause (c): every other unit's installer re-run -> 0; about 85 s removed"
-        local_signal: "count skill-script logs under <home>/logs/skill-scripts/ after sync <unit> in a fresh home clone"
+        local_signal: "count the logs under the home's logs/skill-scripts/ after syncing one unit in a fresh home clone"
 
   - id: CC-3
     github_issue: https://github.com/haydenrear/skill-manager/issues/401
@@ -297,7 +297,7 @@ tickets:
       workflow: []
     validation:
       tlc: "N/A: no TLA workflow in this epic"
-      spec_unit: "N/A: no spec-unit change in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
       repository_unit: "jbang RunTests.java"
       graphs: ["cheap-checks", "home-verdicts", "home-integrity", "ticket-lifecycle"]
       spec_graph: "N/A: no TLA workflow in this epic"
@@ -307,7 +307,7 @@ tickets:
       - goal: GOAL-checking-costs-what-changed
         contribution: direct
         expected_effect: "clause (b): from the CC-0 baseline to under 5 s and under 300 MB RSS"
-        local_signal: "/usr/bin/time -l ./skill-manager home close-out --home <fixture> --into <project-home> --json"
+        local_signal: "/usr/bin/time -l on home close-out --json against the CC-0 fixture home"
 
   - id: CC-4
     github_issue: https://github.com/haydenrear/skill-manager/issues/442
@@ -334,7 +334,7 @@ tickets:
       workflow: []
     validation:
       tlc: "N/A: no TLA workflow in this epic"
-      spec_unit: "N/A: no spec-unit change in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
       repository_unit: "jbang RunTests.java"
       graphs: ["cheap-checks", "plugin-smoke", "sync-settles"]
       spec_graph: "N/A: no TLA workflow in this epic"
@@ -378,7 +378,7 @@ tickets:
       workflow: []
     validation:
       tlc: "N/A: no TLA workflow in this epic"
-      spec_unit: "N/A: no spec-unit change in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
       repository_unit: "jbang RunTests.java"
       graphs: ["cheap-checks", "source-tracking", "git-latest-source-tracking", "home-clone", "smoke", "plugin-smoke"]
       spec_graph: "N/A: no TLA workflow in this epic"
@@ -421,7 +421,7 @@ tickets:
       workflow: ["ci/graph-selection"]
     validation:
       tlc: "N/A: no TLA workflow in this epic"
-      spec_unit: "N/A: no spec-unit change in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
       repository_unit: "jbang RunTests.java"
       graphs: ["ALL: python3 test_graph/run-graphs.py, read from its sweep summary"]
       spec_graph: "N/A: no TLA workflow in this epic"
