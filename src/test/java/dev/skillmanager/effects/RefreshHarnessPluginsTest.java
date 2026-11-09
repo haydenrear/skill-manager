@@ -4,6 +4,7 @@ import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.project.HarnessPluginCli;
+import dev.skillmanager.project.MarketplaceRegistrations;
 import dev.skillmanager.project.PluginMarketplace;
 import dev.skillmanager.source.InstalledUnit;
 
@@ -85,6 +86,46 @@ public final class RefreshHarnessPluginsTest {
             assertTrue(alphaSrc.isPresent(), "alpha installed-record present");
             assertTrue(alphaSrc.get().hasError(InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE),
                     "missing CLI recorded as HARNESS_CLI_UNAVAILABLE on alpha");
+        });
+
+        suite.test("#442 scoped: only the named plugin is installed; catalog keeps both; a foreign failure stays", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("alpha", UnitKind.PLUGIN);
+            h.seedUnit("alpha", UnitKind.PLUGIN);
+            h.scaffoldUnitDir("beta", UnitKind.PLUGIN);
+            h.seedUnit("beta", UnitKind.PLUGIN);
+            h.context().addError("beta", InstalledUnit.ErrorKind.AGENT_SYNC_FAILED, "claude: earlier failure");
+            List<String> calls = new ArrayList<>();
+            HarnessPluginCli.overrideDriversForTesting(List.of(new RecordingDriver(calls)));
+            try {
+                EffectReceipt r = h.run(SkillEffect.RefreshHarnessPlugins.reinstallScoped(
+                        List.of("alpha"), List.of("beta")));
+                assertEquals(EffectStatus.OK, r.status(), "scoped refresh is ok");
+            } finally {
+                HarnessPluginCli.clearDriverOverrideForTesting();
+            }
+            assertEquals(List.of("add", "update", "reinstall alpha"), calls, "no call names beta");
+            String market = Files.readString(new PluginMarketplace(h.store()).manifestPath());
+            assertTrue(market.contains("alpha") && market.contains("beta"), "catalog lists both");
+            assertTrue(h.sourceOf("beta").get().hasError(InstalledUnit.ErrorKind.AGENT_SYNC_FAILED),
+                    "beta was not re-projected, so its failure is not cleared");
+        });
+
+        suite.test("#442 an out-of-scope plugin is reported per agent unless that agent enabled it", () -> {
+            HarnessPluginCli.Driver claude = new RecordingDriver(new ArrayList<>());
+            var enabled = new MarketplaceRegistrations.Entry(MarketplaceRegistrations.Agent.CLAUDE,
+                    Path.of("settings.json"), MarketplaceRegistrations.Section.ENABLED_PLUGINS,
+                    "beta@m", "m", null);
+            // The same plugin enabled for another agent is not this agent's enablement.
+            var codexOnly = new MarketplaceRegistrations.Entry(MarketplaceRegistrations.Agent.CODEX,
+                    Path.of("config.toml"), MarketplaceRegistrations.Section.CODEX_PLUGINS,
+                    "gamma@m", "m", null);
+            assertEquals(List.of("gamma (claude)"),
+                    HarnessPluginCli.reportNotEnabled(List.of(claude), List.of("beta", "gamma"), "m",
+                            List.of(enabled, codexOnly)),
+                    "only the plugin this agent has not enabled");
+            assertEquals(List.of(), HarnessPluginCli.reportNotEnabled(List.of(claude), List.of(), "m", List.of()),
+                    "whole-home sync reports nothing");
         });
 
         suite.test("regenerates with empty plugin set when nothing is installed", () -> {
@@ -267,5 +308,17 @@ public final class RefreshHarnessPluginsTest {
         @Override public HarnessPluginCli.Result uninstallPlugin(String pluginName, String marketplaceName) {
             return new HarnessPluginCli.Result(0, "uninstalled", "");
         }
+    }
+
+    private record RecordingDriver(List<String> calls) implements HarnessPluginCli.Driver {
+        private static final HarnessPluginCli.Result OK = new HarnessPluginCli.Result(0, "", "");
+        @Override public String agentId() { return "claude"; }
+        @Override public String binary() { return "claude"; }
+        @Override public String installHint() { return "n/a"; }
+        @Override public boolean available() { return true; }
+        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path root, String name) { calls.add("add"); return OK; }
+        @Override public HarnessPluginCli.Result refreshMarketplace(Path root, String name) { calls.add("update"); return OK; }
+        @Override public HarnessPluginCli.Result reinstallPlugin(String p, String m) { calls.add("reinstall " + p); return OK; }
+        @Override public HarnessPluginCli.Result uninstallPlugin(String p, String m) { calls.add("uninstall " + p); return OK; }
     }
 }

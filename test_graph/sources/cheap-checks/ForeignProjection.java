@@ -24,8 +24,9 @@ import java.util.List;
  * agent state and must not depend on their being installed.
  *
  * <p>CONTROLS: install projected both plugins through the fakes (the log sees them);
- * the sync projected the NAMED plugin; {@code sync} with no unit still projects both;
- * and the marketplace file still lists both. (CC-4 must keep the last two.)
+ * the sync installed the NAMED plugin into BOTH agents; {@code sync} with no unit still
+ * projects both; the marketplace file still lists both; and, because the fakes record
+ * no enablement, the other plugin is NAMED as absent rather than passed over in silence.
  */
 public class ForeignProjection {
     static final String ID = "cheap.foreign-projection";
@@ -89,6 +90,12 @@ public class ForeignProjection {
             boolean controlSyncLanded = sync.exitCode() == 0 && names(atSync, TARGET) > 0
                     && CheapChecksKit.read(clone.resolve("plugins").resolve(TARGET)
                             .resolve("skills").resolve(TARGET + "-impl").resolve("SKILL.md")).contains("synced-marker");
+            boolean controlNamedInstalledInBothAgents = atSync.stream().anyMatch(
+                            l -> l.startsWith("claude plugin install " + TARGET + "@"))
+                    && atSync.stream().anyMatch(l -> l.startsWith("codex plugin add " + TARGET + "@"));
+            String syncOut = CheapChecksKit.output(ctx, sync);
+            boolean controlAbsentOtherIsNamed = syncOut.contains("this sync did not install them")
+                    && syncOut.contains(OTHER + " (claude)") && syncOut.contains(OTHER + " (codex)");
             boolean controlSyncAll = syncAll.exitCode() == 0 && names(atSyncAll, TARGET) > 0 && names(atSyncAll, OTHER) > 0;
             String market = CheapChecksKit.read(clone.resolve("plugin-marketplace/.claude-plugin/marketplace.json"));
             boolean controlMarketplaceListsBoth = market.contains(TARGET) && market.contains(OTHER);
@@ -98,7 +105,8 @@ public class ForeignProjection {
                     + " agent-cli lines=" + atSync.size() + " sync rc=" + sync.exitCode()
                     + " syncAll rc=" + syncAll.exitCode() + " target calls=" + names(atSync, TARGET)
                     + " at install=" + atInstall.size() + " at syncAll=" + atSyncAll.size();
-            NodeResult result = setup && controlInstallProjected && controlSyncLanded && controlSyncAll
+            NodeResult result = setup && controlInstallProjected && controlSyncLanded && controlNamedInstalledInBothAgents
+                    && controlAbsentOtherIsNamed && controlSyncAll
                     && controlMarketplaceListsBoth && shape ? NodeResult.pass(ID) : NodeResult.fail(ID, detail);
             return result.process(installTarget).process(installOther).process(sync).process(syncAll)
                     .metric("other_plugin_projection_calls", otherProjections)
@@ -106,6 +114,8 @@ public class ForeignProjection {
                     .assertion("setup_two_plugins_installed_and_cloned", setup)
                     .assertion("control_install_projected_both_through_the_fakes", controlInstallProjected)
                     .assertion("control_sync_projected_the_named_plugin", controlSyncLanded)
+                    .assertion("control_named_plugin_installed_into_both_agents", controlNamedInstalledInBothAgents)
+                    .assertion("control_absent_other_plugin_is_named_not_assumed", controlAbsentOtherIsNamed)
                     .assertion("control_sync_with_no_unit_projects_both", controlSyncAll)
                     .assertion("control_marketplace_still_lists_both", controlMarketplaceListsBoth)
                     .assertion("shape_no_other_plugin_reprojected", shape)

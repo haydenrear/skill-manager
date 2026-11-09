@@ -218,8 +218,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.SyncAgents e ->
                     Log.step("[%d] sync agents over %d unit(s)", n, e.units().size());
             case SkillEffect.RefreshHarnessPlugins e ->
-                    Log.step("[%d] refresh harness plugin marketplace (reinstall=%d, uninstall=%d)",
-                            n, e.reinstall().size(), e.uninstall().size());
+                    Log.step("[%d] refresh harness plugin marketplace (reinstall=%d, uninstall=%d, left alone=%d)",
+                            n, e.reinstall().size(), e.uninstall().size(), e.outOfScope().size());
             case SkillEffect.SyncGit e ->
                     Log.step("[%d] git-sync %s (kind=%s, installSource=%s, gitLatest=%s, merge=%s%s)",
                             n, e.unitName(), e.kind(), e.installSource(), e.gitLatest(), e.merge(),

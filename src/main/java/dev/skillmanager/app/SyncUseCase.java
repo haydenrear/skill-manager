@@ -408,21 +408,20 @@ public final class SyncUseCase {
         alwaysAfter.add(new SkillEffect.CleanupResolvedGraph());
 
         effects.add(new SkillEffect.InstallTools(liveUnits));
-        CliScope cliScope = cliScope(targets, liveUnits);
-        effects.add(new SkillEffect.InstallCli(cliScope.reconciled(), options.forceScripts(),
-                forceScriptUnits, cliScope.left()));
+        // #402, #442: one scope for both per-unit passes, so the installers and
+        // the agents' CLIs cannot disagree about which units this sync is about.
+        SyncScope scope = syncScope(targets, liveUnits);
+        effects.add(new SkillEffect.InstallCli(scope.reconciled(), options.forceScripts(),
+                forceScriptUnits, scope.left()));
         if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
         if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
-        // Plugin marketplace + harness CLI lifecycle. Sync is the
-        // user-stated trigger for "uninstall+reinstall every plugin" so
-        // hooks reload from the just-merged bytes — pass every installed
-        // plugin name as the reinstall set.
+        // Plugin marketplace + harness CLI lifecycle. The plugins this sync
+        // names are uninstalled and reinstalled so hooks reload from the
+        // just-merged bytes. The rest did not change: they stay in the
+        // regenerated marketplace and cost no agent CLI start (#442).
         if (options.withAgents()) {
-            List<String> pluginNames = new ArrayList<>();
-            for (var u : liveUnits) {
-                if (u.kind() == dev.skillmanager.model.UnitKind.PLUGIN) pluginNames.add(u.name());
-            }
-            effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames));
+            effects.add(SkillEffect.RefreshHarnessPlugins.reinstallScoped(
+                    pluginNames(scope.reconciled()), pluginNames(scope.left())));
         }
         if (options.withMcp()) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
@@ -495,33 +494,43 @@ public final class SyncUseCase {
         return List.copyOf(out);
     }
 
-    private record CliScope(List<dev.skillmanager.model.AgentUnit> reconciled,
-                            List<dev.skillmanager.model.AgentUnit> left) {}
+    private record SyncScope(List<dev.skillmanager.model.AgentUnit> reconciled,
+                             List<dev.skillmanager.model.AgentUnit> left) {}
+
+    private static List<String> pluginNames(List<dev.skillmanager.model.AgentUnit> units) {
+        List<String> out = new ArrayList<>();
+        for (var u : units) {
+            if (u.kind() == dev.skillmanager.model.UnitKind.PLUGIN) out.add(u.name());
+        }
+        return out;
+    }
 
     /**
-     * #402: which units' CLI deps this sync reconciles: the ones it was asked
-     * to sync. A no-argument sync names every unit, so it is still whole-home.
+     * #402, #442: which units this sync does per-unit work for: the ones it was
+     * asked to sync. A no-argument sync names every unit, so it is still
+     * whole-home.
      *
-     * <p>This pass used to walk every installed unit. In a {@code home clone}
+     * <p>The CLI pass used to walk every installed unit. In a {@code home clone}
      * every wrapper's target was under the skipped {@code cache/}, so the
-     * usability gate failed for all of them and one unit's sync ran every
-     * other unit's installer (about 85 s on a real home).
+     * usability gate failed for all of them and one unit's sync ran every other
+     * unit's installer (about 85 s on a real home). The agent pass reinstalled
+     * every plugin through the agents' own CLIs (15-33 s).
      *
      * <p>Units a stage 2 resolve newly pulled in are not lost: they arrive
-     * through {@code RunInstallPlan}'s own CLI actions. A {@link Target.Harness}
+     * through {@code RunInstallPlan}'s own actions. A {@link Target.Harness}
      * names a template rather than the units its instance holds, so a harness
      * reconcile cannot be scoped from its name and stays whole-home.
      */
-    private static CliScope cliScope(List<Target> targets,
-                                     List<dev.skillmanager.model.AgentUnit> liveUnits) {
+    private static SyncScope syncScope(List<Target> targets,
+                                       List<dev.skillmanager.model.AgentUnit> liveUnits) {
         if (targets.stream().anyMatch(t -> t instanceof Target.Harness)) {
-            return new CliScope(liveUnits, List.of());
+            return new SyncScope(liveUnits, List.of());
         }
         java.util.Set<String> named = new LinkedHashSet<>(projectSyncUnitNames(targets));
         List<dev.skillmanager.model.AgentUnit> reconciled = new ArrayList<>();
         List<dev.skillmanager.model.AgentUnit> left = new ArrayList<>();
         for (var u : liveUnits) (named.contains(u.name()) ? reconciled : left).add(u);
-        return new CliScope(reconciled, left);
+        return new SyncScope(reconciled, left);
     }
 
     private static List<String> forceScriptUnitNames(List<Target> targets) {
