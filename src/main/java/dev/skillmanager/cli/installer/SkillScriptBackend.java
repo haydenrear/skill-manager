@@ -423,6 +423,40 @@ public final class SkillScriptBackend implements InstallerBackend {
     }
 
     /**
+     * The script path, its args and the git tree of {@code skill-scripts/}, when
+     * that subtree is exactly what HEAD holds (#450). Tree rather than commit, so a
+     * commit elsewhere in the unit does not send the reader back to the bytes.
+     *
+     * <p>Never consulted to decide a re-run: {@link #install} gates on the bytes.
+     * A file git ignores is not in this answer, the owner's rule for a unit's
+     * identity, and a dirty subtree has no answer at all.
+     */
+    @Override
+    public java.util.Optional<String> gitInputs(CliDependency dep, SkillStore store, String unitName) {
+        CliDependency.InstallTarget target = pickTarget(dep);
+        if (target == null || target.script() == null || target.script().isBlank()) {
+            return java.util.Optional.empty();
+        }
+        ResolvedScript resolved;
+        try {
+            resolved = resolveScript(store, unitName, target.script());
+        } catch (IOException notHere) {
+            return java.util.Optional.empty();
+        }
+        // The checkout is the unit's root; on the contained-skill rung that is
+        // the plugin, above the skill root the script resolved to.
+        Path unitRoot = resolved.skillRoot.equals(store.unitDir(unitName, dev.skillmanager.model.UnitKind.SKILL))
+                ? resolved.skillRoot : store.unitDir(unitName, dev.skillmanager.model.UnitKind.PLUGIN);
+        String rel = unitRoot.relativize(resolved.scriptsDir).toString().replace('\\', '/');
+        return dev.skillmanager.source.GitOps.cleanTree(unitRoot, rel)
+                .map(tree -> Fingerprints.scheme("skill-script-git-v1")
+                        .field("script", target.script())
+                        .fields("arg", target.args())
+                        .field("tree", tree)
+                        .hex());
+    }
+
+    /**
      * Hash every file under {@code scriptsDir} (recursive, lexical
      * order on relative paths) plus the {@code script} path-spec and
      * the {@code args} list. Lexical sort makes the hash deterministic

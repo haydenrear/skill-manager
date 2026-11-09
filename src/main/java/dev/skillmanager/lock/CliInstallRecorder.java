@@ -138,10 +138,43 @@ public final class CliInstallRecorder {
         // recordInstall because that method keeps an existing row whole when the
         // version is unchanged -- including its old spec -- and a tar url bump at
         // the same min_version is exactly that case.
+        // #450: written from the same state the digest just described, and
+        // cleared when git cannot name it, so a stamp never outlives its digest.
         CliLock.Entry declared = row.withDeclaration(dep.spec(), CliPin.of(dep))
-                .withProvided(provenance(dep, store));
+                .withProvided(provenance(dep, store))
+                .withGitInputs(registry.gitInputsFor(dep, store, unitName).orElse(null));
         lock.put(declared);
         return declared;
+    }
+
+    /**
+     * Give rows written before {@link CliLock.Entry#gitInputs} existed their
+     * stamp (#450). A stamp is only written when this home's bytes still hash to
+     * the row's digest, so a row whose inputs moved stays unstamped and reads
+     * stale as before. A row left unstamped is decided from its bytes: slower,
+     * never wrong.
+     *
+     * @return how many rows were stamped
+     */
+    public static int stampGitInputs(SkillStore store) throws IOException {
+        CliLock lock = CliLock.load(store);
+        InstallerRegistry registry = new InstallerRegistry();
+        var producers = dev.skillmanager.artifacts.ArtifactFreshness.cliProducers(store);
+        int stamped = 0;
+        for (CliLock.Entry row : lock.all()) {
+            if (row.gitInputs() != null || row.installFingerprint() == null) continue;
+            var producer = producers.get(
+                    dev.skillmanager.artifacts.ArtifactFreshness.lockKey(row.backend(), row.tool()));
+            if (producer == null) continue;
+            var git = registry.gitInputsFor(producer.dep(), store, producer.unitName());
+            if (git.isEmpty()) continue;
+            Fingerprint now = registry.fingerprintFor(producer.dep(), store, producer.unitName());
+            if (!now.present() || !row.installFingerprint().equals(now.value())) continue;
+            lock.put(row.withGitInputs(git.get()));
+            stamped++;
+        }
+        if (stamped > 0) lock.save(store);
+        return stamped;
     }
 
     /**

@@ -1,0 +1,12 @@
+# CC-7 local signal: python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks
+# Fixture: home clone of this checkout's project home, same-volume (APFS /Volumes/dev, clonefile path).
+# Every run of cheap-checks that happened on the final production code (3 of 3 green).
+run             stale-median-s  stale-rss-mb  clean-files-read  dirty-files-read  closeout-median-s  closeout-rss-mb  small-unit-edit-s  plugin-edit-s
+20261109-133854 3.44            563.6         0                 26170             3.67               231.7            4.77               27.43
+20261109-134557 4.34            566.2         0                 26170             3.74               231.0            4.41               25.98
+20261109-135249 3.72            560.8         0                 26170             3.51               232.0            4.15               28.73
+# expected_effect: close-out about 16.9 s -> under 5 s; clean files read 3 -> 0. Both moved as expected.
+# home clone wall time, /usr/bin/time, source = worktree project home: see home-clone-before.txt / home-clone-after.txt
+# same-volume (APFS copy-on-write): before 59.09 58.84 58.23 (median 58.84); after 69.36 62.18 51.75 (median 62.18)
+# cross-volume (full copy):         before 65.04 63.82 77.78 (median 65.04); after 54.79 62.40 66.70 (median 62.40)
+# The refresh cost is inside the run-to-run spread; both copy shapes left stat-stale indexes before the refresh.

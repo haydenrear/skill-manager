@@ -84,6 +84,18 @@ public final class InstallerRegistry {
         }
     }
 
+    /** {@code dep}'s backend's {@link InstallerBackend#gitInputs}; empty on any failure. */
+    public java.util.Optional<String> gitInputsFor(CliDependency dep, SkillStore store, String unitName) {
+        InstallerBackend backend = backends.get(dep.backend());
+        if (backend == null) return java.util.Optional.empty();
+        try {
+            return backend.gitInputs(dep, store, unitName);
+        } catch (RuntimeException e) {
+            Log.detail("cli: could not name %s's inputs by git: %s", dep.name(), e.getMessage());
+            return java.util.Optional.empty();
+        }
+    }
+
     /** Install every CLI dep declared by every skill, preserving skill-name context for per-skill isolation. */
     public void installFor(List<Skill> skills, SkillStore store) throws IOException {
         Fs.ensureDir(store.cliBinDir());
