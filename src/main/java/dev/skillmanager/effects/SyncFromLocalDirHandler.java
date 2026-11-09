@@ -182,6 +182,7 @@ public final class SyncFromLocalDirHandler {
         try {
             Fs.deleteRecursive(storeDir);
             Fs.copyRecursive(src, storeDir);
+            dev.skillmanager.source.SparseInstall.applyDeclared(storeDir);
         } catch (IOException ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         } finally {

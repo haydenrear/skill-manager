@@ -120,6 +120,7 @@ public final class SyncGitPin {
         // now disagree, and saying OK is how units.lock kept the old sha.
         String recordFailure = restateRecord(ctx, name, origin, recordedRef, sha, src, true);
         if (recordFailure != null) return refuse(e, name, recordFailure);
+        dev.skillmanager.source.SparseInstall.reconcile(storeDir);
         watch.afterUpstreamMove();
         Log.info("%s: moved %s → pin %s%s", name, shortSha(head), shortSha(sha),
                 worktreeEdits ? " (local edits carried onto the pin)" : "");

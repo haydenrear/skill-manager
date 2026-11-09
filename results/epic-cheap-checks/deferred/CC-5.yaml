@@ -1,0 +1,13 @@
+findings:
+  - id: DEF-CC5-001
+    severity: low
+    kind: out-of-slice-defect
+    owner: CC-6
+    summary: home clone of a worktree home that holds a child-home record fails verification with SOURCE_AGENT_HOME; unrelated to sparse checkouts.
+    detail: >
+      While building a scratch home for the sparse stale measurement, `home clone --from <worktree>/.skill-manager` left the
+      copy in place and failed verify on child-homes/project_skill-manager/child-home.json, which names an agent directory
+      of the source home. Nothing in that record involves a unit's git state; the copy was usable for the measurement.
+    reproduction: >
+      ./skill-manager home clone --from /Volumes/dev/skill-manager-261-install-exclusion/.skill-manager --to <scratch>
+    action: Decide whether child-home.json should be re-anchored or dropped by the clone.

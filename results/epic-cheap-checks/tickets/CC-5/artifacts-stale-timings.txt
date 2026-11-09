@@ -1,0 +1,4 @@
+full:  14.89 real 5.12 user 2.85 sys; 572473344 maximum resident set size;
+sparse:  5.55 real 4.45 user 1.21 sys; 602128384 maximum resident set size;
+sparse2:  5.30 real 4.33 user 1.19 sys; 602374144 maximum resident set size;
+hole:  6.31 real 5.44 user 1.65 sys; 578617344 maximum resident set size;
