@@ -1,0 +1,49 @@
+{
+  "nodeId" : "cheap.stale-time",
+  "status" : "passed",
+  "startedAt" : "2026-11-09T18:40:17.283146Z",
+  "endedAt" : "2026-11-09T18:41:48.504427Z",
+  "assertions" : [ {
+    "name" : "setup_cloned_home_holds_plugin",
+    "status" : "passed"
+  }, {
+    "name" : "setup_plugin_is_clean_git_checkout",
+    "status" : "passed"
+  }, {
+    "name" : "setup_time_l_parsed",
+    "status" : "passed"
+  }, {
+    "name" : "control_stale_exits_zero",
+    "status" : "passed"
+  }, {
+    "name" : "control_instrument_sees_reads_on_a_dirty_checkout",
+    "status" : "passed"
+  }, {
+    "name" : "shape_stale_under_6s",
+    "status" : "passed"
+  }, {
+    "name" : "shape_clean_checkout_reads_no_file_contents",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "clone",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "home", "clone", "--from", "/Volumes/dev/skill-manager-epic-cheap-checks/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/stale-time/home" ],
+    "startedAt" : "2026-11-09T18:40:17.289450Z",
+    "endedAt" : "2026-11-09T18:41:21.284284Z",
+    "exitCode" : 0,
+    "pid" : 42609,
+    "log" : "node-logs/cheap.stale-time.clone.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "median_seconds" : 3.34,
+    "median_rss_mb" : 558.140625,
+    "clean_files_read" : 0,
+    "dirty_files_read" : 26170,
+    "plugin_files" : 26588,
+    "durationMs" : 91221
+  },
+  "logs" : [ "evidence=/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-184015/evidence/stale-time.json {\"fixture\":\"home clone of the project home holding tla-spec-dev\",\"plugin_files\":26588,\"seconds\":[3.34, 3.34, 3.25],\"median_seconds\":3.34,\"rss_mb\":[563.46875, 553.296875, 558.140625],\"median_rss_mb\":558.140625,\"target_seconds\":6.0,\"clean_files_read\":0,\"clean_manifest_reads\":24,\"dirty_files_read\":26170,\"jfr_recordings\":2}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-09T18:40:16.583905Z","executorEndedAt":"2026-11-09T18:41:48.628453Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cheap.stale-time.stdout.log","inputContextFile":"context/cheap.stale-time.input.json","traceId":"fc789d56955ba0ec5c241a5b454ce044"}

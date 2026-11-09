@@ -1,0 +1,103 @@
+{
+  "nodeId" : "cheap.install-exclusion",
+  "status" : "passed",
+  "startedAt" : "2026-11-09T18:45:34.765127Z",
+  "endedAt" : "2026-11-09T18:45:48.367773Z",
+  "assertions" : [ {
+    "name" : "setup_installed_as_git_checkout",
+    "status" : "passed"
+  }, {
+    "name" : "control_non_excluded_file_is_installed",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_files_at_excluded_path",
+    "status" : "passed"
+  }, {
+    "name" : "shape_git_log_on_excluded_path",
+    "status" : "passed"
+  }, {
+    "name" : "shape_git_blame_on_excluded_path",
+    "status" : "passed"
+  }, {
+    "name" : "shape_git_diff_across_history_on_excluded_path",
+    "status" : "passed"
+  }, {
+    "name" : "shape_git_status_clean",
+    "status" : "passed"
+  }, {
+    "name" : "shape_git_commit",
+    "status" : "passed"
+  }, {
+    "name" : "shape_git_fetch",
+    "status" : "passed"
+  }, {
+    "name" : "shape_git_push",
+    "status" : "passed"
+  }, {
+    "name" : "shape_commit_keeps_excluded_paths_in_tree",
+    "status" : "passed"
+  }, {
+    "name" : "shape_partial_clone_blobs_absent",
+    "status" : "passed"
+  }, {
+    "name" : "shape_commit_after_add_all",
+    "status" : "passed"
+  }, {
+    "name" : "shape_add_all_keeps_excluded_paths_in_tree",
+    "status" : "passed"
+  }, {
+    "name" : "shape_stash_and_pop",
+    "status" : "passed"
+  }, {
+    "name" : "shape_sync_merge_touching_excluded_path",
+    "status" : "passed"
+  }, {
+    "name" : "shape_sync_keeps_exclusion_on_disk",
+    "status" : "passed"
+  }, {
+    "name" : "shape_sync_took_excluded_change_in_history",
+    "status" : "passed"
+  }, {
+    "name" : "shape_blame_on_demand_after_sync",
+    "status" : "passed"
+  }, {
+    "name" : "fallback_no_filter_source_excludes_working_tree",
+    "status" : "passed"
+  }, {
+    "name" : "fallback_no_filter_source_keeps_blobs",
+    "status" : "passed"
+  }, {
+    "name" : "fallback_blame_on_excluded_path",
+    "status" : "passed"
+  }, {
+    "name" : "control_undeclared_unit_is_a_plain_clone",
+    "status" : "passed"
+  }, {
+    "name" : "shape_home_clone_keeps_exclusion",
+    "status" : "passed"
+  }, {
+    "name" : "shape_home_clone_status_clean",
+    "status" : "passed"
+  }, {
+    "name" : "shape_home_clone_blame_on_excluded_path",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "install", "git+file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/install-exclusion/upstream.git/", "--yes", "--no-bind-default" ],
+    "startedAt" : "2026-11-09T18:45:34.969546Z",
+    "endedAt" : "2026-11-09T18:45:37.302965Z",
+    "exitCode" : 0,
+    "pid" : 57151,
+    "log" : "node-logs/cheap.install-exclusion.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "excluded_files_on_disk" : 0,
+    "git_ops_working" : 7,
+    "durationMs" : 13602
+  },
+  "logs" : [ "excluded files on disk=0; git ops ok=7/7 log=0 blame=0 diff=0 status=0 commit=0 fetch=0 fetchedHead=9f728578dd6df9988fc2bebe8c6c166f37860c0a advanced=9f728578dd6df9988fc2bebe8c6c166f37860c0a push=0 keepsTree=true; install rc=0 blobsAbsent=true addAll=true/true stash=true sync=true excludedAfterSync=0 syncContent=true blameAfterSync=true fallback=true/true/true controlPlain=true homeClone=true/true/true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-09T18:45:34.063668Z","executorEndedAt":"2026-11-09T18:45:48.477624Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cheap.install-exclusion.stdout.log","inputContextFile":"context/cheap.install-exclusion.input.json","traceId":"fc789d56955ba0ec5c241a5b454ce044"}

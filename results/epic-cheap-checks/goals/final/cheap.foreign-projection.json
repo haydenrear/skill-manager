@@ -1,0 +1,76 @@
+{
+  "nodeId" : "cheap.foreign-projection",
+  "status" : "passed",
+  "startedAt" : "2026-11-09T18:45:22.976503Z",
+  "endedAt" : "2026-11-09T18:45:33.910561Z",
+  "assertions" : [ {
+    "name" : "setup_two_plugins_installed_and_cloned",
+    "status" : "passed"
+  }, {
+    "name" : "control_install_projected_both_through_the_fakes",
+    "status" : "passed"
+  }, {
+    "name" : "control_sync_projected_the_named_plugin",
+    "status" : "passed"
+  }, {
+    "name" : "control_named_plugin_installed_into_both_agents",
+    "status" : "passed"
+  }, {
+    "name" : "control_absent_other_plugin_is_named_not_assumed",
+    "status" : "passed"
+  }, {
+    "name" : "control_sync_with_no_unit_projects_both",
+    "status" : "passed"
+  }, {
+    "name" : "control_marketplace_still_lists_both",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_other_plugin_reprojected",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install_target",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/foreign-projection/units/cc-proj-target", "--yes" ],
+    "startedAt" : "2026-11-09T18:45:22.988575Z",
+    "endedAt" : "2026-11-09T18:45:25.382826Z",
+    "exitCode" : 0,
+    "pid" : 56400,
+    "log" : "node-logs/cheap.foreign-projection.install_target.log",
+    "error" : null
+  }, {
+    "label" : "install_other",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/foreign-projection/units/cc-proj-other", "--yes" ],
+    "startedAt" : "2026-11-09T18:45:25.383131Z",
+    "endedAt" : "2026-11-09T18:45:27.488184Z",
+    "exitCode" : 0,
+    "pid" : 56556,
+    "log" : "node-logs/cheap.foreign-projection.install_other.log",
+    "error" : null
+  }, {
+    "label" : "sync_one",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "sync", "cc-proj-target", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/foreign-projection/units/cc-proj-target", "--yes", "--skip-mcp" ],
+    "startedAt" : "2026-11-09T18:45:29.514641Z",
+    "endedAt" : "2026-11-09T18:45:31.777255Z",
+    "exitCode" : 0,
+    "pid" : 56823,
+    "log" : "node-logs/cheap.foreign-projection.sync_one.log",
+    "error" : null
+  }, {
+    "label" : "sync_all",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "sync", "--yes", "--skip-mcp" ],
+    "startedAt" : "2026-11-09T18:45:31.777860Z",
+    "endedAt" : "2026-11-09T18:45:33.902525Z",
+    "exitCode" : 0,
+    "pid" : 56923,
+    "log" : "node-logs/cheap.foreign-projection.sync_all.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "other_plugin_projection_calls" : 0,
+    "agent_cli_calls_during_sync" : 8,
+    "durationMs" : 10934
+  },
+  "logs" : [ "calls naming cc-proj-other during sync of cc-proj-target=0 agent-cli lines=8 sync rc=0 syncAll rc=0 target calls=3 at install=14 at syncAll=9 | sync argvs: [claude plugin marketplace list --json, claude plugin marketplace add /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/foreign-projection/clone/plugin-marketplace --scope user, claude plugin marketplace list --json, claude plugin marketplace update skill-manager-9d713622, claude plugin uninstall cc-proj-target@skill-manager-9d713622, claude plugin install cc-proj-target@skill-manager-9d713622 --scope user, codex plugin marketplace add /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/foreign-projection/clone/plugin-marketplace, codex plugin add cc-proj-target@skill-manager-9d713622]" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-09T18:45:22.235109Z","executorEndedAt":"2026-11-09T18:45:34.039389Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cheap.foreign-projection.stdout.log","inputContextFile":"context/cheap.foreign-projection.input.json","traceId":"fc789d56955ba0ec5c241a5b454ce044"}

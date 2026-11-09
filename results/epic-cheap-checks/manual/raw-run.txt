@@ -1,0 +1,118 @@
+tested commit: 980d5f09e8d8bf56f544cf51b7978be0d3d1eb0d
+26.6.2
+Mon Nov  9 18:46:42 UTC 2026
+== M1 home clone of a real home
+  baseline:    recorded for 3 unit(s), so edits made here can be merged back with `skill-manager home sync`
+  drift:       baselined against this copy's own content (3 unit(s)); a clone is not drifted
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-clone-20261109-134644-273f.log
+ELAPSED 64.54 s rc=0
+/Volumes/dev/cc-manual-scratch/home/plugins/tla-spec-dev
+/Volumes/dev/cc-manual-scratch/home/skills/tracing-observability
+       0
+   26413
+== M2 artifacts stale on the clean clone
+stale rows: 23
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   cli-shim:skill-script/tracing-observability
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 3.73 s rc=0
+stale rows: 23
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   cli-shim:skill-script/tracing-observability
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 3.40 s rc=0
+stale rows: 23
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   cli-shim:skill-script/tracing-observability
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 3.45 s rc=0
+== M3 a real tracked edit is seen, restore clears it
+/Volumes/dev/cc-manual-scratch/home/plugins/tla-spec-dev/skills/skt/SKILL.md
+stale rows: 24
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   cli-shim:skill-script/tracing-observability
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 11.88 s rc=0
+stale rows: 23
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   cli-shim:skill-script/tracing-observability
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 3.58 s rc=0
+== M4 an untracked file is seen, removal clears it
+stale rows: 24
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   cli-shim:skill-script/tracing-observability
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 11.27 s rc=0
+stale rows: 23
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   cli-shim:skill-script/tracing-observability
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 3.61 s rc=0
+== M5 sync of one unit leaves the others alone
+  ADDED    codex (/Volumes/dev/cc-manual-scratch/agents/codex/config.toml)  → http://127.0.0.1:51717/mcp
+  ADDED    gemini (/Volumes/dev/cc-manual-scratch/agents/gemini/settings.json)  → http://127.0.0.1:51717/mcp
+agent MCP configs: ADDED 3, UPDATED 0 → http://127.0.0.1:51717/mcp
+ACTION_REQUIRED: restart Claude / Codex for the virtual-mcp-gateway entry to take effect — without a restart the agent will not see any MCP tools.
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20261109-134830-c0cb.log
+ELAPSED 4.92 s rc=0
+plugin commit same: yes
+installer logs before=       0 after=       1
+20261109-184831-723-tracing-observability-tracing-observability.log
+       0
+== M6 close-out clean, then with an edit
+✓ /Volumes/dev/cc-manual-scratch/home holds nothing that removing it would destroy
+ELAPSED 12.90 s rc=0
+✗   would-update       skill:tracing-observability — the destination's working tree is clean and its history is contained in the source's, so it holds nothing of its own; a sync fast-forwards it to the source copy
+✗   fix skill:tracing-observability: /Volumes/dev/cc-manual-scratch/home/bin/cli/skill-manager home sync --from /Volumes/dev/cc-manual-scratch/home --to /Volumes/dev/skill-manager-epic-cheap-checks/.skill-manager
+✗ 1 unit(s) in /Volumes/dev/cc-manual-scratch/home would be lost if it were removed now
+ELAPSED 13.67 s rc=1
+== M7 excluded history keeps full git
+✓ units.lock.toml: wrote 4 unit(s) → /Volumes/dev/cc-manual-scratch/home/units.lock.toml
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/install-20261109-134902-4602.log
+excluded files on disk:        0
+tracked in HEAD:        1
+missing blobs before reads: 2
+log:
+B
+A
+blame:
+c93e87c7 (m 2026-11-09 13:49:01 -0500 1) two
+diff:
+@@ -1 +1 @@
+-one
++two
+status lines:        0
+commit ok
+excluded still in tree:        1
+push ok
+stale rows: 22
+   unit-store:manual-x
+   cli-shim:pip/jinja2-cli[yaml]
+   cli-shim:skill-script/computeq
+   cli-shim:skill-script/helm-deploy
+   cli-shim:skill-script/monitoring
+   provisioned-tree:cache/skill-script-deploy-helm-computeq
+ELAPSED 3.69 s rc=0
+DONE
