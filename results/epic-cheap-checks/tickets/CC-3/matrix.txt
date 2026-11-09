@@ -1,0 +1,21 @@
+unit exit=0
+   → 14 passed, 0 failed
+
+ALL PASSED
+spec-unit exit=0
+...........                                                              [100%]
+11 passed in 1.14s
+graph cheap-checks exit=1
+> Task :cheap-checks FAILED
+BUILD FAILED in 7m 14s
+graphs_selected=1  graphs_executed=1  graphs_passed=0  graphs_failed=1  graphs_not_run=0
+  FAILED   cheap-checks  414.8s  build/validation-reports/20261109-044235  (Execution failed for task ':cheap-checks'.)
+graph home-verdicts exit=0
+graphs_selected=1  graphs_executed=1  graphs_passed=1  graphs_failed=0  graphs_not_run=0
+  PASSED   home-verdicts  162.3s  build/validation-reports/20261109-044941
+graph home-integrity exit=0
+graphs_selected=1  graphs_executed=1  graphs_passed=1  graphs_failed=0  graphs_not_run=0
+  PASSED   home-integrity  149.8s  build/validation-reports/20261109-045229
+graph ticket-lifecycle exit=0
+graphs_selected=1  graphs_executed=1  graphs_passed=1  graphs_failed=0  graphs_not_run=0
+  PASSED   ticket-lifecycle  262.0s  build/validation-reports/20261109-045501

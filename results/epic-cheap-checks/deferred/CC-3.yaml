@@ -1,0 +1,33 @@
+findings:
+  - id: DEF-CC3-001
+    severity: medium
+    kind: goal-clause-gap
+    owner: CC-6
+    summary: "home clone leaves every checkout's git index stat-stale, so close-out's git status re-hashes the whole tree (about 5.8 s per side on tla-spec-dev); clause (b) time stays above 5 s on the fixture until something refreshes the indexes."
+    detail: >
+      A cloned file keeps its mtime but gets a new inode and ctime, so every entry in the copied .git/index mismatches and
+      git re-reads each file. cleanCommit deliberately uses --no-optional-locks, and close-out must write nothing, so the
+      refreshed index is never saved and every close-out pays again on both homes. Measured on two fresh home clones of the
+      project home: 16.8 s as cloned against 4.2-4.3 s after `git update-index --refresh` in each unit by hand, RSS about
+      240 MB in both (results/epic-cheap-checks/tickets/CC-3/local-signal.txt). The cost is outside the comparison and
+      outside this ticket's conflict keys: the fix belongs where the copy happens. Refreshing the index once at the end of
+      `home clone` would cost that clone about 6 s for tla-spec-dev and remove the per-close-out cost. Loosening
+      core.checkStat or core.trustctime on the status call was rejected: it drops edit detection for a same-size,
+      same-second rewrite, which is the honesty this epic exists to keep.
+    reproduction: >
+      Clone a home with `skill-manager home clone` and run `git --no-optional-locks status` in plugins/tla-spec-dev twice:
+      both take about 5.8 s. Run `git update-index -q --refresh` once; status drops to about 0.4 s.
+    action: The plan owner decides whether `home clone` should refresh each checkout's index, or whether CC-6 reads clause (b) against a refreshed fixture.
+  - id: DEF-CC3-002
+    severity: low
+    kind: follow-up
+    owner: CC-6
+    summary: "A worktree home behind a moved project home still reads both trees: the 'destination is ahead' answer is git-only but sits after the fingerprints."
+    detail: >
+      settledWithoutARecord's third arm (gitSourceIsBehind) asks only git, yet runs after both trees have been digested,
+      because the fast path added here is limited to the assigned shape: both copies clean at one commit on the same refs.
+      Moving that arm ahead of the fingerprints would return the same UNCHANGED verdict without reading bytes for the common
+      case of a ticket home left behind by the project home. Left alone because the assignment says a differing unit goes
+      through the existing comparison.
+    reproduction: Commit and push in the project home's copy of a unit, then time home close-out against a worktree home at the older commit.
+    action: Decide whether a later ticket moves the git-only arm ahead of the digests.

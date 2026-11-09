@@ -313,6 +313,7 @@ public class RunTests {
         failures += dev.skillmanager.store.HomeSyncMergeTest.run();
         failures += dev.skillmanager.store.HomeSyncGitUnitTest.run();
         failures += dev.skillmanager.store.HomeCloseOutPublishedRefsTest.run();
+        failures += dev.skillmanager.store.HomeCloseOutCleanCommitTest.run();
         failures += dev.skillmanager.store.HomeCloseOutDamagedUnitTest.run();
         failures += dev.skillmanager.store.HomeSyncUnitFilterTest.run();
         failures += dev.skillmanager.store.HomeSyncStaleBaselineTest.run();

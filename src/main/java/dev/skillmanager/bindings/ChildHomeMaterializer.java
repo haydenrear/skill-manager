@@ -856,6 +856,46 @@ public final class ChildHomeMaterializer {
     }
 
     /**
+     * Whether two git-backed copies can be called equal from git alone (#401):
+     * <b>both</b> are clean checkouts of the <b>same</b> commit, and they stand on
+     * the same refs. Every byte read that this saves was reaching the answer
+     * {@link #settledWithoutARecord} already gives for such a pair.
+     *
+     * <p>Both sides are asked, and that is the point. A clean commit on the
+     * source says nothing about a destination holding an uncommitted edit, so
+     * "two units are equal" cannot be read off one of them.
+     *
+     * <p>The ref listing is the {@link #gitHistoryDigest} every other route
+     * compares, HEAD included, because a commit is not all a copy can hold: a
+     * side branch, a stash or a tag is work on a ref HEAD knows nothing about
+     * ({@link #gitHistoryMovedOn}). A pair that differs in refs is not decided
+     * here, even where the refs are harmless: it takes the existing comparison.
+     *
+     * <p>A {@code true} here is a case {@code settledWithoutARecord} settles as
+     * UNCHANGED anyway, through its "destination is ahead" arm
+     * ({@link #gitSourceIsBehind}): the source's tree is clean and its refs are
+     * contained in the destination's, trivially, being the same refs. So this
+     * adds no new way for a unit to be UNCHANGED; it only stops reading bytes to
+     * reach it. The one margin is {@link GitOps#cleanCommit} listing untracked
+     * files individually where that arm collapses them to a directory: an
+     * untracked directory holding only re-derivable output is clean here and was
+     * not clean there. It holds nothing anybody wrote.
+     *
+     * <p>False on any doubt, and false is only slower: a sparse checkout, a
+     * machine-local exclude, a {@code .git} file, a git that cannot answer all
+     * fall through to reading the bytes ({@link GitOps#cleanCommit}).
+     */
+    private static boolean cleanAtOneCommitOnTheSameRefs(Path source, Path dest) {
+        if (!carriesGitDirectory(source) || !carriesGitDirectory(dest)) return false;
+        Optional<String> sourceCommit = GitOps.cleanCommit(source, ChildHomeMaterializer::isUnowned);
+        if (sourceCommit.isEmpty()) return false;
+        Optional<String> destCommit = GitOps.cleanCommit(dest, ChildHomeMaterializer::isUnowned);
+        if (destCommit.isEmpty() || !destCommit.equals(sourceCommit)) return false;
+        String history = gitHistoryDigest(source);
+        return history != null && history.equals(gitHistoryDigest(dest));
+    }
+
+    /**
      * Whether {@code unit} carries its own git directory — the gate on the
      * git-aware route above.
      *
@@ -1297,6 +1337,12 @@ public final class ChildHomeMaterializer {
             return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
                     "materialized as a git checkout — send its commits home with "
                             + "`skill-manager unit publish " + name + "`, not with a file copy");
+        }
+
+        if (destIsDir && cleanAtOneCommitOnTheSameRefs(source, dest)) {
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+                    "both copies are clean checkouts of the same commit on the same refs, so "
+                            + "neither holds a file or a commit the other lacks");
         }
 
         List<ViewEntry> view = materializedView(source);
@@ -2962,11 +3008,24 @@ public final class ChildHomeMaterializer {
                         reconcileKind));
     }
 
+    /**
+     * Reads a record without interning its field names. A record's keys are the
+     * unit's file paths, 26,588 of them on tla-spec-dev, and Jackson's symbol
+     * table copies itself as long names accumulate: 1.7 GB of allocation per
+     * close-out on a 5.8 MB file (#401), which is where the RSS went once the
+     * digests stopped.
+     */
+    private static final com.fasterxml.jackson.databind.ObjectMapper RECORD_READER =
+            new com.fasterxml.jackson.databind.ObjectMapper(
+                    com.fasterxml.jackson.core.JsonFactory.builder()
+                            .disable(com.fasterxml.jackson.core.JsonFactory.Feature.CANONICALIZE_FIELD_NAMES)
+                            .build());
+
     private Optional<MaterializationRecord> readRecordFile(Path file) {
         if (!Files.isRegularFile(file)) return Optional.empty();
         try {
             return Optional.ofNullable(
-                    BindingJson.MAPPER.readValue(file.toFile(), MaterializationRecord.class));
+                    RECORD_READER.readValue(file.toFile(), MaterializationRecord.class));
         } catch (IOException e) {
             return Optional.empty();
         }
@@ -3545,6 +3604,9 @@ public final class ChildHomeMaterializer {
         sorted.sort(Comparator.comparing(ViewEntry::rel));
         MessageDigest all = whole ? sha256() : null;
         java.util.LinkedHashMap<String, String> entries = new java.util.LinkedHashMap<>();
+        // One buffer for the walk. Allocating it per file was 8 KiB of garbage for
+        // each of a unit's files, per digest, and the heap grew to hold it (#401).
+        byte[] buffer = new byte[8192];
         for (ViewEntry entry : sorted) {
             if (isUnder(entry.rel(), skipNames)) continue;
             MessageDigest one = sha256();
@@ -3568,7 +3630,6 @@ public final class ChildHomeMaterializer {
                     frame(one, kind, entry.rel(), size);
                     if (whole) frame(all, kind, entry.rel(), size);
                     try (InputStream in = Files.newInputStream(entry.source())) {
-                        byte[] buffer = new byte[8192];
                         int read;
                         while ((read = in.read(buffer)) > 0) {
                             one.update(buffer, 0, read);
