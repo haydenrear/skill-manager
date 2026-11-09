@@ -1,0 +1,79 @@
+{
+  "nodeId" : "cheap.close-out",
+  "status" : "passed",
+  "startedAt" : "2026-11-09T18:42:10.857416Z",
+  "endedAt" : "2026-11-09T18:45:00.984208Z",
+  "assertions" : [ {
+    "name" : "setup_two_clones_hold_plugin",
+    "status" : "passed"
+  }, {
+    "name" : "setup_time_l_parsed",
+    "status" : "passed"
+  }, {
+    "name" : "control_clean_home_closes_safe",
+    "status" : "passed"
+  }, {
+    "name" : "control_unpublished_edit_blocks_by_name",
+    "status" : "passed"
+  }, {
+    "name" : "control_small_unit_edit_blocks_by_name",
+    "status" : "passed"
+  }, {
+    "name" : "shape_small_unit_edit_caught_at_clean_closeout_speed",
+    "status" : "passed"
+  }, {
+    "name" : "shape_close_out_under_5s",
+    "status" : "passed"
+  }, {
+    "name" : "shape_close_out_under_300mb_rss",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "clone_a",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "home", "clone", "--from", "/Volumes/dev/skill-manager-epic-cheap-checks/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/close-out/worktree-home" ],
+    "startedAt" : "2026-11-09T18:42:10.862993Z",
+    "endedAt" : "2026-11-09T18:43:14.514546Z",
+    "exitCode" : 0,
+    "pid" : 48118,
+    "log" : "node-logs/cheap.close-out.clone_a.log",
+    "error" : null
+  }, {
+    "label" : "clone_b",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "home", "clone", "--from", "/Volumes/dev/skill-manager-epic-cheap-checks/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/close-out/project-home" ],
+    "startedAt" : "2026-11-09T18:43:14.514840Z",
+    "endedAt" : "2026-11-09T18:44:18.240743Z",
+    "exitCode" : 0,
+    "pid" : 50430,
+    "log" : "node-logs/cheap.close-out.clone_b.log",
+    "error" : null
+  }, {
+    "label" : "closeout_edited",
+    "command" : [ "/usr/bin/time", "-l", "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/close-out/worktree-home", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/close-out/project-home", "--json" ],
+    "startedAt" : "2026-11-09T18:44:37.243165Z",
+    "endedAt" : "2026-11-09T18:45:00.975895Z",
+    "exitCode" : 1,
+    "pid" : 54260,
+    "log" : "node-logs/cheap.close-out.closeout_edited.log",
+    "error" : null
+  }, {
+    "label" : "closeout_small_edit",
+    "command" : [ "/usr/bin/time", "-l", "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/close-out/worktree-home", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/close-out/project-home", "--json" ],
+    "startedAt" : "2026-11-09T18:44:33.119379Z",
+    "endedAt" : "2026-11-09T18:44:37.240079Z",
+    "exitCode" : 1,
+    "pid" : 53939,
+    "log" : "node-logs/cheap.close-out.closeout_small_edit.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "median_seconds" : 3.53,
+    "median_rss_mb" : 235.953125,
+    "plugin_files" : 26588,
+    "small_unit_edit_seconds" : 4.11,
+    "plugin_edit_seconds" : 23.72,
+    "durationMs" : 170127
+  },
+  "logs" : [ "evidence=/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-184015/evidence/close-out.json {\"fixture\":\"two home clones of the project home holding tla-spec-dev\",\"plugin_files\":26588,\"seconds\":[3.41, 3.53, 3.72],\"median_seconds\":3.53,\"rss_mb\":[237.0, 235.65625, 235.953125],\"median_rss_mb\":235.953125,\"target_seconds\":5.0,\"target_rss_mb\":300.0,\"clean_exit\":0,\"small_unit_edit_seconds\":4.11,\"plugin_edit_seconds\":23.72}" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-09T18:42:10.161915Z","executorEndedAt":"2026-11-09T18:45:01.100462Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cheap.close-out.stdout.log","inputContextFile":"context/cheap.close-out.input.json","traceId":"fc789d56955ba0ec5c241a5b454ce044"}

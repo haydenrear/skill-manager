@@ -1,0 +1,53 @@
+{
+  "nodeId" : "cheap.foreign-installers",
+  "status" : "passed",
+  "startedAt" : "2026-11-09T18:45:01.884824Z",
+  "endedAt" : "2026-11-09T18:45:22.095090Z",
+  "assertions" : [ {
+    "name" : "setup_units_installed_and_cloned",
+    "status" : "passed"
+  }, {
+    "name" : "control_counter_counts_each_installer_once",
+    "status" : "passed"
+  }, {
+    "name" : "control_sync_landed_on_named_unit",
+    "status" : "passed"
+  }, {
+    "name" : "shape_no_other_units_installers_rerun",
+    "status" : "passed"
+  }, {
+    "name" : "control_edited_script_reruns",
+    "status" : "passed"
+  }, {
+    "name" : "shape_unbuilt_other_unit_tools_are_named",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "sync",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "sync", "cc-target", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/foreign-installers/units/cc-target", "--yes", "--skip-mcp" ],
+    "startedAt" : "2026-11-09T18:45:12.736016Z",
+    "endedAt" : "2026-11-09T18:45:15.939456Z",
+    "exitCode" : 0,
+    "pid" : 55818,
+    "log" : "node-logs/cheap.foreign-installers.sync.log",
+    "error" : null
+  }, {
+    "label" : "sync_force",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "sync", "cc-target", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/foreign-installers/units/cc-target", "--yes", "--skip-mcp", "--force-scripts" ],
+    "startedAt" : "2026-11-09T18:45:18.667365Z",
+    "endedAt" : "2026-11-09T18:45:22.086106Z",
+    "exitCode" : 0,
+    "pid" : 56152,
+    "log" : "node-logs/cheap.foreign-installers.sync_force.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "foreign_installers_rerun" : 0,
+    "foreign_installers_rerun_force_scripts" : 0,
+    "foreign_units" : 2,
+    "durationMs" : 20211
+  },
+  "logs" : [ "foreign installers re-run: plain=0 force_scripts=0 (of 2); sync rc=0 force rc=0; counter at install=[cc-foreign-a, cc-foreign-b, cc-target]; target reruns after script edit=1; unbuilt named=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-09T18:45:01.127276Z","executorEndedAt":"2026-11-09T18:45:22.213162Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cheap.foreign-installers.stdout.log","inputContextFile":"context/cheap.foreign-installers.input.json","traceId":"fc789d56955ba0ec5c241a5b454ce044"}

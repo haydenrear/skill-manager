@@ -1,0 +1,267 @@
+{
+  "schema": "test-graph.sweep.v1",
+  "mode": "graphs",
+  "selection_known": true,
+  "graphs_selected": 28,
+  "graphs_executed": 28,
+  "graphs_passed": 28,
+  "graphs_failed": 0,
+  "graphs_not_run": 0,
+  "results": [
+    {
+      "graph": "smoke",
+      "status": "passed",
+      "seconds": 266.09,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-175220"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "onboard",
+      "status": "passed",
+      "seconds": 185.614,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-175622"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "source-tracking",
+      "status": "passed",
+      "seconds": 75.566,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-175932"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "git-latest-source-tracking",
+      "status": "passed",
+      "seconds": 57.15,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-180046"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "plugin-smoke",
+      "status": "passed",
+      "seconds": 200.888,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-180149"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "harness-smoke",
+      "status": "passed",
+      "seconds": 88.789,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-180505"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "doc-smoke",
+      "status": "passed",
+      "seconds": 119.634,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-180639"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-manifest",
+      "status": "passed",
+      "seconds": 29.129,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-180826"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-resolve",
+      "status": "passed",
+      "seconds": 32.522,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-180855"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-smoke",
+      "status": "passed",
+      "seconds": 75.12,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-180931"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "spec-conformance",
+      "status": "passed",
+      "seconds": 32.945,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-181043"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-child-home",
+      "status": "passed",
+      "seconds": 58.061,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-181122"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-clone",
+      "status": "passed",
+      "seconds": 124.497,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-181222"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-tripwire",
+      "status": "passed",
+      "seconds": 86.89,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-181421"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "checkout-home",
+      "status": "passed",
+      "seconds": 65.514,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-181548"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-sync",
+      "status": "passed",
+      "seconds": 234.391,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-181702"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "ticket-lifecycle",
+      "status": "passed",
+      "seconds": 229.677,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-182052"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-env",
+      "status": "passed",
+      "seconds": 28.441,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-182435"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-libs",
+      "status": "passed",
+      "seconds": 24.729,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-182503"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "project-profiles",
+      "status": "passed",
+      "seconds": 30.998,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-182528"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "artifact-dag",
+      "status": "passed",
+      "seconds": 113.053,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-182603"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "onboarding",
+      "status": "passed",
+      "seconds": 280.442,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-182805"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-integrity",
+      "status": "passed",
+      "seconds": 146.975,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-183243"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "home-verdicts",
+      "status": "passed",
+      "seconds": 159.848,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-183509"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "sync-settles",
+      "status": "passed",
+      "seconds": 23.721,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-183738"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "cli-pin",
+      "status": "passed",
+      "seconds": 12.156,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-183802"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "honest-pins",
+      "status": "passed",
+      "seconds": 117.762,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-183820"
+      ],
+      "reason": null
+    },
+    {
+      "graph": "cheap-checks",
+      "status": "passed",
+      "seconds": 338.066,
+      "run_dirs": [
+        "/Volumes/dev/skill-manager-epic-cheap-checks/test_graph/build/validation-reports/20261109-184015"
+      ],
+      "reason": null
+    }
+  ],
+  "sweep_id": "20261109-175143",
+  "gradle_exit_code": 0,
+  "continue_past_failures": true
+}

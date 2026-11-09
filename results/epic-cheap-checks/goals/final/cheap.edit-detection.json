@@ -1,0 +1,55 @@
+{
+  "nodeId" : "cheap.edit-detection",
+  "status" : "passed",
+  "startedAt" : "2026-11-09T18:41:49.370549Z",
+  "endedAt" : "2026-11-09T18:42:10.024508Z",
+  "assertions" : [ {
+    "name" : "setup_installed_with_marketplace_link",
+    "status" : "passed"
+  }, {
+    "name" : "setup_clean_checkout_row_is_not_stale",
+    "status" : "passed"
+  }, {
+    "name" : "control_row_clean_after_restoring_tracked_edit",
+    "status" : "passed"
+  }, {
+    "name" : "control_row_clean_after_removing_untracked_file",
+    "status" : "passed"
+  }, {
+    "name" : "control_row_clean_after_removing_gitignored_file",
+    "status" : "passed"
+  }, {
+    "name" : "control_row_clean_after_restoring_link",
+    "status" : "passed"
+  }, {
+    "name" : "shape_tracked_edit_detected",
+    "status" : "passed"
+  }, {
+    "name" : "shape_untracked_file_detected",
+    "status" : "passed"
+  }, {
+    "name" : "shape_gitignored_file_not_detected",
+    "status" : "passed"
+  }, {
+    "name" : "shape_repointed_link_detected",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Volumes/dev/skill-manager-epic-cheap-checks/skill-manager", "install", "git+file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9944340433495259721/cheap-checks/edit-detection/upstream/", "--yes" ],
+    "startedAt" : "2026-11-09T18:41:49.467515Z",
+    "endedAt" : "2026-11-09T18:41:52.252669Z",
+    "exitCode" : 0,
+    "pid" : 46883,
+    "log" : "node-logs/cheap.edit-detection.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "planted_edits_detected" : 3,
+    "gitignored_file_detected" : 0,
+    "durationMs" : 20654
+  },
+  "logs" : [ "tracked=Arm[detected=true, restored=true] untracked=Arm[detected=true, restored=true] gitignored=Arm[detected=false, restored=true] repointed_link=Arm[detected=true, restored=true] setupInstalled=true setupClean=true" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-11-09T18:41:48.641589Z","executorEndedAt":"2026-11-09T18:42:10.138635Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/cheap.edit-detection.stdout.log","inputContextFile":"context/cheap.edit-detection.input.json","traceId":"fc789d56955ba0ec5c241a5b454ce044"}
