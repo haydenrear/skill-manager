@@ -136,6 +136,13 @@ EXCLUDED: dict[str, str] = {
         "the build level (HYPER_EXPERIMENTS=1 / HYPER_LOCAL_DIR), so it is not "
         "in validationRunAll either. Run it deliberately, not on a push."
     ),
+    "cheap-checks": (
+        "skill-manager#414 — epic cheap-checks' baseline and verdict graph: its "
+        "unfixed clauses are red by design until CC-6 (#443) reads it green, and "
+        "its timing clauses need the checkout's project home and BSD time -l. "
+        "Red nodes here are the epic's baseline, not a regression. Run it "
+        "deliberately: run.py cheap-checks."
+    ),
 }
 
 # sponsored was DELETED at HP-11 (#426), not excluded: it tested nothing but

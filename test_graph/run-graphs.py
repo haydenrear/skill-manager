@@ -3,7 +3,7 @@
 
 WHY THIS EXISTS
 ---------------
-`test_graph/build.gradle.kts` registers twenty-eight graphs. The documented way to
+`test_graph/build.gradle.kts` registers twenty-nine graphs. The documented way to
 run them all is the installed test-graph skill's `scripts/run.py --all`, which invokes Gradle's
 `validationRunAll`; that task fans out over `ext.graphs`, i.e. every graph
 registered with `testGraph(...)`. Until HP-12 (#427) three of those booted
