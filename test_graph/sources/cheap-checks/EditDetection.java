@@ -15,19 +15,17 @@ import java.nio.file.Path;
 /**
  * GOAL-checking-costs-what-changed clause (a), the detection half: every planted edit
  * under a marketplace plugin still marks its {@code marketplace-entry:} row stale, so a
- * faster check cannot be a blinder one. Tracked, untracked and link are green at the
- * CC-0 baseline and must stay green through CC-1.
+ * faster check cannot be a blinder one. Tracked, untracked and link must stay detected.
  *
- * <p><b>The gitignored arm is RED at baseline, and that is measured rather than designed.</b>
- * CC-1's slice says git status cannot see a gitignored file "and the current digest
- * does". It does not: {@code HomeDigest.withoutIgnored} drops the unit's gitignored
- * paths before digesting, on purpose (schema 2), so a gitignored file has never moved
- * this row. The arm asserts the epic target as written ("every planted edit"); CC-1
- * states the policy and, if the policy is that an ignored file is not content, says so
- * in this file rather than leaving it red. Baseline note: results/epic-cheap-checks/baseline/.
+ * <p><b>A gitignored file is NOT part of a unit's identity.</b> AWAITING OWNER
+ * CONFIRMATION (#410). The arm asserts it does not move the row. That is also what
+ * happened at the CC-0 baseline, whose stated cause was wrong: not
+ * {@code HomeDigest.withoutIgnored}, which this code path never calls, but
+ * {@code ChildHomeMaterializer.plainView}, which walks with
+ * {@code GitIgnoreRules.forUnit(root)}. The control still proves the arm ran.
  *
  * <p>Plants, one at a time, restoring between them: a tracked edit, an untracked file,
- * a gitignored file (git status cannot see this one; CC-1 has to state the policy) and
+ * a gitignored file (which must NOT be detected) and
  * a re-pointed marketplace link (to a byte-identical copy, so only the link target
  * differs). Each plant has a CONTROL: after restoring, the row is clean again, which
  * proves the detection was the plant and not a sticky row.
@@ -101,13 +99,14 @@ public class EditDetection {
 
             boolean setup = setupInstalled && setupClean;
             boolean controls = tracked.restored && untracked.restored && gitignored.restored && relinked.restored;
-            boolean shape = tracked.detected && untracked.detected && gitignored.detected && relinked.detected;
+            boolean shape = tracked.detected && untracked.detected && !gitignored.detected && relinked.detected;
             String detail = "tracked=" + tracked + " untracked=" + untracked + " gitignored=" + gitignored
                     + " repointed_link=" + relinked + " setupInstalled=" + setupInstalled + " setupClean=" + setupClean;
             NodeResult result = setup && controls && shape ? NodeResult.pass(ID) : NodeResult.fail(ID, detail);
             return result.process(install)
                     .metric("planted_edits_detected", (tracked.detected ? 1 : 0) + (untracked.detected ? 1 : 0)
-                            + (gitignored.detected ? 1 : 0) + (relinked.detected ? 1 : 0))
+                            + (relinked.detected ? 1 : 0))
+                    .metric("gitignored_file_detected", gitignored.detected ? 1 : 0)
                     .assertion("setup_installed_with_marketplace_link", setupInstalled)
                     .assertion("setup_clean_checkout_row_is_not_stale", setupClean)
                     .assertion("control_row_clean_after_restoring_tracked_edit", tracked.restored)
@@ -116,7 +115,7 @@ public class EditDetection {
                     .assertion("control_row_clean_after_restoring_link", relinked.restored)
                     .assertion("shape_tracked_edit_detected", tracked.detected)
                     .assertion("shape_untracked_file_detected", untracked.detected)
-                    .assertion("shape_gitignored_file_detected", gitignored.detected)
+                    .assertion("shape_gitignored_file_not_detected", !gitignored.detected)
                     .assertion("shape_repointed_link_detected", relinked.detected)
                     .log(detail);
         });

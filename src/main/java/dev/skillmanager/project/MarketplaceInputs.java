@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.bindings.ChildHomeMaterializer;
 import dev.skillmanager.lock.Fingerprint;
 import dev.skillmanager.lock.Fingerprints;
+import dev.skillmanager.shared.util.Rederivable;
+import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.HomeDigest;
 
 import java.io.IOException;
@@ -41,9 +43,17 @@ import java.util.TreeSet;
  * <ul>
  *   <li>the entry's own identity — its name, the {@code ./plugins/<n>} source
  *       the manifest names, and the link target stored in the symlink tree;</li>
- *   <li><b>the plugin's contents in the store</b>, as a per-file digest of
+ *   <li><b>the plugin's contents in the store</b>: for a clean git checkout
+ *       its commit ({@link GitOps#cleanCommit}), otherwise a per-file digest of
  *       {@code plugins/<n>} with {@code .git} excluded.</li>
  * </ul>
+ *
+ * <p>Scheme v2 (#410). A clean checkout's commit names its bytes, so hashing
+ * them again was 429 MB of reading to reach the same answer; a checkout is never
+ * pulled over the network to ask. A gitignored file is not part of the identity
+ * in either form: {@code git status} does not see it, and the byte walk drops it
+ * through {@link dev.skillmanager.shared.util.GitIgnoreRules} too. A row recorded
+ * under v1 does not compare ({@link Entry#comparableFingerprint}).
  *
  * <p>The second half is what makes the grade {@link Fingerprint.Kind#RESOLVED}
  * rather than {@link Fingerprint.Kind#DECLARED}, and the distinction is not
@@ -76,7 +86,7 @@ public record MarketplaceInputs(
     public static final int SCHEMA_VERSION = 1;
 
     /** Versioned per {@link Fingerprints}: changing what it covers means a new suffix. */
-    public static final String SCHEME = "marketplace-entry-v1";
+    public static final String SCHEME = "marketplace-entry-v2";
 
     public MarketplaceInputs {
         plugins = plugins == null ? List.of() : List.copyOf(plugins);
@@ -123,6 +133,18 @@ public record MarketplaceInputs(
             }
             return inputFingerprintGap == null || inputFingerprintGap.isBlank()
                     ? Optional.empty() : Optional.of(Fingerprint.gap(inputFingerprintGap));
+        }
+
+        /**
+         * {@link #fingerprint} when the row was recorded under this {@link #SCHEME}.
+         * A digest from another scheme says nothing about this one, so comparing
+         * them would report every plugin stale on the first read after an upgrade
+         * with no input having moved; it is treated as not recorded until the
+         * marketplace is next regenerated, as {@code HomeDigest} treats an older
+         * schema.
+         */
+        public Optional<Fingerprint> comparableFingerprint() {
+            return SCHEME.equals(inputFingerprintScheme) ? fingerprint() : Optional.empty();
         }
 
         public static Entry of(String name, String source, String target, Fingerprint fp) {
@@ -189,6 +211,12 @@ public record MarketplaceInputs(
             return Fingerprint.gap("plugins/" + name + " resolves to something that is not a "
                     + "directory, so there are no plugin contents to digest");
         }
+        Optional<String> commit = GitOps.cleanCommit(contents, MarketplaceInputs::outsideDigest);
+        if (commit.isPresent()) {
+            return Fingerprint.resolved(digest.field("git_commit", commit.get()).hex(),
+                    "the entry's name, source path and stored link target, plus the commit of "
+                            + "plugins/" + name + ", a git checkout with a clean status");
+        }
         Map<String, String> entries;
         try {
             entries = ChildHomeMaterializer.entryDigests(contents, HomeDigest.EXCLUDED);
@@ -203,7 +231,16 @@ public record MarketplaceInputs(
         }
         return Fingerprint.resolved(digest.hex(),
                 "the entry's name, source path and stored link target, plus a per-file digest "
-                        + "of every byte under plugins/" + name + " (.git excluded)");
+                        + "of every byte under plugins/" + name + " (.git and gitignored paths excluded)");
+    }
+
+    /** Paths the byte walk leaves out, so a status naming only these is still clean. */
+    private static boolean outsideDigest(String rel) {
+        if (Rederivable.isDerived(rel)) return true;
+        for (String segment : rel.split("/")) {
+            if (HomeDigest.EXCLUDED.contains(segment)) return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ serde

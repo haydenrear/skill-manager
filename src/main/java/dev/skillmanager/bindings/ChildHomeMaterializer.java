@@ -604,7 +604,7 @@ public final class ChildHomeMaterializer {
         List<ViewEntry> declared = new ArrayList<>();
         for (String rel : unownedRoots(root)) {
             if (Rederivable.isDerived(rel)) continue;
-            walkPlain(root.resolve(rel), rel, GitIgnoreRules.NONE, declared);
+            walkPlain(root.resolve(rel), rel, GitIgnoreRules.NONE, java.util.Set.of(), declared);
         }
         return fingerprintOf(declared, java.util.Set.of()).entries();
     }
@@ -3238,7 +3238,7 @@ public final class ChildHomeMaterializer {
     private static List<ViewEntry> plainView(Path root) throws IOException {
         List<ViewEntry> out = new ArrayList<>();
         if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) {
-            walkPlain(root, "", GitIgnoreRules.forUnit(root), out);
+            walkPlain(root, "", GitIgnoreRules.forUnit(root), java.util.Set.of(), out);
         }
         return out;
     }
@@ -3315,7 +3315,13 @@ public final class ChildHomeMaterializer {
         out.add(new ViewEntry(rel, EntryKind.FILE, src, null, Files.isExecutable(src)));
     }
 
-    private static void walkPlain(Path src, String rel, GitIgnoreRules rules, List<ViewEntry> out)
+    /**
+     * @param skipNames directory or file names pruned at any depth, DURING the
+     *                  walk. #410: filtering them afterwards walked all of
+     *                  {@code .git} and every output tree only to drop them.
+     */
+    private static void walkPlain(Path src, String rel, GitIgnoreRules rules,
+                                  java.util.Set<String> skipNames, List<ViewEntry> out)
             throws IOException {
         if (isUnowned(rules, rel, asMaterializedDirectory(src))) return;
         if (Files.isSymbolicLink(src)) {
@@ -3325,16 +3331,43 @@ public final class ChildHomeMaterializer {
         if (Files.isDirectory(src, LinkOption.NOFOLLOW_LINKS)) {
             List<Path> children = listSorted(src);
             List<ViewEntry> below = new ArrayList<>();
+            boolean prunedContent = false;
             for (Path child : children) {
-                walkPlain(child, join(rel, child.getFileName().toString()), rules, below);
+                String name = child.getFileName().toString();
+                String childRel = join(rel, name);
+                if (skipNames.contains(name)) {
+                    // A pruned child still decides whether this directory has
+                    // content, exactly as its entries did when they were walked
+                    // and filtered afterwards.
+                    prunedContent |= yieldsEntries(child, childRel, rules);
+                    continue;
+                }
+                walkPlain(child, childRel, rules, skipNames, below);
             }
-            if (!rel.isEmpty() && emitDirectory(children, below)) {
+            if (!rel.isEmpty() && (prunedContent || emitDirectory(children, below))) {
                 out.add(new ViewEntry(rel, EntryKind.DIR, src, null, false));
             }
             out.addAll(below);
             return;
         }
         out.add(new ViewEntry(rel, EntryKind.FILE, src, null, Files.isExecutable(src)));
+    }
+
+    /**
+     * Whether {@link #walkPlain} would emit anything for {@code src}, stopping
+     * at the first entry: this is the cost of pruning, so it must not become a
+     * second walk.
+     */
+    private static boolean yieldsEntries(Path src, String rel, GitIgnoreRules rules)
+            throws IOException {
+        if (isUnowned(rules, rel, asMaterializedDirectory(src))) return false;
+        if (Files.isSymbolicLink(src) || !Files.isDirectory(src, LinkOption.NOFOLLOW_LINKS)) return true;
+        List<Path> children = listSorted(src);
+        if (children.isEmpty()) return true;
+        for (Path child : children) {
+            if (yieldsEntries(child, join(rel, child.getFileName().toString()), rules)) return true;
+        }
+        return false;
     }
 
     /**
@@ -3479,8 +3512,12 @@ public final class ChildHomeMaterializer {
      */
     public static java.util.LinkedHashMap<String, String> entryDigests(
             Path root, java.util.Set<String> skipNames) throws IOException {
-        return fingerprintOf(plainView(root),
-                skipNames == null ? java.util.Set.of() : skipNames).entries();
+        java.util.Set<String> skip = skipNames == null ? java.util.Set.of() : skipNames;
+        List<ViewEntry> view = new ArrayList<>();
+        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) {
+            walkPlain(root, "", GitIgnoreRules.forUnit(root), skip, view);
+        }
+        return fingerprintOf(view, skip).entries();
     }
 
     private static boolean isUnder(String rel, java.util.Set<String> skipNames) {
