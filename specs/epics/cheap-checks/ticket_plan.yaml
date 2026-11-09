@@ -27,8 +27,17 @@
 #     numbers are unchanged.
 #   - CC-2's scoping of sync --force-scripts stands: named units are forced; other
 #     units get no reconcile.
+#
+# AMENDMENT, schedule_revision 3, 2026-11-09. Owner decisions after CC-6 merged:
+#   - CC-8 added (appended): cheap-checks returns to EXCLUDED as local-only,
+#     because its timing nodes need macOS time -l and every CI job is ubuntu
+#     (DEF-CC6-003). doc-smoke and onboarding matchers are fixed inside the epic
+#     (DEF-CC6-001, DEF-CC6-002). CC-8 changes no measured code path, so CC-6's
+#     measurement still describes the integrated product.
+#   - Carried to main: #454 (DEF-CC6-004), #455 (DEF-CC3-002, DEF-CC5-001).
+#   - Manual acceptance: epic agent runs the scenarios, owner reviews the record.
 version: 1
-schedule_revision: 2
+schedule_revision: 3
 name: cheap-checks
 slug: cheap-checks
 branch: epic/cheap-checks
@@ -427,7 +436,7 @@ tickets:
     title: "Evaluate cheap-checks on the integrated epic"
     feature_branch: feature/443-evaluate
     worktree: /Volumes/dev/skill-manager-443-evaluate
-    status: pr_open
+    status: closed
     role: evaluation
     owns_goals: ["GOAL-checking-costs-what-changed", "GOAL-excluded-paths-keep-git"]
     schedule_revision: 2
@@ -470,7 +479,7 @@ tickets:
     title: "home clone refreshes git indexes; artifacts stale reads no install scripts"
     feature_branch: feature/450-index-refresh
     worktree: /Volumes/dev/skill-manager-450-index-refresh
-    status: planned
+    status: closed
     role: implementation
     schedule_revision: 2
     wave: 4
@@ -504,3 +513,44 @@ tickets:
         contribution: direct
         expected_effect: "clause (b) time from about 16.9 s as cloned to under 5 s; clause (a) files read from 3 to 0"
         local_signal: "python3 .skill-manager/plugins/tla-spec-dev/skills/test-graph/scripts/run.py cheap-checks"
+
+  - id: CC-8
+    github_issue: https://github.com/haydenrear/skill-manager/issues/453
+    title: "Keep cheap-checks local-only; fix doc-smoke and onboarding matchers"
+    feature_branch: feature/453-graph-housekeeping
+    worktree: /Volumes/dev/skill-manager-453-graph-housekeeping
+    status: planned
+    role: implementation
+    schedule_revision: 3
+    wave: 6
+    depends_on: ["CC-6"]
+    blocks: []
+    promotion_order: 9
+    promotion_predecessor: CC-6
+    slice: >
+      (1) DEF-CC6-003: restore cheap-checks to EXCLUDED with a reason naming macOS
+      time -l and the checkout project home; update CLAUDE.md's counts and text.
+      Do not change any cheap-checks node. (2) DEF-CC6-001: doc-smoke matches the
+      phrase across a line wrap, without weakening what is required. (3)
+      DEF-CC6-002: onboarding's KNOWN_GOOD names the scripts the workflow skill
+      actually references now; the assertion still requires every entry. Change no
+      production code.
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: ["graph/doc-smoke-skill-docs", "graph/onboarding-known-good"]
+      workflow: ["ci/graph-selection"]
+    validation:
+      tlc: "N/A: no TLA workflow in this epic"
+      spec_unit: "uv run --with pytest pytest specs/program_model/tests -q"
+      repository_unit: "jbang RunTests.java"
+      graphs: ["doc-smoke", "onboarding"]
+      spec_graph: "N/A: no TLA workflow in this epic"
+      toolchain_spec_workflow: "N/A: this epic does not change spec-double-compiler"
+      evidence_root: results/epic-cheap-checks/tickets/CC-8/
+    goals:
+      - goal: GOAL-checking-costs-what-changed
+        contribution: guard
+        expected_effect: "no change to any clause: no measured code path is touched"
+        local_signal: "python3 .github/scripts/select-graph-set.py --scope full --print"
