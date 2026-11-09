@@ -46,7 +46,7 @@ Recommendations: none beyond #454 and #455.
 
 ## 5. Next steps
 
-**Goal table.** Readings are the `cheap-checks` graph on the integrated tip, sweep `20261109-175143`. Over the machine's load and CC-6's three fresh runs, see `goals/verdicts.json`.
+**Goal table.** Readings are the `cheap-checks` graph on the integrated tip, sweep `20261109-175143` (`goals/final/`). CC-6's four runs on the tip before CC-8 are in `goals/verdicts.json`; CC-8 changed no measured code.
 
 | Goal | Clause | Kind | Baseline | Measured | Target | Verdict |
 | --- | --- | --- | --- | --- | --- | --- |
