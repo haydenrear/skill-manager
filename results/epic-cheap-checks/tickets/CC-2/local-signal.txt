@@ -1,0 +1,7 @@
+local_signal: count of logs/skill-scripts/ after syncing one unit in a fresh home clone
+Real home: clone of ~/.skill-manager; `sync cdc-agent-substrate-plugin --from <dir> --yes --skip-mcp --skip-agents`.
+before (origin/epic/cheap-checks f12a3063): 5 installer logs, 120 s, rc 0
+after  (this branch): 0 installer logs, 3 s, rc 0
+Classification: moved as expected (clause (c): other units' installers re-run -> 0).
+Fixture: test_graph cheap.foreign-installers foreign_installers_rerun 0 of 2 (baseline 2 of 2); force-scripts metric 0.
+Agent projection was not exercised (--skip-agents, CC-4). One run each, timer resolution 1 s.

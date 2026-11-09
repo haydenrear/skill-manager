@@ -1,0 +1,9 @@
+== test graph sweep 20261109-033041 ==
+Counted from this invocation's own task outcomes, not from build/validation-reports/.
+graphs_selected=5  graphs_executed=5  graphs_passed=4  graphs_failed=1  graphs_not_run=0
+  FAILED   cheap-checks  776.2s  build/validation-reports/20261109-033117  (Execution failed for task ':cheap-checks'.)
+  PASSED   sync-settles  27.2s  build/validation-reports/20261109-034406
+  PASSED   cli-pin       15.4s  build/validation-reports/20261109-034434
+  PASSED   home-clone    147.8s  build/validation-reports/20261109-034459
+  PASSED   home-sync     312.3s  build/validation-reports/20261109-034730
+sweep record: /Volumes/dev/skill-manager-402-scoped-installers/test_graph/build/validation-sweeps/20261109-033041/sweep.json

@@ -662,9 +662,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // `sync --force-scripts` a repair for it — and for the orphan shim,
         // which nothing declares and nothing could re-install over. What it
         // will not touch is enumerated on CliShimPruner.
-        dev.skillmanager.cli.installer.CliShimPruner.prune(store);
+        //
+        // #402: a sync naming one unit prunes no shim only an out-of-scope
+        // unit declares. Nothing later in this pass would re-provision it.
+        List<AgentUnit> outOfScope = freshen(e.outOfScopeUnits());
+        dev.skillmanager.cli.installer.CliShimPruner.prune(store,
+                dev.skillmanager.cli.installer.CliReconcileScope.shimsToKeep(units, outOfScope));
         InstallPlan plan = buildPlan(units, e.forceScripts(), e.forceScriptUnitNames());
         CliInstallRecorder.Result result = CliInstallRecorder.runWithRefusals(plan, store);
+        dev.skillmanager.cli.installer.CliReconcileScope.reportUnbuilt(units, outOfScope, store);
         ContextFact tallied = new ContextFact.CliInstalledFor(units.size(), result.tally());
         if (result.refusals().isEmpty()) return EffectReceipt.ok(e, tallied);
         // #428 R5: a refusal is not absorbed into an ok receipt. PARTIAL, not

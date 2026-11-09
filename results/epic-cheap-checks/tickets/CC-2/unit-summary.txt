@@ -1,0 +1,2 @@
+suites passed=1698 failed=0
+ALL PASSED

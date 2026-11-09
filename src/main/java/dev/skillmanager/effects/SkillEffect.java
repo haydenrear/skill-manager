@@ -337,15 +337,28 @@ public sealed interface SkillEffect permits
     record InstallCli(
             List<AgentUnit> units,
             boolean forceScripts,
-            List<String> forceScriptUnitNames) implements SkillEffect {
+            List<String> forceScriptUnitNames,
+            /**
+             * #402: installed units this pass deliberately does NOT reconcile,
+             * because the sync named other units. Nothing is installed for
+             * them; what they declare and this home cannot run is reported.
+             */
+            List<AgentUnit> outOfScopeUnits) implements SkillEffect {
         public InstallCli(List<AgentUnit> units) { this(units, false, List.of()); }
         public InstallCli(List<AgentUnit> units, boolean forceScripts) {
             this(units, forceScripts, List.of());
+        }
+        public InstallCli(List<AgentUnit> units, boolean forceScripts,
+                          List<String> forceScriptUnitNames) {
+            this(units, forceScripts, forceScriptUnitNames, List.of());
         }
         public InstallCli {
             forceScriptUnitNames = forceScriptUnitNames == null
                     ? List.of()
                     : List.copyOf(forceScriptUnitNames);
+            outOfScopeUnits = outOfScopeUnits == null
+                    ? List.of()
+                    : List.copyOf(outOfScopeUnits);
         }
     }
 

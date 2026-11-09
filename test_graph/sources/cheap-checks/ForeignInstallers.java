@@ -28,7 +28,10 @@ import java.util.List;
  * re-runs is reported (metric) and not targeted.
  *
  * <p>CONTROLS: the source install ran each installer exactly once (the counter counts),
- * and the synced unit's new bytes landed in the clone (the sync really ran).
+ * the synced unit's new bytes landed in the clone (the sync really ran), and editing the
+ * target's script re-runs it (a stale installer is not skipped). The plain sync must also
+ * name each other unit's tool it left unbuilt: a skip the home is silent about would
+ * pass the count and leave an unreported broken binary.
  */
 public class ForeignInstallers {
     static final String ID = "cheap.foreign-installers";
@@ -76,6 +79,8 @@ public class ForeignInstallers {
 
             long foreignPlain;
             long foreignForce;
+            long targetRerunAfterEdit;
+            boolean unbuiltNamed;
             ProcessRecord sync;
             ProcessRecord syncForce;
             try {
@@ -85,6 +90,14 @@ public class ForeignInstallers {
                 sync = CheapChecksKit.sm(ctx, "sync", root, clone,
                         "sync", TARGET, "--from", targetDir.toString(), "--yes", "--skip-mcp");
                 foreignPlain = foreignRuns(counter);
+                String syncOutput = CheapChecksKit.output(ctx, sync);
+                unbuiltNamed = FOREIGN.stream().allMatch(u -> syncOutput.contains(u + "-tool (" + u + ")"));
+                Files.deleteIfExists(counter);
+                Path script = targetDir.resolve("skill-scripts/install-tool.sh");
+                Files.writeString(script, Files.readString(script) + "\n# edited\n");
+                CheapChecksKit.sm(ctx, "sync_edited", root, clone,
+                        "sync", TARGET, "--from", targetDir.toString(), "--yes", "--skip-mcp");
+                targetRerunAfterEdit = CheapChecksKit.lines(counter).stream().filter(TARGET::equals).count();
                 Files.deleteIfExists(counter);
                 syncForce = CheapChecksKit.sm(ctx, "sync_force", root, cloneForce,
                         "sync", TARGET, "--from", targetDir.toString(), "--yes", "--skip-mcp", "--force-scripts");
@@ -98,8 +111,11 @@ public class ForeignInstallers {
             boolean shape = foreignPlain == 0;
             String detail = "foreign installers re-run: plain=" + foreignPlain + " force_scripts=" + foreignForce
                     + " (of " + FOREIGN.size() + "); sync rc=" + sync.exitCode() + " force rc=" + syncForce.exitCode()
-                    + "; counter at install=" + atInstall;
+                    + "; counter at install=" + atInstall
+                    + "; target reruns after script edit=" + targetRerunAfterEdit + "; unbuilt named=" + unbuiltNamed;
+            boolean controlEditedReruns = targetRerunAfterEdit == 1;
             NodeResult result = setup && controlCounterCounts && controlSyncLanded && shape
+                    && unbuiltNamed && controlEditedReruns
                     ? NodeResult.pass(ID) : NodeResult.fail(ID, detail);
             return result.process(sync).process(syncForce)
                     .metric("foreign_installers_rerun", foreignPlain)
@@ -109,6 +125,8 @@ public class ForeignInstallers {
                     .assertion("control_counter_counts_each_installer_once", controlCounterCounts)
                     .assertion("control_sync_landed_on_named_unit", controlSyncLanded)
                     .assertion("shape_no_other_units_installers_rerun", shape)
+                    .assertion("control_edited_script_reruns", controlEditedReruns)
+                    .assertion("shape_unbuilt_other_unit_tools_are_named", unbuiltNamed)
                     .log(detail);
         });
     }
