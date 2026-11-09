@@ -195,10 +195,13 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] install runtime tools (uv/npm/docker/brew) for %d unit(s)",
                             n, e.units().size());
             case SkillEffect.InstallCli e ->
-                    Log.step("[%d] install CLI deps for %d unit(s)%s", n, e.units().size(),
+                    Log.step("[%d] install CLI deps for %d unit(s)%s%s", n, e.units().size(),
                             e.forceScripts()
                                     ? " (force-scripts: " + forceScope(e.forceScriptUnitNames()) + ")"
-                                    : "");
+                                    : "",
+                            e.outOfScopeUnits().isEmpty()
+                                    ? ""
+                                    : " (" + e.outOfScopeUnits().size() + " other unit(s) left alone)");
             case SkillEffect.RegisterMcp e -> {
                 Log.step("[%d] register MCP deps with %s", n,
                         e.gateway() == null ? "<none>" : e.gateway().baseUrl());

@@ -408,7 +408,9 @@ public final class SyncUseCase {
         alwaysAfter.add(new SkillEffect.CleanupResolvedGraph());
 
         effects.add(new SkillEffect.InstallTools(liveUnits));
-        effects.add(new SkillEffect.InstallCli(liveUnits, options.forceScripts(), forceScriptUnits));
+        CliScope cliScope = cliScope(targets, liveUnits);
+        effects.add(new SkillEffect.InstallCli(cliScope.reconciled(), options.forceScripts(),
+                forceScriptUnits, cliScope.left()));
         if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
         if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
         // Plugin marketplace + harness CLI lifecycle. Sync is the
@@ -491,6 +493,35 @@ public final class SyncUseCase {
             if (name != null && !name.isBlank()) out.add(name);
         }
         return List.copyOf(out);
+    }
+
+    private record CliScope(List<dev.skillmanager.model.AgentUnit> reconciled,
+                            List<dev.skillmanager.model.AgentUnit> left) {}
+
+    /**
+     * #402: which units' CLI deps this sync reconciles: the ones it was asked
+     * to sync. A no-argument sync names every unit, so it is still whole-home.
+     *
+     * <p>This pass used to walk every installed unit. In a {@code home clone}
+     * every wrapper's target was under the skipped {@code cache/}, so the
+     * usability gate failed for all of them and one unit's sync ran every
+     * other unit's installer (about 85 s on a real home).
+     *
+     * <p>Units a stage 2 resolve newly pulled in are not lost: they arrive
+     * through {@code RunInstallPlan}'s own CLI actions. A {@link Target.Harness}
+     * names a template rather than the units its instance holds, so a harness
+     * reconcile cannot be scoped from its name and stays whole-home.
+     */
+    private static CliScope cliScope(List<Target> targets,
+                                     List<dev.skillmanager.model.AgentUnit> liveUnits) {
+        if (targets.stream().anyMatch(t -> t instanceof Target.Harness)) {
+            return new CliScope(liveUnits, List.of());
+        }
+        java.util.Set<String> named = new LinkedHashSet<>(projectSyncUnitNames(targets));
+        List<dev.skillmanager.model.AgentUnit> reconciled = new ArrayList<>();
+        List<dev.skillmanager.model.AgentUnit> left = new ArrayList<>();
+        for (var u : liveUnits) (named.contains(u.name()) ? reconciled : left).add(u);
+        return new CliScope(reconciled, left);
     }
 
     private static List<String> forceScriptUnitNames(List<Target> targets) {
